@@ -1,0 +1,16 @@
+name: smoke
+# The site reads its data live from other repos, so it can break without a single commit here.
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/smoke.mjs https://alpha.askakshay.com

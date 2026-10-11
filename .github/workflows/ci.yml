@@ -1,0 +1,29 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run lint
+      # next/font downloads the faces at build time, so this step needs the network.
+      - run: npm run build
+      - name: Static export has every page
+        run: |
+          for p in index markets/index screen/index company/index map/index magic/index reads/index ipo/index funds/index news/index about/index; do
+            test -f "out/$p.html" || { echo "::error::out/$p.html missing"; exit 1; }
+          done
+          test -f out/_headers
