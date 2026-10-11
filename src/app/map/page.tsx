@@ -62,60 +62,13 @@ function labelFor(w: number, h: number, sym: string) {
   return font >= 6 ? font : 0;
 }
 
-function Rotation({ rows }: { rows: Row[] }) {
-  const pts = useMemo(() => {
-    const by = new Map<string, Row[]>();
-    for (const r of rows) if (r.sector) by.set(r.sector, [...(by.get(r.sector) ?? []), r]);
-    const all3 = median(rows.map((r) => n(r.r3m)).filter((x): x is number => x !== null)) ?? 0;
-    const all1 = median(rows.map((r) => n(r.r1m)).filter((x): x is number => x !== null)) ?? 0;
-    return [...by.entries()].map(([name, list]) => ({
-      name,
-      x: (median(list.map((r) => n(r.r3m)).filter((x): x is number => x !== null)) ?? 0) - all3,
-      y: (median(list.map((r) => n(r.r1m)).filter((x): x is number => x !== null)) ?? 0) - all1,
-      size: list.reduce((t, r) => t + (n(r.mcap_cr) ?? 0), 0),
-      count: list.length,
-    }));
-  }, [rows]);
-  const ext = Math.max(4, ...pts.map((p) => Math.max(Math.abs(p.x), Math.abs(p.y)))) * 1.15;
-  const maxSize = Math.max(...pts.map((p) => p.size), 1);
-  const W = 720, H = 480, pad = 44;
-  const X = (v: number) => pad + ((v + ext) / (2 * ext)) * (W - 2 * pad);
-  const Y = (v: number) => H - pad - ((v + ext) / (2 * ext)) * (H - 2 * pad);
-  const quad = (p: { x: number; y: number }) => (p.x >= 0 ? (p.y >= 0 ? 'Leading' : 'Weakening') : p.y >= 0 ? 'Improving' : 'Lagging');
-  const color = (q: string) => (q === 'Leading' ? 'var(--up)' : q === 'Improving' ? 'var(--accent-2)' : q === 'Weakening' ? 'var(--warn)' : 'var(--down)');
+function Rotation() {
   return (
-    <div className="grid g-7-5">
-      <div className="panel">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Sector rotation: 3-month strength against 1-month momentum, relative to the whole market" style={{ width: '100%', height: 'auto' }}>
-          <rect x={X(0)} y={pad} width={W - pad - X(0)} height={Y(0) - pad} fill="var(--up-soft)" opacity=".5" />
-          <rect x={pad} y={pad} width={X(0) - pad} height={Y(0) - pad} fill="var(--accent-soft)" opacity=".7" />
-          <rect x={pad} y={Y(0)} width={X(0) - pad} height={H - pad - Y(0)} fill="var(--down-soft)" opacity=".5" />
-          <rect x={X(0)} y={Y(0)} width={W - pad - X(0)} height={H - pad - Y(0)} fill="color-mix(in srgb, var(--warn) 12%, transparent)" />
-          <line x1={X(0)} x2={X(0)} y1={pad} y2={H - pad} stroke="var(--line-2)" />
-          <line x1={pad} x2={W - pad} y1={Y(0)} y2={Y(0)} stroke="var(--line-2)" />
-          {([['Improving', pad + 8, pad + 18], ['Leading', W - pad - 8, pad + 18], ['Lagging', pad + 8, H - pad - 8], ['Weakening', W - pad - 8, H - pad - 8]] as const).map(([t, x, y]) => (
-            <text key={t} x={x} y={y} textAnchor={x > W / 2 ? 'end' : 'start'} fill="var(--dim)" fontSize="12" fontFamily="var(--f-mono)" letterSpacing="1.5">{t.toUpperCase()}</text>
-          ))}
-          <text x={W / 2} y={H - 10} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)">3-MONTH MOVE VS THE MARKET →</text>
-          <text x={14} y={H / 2} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)" transform={`rotate(-90 14 ${H / 2})`}>1-MONTH MOVE VS THE MARKET →</text>
-          {pts.map((p) => (
-            <g key={p.name}>
-              <circle cx={X(p.x)} cy={Y(p.y)} r={7 + Math.sqrt(p.size / maxSize) * 16} fill={color(quad(p))} opacity=".28" stroke={color(quad(p))} />
-              <text x={X(p.x)} y={Y(p.y) + 4} textAnchor="middle" fill="var(--text)" fontSize="11" fontWeight="600">{p.name.replace('Consumer ', 'Cons. ').replace('Communication Services', 'Comms').replace('Financial Services', 'Financials').replace('Basic Materials', 'Materials')}</text>
-            </g>
-          ))}
-        </svg>
-      </div>
-      <div className="panel">
-        <div className="eyebrow">How to read it</div>
-        <p className="muted" style={{ marginTop: 12 }}>Each bubble is a sector. Across: how far its median stock is ahead of or behind the whole market over three months. Up: the same over one month. A sector moving from <b>Lagging</b> to <b>Improving</b> is where leadership starts; <b>Leading</b> to <b>Weakening</b> is where it tires.</p>
-        <div className="list" style={{ marginTop: 8 }}>
-          {[...pts].sort((a, b) => b.x + b.y - (a.x + a.y)).map((p) => (
-            <div className="li" key={p.name}><div><div className="t">{p.name}</div><div className="s">{p.count} stocks</div></div><span className="tag" style={{ color: color(quad(p)) }}>{quad(p)}</span></div>
-          ))}
-        </div>
-        <p className="dim" style={{ fontSize: 12.5 }}>Medians of the screened stocks, relative to the median of all of them. Describes what happened, not what comes next.</p>
-      </div>
+    <div className="panel spot" style={{ textAlign: 'center', padding: '48px 24px' }}>
+      <div className="eyebrow">Sector rotation moved</div>
+      <p className="disp" style={{ fontSize: 30, margin: '12px 0' }}>A proper Relative Rotation Graph, with tails and a time machine.</p>
+      <p className="muted" style={{ maxWidth: '56ch', margin: '0 auto 20px' }}>The old view compared medians of three-month and one-month returns. The new one tracks every benchmark group&apos;s strength against the Nifty week by week, so you can see which way each is travelling.</p>
+      <Link className="btn" href="/rotation/">Open sector rotation <span aria-hidden>→</span></Link>
     </div>
   );
 }
@@ -217,7 +170,7 @@ export default function MapPage() {
           <button className="chip" role="tab" aria-selected={tab === 'rotation'} onClick={() => setTab('rotation')}>Sector rotation</button>
         </div>
         <Async loading={s.loading} error={s.error} rows={3}>
-          {tab === 'rotation' ? <Rotation rows={s.data?.rows ?? []} /> : (
+          {tab === 'rotation' ? <Rotation /> : (
             <>
               <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
                 {metricGroups.map((g) => (

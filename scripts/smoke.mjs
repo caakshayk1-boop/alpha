@@ -13,7 +13,7 @@ async function get(path) {
   return { r, text: await r.text() };
 }
 
-for (const p of ['/', '/brief/', '/markets/', '/screen/', '/company/', '/map/', '/engines/', '/magic/', '/reads/', '/ipo/', '/funds/', '/news/', '/tools/', '/compare/', '/calendar/', '/watchlist/', '/about/']) {
+for (const p of ['/', '/brief/', '/markets/', '/screen/', '/company/', '/map/', '/rotation/', '/engines/', '/magic/', '/reads/', '/ipo/', '/funds/', '/news/', '/tools/', '/compare/', '/calendar/', '/watchlist/', '/about/']) {
   const { r, text } = await get(p);
   check(`page ${p}`, r.status === 200 && text.includes('<title>'), `HTTP ${r.status}`);
 }

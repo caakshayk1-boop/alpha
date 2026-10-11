@@ -37,7 +37,7 @@ jobs:
         run: |
           git config user.name  "caakshayk1-boop"
           git config user.email "caakshayk1-boop@users.noreply.github.com"
-          git add public/engines.json engines/state/registry.json
+          git add public/engines.json public/rotation.json engines/state/registry.json
           git diff --staged --quiet && echo "unchanged" && exit 0
           git commit -m "data: engines $(date -u +%Y-%m-%d) [skip ci]"
           for i in 1 2 3; do

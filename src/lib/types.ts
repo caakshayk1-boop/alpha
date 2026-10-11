@@ -245,3 +245,5 @@ export interface PxQuote { price: number; prev: number; pct: number; state: stri
 export interface PxFeed { ok: boolean; fetched_at?: string; live?: number; requested?: number; quotes: Record<string, PxQuote> }
 
 export interface ChartFeed { ok: boolean; sym: string; range: string; interval: string; t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; v: number[]; nifty: (number | null)[]; error?: string }
+
+export interface RotationFeed { generated: string; dates: string[]; nifty: number[]; groups: Record<string, { close: (number | null)[]; members: string[]; real_index: boolean }> }

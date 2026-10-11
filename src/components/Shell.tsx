@@ -13,6 +13,7 @@ export const PAGES = [
   { href: '/markets/', label: 'Markets', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
   { href: '/screen/', label: 'Screen', icon: 'M4 6h16M7 12h10M10 18h4' },
   { href: '/map/', label: 'Map', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
+  { href: '/rotation/', label: 'Rotation', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
   { href: '/engines/', label: 'Engines', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
   { href: '/magic/', label: 'Magic', icon: 'M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z' },
   { href: '/reads/', label: 'Reads', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },

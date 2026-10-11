@@ -1,34 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { chartFeed } from '@/lib/data';
+import { cone, type Bars } from '@/lib/ta';
 import { Rv } from '@/components/ui';
 import { decide, lookalikes } from '@/lib/decision';
 import type { EngineSignal, Row } from '@/lib/types';
 import { dash, num } from '@/lib/format';
 
-/** One-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
-export function ExternalLinks({ sym, isin }: { sym: string; isin?: string }) {
+/** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
+export function ExternalLinks({ sym }: { sym: string }) {
   const e = encodeURIComponent(sym);
-  const links: [string, string, string][] = [
-    ['Screener.in', `https://www.screener.in/company/${e}/consolidated/`, 'Ten-year financials, ratios and peers'],
-    ['TradingView', `https://www.tradingview.com/chart/?symbol=NSE%3A${e}`, 'Full charting with drawing tools'],
-    ['NSE India', `https://www.nseindia.com/get-quotes/equity?symbol=${e}`, 'Exchange quote, filings and announcements'],
-    ['Trendlyne', `https://trendlyne.com/equity/search/?q=${e}`, 'Analyst estimates and DVM scores'],
-    ['Google Finance', `https://www.google.com/finance/quote/${e}:NSE`, 'Quick news and comparison'],
-    ['Yahoo Finance', `https://finance.yahoo.com/quote/${e}.NS`, 'The price source behind the chart'],
+  const links: [string, string][] = [
+    ['Screener.in', `https://www.screener.in/company/${e}/consolidated/`],
+    ['TradingView', `https://www.tradingview.com/chart/?symbol=NSE%3A${e}`],
+    ['NSE', `https://www.nseindia.com/get-quotes/equity?symbol=${e}`],
+    ['Trendlyne', `https://trendlyne.com/equity/search/?q=${e}`],
+    ['Google', `https://www.google.com/finance/quote/${e}:NSE`],
+    ['Yahoo', `https://finance.yahoo.com/quote/${e}.NS`],
   ];
   return (
-    <div className="grid g3">
-      {links.map(([name, href, sub]) => (
-        <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="panel tight" style={{ display: 'block' }}>
-          <div className="eyebrow">{sub}</div>
-          <div className="disp" style={{ fontSize: 22, margin: '6px 0 0' }}>{name} <span aria-hidden className="dim">↗</span></div>
-        </a>
-      ))}
-      {isin && <p className="dim" style={{ fontSize: 12, gridColumn: '1 / -1', margin: 0 }}>ISIN {isin}. Links search by the NSE symbol; if a site shows a different company, check the symbol there.</p>}
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }} aria-label="Open on other sites">
+      <span className="eyebrow" style={{ marginRight: 4 }}>Open on</span>
+      {links.map(([name, href]) => <a key={name} className="chip" href={href} target="_blank" rel="noopener noreferrer">{name} ↗</a>)}
     </div>
   );
+}
+
+function Kv({ k, v }: { k: string; v: string }) {
+  return <div><div className="k">{k}</div><div className="v" style={{ fontSize: 15 }}>{v}</div></div>;
 }
 
 const tone = (s: number | null) => (s === null ? 'var(--dim)' : s >= 1 ? 'var(--up)' : s <= -1 ? 'var(--down)' : 'var(--accent-2)');
@@ -87,5 +88,56 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
       </div>
       <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Nearest neighbours across the whole screen (any sector) on quality, growth, value, trend, 3-month strength, ROCE, net margin and leverage, each standardised so no single measure dominates. Similar profile is not similar future: use it to find comparables to read next ({num(rows.length)} companies searched).</p>
     </>
+  );
+}
+
+/** Where the price could be, by resampling this stock's own year of daily moves. Drift-neutral unless asked: it shows the spread, not a forecast. */
+export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targets: number[] } }) {
+  const [bars, setBars] = useState<Bars | null>(null);
+  const [days, setDays] = useState(63);
+  const [drift, setDrift] = useState(false);
+  useEffect(() => {
+    let live = true;
+    chartFeed(sym, '1y').then((d) => { if (live && d.ok) setBars(d); }, () => undefined);
+    return () => { live = false; };
+  }, [sym]);
+  const c = useMemo(() => (bars ? cone(bars.c, days, 3000, drift) : null), [bars, days, drift]);
+  if (!c) return <p className="dim">Simulating needs a year of price history.</p>;
+  const W = 640, H = 230, pl = 8, pr = 62, T = 14, B = 26;
+  const flat = c.bands.flat(), lo = Math.min(...flat) * 0.99, hi = Math.max(...flat) * 1.01;
+  const X = (t: number) => pl + (t / days) * (W - pl - pr), Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const path = (k: number) => c.bands.map((b, t) => `${t ? 'L' : 'M'}${X(t).toFixed(1)},${Y(b[k]).toFixed(1)}`).join('');
+  const area = (k1: number, k2: number) => `${c.bands.map((b, t) => `${t ? 'L' : 'M'}${X(t).toFixed(1)},${Y(b[k1]).toFixed(1)}`).join('')}${[...c.bands].reverse().map((b, t) => `L${X(days - t).toFixed(1)},${Y(b[k2]).toFixed(1)}`).join('')}Z`;
+  const end = c.bands[days];
+  return (
+    <div className="grid g-7-5">
+      <div>
+        <div className="filters" style={{ marginBottom: 8 }}>
+          {[21, 63, 126].map((d) => <button key={d} className="chip" aria-pressed={days === d} onClick={() => setDays(d)}>{d === 21 ? '1 month' : d === 63 ? '3 months' : '6 months'}</button>)}
+          <button className="chip" aria-pressed={drift} onClick={() => setDrift((v) => !v)} title="Keep the stock's own average daily move over the past year">Keep past drift</button>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Simulated range of prices" style={{ width: '100%', height: 'auto' }}>
+          <path d={area(0, 4)} fill="var(--accent)" opacity=".10" /><path d={area(1, 3)} fill="var(--accent)" opacity=".18" />
+          <path d={path(2)} fill="none" stroke="var(--accent-2)" strokeWidth="2" /><line x1={pl} x2={W - pr} y1={Y(c.p0)} y2={Y(c.p0)} stroke="var(--line-2)" strokeDasharray="3 4" />
+          {plan && [plan.sl, ...plan.targets].filter((v) => v > lo && v < hi).map((v, i) => <g key={i}><line x1={pl} x2={W - pr} y1={Y(v)} y2={Y(v)} stroke={i === 0 ? 'var(--down)' : 'var(--up)'} strokeDasharray="5 4" opacity=".7" /><text x={W - pr + 5} y={Y(v) + 4} fontSize="11" fill={i === 0 ? 'var(--down)' : 'var(--up)'} fontFamily="var(--f-mono)">{i === 0 ? 'Stop' : `T${i}`}</text></g>)}
+          {[[4, '95%'], [3, '75%'], [2, 'median'], [1, '25%'], [0, '5%']].map(([k, l]) => <text key={String(l)} x={W - pr + 5} y={Y(end[k as number]) + 4} fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">{num(end[k as number], 0)}</text>)}
+          <text x={pl} y={H - 8} fontSize="11" fill="var(--dim)" fontFamily="var(--f-mono)">today</text><text x={W - pr} y={H - 8} textAnchor="end" fontSize="11" fill="var(--dim)" fontFamily="var(--f-mono)">+{days} sessions</text>
+        </svg>
+        <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>3,000 paths built by resampling this stock&apos;s own daily moves over the past year{drift ? ', keeping its average drift' : ', with the average drift removed so it shows spread, not a forecast'}. The bands are the 5th–95th and 25th–75th percentiles.</p>
+      </div>
+      <div className="panel tight" style={{ background: 'var(--panel-2)' }}>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Risk profile · 1 year</div>
+        <div className="kv" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <Kv k="Annual volatility" v={`${(c.vol * 100).toFixed(0)}%`} />
+          <Kv k="Worst day" v={`${(c.worst * 100).toFixed(1)}%`} />
+          <Kv k="1-day 5% VaR" v={`${(c.var95 * 100).toFixed(1)}%`} />
+          <Kv k="Max drawdown" v={`${(c.mdd * 100).toFixed(0)}%`} />
+          <Kv k="Below its peak now" v={`${(c.fromHigh * 100).toFixed(0)}%`} />
+          <Kv k={`Touch +10% in ${days}d`} v={`${(c.up10 * 100).toFixed(0)}%`} />
+          <Kv k={`Touch −10% in ${days}d`} v={`${(c.dn10 * 100).toFixed(0)}%`} />
+        </div>
+        <p className="muted" style={{ fontSize: 13, margin: '12px 0 0' }}>In {days} sessions, half of simulated paths end between ₹{num(end[1], 0)} and ₹{num(end[3], 0)}; nine in ten between ₹{num(end[0], 0)} and ₹{num(end[4], 0)}.</p>
+      </div>
+    </div>
   );
 }

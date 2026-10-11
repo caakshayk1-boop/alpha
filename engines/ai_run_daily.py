@@ -117,6 +117,11 @@ def sector_board(ctx: Ctx) -> list[dict]:
 def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     ctx = Ctx(bars, bench, uni, indices)
     info = {u["sym"]: u for u in uni}
+    try:
+        import rotation_export
+        pathlib.Path(__file__).resolve().parent.parent.joinpath("public", "rotation.json").write_text(json.dumps(rotation_export.export(ctx), separators=(",", ":")))
+    except Exception as e:                      # the rotation page is secondary: a failure here must not stop the engines, but must be loud
+        print(f"WARNING rotation export failed: {e!r}", file=sys.stderr)
     t0 = time.time()
     panel = F.build_panel(bars, ctx, log=lambda *_: None)
     lab = L.build_labels(bars, panel, log=lambda *_: None)

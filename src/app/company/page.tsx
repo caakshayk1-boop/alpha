@@ -6,7 +6,7 @@ import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import Ladder from '@/components/Ladder';
 import StockChart from '@/components/StockChart';
-import { DecisionDesk, ExternalLinks, Lookalikes } from '@/components/CompanyTools';
+import { DecisionDesk, ExternalLinks, Lookalikes, RiskCone } from '@/components/CompanyTools';
 import { useEngines, useFeed, usePx } from '@/lib/data';
 import { useStoredList } from '@/lib/store';
 import { ago, crore, dash, dateLabel, heat, num, pct } from '@/lib/format';
@@ -200,12 +200,12 @@ function Company() {
 
       <section className="wrap section">
         <SectionHead eyebrow="Chart" title="Price, trend and levels" />
-        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name }))} /></Rv>
+        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
 
-      <section className="wrap section"><SectionHead eyebrow="Go deeper" title="Open it on the sites analysts use" /><ExternalLinks sym={r.sym} isin={r.isin} /></section>
-
       <section className="wrap section"><SectionHead eyebrow="AI desk" title="What the numbers add up to" /><DecisionDesk r={r} sigs={mySignals} /></section>
+
+      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the price could go" /><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></section>
 
       <section className="wrap section">
         <div className="grid g-7-5">
