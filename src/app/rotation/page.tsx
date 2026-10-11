@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, PageHead, Rv, SectionHead } from '@/components/ui';
+import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
 import { useFeed, useRotation } from '@/lib/data';
 import { dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
@@ -10,8 +10,8 @@ import type { Row } from '@/lib/types';
 type Quad = 'Leading' | 'Weakening' | 'Lagging' | 'Improving';
 const QC: Record<Quad, string> = { Leading: 'var(--up)', Improving: 'var(--accent-2)', Weakening: 'var(--warn)', Lagging: 'var(--down)' };
 const QNOTE: Record<Quad, string> = { Leading: 'Strong and still gaining', Improving: 'Weak but turning up', Weakening: 'Strong but fading', Lagging: 'Weak and still falling' };
-const TAIL = 6;
 const short = (n: string) => n.replace(' (alpha group index)', '').replace('Fast Moving Consumer Goods', 'FMCG').replace('Consumer ', 'Cons. ').replace('Communication Services', 'Comms').replace('Financial Services', 'Financials').replace('Automobile and Auto Components', 'Autos').replace('Media Entertainment & Publication', 'Media').replace('Oil Gas & Consumable Fuels', 'Oil & Gas').replace('Information Technology', 'IT');
+const SECTORS = new Set(['Industrials', 'Consumer Cyclical', 'Basic Materials', 'Financial Services', 'Healthcare', 'Technology', 'Consumer Defensive', 'Utilities', 'Energy', 'Real Estate', 'Communication Services']);
 const quad = (r: number, m: number): Quad => (r >= 100 ? (m >= 100 ? 'Leading' : 'Weakening') : m >= 100 ? 'Improving' : 'Lagging');
 const sma = (a: number[], i: number, n: number) => { let s = 0; for (let k = i - n + 1; k <= i; k++) s += a[k]; return s / n; };
 
@@ -24,6 +24,8 @@ export default function RotationPage() {
   const [sel, setSel] = useState<string | null>(null);
   const [allTails, setAllTails] = useState(false);
   const [play, setPlay] = useState(false);
+  const [scope, setScope] = useState<'all' | 'index' | 'ind' | 'sec'>('all');
+  const [tail, setTail] = useState(8);
 
   const S = useMemo<Series[]>(() => {
     const d = rot.data;
@@ -66,6 +68,7 @@ export default function RotationPage() {
     }).filter((x): x is NonNullable<typeof x> => x !== null);
   }, [S, t, scr.data]);
 
+  const shown = useMemo(() => rows.filter((x) => scope === 'all' || (scope === 'index' ? x.s.real : scope === 'ind' ? !x.s.real && x.s.name.includes('(alpha group index)') && !SECTORS.has(x.s.name.replace(' (alpha group index)', '')) : !x.s.real && SECTORS.has(x.s.name.replace(' (alpha group index)', '')))), [rows, scope]);
   const order: Quad[] = ['Improving', 'Leading', 'Weakening', 'Lagging'];
   const table = useMemo(() => [...rows].sort((a, b) => order.indexOf(a.q) - order.indexOf(b.q) || b.r - a.r), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
   const cur = rows.find((x) => x.s.name === sel) ?? null;
@@ -74,17 +77,17 @@ export default function RotationPage() {
   const W = 760, H = 520, pad = 46;
   const ext = useMemo(() => {
     const d: number[] = [];
-    for (const x of rows) for (let k = Math.max(0, t - TAIL); k <= t; k++) { const r = x.s.ratio[k], m = x.s.mom[k]; if (r !== null && m !== null) d.push(Math.abs(r - 100), Math.abs(m - 100)); }
+    for (const x of rows) for (let k = Math.max(0, t - tail); k <= t; k++) { const r = x.s.ratio[k], m = x.s.mom[k]; if (r !== null && m !== null) d.push(Math.abs(r - 100), Math.abs(m - 100)); }
     d.sort((a, b) => a - b);
     const q = d.length ? d[Math.floor(d.length * 0.92)] : 4;
     return Math.max(4, Math.ceil(q * 1.2));
-  }, [rows, t]);
+  }, [rows, t, tail]);
   const cl = (v: number) => Math.max(-ext * 0.97, Math.min(ext * 0.97, v - 100));
   const X = (v: number) => pad + ((cl(v) + ext) / (2 * ext)) * (W - 2 * pad), Y = (v: number) => H - pad - ((cl(v) + ext) / (2 * ext)) * (H - 2 * pad);
   const labels = useMemo(() => {
     const placed: { x: number; y: number; w: number; h: number }[] = [];
     const out = new Map<string, { x: number; y: number; anchor: 'start' | 'end' } | null>();
-    const order = [...rows].sort((a, b) => (sel === a.s.name ? -1 : sel === b.s.name ? 1 : 0) || Math.hypot(b.r - 100, b.m - 100) - Math.hypot(a.r - 100, a.m - 100));
+    const order = [...shown].sort((a, b) => (sel === a.s.name ? -1 : sel === b.s.name ? 1 : 0) || Math.hypot(b.r - 100, b.m - 100) - Math.hypot(a.r - 100, a.m - 100));
     for (const x of order) {
       const px = X(x.r), py = Y(x.m), w = short(x.s.name).length * 6.3 + 6, h = 13;
       const spots: [number, number, 'start' | 'end'][] = [[px + 11, py + 4, 'start'], [px - 11, py + 4, 'end'], [px + 11, py - 11, 'start'], [px - 11, py - 11, 'end'], [px + 11, py + 18, 'start'], [px - 11, py + 18, 'end']];
@@ -97,7 +100,7 @@ export default function RotationPage() {
       out.set(x.s.name, hit);
     }
     return out;
-  }, [rows, ext, sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shown, ext, sel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const read = useMemo(() => {
     if (!rows.length) return null;
@@ -130,45 +133,70 @@ export default function RotationPage() {
                 </ul>
               </Rv>
 
-              <div className="grid g-7-5">
-                <Rv className="panel">
-                  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Relative rotation graph" style={{ width: '100%', height: 'auto' }}>
-                    <rect x={X(100)} y={pad} width={W - pad - X(100)} height={Y(100) - pad} fill="var(--up-soft)" opacity=".55" />
-                    <rect x={pad} y={pad} width={X(100) - pad} height={Y(100) - pad} fill="var(--accent-soft)" opacity=".8" />
-                    <rect x={pad} y={Y(100)} width={X(100) - pad} height={H - pad - Y(100)} fill="var(--down-soft)" opacity=".55" />
-                    <rect x={X(100)} y={Y(100)} width={W - pad - X(100)} height={H - pad - Y(100)} fill="color-mix(in srgb, var(--warn) 13%, transparent)" />
-                    <line x1={X(100)} x2={X(100)} y1={pad} y2={H - pad} stroke="var(--line-2)" /><line x1={pad} x2={W - pad} y1={Y(100)} y2={Y(100)} stroke="var(--line-2)" />
-                    {([['Improving', pad + 10, pad + 20, 'start'], ['Leading', W - pad - 10, pad + 20, 'end'], ['Lagging', pad + 10, H - pad - 10, 'start'], ['Weakening', W - pad - 10, H - pad - 10, 'end']] as const).map(([q, x, y, a]) => <text key={q} x={x} y={y} textAnchor={a} fill={QC[q]} opacity=".85" fontSize="12" fontFamily="var(--f-mono)" letterSpacing="1.5">{q.toUpperCase()}</text>)}
-                    <text x={W / 2} y={H - 12} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)">RS-RATIO: STRENGTH VS THE NIFTY →</text>
-                    <text x={14} y={H / 2} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)" transform={`rotate(-90 14 ${H / 2})`}>RS-MOMENTUM: IS IT RISING →</text>
-                    {rows.map((x) => {
-                      const show = allTails || sel === x.s.name;
-                      const pts: [number, number][] = [];
-                      for (let k = Math.max(0, t - TAIL); k <= t; k++) { const r = x.s.ratio[k], m = x.s.mom[k]; if (r !== null && m !== null) pts.push([X(r), Y(m)]); }
-                      const c = QC[x.q], active = sel === null || sel === x.s.name;
-                      return (
-                        <g key={x.s.name} opacity={active ? 1 : 0.28} style={{ cursor: 'pointer', transition: 'opacity .25s' }} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>
-                          {show && pts.length > 1 && <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={c} strokeWidth="1.6" strokeOpacity=".7" />}
-                          {show && pts.slice(0, -1).map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={1.5 + (i / pts.length) * 2} fill={c} opacity={0.3 + (i / pts.length) * 0.5} />)}
-                          <circle cx={X(x.r)} cy={Y(x.m)} r={sel === x.s.name ? 9 : 7} fill={c} stroke="var(--bg)" strokeWidth="2" />
-                          <title>{`${short(x.s.name)}: ${x.q}, RS-Ratio ${x.r.toFixed(1)}, momentum ${x.m.toFixed(1)}`}</title>
-                          {(() => { const l = labels.get(x.s.name); return l ? <text x={l.x} y={l.y} textAnchor={l.anchor} fontSize="11.5" fill="var(--text)" fontWeight={sel === x.s.name ? 700 : 500} style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>{short(x.s.name)}</text> : null; })()}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-                    <button className="chip" onClick={() => { if (t >= n - 1) setEnd(minT); setPlay((p) => !p); }}>{play ? '❚❚ Pause' : '▶ Play the last weeks'}</button>
-                    <label className="muted" style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 220 }}>Time machine
-                      <input type="range" min={minT} max={n - 1} step={1} value={t} onChange={(e) => { setPlay(false); setEnd(Number(e.target.value)); }} style={{ flex: 1 }} aria-label="Week" />
-                      <span className="num" style={{ minWidth: 92 }}>{date}</span>
-                    </label>
-                    <button className="chip" aria-pressed={allTails} onClick={() => setAllTails((v) => !v)}>All tails</button>
-                    {end !== null && end < n - 1 && <button className="chip" onClick={() => { setEnd(null); setPlay(false); }}>Back to now</button>}
+              <div className="grid g-7-5" style={{ alignItems: 'start' }}>
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <Rv className="panel">
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <Segmented role="group" label="Scope" value={scope} onChange={setScope} options={[['all', 'All groups'], ['index', 'NSE indices'], ['ind', 'Industries'], ['sec', 'Sectors']] as const} />
+                      <Segmented role="group" label="Tail length" value={String(tail)} onChange={(v) => setTail(Number(v))} options={[['4', '4w tail'], ['8', '8w'], ['12', '12w']] as const} />
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Relative rotation graph" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                      <defs>
+                        <radialGradient id="gL" cx="100%" cy="0%" r="110%"><stop offset="0" stopColor="var(--up)" stopOpacity=".32" /><stop offset="1" stopColor="var(--up)" stopOpacity=".03" /></radialGradient>
+                        <radialGradient id="gI" cx="0%" cy="0%" r="110%"><stop offset="0" stopColor="var(--accent)" stopOpacity=".3" /><stop offset="1" stopColor="var(--accent)" stopOpacity=".03" /></radialGradient>
+                        <radialGradient id="gG" cx="0%" cy="100%" r="110%"><stop offset="0" stopColor="var(--down)" stopOpacity=".3" /><stop offset="1" stopColor="var(--down)" stopOpacity=".03" /></radialGradient>
+                        <radialGradient id="gW" cx="100%" cy="100%" r="110%"><stop offset="0" stopColor="var(--warn)" stopOpacity=".3" /><stop offset="1" stopColor="var(--warn)" stopOpacity=".03" /></radialGradient>
+                        <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="var(--accent-2)" stopOpacity="0" /><stop offset="1" stopColor="var(--accent-2)" stopOpacity=".45" /></linearGradient>
+                      </defs>
+                      <rect x={X(100)} y={pad} width={W - pad - X(100)} height={Y(100) - pad} fill="url(#gL)" rx="6" />
+                      <rect x={pad} y={pad} width={X(100) - pad} height={Y(100) - pad} fill="url(#gI)" rx="6" />
+                      <rect x={pad} y={Y(100)} width={X(100) - pad} height={H - pad - Y(100)} fill="url(#gG)" rx="6" />
+                      <rect x={X(100)} y={Y(100)} width={W - pad - X(100)} height={H - pad - Y(100)} fill="url(#gW)" rx="6" />
+                      {[0.25, 0.5, 0.75].map((f) => <g key={f} stroke="var(--line)" strokeDasharray="2 6"><line x1={pad + f * (W - 2 * pad)} x2={pad + f * (W - 2 * pad)} y1={pad} y2={H - pad} /><line x1={pad} x2={W - pad} y1={pad + f * (H - 2 * pad)} y2={pad + f * (H - 2 * pad)} /></g>)}
+                      <g className="radar" style={{ transformOrigin: `${X(100)}px ${Y(100)}px` }} aria-hidden><path d={`M${X(100)},${Y(100)} L${X(100) + (W - 2 * pad) / 2},${Y(100)} A${(W - 2 * pad) / 2},${(W - 2 * pad) / 2} 0 0 1 ${X(100) + Math.cos(0.5) * (W - 2 * pad) / 2},${Y(100) + Math.sin(0.5) * (W - 2 * pad) / 2} Z`} fill="url(#sweep)" opacity=".5" /></g>
+                      <line x1={X(100)} x2={X(100)} y1={pad} y2={H - pad} stroke="var(--line-2)" /><line x1={pad} x2={W - pad} y1={Y(100)} y2={Y(100)} stroke="var(--line-2)" />
+                      {([['Improving', pad + 12, pad + 22, 'start'], ['Leading', W - pad - 12, pad + 22, 'end'], ['Lagging', pad + 12, H - pad - 12, 'start'], ['Weakening', W - pad - 12, H - pad - 12, 'end']] as const).map(([q, x, y, a]) => <text key={q} x={x} y={y} textAnchor={a} fill={QC[q]} opacity=".9" fontSize="12" fontFamily="var(--f-mono)" letterSpacing="2">{q.toUpperCase()}</text>)}
+                      <text x={W / 2} y={H - 12} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)">RS-RATIO: STRENGTH VS THE NIFTY →</text>
+                      <text x={14} y={H / 2} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)" transform={`rotate(-90 14 ${H / 2})`}>RS-MOMENTUM: IS IT RISING →</text>
+                      {shown.map((x) => {
+                        const show = allTails || sel === x.s.name;
+                        const pts: [number, number][] = [];
+                        for (let k = Math.max(0, t - tail); k <= t; k++) { const r = x.s.ratio[k], m = x.s.mom[k]; if (r !== null && m !== null) pts.push([X(r), Y(m)]); }
+                        const c = QC[x.q], active = sel === null || sel === x.s.name, hot = sel === x.s.name;
+                        const l = labels.get(x.s.name);
+                        return (
+                          <g key={x.s.name} className={`rrg-dot${hot ? ' hot' : ''}`} opacity={active ? 1 : 0.25} style={{ cursor: 'pointer', transform: `translate(${X(x.r)}px, ${Y(x.m)}px)` }} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>
+                            <title>{`${short(x.s.name)}: ${x.q}, RS-Ratio ${x.r.toFixed(1)}, momentum ${x.m.toFixed(1)}`}</title>
+                            {show && pts.length > 1 && <g style={{ transform: `translate(${-X(x.r)}px, ${-Y(x.m)}px)` }}><path key={`${x.s.name}${hot}${tail}`} className="rrg-tail" pathLength={1} d={pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('')} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity=".8" />{pts.slice(0, -1).map((q, i) => <circle key={i} cx={q[0]} cy={q[1]} r={1.6 + (i / pts.length) * 2.4} fill={c} opacity={0.25 + (i / pts.length) * 0.6} />)}</g>}
+                            {(x.q === 'Leading' || hot) && <circle className="pulse" r={hot ? 15 : 12} fill="none" stroke={c} strokeWidth="1.5" />}
+                            <circle r={hot ? 9 : 7} fill={c} stroke="var(--bg)" strokeWidth="2" style={{ filter: `drop-shadow(0 0 ${hot ? 9 : 5}px ${c})` }} />
+                            {l && <text x={l.x - X(x.r)} y={l.y - Y(x.m)} textAnchor={l.anchor} fontSize="11.5" fill="var(--text)" fontWeight={hot ? 700 : 500} style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>{short(x.s.name)}</text>}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+                      <button className="chip" onClick={() => { if (t >= n - 1) setEnd(minT); setPlay((p) => !p); }}>{play ? '❚❚ Pause' : '▶ Play the last weeks'}</button>
+                      <label className="muted" style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 220 }}>Time machine
+                        <input type="range" min={minT} max={n - 1} step={1} value={t} onChange={(e) => { setPlay(false); setEnd(Number(e.target.value)); }} style={{ flex: 1 }} aria-label="Week" />
+                        <span className="num" style={{ minWidth: 92 }}>{date}</span>
+                      </label>
+                      <Switch label="All tails" checked={allTails} onChange={setAllTails} />
+                      {end !== null && end < n - 1 && <button className="chip" onClick={() => { setEnd(null); setPlay(false); }}>Back to now</button>}
+                    </div>
+                  </Rv>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+                    {order.map((q) => (
+                      <Rv key={q} className="panel tight spot tilt">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="eyebrow" style={{ color: QC[q] }}>{q}</span><span className="num dim">{read.by(q).length}</span></div>
+                        <div className="dim" style={{ fontSize: 12, margin: '4px 0 10px' }}>{QNOTE[q]}</div>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>{[...read.by(q)].sort((a, b) => b.r - a.r).map((x) => <button key={x.s.name} className="chip" aria-pressed={sel === x.s.name} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>{short(x.s.name)}</button>)}</div>
+                      </Rv>
+                    ))}
                   </div>
-                </Rv>
+                </div>
 
-                <Rv className="panel">
+                <Rv className="panel" style={{ position: 'sticky', top: 84 }}>
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
@@ -185,7 +213,7 @@ export default function RotationPage() {
                         <Link key={x.sym} href={`/company/?s=${encodeURIComponent(x.sym)}`} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 13 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
                     </>
-                  ) : <p className="muted" style={{ marginTop: 10 }}>Select any dot or table row to see its tail, its strength line against the Nifty, its breadth and its strongest stocks. The current week is shown unless you move the time machine.</p>}
+                  ) : <p className="muted" style={{ marginTop: 10 }}>Select any dot, phase chip or table row to see its tail, its strength line against the Nifty, its breadth and its strongest stocks. The current week is shown unless you move the time machine.</p>}
                 </Rv>
               </div>
 

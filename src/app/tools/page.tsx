@@ -151,7 +151,7 @@ export default function Tools() {
       <section className="wrap">
         <div className="grid g3" style={{ marginBottom: 14 }}>
           {[['/compare/', 'Compare companies', 'Up to four, side by side, with the better value marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
-            <Link key={href} href={href}><Rv className="panel spot" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
+            <Link key={href} href={href}><Rv className="panel spot tilt" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
           ))}
         </div>
         <SectionHead eyebrow="AI desk" title="Decision tools" />

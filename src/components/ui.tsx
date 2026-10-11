@@ -177,3 +177,26 @@ export function Async({ loading, error, children, rows = 4 }: { loading: boolean
   if (error) return <Notice>This data could not be loaded right now ({error}). It is read live, so a refresh usually fixes it.</Notice>;
   return <>{children}</>;
 }
+
+/** A segmented control with a sliding thumb. Use for one-of-many choices (ranges, modes, tabs). */
+export function Segmented<T extends string>({ value, options, onChange, label, role = 'tablist' }: { value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; label: string; role?: 'tablist' | 'group' }) {
+  const i = Math.max(0, options.findIndex(([k]) => k === value));
+  return (
+    <div className="seg" role={role} aria-label={label} style={{ ['--n' as string]: options.length, ['--i' as string]: i }}>
+      <span className="thumb" aria-hidden />
+      {options.map(([k, l]) => (role === 'tablist'
+        ? <button key={k} role="tab" aria-selected={value === k} onClick={() => onChange(k)}>{l}</button>
+        : <button key={k} aria-pressed={value === k} onClick={() => onChange(k)}>{l}</button>))}
+    </div>
+  );
+}
+
+/** An on/off switch. Use for independent yes/no options. */
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" className="sw" aria-checked={checked} aria-disabled={disabled} disabled={disabled} onClick={() => onChange(!checked)}>
+      <span className="track" aria-hidden />
+      <span>{label}</span>
+    </button>
+  );
+}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { chartFeed } from '@/lib/data';
 import { cone, type Bars } from '@/lib/ta';
-import { Rv } from '@/components/ui';
+import { Rv, Segmented, Switch } from '@/components/ui';
 import { decide, lookalikes } from '@/lib/decision';
 import type { EngineSignal, Row } from '@/lib/types';
 import { dash, num } from '@/lib/format';
@@ -113,8 +113,8 @@ export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targ
     <div className="grid g-7-5">
       <div>
         <div className="filters" style={{ marginBottom: 8 }}>
-          {[21, 63, 126].map((d) => <button key={d} className="chip" aria-pressed={days === d} onClick={() => setDays(d)}>{d === 21 ? '1 month' : d === 63 ? '3 months' : '6 months'}</button>)}
-          <button className="chip" aria-pressed={drift} onClick={() => setDrift((v) => !v)} title="Keep the stock's own average daily move over the past year">Keep past drift</button>
+          <Segmented role="group" label="Horizon" value={String(days)} onChange={(v) => setDays(Number(v))} options={[['21', '1 month'], ['63', '3 months'], ['126', '6 months']] as const} />
+          <Switch label="Keep past drift" checked={drift} onChange={setDrift} />
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Simulated range of prices" style={{ width: '100%', height: 'auto' }}>
           <path d={area(0, 4)} fill="var(--accent)" opacity=".10" /><path d={area(1, 3)} fill="var(--accent)" opacity=".18" />

@@ -122,17 +122,50 @@ export default function Shell({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', key);
     // pointer-follow light on .spot panels (fine pointers only)
     const fine = window.matchMedia('(pointer: fine)').matches;
+    let hot: HTMLElement | null = null;
     const move = (e: PointerEvent) => {
-      const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('.spot');
-      if (!t) return;
-      const r = t.getBoundingClientRect();
-      t.style.setProperty('--mx', `${e.clientX - r.left}px`);
-      t.style.setProperty('--my', `${e.clientY - r.top}px`);
+      const el = e.target as HTMLElement | null;
+      const t = el?.closest<HTMLElement>('.spot');
+      if (t) {
+        const r = t.getBoundingClientRect();
+        t.style.setProperty('--mx', `${e.clientX - r.left}px`);
+        t.style.setProperty('--my', `${e.clientY - r.top}px`);
+        if (t.classList.contains('tilt') && document.documentElement.classList.contains('anim')) {
+          t.classList.add('is-tilting');
+          t.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 5}deg`);
+          t.style.setProperty('--rx', `${-((e.clientY - r.top) / r.height - 0.5) * 5}deg`);
+          hot = t;
+        }
+      }
+      if (hot && hot !== t) { hot.classList.remove('is-tilting'); hot.style.removeProperty('--rx'); hot.style.removeProperty('--ry'); hot = null; }
+      const b = el?.closest<HTMLElement>('.btn');
+      if (b && document.documentElement.classList.contains('anim')) {
+        const r = b.getBoundingClientRect();
+        b.style.setProperty('--tx', `${(e.clientX - r.left - r.width / 2) * 0.12}px`);
+        b.style.setProperty('--ty', `${(e.clientY - r.top - r.height / 2) * 0.18}px`);
+      }
     };
-    if (fine) window.addEventListener('pointermove', move, { passive: true });
+    const leave = (e: PointerEvent) => {
+      const b = (e.target as HTMLElement | null)?.closest<HTMLElement>('.btn');
+      if (b) { b.style.removeProperty('--tx'); b.style.removeProperty('--ty'); }
+    };
+    if (fine) { window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerout', leave, { passive: true }); }
+    // scroll progress: one custom property, no layout
+    let raf = 0;
+    const prog = () => {
+      raf = 0;
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      document.documentElement.style.setProperty('--p', h > 0 ? String(Math.min(1, window.scrollY / h)) : '0');
+    };
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(prog); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    prog();
     return () => {
       window.removeEventListener('keydown', key);
       window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerout', leave);
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);
 
@@ -143,19 +176,34 @@ export default function Shell({ children }: { children: ReactNode }) {
     setTheme(next);
   };
 
+  const navRef = useRef<HTMLElement>(null);
+  const glide = useCallback((target?: HTMLElement | null) => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const el = target ?? nav.querySelector<HTMLElement>('a[aria-current="page"]');
+    if (!el) { nav.style.setProperty('--o', '0'); return; }
+    nav.style.setProperty('--x', `${el.offsetLeft}px`);
+    nav.style.setProperty('--w', `${el.offsetWidth}px`);
+    nav.style.setProperty('--o', '1');
+  }, []);
+  useEffect(() => { glide(); const r = () => glide(); window.addEventListener('resize', r); const t = window.setTimeout(r, 120); return () => { window.removeEventListener('resize', r); window.clearTimeout(t); }; }, [path, glide]);
+
   const tabs = ['/', '/brief/', '/screen/', '/engines/'].map((h) => PAGES.find((p) => p.href === h)!);
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
+      <div className="aurora" aria-hidden><i /><i /><i /></div>
+      <div className="progress" aria-hidden />
       <header className="topbar">
         <div className="wrap">
           <Link href="/" className="brand" aria-label="alpha, home">
             <span className="brand-mark">α</span>
             <span>alpha</span>
           </Link>
-          <nav className="nav" aria-label="Primary">
+          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => glide()}>
+            <span className="glide" aria-hidden />
             {PAGES.map((p) => (
-              <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined}>{p.label}</Link>
+              <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined} onPointerEnter={(e) => glide(e.currentTarget)} onFocus={(e) => glide(e.currentTarget)}>{p.label}</Link>
             ))}
           </nav>
           <div className="top-actions">
@@ -164,16 +212,20 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span>Search</span>
               <kbd>⌘K</kbd>
             </button>
-            <button className="iconbtn" onClick={flip} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                {theme === 'dark' ? <path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /> : <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>}
-              </svg>
+            <button className="themeswitch" role="switch" aria-checked={theme === 'light'} onClick={flip} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+              <svg className="s1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+              <svg className="s2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
+              <span className="knob" aria-hidden>
+                {theme === 'dark'
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
+                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="12" cy="12" r="5" /></svg>}
+              </span>
             </button>
           </div>
         </div>
       </header>
 
-      <main id="main">{children}</main>
+      <main id="main" key={path} className="page-in">{children}</main>
 
       <nav className="tabbar" aria-label="Quick navigation">
         {tabs.map((p) => (

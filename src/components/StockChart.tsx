@@ -5,6 +5,7 @@ import { chartFeed } from '@/lib/data';
 import { keyLine, levels, rsi, sma, type Bars } from '@/lib/ta';
 import type { ChartFeed } from '@/lib/types';
 import { num } from '@/lib/format';
+import { Segmented, Switch } from '@/components/ui';
 
 export interface Plan { sl: number; entry: number; targets: number[]; label: string }
 const RANGES = ['3mo', '6mo', '1y', '2y', '5y'] as const;
@@ -198,16 +199,13 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
           ) : <span className="dim">{err ? 'Price history unavailable' : bars ? 'Not enough history for a trend read' : 'Loading prices…'}</span>}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
-          {RANGES.map((r) => <button key={r} className="chip" aria-pressed={range === r} onClick={() => setRange(r)}>{RLABEL[r]}</button>)}
-          <span style={{ width: 8 }} />
-          {([['candles', 'Candles'], ['line', 'Line'], ['rel', 'vs Nifty']] as const).map(([k, l]) => <button key={k} className="chip" aria-pressed={mode === k} onClick={() => setMode(k)}>{l}</button>)}
+          <Segmented role="group" label="Range" value={range} onChange={setRange} options={RANGES.map((r) => [r, RLABEL[r]] as const)} />
+          <Segmented role="group" label="Chart type" value={mode} onChange={setMode} options={[['candles', 'Candles'], ['line', 'Line'], ['rel', 'vs Nifty']] as const} />
           <button className="chip" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>Indicators ▾</button>
           {menu && (
-            <div role="menu" style={{ position: 'absolute', right: 0, top: 44, zIndex: 30, padding: 8, background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 14, boxShadow: 'var(--shadow)', minWidth: 190 }}>
+            <div role="menu" style={{ position: 'absolute', right: 0, top: 46, zIndex: 30, padding: 8, background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 14, boxShadow: 'var(--shadow)', minWidth: 190 }}>
               {INDICATORS.map(([k, l]) => (
-                <label key={k} style={{ display: 'flex', gap: 10, padding: '7px 10px', fontSize: 13.5, alignItems: 'center', cursor: 'pointer', opacity: (k === 'plan' && plans.length === 0) ? 0.4 : 1 }}>
-                  <input type="checkbox" checked={on[k]} disabled={k === 'plan' && plans.length === 0} onChange={() => setOn((o) => ({ ...o, [k]: !o[k] }))} /> {l}
-                </label>
+                <div key={k} style={{ padding: '8px 10px' }}><Switch label={l} checked={on[k]} disabled={k === 'plan' && plans.length === 0} onChange={(v) => setOn((o) => ({ ...o, [k]: v }))} /></div>
               ))}
             </div>
           )}

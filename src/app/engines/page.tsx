@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Curve from '@/components/Curve';
 import Ladder from '@/components/Ladder';
-import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead } from '@/components/ui';
+import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num } from '@/lib/format';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
@@ -182,7 +182,7 @@ export default function EnginesPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
                 {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
                   <button key={x.key} onClick={() => { setKey(x.key); setTab('signals'); }} aria-pressed={key === x.key} style={{ textAlign: 'left' }}>
-                    <Rv className="panel spot" style={{ height: '100%', borderColor: key === x.key ? 'var(--accent)' : undefined }}>
+                    <Rv className="panel spot tilt" style={{ height: '100%', borderColor: key === x.key ? 'var(--accent)' : undefined }}>
                       <div className="eyebrow">Engine {x.id} · {x.style.split(',')[0]}</div>
                       <div className="disp" style={{ fontSize: 32, margin: '8px 0 4px' }}>{x.name}</div>
                       <div className="muted" style={{ fontSize: 13.5, minHeight: 60 }}>{x.tagline}</div>
@@ -210,9 +210,7 @@ export default function EnginesPage() {
                       Development is {dateLabel(feed.backtest.periods.development[0])} to {dateLabel(feed.backtest.periods.development[1])}; the holdout is everything after. Each prediction in both periods comes from a model trained only on data that was already fully known at the time (walk-forward, refit every quarter, with a gap equal to the prediction horizon). The design and the pass marks were written down before the holdout was read, and it was read once.{!e.alertable && ' This engine does not clear the bar for phone alerts: its signals are shown here, never pushed.'}
                     </p>
                   </Rv>
-                  <div className="filters" role="tablist" aria-label="Engine views">
-                    {([['signals', `Signals now (${sigs.length})`], ['how', 'How it picks'], ['record', 'Track record'], ['board', 'Sector board'], ['exits', 'Exit plan']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className="chip" onClick={() => setTab(k)}>{l}</button>)}
-                  </div>
+                  <div style={{ margin: '0 0 18px' }}><Segmented label="Engine views" value={tab} onChange={setTab} options={[['signals', `Signals now (${sigs.length})`], ['how', 'How it picks'], ['record', 'Track record'], ['board', 'Sector board'], ['exits', 'Exit plan']] as const} /></div>
 
                   {tab === 'signals' && (sigs.length ? (
                     <>

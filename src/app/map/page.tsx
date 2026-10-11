@@ -62,23 +62,11 @@ function labelFor(w: number, h: number, sym: string) {
   return font >= 6 ? font : 0;
 }
 
-function Rotation() {
-  return (
-    <div className="panel spot" style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <div className="eyebrow">Sector rotation moved</div>
-      <p className="disp" style={{ fontSize: 30, margin: '12px 0' }}>A proper Relative Rotation Graph, with tails and a time machine.</p>
-      <p className="muted" style={{ maxWidth: '56ch', margin: '0 auto 20px' }}>The old view compared medians of three-month and one-month returns. The new one tracks every benchmark group&apos;s strength against the Nifty week by week, so you can see which way each is travelling.</p>
-      <Link className="btn" href="/rotation/">Open sector rotation <span aria-hidden>→</span></Link>
-    </div>
-  );
-}
-
 export default function MapPage() {
   const s = useFeed('screen');
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [tab, setTab] = useState<'map' | 'rotation'>('map');
   const [metric, setMetric] = useState('r1d');
   const [sizeBy, setSizeBy] = useState<(typeof SIZES)[number]['id']>('mcap');
   const [groupBy, setGroupBy] = useState<(typeof GROUPS)[number]['id']>('sector');
@@ -98,7 +86,7 @@ export default function MapPage() {
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (box.current) ro?.observe(box.current);
     return () => { window.removeEventListener('resize', measure); ro?.disconnect(); };
-  }, [s.loading, tab]);
+  }, [s.loading]);
 
   const m = METRICS.find((x) => x.id === metric) ?? METRICS[0];
   const grp = GROUPS.find((g) => g.id === groupBy) ?? GROUPS[0];
@@ -165,12 +153,8 @@ export default function MapPage() {
     <>
       <PageHead eyebrow="Heat lab" title="Every name," em="read three ways." lede="Colour by almost any measure, size by value or trading, group by sector or industry, then zoom in. Switch on outlier mode to see which stocks are doing something their own sector is not." />
       <section className="wrap">
-        <div className="filters" role="tablist" aria-label="View">
-          <button className="chip" role="tab" aria-selected={tab === 'map'} onClick={() => setTab('map')}>Heat map</button>
-          <button className="chip" role="tab" aria-selected={tab === 'rotation'} onClick={() => setTab('rotation')}>Sector rotation</button>
-        </div>
         <Async loading={s.loading} error={s.error} rows={3}>
-          {tab === 'rotation' ? <Rotation /> : (
+          {(
             <>
               <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
                 {metricGroups.map((g) => (
