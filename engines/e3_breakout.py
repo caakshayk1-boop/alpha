@@ -17,13 +17,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from common import Signal, liquid
+from common import Signal, liquid, sector_gate, tag_bench
 from indicators import adx, atr, pivots, sma, weekly
 
 NAME = "breakout"
 TITLE = "Breakout"
 COOLDOWN = 15
-OPT = {"regime": True, "rs126_min": 80, "vol_min": 2.0, "weekly": True, "daily": True}      # FROZEN 2026-10-12
+OPT = {"regime": True, "rs126_min": 80, "vol_min": 2.0, "weekly": True, "daily": True, "sec_trend": False, "sec_lead": False, "stk_lead": False}      # round 1 rules. Benchmark conditions are a LABEL (tag_bench), not a gate
 
 
 def _targets(level: float, height: float) -> list[float]:
@@ -120,6 +120,8 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
             cond &= ctx.regime_for(df.index)
         if OPT["rs126_min"]:
             cond &= ctx.rs(sym, df.index, 126) >= OPT["rs126_min"]
+    gate = sector_gate(ctx, sym, df, OPT)
+    cond &= gate
     hh, ll, cc, vv, hi = h.values, l.values, c.values, v.values, hi52.values
     lowp = pivots(l, 5, "low").values
     highp = pivots(h, 5, "high").values
@@ -157,13 +159,14 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
     if OPT["weekly"]:
         out.extend(_weekly(df, sym, ctx, last_only))
     out.sort(key=lambda s: s.t)
-    return out
+    return tag_bench(out, ctx, sym, df)
 
 
 def _weekly(df: pd.DataFrame, sym: str, ctx, last_only: bool) -> list[Signal]:
     """Weekly high-breakout: a weekly close above the prior 26-week closing high, out of a quiet range,
     on weekly volume, in a stage-2 weekly trend with weekly RSI above 55. Held for months."""
     from indicators import rsi
+    gate_d = sector_gate(ctx, sym, df, OPT)
     w = weekly(df)
     if len(w) < 40:
         return []
@@ -180,7 +183,7 @@ def _weekly(df: pd.DataFrame, sym: str, ctx, last_only: bool) -> list[Signal]:
         if k < 40 or date not in df.index:        # warm-up is per signal: it must not depend on how much data comes AFTER it
             continue
         t = df.index.get_loc(date)
-        if (last_only and t != len(df) - 1) or t - last < 20 or not bool(liquid(df).iloc[t]):
+        if (last_only and t != len(df) - 1) or t - last < 20 or not bool(liquid(df).iloc[t]) or not bool(gate_d.iloc[t]):
             continue
         price = float(wc.iloc[k])
         level = float(wc.shift(1).rolling(26).max().iloc[k])

@@ -9,14 +9,14 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from common import Signal, liquid
+from common import Signal, liquid, sector_gate, tag_bench
 from indicators import adx, atr, ema, rsi, sma
 
 NAME = "swing"
 TITLE = "Swing"
 COOLDOWN = 6
 MAX_HOLD = 12
-OPT = {"regime": True, "rs126_min": 85}      # FROZEN 2026-10-12
+OPT = {"regime": True, "rs126_min": 85, "sec_trend": False, "sec_lead": False, "stk_lead": False}      # round 1 rules. Benchmark conditions are a LABEL (tag_bench), not a gate
 
 
 def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[Signal]:
@@ -37,6 +37,7 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
             cond &= ctx.regime_for(df.index)
         if OPT["rs126_min"]:
             cond &= ctx.rs(sym, df.index, 126) >= OPT["rs126_min"]
+    cond &= sector_gate(ctx, sym, df, OPT)
     idx = np.flatnonzero(cond.values)
     if last_only:
         idx = idx[idx == len(df) - 1]
@@ -67,4 +68,4 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
             f"ADX {dx.iloc[t]:.0f}, RSI {r.iloc[t]:.0f}, ahead of the index over 3 months",
         ], "swing"))
         last = t
-    return out
+    return tag_bench(out, ctx, sym, df)

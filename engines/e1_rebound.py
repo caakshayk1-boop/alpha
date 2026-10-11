@@ -13,14 +13,15 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from common import Signal, liquid
+from common import Signal, liquid, sector_gate, tag_bench
 from indicators import atr, ema, rsi, weekly, weekly_to_daily
 
 NAME = "rebound"
 TITLE = "Rebound"
 COOLDOWN = 20
 MAX_HOLD = 60
-OPT = {"regime": False, "rs21_min": None, "above50": False}      # variants are set by explore.py
+OPT = {"regime": False, "rs21_min": None, "above50": False, "sec_trend": False, "sec_lead": False, "stk_lead": False,
+       "rs126_min": None, "dist_min": 0.15, "dist_max": 0.45}      # round 1 rules. Benchmark conditions are a LABEL (tag_bench), not a gate
 
 
 def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[Signal]:
@@ -35,12 +36,15 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
     rsi_w_prev = weekly_to_daily(rsi(w["Close"], 14).shift(2), df.index)
     cagr_ok = c / c.shift(756) > 1.0
     trigger = (c > ema(c, 20)) & (c > h.shift(1).rolling(5).max())
-    cond = (liquid(df) & dist_hi.between(0.15, 0.45) & (dist_lo >= 0.10) & (rsi_w >= 46) & (rsi_w > rsi_w_prev)
+    cond = (liquid(df) & dist_hi.between(OPT["dist_min"], OPT["dist_max"]) & (dist_lo >= 0.10) & (rsi_w >= 46) & (rsi_w > rsi_w_prev)
             & cagr_ok & trigger)
     if ctx is not None and OPT["regime"]:
         cond &= ctx.regime_for(df.index)
+    if ctx is not None and OPT["rs126_min"]:
+        cond &= ctx.rs(sym, df.index, 126) >= OPT["rs126_min"]
     if ctx is not None and OPT["rs21_min"]:
         cond &= ctx.rs(sym, df.index, 21) >= OPT["rs21_min"]
+    cond &= sector_gate(ctx, sym, df, OPT)
     if OPT["above50"]:
         cond &= c > c.rolling(50).mean()
     idx = np.flatnonzero(cond.values)
@@ -75,4 +79,4 @@ def scan(df: pd.DataFrame, sym: str, ctx=None, last_only: bool = False) -> list[
                               "closed above the 20-day average and the prior 5-day high",
                           ], "positional", {"hi52": hi}))
         last = t
-    return out
+    return tag_bench(out, ctx, sym, df)

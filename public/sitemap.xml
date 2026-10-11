@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://alpha.askakshay.com/</loc></url>
+<url><loc>https://alpha.askakshay.com/brief/</loc></url>
 <url><loc>https://alpha.askakshay.com/markets/</loc></url>
 <url><loc>https://alpha.askakshay.com/screen/</loc></url>
 <url><loc>https://alpha.askakshay.com/map/</loc></url>
+<url><loc>https://alpha.askakshay.com/engines/</loc></url>
 <url><loc>https://alpha.askakshay.com/magic/</loc></url>
 <url><loc>https://alpha.askakshay.com/reads/</loc></url>
 <url><loc>https://alpha.askakshay.com/ipo/</loc></url>
 <url><loc>https://alpha.askakshay.com/funds/</loc></url>
 <url><loc>https://alpha.askakshay.com/news/</loc></url>
+<url><loc>https://alpha.askakshay.com/tools/</loc></url>
+<url><loc>https://alpha.askakshay.com/compare/</loc></url>
+<url><loc>https://alpha.askakshay.com/calendar/</loc></url>
+<url><loc>https://alpha.askakshay.com/watchlist/</loc></url>
 <url><loc>https://alpha.askakshay.com/about/</loc></url>
 </urlset>

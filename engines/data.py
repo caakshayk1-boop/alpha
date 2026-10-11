@@ -7,6 +7,7 @@ never disagree about which companies exist.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 import time
@@ -15,7 +16,7 @@ import urllib.request
 import pandas as pd
 import yfinance as yf
 
-ALPHA = "https://alpha.askakshay.workers.dev"
+ALPHA = os.environ.get("ALPHA_BASE", "https://alpha.askakshay.com")
 COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 
@@ -24,7 +25,22 @@ def universe() -> list[dict]:
     req = urllib.request.Request(f"{ALPHA}/data/screen.json", headers={"User-Agent": "alpha-engines/1.0"})
     with urllib.request.urlopen(req, timeout=60) as r:
         rows = json.load(r)["rows"]
-    return [{"sym": x["sym"], "name": x["name"], "sector": x.get("sector"), "mcap_cr": x.get("mcap_cr")} for x in rows]
+    return [{"sym": x["sym"], "name": x["name"], "sector": x.get("sector"), "ind": x.get("ind"), "mcap_cr": x.get("mcap_cr")} for x in rows]
+
+
+NSE_INDICES = {"Nifty IT": "^CNXIT", "Nifty Pharma": "^CNXPHARMA", "Nifty Bank": "^NSEBANK"}   # the only sector indices with real daily history on Yahoo
+
+
+def indices(period: str = "7y") -> dict[str, pd.Series]:
+    out = {}
+    for name, t in NSE_INDICES.items():
+        d = yf.download(t, period=period, interval="1d", auto_adjust=True, progress=False)
+        c = d["Close"]
+        c = (c.iloc[:, 0] if hasattr(c, "columns") else c).dropna()
+        if len(c) > 200:
+            c.index = pd.to_datetime(c.index).tz_localize(None)
+            out[name] = c
+    return out
 
 
 def download(symbols: list[str], period: str = "7y", chunk: int = 40, log=print) -> dict[str, pd.DataFrame]:
@@ -60,5 +76,5 @@ if __name__ == "__main__":
     uni = universe()
     print(f"universe {len(uni)}")
     bars = download([u["sym"] for u in uni])
-    pd.to_pickle({"universe": uni, "bars": bars, "fetched": pd.Timestamp.utcnow().isoformat()}, dest)
+    pd.to_pickle({"universe": uni, "bars": bars, "indices": indices(), "fetched": pd.Timestamp.utcnow().isoformat()}, dest)
     print(f"saved {len(bars)} symbols -> {dest}")

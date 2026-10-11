@@ -1,5 +1,8 @@
 export type Verdict = { c: 'BUY' | 'WAIT' | 'WATCH' | 'AVOID' | string; l: string; o: string; k: string };
 
+/** A risk flag arrives as plain text for some companies and as {s: severity, t: text, k: the number behind it} for others. */
+export type RiskFlag = string | { s?: string; t: string; k?: string };
+
 export interface Row {
   sym: string;
   name: string;
@@ -50,7 +53,7 @@ export interface Row {
   cfo_pat?: number | null;
   fcf_margin?: number | null;
   pe_pctile?: number | null;
-  risk?: { level: string; score: number; flags: string[] };
+  risk?: { level: string; score: number; flags: RiskFlag[] };
   vd?: Verdict;
   ahimsa?: boolean;
   vet?: { s: string; p: number; n: number; f: string[]; w: string };
@@ -207,7 +210,8 @@ export interface EngineBlock {
 export interface EngineStats {
   id: number; key: string; name: string; tagline: string; style: string; descended: string | null;
   status: 'EDGE SHOWN' | 'LEANING POSITIVE' | 'NO EDGE SHOWN' | 'WORSE THAN RANDOM' | 'NOT ENOUGH TRADES'; status_why: string;
-  variants_tried: number; signal_count: number;
+  variants_tried: number; signal_count: number; status_all_signals?: string;
+  tiers?: Record<'confirmed' | 'unconfirmed', { n: number; all: EngineBlock; splits: { train: EngineBlock; validation: EngineBlock; holdout: EngineBlock }; pooled_test: { mean_excess_pct?: number; t_clustered?: number | null; months?: number } }>;
   all: EngineBlock; splits: { train: EngineBlock; validation: EngineBlock; holdout: EngineBlock };
   baseline: { train: EngineBlock; validation: EngineBlock; holdout: EngineBlock }; baseline_all: EngineBlock;
   pooled_test: { mean_excess_pct?: number; t_clustered?: number | null; months?: number };
@@ -217,13 +221,22 @@ export interface EngineStats {
   exits: Record<string, number>;
   rules: { entry: string[]; stop: string; targets: string };
 }
+export interface EngineEvent { date: string; kind: string; price: number; fraction: number }
+export interface EngineBenchmark { name: string; members: number | null; uptrend: boolean; leads_nifty: boolean; stock_3m_pct: number | null; benchmark_3m_pct: number | null; stock_vs_benchmark_pct: number | null }
 export interface EngineSignal {
-  engine: string; engine_name: string; sym: string; name: string; sector: string | null; date: string; setup: string; horizon: string;
-  ref_price: number; last_close: number; entry_zone: [number, number]; sl: number; risk_pct: number; targets: number[]; r_multiples: number[];
-  max_hold_days: number; reasons: string[]; typical_days_to_t1: number | null; engine_status: string;
+  id: string; engine: string; engine_name: string; sym: string; name: string; sector: string | null; date: string; issued: string; setup: string; horizon: string;
+  status: 'pending' | 'open' | 'closed' | 'void'; ref_price: number; entry_zone: [number, number]; sl: number; risk_pct: number; targets: number[]; r_multiples: number[];
+  max_hold: number; max_hold_days: number; reasons: string[]; typical_days_to_t1: number | null; engine_status: string;
+  entry?: number; entry_date?: string; events: EngineEvent[]; hit: number; stop_now?: number; r_open?: number; r_net?: number; exit_reason?: string; closed_date?: string; last_close?: number; void_reason?: string;
+  benchmark: EngineBenchmark | null; bench_ok?: boolean | null; also_names: string[];
 }
+export interface BenchmarkRow { name: string; members: number | null; r1m: number; r3m: number; vs_nifty_3m: number; uptrend: boolean; leads_nifty: boolean; real_index: boolean }
 export interface EnginesFeed {
   generated: string; data_through: string;
-  backtest: { generated: string; data_through: string; universe: number; cost_round_trip_pct: number; splits: Record<string, string> };
+  backtest: { generated: string; data_through: string; universe: number; cost_round_trip_pct: number; splits: Record<string, string>; notes?: string[] };
+  launched: string | null; live_record: Record<string, { closed: number; win_rate: number; avg_r: number; total_r: number }>; benchmarks: BenchmarkRow[];
   exit_plan: string[]; engines: Record<string, EngineStats>; signals: EngineSignal[];
 }
+
+export interface PxQuote { price: number; prev: number; pct: number; state: string | null; at: number | null }
+export interface PxFeed { ok: boolean; fetched_at?: string; live?: number; requested?: number; quotes: Record<string, PxQuote> }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Barometer, DataHealth, EnginesFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
+import type { Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
 
 /** feed name -> payload type */
 export interface FeedMap {
@@ -39,6 +39,7 @@ function load<T>(url: string): Promise<T> {
 }
 
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
+export const pxFeed = (syms: string[]): Promise<PxFeed> => load<PxFeed>(`${BASE}/api/px?s=${encodeURIComponent(syms.join(','))}`);
 export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
@@ -66,3 +67,22 @@ export const useFeed = <K extends FeedName>(name: K): Loaded<FeedMap[K]> => useL
 export const useEngines = (): Loaded<EnginesFeed> => useLoaded(enginesFeed, 'engines');
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');
+
+/** Live prices for a set of symbols, refreshed every 60 seconds while the tab is visible. Empty until the first answer. */
+export function usePx(symbols: string[]): { quotes: Record<string, import('./types').PxQuote>; at: string | null } {
+  const key = Array.from(new Set(symbols)).sort().slice(0, 40).join(',');
+  const [state, setState] = useState<{ quotes: Record<string, import('./types').PxQuote>; at: string | null }>({ quotes: {}, at: null });
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    const pull = () => {
+      if (document.visibilityState !== 'visible') return;
+      // bypass the in-memory memo: this one is meant to be fresh
+      fetch(`${BASE}/api/px?s=${encodeURIComponent(key)}`).then((r) => r.json() as Promise<import('./types').PxFeed>).then((j) => { if (live && j.ok) setState({ quotes: j.quotes, at: j.fetched_at ?? null }); }, () => undefined);
+    };
+    pull();
+    const t = window.setInterval(pull, 60_000);
+    return () => { live = false; window.clearInterval(t); };
+  }, [key]);
+  return state;
+}

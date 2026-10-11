@@ -13,7 +13,7 @@ async function get(path) {
   return { r, text: await r.text() };
 }
 
-for (const p of ['/', '/markets/', '/screen/', '/company/', '/map/', '/magic/', '/reads/', '/ipo/', '/funds/', '/news/', '/about/']) {
+for (const p of ['/', '/brief/', '/markets/', '/screen/', '/company/', '/map/', '/engines/', '/magic/', '/reads/', '/ipo/', '/funds/', '/news/', '/tools/', '/compare/', '/calendar/', '/watchlist/', '/about/']) {
   const { r, text } = await get(p);
   check(`page ${p}`, r.status === 200 && text.includes('<title>'), `HTTP ${r.status}`);
 }
@@ -47,6 +47,35 @@ try {
   check('quotes live', r.status === 200 && j.live >= Math.ceil(j.total * 0.7), `${j.live}/${j.total}`);
 } catch (e) {
   check('quotes live', false, e.message);
+}
+
+// the engines file: the one the Engines page, the brief and the Telegram alerts all read
+try {
+  const { r, text } = await get('/engines.json');
+  const j = JSON.parse(text);
+  const eng = Object.keys(j.engines ?? {});
+  check('engines.json has four engines', r.status === 200 && eng.length === 4, eng.join(','));
+  const ageDays = (Date.now() - new Date(j.data_through).getTime()) / 864e5;
+  check('engines.json is built on recent prices', ageDays < 6, `data through ${j.data_through}`);
+  const bad = (j.signals ?? []).filter((s) => !(s.sl < s.ref_price && s.ref_price < s.targets[0] && s.targets[0] <= s.targets[1] && s.targets[1] <= s.targets[2]));
+  check('every plan has stop < price < T1 <= T2 <= T3', bad.length === 0, bad.map((x) => x.id).join(','));
+  const active = (j.signals ?? []).filter((s) => s.status === 'pending' || s.status === 'open');
+  const dup = active.map((s) => s.sym).filter((x, i, a) => a.indexOf(x) !== i);
+  check('no stock has two active trades', dup.length === 0, dup.join(','));
+  check('every engine states its record', eng.every((k) => j.engines[k].status && j.engines[k].splits));
+  const syms = active.slice(0, 5).map((s) => s.sym);
+  if (syms.length) {
+    const px = JSON.parse((await get(`/api/px?s=${syms.join(',')}`)).text);
+    check('live prices answer for the active signals', px.ok && Object.keys(px.quotes).length >= Math.ceil(syms.length / 2), `${Object.keys(px.quotes ?? {}).length}/${syms.length}`);
+  }
+} catch (e) {
+  check('engines.json', false, e.message);
+}
+try {
+  const j = JSON.parse((await get('/api/ipo-live')).text);
+  check('IPO live endpoint answers (ok or an honest ok:false)', typeof j.ok === 'boolean' && Array.isArray(j.issues));
+} catch (e) {
+  check('IPO live endpoint', false, e.message);
 }
 
 const unknown = await get('/data/not-a-feed.json');

@@ -5,9 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import Ladder from '@/components/Ladder';
-import { useEngines, useFeed } from '@/lib/data';
+import { useEngines, useFeed, usePx } from '@/lib/data';
 import { useStoredList } from '@/lib/store';
-import { crore, dash, heat, num, pct } from '@/lib/format';
+import { ago, crore, dash, dateLabel, heat, num, pct } from '@/lib/format';
 import type { Row, Year } from '@/lib/types';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -157,6 +157,7 @@ function Company() {
   const sym = (sp.get('s') ?? '').toUpperCase();
   const s = useFeed('screen');
   const eng = useEngines();
+  const px = usePx(sym ? [sym] : []);
   const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => s.data?.rows.find((x) => x.sym.toUpperCase() === sym), [s.data, sym]);
@@ -182,7 +183,7 @@ function Company() {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
             <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
-          </div><div className="px"><CountUp value={r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>today</span></div></div>
+          </div><div className="px"><CountUp value={px.quotes[sym]?.price ?? r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? `live · ${ago(px.at)}` : `last close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
       </header>
 
       <section className="wrap section">
@@ -200,7 +201,7 @@ function Company() {
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
             {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{r.vd.o}.</p> : <p className="muted">Nothing notable.</p>}
-            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f) => <li key={f}>{f}</li>)}</ul>}
+            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{f.k}</small>}</li>)}</ul>}
             {r.next_earnings && <p className="dim" style={{ fontSize: 13, marginBottom: 0 }}>Next results expected {r.next_earnings}.</p>}
           </Rv>
         </div>

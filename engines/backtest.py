@@ -34,6 +34,11 @@ def load(path: str):
     return d["bars"], d.get("bench"), d["universe"]
 
 
+def make_ctx(path: str):
+    d = pd.read_pickle(path)
+    return d["bars"], Ctx(d["bars"], d["bench"], d["universe"], d.get("indices")), d["universe"]
+
+
 def run_engine(mod, bars: dict, bench, start: pd.Timestamp | None = None, log=print) -> list[Trade]:
     trades: list[Trade] = []
     for n, (sym, df) in enumerate(bars.items()):
@@ -97,8 +102,7 @@ if __name__ == "__main__":
     path = sys.argv[1]
     which = sys.argv[2].split(",") if len(sys.argv) > 2 else ENGINES
     show_holdout = "--holdout" in sys.argv
-    bars, bench, uni = load(path)
-    bench = Ctx(bars, bench)
+    bars, bench, uni = make_ctx(path)
     for name in which:
         mod = importlib.import_module(name)
         tr = run_engine(mod, bars, bench)

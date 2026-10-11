@@ -58,15 +58,15 @@ def curve(trades):
 if __name__ == "__main__":
     path = sys.argv[1]
     out_path = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "research/results.json")
-    bars, bench, uni = B.load(path)
-    ctx = Ctx(bars, bench)
+    bars, ctx, uni = B.make_ctx(path)
     tried = {}
     for line in pathlib.Path("research/VARIANTS_LOG.jsonl").read_text().splitlines():
         r = json.loads(line)
-        tried[r["engine"]] = tried.get(r["engine"], 0) + 1
+        key = r["engine"].replace("_x", "")
+        tried[key] = tried.get(key, 0) + 1
     res = {"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "data_through": str(max(d.index[-1] for d in bars.values()).date()),
            "universe": len(bars), "cost_round_trip_pct": 0.25, "splits": {"train": f"before {B.TRAIN_END.date()}", "validation": f"{B.TRAIN_END.date()} to {B.VAL_END.date()}", "holdout": f"{B.VAL_END.date()} onwards"},
-           "engines": {}}
+           "notes": ["The holdout was first read after the round-1 rules were frozen. Rounds 2 to 5 (benchmark conditions, hidden and weekly divergence, leader pullbacks) were then chosen on train and validation only, but the holdout is no longer untouched. The live record from the launch date is the only test that cannot have been fitted to the past."], "engines": {}}
     for name, meta in META.items():
         mod = importlib.import_module(name)
         tr = B.run_engine(mod, bars, ctx)
@@ -79,14 +79,28 @@ if __name__ == "__main__":
                   "holdout": [t for t in base if t.signal_date >= B.VAL_END]}
         blocks = {k: block(bars, v) for k, v in parts.items()}
         pooled = excess(bars, parts["validation"] + parts["holdout"])
-        status, why = verdict(blocks["validation"], blocks["holdout"], pooled)
+        status_all, why_all = verdict(blocks["validation"], blocks["holdout"], pooled)
+        # THE BENCHMARK TEST. Every trade is labelled confirmed or not by its own benchmark (sector in an uptrend, leading the
+        # Nifty, stock leading the sector). Nothing is filtered: the two groups are measured side by side, in every period.
+        tiers = {}
+        for tname, sel in (("confirmed", lambda t: t.bench_ok is True), ("unconfirmed", lambda t: t.bench_ok is False)):
+            sub = [t for t in tr if sel(t)]
+            sp = {"train": [t for t in sub if t.signal_date < B.TRAIN_END],
+                  "validation": [t for t in sub if B.TRAIN_END <= t.signal_date < B.VAL_END],
+                  "holdout": [t for t in sub if t.signal_date >= B.VAL_END]}
+            tiers[tname] = {"n": len(sub), "all": stats(sub), "splits": {k: block(bars, v) for k, v in sp.items()},
+                            "pooled_test": excess(bars, sp["validation"] + sp["holdout"])}
+        # An engine's status is judged on ALL the signals it publishes. Benchmark confirmation was tested as a possible
+        # improvement and did not help (see tiers), so it informs but does not decide.
+        status, why = status_all, why_all
+        status_confirmed, _ = verdict(tiers["confirmed"]["splits"]["validation"], tiers["confirmed"]["splits"]["holdout"], tiers["confirmed"]["pooled_test"])
         setups = {}
         for t in tr:
             setups.setdefault(t.setup, []).append(t)
         hit = [t.t1_bars for t in tr if t.t1_bars]
         hit3 = [t.t3_bars for t in tr if t.t3_bars]
         res["engines"][meta["key"]] = {
-            **meta, "status": status, "status_why": why, "options": mod.OPT, "variants_tried": tried.get(name, 0),
+            **meta, "status": status, "status_why": why, "status_confirmed_only": status_confirmed, "tiers": tiers, "options": mod.OPT, "variants_tried": tried.get(name, 0),
             "all": stats(tr), "splits": blocks, "pooled_test": pooled,
             "baseline": {k: stats(v) for k, v in bparts.items()}, "baseline_all": stats(base),
             "by_setup": {k: {**stats(v), "excess": None} for k, v in sorted(setups.items(), key=lambda kv: -len(kv[1]))},

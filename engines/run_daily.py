@@ -16,6 +16,7 @@ import time
 
 import pandas as pd
 
+import registry
 from common import Ctx
 
 ENGINES = {"rebound": "e1_rebound", "divergence": "e2_divergence", "breakout": "e3_breakout", "swing": "e4_swing"}
@@ -64,10 +65,52 @@ EXIT_PLAN = [
 ]
 
 
-def build(bars: dict, uni: list[dict], bench: pd.Series, results: dict) -> dict:
-    ctx = Ctx(bars, bench)
+def _bench_meta(ctx: Ctx, sym: str, df: pd.DataFrame, t: int) -> dict | None:
+    """How the stock's own benchmark was behaving on the signal day."""
+    g = ctx.group_name(sym)
+    if g is None:
+        return None
+    idx = df.index
+    b = ctx.bench_for(sym, idx)
+    if b is None:
+        return None
+    c = df["Close"]
+    r63_b = float(b.iloc[t] / b.iloc[t - 63] - 1) * 100 if t >= 63 else None
+    r63_s = float(c.iloc[t] / c.iloc[t - 63] - 1) * 100 if t >= 63 else None
+    return {
+        "name": g, "members": ctx.group_n.get(g) or None,
+        "uptrend": bool(ctx.sec_trend(sym, idx).iloc[t]), "leads_nifty": bool(ctx.sec_lead(sym, idx).iloc[t]),
+        "stock_3m_pct": round(r63_s, 1) if r63_s is not None else None, "benchmark_3m_pct": round(r63_b, 1) if r63_b is not None else None,
+        "stock_vs_benchmark_pct": round(r63_s - r63_b, 1) if r63_s is not None and r63_b is not None else None,
+    }
+
+
+def sector_board(ctx: Ctx, bars: dict) -> list[dict]:
+    """Every benchmark group's current state: the board the engines are reading."""
+    out = []
+    nb = ctx.bench
+    for g, lvl in ctx.group_level.items():
+        lvl = lvl.dropna()
+        if len(lvl) < 260:
+            continue
+        s50 = lvl.rolling(50).mean()
+        n3 = nb.reindex(lvl.index, method="ffill")
+        r21, r63 = float(lvl.iloc[-1] / lvl.iloc[-22] - 1) * 100, float(lvl.iloc[-1] / lvl.iloc[-64] - 1) * 100
+        n63 = float(n3.iloc[-1] / n3.iloc[-64] - 1) * 100
+        out.append({"name": g, "members": ctx.group_n.get(g) or None, "r1m": round(r21, 1), "r3m": round(r63, 1), "vs_nifty_3m": round(r63 - n63, 1),
+                    "uptrend": bool(lvl.iloc[-1] > s50.iloc[-1] and s50.iloc[-1] > s50.iloc[-11]), "leads_nifty": bool(r63 > n63),
+                    "real_index": g.startswith("Nifty")})
+    out.sort(key=lambda x: -x["vs_nifty_3m"])
+    return out
+
+
+def build(bars: dict, uni: list[dict], bench: pd.Series, results: dict, indices: dict | None = None, reg: dict | None = None) -> dict:
+    ctx = Ctx(bars, bench, uni, indices)
     info = {u["sym"]: u for u in uni}
-    signals = []
+    today = str(max(d.index[-1] for d in bars.values()).date())
+    candidates = []
+    reg = reg if reg is not None else registry.load()
+    window = 1 if not reg["signals"] else 5       # the first run issues only today's signals, so the live record starts clean
     for key, modname in ENGINES.items():
         mod = importlib.import_module(modname)
         st = results["engines"][key]
@@ -79,31 +122,38 @@ def build(bars: dict, uni: list[dict], bench: pd.Series, results: dict) -> dict:
                 continue
             n = len(df)
             for s in sigs:
-                if s.t < n - 3:
-                    continue
-                last = float(df["Close"].iloc[-1])
-                t1, t2, t3 = s.targets
-                if last >= t1 or last <= s.sl:       # already past the first target or the stop: no longer actionable
+                if s.t < n - window:                  # only fresh signals enter the registry
                     continue
                 risk = s.ref_price - s.sl
-                signals.append({
+                if risk <= 0:
+                    continue
+                candidates.append({
                     "engine": key, "engine_name": st["name"], "sym": sym, "name": info.get(sym, {}).get("name", sym),
-                    "sector": info.get(sym, {}).get("sector"), "date": str(s.date.date()), "setup": s.setup, "horizon": s.horizon,
-                    "ref_price": round(s.ref_price, 2), "last_close": round(last, 2),
-                    "entry_zone": [round(min(last, s.ref_price), 2), round(s.ref_price * 1.01, 2)],
+                    "sector": info.get(sym, {}).get("sector"), "date": str(s.date.date()), "issued": str(s.date.date()),
+                    "setup": s.setup, "horizon": s.horizon, "ref_price": round(s.ref_price, 2),
+                    "entry_zone": [round(s.ref_price, 2), round(s.ref_price * 1.01, 2)],
                     "sl": round(s.sl, 2), "risk_pct": round(risk / s.ref_price * 100, 1),
                     "targets": [round(x, 2) for x in s.targets], "r_multiples": [round((x - s.ref_price) / risk, 2) for x in s.targets],
-                    "max_hold_days": s.max_hold, "reasons": s.reasons,
-                    "typical_days_to_t1": st["timeline"]["median_days_to_t1"],
-                    "engine_status": st["status"],
+                    "max_hold": s.max_hold, "reasons": s.reasons, "benchmark": _bench_meta(ctx, sym, df, s.t), "bench_ok": s.meta.get("bench_ok"),
                 })
-    signals.sort(key=lambda x: (x["engine"], x["date"], x["sym"]), reverse=False)
+    registry.update(reg, candidates, bars, today)
+    view = registry.active_view(reg, 14, today)
+    signals = []
+    for e in view:
+        st = results["engines"][e["engine"]]
+        signals.append({**e, "engine_status": st["status"], "engine_name": st["name"], "max_hold_days": e["max_hold"],
+                        "typical_days_to_t1": st["timeline"]["median_days_to_t1"],
+                        "also_names": [results["engines"][x]["name"] for x in e.get("also", []) if x in results["engines"]]})
+    order = {"open": 0, "pending": 1, "closed": 2, "void": 3}
+    signals.sort(key=lambda x: (order.get(x["status"], 9), 0 if x.get("bench_ok") else 1, x["engine"], x["sym"]))
     engines = {}
     for key, st in results["engines"].items():
-        engines[key] = {**st, "rules": RULES[key], "signal_count": sum(1 for x in signals if x["engine"] == key)}
-    return {"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "data_through": str(max(d.index[-1] for d in bars.values()).date()),
-            "backtest": {k: results[k] for k in ("generated", "data_through", "universe", "cost_round_trip_pct", "splits")},
-            "exit_plan": EXIT_PLAN, "engines": engines, "signals": signals}
+        act = [x for x in signals if x["engine"] == key and x["status"] in ("pending", "open")]
+        engines[key] = {**st, "rules": RULES[key], "signal_count": len(act)}
+    return {"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "data_through": today,
+            "backtest": {k: results[k] for k in ("generated", "data_through", "universe", "cost_round_trip_pct", "splits", "notes")},
+            "launched": reg.get("launched"), "live_record": registry.forward_record(reg),
+            "exit_plan": EXIT_PLAN, "benchmarks": sector_board(ctx, bars), "engines": engines, "signals": signals}
 
 
 if __name__ == "__main__":
@@ -111,18 +161,28 @@ if __name__ == "__main__":
     results = json.loads(pathlib.Path("research/results.json").read_text())
     if len(sys.argv) > 1:
         d = pd.read_pickle(sys.argv[1])
-        bars, uni, bench = d["bars"], d["universe"], d["bench"]
+        bars, uni, bench, indices = d["bars"], d["universe"], d["bench"], d.get("indices")
     else:
         import yfinance as yf
         uni = data.universe()
         bars = data.download([u["sym"] for u in uni], period="5y")
+        # A thin download must never become a published result: a stock missing from the data cannot be selected, and its
+        # open trade would silently stop being tracked.
+        if len(bars) < 0.85 * len(uni):
+            raise SystemExit(f"only {len(bars)} of {len(uni)} symbols downloaded: refusing to publish")
+        latest = max(d.index[-1] for d in bars.values())
+        if (pd.Timestamp.now().normalize() - latest).days > 5:
+            raise SystemExit(f"newest price bar is {latest.date()}: the data is stale, refusing to publish")
         b = yf.download("^NSEI", period="5y", interval="1d", auto_adjust=True, progress=False)
         b.columns = [c[0] if isinstance(c, tuple) else c for c in b.columns]
         bench = b["Close"].dropna()
         bench.index = pd.to_datetime(bench.index).tz_localize(None)
-    out = build(bars, uni, bench, results)
+        indices = data.indices("5y")
+    reg = registry.load()
+    out = build(bars, uni, bench, results, indices, reg)
+    registry.save(reg)
     dest = pathlib.Path("../public/engines.json")
     dest.write_text(json.dumps(out, separators=(",", ":")))
-    print(f"wrote {dest}: {len(out['signals'])} live signals, data through {out['data_through']}")
+    print(f"wrote {dest}: {len(out['signals'])} signals in view, data through {out['data_through']}; registry now {len(reg['signals'])} trades")
     for k, e in out["engines"].items():
         print(f"  {k:<11} {e['status']:<18} {e['signal_count']} signals now")

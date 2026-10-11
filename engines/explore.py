@@ -6,8 +6,7 @@ from common import Ctx
 from analysis import excess, clustered_t
 
 path, which = sys.argv[1], sys.argv[2].split(",")
-bars, bench, uni = B.load(path)
-bench = Ctx(bars, bench)
+bars, bench, uni = B.make_ctx(path)
 for name in which:
     mod = importlib.import_module(name)
     tr = B.run_engine(mod, bars, bench)

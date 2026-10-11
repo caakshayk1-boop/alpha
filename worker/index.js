@@ -218,6 +218,34 @@ async function ipoLive() {
   }
 }
 
+// ── live prices for specific NSE stocks ─────────────────────────────────
+// /api/px?s=TCS,INFY  →  { quotes: { TCS: { price, prev, pct, state, at } } }
+// Up to 40 symbols, cached 60 seconds at the edge. A symbol that does not answer is simply absent: the page then shows
+// the last close it already has, labelled as such, never a zero.
+async function px(url, ctx) {
+  const syms = Array.from(new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter((x) => /^[A-Z0-9&-]{1,20}$/.test(x)))).slice(0, 40).sort();
+  if (!syms.length) return json({ ok: false, error: 'no valid symbols', quotes: {} }, 400);
+  const cache = caches.default;
+  const key = new Request(`https://alpha.askakshay.com/__px_v1/${syms.join(',')}`);
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  const quotes = {};
+  await Promise.all(syms.map(async (sym) => {
+    try {
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym + '.NS')}?range=1d&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return;
+      const meta = (await r.json())?.chart?.result?.[0]?.meta;
+      const price = Number(meta?.regularMarketPrice);
+      const prev = Number(meta?.chartPreviousClose ?? meta?.previousClose);
+      if (!(price > 0) || !(prev > 0)) return;
+      quotes[sym] = { price, prev, pct: Math.round(((price - prev) / prev) * 10000) / 100, state: meta?.marketState || null, at: meta?.regularMarketTime || null };
+    } catch { /* absent, not zero */ }
+  }));
+  const res = json({ ok: Object.keys(quotes).length > 0, fetched_at: new Date().toISOString(), requested: syms.length, live: Object.keys(quotes).length, quotes }, 200, 'public, max-age=30, s-maxage=60');
+  if (Object.keys(quotes).length) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -230,6 +258,9 @@ export default {
 
     if (url.pathname.startsWith('/data/') && url.pathname.endsWith('.json')) {
       return feed(url.pathname.slice('/data/'.length, -'.json'.length));
+    }
+    if (url.pathname === '/api/px' || url.pathname === '/api/px/') {
+      return px(url, ctx);
     }
     if (url.pathname === '/api/ipo-live' || url.pathname === '/api/ipo-live/') {
       return ipoLive();

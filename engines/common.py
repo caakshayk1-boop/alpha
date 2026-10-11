@@ -55,6 +55,7 @@ class Trade:
     horizon: str
     t1_bars: int | None = None   # trading days from entry to the first target, when it was reached
     t3_bars: int | None = None
+    bench_ok: bool | None = None  # all three benchmark conditions held on the signal day (None: no usable benchmark)
 
 
 def liquid(df: pd.DataFrame, min_turnover_cr: float = 1.0, window: int = 20) -> pd.Series:
@@ -64,69 +65,76 @@ def liquid(df: pd.DataFrame, min_turnover_cr: float = 1.0, window: int = 20) -> 
     return tv >= min_turnover_cr
 
 
-def simulate(df: pd.DataFrame, sig: Signal, cost_pct: float = COST_PCT) -> Trade | None:
-    """Run one signal through the exit rule. None if there is no valid entry (no next bar, a gap that
-    already voids the setup, or a stop that is not below the entry)."""
+def walk(df: pd.DataFrame, t_signal: int, sl: float, targets: list[float], max_hold: int) -> dict | None:
+    """The single implementation of the exit rule, used by BOTH the backtest and the live tracker, so what is
+    tested and what is tracked cannot drift apart.
+
+    Returns None when there is no entry yet or ever (no next bar, or the setup was voided by the opening
+    gap). Otherwise a dict: entry, entry_i, events [(bar index, kind, price, fraction)], hit, stop (the current
+    stop), closed (bool), exit_i, exit_reason, pnl (price units, weighted by fraction already sold),
+    remaining (fraction still held), risk.
+    A position the data has not resolved yet has closed=False: it is open, not closed at today's price."""
     o, h, l, c = df["Open"].values, df["High"].values, df["Low"].values, df["Close"].values
-    t0 = sig.t + 1
+    t0 = t_signal + 1
     if t0 >= len(df):
         return None
     entry = float(o[t0])
-    sl = sig.sl
     if not (entry > 0 and sl < entry):
         return None
-    # An opening gap beyond the first target, or below the stop, means the setup no longer exists.
-    t1, t2, t3 = sig.targets
+    t1, t2, t3 = targets
     if entry >= t1 or entry <= sl:
-        return None
+        return {"void": True, "entry": entry, "entry_i": t0}
     risk = entry - sl
-    if risk / entry > 0.20 or risk / entry < 0.004:      # absurdly wide or absurdly tight is a data/setup fault
-        return None
-
-    remaining = 1.0
-    pnl = 0.0                      # in price units, weighted by position fraction
-    stop = sl
-    hit = 0
-    t1_bars = t3_bars = None
-    last = min(len(df) - 1, t0 + sig.max_hold - 1)
-    exit_reason = "time"
-    exit_i = last
+    if risk / entry > 0.20 or risk / entry < 0.004:
+        return {"void": True, "entry": entry, "entry_i": t0}
+    remaining, pnl, stop, hit = 1.0, 0.0, sl, 0
+    events: list[tuple[int, str, float, float]] = [(t0, "entry", entry, 1.0)]
+    last = min(len(df) - 1, t0 + max_hold - 1)
     tgt = [t1, t2, t3]
+    reason, exit_i, closed = "", t0, False
     for i in range(t0, last + 1):
         lo, hi, op = l[i], h[i], o[i]
-        # stop first (conservative), including a gap through it
-        if lo <= stop or op <= stop:
+        if lo <= stop or op <= stop:                      # the stop first, including a gap through it
             px = op if op < stop else stop
             pnl += remaining * (px - entry)
-            exit_reason = "stop" if hit == 0 else ("breakeven" if hit == 1 else "target")
-            exit_i = i
-            remaining = 0.0
+            events.append((i, "stop" if hit == 0 else "stop_after_t%d" % hit, float(px), remaining))
+            reason = "stop" if hit == 0 else ("breakeven" if hit == 1 else "target")
+            exit_i, remaining, closed = i, 0.0, True
             break
-        # targets, in order, possibly several in one bar
-        while hit < 3 and hi >= tgt[hit]:
+        while hit < 3 and hi >= tgt[hit]:                 # targets in order, several possible in one bar
             px = op if op > tgt[hit] else tgt[hit]
             frac = SPLITS[hit]
             pnl += frac * (px - entry)
             remaining -= frac
             hit += 1
-            if hit == 1:
-                t1_bars = i - t0 + 1
-            if hit == 3:
-                t3_bars = i - t0 + 1
+            events.append((i, f"t{hit}", float(px), frac))
             stop = entry if hit == 1 else (t1 if hit == 2 else stop)
         if hit == 3:
-            exit_reason = "target"
-            exit_i = i
-            remaining = 0.0
+            reason, exit_i, remaining, closed = "target", i, 0.0, True
             break
-    if remaining > 1e-9:
+    if not closed and last == t0 + max_hold - 1 and t0 + max_hold - 1 <= len(df) - 1:
+        # the time limit has arrived: whatever is left goes at that day's close
         pnl += remaining * (c[last] - entry)
-        exit_i = last
-        exit_reason = "time"
-    gross_r = pnl / risk
+        events.append((last, "time", float(c[last]), remaining))
+        reason, exit_i, remaining, closed = "time", last, 0.0, True
+    return {"void": False, "entry": entry, "entry_i": t0, "events": events, "hit": hit, "stop": stop, "closed": closed,
+            "exit_i": exit_i, "exit_reason": reason, "pnl": pnl, "remaining": remaining, "risk": risk}
+
+
+def simulate(df: pd.DataFrame, sig: Signal, cost_pct: float = COST_PCT) -> Trade | None:
+    """Run one signal through the exit rule for the backtest. Trades the data has not resolved yet are left out
+    rather than closed at an arbitrary price."""
+    w = walk(df, sig.t, sig.sl, sig.targets, sig.max_hold)
+    if w is None or w.get("void") or not w["closed"]:
+        return None
+    entry, risk = w["entry"], w["risk"]
+    t0 = w["entry_i"]
+    gross_r = w["pnl"] / risk
     r = gross_r - (cost_pct * entry) / risk
-    return Trade(sig.engine, sig.sym, sig.date, df.index[t0], df.index[exit_i], entry, sl, float(r), float(gross_r),
-                 int(exit_i - t0 + 1), hit, exit_reason, sig.setup, sig.horizon, t1_bars, t3_bars)
+    t1b = next((e[0] - t0 + 1 for e in w["events"] if e[1] == "t1"), None)
+    t3b = next((e[0] - t0 + 1 for e in w["events"] if e[1] == "t3"), None)
+    return Trade(sig.engine, sig.sym, sig.date, df.index[t0], df.index[w["exit_i"]], entry, sig.sl, float(r), float(gross_r),
+                 int(w["exit_i"] - t0 + 1), int(w["hit"]), w["exit_reason"], sig.setup, sig.horizon, t1b, t3b, sig.meta.get("bench_ok"))
 
 
 def stats(trades: list[Trade]) -> dict:
@@ -164,19 +172,130 @@ def stats(trades: list[Trade]) -> dict:
 
 
 class Ctx:
-    """Market-wide context the engines may read, all computed without lookahead.
+    """Market-wide and sector-wide context the engines may read, all computed without lookahead.
 
-    regime  True when the Nifty is above a rising 200-day average.
-    rs126 / rs21  each stock's 126-day and 21-day return, ranked 0-100 across the whole universe that day.
+    regime       True when the Nifty is above a rising 200-day average.
+    rs126 / rs21 each stock's 126-day and 21-day return, ranked 0-100 across the universe that day.
+    BENCHMARKS   every stock is measured against the index of its own group:
+                   - Nifty IT, Nifty Pharma and Nifty Bank, the real NSE indices, where Yahoo holds their history
+                     (technology, healthcare and banks);
+                   - otherwise an equal-weighted index of the stock's industry group (its sector when the industry
+                     has fewer than 8 liquid members), built from the universe and leave-one-out, so a stock is
+                     never benchmarked against itself. Daily moves are capped at 15% so one bad print cannot
+                     move a group.
     """
 
-    def __init__(self, bars: dict, bench: pd.Series):
+    MIN_GROUP = 8
+
+    def __init__(self, bars: dict, bench: pd.Series, universe: list | None = None, indices: dict | None = None):
         self.bench = bench
         s200 = bench.rolling(200, min_periods=200).mean()
         self.regime = ((bench > s200) & (s200 > s200.shift(20))).fillna(False)
         closes = pd.DataFrame({s: d["Close"] for s, d in bars.items()})
         self.rs126 = closes.pct_change(126, fill_method=None).rank(axis=1, pct=True) * 100
         self.rs21 = closes.pct_change(21, fill_method=None).rank(axis=1, pct=True) * 100
+        self.group_of: dict[str, str] = {}
+        self.group_level: dict[str, pd.Series] = {}
+        self.group_n: dict[str, int] = {}
+        self._loo: dict[str, pd.Series] = {}
+        if universe:
+            self._build_groups(bars, closes, universe, indices or {})
+
+    # ── group benchmarks ─────────────────────────────────────────
+    def _build_groups(self, bars, closes, universe, indices):
+        info = {u["sym"]: u for u in universe if u["sym"] in bars}
+        liq = {s: bool(liquid(bars[s]).iloc[-250:].mean() > 0.6) for s in info}
+        by_ind: dict[str, list[str]] = {}
+        by_sec: dict[str, list[str]] = {}
+        for s, u in info.items():
+            if not liq[s]:
+                continue
+            if u.get("ind"):
+                by_ind.setdefault(u["ind"], []).append(s)
+            if u.get("sector"):
+                by_sec.setdefault(u["sector"], []).append(s)
+        rets = closes.pct_change(fill_method=None).clip(-0.15, 0.15)
+        for s, u in info.items():
+            ind, sec = u.get("ind"), u.get("sector")
+            name = (u.get("name") or "").lower()
+            # Yahoo's sector labels are coarse (LG Electronics is 'Technology', a hospital chain is 'Healthcare'), so the NSE
+            # indices are used only where the company really belongs to them.
+            if sec == "Financial Services" and " bank" in f" {name}" and "Nifty Bank" in indices:
+                self.group_of[s] = "Nifty Bank"
+            elif "Nifty IT" in indices and (ind == "Information Technology" or (not ind and sec == "Technology" and any(w in name for w in ("software", "infotech", "technolog", "systems", "info")))):
+                self.group_of[s] = "Nifty IT"
+            elif "Nifty Pharma" in indices and sec == "Healthcare" and not any(w in name for w in ("hospital", "diagnostic", "healthcare", "medical", "health")) and (ind in (None, "Healthcare")):
+                self.group_of[s] = "Nifty Pharma"
+            elif ind and len(by_ind.get(ind, [])) >= self.MIN_GROUP:
+                self.group_of[s] = f"{ind} (alpha group index)"
+            elif sec and len(by_sec.get(sec, [])) >= self.MIN_GROUP:
+                self.group_of[s] = f"{sec} (alpha group index)"
+        for name, series in indices.items():
+            self.group_level[name] = series
+            self.group_n[name] = 0
+        members: dict[str, list[str]] = {}
+        for s, g in self.group_of.items():
+            members.setdefault(g, []).append(s)
+        for g, syms in members.items():
+            if g in self.group_level:
+                continue
+            pool = [x for x in syms if liq.get(x)]
+            r = rets[pool]
+            tot, cnt = r.sum(axis=1, skipna=True), r.count(axis=1)
+            self.group_n[g] = len(pool)
+            self.group_level[g] = ((tot / cnt.replace(0, np.nan)).fillna(0) + 1).cumprod() * 100
+            # leave-one-out series are built lazily per stock (see bench_for)
+            self._grp_tot = getattr(self, "_grp_tot", {})
+            self._grp_tot[g] = (tot, cnt)
+        self._rets = rets
+
+    def has_group(self, sym: str) -> bool:
+        return sym in self.group_of
+
+    def bench_for(self, sym: str, idx: pd.DatetimeIndex) -> pd.Series | None:
+        """Index level of this stock's benchmark, aligned to idx. Alpha group indices are leave-one-out."""
+        g = self.group_of.get(sym)
+        if g is None:
+            return None
+        key = sym
+        if key not in self._loo:
+            if g in getattr(self, "_grp_tot", {}):
+                tot, cnt = self._grp_tot[g]
+                own = self._rets[sym]
+                own_ok = own.notna()
+                t2 = tot - own.fillna(0).where(own_ok, 0)
+                c2 = cnt - own_ok.astype(int)
+                level = ((t2 / c2.replace(0, np.nan)).fillna(0) + 1).cumprod() * 100
+            else:
+                level = self.group_level[g]
+            self._loo[key] = level
+        return self._loo[key].reindex(idx, method="ffill")
+
+    def group_name(self, sym: str) -> str | None:
+        return self.group_of.get(sym)
+
+    def sec_trend(self, sym: str, idx: pd.DatetimeIndex) -> pd.Series:
+        """Benchmark above a rising 50-day average."""
+        b = self.bench_for(sym, idx)
+        if b is None:
+            return pd.Series(False, index=idx)
+        s50 = b.rolling(50, min_periods=50).mean()
+        return ((b > s50) & (s50 > s50.shift(10))).fillna(False)
+
+    def sec_lead(self, sym: str, idx: pd.DatetimeIndex, n: int = 63) -> pd.Series:
+        """Benchmark's n-day return ahead of the Nifty's."""
+        b = self.bench_for(sym, idx)
+        if b is None:
+            return pd.Series(False, index=idx)
+        nb = self.bench.reindex(idx, method="ffill")
+        return ((b / b.shift(n) - 1) > (nb / nb.shift(n) - 1)).fillna(False)
+
+    def stk_lead(self, sym: str, close: pd.Series, n: int = 63) -> pd.Series:
+        """Stock's n-day return ahead of its own benchmark's."""
+        b = self.bench_for(sym, close.index)
+        if b is None:
+            return pd.Series(False, index=close.index)
+        return ((close / close.shift(n) - 1) > (b / b.shift(n) - 1)).fillna(False)
 
     def regime_for(self, idx: pd.DatetimeIndex) -> pd.Series:
         return self.regime.reindex(idx, method="ffill").fillna(False).astype(bool)
@@ -184,3 +303,36 @@ class Ctx:
     def rs(self, sym: str, idx: pd.DatetimeIndex, window: int = 126) -> pd.Series:
         panel = self.rs126 if window == 126 else self.rs21
         return panel[sym].reindex(idx) if sym in panel else pd.Series(np.nan, index=idx)
+
+
+def tag_bench(sigs: list, ctx, sym: str, df: pd.DataFrame) -> list:
+    """Record, on every signal, whether its own benchmark confirmed it: the benchmark in an uptrend, leading the
+    Nifty, and the stock leading the benchmark. Nothing is filtered here. Confirmation is a label, so that its effect
+    can be measured instead of assumed."""
+    if not sigs:
+        return sigs
+    if ctx is None or not ctx.has_group(sym):
+        for s in sigs:
+            s.meta["bench_ok"] = None
+        return sigs
+    up, lead, stk = ctx.sec_trend(sym, df.index), ctx.sec_lead(sym, df.index), ctx.stk_lead(sym, df["Close"])
+    for s in sigs:
+        t = s.t
+        s.meta["bench"] = {"uptrend": bool(up.iloc[t]), "leads_nifty": bool(lead.iloc[t]), "stock_leads": bool(stk.iloc[t])}
+        s.meta["bench_ok"] = bool(up.iloc[t] and lead.iloc[t] and stk.iloc[t])
+    return sigs
+
+
+def sector_gate(ctx, sym: str, df: pd.DataFrame, opt: dict) -> pd.Series:
+    """The benchmark conditions an engine asks for, as one boolean series. A stock with no usable benchmark
+    can never pass a benchmark condition: no benchmark means no evidence."""
+    ok = pd.Series(True, index=df.index)
+    if ctx is None:
+        return ok
+    if opt.get("sec_trend"):
+        ok &= ctx.sec_trend(sym, df.index)
+    if opt.get("sec_lead"):
+        ok &= ctx.sec_lead(sym, df.index)
+    if opt.get("stk_lead"):
+        ok &= ctx.stk_lead(sym, df["Close"])
+    return ok
