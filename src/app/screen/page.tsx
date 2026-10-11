@@ -1,133 +1,227 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Async, Chg, PageHead } from '@/components/ui';
-import { useFeed } from '@/lib/data';
+import { useEngines, useFeed } from '@/lib/data';
 import { dash, num } from '@/lib/format';
 import { canAnimate, Flip } from '@/lib/motion';
+import { useStoredList } from '@/lib/store';
 import type { Row } from '@/lib/types';
 
-type Key = 'comp' | 'q' | 'g' | 'v' | 'roce' | 'pe' | 'de' | 'r1d' | 'r1m' | 'r1y' | 'mcap_cr' | 'div_yield' | 'price';
-interface Preset { id: string; label: string; hint: string; test: (r: Row) => boolean }
+type Num = number | null | undefined;
+interface Field { id: string; label: string; get: (r: Row) => Num; fmt: (v: number) => string; kind?: 'chg'; step?: number }
+const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
-const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
-const PRESETS: Preset[] = [
-  { id: 'quality', label: 'Quality compounders', hint: 'ROCE 20%+ and debt to equity 0.5 or less', test: (r) => has(r.roce) && r.roce >= 20 && has(r.de) && r.de <= 0.5 },
-  { id: 'value', label: 'Cheap and healthy', hint: 'P/E under 15 (positive) and ROCE 15%+', test: (r) => has(r.pe) && r.pe > 0 && r.pe < 15 && has(r.roce) && r.roce >= 15 },
-  { id: 'debtfree', label: 'Debt-free', hint: 'Debt to equity 0.1 or less', test: (r) => has(r.de) && r.de <= 0.1 },
-  { id: 'income', label: 'Dividend income', hint: 'Dividend yield 2% or more', test: (r) => has(r.div_yield) && r.div_yield >= 2 },
-  { id: 'trend', label: 'In an uptrend', hint: 'Above its 50 and 200-day averages, ahead of the Nifty over 3 months', test: (r) => has(r.price) && has(r.sma50) && has(r.sma200) && r.price > r.sma50 && r.price > r.sma200 && has(r.rs3m) && r.rs3m > 0 },
-  { id: 'vetted', label: 'Vetted', hint: 'Passes the screen’s data-quality and balance-sheet checks', test: (r) => r.vet?.s === 'cleared' },
-  { id: 'ahimsa', label: 'Ahimsa 500', hint: 'In NSE’s Nifty500 Ahimsa index', test: (r) => r.ahimsa === true },
+const FIELDS: Field[] = [
+  { id: 'price', label: 'Price', get: (r) => r.price, fmt: (v) => `₹${num(v, 2)}` },
+  { id: 'mcap_cr', label: 'Market cap (₹ cr)', get: (r) => r.mcap_cr, fmt: (v) => (v >= 1e5 ? `${(v / 1e5).toFixed(2)}L cr` : `${num(v, 0)} cr`) },
+  { id: 'pe', label: 'P/E', get: (r) => r.pe, fmt: (v) => v.toFixed(1) },
+  { id: 'pb', label: 'P/B', get: (r) => r.pb, fmt: (v) => v.toFixed(2) },
+  { id: 'roce', label: 'ROCE %', get: (r) => r.roce, fmt: (v) => `${v.toFixed(1)}%` },
+  { id: 'roe', label: 'ROE %', get: (r) => r.roe, fmt: (v) => `${v.toFixed(1)}%` },
+  { id: 'de', label: 'Debt / equity', get: (r) => r.de, fmt: (v) => v.toFixed(2) },
+  { id: 'div_yield', label: 'Dividend yield %', get: (r) => r.div_yield, fmt: (v) => `${v.toFixed(2)}%` },
+  { id: 'rev_cagr', label: 'Revenue CAGR %', get: (r) => r.rev_cagr, fmt: (v) => `${v.toFixed(1)}%` },
+  { id: 'eps_cagr', label: 'EPS CAGR %', get: (r) => r.eps_cagr, fmt: (v) => `${v.toFixed(1)}%` },
+  { id: 'cfo_pat', label: 'Cash / profit', get: (r) => r.cfo_pat, fmt: (v) => `${v.toFixed(2)}×` },
+  { id: 'piotroski', label: 'Piotroski F (of 9)', get: (r) => r.piotroski, fmt: (v) => String(v) },
+  { id: 'q', label: 'Quality score', get: (r) => r.q, fmt: (v) => String(Math.round(v)) },
+  { id: 'g', label: 'Growth score', get: (r) => r.g, fmt: (v) => String(Math.round(v)) },
+  { id: 'v', label: 'Value score', get: (r) => r.v, fmt: (v) => String(Math.round(v)) },
+  { id: 'tech', label: 'Technical score', get: (r) => r.tech, fmt: (v) => String(Math.round(v)) },
+  { id: 'comp', label: 'Composite score', get: (r) => r.comp, fmt: (v) => String(Math.round(v)) },
+  { id: 'r1d', label: 'Today %', get: (r) => r.r1d, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'r1w', label: 'Week %', get: (r) => r.r1w, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'r1m', label: 'Month %', get: (r) => r.r1m, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'r3m', label: '3 months %', get: (r) => r.r3m, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'r1y', label: 'Year %', get: (r) => r.r1y, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'rs3m', label: 'Vs index, 3 months %', get: (r) => r.rs3m, fmt: (v) => String(v), kind: 'chg' },
+  { id: 'from_high', label: 'From 52-week high %', get: (r) => r.from_high, fmt: (v) => `${v.toFixed(0)}%` },
+  { id: 'rsi', label: 'RSI (14)', get: (r) => r.rsi, fmt: (v) => v.toFixed(0) },
+  { id: 'pe_pctile', label: 'P/E percentile in own history', get: (r) => r.pe_pctile, fmt: (v) => `${Math.round(v)}` },
+  { id: 'turnover_cr', label: 'Daily turnover (₹ cr)', get: (r) => r.turnover_cr, fmt: (v) => `${num(v, 1)} cr` },
 ];
+const F = new Map(FIELDS.map((f) => [f.id, f]));
+const DEFAULT_COLS = ['price', 'r1d', 'r1m', 'r1y', 'pe', 'roce', 'de', 'q', 'g', 'v', 'comp'];
 
-const COLS: { k: Key; label: string; cell: (r: Row) => React.ReactNode }[] = [
-  { k: 'price', label: 'Price', cell: (r) => <span className="num">₹{num(r.price, 2)}</span> },
-  { k: 'r1d', label: '1D', cell: (r) => <Chg v={r.r1d} dp={1} /> },
-  { k: 'r1m', label: '1M', cell: (r) => <Chg v={r.r1m} dp={1} /> },
-  { k: 'r1y', label: '1Y', cell: (r) => <Chg v={r.r1y} dp={1} /> },
-  { k: 'pe', label: 'P/E', cell: (r) => <span className="num">{has(r.pe) ? r.pe.toFixed(1) : dash}</span> },
-  { k: 'roce', label: 'ROCE', cell: (r) => <span className="num">{has(r.roce) ? `${r.roce.toFixed(1)}%` : dash}</span> },
-  { k: 'de', label: 'D/E', cell: (r) => <span className="num">{has(r.de) ? r.de.toFixed(2) : dash}</span> },
-  { k: 'q', label: 'Quality', cell: (r) => <span className="num">{has(r.q) ? Math.round(r.q) : dash}</span> },
-  { k: 'g', label: 'Growth', cell: (r) => <span className="num">{has(r.g) ? Math.round(r.g) : dash}</span> },
-  { k: 'v', label: 'Value', cell: (r) => <span className="num">{has(r.v) ? Math.round(r.v) : dash}</span> },
-  { k: 'comp', label: 'Composite', cell: (r) => <b className="num">{has(r.comp) ? Math.round(r.comp) : dash}</b> },
+interface Cond { f: string; op: '>=' | '<='; v: string }
+type Flag = 'vetted' | 'ahimsa' | 'uptrend' | 'magic' | 'signal';
+interface Lens { id: string; label: string; hint: string; conds: Cond[]; flags?: Flag[] }
+const LENSES: Lens[] = [
+  { id: 'quality', label: 'Quality compounders', hint: 'ROCE 20%+ and debt/equity 0.5 or less', conds: [{ f: 'roce', op: '>=', v: '20' }, { f: 'de', op: '<=', v: '0.5' }] },
+  { id: 'value', label: 'Cheap and healthy', hint: 'P/E under 15 and ROCE 15%+', conds: [{ f: 'pe', op: '<=', v: '15' }, { f: 'pe', op: '>=', v: '1' }, { f: 'roce', op: '>=', v: '15' }] },
+  { id: 'growth', label: 'Fast growers', hint: 'Revenue and EPS compounding above 15% a year', conds: [{ f: 'rev_cagr', op: '>=', v: '15' }, { f: 'eps_cagr', op: '>=', v: '15' }] },
+  { id: 'debtfree', label: 'Debt-free', hint: 'Debt to equity 0.1 or less', conds: [{ f: 'de', op: '<=', v: '0.1' }] },
+  { id: 'income', label: 'Dividend income', hint: 'Yield 2% or more', conds: [{ f: 'div_yield', op: '>=', v: '2' }] },
+  { id: 'cashrich', label: 'Cash earners', hint: 'Operating cash flow at least 1x profit, Piotroski 7+', conds: [{ f: 'cfo_pat', op: '>=', v: '1' }, { f: 'piotroski', op: '>=', v: '7' }] },
+  { id: 'trend', label: 'In an uptrend', hint: 'Above its 50 and 200-day, ahead of the index over 3 months', conds: [], flags: ['uptrend'] },
+  { id: 'cheaphist', label: 'Cheap vs its own history', hint: 'P/E in the lowest quarter of its own range, quality score 50+', conds: [{ f: 'pe_pctile', op: '<=', v: '25' }, { f: 'q', op: '>=', v: '50' }] },
+  { id: 'vetted', label: 'Vetted', hint: 'Passes the data-quality and balance-sheet checks', conds: [], flags: ['vetted'] },
+  { id: 'ahimsa', label: 'Ahimsa 500', hint: "In NSE's Nifty500 Ahimsa index", conds: [], flags: ['ahimsa'] },
+  { id: 'magic', label: 'Magic Formula top 100', hint: 'Ranked in the first hundred on Greenblatt’s rule', conds: [], flags: ['magic'] },
+  { id: 'signal', label: 'Has an engine signal', hint: 'Selected by one of the four engines at the latest close', conds: [], flags: ['signal'] },
 ];
 
 const PAGE = 60;
+interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; tier: string }
 
 export default function Screen() {
   const s = useFeed('screen');
+  const eng = useEngines();
   const router = useRouter();
   const [q, setQ] = useState('');
   const [sector, setSector] = useState('');
-  const [preset, setPreset] = useState<string>('');
-  const [sort, setSort] = useState<Key>('comp');
+  const [tier, setTier] = useState('');
+  const [conds, setConds] = useState<Cond[]>([]);
+  const [flags, setFlags] = useState<Flag[]>([]);
+  const [lens, setLens] = useState('');
+  const [sort, setSort] = useState('comp');
   const [dir, setDir] = useState<1 | -1>(-1);
   const [limit, setLimit] = useState(PAGE);
+  const [cols, setCols] = useState<string[]>(DEFAULT_COLS);
+  const [showCols, setShowCols] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [saved, setSaved] = useState<Saved[]>([]);
+  const [, addWatch] = useStoredList('alpha-watchlist');
   const body = useRef<HTMLTableSectionElement>(null);
   const flipState = useRef<ReturnType<typeof Flip.getState> | null>(null);
 
+  useEffect(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('alpha-screen-cols') ?? 'null'); if (Array.isArray(c) && c.length) setCols(c.filter((x: string) => F.has(x)));
+      const sv = JSON.parse(localStorage.getItem('alpha-screen-saved') ?? '[]'); if (Array.isArray(sv)) setSaved(sv);
+    } catch { /* storage blocked or corrupt: defaults */ }
+  }, []);
+  const persist = (key: string, v: unknown) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* not persisted */ } };
+
   const sectors = useMemo(() => Array.from(new Set((s.data?.rows ?? []).map((r) => r.sector).filter(Boolean))).sort(), [s.data]);
+  const sigSyms = useMemo(() => new Set((eng.data?.signals ?? []).map((x) => x.sym)), [eng.data]);
+
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const p = PRESETS.find((x) => x.id === preset);
-    const list = (s.data?.rows ?? []).filter((r) => (!term || r.sym.toLowerCase().includes(term) || r.name.toLowerCase().includes(term)) && (!sector || r.sector === sector) && (!p || p.test(r)));
+    const active = conds.filter((c) => c.v !== '' && Number.isFinite(Number(c.v)));
+    const list = (s.data?.rows ?? []).filter((r) => {
+      if (term && !(r.sym.toLowerCase().includes(term) || r.name.toLowerCase().includes(term))) return false;
+      if (sector && r.sector !== sector) return false;
+      if (tier && r.tier !== tier) return false;
+      for (const c of active) {
+        const v = F.get(c.f)?.get(r);
+        if (!has(v)) return false;                       // a missing figure never passes a filter
+        if (c.op === '>=' ? v < Number(c.v) : v > Number(c.v)) return false;
+      }
+      if (flags.includes('vetted') && r.vet?.s !== 'cleared') return false;
+      if (flags.includes('ahimsa') && !r.ahimsa) return false;
+      if (flags.includes('uptrend') && !(has(r.price) && has(r.sma50) && has(r.sma200) && r.price > r.sma50 && r.price > r.sma200 && has(r.rs3m) && r.rs3m > 0)) return false;
+      if (flags.includes('magic') && !(has(r.mf?.rank) && (r.mf?.rank as number) <= 100)) return false;
+      if (flags.includes('signal') && !sigSyms.has(r.sym)) return false;
+      return true;
+    });
+    const g = F.get(sort)?.get;
     return list.sort((a, b) => {
-      const av = (a[sort] as number | null | undefined) ?? null;
-      const bv = (b[sort] as number | null | undefined) ?? null;
-      if (av === null && bv === null) return 0;
-      if (av === null) return 1; // missing always last, whichever way we sort
-      if (bv === null) return -1;
+      const av = g ? g(a) : null, bv = g ? g(b) : null;
+      if (!has(av) && !has(bv)) return 0;
+      if (!has(av)) return 1;                           // missing values sort last whichever way
+      if (!has(bv)) return -1;
       return (av - bv) * dir;
     });
-  }, [s.data, q, sector, preset, sort, dir]);
+  }, [s.data, q, sector, tier, conds, flags, sort, dir, sigSyms]);
 
-  // FLIP: capture row positions before a re-sort commits, animate from them after.
-  const captureFlip = () => {
-    if (body.current && canAnimate()) flipState.current = Flip.getState(body.current.querySelectorAll('tr'));
-  };
+  const capture = () => { if (body.current && canAnimate()) flipState.current = Flip.getState(body.current.querySelectorAll('tr')); };
   useEffect(() => {
-    if (flipState.current && body.current) {
-      Flip.from(flipState.current, { duration: 0.6, ease: 'power3.inOut', absolute: false, nested: false, onComplete: () => undefined });
-      flipState.current = null;
-    }
-  }, [sort, dir, preset]);
+    if (flipState.current && body.current) { Flip.from(flipState.current, { duration: 0.55, ease: 'power3.inOut' }); flipState.current = null; }
+  }, [sort, dir, conds, flags, sector, tier]);
 
-  const setSortKey = (k: Key) => {
-    captureFlip();
-    if (k === sort) setDir((d) => (d === 1 ? -1 : 1));
-    else { setSort(k); setDir(k === 'pe' || k === 'de' ? 1 : -1); }
-    setLimit(PAGE);
+  const applyLens = (l: Lens) => {
+    capture();
+    if (lens === l.id) { setLens(''); setConds([]); setFlags([]); return; }
+    setLens(l.id); setConds(l.conds.map((c) => ({ ...c }))); setFlags(l.flags ?? []); setLimit(PAGE);
   };
-  const active = PRESETS.find((p) => p.id === preset);
+  const setSortKey = (k: string) => { capture(); if (k === sort) setDir((d) => (d === 1 ? -1 : 1)); else { setSort(k); setDir(k === 'pe' || k === 'de' || k === 'pb' ? 1 : -1); } setLimit(PAGE); };
+  const updateCond = (i: number, patch: Partial<Cond>) => { capture(); setLens(''); setConds((c) => c.map((x, k) => (k === i ? { ...x, ...patch } : x))); };
+  const toggleCol = (id: string) => { const next = cols.includes(id) ? cols.filter((x) => x !== id) : [...cols, id]; const ordered = FIELDS.map((f) => f.id).filter((x) => next.includes(x)); setCols(ordered); persist('alpha-screen-cols', ordered); };
+  const toggle = (sym: string) => setPicked((p) => (p.includes(sym) ? p.filter((x) => x !== sym) : p.length < 4 ? [...p, sym] : p));
+  const save = () => { const name = window.prompt('Name this screen'); if (!name) return; const next = [...saved.filter((x) => x.name !== name), { name, conds, flags, sector, tier }]; setSaved(next); persist('alpha-screen-saved', next); };
+  const load = (v: Saved) => { capture(); setConds(v.conds); setFlags(v.flags); setSector(v.sector); setTier(v.tier); setLens(''); };
+  const csv = () => {
+    const head = ['symbol', 'name', 'sector', ...cols.map((c) => F.get(c)?.label ?? c)];
+    const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; })].join(','))];
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'alpha-screen.csv'; a.click();
+  };
+  const activeLens = LENSES.find((l) => l.id === lens);
 
   return (
     <>
-      <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Every name," em="filterable." lede="Price, trend, quality and value for each company, scored from filings and exchange data. Pick a lens or search, then sort by anything." />
+      <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Ask the market" em="any question." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap">
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />
-          <select className="field" aria-label="Sector" value={sector} onChange={(e) => { setSector(e.target.value); setLimit(PAGE); }}>
-            <option value="">All sectors</option>
-            {sectors.map((x) => <option key={x}>{x}</option>)}
-          </select>
+          <select className="field" aria-label="Sector" value={sector} onChange={(e) => { capture(); setSector(e.target.value); setLimit(PAGE); }}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
+          <select className="field" aria-label="Size" value={tier} onChange={(e) => { capture(); setTier(e.target.value); setLimit(PAGE); }}><option value="">Any size</option><option value="large">Large cap</option><option value="mid">Mid cap</option><option value="small">Small cap</option></select>
         </div>
         <div className="filters" role="group" aria-label="Lenses">
-          {PRESETS.map((p) => <button key={p.id} className="chip" aria-pressed={preset === p.id} title={p.hint} onClick={() => { captureFlip(); setPreset(preset === p.id ? '' : p.id); setLimit(PAGE); }}>{p.label}</button>)}
+          {LENSES.map((l) => <button key={l.id} className="chip" aria-pressed={lens === l.id} title={l.hint} onClick={() => applyLens(l)}>{l.label}</button>)}
         </div>
-        <p className="muted" style={{ margin: '0 0 12px', minHeight: 24, fontSize: 14 }} aria-live="polite">
-          {active ? <><b style={{ color: 'var(--text)' }}>{active.label}:</b> {active.hint}. </> : null}
-          <span className="num">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}.
-        </p>
+
+        <div className="panel tight" style={{ marginBottom: 12 }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Your filters {flags.length > 0 && <span className="dim">· plus {flags.join(', ')}</span>}</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {conds.map((c, i) => (
+              <div className="filters" style={{ margin: 0 }} key={i}>
+                <select className="field" style={{ height: 36 }} aria-label="Measure" value={c.f} onChange={(e) => updateCond(i, { f: e.target.value })}>{FIELDS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select>
+                <select className="field" style={{ height: 36 }} aria-label="Comparison" value={c.op} onChange={(e) => updateCond(i, { op: e.target.value as Cond['op'] })}><option value=">=">is at least</option><option value="<=">is at most</option></select>
+                <input className="field" style={{ minWidth: 90, width: 110, height: 36 }} inputMode="decimal" aria-label="Value" value={c.v} onChange={(e) => updateCond(i, { v: e.target.value.replace(/[^\d.-]/g, '') })} />
+                <button className="chip" onClick={() => { capture(); setLens(''); setConds((x) => x.filter((_, k) => k !== i)); }} aria-label="Remove filter">✕</button>
+              </div>
+            ))}
+            <div className="filters" style={{ margin: 0 }}>
+              <button className="chip" onClick={() => { setLens(''); setConds((c) => [...c, { f: 'roce', op: '>=', v: '15' }]); }}>+ Add a filter</button>
+              {(conds.length > 0 || flags.length > 0) && <button className="chip" onClick={() => { capture(); setConds([]); setFlags([]); setLens(''); }}>Clear all</button>}
+              <button className="chip" onClick={save}>Save this screen</button>
+              {saved.map((v) => <span key={v.name} style={{ display: 'inline-flex' }}><button className="chip" onClick={() => load(v)}>{v.name}</button><button className="chip" aria-label={`Delete ${v.name}`} onClick={() => { const n = saved.filter((x) => x.name !== v.name); setSaved(n); persist('alpha-screen-saved', n); }}>✕</button></span>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="filters" style={{ justifyContent: 'space-between' }}>
+          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span className="num">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}.</span>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {picked.length >= 2 && <Link className="chip on" href={`/compare/?s=${picked.join(',')}`}>Compare {picked.length}</Link>}
+            {picked.length > 0 && <button className="chip" onClick={() => { picked.forEach(addWatch); setPicked([]); }}>Watch {picked.length}</button>}
+            <button className="chip" aria-expanded={showCols} onClick={() => setShowCols((v) => !v)}>Columns</button>
+            <button className="chip" onClick={csv}>Download CSV</button>
+          </span>
+        </div>
+        {showCols && <div className="panel tight" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>{FIELDS.map((f) => <button key={f.id} className="chip" aria-pressed={cols.includes(f.id)} onClick={() => toggleCol(f.id)}>{f.label}</button>)}</div>}
+
         <Async loading={s.loading} error={s.error} rows={6}>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th scope="col" style={{ minWidth: 230 }}>Company</th>
-                  {COLS.map((c) => (
-                    <th key={c.k} scope="col" aria-sort={sort === c.k ? (dir === 1 ? 'ascending' : 'descending') : undefined} onClick={() => setSortKey(c.k)}>
-                      {c.label}{sort === c.k ? (dir === 1 ? ' ↑' : ' ↓') : ''}
-                    </th>
-                  ))}
+                  <th scope="col" style={{ minWidth: 250 }}>Company</th>
+                  {cols.map((c) => { const f = F.get(c)!; return <th key={c} scope="col" aria-sort={sort === c ? (dir === 1 ? 'ascending' : 'descending') : undefined} onClick={() => setSortKey(c)}>{f.label.replace(' %', '').replace(' (₹ cr)', '')}{sort === c ? (dir === 1 ? ' ↑' : ' ↓') : ''}</th>; })}
                 </tr>
               </thead>
               <tbody ref={body}>
                 {rows.slice(0, limit).map((r) => (
                   <tr key={r.sym} data-flip-id={r.sym} tabIndex={0} onClick={() => router.push(`/company/?s=${encodeURIComponent(r.sym)}`)} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/company/?s=${encodeURIComponent(r.sym)}`); }}>
-                    <td><div className="co"><b>{r.sym}</b><span>{r.name}</span></div></td>
-                    {COLS.map((c) => <td key={c.k}>{c.cell(r)}</td>)}
+                    <td>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <input type="checkbox" aria-label={`Select ${r.sym} to compare`} checked={picked.includes(r.sym)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.sym)} />
+                        <div className="co"><b>{r.sym} {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
+                      </div>
+                    </td>
+                    {cols.map((c) => { const f = F.get(c)!; const v = f.get(r); return <td key={c}>{!has(v) ? <span className="dim">{dash}</span> : f.kind === 'chg' ? <Chg v={v} dp={1} /> : c === 'comp' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ width: 44, height: 5, borderRadius: 9, background: 'var(--panel-3)', overflow: 'hidden', display: 'inline-block' }}><i style={{ display: 'block', height: '100%', width: `${Math.max(0, Math.min(100, v))}%`, background: 'var(--accent)' }} /></span><b className="num">{f.fmt(v)}</b></span> : <span className="num">{f.fmt(v)}</span>}</td>; })}
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={COLS.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Nothing matches. Loosen a filter.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={cols.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Nothing matches. Loosen a filter.</td></tr>}
               </tbody>
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe. Composite weights quality 35%, growth 25%, technical 25% and valuation 15%. Missing values sort last and show a dash. A lens describes the data; it is not a recommendation.</p>
+          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)' }}>Method →</Link></p>
         </Async>
       </section>
     </>

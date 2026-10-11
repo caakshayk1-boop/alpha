@@ -6,3 +6,5 @@
 !.env.example
 *.tsbuildinfo
 next-env.d.ts
+engines/__pycache__/
+engines/*.pkl

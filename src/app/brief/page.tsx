@@ -1,0 +1,154 @@
+'use client';
+
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import { Async, Chg, CountUp, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
+import { useEngines, useFeed, useQuotes } from '@/lib/data';
+import { dateLabel, heat, num, pct } from '@/lib/format';
+import type { Row } from '@/lib/types';
+
+const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 864e5);
+
+export default function Brief() {
+  const bar = useFeed('barometer');
+  const pulse = useFeed('pulse');
+  const screen = useFeed('screen');
+  const ipo = useFeed('ipo');
+  const news = useFeed('news');
+  const season = useFeed('seasonality');
+  const quotes = useQuotes();
+  const eng = useEngines();
+  const [copied, setCopied] = useState(false);
+
+  const t = bar.data?.today;
+  const br = pulse.data?.breadth;
+  const rows = useMemo(() => screen.data?.rows ?? [], [screen.data]);
+
+  const moved = useMemo(() => rows.filter((r) => has((r as Row & { rank_move?: number }).rank_move)).sort((a, b) => Math.abs((b as Row & { rank_move: number }).rank_move) - Math.abs((a as Row & { rank_move: number }).rank_move)).slice(0, 6), [rows]);
+
+  const results = useMemo(() => rows
+    .filter((r) => r.next_earnings && daysUntil(r.next_earnings) >= 0 && daysUntil(r.next_earnings) <= 14)
+    .sort((a, b) => (a.next_earnings as string).localeCompare(b.next_earnings as string) || (b.mcap_cr ?? 0) - (a.mcap_cr ?? 0)), [rows]);
+  const byDay = useMemo(() => {
+    const m = new Map<string, Row[]>();
+    for (const r of results) m.set(r.next_earnings as string, [...(m.get(r.next_earnings as string) ?? []), r]);
+    return [...m.entries()].slice(0, 7);
+  }, [results]);
+
+  const month = new Date().getMonth();
+  const seasonal = useMemo(() => {
+    const st = season.data?.stocks ?? {};
+    const idx = new Map(rows.map((r) => [r.sym, r]));
+    return Object.entries(st)
+      .map(([sym, d]) => ({ sym, rec: d.m[month], r: idx.get(sym) }))
+      .filter((x) => x.rec && x.rec[0] >= 75 && x.rec[2] >= 8 && x.r?.vet?.s === 'cleared')
+      .sort((a, b) => b.rec[0] - a.rec[0] || b.rec[1] - a.rec[1]).slice(0, 8);
+  }, [season.data, rows, month]);
+
+  const secs = [...((pulse.data?.sectors_day?.length ? pulse.data.sectors_day : pulse.data?.sectors) ?? [])].sort((a, b) => b.median - a.median);
+  const indexQuotes = (quotes.data?.quotes ?? []).filter((q) => ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'gold', 'crude', 'usdinr'].includes(q.id) && q.price !== null);
+
+  const headline = useMemo(() => {
+    if (!t || !br) return '';
+    const tilt = br.up > br.down ? 'More stocks rose than fell' : 'More stocks fell than rose';
+    return `${tilt} (${br.up} up, ${br.down} down), the barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}), and ${Math.round(t.above_200dma_pct)}% of stocks sit above their 200-day average.`;
+  }, [t, br]);
+
+  const copy = async () => {
+    const lines = [`alpha brief — ${dateLabel(new Date().toISOString().slice(0, 10))}`, headline, '',
+      ...indexQuotes.map((q) => `${q.name}: ${q.prefix}${num(q.price, q.dp)} (${pct(q.pct, 2)})`), '',
+      secs.length ? `Sectors: ↑ ${secs.slice(0, 3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')} · ↓ ${secs.slice(-3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')}` : '',
+      'https://alpha.askakshay.com/brief/'];
+    try { await navigator.clipboard.writeText(lines.filter(Boolean).join('\n')); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { /* clipboard blocked: nothing to do */ }
+  };
+
+  return (
+    <>
+      <PageHead eyebrow={dateLabel(new Date().toISOString().slice(0, 10))} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
+      <section className="wrap">
+        <Async loading={bar.loading && pulse.loading} error={null} rows={2}>
+          <Rv className="panel" style={{ marginBottom: 14 }}>
+            <div className="eyebrow">The read</div>
+            <p className="disp" style={{ fontSize: 'clamp(24px, 3vw, 38px)', lineHeight: 1.15, margin: '12px 0 14px', maxWidth: '40ch' }}>{headline || 'Reading the market…'}</p>
+            <button className="chip" onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button>
+          </Rv>
+
+          <div className="qgrid" style={{ marginBottom: 12 }}>
+            {indexQuotes.map((q) => (
+              <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /></Rv>
+            ))}
+          </div>
+
+          <div className="grid g-7-5">
+            <Rv className="panel">
+              <div className="eyebrow">Sectors · median stock</div>
+              <div className="sector-strip" style={{ marginTop: 14 }}>{secs.map((s) => <div className="sector-cell" key={s.name} style={{ ['--c' as string]: heat(s.median) }}><span className="n">{s.name}</span><span className="v">{pct(s.median)}</span></div>)}</div>
+            </Rv>
+            <Rv className="panel">
+              <div className="eyebrow">Market stage</div>
+              <div className="disp" style={{ fontSize: 40, margin: '10px 0 4px' }}>{t?.stage.t ?? '—'}</div>
+              <p className="muted" style={{ margin: 0 }}>Barometer <b className="num"><CountUp value={t?.score} format={(n) => String(Math.round(n))} /></b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
+              <Link href="/map/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>See sector rotation →</Link>
+            </Rv>
+          </div>
+
+          <SectionHead eyebrow="Overnight" title="What moved" />
+          <div className="grid g2">
+            <Rv className="panel"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+            <Rv className="panel"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+          </div>
+
+          <SectionHead eyebrow="Screen" title="What changed since the last build" />
+          <Async loading={screen.loading} error={screen.error} rows={1}>
+            <Rv className="panel">
+              {moved.length === 0 ? <p className="muted">No ranking moves recorded in the latest build.</p> : (
+                <div className="list">{moved.map((r) => { const mv = (r as Row & { rank_move: number }).rank_move; return <Link key={r.sym} href={`/company/?s=${r.sym}`} className="li"><div><div className="t">{r.sym} · {r.name}</div><div className="s">Composite {num(r.comp, 0)} · {r.sector}</div></div><span className={`num ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? `▲ up ${mv}` : `▼ down ${Math.abs(mv)}`} places</span></Link>; })}</div>
+              )}
+              <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Places moved in the composite ranking against the previous build. A description of the data, not a call.</p>
+            </Rv>
+          </Async>
+
+          <SectionHead eyebrow="Next 14 days" title="Calendar" />
+          <div className="grid g2">
+            <Rv className="panel">
+              <div className="eyebrow">Results due</div>
+              {byDay.length === 0 && <p className="muted">No results dates on file for the next two weeks.</p>}
+              {byDay.map(([day, list]) => (
+                <div key={day} style={{ marginTop: 12 }}>
+                  <div className="num" style={{ fontSize: 12.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : `in ${daysUntil(day)}d`} · {list.length} companies</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 12 }}>+{list.length - 10} more</span>}</div>
+                </div>
+              ))}
+              <Link href="/calendar/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>Full results calendar →</Link>
+            </Rv>
+            <Rv className="panel">
+              <div className="eyebrow">IPOs</div>
+              {(ipo.data?.upcoming ?? []).concat(ipo.data?.open ?? [] as never[]).slice(0, 3).map((u) => <div key={u.symbol} style={{ marginTop: 12 }}><div className="t" style={{ fontWeight: 600 }}>{u.company}</div><div className="dim num" style={{ fontSize: 12.5 }}>{u.price_band} · opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}</div></div>)}
+              {ipo.data && ipo.data.upcoming.length + ipo.data.open.length === 0 && <p className="muted">Nothing open or scheduled.</p>}
+              <Link href="/ipo/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>Live book and track record →</Link>
+            </Rv>
+          </div>
+
+          <SectionHead eyebrow={new Date().toLocaleString('en-IN', { month: 'long' })} title="The seasonal record" />
+          <Rv className="panel">
+            <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={`/company/?s=${sym}`} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
+            {seasonal.length === 0 && <p className="muted">No vetted name clears the 75% bar this month.</p>}
+            <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
+          </Rv>
+
+          <SectionHead eyebrow="Engines" title="What the rules selected" href="/engines/" cta="All engines" />
+          <Async loading={eng.loading} error={null} rows={1}>
+            <div className="grid g4">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
+              <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 12.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[e.status] ?? ''}`}>{e.status}</span></div></Rv>
+            ))}</div>
+          </Async>
+
+          <SectionHead eyebrow="Wire" title="Headlines" href="/news/" cta="All stories" />
+          <Rv className="panel"><div className="list">{(news.data ?? []).slice(0, 6).map((s) => <a key={s.link} href={s.link} target="_blank" rel="noopener noreferrer" className="li"><div><div className="t">{s.title}</div><div className="s">{s.source}</div></div><span aria-hidden className="dim">↗</span></a>)}</div></Rv>
+          <p className="dim" style={{ fontSize: 12.5, marginTop: 16 }}>Information only, not investment advice. This brief is also sent to Telegram at 08:00 and 20:00 MYT.</p>
+        </Async>
+      </section>
+    </>
+  );
+}

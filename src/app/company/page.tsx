@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
-import { useFeed } from '@/lib/data';
+import Ladder from '@/components/Ladder';
+import { useEngines, useFeed } from '@/lib/data';
+import { useStoredList } from '@/lib/store';
 import { crore, dash, heat, num, pct } from '@/lib/format';
 import type { Row, Year } from '@/lib/types';
 
@@ -154,6 +156,9 @@ function Company() {
   const sp = useSearchParams();
   const sym = (sp.get('s') ?? '').toUpperCase();
   const s = useFeed('screen');
+  const eng = useEngines();
+  const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
+  const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => s.data?.rows.find((x) => x.sym.toUpperCase() === sym), [s.data, sym]);
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 24 }} /><Skel h={220} /></div>;
@@ -173,7 +178,11 @@ function Company() {
             {r.risk && r.risk.level !== 'LOW' && <span className="tag warn">Risk {r.risk.level.toLowerCase()}</span>}
           </div>
         </div>
-        <div className="co-price"><div className="px"><CountUp value={r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>today</span></div></div>
+        <div className="co-price">
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
+            <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
+            <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
+          </div><div className="px"><CountUp value={r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>today</span></div></div>
       </header>
 
       <section className="wrap section">
@@ -196,6 +205,21 @@ function Company() {
           </Rv>
         </div>
       </section>
+
+      {mySignals.length > 0 && (
+        <section className="wrap section">
+          <SectionHead eyebrow="Engines" title="Selected by an engine" href="/engines/" cta="How they are tested" />
+          <div className="grid g2">{mySignals.map((x) => (
+            <Rv key={`${x.engine}${x.date}`} className="panel spot">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
+                <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
+                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Buy zone</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.entry_zone[0], 2)}–{num(x.entry_zone[1], 2)}</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
+                  <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: <span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[x.engine_status] ?? ''}`}>{x.engine_status}</span></p></div>
+                <Ladder sl={x.sl} entry={x.ref_price} targets={x.targets} last={x.last_close} />
+              </div>
+            </Rv>))}</div>
+        </section>
+      )}
 
       <section className="wrap section">
         <SectionHead title="Key numbers" />

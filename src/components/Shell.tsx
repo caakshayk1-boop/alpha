@@ -9,13 +9,16 @@ import type { Row } from '@/lib/types';
 
 export const PAGES = [
   { href: '/', label: 'Today', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
+  { href: '/brief/', label: 'Brief', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5' },
   { href: '/markets/', label: 'Markets', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
   { href: '/screen/', label: 'Screen', icon: 'M4 6h16M7 12h10M10 18h4' },
   { href: '/map/', label: 'Map', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
+  { href: '/engines/', label: 'Engines', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
   { href: '/magic/', label: 'Magic', icon: 'M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z' },
   { href: '/reads/', label: 'Reads', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
   { href: '/ipo/', label: 'IPO', icon: 'M12 3v18M5 10l7-7 7 7' },
   { href: '/funds/', label: 'Funds', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
+  { href: '/tools/', label: 'Tools', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
   { href: '/news/', label: 'News', icon: 'M4 5h13v14H6a2 2 0 01-2-2zM17 9h3v8a2 2 0 01-2 2M8 9h5M8 13h5' },
 ] as const;
 
@@ -139,7 +142,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     setTheme(next);
   };
 
-  const tabs = PAGES.slice(0, 4);
+  const tabs = ['/', '/brief/', '/screen/', '/engines/'].map((h) => PAGES.find((p) => p.href === h)!);
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
@@ -191,9 +194,9 @@ export default function Shell({ children }: { children: ReactNode }) {
               <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark">α</span><span>alpha</span></div>
               <p style={{ margin: 0, maxWidth: '34ch' }}>An independent research desk for Indian equities. Numbers first, working shown.</p>
             </div>
-            <div><h4>Markets</h4><Link href="/markets/">Live board</Link><Link href="/map/">Market map</Link><Link href="/ipo/">IPOs</Link></div>
-            <div><h4>Research</h4><Link href="/screen/">Screen</Link><Link href="/magic/">Magic Formula</Link><Link href="/reads/">Weekly reads</Link></div>
-            <div><h4>Desk</h4><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
+            <div><h4>Markets</h4><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>
+            <div><h4>Research</h4><Link href="/screen/">Screen</Link><Link href="/engines/">Engines</Link><Link href="/magic/">Magic Formula</Link><Link href="/reads/">Weekly reads</Link></div>
+            <div><h4>Desk</h4><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
           </div>
           <p className="footer-legal">
             For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results.

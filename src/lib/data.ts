@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Barometer, DataHealth, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
+import type { Barometer, DataHealth, EnginesFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
 
 /** feed name -> payload type */
 export interface FeedMap {
@@ -39,6 +39,8 @@ function load<T>(url: string): Promise<T> {
 }
 
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
+export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);
+export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
 
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean }
@@ -61,4 +63,6 @@ function useLoaded<T>(get: () => Promise<T>, key: string): Loaded<T> {
 }
 
 export const useFeed = <K extends FeedName>(name: K): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name);
+export const useEngines = (): Loaded<EnginesFeed> => useLoaded(enginesFeed, 'engines');
+export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');

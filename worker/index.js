@@ -160,6 +160,64 @@ async function quotes(ctx) {
   return res;
 }
 
+// ── live IPO subscription book ───────────────────────────────────────────
+// The mirrored ipo.json is up to a week old and an IPO book moves fastest on its last day. NSE
+// publishes the live book; one row per active issue, cached 15 minutes at the edge.
+const NSE_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+  Accept: '*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  Referer: 'https://www.nseindia.com/',
+};
+const nz = (v) => {
+  const n = Number(String(v ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+const shortCat = (c) => {
+  const s = String(c || '').trim();
+  if (/qualified institutional/i.test(s)) return 'QIB';
+  if (/^non\s*institutional\s*investors$/i.test(s)) return 'NII';
+  if (/retail/i.test(s)) return 'Retail';
+  if (/^employee/i.test(s)) return 'Employees';
+  if (/^total$/i.test(s)) return 'Total';
+  return null;
+};
+
+async function ipoLive() {
+  try {
+    const r = await fetch('https://www.nseindia.com/api/ipo-current-issue', { headers: NSE_HEADERS, signal: AbortSignal.timeout(9000) });
+    if (!r.ok) throw new Error(`NSE HTTP ${r.status}`);
+    const rows = await r.json();
+    if (!Array.isArray(rows)) throw new Error('NSE sent no list');
+    const issues = rows.map((x) => ({
+      symbol: String(x.symbol || '').trim().toUpperCase(),
+      company: x.companyName || null,
+      status: x.status || null,
+      price_band: x.issuePrice || null,
+      opens: x.issueStartDate || null,
+      closes: x.issueEndDate || null,
+      total_x: nz(x.noOfTime),
+    })).filter((x) => x.symbol);
+    // per-category split: one detail call per issue
+    await Promise.all(issues.map(async (e) => {
+      try {
+        const d = await fetch(`https://www.nseindia.com/api/ipo-detail?symbol=${encodeURIComponent(e.symbol)}&series=EQ`, { headers: NSE_HEADERS, signal: AbortSignal.timeout(7000) });
+        if (!d.ok) return;
+        const j = await d.json();
+        e.categories = (j.bidDetails || [])
+          .map((b) => ({ cat: shortCat(b.category), x: nz(b.noOfTime) }))
+          .filter((b) => b.cat && b.cat !== 'Total' && b.x !== null);
+      } catch { /* an issue without a split keeps its headline multiple */ }
+    }));
+    return withHeaders(new Response(JSON.stringify({ ok: true, at: new Date().toISOString(), source: 'NSE', issues }), {
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300, s-maxage=900' },
+    }));
+  } catch (e) {
+    // 200 with ok:false: the page keeps working on the mirrored figures and says which it shows.
+    return json({ ok: false, error: String(e.message || e), issues: [] }, 200, 'public, max-age=60');
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -172,6 +230,9 @@ export default {
 
     if (url.pathname.startsWith('/data/') && url.pathname.endsWith('.json')) {
       return feed(url.pathname.slice('/data/'.length, -'.json'.length));
+    }
+    if (url.pathname === '/api/ipo-live' || url.pathname === '/api/ipo-live/') {
+      return ipoLive();
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);

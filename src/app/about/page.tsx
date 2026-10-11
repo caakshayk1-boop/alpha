@@ -10,6 +10,7 @@ const SOURCES: [string, string, string][] = [
   ['IPOs', 'NSE and public issue data', 'Daily'],
   ['Funds', 'AMFI official NAV via mfapi.in', 'Daily; direct plans only'],
   ['News', 'Publisher RSS feeds', 'Several times a day'],
+  ['Engines', 'Daily prices from Yahoo Finance for the screened stocks, tested with realistic exits and costs', 'Signals refresh after each close'],
   ['Weekly reads', 'Screen figures, written up by a language model and labelled as such', 'Saturdays'],
 ];
 
@@ -25,9 +26,9 @@ export default function About() {
         <Rv className="panel">
           <div className="eyebrow">What this is not</div>
           <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-            <li>It does not issue buy or sell signals, price targets or stop-losses.</li>
-            <li>It does not run a paper-trading book or a track record of calls.</li>
-            <li>It is not investment advice. Scores describe the data, not the future.</li>
+            <li>The engines name stocks, stops and targets from fixed rules. They are research tools, not advice, and not a recommendation to buy or sell anything.</li>
+            <li>Every engine is shown with how it tested against randomly chosen stocks, including when the answer is that it did not beat them.</li>
+            <li>There is no live track record and no paper-trading book. The record is a test on past prices, which can overstate what happens next.</li>
             <li>Where a figure cannot be computed it shows a dash, never an estimate.</li>
           </ul>
         </Rv>

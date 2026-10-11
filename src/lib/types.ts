@@ -148,11 +148,18 @@ export interface IpoAwaiting {
   symbol: string; company: string; price_band: string; close_date: string; listing_date: string | null; lot_size: number;
   gmp_text?: string; revenue_cr?: number; pat_cr?: number; pe_post_issue?: number; peer_pe?: number; roce_pct?: number;
 }
+export interface IpoUpcoming extends IpoOpen {
+  sector?: string | null; gmp_text?: string | null; revenue_cr?: number | null; pat_cr?: number | null;
+  pe_post_issue?: number | null; peer_pe?: number | null; roce_pct?: number | null;
+  score?: { points: number; of: number; pct: number; parts: Record<string, string>; not_measured: string[]; shown_not_scored: string[] };
+}
+export interface IpoLiveIssue { symbol: string; company: string | null; status: string | null; price_band: string | null; opens: string | null; closes: string | null; total_x: number | null; categories?: { cat: string; x: number }[] }
+export interface IpoLive { ok: boolean; at?: string; issues: IpoLiveIssue[]; error?: string }
 export interface Ipo {
   generated_at: string;
   counts: Record<string, number>;
   open: IpoOpen[];
-  upcoming: IpoOpen[];
+  upcoming: IpoUpcoming[];
   awaiting_listing: IpoAwaiting[];
   recent_listed: IpoListed[];
 }
@@ -190,3 +197,33 @@ export interface Quote {
 export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; total: number; quotes: Quote[] }
 
 export interface DataHealth { generated_at: string; datasets: { dataset: string; source: string; last_successful_update: string; freshness_age: string; status: string }[] }
+
+export interface EngineBlock {
+  n?: number; win_rate?: number; expectancy_r?: number; profit_factor?: number | null; t_stat?: number | null; max_dd_r?: number;
+  avg_bars?: number; hit_t1?: number; hit_t2?: number; hit_t3?: number; stopped?: number;
+  excess?: { n?: number; mean_excess_pct?: number; t_clustered?: number | null; months?: number };
+  clustered?: { t_clustered?: number; positive_months_pct?: number; months?: number };
+}
+export interface EngineStats {
+  id: number; key: string; name: string; tagline: string; style: string; descended: string | null;
+  status: 'EDGE SHOWN' | 'LEANING POSITIVE' | 'NO EDGE SHOWN' | 'WORSE THAN RANDOM' | 'NOT ENOUGH TRADES'; status_why: string;
+  variants_tried: number; signal_count: number;
+  all: EngineBlock; splits: { train: EngineBlock; validation: EngineBlock; holdout: EngineBlock };
+  baseline: { train: EngineBlock; validation: EngineBlock; holdout: EngineBlock }; baseline_all: EngineBlock;
+  pooled_test: { mean_excess_pct?: number; t_clustered?: number | null; months?: number };
+  by_setup: Record<string, EngineBlock>;
+  timeline: { median_days_to_t1: number | null; median_days_to_t3: number | null; median_days_held: number | null; p90_days_held: number | null };
+  equity_curve: [string, number][]; baseline_curve: [string, number][];
+  exits: Record<string, number>;
+  rules: { entry: string[]; stop: string; targets: string };
+}
+export interface EngineSignal {
+  engine: string; engine_name: string; sym: string; name: string; sector: string | null; date: string; setup: string; horizon: string;
+  ref_price: number; last_close: number; entry_zone: [number, number]; sl: number; risk_pct: number; targets: number[]; r_multiples: number[];
+  max_hold_days: number; reasons: string[]; typical_days_to_t1: number | null; engine_status: string;
+}
+export interface EnginesFeed {
+  generated: string; data_through: string;
+  backtest: { generated: string; data_through: string; universe: number; cost_round_trip_pct: number; splits: Record<string, string> };
+  exit_plan: string[]; engines: Record<string, EngineStats>; signals: EngineSignal[];
+}

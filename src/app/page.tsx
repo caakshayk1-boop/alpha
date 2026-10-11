@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
-import { useFeed, useQuotes } from '@/lib/data';
+import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import type { Barometer, Quote } from '@/lib/types';
@@ -78,11 +78,43 @@ function Hero() {
           )}
         </p>
         <div className="hero-cta">
-          <Link className="btn" href="/screen/">Open the screen <span aria-hidden>→</span></Link>
-          <Link className="btn ghost" href="/map/">See the market map</Link>
+          <Link className="btn" href="/brief/">Read today&apos;s brief <span aria-hidden>→</span></Link>
+          <Link className="btn ghost" href="/engines/">See the engines</Link>
+          <Link className="btn ghost" href="/map/">Heat lab</Link>
         </div>
       </div>
       <Orb b={t ?? null} />
+    </section>
+  );
+}
+
+function Teasers() {
+  const eng = useEngines();
+  const bar = useFeed('barometer');
+  const pulse = useFeed('pulse');
+  const t = bar.data?.today;
+  const br = pulse.data?.breadth;
+  const tone = ({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>);
+  return (
+    <section className="wrap section">
+      <div className="grid g-7-5">
+        <Rv className="panel spot">
+          <div className="eyebrow">The brief</div>
+          <p className="disp" style={{ fontSize: 'clamp(24px, 2.6vw, 34px)', lineHeight: 1.15, margin: '12px 0 14px' }}>
+            {t && br ? <>{br.up > br.down ? 'More stocks rose than fell' : 'More stocks fell than rose'}: {br.up} up, {br.down} down. The barometer reads {Math.round(t.score)}, {t.band.t.toLowerCase()}; the market stage is “{t.stage.t.toLowerCase()}”.</> : 'Reading the market…'}
+          </p>
+          <Link className="btn" href="/brief/">Five-minute brief <span aria-hidden>→</span></Link>
+        </Rv>
+        <Rv className="panel spot">
+          <div className="eyebrow">Engines · tested against luck</div>
+          <div className="list" style={{ marginTop: 8 }}>
+            {Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
+              <Link key={e.key} href="/engines/" className="li"><div><div className="t">{e.id}. {e.name}</div><div className="s">{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</div></div><span className={`tag ${tone[e.status] ?? ''}`}>{e.status}</span></Link>
+            ))}
+            {!eng.data && Array.from({ length: 4 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
+          </div>
+        </Rv>
+      </div>
     </section>
   );
 }
@@ -285,6 +317,7 @@ export default function Home() {
     <>
       <Hero />
       <Ticker />
+      <Teasers />
       <Board />
       <section className="wrap section">
         <div className="grid g-7-5">
