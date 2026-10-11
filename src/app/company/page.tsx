@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import Ladder from '@/components/Ladder';
+import StockChart from '@/components/StockChart';
+import { DecisionDesk, ExternalLinks, Lookalikes } from '@/components/CompanyTools';
 import { useEngines, useFeed, usePx } from '@/lib/data';
 import { useStoredList } from '@/lib/store';
 import { ago, crore, dash, dateLabel, heat, num, pct } from '@/lib/format';
@@ -197,6 +199,15 @@ function Company() {
       </section>
 
       <section className="wrap section">
+        <SectionHead eyebrow="Chart" title="Price, trend and levels" />
+        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name }))} /></Rv>
+      </section>
+
+      <section className="wrap section"><SectionHead eyebrow="Go deeper" title="Open it on the sites analysts use" /><ExternalLinks sym={r.sym} isin={r.isin} /></section>
+
+      <section className="wrap section"><SectionHead eyebrow="AI desk" title="What the numbers add up to" /><DecisionDesk r={r} sigs={mySignals} /></section>
+
+      <section className="wrap section">
         <div className="grid g-7-5">
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
@@ -239,6 +250,7 @@ function Company() {
       <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} /></section>
       <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} /></section>
       <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} /></section>
+      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><Lookalikes r={r} rows={s.data?.rows ?? []} /></section>
     </>
   );
 }

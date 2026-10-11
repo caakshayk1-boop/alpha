@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import AskScreen from '@/components/AskScreen';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useEngines, useFeed } from '@/lib/data';
 import { dash, num } from '@/lib/format';
@@ -155,6 +156,7 @@ export default function Screen() {
     <>
       <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Ask the market" em="any question." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap">
+        <AskScreen rows={s.data?.rows ?? []} />
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />
           <select className="field" aria-label="Sector" value={sector} onChange={(e) => { capture(); setSector(e.target.value); setLimit(PAGE); }}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>

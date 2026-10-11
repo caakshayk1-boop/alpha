@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MarketStance } from '@/components/AiTools';
 import { Async, Chg, PageHead, Rv, Spark } from '@/components/ui';
 import { useQuotes } from '@/lib/data';
 import { ago, num } from '@/lib/format';
@@ -15,6 +16,7 @@ export default function Markets() {
   return (
     <>
       <PageHead eyebrow="Markets" title="The board," em="live." lede="India, its sectors, the world, commodities, currencies and rates, each with a month of closes behind it. Prices are cached for up to five minutes." />
+      <section className="wrap section" style={{ paddingBottom: 0 }}><MarketStance /></section>
       <section className="wrap">
         <div className="filters" role="group" aria-label="Instrument group">
           {GROUPS.map((x) => <button key={x} className="chip" aria-pressed={g === x} onClick={() => setG(x)}>{x}</button>)}

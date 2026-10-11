@@ -72,6 +72,14 @@ try {
   check('engines.json', false, e.message);
 }
 try {
+  const j = JSON.parse((await get('/api/chart?s=TCS&r=3mo')).text);
+  check('chart history answers with candles and the Nifty', j.ok && j.c.length > 40 && j.h.every((h, i) => h >= j.l[i]) && j.nifty.filter((x) => x).length > 30, `${j.c?.length} bars`);
+  const bad = await get('/api/chart?s=NOTASYMBOLXYZ&r=1y');
+  check('an unknown symbol is a 404, not a flat chart', bad.r.status === 404, String(bad.r.status));
+} catch (e) {
+  check('chart', false, e.message);
+}
+try {
   const j = JSON.parse((await get('/api/ipo-live')).text);
   check('IPO live endpoint answers (ok or an honest ok:false)', typeof j.ok === 'boolean' && Array.isArray(j.issues));
 } catch (e) {

@@ -246,6 +246,44 @@ async function px(url, ctx) {
   return res;
 }
 
+// ── daily candles for one stock, and the Nifty beside it ───────────────
+// /api/chart?s=TCS&r=1y  →  { sym, range, interval, t:[epoch s], o,h,l,c,v:[…], nifty:[close aligned to t] }
+// Ranges 3mo 6mo 1y 2y 5y (weekly bars for 5y). Cached 15 minutes. A bar missing any of open/high/low/close is dropped,
+// never filled; an unknown symbol answers 404, never an empty chart that looks like a flat line.
+const RANGES = { '3mo': ['3mo', '1d'], '6mo': ['6mo', '1d'], '1y': ['1y', '1d'], '2y': ['2y', '1d'], '5y': ['5y', '1wk'] };
+async function yahooBars(symbol, range, interval) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) return null;
+  const res = (await r.json())?.chart?.result?.[0];
+  const q = res?.indicators?.quote?.[0];
+  if (!res?.timestamp || !q) return null;
+  return { t: res.timestamp, o: q.open, h: q.high, l: q.low, c: q.close, v: q.volume };
+}
+async function chart(url, ctx) {
+  const sym = (url.searchParams.get('s') || '').toUpperCase().trim();
+  const [range, interval] = RANGES[url.searchParams.get('r') || '1y'] || RANGES['1y'];
+  if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  const cache = caches.default;
+  const key = new Request(`https://alpha.askakshay.com/__chart_v1/${sym}/${range}`);
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  const [stock, nifty] = await Promise.all([yahooBars(`${sym}.NS`, range, interval).catch(() => null), yahooBars('^NSEI', range, interval).catch(() => null)]);
+  if (!stock) return json({ ok: false, error: 'no price history for this symbol' }, 404);
+  const nmap = new Map();
+  if (nifty) nifty.t.forEach((t, i) => { if (nifty.c[i] > 0) nmap.set(Math.floor(t / 86400), nifty.c[i]); });
+  const out = { ok: true, sym, range, interval, t: [], o: [], h: [], l: [], c: [], v: [], nifty: [] };
+  const r2 = (x) => Math.round(x * 100) / 100;
+  stock.t.forEach((t, i) => {
+    if (!(stock.o[i] > 0 && stock.h[i] > 0 && stock.l[i] > 0 && stock.c[i] > 0)) return;
+    out.t.push(t); out.o.push(r2(stock.o[i])); out.h.push(r2(stock.h[i])); out.l.push(r2(stock.l[i])); out.c.push(r2(stock.c[i])); out.v.push(Math.round(stock.v[i] || 0));
+    out.nifty.push(nmap.has(Math.floor(t / 86400)) ? r2(nmap.get(Math.floor(t / 86400))) : null);
+  });
+  if (out.t.length < 10) return json({ ok: false, error: 'too little history' }, 404);
+  const res = json(out, 200, 'public, max-age=300, s-maxage=900');
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -261,6 +299,9 @@ export default {
     }
     if (url.pathname === '/api/px' || url.pathname === '/api/px/') {
       return px(url, ctx);
+    }
+    if (url.pathname === '/api/chart' || url.pathname === '/api/chart/') {
+      return chart(url, ctx);
     }
     if (url.pathname === '/api/ipo-live' || url.pathname === '/api/ipo-live/') {
       return ipoLive();

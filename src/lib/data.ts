@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
+import type { ChartFeed, Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
 
 /** feed name -> payload type */
 export interface FeedMap {
@@ -40,6 +40,7 @@ function load<T>(url: string): Promise<T> {
 
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
 export const pxFeed = (syms: string[]): Promise<PxFeed> => load<PxFeed>(`${BASE}/api/px?s=${encodeURIComponent(syms.join(','))}`);
+export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => load<ChartFeed>(`${BASE}/api/chart?s=${encodeURIComponent(sym)}&r=${range}`);
 export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);

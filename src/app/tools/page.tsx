@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Confluence, PortfolioXray, ReverseDcf } from '@/components/AiTools';
 import { PageHead, Rv, SectionHead } from '@/components/ui';
 import { num } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
@@ -152,6 +153,12 @@ export default function Tools() {
           {[['/compare/', 'Compare companies', 'Up to four, side by side, with the better value marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
             <Link key={href} href={href}><Rv className="panel spot" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
           ))}
+        </div>
+        <SectionHead eyebrow="AI desk" title="Decision tools" />
+        <div className="grid" style={{ marginBottom: 28 }}>
+          <PortfolioXray />
+          <ReverseDcf />
+          <Rv className="panel"><div className="eyebrow">Confluence board</div><p className="muted" style={{ margin: '8px 0 14px' }}>Where independent lenses agree.</p><Confluence limit={10} /></Rv>
         </div>
         <SectionHead title="Calculators" />
         <div className="grid">
