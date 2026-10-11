@@ -7,7 +7,7 @@ import type { ChartFeed } from '@/lib/types';
 import { num } from '@/lib/format';
 import { Segmented, Switch } from '@/components/ui';
 
-export interface Plan { sl: number; entry: number; targets: number[]; label: string }
+export interface Plan { sl: number; entry: number; targets: number[]; label: string; odds?: { t: (number | undefined)[]; stopped?: number } }
 const RANGES = ['3mo', '6mo', '1y', '2y', '5y'] as const;
 const RLABEL: Record<string, string> = { '3mo': '3M', '6mo': '6M', '1y': '1Y', '2y': '2Y', '5y': '5Y' };
 type Mode = 'candles' | 'line' | 'rel';
@@ -129,7 +129,8 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
     }
 
     if (on.plan && !rel) for (const p of plans) {
-      const marks: [number, string, string][] = [[p.sl, down, 'Stop'], [p.entry, text, 'Entry'], ...p.targets.map((t, i): [number, string, string] => [t, up, `T${i + 1}`])];
+      const o = (v?: number) => (typeof v === 'number' ? ` · ${v.toFixed(0)}% reached` : '');
+      const marks: [number, string, string][] = [[p.sl, down, `Stop${o(p.odds?.stopped).replace('reached', 'stopped')}`], [p.entry, text, 'Entry'], ...p.targets.map((t, i): [number, string, string] => [t, up, `T${i + 1}${o(p.odds?.t[i])}`])];
       for (const [v, col, lab] of marks) {
         g.setLineDash([5, 4]); g.strokeStyle = col; g.globalAlpha = 0.85; g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(W - padR, Y(v)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
         g.fillStyle = col; g.textAlign = 'left'; g.fillText(`${lab} ${p.label}`, padL + 6, Y(v) - 7);

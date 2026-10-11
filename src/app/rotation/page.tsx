@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
 import { useFeed, useRotation } from '@/lib/data';
 import { dash, num } from '@/lib/format';
@@ -69,6 +69,15 @@ export default function RotationPage() {
   }, [S, t, scr.data]);
 
   const shown = useMemo(() => rows.filter((x) => scope === 'all' || (scope === 'index' ? x.s.real : scope === 'ind' ? !x.s.real && x.s.name.includes('(alpha group index)') && !SECTORS.has(x.s.name.replace(' (alpha group index)', '')) : !x.s.real && SECTORS.has(x.s.name.replace(' (alpha group index)', '')))), [rows, scope]);
+  const hist = useMemo(() => {
+    const out: Record<Quad, number>[] = [];
+    for (let i = 0; i < n; i++) {
+      const c: Record<Quad, number> = { Leading: 0, Improving: 0, Weakening: 0, Lagging: 0 };
+      for (const x of S) { const r = x.ratio[i], m2 = x.mom[i]; if (r !== null && m2 !== null && r !== undefined && m2 !== undefined) c[quad(r, m2)]++; }
+      out.push(c);
+    }
+    return out;
+  }, [S, n]);
   const order: Quad[] = ['Improving', 'Leading', 'Weakening', 'Lagging'];
   const table = useMemo(() => [...rows].sort((a, b) => order.indexOf(a.q) - order.indexOf(b.q) || b.r - a.r), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
   const cur = rows.find((x) => x.s.name === sel) ?? null;
@@ -175,14 +184,20 @@ export default function RotationPage() {
                         );
                       })}
                     </svg>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-                      <button className="chip" onClick={() => { if (t >= n - 1) setEnd(minT); setPlay((p) => !p); }}>{play ? '❚❚ Pause' : '▶ Play the last weeks'}</button>
-                      <label className="muted" style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 220 }}>Time machine
-                        <input type="range" min={minT} max={n - 1} step={1} value={t} onChange={(e) => { setPlay(false); setEnd(Number(e.target.value)); }} style={{ flex: 1 }} aria-label="Week" />
-                        <span className="num" style={{ minWidth: 92 }}>{date}</span>
-                      </label>
-                      <Switch label="All tails" checked={allTails} onChange={setAllTails} />
-                      {end !== null && end < n - 1 && <button className="chip" onClick={() => { setEnd(null); setPlay(false); }}>Back to now</button>}
+                    <div className="tm">
+                      <div className="tm-top">
+                        <div className="tm-btns" role="group" aria-label="Time machine">
+                          <button className="chip" aria-label="Back one week" onClick={() => { setPlay(false); setEnd(Math.max(minT, t - 1)); }}>◀</button>
+                          <button className="chip" onClick={() => { if (t >= n - 1) setEnd(minT); setPlay((p) => !p); }}>{play ? '❚❚ Pause' : '▶ Play'}</button>
+                          <button className="chip" aria-label="Forward one week" onClick={() => { setPlay(false); setEnd(Math.min(n - 1, t + 1)); }}>▶</button>
+                        </div>
+                        <div className="tm-jumps" role="group" aria-label="Jump to">
+                          {([['1 month ago', 4], ['3 months ago', 13], ['6 months ago', 26], ['Now', 0]] as const).map(([l, w]) => <button key={l} className="chip" aria-pressed={t === n - 1 - w} onClick={() => { setPlay(false); setEnd(w === 0 ? null : Math.max(minT, n - 1 - w)); }}>{l}</button>)}
+                        </div>
+                        <span className="num tm-date">{date}{t < n - 1 ? ` · ${n - 1 - t}w ago` : ' · now'}</span>
+                        <Switch label="All tails" checked={allTails} onChange={setAllTails} />
+                      </div>
+                      <PhaseTimeline hist={hist} cur={cur} minT={minT} n={n} t={t} dates={rot.data.dates} onScrub={(i) => { setPlay(false); setEnd(i >= n - 1 ? null : i); }} />
                     </div>
                   </Rv>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
@@ -257,6 +272,39 @@ function RsLine({ s, t, dates }: { s: Series; t: number; dates: string[] }) {
         <path d={d} fill="none" stroke={up ? 'var(--up)' : 'var(--down)'} strokeWidth="2" />
       </svg>
       <div className="dim num" style={{ fontSize: 11.5, display: 'flex', justifyContent: 'space-between' }}><span>{dates[0]}</span><span>strength vs Nifty, start = 100</span><span>{dates[t]}</span></div>
+    </div>
+  );
+}
+
+/** A scrubbable strip of every week: how many groups sat in each phase (stacked), with the selected group's own phase beneath. Drag it, click it, or use the arrow keys. */
+function PhaseTimeline({ hist, cur, minT, n, t, dates, onScrub }: { hist: Record<Quad, number>[]; cur: { s: Series } | null; minT: number; n: number; t: number; dates: string[]; onScrub: (i: number) => void }) {
+  const ref = useRef<SVGSVGElement>(null);
+  const drag = useRef(false);
+  const W = 720, H = 74, L = 4, R = 4, barH = 46;
+  const span = n - minT;
+  const X = (i: number) => L + ((i - minT) / (span - 1)) * (W - L - R);
+  const bw = (W - L - R) / span;
+  const at = (clientX: number) => { const r = ref.current!.getBoundingClientRect(); return Math.max(minT, Math.min(n - 1, Math.round(minT + ((clientX - r.left) / r.width * W - L) / (W - L - R) * (span - 1)))); };
+  const months: number[] = [];
+  for (let i = minT; i < n; i++) if (i === minT || dates[i].slice(5, 7) !== dates[i - 1].slice(5, 7)) months.push(i);
+  return (
+    <div>
+      <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="tm-strip" tabIndex={0} role="slider" aria-label="Week" aria-valuemin={minT} aria-valuemax={n - 1} aria-valuenow={t} aria-valuetext={dates[t]}
+        onPointerDown={(e) => { drag.current = true; (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); onScrub(at(e.clientX)); }}
+        onPointerMove={(e) => { if (drag.current) onScrub(at(e.clientX)); }}
+        onPointerUp={() => { drag.current = false; }}
+        onKeyDown={(e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); onScrub(Math.max(minT, t - 1)); } else if (e.key === 'ArrowRight') { e.preventDefault(); onScrub(Math.min(n - 1, t + 1)); } else if (e.key === 'Home') onScrub(minT); else if (e.key === 'End') onScrub(n - 1); }}>
+        {hist.slice(minT).map((c, k) => {
+          const i = minT + k, tot = (c.Leading + c.Improving + c.Weakening + c.Lagging) || 1;
+          let y = 0;
+          return <g key={i} opacity={i === t ? 1 : 0.72}>{(['Leading', 'Improving', 'Weakening', 'Lagging'] as Quad[]).map((q) => { const h = (c[q] / tot) * barH; const r = <rect key={q} x={X(i) - bw / 2 + 0.5} y={2 + y} width={Math.max(1, bw - 1)} height={h} fill={QC[q]} />; y += h; return r; })}</g>;
+        })}
+        {cur && Array.from({ length: span }, (_, k) => { const i = minT + k, r = cur.s.ratio[i], m = cur.s.mom[i]; return r !== null && m !== null && r !== undefined && m !== undefined ? <rect key={i} x={X(i) - bw / 2 + 0.5} y={52} width={Math.max(1, bw - 1)} height={9} rx="2" fill={QC[quad(r, m)]} /> : null; })}
+        <line x1={X(t)} x2={X(t)} y1={0} y2={64} stroke="var(--text)" strokeWidth="1.5" />
+        <circle cx={X(t)} cy={64} r="5" fill="var(--text)" stroke="var(--bg)" strokeWidth="2" />
+        {months.map((i) => <text key={i} x={X(i)} y={H - 2} fontSize="9.5" fill="var(--dim)" fontFamily="var(--f-mono)">{new Date(dates[i]).toLocaleDateString('en-GB', { month: 'short' })}</text>)}
+      </svg>
+      <p className="dim" style={{ fontSize: 11.5, margin: '4px 0 0' }}>Each column is a week: how many groups were Leading (green), Improving, Weakening and Lagging. {cur ? `The strip under it is ${short(cur.s.name)}'s own phase.` : 'Select a group to see its own phase underneath.'} Drag across it, or focus it and use ← →.</p>
     </div>
   );
 }

@@ -408,3 +408,17 @@ html.anim .pulse { animation: rrgPulse 2.4s ease-out infinite; }
 html.anim .radar { opacity: 1; animation: sweepRot 14s linear infinite; }
 @keyframes sweepRot { to { transform: rotate(360deg); } }
 input[type='range'] { accent-color: var(--accent); }
+
+/* back to top: a ring that fills as you scroll, a button that appears once you are well down the page */
+.totop { position: fixed; right: 22px; bottom: 24px; z-index: 55; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--text); background: conic-gradient(var(--accent) calc(var(--p, 0) * 360deg), var(--line-2) 0); opacity: 0; transform: translateY(16px) scale(0.85); pointer-events: none; transition: opacity 0.35s var(--ease), transform 0.5s var(--spring), filter 0.2s; box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7); }
+.totop::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--glass), var(--panel); backdrop-filter: blur(12px); }
+.totop svg { position: relative; transition: transform 0.3s var(--spring); }
+.totop.show { opacity: 1; transform: none; pointer-events: auto; }
+.totop:hover svg { transform: translateY(-3px); } .totop:active { transform: scale(0.92); }
+@media (max-width: 760px) { .totop { bottom: calc(86px + env(safe-area-inset-bottom)); right: 14px; width: 44px; height: 44px; } }
+
+/* rotation time machine */
+.tm { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.tm-top { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 10px; }
+.tm-btns, .tm-jumps { display: flex; gap: 6px; flex-wrap: wrap; } .tm-date { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.tm-strip { width: 100%; height: auto; display: block; cursor: ew-resize; touch-action: none; border-radius: 10px; background: var(--panel-2); } .tm-strip:focus-visible { outline: 2px solid var(--accent); }

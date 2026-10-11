@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
-import Ladder from '@/components/Ladder';
+import PlanOdds from '@/components/PlanOdds';
 import StockChart from '@/components/StockChart';
 import { DecisionDesk, ExternalLinks, Lookalikes, RiskCone } from '@/components/CompanyTools';
 import { useEngines, useFeed, usePx } from '@/lib/data';
@@ -200,7 +200,7 @@ function Company() {
 
       <section className="wrap section">
         <SectionHead eyebrow="Chart" title="Price, trend and levels" />
-        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
+        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
 
       <section className="wrap section"><SectionHead eyebrow="AI desk" title="What the numbers add up to" /><DecisionDesk r={r} sigs={mySignals} /></section>
@@ -227,7 +227,7 @@ function Company() {
                 <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
                   <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Buy zone</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.entry_zone[0], 2)}–{num(x.entry_zone[1], 2)}</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
                   <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: <span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[x.engine_status] ?? ''}`}>{x.engine_status}</span></p></div>
-                <Ladder sl={x.sl} entry={x.ref_price} targets={x.targets} last={x.last_close} />
+                <PlanOdds sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} last={x.last_close} />
               </div>
             </Rv>))}</div>
         </section>

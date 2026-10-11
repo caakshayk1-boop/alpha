@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Curve from '@/components/Curve';
-import Ladder from '@/components/Ladder';
+import PlanOdds from '@/components/PlanOdds';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num } from '@/lib/format';
@@ -43,7 +43,7 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
             {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
           </div>
         </div>
-        <Ladder sl={stop} entry={base} targets={s.targets} last={px ?? undefined} />
+        <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} last={px ?? undefined} />
       </div>
       {px !== null && active && (
         <p className="num" style={{ margin: '12px 0 0', fontSize: 13 }}>
@@ -53,7 +53,6 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
       <div className="kv" style={{ marginTop: 14 }}>
         <div><div className="k">{s.entry ? 'Entered' : 'Buy zone'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.entry_zone[0], 2)} – ${num(s.entry_zone[1], 2)}`}</div></div>
         <div><div className="k">{s.hit > 0 ? 'Stop (moved)' : 'Stop'}</div><div className="v down" style={{ fontSize: 15 }}>₹{num(stop, 2)}{s.hit === 0 ? ` · −${s.risk_pct}%` : ''}</div></div>
-        {s.targets.map((t, i) => <div key={i}><div className="k">T{i + 1} · {s.r_multiples[i]}R{s.hit > i ? ' ✓' : ''}</div><div className={`v ${s.hit > i ? 'up' : ''}`} style={{ fontSize: 15, color: s.hit > i ? undefined : 'var(--up)' }}>₹{num(t, 2)}</div></div>)}
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
         <div><div className="k">T1 typically</div><div className="v" style={{ fontSize: 15 }}>{s.typical_days_to_t1 ? `~${Math.round(s.typical_days_to_t1)} sessions` : dash}</div></div>
         <div><div className="k">Avg daily turnover</div><div className="v" style={{ fontSize: 15 }}>₹{num(s.turnover_cr, 1)} cr</div></div>
