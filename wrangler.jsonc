@@ -1,0 +1,15 @@
+{
+  "name": "alpha",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-05-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    // Only the data proxy and quotes need the Worker; everything else is a static file.
+    "run_worker_first": ["/data/*", "/api/*"],
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "alpha.askakshay.com", "custom_domain": true }],
+  "workers_dev": true,
+  "observability": { "enabled": true }
+}
