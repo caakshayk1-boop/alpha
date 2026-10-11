@@ -54,7 +54,7 @@ try {
   const { r, text } = await get('/engines.json');
   const j = JSON.parse(text);
   const eng = Object.keys(j.engines ?? {});
-  check('engines.json has four engines', r.status === 200 && eng.length === 4, eng.join(','));
+  check('engines.json has the five AI engines', r.status === 200 && eng.length === 5, eng.join(','));
   const ageDays = (Date.now() - new Date(j.data_through).getTime()) / 864e5;
   check('engines.json is built on recent prices', ageDays < 6, `data through ${j.data_through}`);
   const bad = (j.signals ?? []).filter((s) => !(s.sl < s.ref_price && s.ref_price < s.targets[0] && s.targets[0] <= s.targets[1] && s.targets[1] <= s.targets[2]));
@@ -62,7 +62,7 @@ try {
   const active = (j.signals ?? []).filter((s) => s.status === 'pending' || s.status === 'open');
   const dup = active.map((s) => s.sym).filter((x, i, a) => a.indexOf(x) !== i);
   check('no stock has two active trades', dup.length === 0, dup.join(','));
-  check('every engine states its record', eng.every((k) => j.engines[k].status && j.engines[k].splits));
+  check('every engine states its record', eng.every((k) => j.engines[k].status && j.engines[k].metrics && j.engines[k].trades?.holdout && j.engines[k].importance?.length));
   const syms = active.slice(0, 5).map((s) => s.sym);
   if (syms.length) {
     const px = JSON.parse((await get(`/api/px?s=${syms.join(',')}`)).text);

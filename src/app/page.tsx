@@ -111,7 +111,7 @@ function Teasers() {
             {Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
               <Link key={e.key} href="/engines/" className="li"><div><div className="t">{e.id}. {e.name}</div><div className="s">{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</div></div><span className={`tag ${tone[e.status] ?? ''}`}>{e.status}</span></Link>
             ))}
-            {!eng.data && Array.from({ length: 4 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
+            {!eng.data && Array.from({ length: 5 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
           </div>
         </Rv>
       </div>

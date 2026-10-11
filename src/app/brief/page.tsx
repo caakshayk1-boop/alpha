@@ -137,9 +137,9 @@ export default function Brief() {
             <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
           </Rv>
 
-          <SectionHead eyebrow="Engines" title="What the rules selected" href="/engines/" cta="All engines" />
+          <SectionHead eyebrow="Engines" title="What the models selected" href="/engines/" cta="All engines" />
           <Async loading={eng.loading} error={null} rows={1}>
-            <div className="grid g4">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
               <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 12.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[e.status] ?? ''}`}>{e.status}</span></div></Rv>
             ))}</div>
           </Async>

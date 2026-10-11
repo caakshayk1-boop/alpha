@@ -61,7 +61,7 @@ const LENSES: Lens[] = [
   { id: 'vetted', label: 'Vetted', hint: 'Passes the data-quality and balance-sheet checks', conds: [], flags: ['vetted'] },
   { id: 'ahimsa', label: 'Ahimsa 500', hint: "In NSE's Nifty500 Ahimsa index", conds: [], flags: ['ahimsa'] },
   { id: 'magic', label: 'Magic Formula top 100', hint: 'Ranked in the first hundred on Greenblatt’s rule', conds: [], flags: ['magic'] },
-  { id: 'signal', label: 'Has an engine signal', hint: 'Selected by one of the four engines at the latest close', conds: [], flags: ['signal'] },
+  { id: 'signal', label: 'Has an engine signal', hint: 'Selected by one of the five AI engines at the latest close', conds: [], flags: ['signal'] },
 ];
 
 const PAGE = 60;

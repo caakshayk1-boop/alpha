@@ -1,0 +1,643 @@
+{
+ "launched": "2026-10-09",
+ "seen": [
+  "breakout:CPPLUS:2026-10-09",
+  "breakout:IBULLSLTD:2026-10-09",
+  "breakout:KMEW:2026-10-09",
+  "breakout:LGEINDIA:2026-10-09",
+  "breakout:PTCIL:2026-10-09",
+  "breakout:PVRINOX:2026-10-09",
+  "breakout:SHREEJISPG:2026-10-09",
+  "breakout:SKYGOLD:2026-10-09",
+  "breakout:TATVA:2026-10-09",
+  "rebound:ICICIGI:2026-10-09",
+  "rebound:MPHASIS:2026-10-09",
+  "rebound:PRUDENT:2026-10-09"
+ ],
+ "signals": {
+  "breakout:CPPLUS:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -2.0,
+    "leads_nifty": true,
+    "members": 112,
+    "name": "Capital Goods (alpha group index)",
+    "stock_3m_pct": 14.3,
+    "stock_vs_benchmark_pct": 16.4,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    4185.2,
+    4227.05
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:CPPLUS:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "Aditya Infotech Ltd.",
+   "r_multiples": [
+    1.05,
+    2.67,
+    4.29
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 70, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 4185.2,
+   "risk_pct": 15.0,
+   "sector": "Industrials",
+   "setup": "Weekly high breakout",
+   "sl": 3557.42,
+   "status": "pending",
+   "stop_now": 3557.42,
+   "sym": "CPPLUS",
+   "targets": [
+    4843.41,
+    5861.31,
+    6879.22
+   ]
+  },
+  "breakout:IBULLSLTD:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -13.4,
+    "leads_nifty": false,
+    "members": 3,
+    "name": "Real Estate (alpha group index)",
+    "stock_3m_pct": 23.6,
+    "stock_vs_benchmark_pct": 37.0,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    36.62,
+    36.99
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:IBULLSLTD:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "Indiabulls Limited",
+   "r_multiples": [
+    0.73,
+    2.57,
+    4.4
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 73, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 36.62,
+   "risk_pct": 15.0,
+   "sector": "Real Estate",
+   "setup": "Weekly high breakout",
+   "sl": 31.13,
+   "status": "pending",
+   "stop_now": 31.13,
+   "sym": "IBULLSLTD",
+   "targets": [
+    40.62,
+    50.71,
+    60.8
+   ]
+  },
+  "breakout:KMEW:2026-10-09": {
+   "also": [],
+   "bench_ok": true,
+   "benchmark": {
+    "benchmark_3m_pct": 8.6,
+    "leads_nifty": true,
+    "members": 64,
+    "name": "Industrials (alpha group index)",
+    "stock_3m_pct": 33.0,
+    "stock_vs_benchmark_pct": 24.3,
+    "uptrend": true
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    3207.8,
+    3239.88
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:KMEW:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "Knowledge Marine & Engineering Works Limited",
+   "r_multiples": [
+    1.23,
+    2.79,
+    4.35
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 78, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 3207.8,
+   "risk_pct": 15.0,
+   "sector": "Industrials",
+   "setup": "Weekly high breakout",
+   "sl": 2726.63,
+   "status": "pending",
+   "stop_now": 2726.63,
+   "sym": "KMEW",
+   "targets": [
+    3801.35,
+    4550.8,
+    5300.25
+   ]
+  },
+  "breakout:LGEINDIA:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -5.7,
+    "leads_nifty": true,
+    "members": 41,
+    "name": "Consumer Durables (alpha group index)",
+    "stock_3m_pct": 12.3,
+    "stock_vs_benchmark_pct": 18.0,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    1757.0,
+    1774.57
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:LGEINDIA:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "LG Electronics India Ltd.",
+   "r_multiples": [
+    0.75,
+    1.62,
+    2.49
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 60, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 1757.0,
+   "risk_pct": 13.6,
+   "sector": "Technology",
+   "setup": "Weekly high breakout",
+   "sl": 1517.51,
+   "status": "pending",
+   "stop_now": 1517.51,
+   "sym": "LGEINDIA",
+   "targets": [
+    1937.25,
+    2144.8,
+    2352.35
+   ]
+  },
+  "breakout:PTCIL:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -2.2,
+    "leads_nifty": true,
+    "members": 112,
+    "name": "Capital Goods (alpha group index)",
+    "stock_3m_pct": 39.4,
+    "stock_vs_benchmark_pct": 41.6,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    24535.0,
+    24780.35
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:PTCIL:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "PTC Industries Ltd.",
+   "r_multiples": [
+    1.06,
+    2.31,
+    3.57
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 72, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 24535.0,
+   "risk_pct": 15.0,
+   "sector": "Industrials",
+   "setup": "Weekly high breakout",
+   "sl": 20854.75,
+   "status": "pending",
+   "stop_now": 20854.75,
+   "sym": "PTCIL",
+   "targets": [
+    28439.5,
+    33049.0,
+    37658.5
+   ]
+  },
+  "breakout:PVRINOX:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -0.6,
+    "leads_nifty": true,
+    "members": 8,
+    "name": "Media Entertainment & Publication (alpha group index)",
+    "stock_3m_pct": 32.4,
+    "stock_vs_benchmark_pct": 33.1,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    1327.2,
+    1340.47
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:PVRINOX:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "PVR INOX Ltd.",
+   "r_multiples": [
+    0.99,
+    1.99,
+    2.99
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 69, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 1327.2,
+   "risk_pct": 15.0,
+   "sector": "Communication Services",
+   "setup": "Weekly high breakout",
+   "sl": 1128.12,
+   "status": "pending",
+   "stop_now": 1128.12,
+   "sym": "PVRINOX",
+   "targets": [
+    1524.25,
+    1723.8,
+    1923.35
+   ]
+  },
+  "breakout:SHREEJISPG:2026-10-09": {
+   "also": [],
+   "bench_ok": true,
+   "benchmark": {
+    "benchmark_3m_pct": 8.4,
+    "leads_nifty": true,
+    "members": 64,
+    "name": "Industrials (alpha group index)",
+    "stock_3m_pct": 47.1,
+    "stock_vs_benchmark_pct": 38.7,
+    "uptrend": true
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    811.8,
+    819.92
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:SHREEJISPG:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "Shreeji Shipping Global Limited",
+   "r_multiples": [
+    1.52,
+    3.34,
+    5.16
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 85, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 811.8,
+   "risk_pct": 15.0,
+   "sector": "Industrials",
+   "setup": "Weekly high breakout",
+   "sl": 690.03,
+   "status": "pending",
+   "stop_now": 690.03,
+   "sym": "SHREEJISPG",
+   "targets": [
+    997.02,
+    1218.7,
+    1440.37
+   ]
+  },
+  "breakout:SKYGOLD:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -6.4,
+    "leads_nifty": true,
+    "members": 41,
+    "name": "Consumer Durables (alpha group index)",
+    "stock_3m_pct": 47.6,
+    "stock_vs_benchmark_pct": 54.0,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    921.0,
+    930.21
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:SKYGOLD:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "SKY GOLD AND DIAMONDS Ltd.",
+   "r_multiples": [
+    1.1,
+    2.87,
+    4.65
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 79, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 921.0,
+   "risk_pct": 15.0,
+   "sector": "Consumer Cyclical",
+   "setup": "Weekly high breakout",
+   "sl": 782.85,
+   "status": "pending",
+   "stop_now": 782.85,
+   "sym": "SKYGOLD",
+   "targets": [
+    1072.6,
+    1317.8,
+    1563.0
+   ]
+  },
+  "breakout:TATVA:2026-10-09": {
+   "also": [],
+   "bench_ok": true,
+   "benchmark": {
+    "benchmark_3m_pct": 16.4,
+    "leads_nifty": true,
+    "members": 31,
+    "name": "Basic Materials (alpha group index)",
+    "stock_3m_pct": 36.2,
+    "stock_vs_benchmark_pct": 19.9,
+    "uptrend": true
+   },
+   "date": "2026-10-09",
+   "engine": "breakout",
+   "engine_name": "Breakout",
+   "entry_zone": [
+    1804.8,
+    1822.85
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "long",
+   "id": "breakout:TATVA:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 120,
+   "name": "Tatva Chintan Pharma Chem Limited",
+   "r_multiples": [
+    1.29,
+    2.63,
+    3.97
+   ],
+   "reasons": [
+    "weekly close above the prior 26-week closing high",
+    "quiet 8-week range before it",
+    "weekly RSI 67, above the 30-week average",
+    "weekly volume above its 10-week average"
+   ],
+   "ref_price": 1804.8,
+   "risk_pct": 15.0,
+   "sector": "Basic Materials",
+   "setup": "Weekly high breakout",
+   "sl": 1534.08,
+   "status": "pending",
+   "stop_now": 1534.08,
+   "sym": "TATVA",
+   "targets": [
+    2154.95,
+    2516.69,
+    2878.44
+   ]
+  },
+  "rebound:ICICIGI:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -7.2,
+    "leads_nifty": false,
+    "members": 99,
+    "name": "Financial Services (alpha group index)",
+    "stock_3m_pct": -7.4,
+    "stock_vs_benchmark_pct": -0.3,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "rebound",
+   "engine_name": "Rebound",
+   "entry_zone": [
+    1690.2,
+    1707.1
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "rebound:ICICIGI:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 60,
+   "name": "ICICI Lombard General Insurance Company Ltd.",
+   "r_multiples": [
+    1.0,
+    1.27,
+    1.81
+   ],
+   "reasons": [
+    "18% below the 52-week high",
+    "weekly RSI 51 and rising",
+    "3-year return positive",
+    "closed above the 20-day average and the prior 5-day high"
+   ],
+   "ref_price": 1690.2,
+   "risk_pct": 12.0,
+   "sector": "Financial Services",
+   "setup": "Dip recovery",
+   "sl": 1487.38,
+   "status": "pending",
+   "stop_now": 1487.38,
+   "sym": "ICICIGI",
+   "targets": [
+    1893.02,
+    1947.02,
+    2057.09
+   ]
+  },
+  "rebound:MPHASIS:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": 2.0,
+    "leads_nifty": true,
+    "members": null,
+    "name": "Nifty IT",
+    "stock_3m_pct": 1.6,
+    "stock_vs_benchmark_pct": -0.4,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "rebound",
+   "engine_name": "Rebound",
+   "entry_zone": [
+    2360.0,
+    2383.6
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "rebound:MPHASIS:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 60,
+   "name": "MphasiS Ltd.",
+   "r_multiples": [
+    1.0,
+    1.5,
+    2.15
+   ],
+   "reasons": [
+    "19% below the 52-week high",
+    "weekly RSI 51 and rising",
+    "3-year return positive",
+    "closed above the 20-day average and the prior 5-day high"
+   ],
+   "ref_price": 2360.0,
+   "risk_pct": 10.6,
+   "sector": "Technology",
+   "setup": "Dip recovery",
+   "sl": 2110.04,
+   "status": "pending",
+   "stop_now": 2110.04,
+   "sym": "MPHASIS",
+   "targets": [
+    2609.96,
+    2736.13,
+    2897.32
+   ]
+  },
+  "rebound:PRUDENT:2026-10-09": {
+   "also": [],
+   "bench_ok": false,
+   "benchmark": {
+    "benchmark_3m_pct": -7.4,
+    "leads_nifty": false,
+    "members": 99,
+    "name": "Financial Services (alpha group index)",
+    "stock_3m_pct": 9.2,
+    "stock_vs_benchmark_pct": 16.6,
+    "uptrend": false
+   },
+   "date": "2026-10-09",
+   "engine": "rebound",
+   "engine_name": "Rebound",
+   "entry_zone": [
+    3254.7,
+    3287.25
+   ],
+   "events": [],
+   "first_seen": "2026-10-09",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "rebound:PRUDENT:2026-10-09",
+   "issued": "2026-10-09",
+   "max_hold": 60,
+   "name": "Prudent Corporate Advisory Services Ltd.",
+   "r_multiples": [
+    1.0,
+    1.57,
+    2.25
+   ],
+   "reasons": [
+    "21% below the 52-week high",
+    "weekly RSI 57 and rising",
+    "3-year return positive",
+    "closed above the 20-day average and the prior 5-day high"
+   ],
+   "ref_price": 3254.7,
+   "risk_pct": 11.6,
+   "sector": "Financial Services",
+   "setup": "Dip recovery",
+   "sl": 2875.82,
+   "status": "pending",
+   "stop_now": 2875.82,
+   "sym": "PRUDENT",
+   "targets": [
+    3633.58,
+    3850.26,
+    4105.5
+   ]
+  }
+ }
+}

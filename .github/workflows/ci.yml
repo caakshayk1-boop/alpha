@@ -29,10 +29,10 @@ jobs:
           cache: pip
           cache-dependency-path: engines/requirements.txt
       - run: pip install -r engines/requirements.txt
-      - name: Engine tests (simulator, no-lookahead toolkit, registry)
+      - name: Engine tests (no-lookahead features and labels, embargo, trade layer, registry)
         working-directory: engines
         run: |
-          python tests/test_engines.py
+          python tests/test_ai.py
           python tests/test_registry.py
       - name: Static export has every page
         run: |

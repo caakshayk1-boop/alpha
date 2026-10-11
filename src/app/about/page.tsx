@@ -26,8 +26,8 @@ export default function About() {
         <Rv className="panel">
           <div className="eyebrow">What this is not</div>
           <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-            <li>The engines name stocks, stops and targets from fixed rules. They are research tools, not advice, and not a recommendation to buy or sell anything.</li>
-            <li>Every engine is shown with how it tested against randomly chosen stocks, including when the answer is that it did not beat them.</li>
+            <li>The engines are machine-learning models that rank stocks and name a stop and three targets for the top picks. They are research tools, not advice, and not a recommendation to buy or sell anything.</li>
+            <li>Every engine is shown with how it tested on data it never saw, against randomly chosen stocks, including when the answer is that it did not beat them. The survivorship bias of testing on today&apos;s listed companies is stated on the engines page, not hidden.</li>
             <li>There is no live track record and no paper-trading book. The record is a test on past prices, which can overstate what happens next.</li>
             <li>Where a figure cannot be computed it shows a dash, never an estimate.</li>
           </ul>

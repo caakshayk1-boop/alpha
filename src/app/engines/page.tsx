@@ -7,7 +7,7 @@ import Ladder from '@/components/Ladder';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num } from '@/lib/format';
-import type { EngineBlock, EngineSignal, EngineStats, PxQuote } from '@/lib/types';
+import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
 
 const TONE: Record<string, string> = { 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down', 'NOT ENOUGH TRADES': '' };
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
@@ -39,8 +39,7 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
           <div className="dim" style={{ fontSize: 13 }}>{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
           <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
-            {s.bench_ok === true && <span className="tag up">Benchmark confirmed</span>}
-            {s.bench_ok === false && <span className="tag">Benchmark not confirmed</span>}
+            {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
             {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
           </div>
         </div>
@@ -57,6 +56,7 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
         {s.targets.map((t, i) => <div key={i}><div className="k">T{i + 1} · {s.r_multiples[i]}R{s.hit > i ? ' ✓' : ''}</div><div className={`v ${s.hit > i ? 'up' : ''}`} style={{ fontSize: 15, color: s.hit > i ? undefined : 'var(--up)' }}>₹{num(t, 2)}</div></div>)}
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
         <div><div className="k">T1 typically</div><div className="v" style={{ fontSize: 15 }}>{s.typical_days_to_t1 ? `~${Math.round(s.typical_days_to_t1)} sessions` : dash}</div></div>
+        <div><div className="k">Avg daily turnover</div><div className="v" style={{ fontSize: 15 }}>₹{num(s.turnover_cr, 1)} cr</div></div>
       </div>
       {b && (
         <div className="panel tight" style={{ marginTop: 14, background: 'var(--panel-2)' }}>
@@ -74,7 +74,14 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
         </ol>
       )}
       {s.void_reason && <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Void: {s.void_reason}.</p>}
-      <ul className="muted" style={{ paddingLeft: 18, margin: '14px 0 0', fontSize: 13.5 }}>{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+      {s.reasons.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>What the model is reading today</div>
+          <ul className="muted" style={{ paddingLeft: 18, margin: 0, fontSize: 13.5 }}>{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+          <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>These are the inputs the model leans on most, and where this stock stands on each. They describe what it sees, not why the price will move.</p>
+        </div>
+      )}
+      {s.turnover_cr < 5 && active && <p className="notice" style={{ marginTop: 12, fontSize: 12.5 }}>Thinly traded: about ₹{num(s.turnover_cr, 1)} crore changes hands a day. Fills at the next open may be far from the plan, and the 0.25% cost in the tests may be too kind.</p>}
       {active && (
         <details style={{ marginTop: 14 }}>
           <summary className="eyebrow" style={{ cursor: 'pointer' }}>How many shares fit your risk?</summary>
@@ -91,23 +98,61 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
   );
 }
 
-function StatsTable({ e }: { e: EngineStats }) {
-  const rows: [string, EngineBlock, EngineBlock][] = [
-    ['Train', e.splits.train, e.baseline.train], ['Validation', e.splits.validation, e.baseline.validation], ['Holdout', e.splits.holdout, e.baseline.holdout],
+const PERIOD_LABEL: Record<Period, string> = { development: 'Development', holdout: 'Holdout' };
+
+function Deciles({ v }: { v: number[] }) {
+  const max = Math.max(...v.map((x) => Math.abs(x)), 0.01);
+  return (
+    <div role="img" aria-label="Average excess return by model score decile" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 96 }}>
+      {v.map((x, i) => (
+        <div key={i} title={`Decile ${i + 1}: ${sgn(x, 2, '%')}`} style={{ flex: 1, height: `${Math.max(4, (Math.abs(x) / max) * 100)}%`, background: x >= 0 ? 'var(--up)' : 'var(--down)', opacity: 0.35 + 0.65 * (i / 9), borderRadius: 3 }} />
+      ))}
+    </div>
+  );
+}
+
+function RankTable({ e }: { e: EngineStats }) {
+  const rows: [string, RankBlock][] = [
+    ['Development', e.metrics.development], ['Holdout', e.metrics.holdout],
+    ['Most-traded 300, development', e.robustness.top300.development], ['Most-traded 300, holdout', e.robustness.top300.holdout],
   ];
   return (
     <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
-      <table className="tbl" style={{ minWidth: 760 }}>
-        <thead><tr><th>Period</th><th>Trades</th><th>Win rate</th><th>Avg R per trade</th><th>Random, same exits</th><th>Picks vs random stocks</th><th>Reached T1</th><th>Stopped out</th></tr></thead>
+      <table className="tbl" style={{ minWidth: 700 }}>
+        <thead><tr><th>Where</th><th>Sessions</th><th>Rank skill (IC)</th><th>t-stat</th><th>Days it was positive</th><th>Top picks beat the market by</th><th>Best vs worst decile</th></tr></thead>
         <tbody>
-          {rows.map(([label, s, b]) => (
+          {rows.map(([label, m]) => (
+            <tr key={label} style={{ cursor: 'default' }}>
+              <td><b>{label}</b></td>
+              <td className="num">{num(m.dates)}</td>
+              <td className={`num ${(m.ic_mean ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(m.ic_mean, 3)}</td>
+              <td className="num">{f(m.ic_t, 2)}</td>
+              <td className="num">{f(m.ic_pos_pct, 0, '%')}</td>
+              <td className={`num ${(m.top_excess_pct ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(m.top_excess_pct, 2, '%')}</td>
+              <td className="num">{m.decile_excess_pct.length ? `${sgn(m.decile_excess_pct[m.decile_excess_pct.length - 1] - m.decile_excess_pct[0], 2, '%')}` : dash}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StatsTable({ e }: { e: EngineStats }) {
+  const rows: [string, TradeBlock, TradeBlock, number | null | undefined][] = (['development', 'holdout'] as const).map((k) => [PERIOD_LABEL[k], e.trades[k], e.baseline[k], e.clustered[k]?.t_clustered]);
+  return (
+    <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+      <table className="tbl" style={{ minWidth: 760 }}>
+        <thead><tr><th>Period</th><th>Trades</th><th>Win rate</th><th>Avg R per trade</th><th>Random stocks, same exits</th><th>Month-clustered t</th><th>Reached T1</th><th>Stopped out</th></tr></thead>
+        <tbody>
+          {rows.map(([label, s, b, t]) => (
             <tr key={label} style={{ cursor: 'default' }}>
               <td><b>{label}</b></td>
               <td className="num">{num(s.n)}</td>
               <td className="num">{f(s.win_rate, 0, '%')}</td>
               <td className={`num ${(s.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(s.expectancy_r, 2, 'R')}</td>
               <td className="num dim">{sgn(b.expectancy_r, 2, 'R')}</td>
-              <td className={`num ${(s.excess?.mean_excess_pct ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(s.excess?.mean_excess_pct, 2, '%')}</td>
+              <td className="num">{f(t, 2)}</td>
               <td className="num">{f(s.hit_t1, 0, '%')}</td>
               <td className="num">{f(s.stopped, 0, '%')}</td>
             </tr>
@@ -120,8 +165,8 @@ function StatsTable({ e }: { e: EngineStats }) {
 
 export default function EnginesPage() {
   const q = useEngines();
-  const [key, setKey] = useState<string>('breakout');
-  const [tab, setTab] = useState<'signals' | 'rules' | 'record' | 'board' | 'exits'>('signals');
+  const [key, setKey] = useState<string>('relative');
+  const [tab, setTab] = useState<'signals' | 'how' | 'record' | 'board' | 'exits'>('signals');
   const feed = q.data;
   const e = feed?.engines[key];
   const sigs = useMemo(() => (feed?.signals ?? []).filter((s) => s.engine === key), [feed, key]);
@@ -129,28 +174,28 @@ export default function EnginesPage() {
   const px = usePx(activeSyms);
   return (
     <>
-      <PageHead eyebrow="Engines" title="Four engines," em="tested against luck." lede="Each engine is a fixed set of rules that names a stock, an entry zone, a stop, three targets and a time limit. Each was tested on years of daily prices against randomly chosen stocks over the same dates, and its result is shown beside every signal, whatever it says." />
+      <PageHead eyebrow="Engines" title="Five models," em="judged on data they never saw." lede="Each engine is a machine-learning model that reads 58 measures of every listed stock each evening and ranks the market. The top ranks become signals with a stop, three targets and a time limit priced from the stock's own volatility. Every model is shown against random picks and against a holdout it was never tuned on, whatever the answer is." />
       <section className="wrap">
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
-              <div className="grid g4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
                 {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
                   <button key={x.key} onClick={() => { setKey(x.key); setTab('signals'); }} aria-pressed={key === x.key} style={{ textAlign: 'left' }}>
                     <Rv className="panel spot" style={{ height: '100%', borderColor: key === x.key ? 'var(--accent)' : undefined }}>
-                      <div className="eyebrow">Engine {x.id}</div>
-                      <div className="disp" style={{ fontSize: 34, margin: '8px 0 4px' }}>{x.name}</div>
-                      <div className="muted" style={{ fontSize: 13.5, minHeight: 40 }}>{x.tagline}</div>
+                      <div className="eyebrow">Engine {x.id} · {x.style.split(',')[0]}</div>
+                      <div className="disp" style={{ fontSize: 32, margin: '8px 0 4px' }}>{x.name}</div>
+                      <div className="muted" style={{ fontSize: 13.5, minHeight: 60 }}>{x.tagline}</div>
                       <div style={{ margin: '12px 0' }}><span className={`tag ${TONE[x.status]}`}>{x.status}</span></div>
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr' }}>
                         <div><div className="k">Signals now</div><div className="v"><CountUp value={x.signal_count} format={(n) => String(Math.round(n))} /></div></div>
-                        <div><div className="k">Trades tested</div><div className="v">{num(x.all.n)}</div></div>
+                        <div><div className="k">Holdout avg</div><div className={`v ${(x.trades.holdout.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(x.trades.holdout.expectancy_r, 2, 'R')}</div></div>
                       </div>
                     </Rv>
                   </button>
                 ))}
               </div>
-              <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Data through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · signals refresh after each market close.</p>
+              <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Data through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
 
               {e && (
                 <>
@@ -162,79 +207,84 @@ export default function EnginesPage() {
                       <span className="muted" style={{ flex: 1, minWidth: 260 }}>{e.status_why}</span>
                     </div>
                     <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
-                      Rules were chosen on {feed.backtest.splits.train} and confirmed on {feed.backtest.splits.validation}; the holdout is {feed.backtest.splits.holdout}. {(feed.backtest.notes ?? []).join(' ')} {e.variants_tried} rule variants were tried on this engine in all, which is why a modest edge should be discounted.{e.descended ? ` Descended from ${e.descended}.` : ''}
+                      Development is {dateLabel(feed.backtest.periods.development[0])} to {dateLabel(feed.backtest.periods.development[1])}; the holdout is everything after. Each prediction in both periods comes from a model trained only on data that was already fully known at the time (walk-forward, refit every quarter, with a gap equal to the prediction horizon). The design and the pass marks were written down before the holdout was read, and it was read once.{!e.alertable && ' This engine does not clear the bar for phone alerts: its signals are shown here, never pushed.'}
                     </p>
                   </Rv>
                   <div className="filters" role="tablist" aria-label="Engine views">
-                    {([['signals', `Signals now (${sigs.length})`], ['rules', 'How it picks'], ['record', 'Track record'], ['board', 'Sector board'], ['exits', 'Exit plan']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className="chip" onClick={() => setTab(k)}>{l}</button>)}
+                    {([['signals', `Signals now (${sigs.length})`], ['how', 'How it picks'], ['record', 'Track record'], ['board', 'Sector board'], ['exits', 'Exit plan']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className="chip" onClick={() => setTab(k)}>{l}</button>)}
                   </div>
 
                   {tab === 'signals' && (sigs.length ? (
                     <>
                       {px.at && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
                       <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} />)}</div>
-                      {e.status === 'WORSE THAN RANDOM' && <p className="notice" style={{ marginTop: 14 }}>These are what the rules select. Over years of tests, stocks picked this way lagged randomly chosen ones. They are shown so the engine can be watched, not as picks.</p>}
+                      {(e.status === 'WORSE THAN RANDOM' || e.status === 'NO EDGE SHOWN') && <p className="notice" style={{ marginTop: 14 }}>This model has not shown an edge. Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
-                  ) : <p className="notice">No stock meets all of this engine&apos;s rules at the latest close, which is the usual state of a selective engine. Rules, record and exits are in the other tabs.</p>)}
+                  ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}
 
-                  {tab === 'rules' && (
+                  {tab === 'how' && (
                     <div className="grid g2">
-                      <Rv className="panel"><div className="eyebrow">It picks a stock when</div><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.7 }}>{e.rules.entry.map((r) => <li key={r}>{r}</li>)}</ul></Rv>
-                      <Rv className="panel"><div className="eyebrow">Stop</div><p className="muted">{e.rules.stop}</p><div className="eyebrow" style={{ marginTop: 18 }}>Targets</div><p className="muted">{e.rules.targets}</p>
+                      <Rv className="panel">
+                        <div className="eyebrow">What it does</div>
+                        <ol className="muted" style={{ paddingLeft: 18, lineHeight: 1.7 }}>{e.how.map((r) => <li key={r}>{r}</li>)}</ol>
+                        <div className="eyebrow" style={{ marginTop: 18 }}>Trade plan</div>
+                        <p className="muted">Stop at {e.plan.stop_atr} ATR below entry (capped for volatile names); targets at {e.plan.targets_r.map((t) => `${t}R`).join(', ')}; at most {e.plan.picks_per_day} new signals a session; the same stock can not be picked again for {e.plan.cooldown} sessions; time limit {e.plan.max_hold} sessions.</p>
                         <div className="eyebrow" style={{ marginTop: 18 }}>Timeline</div>
-                        <p className="muted">Median {days(e.timeline.median_days_held)} held; nine in ten trades are over within {days(e.timeline.p90_days_held)}. Where the first target is reached, it typically takes {days(e.timeline.median_days_to_t1)}.</p></Rv>
+                        <p className="muted">In tests, median {days(e.timeline.median_days_held)} held; nine in ten trades were over within {days(e.timeline.p90_days_held)}. Where the first target was reached it typically took {days(e.timeline.median_days_to_t1)}.</p>
+                      </Rv>
+                      <Rv className="panel">
+                        <div className="eyebrow">What the model leans on</div>
+                        <p className="dim" style={{ fontSize: 12.5, margin: '6px 0 12px' }}>Share of the model&apos;s skill lost when each input is scrambled, on the most recent labelled months. This is influence, not cause.</p>
+                        <div className="meter">{e.importance.map((i) => <div className="meter-row" key={i.feature}><span className="lab" style={{ minWidth: 190 }}>{i.label}</span><Bar pct={Math.min(100, i.share_pct * 3)} kind="up" /><span className="num">{i.share_pct.toFixed(0)}%</span></div>)}</div>
+                        <p className="dim" style={{ fontSize: 12.5, margin: '14px 0 0' }}>Trained on {num(e.train_rows)} stock-days. {e.kind === 'clf' ? 'A classifier: its score is a probability.' : 'A regressor: its score is a predicted rank inside the market.'}</p>
+                      </Rv>
                     </div>
                   )}
 
                   {tab === 'record' && (
                     <>
-                      {e.tiers && (() => {
-                        const c = e.tiers.confirmed, u = e.tiers.unconfirmed;
-                        const gap = (c.pooled_test.mean_excess_pct ?? 0) - (u.pooled_test.mean_excess_pct ?? 0);
-                        const verdictText = c.n < 30 || u.n < 30 ? 'There are too few trades in one of the groups to say.' : gap > 0.4 ? `Across the validation and holdout periods, signals their own benchmark confirmed beat the unconfirmed ones by ${gap.toFixed(1)}% a trade: for this engine, confirmation helped.` : gap < -0.4 ? `Across the validation and holdout periods, signals their own benchmark confirmed did worse than the unconfirmed ones by ${Math.abs(gap).toFixed(1)}% a trade: for this engine, confirmation did not help.` : 'Across the validation and holdout periods there is no meaningful difference between confirmed and unconfirmed signals: for this engine, confirmation neither helped nor hurt.';
-                        return (
-                          <Rv className="panel" style={{ marginBottom: 18 }}>
-                            <div className="eyebrow">Does the benchmark idea hold?</div>
-                            <p className="muted" style={{ margin: '10px 0 14px' }}>A signal is <b>confirmed</b> when its own benchmark (Nifty IT, Nifty Pharma, or an index of its industry) is in an uptrend and leading the Nifty, and the stock is leading that benchmark. Nothing is filtered out: both groups are measured, side by side. {verdictText}</p>
-                            <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
-                              <thead><tr><th>Group</th><th>Trades</th><th>Train: picks vs random</th><th>Validation</th><th>Holdout</th><th>Avg R, all periods</th></tr></thead>
-                              <tbody>{([['Confirmed by its benchmark', c], ['Not confirmed', u]] as const).map(([label, g]) => (
-                                <tr key={label} style={{ cursor: 'default' }}><td><b>{label}</b></td><td className="num">{num(g.n)}</td>
-                                  {(['train', 'validation', 'holdout'] as const).map((k) => <td key={k} className={`num ${(g.splits[k].excess?.mean_excess_pct ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(g.splits[k].excess?.mean_excess_pct, 2, '%')} <span className="dim">({num(g.splits[k].n)})</span></td>)}
-                                  <td className={`num ${(g.all.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(g.all.expectancy_r, 2, 'R')}</td></tr>))}</tbody>
-                            </table></div>
-                          </Rv>
-                        );
-                      })()}
-                      <div className="eyebrow" style={{ marginBottom: 10 }}>All signals together</div>
+                      <div className="eyebrow" style={{ marginBottom: 10 }}>1 · Can it rank stocks?</div>
+                      <RankTable e={e} />
+                      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 14px' }}>Rank skill (information coefficient) is the daily correlation between the model&apos;s ranking and what each stock then returned over {e.horizon_sessions} sessions beyond the market&apos;s median. 0 is a coin flip; a few hundredths, sustained, is what quantitative funds work with. The most-traded-300 rows repeat the test on only the largest, most liquid names.</p>
+                      <div className="grid g-7-5">
+                        <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 10 }}>Holdout: average excess return by score decile, lowest to highest</div><Deciles v={e.metrics.holdout.decile_excess_pct} /><p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>A working model rises from left to right. A flat or ragged shape is noise.</p></Rv>
+                        <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 10 }}>Development: the same chart</div><Deciles v={e.metrics.development.decile_excess_pct} /></Rv>
+                      </div>
+
+                      <div className="eyebrow" style={{ margin: '28px 0 10px' }}>2 · Do the trades make money after costs?</div>
                       <StatsTable e={e} />
-                      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 18px' }}>“Picks vs random stocks” is the average return of each pick, entry to exit, minus the average return of ten randomly chosen liquid stocks over exactly the same days. It removes the market&apos;s own drift, which flatters every long-only test in a rising market. Validation and holdout pooled: {sgn(e.pooled_test.mean_excess_pct, 2, '%')} per trade across {e.pooled_test.months ?? 0} months, clustered t-statistic {f(e.pooled_test.t_clustered, 2)}. Anything between −2 and +2 is indistinguishable from luck.</p>
+                      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 18px' }}>Every trade follows the exit plan, enters at the next open and pays {feed.backtest.cost_round_trip_pct}% round trip. “Random stocks, same exits” takes liquid stocks picked at random on the same days with the same stop-and-target geometry, so the comparison removes the market&apos;s drift. R is the amount risked: +1R means the trade made as much as the stop would have lost. The month-clustered t treats each month as one observation because trades overlap; between −2 and +2 is indistinguishable from luck.</p>
                       <div className="grid g-7-5">
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 8 }}>Cumulative R, by month</div><Curve a={e.equity_curve} b={e.baseline_curve} /></Rv>
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>How trades ended</div>
-                          <div className="meter">{(['stop', 'breakeven', 'target', 'time'] as const).map((k) => { const tot = Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab">{{ stop: 'Stopped out', breakeven: 'Stopped at entry', target: 'Hit all targets', time: 'Timed out' }[k]}</span><Bar pct={(e.exits[k] / tot) * 100} kind={k === 'stop' ? 'down' : k === 'target' ? 'up' : undefined} /><span className="num">{Math.round((e.exits[k] / tot) * 100)}%</span></div>; })}</div>
+                          <div className="meter">{(['stop', 'breakeven', 'target', 'time'] as const).map((k) => { const tot = Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab">{{ stop: 'Stopped out', breakeven: 'Stopped at entry', target: 'Hit all targets', time: 'Timed out' }[k]}</span><Bar pct={((e.exits[k] ?? 0) / tot) * 100} kind={k === 'stop' ? 'down' : k === 'target' ? 'up' : undefined} /><span className="num">{Math.round(((e.exits[k] ?? 0) / tot) * 100)}%</span></div>; })}</div>
                           <div className="eyebrow" style={{ margin: '22px 0 10px' }}>Reached</div>
-                          <div className="meter">{([['T1', e.all.hit_t1], ['T2', e.all.hit_t2], ['T3', e.all.hit_t3]] as const).map(([l, v]) => <div className="meter-row" key={l}><span className="lab">{l}</span><Bar pct={v ?? 0} kind="up" /><span className="num">{f(v, 0, '%')}</span></div>)}</div>
+                          <div className="meter">{([['T1', e.trades.all.hit_t1], ['T2', e.trades.all.hit_t2], ['T3', e.trades.all.hit_t3]] as const).map(([l, v]) => <div className="meter-row" key={l}><span className="lab">{l}</span><Bar pct={v ?? 0} kind="up" /><span className="num">{f(v, 0, '%')}</span></div>)}</div>
                         </Rv>
                       </div>
+
                       <Rv className="panel" style={{ marginTop: 14 }}>
-                        <div className="eyebrow">Live record since launch ({feed.launched ? dateLabel(feed.launched) : 'not started'})</div>
+                        <div className="eyebrow">3 · Live record since launch ({feed.launched ? dateLabel(feed.launched) : 'not started'})</div>
                         {feed.live_record[e.key] ? (
                           <p className="muted" style={{ margin: '10px 0 0' }}><b className="num" style={{ color: 'var(--text)' }}>{feed.live_record[e.key].closed}</b> trades issued since launch have been closed by the rules: win rate {feed.live_record[e.key].win_rate}%, average {sgn(feed.live_record[e.key].avg_r, 2, 'R')} per trade, {sgn(feed.live_record[e.key].total_r, 1, 'R')} in total. {feed.live_record[e.key].closed < 30 ? 'Far too few to conclude anything yet.' : ''}</p>
                         ) : <p className="muted" style={{ margin: '10px 0 0' }}>No trade issued since launch has closed yet. This is the number to watch: it is the only one that cannot have been fitted to the past.</p>}
                       </Rv>
-                      {Object.keys(e.by_setup).length > 1 && (
-                        <div className="tbl-wrap" style={{ marginTop: 14, maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 560 }}>
-                          <thead><tr><th>Setup</th><th>Trades</th><th>Win rate</th><th>Avg R</th><th>Reached T1</th></tr></thead>
-                          <tbody>{Object.entries(e.by_setup).map(([k, s]) => <tr key={k} style={{ cursor: 'default' }}><td>{k}</td><td className="num">{num(s.n)}</td><td className="num">{f(s.win_rate, 0, '%')}</td><td className={`num ${(s.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(s.expectancy_r, 2, 'R')}</td><td className="num">{f(s.hit_t1, 0, '%')}</td></tr>)}</tbody>
-                        </table></div>
-                      )}
+
+                      <Rv className="panel" style={{ marginTop: 14 }}>
+                        <div className="eyebrow">What these tests can not tell you</div>
+                        <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.7, margin: '10px 0 0' }}>
+                          <li><b>Survivorship.</b> The universe is today&apos;s listed companies, so stocks that were delisted or collapsed are missing from the past. That flatters any ranking that favours small or beaten-down names. The most-traded-300 rows are the check; where they are weaker than the full-universe rows, part of the edge may be this bias.</li>
+                          <li><b>One look at the holdout.</b> It was read once, but after the models and their inputs were built on the development years, and the market in the holdout was a specific one. Treat it as one sample, not proof.</li>
+                          <li><b>Small, illiquid stocks.</b> Some picks trade only a few crore a day. Real fills there can be worse than the 0.25% cost assumed.</li>
+                          <li><b>Overlapping trades.</b> Three picks a day held for weeks are not independent, which is why the clustered statistic is shown beside the plain one.</li>
+                        </ul>
+                      </Rv>
                     </>
                   )}
 
                   {tab === 'board' && (
                     <>
-                      <p className="muted" style={{ marginTop: 0 }}>Every signal is read against the benchmark of its own group. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of that industry built from the screened stocks (Yahoo holds no daily history for the other NSE sector indices). A group is <b>green-lit</b> when it is above a rising 50-day average and ahead of the Nifty over three months.</p>
+                      <p className="muted" style={{ marginTop: 0 }}>Every stock is read against the benchmark of its own group. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of that industry built from the screened stocks (Yahoo holds no daily history for the other NSE sector indices). A group is in an <b>uptrend</b> when it is above a rising 50-day average, and <b>leading</b> when it is ahead of the Nifty over three months. Engine 3 uses these benchmarks directly; the others see them as inputs.</p>
                       <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
                         <thead><tr><th>Benchmark</th><th>Stocks</th><th>1 month</th><th>3 months</th><th>vs Nifty, 3 months</th><th>Trend</th><th>Leading</th></tr></thead>
                         <tbody>{feed.benchmarks.map((g) => <tr key={g.name} style={{ cursor: 'default' }}><td><b>{g.name.replace(' (alpha group index)', '')}</b>{g.real_index && <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span>}</td><td className="num">{g.members ?? dash}</td><td><Chg v={g.r1m} dp={1} /></td><td><Chg v={g.r3m} dp={1} /></td><td><Chg v={g.vs_nifty_3m} dp={1} /></td><td><span className={`tag ${g.uptrend ? 'up' : 'down'}`}>{g.uptrend ? 'up' : 'not up'}</span></td><td><span className={`tag ${g.leads_nifty ? 'up' : 'warn'}`}>{g.leads_nifty ? 'leading' : 'lagging'}</span></td></tr>)}</tbody>
@@ -251,7 +301,7 @@ export default function EnginesPage() {
                   )}
                 </>
               )}
-              <p className="notice" style={{ marginTop: 28 }}>Engines are research tools that describe what a fixed set of rules would have selected. They are not investment advice, not a recommendation to buy or sell any security, and not a promise of future results. Past tests can overstate what happens next. Never risk money you cannot afford to lose, and check prices at your broker before acting.</p>
+              <p className="notice" style={{ marginTop: 28 }}>Engines are research tools that describe what a statistical model would have selected. They are not investment advice, not a recommendation to buy or sell any security, and not a promise of future results. Past tests can overstate what happens next. Never risk money you cannot afford to lose, and check prices at your broker before acting.</p>
             </>
           )}
         </Async>

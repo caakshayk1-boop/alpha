@@ -19,7 +19,7 @@ import pandas as pd
 from common import COST_PCT, walk
 
 STATE = pathlib.Path(__file__).resolve().parent / "state" / "registry.json"
-PRIORITY = ["breakout", "swing", "divergence", "rebound"]        # which engine owns a stock when several fire at once
+PRIORITY = ["snapback", "relative", "rank", "compounder", "barrier"]        # which engine owns a stock when several fire at once
 ACTIVE = ("pending", "open")
 
 
