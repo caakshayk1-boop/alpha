@@ -40,7 +40,7 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
         <div>
           <div className="eyebrow">{s.setup} · {s.horizon} · issued {dateLabel(s.issued)}</div>
           <Link href={`/company/?s=${encodeURIComponent(s.sym)}`} className="disp" style={{ fontSize: 34, display: 'block', margin: '8px 0 2px' }}>{s.sym}</Link>
-          <div className="dim" style={{ fontSize: 13 }}>{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
+          <div className="dim" style={{ fontSize: 14 }}>{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
           <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
             {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
@@ -50,12 +50,12 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
         <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
       </div>
       {px !== null && active && (
-        <p className="num" style={{ margin: '12px 0 0', fontSize: 13 }}>
+        <p className="num" style={{ margin: '12px 0 0', fontSize: 14 }}>
           <b>{live ? (quoteState(live.at).word === 'live' ? 'Live' : 'Last trade') : 'Last close'} ₹{num(px, 2)}</b>{live ? <> <Chg v={live.pct} /> </> : ' '}· {(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}
         </p>
       )}
       <div className="kv" style={{ marginTop: 14 }}>
-        <div><div className="k">{s.entry ? 'Entered at the open' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 11.5, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
+        <div><div className="k">{s.entry ? 'Entered at the open' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
         <div><div className="k">{s.hit > 0 ? 'Stop (moved)' : 'Stop'}</div><div className="v down" style={{ fontSize: 15 }}>₹{num(stop, 2)}{s.hit === 0 ? ` · −${s.risk_pct}%` : ''}</div></div>
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
         <div><div className="k">T1 typically</div><div className="v" style={{ fontSize: 15 }}>{s.typical_days_to_t1 ? `~${Math.round(s.typical_days_to_t1)} sessions` : dash}</div></div>
@@ -72,31 +72,31 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
         </div>
       )}
       {s.events.length > 1 && (
-        <ol className="muted num" style={{ fontSize: 12.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
+        <ol className="muted num" style={{ fontSize: 13.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
           {s.events.map((ev) => <li key={ev.date + ev.kind}>{dateLabel(ev.date)} · {EVENT_LABEL[ev.kind] ?? ev.kind} at ₹{num(ev.price, 2)}</li>)}
         </ol>
       )}
-      {s.void_reason && <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Void: {s.void_reason}.</p>}
+      {s.void_reason && <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Void: {s.void_reason}.</p>}
       {s.reasons.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div className="eyebrow" style={{ marginBottom: 6 }}>What the model is reading today</div>
-          <ul className="muted" style={{ paddingLeft: 18, margin: 0, fontSize: 13.5 }}>{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-          <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>These are the inputs the model leans on most, and where this stock stands on each. They describe what it sees, not why the price will move.</p>
+          <ul className="muted" style={{ paddingLeft: 18, margin: 0, fontSize: 14.5 }}>{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+          <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>These are the inputs the model leans on most, and where this stock stands on each. They describe what it sees, not why the price will move.</p>
         </div>
       )}
-      {s.turnover_cr < 5 && active && <p className="notice" style={{ marginTop: 12, fontSize: 12.5 }}>Thinly traded: about ₹{num(s.turnover_cr, 1)} crore changes hands a day. Fills at the next open may be far from the plan, and the 0.25% cost in the tests may be too kind.</p>}
+      {s.turnover_cr < 5 && active && <p className="notice" style={{ marginTop: 12, fontSize: 13.5 }}>Thinly traded: about ₹{num(s.turnover_cr, 1)} crore changes hands a day. Fills at the next open may be far from the plan, and the 0.25% cost in the tests may be too kind.</p>}
       {active && (
         <details style={{ marginTop: 14 }}>
           <summary className="eyebrow" style={{ cursor: 'pointer' }}>How many shares fit your risk?</summary>
           <div className="filters" style={{ marginTop: 10 }}>
-            <label className="muted" style={{ fontSize: 13 }}>Capital ₹ <input className="field" style={{ minWidth: 110, height: 34 }} inputMode="numeric" value={capital} onChange={(ev) => setCapital(ev.target.value.replace(/[^\d]/g, ''))} /></label>
-            <label className="muted" style={{ fontSize: 13 }}>Risk % <input className="field" style={{ minWidth: 60, width: 70, height: 34 }} inputMode="decimal" value={riskPct} onChange={(ev) => setRiskPct(ev.target.value.replace(/[^\d.]/g, ''))} /></label>
+            <label className="muted" style={{ fontSize: 14 }}>Capital ₹ <input className="field" style={{ minWidth: 110, height: 34 }} inputMode="numeric" value={capital} onChange={(ev) => setCapital(ev.target.value.replace(/[^\d]/g, ''))} /></label>
+            <label className="muted" style={{ fontSize: 14 }}>Risk % <input className="field" style={{ minWidth: 60, width: 70, height: 34 }} inputMode="decimal" value={riskPct} onChange={(ev) => setRiskPct(ev.target.value.replace(/[^\d.]/g, ''))} /></label>
           </div>
-          <p className="num" style={{ margin: 0, fontSize: 13.5 }}>{qty > 0 ? <>{num(qty)} shares ≈ ₹{num(qty * base, 0)} · a stop-out costs about ₹{num(qty * risk, 0)} ({riskPct}% of capital)</> : 'Risk per share is zero or capital is empty.'}</p>
-          <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>Arithmetic only. Position size is your decision; gaps and costs are not included.</p>
+          <p className="num" style={{ margin: 0, fontSize: 14.5 }}>{qty > 0 ? <>{num(qty)} shares ≈ ₹{num(qty * base, 0)} · a stop-out costs about ₹{num(qty * risk, 0)} ({riskPct}% of capital)</> : 'Risk per share is zero or capital is empty.'}</p>
+          <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>Arithmetic only. Position size is your decision; gaps and costs are not included.</p>
         </details>
       )}
-      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Ranking: <span className={`tag ${TONE[e.ranking_status]}`}>{e.ranking_status}</span> · Trading: <span className={`tag ${TONE[e.trading_status]}`}>{e.trading_status}</span></p>
+      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Ranking: <span className={`tag ${TONE[e.ranking_status]}`}>{e.ranking_status}</span> · Trading: <span className={`tag ${TONE[e.trading_status]}`}>{e.trading_status}</span></p>
     </Rv>
   );
 }
@@ -209,7 +209,7 @@ export default function EnginesPage() {
                 </table>
               </div>
               <DataStamp ids={['engines', 'screen']} />
-              <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
+              <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
 
               {e && (
                 <>
@@ -218,13 +218,13 @@ export default function EnginesPage() {
                   <Rv className="panel" style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ display: 'grid', gap: 12, flex: 1, minWidth: 260 }}>
-                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 12 }}>{e.ranking_status}</span><span className="muted">{e.ranking_why}</span></div></div>
-                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 12 }}>{e.trading_status}</span><span className="muted">{e.trading_why}</span></div></div>
-                        <div><span className="eyebrow">Phone alerts</span><div style={{ marginTop: 6 }}><span className={`tag ${e.alertable ? 'up' : ''}`} style={{ fontSize: 12 }}>{e.alertable ? 'ON' : 'OFF'}</span> <span className="muted">{e.alert_why}</span></div></div>
+                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 13 }}>{e.ranking_status}</span><span className="muted">{e.ranking_why}</span></div></div>
+                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 13 }}>{e.trading_status}</span><span className="muted">{e.trading_why}</span></div></div>
+                        <div><span className="eyebrow">Phone alerts</span><div style={{ marginTop: 6 }}><span className={`tag ${e.alertable ? 'up' : ''}`} style={{ fontSize: 13 }}>{e.alertable ? 'ON' : 'OFF'}</span> <span className="muted">{e.alert_why}</span></div></div>
                       </div>
                     </div>
-                    <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Ranking skill and trading profit are different claims: a model can order stocks better than chance and still make nothing after stops, exits and costs. Both are shown, and alerts need both.</p>
-                    <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
+                    <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Ranking skill and trading profit are different claims: a model can order stocks better than chance and still make nothing after stops, exits and costs. Both are shown, and alerts need both.</p>
+                    <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>
                       Development is {dateLabel(feed.backtest.periods.development[0])} to {dateLabel(feed.backtest.periods.development[1])}; the holdout is everything after. Each prediction in both periods comes from a model trained only on data that was already fully known at the time (walk-forward, refit every quarter, with a gap equal to the prediction horizon). The design and the pass marks were written down before the holdout was read, and it was read once.{!e.alertable && ' This engine does not clear the bar for phone alerts: its signals are shown here, never pushed.'}
                     </p>
                   </Rv>
@@ -232,7 +232,7 @@ export default function EnginesPage() {
 
                   {tab === 'signals' && (sigs.length ? (
                     <>
-                      {px.at && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
+                      {px.at && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
                       <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} />)}</div>
                       {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
@@ -250,9 +250,9 @@ export default function EnginesPage() {
                       </Rv>
                       <Rv className="panel">
                         <div className="eyebrow">What the model leans on</div>
-                        <p className="dim" style={{ fontSize: 12.5, margin: '6px 0 12px' }}>Share of the model&apos;s skill lost when each input is scrambled, on the most recent labelled months. This is influence, not cause.</p>
+                        <p className="dim" style={{ fontSize: 13.5, margin: '6px 0 12px' }}>Share of the model&apos;s skill lost when each input is scrambled, on the most recent labelled months. This is influence, not cause.</p>
                         <div className="meter">{e.importance.map((i) => <div className="meter-row" key={i.feature}><span className="lab" style={{ minWidth: 190 }}>{i.label}</span><Bar pct={Math.min(100, i.share_pct * 3)} kind="up" /><span className="num">{i.share_pct.toFixed(0)}%</span></div>)}</div>
-                        <p className="dim" style={{ fontSize: 12.5, margin: '14px 0 0' }}>Trained on {num(e.train_rows)} stock-days. {e.kind === 'clf' ? 'A classifier: its score is a probability.' : 'A regressor: its score is a predicted rank inside the market.'}</p>
+                        <p className="dim" style={{ fontSize: 13.5, margin: '14px 0 0' }}>Trained on {num(e.train_rows)} stock-days. {e.kind === 'clf' ? 'A classifier: its score is a probability.' : 'A regressor: its score is a predicted rank inside the market.'}</p>
                       </Rv>
                     </div>
                   )}
@@ -261,19 +261,19 @@ export default function EnginesPage() {
                     <>
                       <div className="eyebrow" style={{ marginBottom: 10 }}>1 · Can it rank stocks?</div>
                       <RankTable e={e} />
-                      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 14px' }}>Rank skill (information coefficient) is the daily correlation between the model&apos;s ranking and what each stock then returned over {e.horizon_sessions} sessions beyond the market&apos;s median. 0 is a coin flip; a few hundredths, sustained, is what quantitative funds work with. The most-traded-300 rows repeat the test on only the largest, most liquid names.</p>
+                      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 14px' }}>Rank skill (information coefficient) is the daily correlation between the model&apos;s ranking and what each stock then returned over {e.horizon_sessions} sessions beyond the market&apos;s median. 0 is a coin flip; a few hundredths, sustained, is what quantitative funds work with. The most-traded-300 rows repeat the test on only the largest, most liquid names.</p>
                       <div className="grid g-7-5">
-                        <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 10 }}>Holdout: average excess return by score decile, lowest to highest</div><Deciles v={e.metrics.holdout.decile_excess_pct} /><p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>A working model rises from left to right. A flat or ragged shape is noise.</p></Rv>
+                        <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 10 }}>Holdout: average excess return by score decile, lowest to highest</div><Deciles v={e.metrics.holdout.decile_excess_pct} /><p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>A working model rises from left to right. A flat or ragged shape is noise.</p></Rv>
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 10 }}>Development: the same chart</div><Deciles v={e.metrics.development.decile_excess_pct} /></Rv>
                       </div>
 
                       <div className="eyebrow" style={{ margin: '28px 0 10px' }}>2 · Do the trades make money after costs?</div>
                       <StatsTable e={e} />
-                      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 18px' }}>Every trade follows the exit plan, enters at the next open and pays {feed.backtest.cost_round_trip_pct}% round trip. “Random stocks, same exits” takes liquid stocks picked at random on the same days with the same stop-and-target geometry, so the comparison removes the market&apos;s drift. R is the amount risked: +1R means the trade made as much as the stop would have lost. The month-clustered t treats each month as one observation because trades overlap; between −2 and +2 is indistinguishable from luck.</p>
+                      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 18px' }}>Every trade follows the exit plan, enters at the next open and pays {feed.backtest.cost_round_trip_pct}% round trip. “Random stocks, same exits” takes liquid stocks picked at random on the same days with the same stop-and-target geometry, so the comparison removes the market&apos;s drift. R is the amount risked: +1R means the trade made as much as the stop would have lost. The month-clustered t treats each month as one observation because trades overlap; between −2 and +2 is indistinguishable from luck.</p>
                       <div className="grid g-7-5">
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 8 }}>Cumulative R, by month</div><Curve a={e.equity_curve} b={e.baseline_curve} /></Rv>
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>How trades ended</div>
-                          <div className="meter">{(['stop', 'breakeven', 'after_t2', 'all_targets', 'time'] as const).map((k) => { const tot = e.exits_n || Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab" style={{ minWidth: 150 }}>{{ stop: 'Stopped out, no target', breakeven: 'T1 reached, then stopped at entry', after_t2: 'T2 reached, then stopped at T1', all_targets: 'All three targets (T3)', time: 'Time limit' }[k]}</span><Bar pct={((e.exits[k] ?? 0) / tot) * 100} kind={k === 'stop' ? 'down' : k === 'all_targets' || k === 'after_t2' ? 'up' : undefined} /><span className="num" title={`${e.exits[k] ?? 0} of ${tot} trades`}>{Math.round(((e.exits[k] ?? 0) / tot) * 100)}%</span></div>; })}<p className="dim" style={{ fontSize: 11.5, margin: '8px 0 0' }}>Same {num(e.exits_n || e.trades.all.n)} test trades as the figures below; every trade appears in exactly one row. “All three targets” is the same group that “Reached T3” counts.</p></div>
+                          <div className="meter">{(['stop', 'breakeven', 'after_t2', 'all_targets', 'time'] as const).map((k) => { const tot = e.exits_n || Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab" style={{ minWidth: 150 }}>{{ stop: 'Stopped out, no target', breakeven: 'T1 reached, then stopped at entry', after_t2: 'T2 reached, then stopped at T1', all_targets: 'All three targets (T3)', time: 'Time limit' }[k]}</span><Bar pct={((e.exits[k] ?? 0) / tot) * 100} kind={k === 'stop' ? 'down' : k === 'all_targets' || k === 'after_t2' ? 'up' : undefined} /><span className="num" title={`${e.exits[k] ?? 0} of ${tot} trades`}>{Math.round(((e.exits[k] ?? 0) / tot) * 100)}%</span></div>; })}<p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>Same {num(e.exits_n || e.trades.all.n)} test trades as the figures below; every trade appears in exactly one row. “All three targets” is the same group that “Reached T3” counts.</p></div>
                           <div className="eyebrow" style={{ margin: '22px 0 10px' }}>Reached, at any point in the trade (historical frequency, {num(e.trades.all.n)} test trades)</div>
                           <div className="meter">{([['T1', e.trades.all.hit_t1], ['T2', e.trades.all.hit_t2], ['T3', e.trades.all.hit_t3]] as const).map(([l, v]) => <div className="meter-row" key={l}><span className="lab">{l}</span><Bar pct={v ?? 0} kind="up" /><span className="num">{f(v, 0, '%')}</span></div>)}</div>
                         </Rv>
@@ -312,7 +312,7 @@ export default function EnginesPage() {
                     <Rv className="panel">
                       <div className="eyebrow">How every engine is exited</div>
                       <ol className="muted" style={{ lineHeight: 1.8, paddingLeft: 20 }}>{feed.exit_plan.map((x) => <li key={x}>{x}</li>)}</ol>
-                      <p className="dim" style={{ fontSize: 12.5 }}>The tests assume exactly this, including the pessimistic choices: stops win ties inside a session, gaps fill at the open, and costs come off every trade.</p>
+                      <p className="dim" style={{ fontSize: 13.5 }}>The tests assume exactly this, including the pessimistic choices: stops win ties inside a session, gaps fill at the open, and costs come off every trade.</p>
                     </Rv>
                   )}
                 </>

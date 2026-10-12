@@ -229,7 +229,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
     </>

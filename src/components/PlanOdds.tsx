@@ -6,7 +6,7 @@ export interface Odds { t1?: number; t2?: number; t3?: number; stopped?: number 
  *  Targets are volatility multiples, not chart levels, so what makes them meaningful is the measured reach, shown beside them. */
 export default function PlanOdds({ sl, entry, targets, rMultiples, odds, last, n }: { sl: number; entry: number; targets: number[]; rMultiples: number[]; odds: Odds; last?: number; n?: number }) {
   const row = (label: string, price: number, p: number | undefined, tone: 'up' | 'down' | 'flat', note?: string) => (
-    <div key={label} style={{ display: 'grid', gridTemplateColumns: '38px 1fr 54px', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
+    <div key={label} style={{ display: 'grid', gridTemplateColumns: '38px 1fr 54px', gap: 8, alignItems: 'center', fontSize: 13.5 }}>
       <span className={`num ${tone}`} style={{ fontWeight: 600 }}>{label}</span>
       <span className="num" style={{ color: 'var(--text)' }}>₹{num(price, 2)} <span className="dim">{price === entry ? '' : `${price > entry ? '+' : '−'}${Math.abs((price / entry - 1) * 100).toFixed(1)}%`}{note ? ` · ${note}` : ''}</span></span>
       <span style={{ display: 'block', height: 6, borderRadius: 3, background: 'var(--panel-3)', position: 'relative' }} title={p === undefined ? undefined : `${p.toFixed(0)}% of test trades`}>
@@ -23,7 +23,7 @@ export default function PlanOdds({ sl, entry, targets, rMultiples, odds, last, n
         {row('Entry', entry, undefined, 'flat')}
         {row('Stop', sl, odds.stopped, 'down', '−1R')}
       </div>
-      <p className="dim" style={{ fontSize: 11.5, margin: '10px 0 0' }}>Historical frequency across {typeof n === 'number' ? `${num(n)} test trades` : 'the engine\'s test trades'}, not a probability for this stock: {pct(odds.t1)} reached T1, {pct(odds.t2)} T2, {pct(odds.t3)} T3, {pct(odds.stopped)} were stopped out.{typeof last === 'number' ? ` Now ₹${num(last, 2)}.` : ''}</p>
+      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Historical frequency across {typeof n === 'number' ? `${num(n)} test trades` : 'the engine\'s test trades'}, not a probability for this stock: {pct(odds.t1)} reached T1, {pct(odds.t2)} T2, {pct(odds.t3)} T3, {pct(odds.stopped)} were stopped out.{typeof last === 'number' ? ` Now ₹${num(last, 2)}.` : ''}</p>
     </div>
   );
 }

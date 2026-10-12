@@ -22,7 +22,7 @@ export default function SymbolPicker({ onPick, placeholder = 'Add a company…',
           {hits.map((r) => (
             <li key={r.sym} role="option" aria-selected={false}>
               <button style={{ width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 10, display: 'flex', justifyContent: 'space-between', gap: 10 }} onClick={() => { onPick(r.sym); setQ(''); }}>
-                <span><b>{r.sym}</b> <span className="dim" style={{ fontSize: 12.5 }}>{r.name}</span></span>
+                <span><b>{r.sym}</b> <span className="dim" style={{ fontSize: 13.5 }}>{r.name}</span></span>
               </button>
             </li>
           ))}

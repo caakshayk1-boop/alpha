@@ -213,7 +213,7 @@ export default function RotationPage() {
                     {order.map((q) => (
                       <Rv key={q} className="panel tight spot tilt">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="eyebrow" style={{ color: QC[q] }}>{q}</span><span className="num dim">{read.by(q).length}</span></div>
-                        <div className="dim" style={{ fontSize: 12, margin: '4px 0 10px' }}>{QNOTE[q]}</div>
+                        <div className="dim" style={{ fontSize: 13, margin: '4px 0 10px' }}>{QNOTE[q]}</div>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>{[...read.by(q)].sort((a, b) => b.r - a.r).map((x) => <button key={x.s.name} className="chip" aria-pressed={sel === x.s.name} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>{short(x.s.name)}</button>)}</div>
                       </Rv>
                     ))}
@@ -224,8 +224,8 @@ export default function RotationPage() {
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
-                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 12 }}>Week ending {date}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
-                      <p style={{ margin: '8px 0' }}><span className="tag" style={{ color: QC[cur.q] }}>{cur.q}</span> <span className="muted" style={{ fontSize: 13 }}>{QNOTE[cur.q]}</span></p>
+                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 13 }}>Week ending {date}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
+                      <p style={{ margin: '8px 0' }}><span className="tag" style={{ color: QC[cur.q] }}>{cur.q}</span> <span className="muted" style={{ fontSize: 14 }}>{QNOTE[cur.q]}</span></p>
                       <RsLine s={cur.s} t={t} dates={rot.data.dates} />
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr', margin: '12px 0' }}>
                         <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.ret4t} dp={1} /></div></div>
@@ -235,7 +235,7 @@ export default function RotationPage() {
                       </div>
                       <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? ', as of today' : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
-                        <Link key={x.sym} href={`/company/?s=${encodeURIComponent(x.sym)}`} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 13 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
+                        <Link key={x.sym} href={`/company/?s=${encodeURIComponent(x.sym)}`} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
                     </>
                   ) : <p className="muted" style={{ marginTop: 10 }}>Select any dot, phase chip or table row to see its tail, its strength line against the Nifty, its breadth and its strongest stocks. The current week is shown unless you move the time machine.</p>}
@@ -255,7 +255,7 @@ export default function RotationPage() {
                     <td className="num">{num(x.mem.length)}</td>
                   </tr>))}</tbody>
               </table></div>
-              <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>
+              <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>
                 Method: each group&apos;s weekly index level is divided by the Nifty to get relative strength. RS-Ratio is that strength against its own 13-week average (100 = in line); RS-Momentum is 100 plus the 4-week change in a 3-week average of RS-Ratio. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of its industry (or sector) built from the screened stocks, because Yahoo holds no history for the other NSE sector indices. A close cousin of the RRG popularised by Julius de Kempenaer, not the licensed JdK formula. Rotation describes what has happened; a group can stay in a quadrant for months, and the tails turn late. It describes how prices moved relative to the Nifty, not where money went.
               </p>
             </>
@@ -281,7 +281,7 @@ function RsLine({ s, t, dates }: { s: Series; t: number; dates: string[] }) {
         <line x1="0" x2={W} y1={Y(100)} y2={Y(100)} stroke="var(--line-2)" strokeDasharray="3 4" />
         <path d={d} fill="none" stroke={up ? 'var(--up)' : 'var(--down)'} strokeWidth="2" />
       </svg>
-      <div className="dim num" style={{ fontSize: 11.5, display: 'flex', justifyContent: 'space-between' }}><span>{dates[0]}</span><span>strength vs Nifty, start = 100</span><span>{dates[t]}</span></div>
+      <div className="dim num" style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between' }}><span>{dates[0]}</span><span>strength vs Nifty, start = 100</span><span>{dates[t]}</span></div>
     </div>
   );
 }
@@ -314,7 +314,7 @@ function PhaseTimeline({ hist, cur, minT, n, t, dates, onScrub }: { hist: Record
         <circle cx={X(t)} cy={64} r="5" fill="var(--text)" stroke="var(--bg)" strokeWidth="2" />
         {months.map((i) => <text key={i} x={X(i)} y={H - 2} fontSize="9.5" fill="var(--dim)" fontFamily="var(--f-mono)">{new Date(dates[i]).toLocaleDateString('en-GB', { month: 'short' })}</text>)}
       </svg>
-      <p className="dim" style={{ fontSize: 11.5, margin: '4px 0 0' }}>Each column is a week: how many groups were Leading (green), Improving, Weakening and Lagging. {cur ? `The strip under it is ${short(cur.s.name)}'s own phase.` : 'Select a group to see its own phase underneath.'} Drag across it, or focus it and use ← →.</p>
+      <p className="dim" style={{ fontSize: 12, margin: '4px 0 0' }}>Each column is a week: how many groups were Leading (green), Improving, Weakening and Lagging. {cur ? `The strip under it is ${short(cur.s.name)}'s own phase.` : 'Select a group to see its own phase underneath.'} Drag across it, or focus it and use ← →.</p>
     </div>
   );
 }

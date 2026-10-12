@@ -31,7 +31,7 @@ export default function Funds() {
           <div className="filters" style={{ alignItems: 'center' }}>
             <label className="eyebrow" htmlFor="fund-cat">Category</label>
             <select id="fund-cat" className="field" style={{ height: 38, minWidth: 240 }} value={active?.key ?? ''} onChange={(e) => setCat(e.target.value)}>{cats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
-            {active && <span className="muted num" style={{ fontSize: 13 }}>{funds.length} funds · NAV dates {dateLabel(funds.map((x) => x.nav_date).sort()[0])}{funds.length > 0 && funds.map((x) => x.nav_date).sort()[0] !== funds.map((x) => x.nav_date).sort().slice(-1)[0] ? ` to ${dateLabel(funds.map((x) => x.nav_date).sort().slice(-1)[0])}` : ''}</span>}
+            {active && <span className="muted num" style={{ fontSize: 14 }}>{funds.length} funds · NAV dates {dateLabel(funds.map((x) => x.nav_date).sort()[0])}{funds.length > 0 && funds.map((x) => x.nav_date).sort()[0] !== funds.map((x) => x.nav_date).sort().slice(-1)[0] ? ` to ${dateLabel(funds.map((x) => x.nav_date).sort().slice(-1)[0])}` : ''}</span>}
           </div>
           {active && <p className="muted" style={{ marginTop: 0 }}>{active.blurb}</p>}
           <div className="filters" role="group" aria-label="Sort by">
@@ -42,7 +42,7 @@ export default function Funds() {
             {funds.map((x) => (
               <tr key={x.code} style={{ cursor: 'default' }}>
                 <td><div className="co"><b>{x.name.replace(/ - Direct Plan - Growth/i, '')}</b><span>{x.house} · {num(x.history_years, 1)} yrs of history · AMFI scheme {x.code}</span></div></td>
-                <td className="num">₹{num(x.nav, 2)}<div className="dim" style={{ fontSize: 11, fontFamily: 'var(--f-mono)' }}>as of {dateLabel(x.nav_date)}</div></td>
+                <td className="num">₹{num(x.nav, 2)}<div className="dim" style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>as of {dateLabel(x.nav_date)}</div></td>
                 <td><Chg v={x.r1} dp={1} /></td><td><Chg v={x.r3} dp={1} /></td><td><Chg v={x.r5} dp={1} /></td>
                 <td className="num down">{x.dd3 == null ? dash : `${x.dd3.toFixed(1)}%`}</td>
                 <td className="num">{x.volatility == null ? dash : `${x.volatility.toFixed(1)}%`}</td>
@@ -50,7 +50,7 @@ export default function Funds() {
               </tr>
             ))}
           </tbody></table></div>
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>{f.data?.basis}. Method: 1Y, 3Y and 5Y are annualised changes in NAV between two dates (a dash where the fund has not existed that long); &ldquo;worst fall&rdquo; is the deepest peak-to-trough NAV drop in the last three years; volatility is the annualised standard deviation of daily NAV changes; &ldquo;rolling 3Y&rdquo; takes every possible three-year window in the fund&apos;s history and shows the worst and the median annualised result. Funds with under three years of history have no 3Y figures. Past returns do not indicate future returns. Expense ratios are not in the data, which is why only direct plans are listed.</p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>{f.data?.basis}. Method: 1Y, 3Y and 5Y are annualised changes in NAV between two dates (a dash where the fund has not existed that long); &ldquo;worst fall&rdquo; is the deepest peak-to-trough NAV drop in the last three years; volatility is the annualised standard deviation of daily NAV changes; &ldquo;rolling 3Y&rdquo; takes every possible three-year window in the fund&apos;s history and shows the worst and the median annualised result. Funds with under three years of history have no 3Y figures. Past returns do not indicate future returns. Expense ratios are not in the data, which is why only direct plans are listed.</p>
         </Async>
       </section>
     </>

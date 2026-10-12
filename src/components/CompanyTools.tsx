@@ -63,7 +63,7 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
       </div>
 
       <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Missing or thin</div>
-      {d.missing.length ? <ul className="dim" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6, fontSize: 13 }}>{d.missing.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>All nine checks could be applied.</p>}
+      {d.missing.length ? <ul className="dim" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6, fontSize: 14 }}>{d.missing.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>All nine checks could be applied.</p>}
 
       <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Next known event</div>
       <p className="muted" style={{ margin: 0 }}>{d.nextResults ? (d.nextResults >= today ? `Results due ${dateLabel(d.nextResults)} (date from the screen feed, not confirmed by the company here).` : `Results were expected ${dateLabel(d.nextResults)}: the fundamentals above may not include them yet.`) : 'No date available.'}</p>
@@ -72,15 +72,15 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
         <summary className="eyebrow" style={{ cursor: 'pointer' }}>All nine checks, with the number behind each</summary>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8, marginTop: 10 }}>
           {d.checks.map((c) => (
-            <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5 }}>
-              <span aria-label={c.pass === null ? 'not applicable' : c.pass ? 'pass' : 'fail'} style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: c.pass === null ? 'var(--line)' : c.pass ? 'var(--up-soft)' : 'var(--down-soft)', color: c.pass === null ? 'var(--dim)' : c.pass ? 'var(--up)' : 'var(--down)' }}>{c.pass === null ? '–' : c.pass ? '✓' : '✕'}</span>
-              <span>{c.label}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{c.detail}</small></span>
+            <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14.5 }}>
+              <span aria-label={c.pass === null ? 'not applicable' : c.pass ? 'pass' : 'fail'} style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 13, background: c.pass === null ? 'var(--line)' : c.pass ? 'var(--up-soft)' : 'var(--down-soft)', color: c.pass === null ? 'var(--dim)' : c.pass ? 'var(--up)' : 'var(--down)' }}>{c.pass === null ? '–' : c.pass ? '✓' : '✕'}</span>
+              <span>{c.label}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{c.detail}</small></span>
             </div>
           ))}
         </div>
       </details>
       {d.triggers.length > 0 && <details style={{ marginTop: 10 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>What would change the picture</summary><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6, margin: '10px 0 0' }}>{d.triggers.map((t) => <li key={t}>{t}</li>)}</ul></details>}
-      <p className="dim" style={{ fontSize: 12, margin: '16px 0 0' }}>Fixed rules applied to the figures shown on this page; nothing is generated or forecast. Screen classes and engine outputs are research classifications, not recommendations to buy or sell. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>How this is made</Link>.</p>
+      <p className="dim" style={{ fontSize: 13, margin: '16px 0 0' }}>Fixed rules applied to the figures shown on this page; nothing is generated or forecast. Screen classes and engine outputs are research classifications, not recommendations to buy or sell. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>How this is made</Link>.</p>
     </Rv>
   );
 }
@@ -101,7 +101,7 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
           </tbody>
         </table>
       </div>
-      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Nearest neighbours across the whole screen (any sector) on quality, growth, value, trend, 3-month strength, ROCE, net margin and leverage, each standardised so no single measure dominates. Similar profile is not similar future: use it to find comparables to read next ({num(rows.length)} companies searched).</p>
+      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Nearest neighbours across the whole screen (any sector) on quality, growth, value, trend, 3-month strength, ROCE, net margin and leverage, each standardised so no single measure dominates. Similar profile is not similar future: use it to find comparables to read next ({num(rows.length)} companies searched).</p>
     </>
   );
 }
@@ -138,7 +138,7 @@ export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targ
           {[[4, '95%'], [3, '75%'], [2, 'median'], [1, '25%'], [0, '5%']].map(([k, l]) => <text key={String(l)} x={W - pr + 5} y={Y(end[k as number]) + 4} fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">{num(end[k as number], 0)}</text>)}
           <text x={pl} y={H - 8} fontSize="11" fill="var(--dim)" fontFamily="var(--f-mono)">today</text><text x={W - pr} y={H - 8} textAnchor="end" fontSize="11" fill="var(--dim)" fontFamily="var(--f-mono)">+{days} sessions</text>
         </svg>
-        <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>3,000 paths built by resampling this stock&apos;s own daily moves over the past year{drift ? ', keeping its average drift' : ', with the average drift removed so it shows spread, not a forecast'}. The bands are the 5th–95th and 25th–75th percentiles.</p>
+        <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>3,000 paths built by resampling this stock&apos;s own daily moves over the past year{drift ? ', keeping its average drift' : ', with the average drift removed so it shows spread, not a forecast'}. The bands are the 5th–95th and 25th–75th percentiles.</p>
       </div>
       <div className="panel tight" style={{ background: 'var(--panel-2)' }}>
         <div className="eyebrow" style={{ marginBottom: 10 }}>Risk profile · 1 year</div>
@@ -151,7 +151,7 @@ export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targ
           <Kv k={`Touch +10% in ${days}d`} v={`${(c.up10 * 100).toFixed(0)}%`} />
           <Kv k={`Touch −10% in ${days}d`} v={`${(c.dn10 * 100).toFixed(0)}%`} />
         </div>
-        <p className="muted" style={{ fontSize: 13, margin: '12px 0 0' }}>In {days} sessions, half of simulated paths end between ₹{num(end[1], 0)} and ₹{num(end[3], 0)}; nine in ten between ₹{num(end[0], 0)} and ₹{num(end[4], 0)}.</p>
+        <p className="muted" style={{ fontSize: 14, margin: '12px 0 0' }}>In {days} sessions, half of simulated paths end between ₹{num(end[1], 0)} and ₹{num(end[3], 0)}; nine in ten between ₹{num(end[0], 0)} and ₹{num(end[4], 0)}.</p>
       </div>
     </div>
   );
@@ -201,7 +201,7 @@ export function SaveCardButton({ r, sigs, years }: { r: Row; sigs: EngineSignal[
     <>
       <button className="chip" onClick={save} disabled={!ok} title="Saved in this browser only. Export it from the Watchlist page to keep a copy.">{state === 'saved' ? 'Saved locally ✓' : 'Save research card'}</button>
       <span className="sr" role="status">{state === 'saved' ? 'Research card saved in this browser' : state === 'failed' ? 'Could not save: browser storage is blocked or full' : ''}</span>
-      {state === 'failed' && <span className="dim" style={{ fontSize: 12 }}>Storage blocked or full</span>}
+      {state === 'failed' && <span className="dim" style={{ fontSize: 13 }}>Storage blocked or full</span>}
     </>
   );
 }

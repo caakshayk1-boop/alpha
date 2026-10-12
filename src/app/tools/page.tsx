@@ -12,7 +12,7 @@ const lakh = (v: number) => (v >= 1e7 ? `₹${(v / 1e7).toFixed(2)} cr` : v >= 1
 
 function Field({ label, value, set, suffix, prefix }: { label: string; value: string; set: (v: string) => void; suffix?: string; prefix?: string }) {
   return (
-    <label style={{ display: 'grid', gap: 6, fontSize: 13, color: 'var(--muted)' }}>
+    <label style={{ display: 'grid', gap: 6, fontSize: 14, color: 'var(--muted)' }}>
       {label}
       <span style={{ position: 'relative', display: 'block' }}>
         {prefix && <span className="dim" style={{ position: 'absolute', left: 14, top: 10 }}>{prefix}</span>}
@@ -77,7 +77,7 @@ function Sip() {
         <path d={line(data.base.map((p) => ({ y: p.y, value: p.invested })))} fill="none" stroke="var(--dim)" strokeWidth="1.6" strokeDasharray="5 4" />
         <path ref={path} d={line(data.base)} fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" />
       </svg>
-      <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Solid line: grows at {ret}% a year. Shaded band: 3 points either side ({lakh(data.low[data.low.length - 1].value)} to {lakh(data.high[data.high.length - 1].value)}). Dashed: what you put in. Returns are an assumption you type, not a forecast, and real returns arrive unevenly. No tax or inflation is modelled.</p>
+      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Solid line: grows at {ret}% a year. Shaded band: 3 points either side ({lakh(data.low[data.low.length - 1].value)} to {lakh(data.high[data.high.length - 1].value)}). Dashed: what you put in. Returns are an assumption you type, not a forecast, and real returns arrive unevenly. No tax or inflation is modelled.</p>
     </Rv>
   );
 }
@@ -120,16 +120,16 @@ function Position() {
         <>
           <div className="grid g3" style={{ margin: '18px 0 12px' }}>
             <div><div className="eyebrow">Shares</div><div className="disp" style={{ fontSize: 40 }}>{num(qty)}</div></div>
-            <div><div className="eyebrow">Position value</div><div className="disp" style={{ fontSize: 40 }}>{lakh(qty * e)}</div><div className="dim num" style={{ fontSize: 12.5 }}>{cap ? ((qty * e / cap) * 100).toFixed(0) : 0}% of capital</div></div>
-            <div><div className="eyebrow">If the stop hits</div><div className="disp down" style={{ fontSize: 40 }}>−₹{num(qty * risk, 0)}</div><div className="dim num" style={{ fontSize: 12.5 }}>{((risk / e) * 100).toFixed(1)}% below entry</div></div>
+            <div><div className="eyebrow">Position value</div><div className="disp" style={{ fontSize: 40 }}>{lakh(qty * e)}</div><div className="dim num" style={{ fontSize: 13.5 }}>{cap ? ((qty * e / cap) * 100).toFixed(0) : 0}% of capital</div></div>
+            <div><div className="eyebrow">If the stop hits</div><div className="disp down" style={{ fontSize: 40 }}>−₹{num(qty * risk, 0)}</div><div className="dim num" style={{ fontSize: 13.5 }}>{((risk / e) * 100).toFixed(1)}% below entry</div></div>
           </div>
-          <div className="kv" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>{[1, 2, 3, 4].map((m) => <div key={m}><div className="k">{m}R target</div><div className="v up" style={{ fontSize: 15 }}>₹{num(e + m * risk, 2)}</div><div className="dim num" style={{ fontSize: 12 }}>+₹{num(qty * risk * m, 0)}</div></div>)}</div>
+          <div className="kv" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>{[1, 2, 3, 4].map((m) => <div key={m}><div className="k">{m}R target</div><div className="v up" style={{ fontSize: 15 }}>₹{num(e + m * risk, 2)}</div><div className="dim num" style={{ fontSize: 13 }}>+₹{num(qty * risk * m, 0)}</div></div>)}</div>
           {rp > 5 && <p className="notice" style={{ marginTop: 12 }}>Risking {rp}% of capital on one trade is far above the 1–2% most rule sets use: a short run of stops would take a large part of the account.</p>}
           {qty === 0 && <p className="notice" style={{ marginTop: 12 }}>The risk budget (₹{num(cap * rp / 100, 0)}) is smaller than the risk on a single share (₹{num(risk, 2)}), so the size rounds down to zero shares.</p>}
           {qty * e > cap && <p className="notice" style={{ marginTop: 12 }}>This size needs more than your capital. Widen the stop, cut the risk, or take fewer shares.</p>}
         </>
       )}
-      <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Arithmetic only: a gap can fill you below the stop, and costs are not included. Position size is your decision.</p>
+      <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Arithmetic only: a gap can fill you below the stop, and costs are not included. Position size is your decision.</p>
     </Rv>
   );
 }
@@ -179,7 +179,7 @@ export default function Tools() {
         <div id="evidence" /><SectionHead eyebrow="Research" title="Evidence across checks" />
         <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Companies where several of the screen&apos;s checks point the same way, with the conflicts and missing checks shown.</p>
         <div className="grid" style={{ marginBottom: 28 }}><Rv className="panel"><Confluence limit={10} /></Rv></div>
-        <p className="dim" style={{ fontSize: 12.5, marginTop: 18 }}>Information and arithmetic only. Not investment, tax or legal advice.</p>
+        <p className="dim" style={{ fontSize: 13.5, marginTop: 18 }}>Information and arithmetic only. Not investment, tax or legal advice.</p>
       </section>
     </>
   );

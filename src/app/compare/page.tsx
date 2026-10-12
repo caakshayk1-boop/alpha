@@ -79,7 +79,7 @@ function Compare() {
                   <tbody>
                     <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => <td key={r.sym} className="num">₹{num(r.price, 2)}</td>)}</tr>
                     <tr style={{ cursor: 'default' }}><td>Today</td>{rows.map((r) => <td key={r.sym}><Chg v={r.r1d} dp={1} /></td>)}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 11 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 12 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
                     {SPECS.map((sp2) => {
                       const vals = rows.map((r) => sp2.get(r));
                       const nums = vals.filter(has);
@@ -92,8 +92,8 @@ function Compare() {
                 </table>
               </div>
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profile</div><Radar rows={rows} />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 10 }}>{rows.map((r, i) => <span key={r.sym} className="num" style={{ color: COLORS[i], fontSize: 12.5 }}>● {r.sym}</span>)}</div>
-                <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Green marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 10 }}>{rows.map((r, i) => <span key={r.sym} className="num" style={{ color: COLORS[i], fontSize: 13.5 }}>● {r.sym}</span>)}</div>
+                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Green marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
           )}
         </Async>

@@ -190,7 +190,7 @@ export default function MapPage() {
                 <div className="panel tight"><div className="eyebrow">On screen</div><div className="disp" style={{ fontSize: 34 }}>{num(summary.n)}</div></div>
                 <div className="panel tight"><div className="eyebrow">Up vs down</div><div className="disp" style={{ fontSize: 34 }}><span className="up">{summary.up}</span> <span className="dim">/</span> <span className="down">{summary.down}</span></div></div>
                 <div className="panel tight"><div className="eyebrow">Median</div><div className="disp" style={{ fontSize: 34 }}>{fmtV(summary.med)}</div></div>
-                <div className="panel tight"><div className="eyebrow">Leaders</div><div className="num" style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>{summary.top.map((x) => x.r.sym).join(' · ') || '—'}</div></div>
+                <div className="panel tight"><div className="eyebrow">Leaders</div><div className="num" style={{ fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>{summary.top.map((x) => x.r.sym).join(' · ') || '—'}</div></div>
               </div>
 
               {zoom && <div className="filters"><button className="chip on" onClick={() => setZoom(null)}>← All {grp.label.toLowerCase()}s</button><span className="muted">Zoomed into <b>{zoom}</b>, {shown.length} stocks. Select a tile for detail.</span></div>}
@@ -221,24 +221,24 @@ export default function MapPage() {
                 </div>
                 {tip && (
                   <div style={{ position: 'absolute', left: Math.min(tip.x + 14, size.w - 230), top: Math.min(tip.y + 14, size.h - 120), pointerEvents: 'none', zIndex: 9, minWidth: 210, padding: '10px 13px', borderRadius: 12, background: 'rgba(8,10,14,.92)', border: '1px solid var(--line-2)', color: '#fff' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{tip.r.name}</div>
-                    <div className="num" style={{ fontSize: 11, opacity: 0.75 }}>{tip.r.sym} · {tip.r.sector} · {crore(tip.r.mcap_cr)}</div>
-                    <div className="num" style={{ marginTop: 5, fontSize: 12 }}>{m.label}: <b>{fmtV(valueOf(tip.r))}</b></div>
-                    <div className="num" style={{ fontSize: 11, opacity: 0.8 }}>1D {pct(tip.r.r1d)} · 1M {pct(tip.r.r1m)} · 1Y {pct(tip.r.r1y)}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{tip.r.name}</div>
+                    <div className="num" style={{ fontSize: 12, opacity: 0.75 }}>{tip.r.sym} · {tip.r.sector} · {crore(tip.r.mcap_cr)}</div>
+                    <div className="num" style={{ marginTop: 5, fontSize: 13 }}>{m.label}: <b>{fmtV(valueOf(tip.r))}</b></div>
+                    <div className="num" style={{ fontSize: 12, opacity: 0.8 }}>1D {pct(tip.r.r1d)} · 1M {pct(tip.r.r1m)} · 1Y {pct(tip.r.r1y)}</div>
                   </div>
                 )}
               </div>
 
               <details className="panel tight" style={{ marginTop: 14 }}>
                 <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {m.label}</summary>
-                <p className="dim" style={{ fontSize: 13, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero; the median is {fmtV(summary.med)}.</p>
+                <p className="dim" style={{ fontSize: 14, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero; the median is {fmtV(summary.med)}.</p>
                 <div className="tbl-wrap" style={{ maxHeight: 360 }}>
                   <table className="tbl"><caption className="sr">Stocks on the map by {m.label}</caption>
                     <thead><tr><th>Stock</th><th>Sector</th><th>{m.label}</th></tr></thead>
                     <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).slice(0, 150).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td>{r.name} ({r.sym})</td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
                   </table>
                 </div>
-                <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>Top 150 shown.</p>
+                <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Top 150 shown.</p>
               </details>
 
               <div className="grid g-7-5" style={{ marginTop: 14 }}>
@@ -250,7 +250,7 @@ export default function MapPage() {
                       <div className="kv">
                         <div><div className="k">Price</div><div className="v">₹{num(sel.price, 2)}</div></div>
                         <div><div className="k">Market cap</div><div className="v" style={{ fontSize: 15 }}>{crore(sel.mcap_cr)}</div></div>
-                        <div><div className="k">1D · 1M · 1Y</div><div className="v" style={{ fontSize: 14 }}><Chg v={sel.r1d} dp={1} /> <Chg v={sel.r1m} dp={0} /> <Chg v={sel.r1y} dp={0} /></div></div>
+                        <div><div className="k">1D · 1M · 1Y</div><div className="v" style={{ fontSize: 15 }}><Chg v={sel.r1d} dp={1} /> <Chg v={sel.r1m} dp={0} /> <Chg v={sel.r1y} dp={0} /></div></div>
                         <div><div className="k">P/E · ROCE</div><div className="v" style={{ fontSize: 15 }}>{n(sel.pe) !== null ? (sel.pe as number).toFixed(1) : '—'} · {n(sel.roce) !== null ? `${(sel.roce as number).toFixed(1)}%` : '—'}</div></div>
                         <div><div className="k">Composite</div><div className="v">{n(sel.comp) !== null ? Math.round(sel.comp as number) : '—'}</div></div>
                         <div><div className="k">From 52w high</div><div className="v">{n(sel.from_high) !== null ? `${(sel.from_high as number).toFixed(0)}%` : '—'}</div></div>
@@ -267,7 +267,7 @@ export default function MapPage() {
                   </div>
                 </div>
               </div>
-              <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>{num((s.data?.rows.length ?? 0) - (s.data?.rows.filter((r) => n(r.mcap_cr) !== null).length ?? 0))} companies with no published market cap cannot be sized by it. Tiles too small for readable text are left unlabeled; zoom into their sector. Colour describes what happened.</p>
+              <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>{num((s.data?.rows.length ?? 0) - (s.data?.rows.filter((r) => n(r.mcap_cr) !== null).length ?? 0))} companies with no published market cap cannot be sized by it. Tiles too small for readable text are left unlabeled; zoom into their sector. Colour describes what happened.</p>
             </>
           )}
         </Async>

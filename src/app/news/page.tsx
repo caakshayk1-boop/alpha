@@ -26,7 +26,7 @@ export default function News() {
         <Async loading={n.loading} error={n.error}>
           <div className="filters" role="group" aria-label="Topic"><button className="chip" aria-pressed={topic === ''} onClick={() => setTopic('')}>All topics</button>{topics.map(([t]) => <button key={t} className="chip" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)}>{t}</button>)}</div>
           <div className="filters" role="group" aria-label="Source"><button className="chip" aria-pressed={source === ''} onClick={() => setSource('')}>All sources</button>{sources.map((s) => <button key={s} className="chip" aria-pressed={source === s} onClick={() => setSource(source === s ? '' : s)}>{s}</button>)}</div>
-          <p className="dim" style={{ fontSize: 12.5, margin: '0 0 6px' }}>{list.length} {list.length === 1 ? 'story' : 'stories'}. Times are shown in Indian Standard Time (IST), converted from each publisher&apos;s feed.</p>
+          <p className="dim" style={{ fontSize: 13.5, margin: '0 0 6px' }}>{list.length} {list.length === 1 ? 'story' : 'stories'}. Times are shown in Indian Standard Time (IST), converted from each publisher&apos;s feed.</p>
           <div className="list">
             {list.map((s) => (
               <Rv key={s.link}>

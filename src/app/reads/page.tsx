@@ -25,7 +25,7 @@ export default function Reads() {
           <div className="filters" role="group" aria-label="Edition">
             {r.data?.editions.map((x, i) => <button key={x.week} className="chip" aria-pressed={e === i} onClick={() => { setE(i); setOpen(0); setSector(''); }}>Week of {dateLabel(x.week)}</button>)}
           </div>
-          {ed && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 12px' }}>Written {written && !Number.isNaN(written.getTime()) ? `${written.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${written.toISOString().slice(11, 16)} UTC` : dateLabel(ed.week)}. Prices and ratios inside each study are as of that moment, not today.</p>}
+          {ed && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 12px' }}>Written {written && !Number.isNaN(written.getTime()) ? `${written.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${written.toISOString().slice(11, 16)} UTC` : dateLabel(ed.week)}. Prices and ratios inside each study are as of that moment, not today.</p>}
           {sectors.length > 1 && <div className="filters" role="group" aria-label="Sector"><button className="chip" aria-pressed={sector === ''} onClick={() => setSector('')}>All sectors</button>{sectors.map((x) => <button key={x} className="chip" aria-pressed={sector === x} onClick={() => { setSector(x); const first = ed?.studies.findIndex((y) => y.sector === x); if (first !== undefined && first >= 0) setOpen(first); }}>{x}</button>)}</div>}
           <div className="grid" style={{ gridTemplateColumns: 'minmax(220px, 300px) 1fr', alignItems: 'start' }}>
             <div className="list panel tight" style={{ position: 'sticky', top: 80 }}>
@@ -41,14 +41,14 @@ export default function Reads() {
               <Rv key={s.sym} className="panel">
                 <div className="eyebrow">{s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
                 <h2 className="disp" style={{ fontSize: 'clamp(34px, 4vw, 52px)', margin: '12px 0 8px' }}>{s.name}</h2>
-                <div className="dim num" style={{ fontSize: 13, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={`/company/?s=${s.sym}`} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
-                <p className="dim" style={{ fontSize: 12.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
+                <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={`/company/?s=${s.sym}`} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
+                <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
                 {s.corrections && s.corrections.length > 0 && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.map((c) => <li key={c.what}>{dateLabel(c.date)}: {c.what}</li>)}</ul></div>}
-                <p className="dim" style={{ fontSize: 12.5, margin: '0 0 14px' }}>Review: automatic arithmetic and name checks only. Figures are as at publication; for today&apos;s figures open the company page.</p>
+                <p className="dim" style={{ fontSize: 13.5, margin: '0 0 14px' }}>Review: automatic arithmetic and name checks only. Figures are as at publication; for today&apos;s figures open the company page.</p>
                 {headingsOf(s.study).length > 1 && <nav aria-label="In this study" className="filters" style={{ margin: '0 0 18px' }}><span className="eyebrow">In this study</span>{headingsOf(s.study).map((h) => <a key={h} className="chip" href={`#${slug(h)}`}>{h}</a>)}</nav>}
                 <Prose md={s.study} />
                 <details style={{ marginTop: 28 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>The figures this was written from</summary>
-                  <ul className="muted num" style={{ fontSize: 13, columns: 2, paddingLeft: 18 }}>{s.facts.map((f) => <li key={f}>{f}</li>)}</ul>
+                  <ul className="muted num" style={{ fontSize: 14, columns: 2, paddingLeft: 18 }}>{s.facts.map((f) => <li key={f}>{f}</li>)}</ul>
                 </details>
               </Rv>
             )}

@@ -35,9 +35,9 @@ function Scatter({ rows, sel, onSel }: { rows: Row[]; sel: Row | null; onSel: (r
           {sel ? (
             <>
               <div className="disp" style={{ fontSize: 26 }}><Link href={`/company/?s=${encodeURIComponent(sel.sym)}`}>{sel.sym}</Link></div>
-              <div className="dim" style={{ fontSize: 13 }}>{sel.name}</div>
-              <p className="muted" style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.6 }}>Rank <b>{sel.mf?.rank}</b> of {sel.mf?.of ?? pts.length}: return on capital ranks {sel.mf?.roc_rank}, earnings yield ranks {sel.mf?.ey_rank}, and the two add to {sel.mf?.score ?? '—'}. A low total needs both to be good, not either one.</p>
-              <p className="dim" style={{ margin: '8px 0 0', fontSize: 12.5 }}>Limit that may apply: enterprise value here has no minority-interest adjustment, and the feed does not flag which companies have one. Where a company has material minority interests, its earnings yield can read too high.</p>
+              <div className="dim" style={{ fontSize: 14 }}>{sel.name}</div>
+              <p className="muted" style={{ margin: '10px 0 0', fontSize: 14.5, lineHeight: 1.6 }}>Rank <b>{sel.mf?.rank}</b> of {sel.mf?.of ?? pts.length}: return on capital ranks {sel.mf?.roc_rank}, earnings yield ranks {sel.mf?.ey_rank}, and the two add to {sel.mf?.score ?? '—'}. A low total needs both to be good, not either one.</p>
+              <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5 }}>Limit that may apply: enterprise value here has no minority-interest adjustment, and the feed does not flag which companies have one. Where a company has material minority interests, its earnings yield can read too high.</p>
             </>
           ) : <p className="muted" style={{ margin: 0 }}>Select a point to see why it ranks where it does. Highlighted points are the top 50; grey points are the rest. The table below holds the same numbers.</p>}
         </div>
@@ -85,7 +85,7 @@ export default function Magic() {
           {mf && (
             <div className="grid g2" style={{ marginTop: 32 }}>
               <div className="panel"><div className="eyebrow">Excluded, and why</div><ul className="muted" style={{ paddingLeft: 18 }}>{Object.entries(mf.excluded).sort((a, b) => b[1] - a[1]).map(([k, v]) => <li key={k}><b className="num" style={{ color: 'var(--text)' }}>{v}</b> · {k}</li>)}</ul></div>
-              <div className="panel"><div className="eyebrow">Where this differs from the book</div><p className="muted">Return on capital uses the screen’s ROCE on invested capital, not net working capital plus net fixed assets. EBIT is the last fiscal year, not trailing twelve months. A year whose EBIT margin moved 15+ points is left unranked as a likely one-off. Enterprise value carries no minority-interest line, so a holding company that consolidates a listed subsidiary can look cheaper than it is.</p><p className="dim" style={{ fontSize: 13 }}>A ranking is a way to read the market, not a list to buy from. <Link href="/about/" style={{ color: 'var(--accent-2)' }}>Method →</Link></p></div>
+              <div className="panel"><div className="eyebrow">Where this differs from the book</div><p className="muted">Return on capital uses the screen’s ROCE on invested capital, not net working capital plus net fixed assets. EBIT is the last fiscal year, not trailing twelve months. A year whose EBIT margin moved 15+ points is left unranked as a likely one-off. Enterprise value carries no minority-interest line, so a holding company that consolidates a listed subsidiary can look cheaper than it is.</p><p className="dim" style={{ fontSize: 14 }}>A ranking is a way to read the market, not a list to buy from. <Link href="/about/" style={{ color: 'var(--accent-2)' }}>Method →</Link></p></div>
             </div>
           )}
         </Async>

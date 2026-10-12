@@ -95,7 +95,7 @@ export function PortfolioXray() {
       )}
       <details style={{ margin: '4px 0 8px' }}>
         <summary className="eyebrow" style={{ cursor: 'pointer' }}>Paste many rows (text or CSV)</summary>
-        <textarea className="field" style={{ width: '100%', minHeight: 100, padding: 12, fontFamily: 'var(--f-mono)', fontSize: 13, marginTop: 8 }} value={text} onChange={(e) => save(e.target.value)} placeholder={SAMPLE} spellCheck={false} aria-label="Holdings as text" />
+        <textarea className="field" style={{ width: '100%', minHeight: 100, padding: 12, fontFamily: 'var(--f-mono)', fontSize: 14, marginTop: 8 }} value={text} onChange={(e) => save(e.target.value)} placeholder={SAMPLE} spellCheck={false} aria-label="Holdings as text" />
       </details>
       <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
         <button className="chip" onClick={() => save(SAMPLE)}>Try an example</button>
@@ -121,7 +121,7 @@ export function PortfolioXray() {
               <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 520 }}>
                 <thead><tr><th>Holding</th><th>Weight</th><th>Value</th><th>P/L</th><th>Desk read</th></tr></thead>
                 <tbody>{X.hs.map((h) => (
-                  <tr key={h.sym}><td><Link href={`/company/?s=${encodeURIComponent(h.sym)}`}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 12.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
+                  <tr key={h.sym}><td><Link href={`/company/?s=${encodeURIComponent(h.sym)}`}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
                 ))}</tbody>
               </table></div>
               <div><div className="eyebrow" style={{ marginBottom: 10 }}>By sector</div><div className="meter">{X.sector.map(([n, v]) => <div className="meter-row" key={n}><span className="lab" style={{ minWidth: 130 }}>{n}</span><Bar pct={v / X.total * 100} kind="up" /><span className="num">{(v / X.total * 100).toFixed(0)}%</span></div>)}</div></div>
@@ -129,7 +129,7 @@ export function PortfolioXray() {
           </>
         )}
       </Async>
-      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Live prices where Yahoo answers, otherwise the last close. Ratios are value-weighted from the screen. This describes concentration and quality, not what to buy or sell, and ignores tax and costs.</p>
+      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Live prices where Yahoo answers, otherwise the last close. Ratios are value-weighted from the screen. This describes concentration and quality, not what to buy or sell, and ignores tax and costs.</p>
     </Rv>
   );
 }
@@ -158,19 +158,19 @@ export function ReverseDcf() {
       <div className="eyebrow">Reverse DCF · an earnings-based teaching model</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Instead of guessing the future and getting a value, start from today&apos;s price and solve for the earnings growth it needs.</p>
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
-        {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 13 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
+        {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 14 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
       {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
         <>
         <div className="grid g3" style={{ marginTop: 12 }}>
           <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} (screen close)</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
-          <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 12 }}>for {yrs} years, then {tg}% forever</div></div>
+          <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
           <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
-            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 12.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
+            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
         </div>
         {eps !== null && r.price && (
           <div className="tbl-wrap" style={{ maxHeight: 'none', marginTop: 14 }}>
             <table className="tbl" style={{ minWidth: 420 }}>
-              <caption className="dim" style={{ textAlign: 'left', fontSize: 12.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
+              <caption className="dim" style={{ textAlign: 'left', fontSize: 13.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
               <thead><tr><th scope="col">Required return ↓ · terminal growth →</th>{[3, 5, 7].map((t) => <th key={t} scope="col" className="num">{t}%</th>)}</tr></thead>
               <tbody>{[10, 12, 14, 16].map((rr) => (
                 <tr key={rr} style={{ cursor: 'default', background: rr === rateN ? 'var(--panel-2)' : undefined }}><th scope="row">{rr}%</th>{[3, 5, 7].map((t) => { const x = rr > t ? impliedGrowth(r.price as number, eps, rr / 100, Math.max(1, Math.min(30, yrsN || 10)), t / 100) : null; return <td key={t} className="num">{x === null ? dash : `${(x * 100).toFixed(1)}%`}</td>; })}</tr>
@@ -180,7 +180,7 @@ export function ReverseDcf() {
         )}
         </>
       )}
-      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model built on earnings (EPS), not cash flow: it ignores capex, working capital, dilution and changing margins, and a P/E from a depressed or one-off year distorts it badly. Its value is the question it asks, not the number.</p>
+      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model built on earnings (EPS), not cash flow: it ignores capex, working capital, dilution and changing margins, and a P/E from a depressed or one-off year distorts it badly. Its value is the question it asks, not the number.</p>
     </Rv>
   );
 }
@@ -215,11 +215,11 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
             <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td>
               <td className="num" title={`${passed} passed of ${known} that apply; ${total - known} of ${total} not applicable or unavailable`}>{passed} of {known}{known < total ? <span className="dim"> ({total - known} n/a)</span> : null}</td>
               <td>{mine.length ? mine.map((m) => <span key={m.id} className="tag acc" style={{ marginRight: 4 }}>{m.engine_name}</span>) : <span className="dim">none</span>}</td>
-              <td><span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span></td><td><Chg v={r.r1y} dp={0} /></td><td className="dim" style={{ fontSize: 12.5, whiteSpace: 'normal' }}>{d.bull[0]?.text ?? d.headline}</td></tr>
+              <td><span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span></td><td><Chg v={r.r1y} dp={0} /></td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{d.bull[0]?.text ?? d.headline}</td></tr>
           );
         })}</tbody>
       </table></div>
-      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p>
+      <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p>
     </Async>
   );
 }
@@ -253,16 +253,16 @@ export function MarketStance() {
                 <p className="muted" style={{ margin: '0 0 14px' }}>{advice}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
                   {conds.map(([l, ok, d]) => (
-                    <div key={l} style={{ display: 'flex', gap: 10, fontSize: 13.5 }}>
-                      <span style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: ok ? 'var(--up-soft)' : 'var(--down-soft)', color: ok ? 'var(--up)' : 'var(--down)' }}>{ok ? '✓' : '✕'}</span>
-                      <span>{l}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{d}</small></span>
+                    <div key={l} style={{ display: 'flex', gap: 10, fontSize: 14.5 }}>
+                      <span style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 13, background: ok ? 'var(--up-soft)' : 'var(--down-soft)', color: ok ? 'var(--up)' : 'var(--down)' }}>{ok ? '✓' : '✕'}</span>
+                      <span>{l}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{d}</small></span>
                     </div>
                   ))}
                 </div>
               </>
             );
           })()}
-          <p className="dim" style={{ fontSize: 12, margin: '14px 0 0' }}>Six breadth tests on the screen&apos;s {num(bd.counted)} stocks, as of {bd.as_of}. Breadth describes the market&apos;s state; it does not time it.</p>
+          <p className="dim" style={{ fontSize: 13, margin: '14px 0 0' }}>Six breadth tests on the screen&apos;s {num(bd.counted)} stocks, as of {bd.as_of}. Breadth describes the market&apos;s state; it does not time it.</p>
         </Rv>
       )}
     </Async>

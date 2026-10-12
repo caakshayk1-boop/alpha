@@ -195,10 +195,10 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
           {state ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span className={`tag ${state.up ? 'up' : 'down'}`} style={{ fontSize: 13, padding: '5px 12px' }}>{state.up ? '▲ UPTREND' : '▼ DOWNTREND'}</span>
-                <span className="muted" style={{ fontSize: 14 }}>{state.days} {unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{state.move.toFixed(1)}%</b></span>
+                <span className={`tag ${state.up ? 'up' : 'down'}`} style={{ fontSize: 14, padding: '5px 12px' }}>{state.up ? '▲ UPTREND' : '▼ DOWNTREND'}</span>
+                <span className="muted" style={{ fontSize: 15 }}>{state.days} {unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{state.move.toFixed(1)}%</b></span>
               </div>
-              <div className="dim num" style={{ fontSize: 12.5, marginTop: 6 }}>
+              <div className="dim num" style={{ fontSize: 13.5, marginTop: 6 }}>
                 Key line ₹{px(state.klNow)} · price is {Math.abs(state.dist).toFixed(1)}% {state.up ? 'above' : 'below'} it · a close {state.up ? 'below' : 'above'} flips the trend
               </div>
             </>
@@ -217,7 +217,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
           )}
         </div>
       </div>
-      <div className="num" style={{ fontSize: 12.5, minHeight: 20, marginBottom: 4, color: 'var(--muted)' }}>
+      <div className="num" style={{ fontSize: 13.5, minHeight: 20, marginBottom: 4, color: 'var(--muted)' }}>
         {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · {kl.dir[i] === 1 ? 'uptrend' : 'downtrend'}</span>}</>}
       </div>
       <div ref={wrap} style={{ position: 'relative', minHeight: 300 }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
@@ -225,7 +225,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         {err && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>Could not load {sym} history ({err}).</p>}
         {data && !data.ok && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>{data.error ?? 'No price history for this symbol.'}</p>}
       </div>
-      <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>
+      <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>
         {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
         The key line is a 3-ATR trailing line: it trails price and flips on a close through it. It reads the trend; it does not predict it. Yahoo prices, cached up to 15 minutes.
       </p>

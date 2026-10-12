@@ -12,7 +12,7 @@ function LiveBook({ i }: { i: IpoLiveIssue }) {
     <Rv className="panel spot">
       <div className="eyebrow">Live subscription · {i.status ?? 'active'}</div>
       <div className="disp" style={{ fontSize: 30, margin: '12px 0 4px' }}>{i.company ?? i.symbol}</div>
-      <div className="dim num" style={{ fontSize: 13, marginBottom: 18 }}>{i.price_band} · {i.opens} to {i.closes}</div>
+      <div className="dim num" style={{ fontSize: 14, marginBottom: 18 }}>{i.price_band} · {i.opens} to {i.closes}</div>
       <div className="disp" style={{ fontSize: 56 }}>{i.total_x != null ? `${i.total_x.toFixed(2)}×` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
       {cats.length > 0 && (
         <div className="meter" style={{ marginTop: 18 }}>
@@ -39,7 +39,7 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
         <div><div className="k">Price band</div><div className="v" style={{ fontSize: 15 }}>{u.price_band}</div></div>
         <div><div className="k">Issue size</div><div className="v">₹{num(u.issue_size_cr)} cr</div></div>
         <div><div className="k">Lot · minimum</div><div className="v" style={{ fontSize: 15 }}>{u.lot_size} · ₹{num(u.min_investment)}</div></div>
-        <div><div className="k">Grey market (unofficial)</div><div className="v" style={{ fontSize: 15 }}>{u.gmp_text ?? dash}</div><div className="dim" style={{ fontSize: 11.5, marginTop: 3 }}>Source and time are not stated in the feed; not scored.</div></div>
+        <div><div className="k">Grey market (unofficial)</div><div className="v" style={{ fontSize: 15 }}>{u.gmp_text ?? dash}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>Source and time are not stated in the feed; not scored.</div></div>
         <div><div className="k">Revenue · profit</div><div className="v" style={{ fontSize: 15 }}>{u.revenue_cr ? `₹${num(u.revenue_cr, 0)} · ₹${num(u.pat_cr, 0)} cr` : dash}</div></div>
         <div><div className="k">Listing date</div><div className="v" style={{ fontSize: 15 }}>{u.listing_date ? dateLabel(u.listing_date) : 'Not announced yet'}</div></div>
         <div><div className="k">P/E post issue vs peers</div><div className="v" style={{ fontSize: 15 }}>{u.pe_post_issue ? `${u.pe_post_issue.toFixed(1)}× vs ${u.peer_pe?.toFixed(1) ?? dash}×` : dash}</div></div>
@@ -48,13 +48,13 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
         <div style={{ marginTop: 16 }}>
           <div className="eyebrow" style={{ marginBottom: 10 }}>Mechanical attributes, not a quality rating · {u.score.points} of {u.score.of} points measured</div>
           <div className="meter">{parts.map(([k, v]) => { const [a, b] = v.split('/').map(Number); return <div className="meter-row" key={k}><span className="lab">{k}</span><Bar pct={(a / b) * 100} /><span className="num">{v}</span></div>; })}</div>
-          <ul className="dim" style={{ fontSize: 12.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
+          <ul className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
             {'Size' in (u.score.parts ?? {}) && <li><b>Size</b>: the issue size, ₹{num(u.issue_size_cr)} cr; this attribute scores a bigger issue higher; size alone says nothing about quality.</li>}
             {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({(((u.price_high - u.price_low) / u.price_low) * 100).toFixed(1)}% wide here); this attribute scores a narrower band higher. It does not measure valuation and does not establish the underwriter&apos;s intent.</li> : null}
             <li>The P/E post issue and peer P/E shown above are <b>not part of this score</b>: valuation multiples are not measured by it, which is why they appear in the not-measured list.</li>
             <li>Not measured at all: {u.score.not_measured.join(', ')}. The grey-market premium is shown and deliberately not scored.</li>
           </ul>
-          {u.enriched_url && <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Issue data: <a href={u.enriched_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>Chittorgarh issue page ↗</a>. The offer document is on the NSE and company sites; this feed does not link to it.</p>}
+          {u.enriched_url && <p className="dim" style={{ fontSize: 13.5, margin: '8px 0 0' }}>Issue data: <a href={u.enriched_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>Chittorgarh issue page ↗</a>. The offer document is on the NSE and company sites; this feed does not link to it.</p>}
         </div>
       )}
     </Rv>
@@ -73,7 +73,7 @@ export default function Ipo() {
         <Async loading={f.loading} error={f.error}>
           {d && (
             <>
-              {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 12.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 36 }} /></>}
+              {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 13.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 36 }} /></>}
               {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (updated {ago(d.generated_at)}).</Notice><div style={{ height: 24 }} /></>}
 
               <ol className="filters" aria-label="Issue lifecycle" style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
@@ -105,7 +105,7 @@ export default function Ipo() {
                     return <div className="meter-row" key={r.symbol} style={{ gridTemplateColumns: '120px 1fr 80px' }}><span className="lab">{r.symbol}</span><Bar pct={Math.min(100, (Math.abs(v) / 60) * 100)} kind={v >= 0 ? 'up' : 'down'} /><Chg v={v} dp={1} /></div>;
                   })}
                 </div>
-                <p className="dim" style={{ fontSize: 12.5, margin: '14px 0 0' }}>Measured from the first close, not the issue price. Bars saturate at ±60%. {d.recent_listed.filter((r) => r.measured).length} of the last {d.recent_listed.length} listings have enough trading history to measure.</p>
+                <p className="dim" style={{ fontSize: 13.5, margin: '14px 0 0' }}>Measured from the first close, not the issue price. Bars saturate at ±60%. {d.recent_listed.filter((r) => r.measured).length} of the last {d.recent_listed.length} listings have enough trading history to measure.</p>
               </div>
             </>
           )}

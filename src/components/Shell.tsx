@@ -110,7 +110,7 @@ function Palette({ open, onClose }: { open: boolean; onClose: () => void }) {
           {hits.map((h, n) => (
             <li key={`${h.kind}-${h.href}`} role="option" aria-selected={n === i}>
               <button onMouseEnter={() => setI(n)} onClick={() => go(h)}>
-                <span><b>{h.label}</b> <span className="dim" style={{ fontSize: 12.5 }}>{h.sub}</span></span>
+                <span><b>{h.label}</b> <span className="dim" style={{ fontSize: 13.5 }}>{h.sub}</span></span>
                 <span className="tag">{h.kind === 'page' ? 'Page' : 'Company'}</span>
               </button>
             </li>

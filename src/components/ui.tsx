@@ -126,7 +126,7 @@ export function PercentileBars({ items }: { items: { label: string; value: numbe
               {v !== null && <div style={{ width: `${v}%`, height: '100%', borderRadius: 9, background: 'var(--accent)' }} />}
               <span aria-hidden title="Median company" style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 2, background: 'var(--text)', opacity: 0.55 }} />
             </div>
-            <span className="num" style={{ fontSize: 13 }}>{v === null ? <span className="dim">not scored</span> : <>{ordinal(v)} percentile</>}{note ? <span className="dim"> · {note}</span> : null}</span>
+            <span className="num" style={{ fontSize: 14 }}>{v === null ? <span className="dim">not scored</span> : <>{ordinal(v)} percentile</>}{note ? <span className="dim"> · {note}</span> : null}</span>
           </div>
         );
       })}

@@ -122,9 +122,9 @@ function SinceVisit() {
     <section className="wrap" style={{ paddingTop: 0 }}>
       <div className="panel tight">
         <div className="eyebrow">Since your last visit · kept in this browser</div>
-        {diff.kind === 'start' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Tracking starts now. Come back after the next session and this will list what changed. Nothing is uploaded.</p>}
-        {diff.kind === 'same' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 13.5 }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
-        {diff.kind === 'changes' && <><p className="dim" style={{ margin: '6px 0 0', fontSize: 12.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 13.5 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
+        {diff.kind === 'start' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 14.5 }}>Tracking starts now. Come back after the next session and this will list what changed. Nothing is uploaded.</p>}
+        {diff.kind === 'same' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 14.5 }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
+        {diff.kind === 'changes' && <><p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 14.5 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
       </div>
     </section>
   );
@@ -195,7 +195,7 @@ function Board() {
         <div className="qgrid">
           {want.map((id) => q.data?.quotes.find((x) => x.id === id && x.price !== null)).filter((x): x is Quote => !!x).map((x) => <QuoteCard key={x.id} q={x} />)}
         </div>
-        {q.data && <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}. Commodities are futures contracts.</p>}
+        {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}. Commodities are futures contracts.</p>}
       </Async>
     </section>
   );
@@ -227,7 +227,7 @@ function Breadth() {
           </div>
         ))}
       </div>
-      {b && <p className="dim" style={{ fontSize: 12.5, margin: '16px 0 0' }}>Median stock {pct(b.median)} over the last week window · {b.at_52w_high} at a 52-week high</p>}
+      {b && <p className="dim" style={{ fontSize: 13.5, margin: '16px 0 0' }}>Median stock {pct(b.median)} over the last week window · {b.at_52w_high} at a 52-week high</p>}
     </Rv>
   );
 }
@@ -311,10 +311,10 @@ function IpoCard() {
       {open.slice(0, 2).map((o) => (
         <div key={o.symbol} style={{ marginTop: 14 }}>
           <div className="disp" style={{ fontSize: 26 }}>{o.company}</div>
-          <div className="dim num" style={{ fontSize: 13, marginTop: 6 }}>{o.price_band} · closes {o.close_date} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div>
+          <div className="dim num" style={{ fontSize: 14, marginTop: 6 }}>{o.price_band} · closes {o.close_date} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div>
         </div>
       ))}
-      <Link className="more" href="/ipo/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 13 }}>Open and recent listings →</Link>
+      <Link className="more" href="/ipo/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 14 }}>Open and recent listings →</Link>
     </Rv>
   );
 }
@@ -329,8 +329,8 @@ function ReadCard() {
       {s && (
         <>
           <div className="disp" style={{ fontSize: 30, margin: '14px 0 6px' }}>{s.name}</div>
-          <div className="dim" style={{ fontSize: 13 }}>{s.sector} · {s.read_minutes} min read</div>
-          <Link className="more" href="/reads/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 13 }}>Read this week’s seven →</Link>
+          <div className="dim" style={{ fontSize: 14 }}>{s.sector} · {s.read_minutes} min read</div>
+          <Link className="more" href="/reads/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 14 }}>Read this week’s seven →</Link>
         </>
       )}
     </Rv>
@@ -381,7 +381,7 @@ export default function Home() {
       </section>
       <section className="wrap section">
         <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
-        <div className="grid g3"><MagicLeaders /><div className="grid"><IpoCard /><ReadCard /></div><Rv className="panel spot"><div className="eyebrow">How to read this</div><p className="lede" style={{ fontSize: 15, marginTop: 14 }}>Every score, rank and flag has its rule written beside it, and every dataset says when it last updated. Where a number cannot be computed it shows a dash, never a guess.</p><Link className="more" href="/about/" style={{ color: 'var(--accent-2)', fontSize: 13 }}>Method and sources →</Link>{latest && <p className="dim" style={{ fontSize: 12.5, marginTop: 16 }}>Data last refreshed {ago(latest)}</p>}</Rv></div>
+        <div className="grid g3"><MagicLeaders /><div className="grid"><IpoCard /><ReadCard /></div><Rv className="panel spot"><div className="eyebrow">How to read this</div><p className="lede" style={{ fontSize: 15, marginTop: 14 }}>Every score, rank and flag has its rule written beside it, and every dataset says when it last updated. Where a number cannot be computed it shows a dash, never a guess.</p><Link className="more" href="/about/" style={{ color: 'var(--accent-2)', fontSize: 14 }}>Method and sources →</Link>{latest && <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Data last refreshed {ago(latest)}</p>}</Rv></div>
       </section>
     </>
   );

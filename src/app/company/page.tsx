@@ -27,7 +27,7 @@ function Range({ r }: { r: Row }) {
   return (
     <div>
       <div className="range" role="img" aria-label={`Price is ${p.toFixed(0)}% of the way from the 52-week low to the high`}><span className="dot" style={{ left: `${p}%` }} /></div>
-      <div className="qrow num" style={{ fontSize: 13 }}><span>52w low ₹{num(r.low52, 2)}</span><span className="dim">{p.toFixed(0)}% of range</span><span>52w high ₹{num(r.high52, 2)}</span></div>
+      <div className="qrow num" style={{ fontSize: 14 }}><span>52w low ₹{num(r.low52, 2)}</span><span className="dim">{p.toFixed(0)}% of range</span><span>52w high ₹{num(r.high52, 2)}</span></div>
     </div>
   );
 }
@@ -63,8 +63,8 @@ function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
             return (
               <div className="fin-bar" key={y.fy}>
                 <i className={has(v) && v < 0 ? 'neg' : ''} style={{ height: `${has(v) ? Math.max(3, (Math.abs(v) / max) * 100) : 0}%` }} />
-                <span className="num" style={{ fontSize: 12 }}>{has(v) ? num(v) : dash}</span>
-                <span className="dim" style={{ fontSize: 11 }}>{y.fy}</span>
+                <span className="num" style={{ fontSize: 13 }}>{has(v) ? num(v) : dash}</span>
+                <span className="dim" style={{ fontSize: 12 }}>{y.fy}</span>
               </div>
             );
           })}
@@ -129,7 +129,7 @@ function Ownership({ sym, pre }: { sym: string; pre?: Shard['inst'] }) {
             <Kv k="Mutual funds" v={has(i.mf) ? `${i.mf.toFixed(1)}%` : dash} />
             <Kv k="Public" v={has(i.publicHold) ? `${i.publicHold.toFixed(1)}%` : dash} />
           </div>
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 10 }}>As of {i.period}. Quarter change: FII {pct(i.fii_pp, 2).replace('%', ' pp')} · DII {pct(i.dii_pp, 2).replace('%', ' pp')}. Source: NSE shareholding patterns.</p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 10 }}>As of {i.period}. Quarter change: FII {pct(i.fii_pp, 2).replace('%', ' pp')} · DII {pct(i.dii_pp, 2).replace('%', ' pp')}. Source: NSE shareholding patterns.</p>
         </>
       )}
     </Async>
@@ -148,11 +148,11 @@ function Seasons({ sym, pre }: { sym: string; pre?: Shard['season'] }) {
               <div className="sector-cell" key={MONTHS[i]} style={{ ['--c' as string]: heat(m[1], 6), minHeight: 70 }} title={`${m[2]} years observed`}>
                 <span className="n">{MONTHS[i]}</span>
                 <span className="v" style={{ fontSize: 15 }}>{pct(m[1], 1)}</span>
-                <span className="dim" style={{ fontSize: 11 }}>up {m[0]}%</span>
+                <span className="dim" style={{ fontSize: 12 }}>up {m[0]}%</span>
               </div>
             ))}
           </div>
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 10 }}>Median return and share of years that were up, over {s.y} years. A month has no causal pull on a price; this records what repeatedly happened, not what will.</p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 10 }}>Median return and share of years that were up, over {s.y} years. A month has no causal pull on a price; this records what repeatedly happened, not what will.</p>
         </>
       )}
     </Async>
@@ -201,7 +201,7 @@ function Company() {
             <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
-          </div><div className="px">{num(px.quotes[sym]?.price ?? r.price, 2) === '—' ? '—' : `₹${num(px.quotes[sym]?.price ?? r.price, 2)}`}</div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
+          </div><div className="px">{num(px.quotes[sym]?.price ?? r.price, 2) === '—' ? '—' : `₹${num(px.quotes[sym]?.price ?? r.price, 2)}`}</div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 13.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
       </header>
       {(() => {
         const live = px.quotes[sym]?.price;
@@ -211,7 +211,7 @@ function Company() {
 
       <section className="wrap section">
         <PercentileBars items={[{ label: 'Quality', value: r.q }, { label: 'Growth', value: r.g }, { label: 'Value', value: r.v, note: 'higher is cheaper' }, { label: 'Technical', value: r.tech }]} />
-        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: the tick marks the median company (50), which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+        <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: the tick marks the median company (50), which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
       <section className="wrap" style={{ paddingTop: 0 }}>
         <TabRow label="Company views" value={view} onChange={pick} options={tabOptions} />
@@ -228,8 +228,8 @@ function Company() {
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
             {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{r.vd.o}.</p> : <p className="muted">Nothing notable.</p>}
-            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{f.k}</small>}</li>)}</ul>}
-            {r.next_earnings && <p className="dim" style={{ fontSize: 13, marginBottom: 0 }}>Next results expected {r.next_earnings}.</p>}
+            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
+            {r.next_earnings && <p className="dim" style={{ fontSize: 14, marginBottom: 0 }}>Next results expected {r.next_earnings}.</p>}
           </Rv>
         </div>
       </section>
@@ -262,8 +262,8 @@ function Company() {
             <Rv key={`${x.engine}${x.date}`} className="panel spot">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
                 <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
-                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 11, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
-                  <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: {eng.data?.engines[x.engine] ? <EngineVerdict e={eng.data.engines[x.engine]} /> : <span className="tag">{x.engine_status}</span>}</p></div>
+                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 15 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 15 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 14 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{x.max_hold_days} sessions</div></div></div>
+                  <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>This engine&apos;s record: {eng.data?.engines[x.engine] ? <EngineVerdict e={eng.data.engines[x.engine]} /> : <span className="tag">{x.engine_status}</span>}</p></div>
                 <PlanOdds sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={x.last_close} />
               </div>
             </Rv>))}</div>

@@ -95,7 +95,7 @@ export default function Brief() {
               <div className="eyebrow">Market stage</div>
               <div className="disp" style={{ fontSize: 40, margin: '10px 0 4px' }}>{t?.stage.t ?? '—'}</div>
               <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
-              <Link href="/rotation/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>See how sector strength is changing →</Link>
+              <Link href="/rotation/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 14 }}>See how sector strength is changing →</Link>
             </Rv>
           </div>
 
@@ -111,7 +111,7 @@ export default function Brief() {
               {moved.length === 0 ? <p className="muted">No ranking moves recorded in the latest build.</p> : (
                 <div className="list">{moved.map((r) => { const mv = (r as Row & { rank_move: number }).rank_move; return <Link key={r.sym} href={`/company/?s=${r.sym}`} className="li"><div><div className="t">{r.sym} · {r.name}</div><div className="s">Composite {num(r.comp, 0)} · {r.sector}</div></div><span className={`num ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? `▲ up ${mv}` : `▼ down ${Math.abs(mv)}`} places</span></Link>; })}</div>
               )}
-              <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Places moved in the composite ranking against the previous build. A description of the data, not a call.</p>
+              <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Places moved in the composite ranking against the previous build. A description of the data, not a call.</p>
             </Rv>
           </Async>
 
@@ -122,18 +122,18 @@ export default function Brief() {
               {byDay.length === 0 && <p className="muted">No results dates on file for the next two weeks.</p>}
               {byDay.map(([day, list]) => (
                 <div key={day} style={{ marginTop: 12 }}>
-                  <div className="num" style={{ fontSize: 12.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : plural(daysUntil(day), 'day').replace(/^/, 'in ')} · {plural(list.length, 'company', 'companies')}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 12 }}>+{list.length - 10} more</span>}</div>
+                  <div className="num" style={{ fontSize: 13.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : plural(daysUntil(day), 'day').replace(/^/, 'in ')} · {plural(list.length, 'company', 'companies')}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 13 }}>+{list.length - 10} more</span>}</div>
                 </div>
               ))}
-              <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Dates come from the screen feed, which does not say whether a company has confirmed them or a vendor has estimated them. Check the exchange&apos;s <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>board-meeting announcements ↗</a> before relying on one.</p>
-              <Link href="/calendar/" className="more" style={{ display: 'inline-block', marginTop: 8, color: 'var(--accent-2)', fontSize: 13 }}>Full results calendar →</Link>
+              <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Dates come from the screen feed, which does not say whether a company has confirmed them or a vendor has estimated them. Check the exchange&apos;s <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>board-meeting announcements ↗</a> before relying on one.</p>
+              <Link href="/calendar/" className="more" style={{ display: 'inline-block', marginTop: 8, color: 'var(--accent-2)', fontSize: 14 }}>Full results calendar →</Link>
             </Rv>
             <Rv className="panel">
               <div className="eyebrow">IPOs</div>
-              {(ipo.data?.upcoming ?? []).concat(ipo.data?.open ?? [] as never[]).slice(0, 3).map((u) => <div key={u.symbol} style={{ marginTop: 12 }}><div className="t" style={{ fontWeight: 600 }}>{u.company}</div><div className="dim num" style={{ fontSize: 12.5 }}>{u.price_band} · opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}</div></div>)}
+              {(ipo.data?.upcoming ?? []).concat(ipo.data?.open ?? [] as never[]).slice(0, 3).map((u) => <div key={u.symbol} style={{ marginTop: 12 }}><div className="t" style={{ fontWeight: 600 }}>{u.company}</div><div className="dim num" style={{ fontSize: 13.5 }}>{u.price_band} · opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}</div></div>)}
               {ipo.data && ipo.data.upcoming.length + ipo.data.open.length === 0 && <p className="muted">Nothing open or scheduled.</p>}
-              <Link href="/ipo/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>Live book and track record →</Link>
+              <Link href="/ipo/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 14 }}>Live book and track record →</Link>
             </Rv>
           </div>
 
@@ -141,19 +141,19 @@ export default function Brief() {
           <Rv className="panel">
             <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={`/company/?s=${sym}`} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
             {seasonal.length === 0 && <p className="muted">No vetted name clears the 75% bar this month.</p>}
-            <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
+            <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
           </Rv>
 
           <SectionHead eyebrow="Engines" title="What the models selected" href="/engines/" cta="All engines" />
           <Async loading={eng.loading} error={null} rows={1}>
             <div className="engine-cards">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
-              <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 12.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><EngineVerdict e={e} /></div></Rv>
+              <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 13.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><EngineVerdict e={e} /></div></Rv>
             ))}</div>
           </Async>
 
           <SectionHead eyebrow="Wire" title="Headlines" href="/news/" cta="All stories" />
           <Rv className="panel"><div className="list">{(news.data ?? []).slice(0, 6).map((s) => <a key={s.link} href={s.link} target="_blank" rel="noopener noreferrer" className="li"><div><div className="t">{s.title}</div><div className="s">{s.source}</div></div><span aria-hidden className="dim">↗</span></a>)}</div></Rv>
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 16 }}>Information only, not investment advice. This brief is also sent to Telegram at 08:00 and 20:00 MYT.</p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Information only, not investment advice. This brief is also sent to Telegram at 08:00 and 20:00 MYT.</p>
         </Async>
       </section>
     </>
