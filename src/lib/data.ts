@@ -48,9 +48,10 @@ export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/a
 
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean }
 
-function useLoaded<T>(get: () => Promise<T>, key: string): Loaded<T> {
+function useLoaded<T>(get: () => Promise<T>, key: string, enabled = true): Loaded<T> {
   const [state, set] = useState<Loaded<T>>({ data: null, error: null, loading: true });
   useEffect(() => {
+    if (!enabled) return undefined;
     let live = true;
     set({ data: null, error: null, loading: true });
     get().then(
@@ -61,11 +62,17 @@ function useLoaded<T>(get: () => Promise<T>, key: string): Loaded<T> {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, enabled]);
   return state;
 }
 
 export const useFeed = <K extends FeedName>(name: K): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name);
+/** Like useFeed, but does nothing until `enabled`: lets a page skip a big feed when a small one already answered. */
+export const useFeedWhen = <K extends FeedName>(name: K, enabled: boolean): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name, enabled);
+
+/** One company's slice of every company feed, built before each deploy (scripts/shard.mjs). An error means no shard: use the full feeds. */
+export interface Shard { sym: string; built_on: string; count: number; row: import('./types').Row; years: import('./types').Year[] | null; swot: import('./types').Swot | null; inst: import('./types').InstRow | null; season: { m: [number, number, number][]; y: number } | null }
+export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym);
 export const useEngines = (): Loaded<EnginesFeed> => useLoaded(enginesFeed, 'engines');
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation');
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');

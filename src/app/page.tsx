@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { Async, Bar, Chg, CountUp, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
+import { Async, Bar, Chg, CountUp, LazyMount, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct } from '@/lib/format';
@@ -319,7 +319,7 @@ export default function Home() {
       <Hero />
       <Ticker />
       <Teasers />
-      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the lenses agree" href="/tools/" cta="Portfolio X-ray and more" /><Confluence limit={6} /></section>
+      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the lenses agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Board />
       <section className="wrap section">
         <div className="grid g-7-5">

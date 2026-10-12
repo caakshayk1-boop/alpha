@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: 'alpha — Indian equity research desk', template: '%s · alpha' },
   description: 'One screen for Indian markets: a live board, nearly 1,000 companies screened on quality, growth and value, weekly company studies, IPOs, funds and the news that touches them.',
   openGraph: { title: 'alpha — Indian equity research desk', description: 'Live board, a screen of nearly 1,000 companies, weekly studies, IPOs and funds. Working shown.', url: 'https://alpha.askakshay.com', type: 'website' },
-  alternates: { canonical: 'https://alpha.askakshay.com' },
+  alternates: { canonical: './' },
   manifest: '/manifest.webmanifest',
   icons: { icon: [{ url: '/icons/favicon-32.png', sizes: '32x32' }, { url: '/icons/icon-192.png', sizes: '192x192' }], apple: '/icons/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },

@@ -8,7 +8,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "worker:dev": "wrangler dev --local --port 8799",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "prebuild": "node scripts/shard.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",

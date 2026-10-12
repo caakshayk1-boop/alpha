@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { chartFeed } from '@/lib/data';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { chartFeed, useFeed } from '@/lib/data';
 import { cone, type Bars } from '@/lib/ta';
 import { Rv, Segmented, Switch } from '@/components/ui';
 import { decide, lookalikes } from '@/lib/decision';
@@ -140,4 +140,26 @@ export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targ
       </div>
     </div>
   );
+}
+
+function LookalikesLoaded({ r }: { r: Row }) {
+  const f = useFeed('screen');
+  if (f.loading) return <p className="dim">Finding companies with the same profile…</p>;
+  if (f.error || !f.data) return <p className="notice">Could not load the screen to compare against.</p>;
+  return <Lookalikes r={r} rows={f.data.rows} />;
+}
+
+/** Look-alikes need the whole screen, which is 500 KB. Fetch it only when the section is about to be seen. */
+export function LookalikesLazy({ r }: { r: Row }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return undefined;
+    if (typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near]);
+  return <div ref={ref} style={{ minHeight: 120 }}>{near ? <LookalikesLoaded r={r} /> : null}</div>;
 }

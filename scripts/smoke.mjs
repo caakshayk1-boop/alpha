@@ -72,6 +72,13 @@ try {
   check('engines.json', false, e.message);
 }
 try {
+  const { r, text } = await get('/c/TCS.json');
+  const j = JSON.parse(text);
+  check('per-company shard answers and is small', r.status === 200 && j.sym === 'TCS' && j.row?.price > 0 && text.length < 60000, `${text.length} bytes`);
+} catch (e) {
+  check('company shard', false, e.message);
+}
+try {
   const j = JSON.parse((await get('/api/chart?s=TCS&r=3mo')).text);
   check('chart history answers with candles and the Nifty', j.ok && j.c.length > 40 && j.h.every((h, i) => h >= j.l[i]) && j.nifty.filter((x) => x).length > 30, `${j.c?.length} bars`);
   const bad = await get('/api/chart?s=NOTASYMBOLXYZ&r=1y');

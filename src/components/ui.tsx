@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useId, useRef, type CSSProperties, type ElementType, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { canAnimate, countUp, gsap, observeReveal } from '@/lib/motion';
 import { dash, tone } from '@/lib/format';
 
@@ -199,4 +199,19 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       <span>{label}</span>
     </button>
   );
+}
+
+/** Mounts its children only when they are about to scroll into view, so below-the-fold widgets cost nothing on first load. */
+export function LazyMount({ children, minHeight = 200, margin = 500 }: { children: ReactNode; minHeight?: number; margin?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return undefined;
+    if (typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: `${margin}px 0px` });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near, margin]);
+  return <div ref={ref} style={{ minHeight }}>{near ? children : null}</div>;
 }

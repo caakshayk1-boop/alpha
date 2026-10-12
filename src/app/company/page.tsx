@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
-import { Async, Bar, Chg, CountUp, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
+import { Async, Bar, Chg, CountUp, LazyMount, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
 import StockChart from '@/components/StockChart';
-import { DecisionDesk, ExternalLinks, Lookalikes, RiskCone } from '@/components/CompanyTools';
-import { useEngines, useFeed, usePx } from '@/lib/data';
+import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone } from '@/components/CompanyTools';
+import { useEngines, useFeedWhen, usePx, useShard, type Shard } from '@/lib/data';
 import { useStoredList } from '@/lib/store';
 import { ago, crore, dash, dateLabel, heat, num, pct } from '@/lib/format';
 import type { Row, Year } from '@/lib/types';
@@ -46,9 +46,9 @@ function Returns({ r }: { r: Row }) {
   );
 }
 
-function Financials({ sym }: { sym: string }) {
-  const d = useFeed('screen-detail');
-  const years: Year[] = [...(d.data?.detail[sym]?.years ?? [])].reverse();
+function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
+  const d = useFeedWhen('screen-detail', pre === undefined);
+  const years: Year[] = [...(pre !== undefined ? pre ?? [] : d.data?.detail[sym]?.years ?? [])].reverse();
   const bars = (key: 'rev_cr' | 'pat_cr', title: string) => {
     const vals = years.map((y) => y[key]);
     const max = Math.max(1, ...vals.map((v) => Math.abs(v ?? 0)));
@@ -71,7 +71,7 @@ function Financials({ sym }: { sym: string }) {
     );
   };
   return (
-    <Async loading={d.loading} error={d.error} rows={2}>
+    <Async loading={pre === undefined && d.loading} error={pre === undefined ? d.error : null} rows={2}>
       {years.length === 0 ? <Notice>No statements are held for this company.</Notice> : (
         <>
           <div className="grid g2">{bars('rev_cr', 'Revenue, ₹ crore')}{bars('pat_cr', 'Net profit, ₹ crore')}</div>
@@ -90,12 +90,12 @@ function Financials({ sym }: { sym: string }) {
   );
 }
 
-function Swot({ sym }: { sym: string }) {
-  const f = useFeed('swot');
-  const s = f.data?.swot[sym];
+function Swot({ sym, pre }: { sym: string; pre?: Shard['swot'] }) {
+  const f = useFeedWhen('swot', pre === undefined);
+  const s = pre !== undefined ? pre : f.data?.swot[sym];
   const quad: [keyof NonNullable<typeof s>, string, string][] = [['s', 'Strengths', 'var(--up)'], ['w', 'Weaknesses', 'var(--down)'], ['o', 'Opportunities', 'var(--accent-2)'], ['t', 'Threats', 'var(--warn)']];
   return (
-    <Async loading={f.loading} error={f.error} rows={2}>
+    <Async loading={pre === undefined && f.loading} error={pre === undefined ? f.error : null} rows={2}>
       {!s ? <Notice>No strengths or weaknesses were flagged for this company.</Notice> : (
         <div className="swot">
           {quad.map(([k, label, c]) => (
@@ -110,11 +110,11 @@ function Swot({ sym }: { sym: string }) {
   );
 }
 
-function Ownership({ sym }: { sym: string }) {
-  const f = useFeed('institutional');
-  const i = f.data?.rows[sym];
+function Ownership({ sym, pre }: { sym: string; pre?: Shard['inst'] }) {
+  const f = useFeedWhen('institutional', pre === undefined);
+  const i = pre !== undefined ? pre : f.data?.rows[sym];
   return (
-    <Async loading={f.loading} error={f.error} rows={1}>
+    <Async loading={pre === undefined && f.loading} error={pre === undefined ? f.error : null} rows={1}>
       {!i || i.quality === 'unavailable' ? <Notice>Shareholding data is not available for this company.</Notice> : (
         <>
           <div className="kv">
@@ -131,11 +131,11 @@ function Ownership({ sym }: { sym: string }) {
   );
 }
 
-function Seasons({ sym }: { sym: string }) {
-  const f = useFeed('seasonality');
-  const s = f.data?.stocks[sym];
+function Seasons({ sym, pre }: { sym: string; pre?: Shard['season'] }) {
+  const f = useFeedWhen('seasonality', pre === undefined);
+  const s = pre !== undefined ? pre : f.data?.stocks[sym];
   return (
-    <Async loading={f.loading} error={f.error} rows={1}>
+    <Async loading={pre === undefined && f.loading} error={pre === undefined ? f.error : null} rows={1}>
       {!s ? <Notice>Not enough monthly history to say what this name has done in each month.</Notice> : (
         <>
           <div className="sector-strip" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))' }}>
@@ -157,12 +157,15 @@ function Seasons({ sym }: { sym: string }) {
 function Company() {
   const sp = useSearchParams();
   const sym = (sp.get('s') ?? '').toUpperCase();
-  const s = useFeed('screen');
+  const sh = useShard(sym);
+  const full = useFeedWhen('screen', !!sym && !!sh.error);      // the full screen only when there is no per-company shard
+  const s = { loading: sh.loading || (!!sh.error && full.loading), error: sh.error ? full.error : null, count: sh.data?.count ?? full.data?.count };
+  const pre = sh.data;
   const eng = useEngines();
   const px = usePx(sym ? [sym] : []);
   const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
-  const r = useMemo(() => s.data?.rows.find((x) => x.sym.toUpperCase() === sym), [s.data, sym]);
+  const r = useMemo(() => sh.data?.row ?? full.data?.rows.find((x) => x.sym.toUpperCase() === sym), [sh.data, full.data, sym]);
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 24 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
@@ -195,7 +198,7 @@ function Company() {
           <Rv><Ring value={r.v} label="Value" hue="acc" /></Rv>
           <Rv><Ring value={r.tech} label="Technical" hue="acc" /></Rv>
         </div>
-        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.data?.count)} companies, not predictions.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
 
       <section className="wrap section">
@@ -205,7 +208,7 @@ function Company() {
 
       <section className="wrap section"><SectionHead eyebrow="AI desk" title="What the numbers add up to" /><DecisionDesk r={r} sigs={mySignals} /></section>
 
-      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the price could go" /><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></section>
+      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the price could go" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
 
       <section className="wrap section">
         <div className="grid g-7-5">
@@ -246,11 +249,11 @@ function Company() {
         </Rv>
       </section>
 
-      <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} /></section>
-      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} /></section>
-      <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} /></section>
-      <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} /></section>
-      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><Lookalikes r={r} rows={s.data?.rows ?? []} /></section>
+      <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
+      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} /></section>
+      <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} pre={pre?.inst} /></section>
+      <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
+      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
     </>
   );
 }

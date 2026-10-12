@@ -237,7 +237,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <div className="progress" aria-hidden />
       <header className="topbar">
         <div className="wrap">
-          <Link href="/" className="brand" aria-label="alpha, home">
+          <Link href="/" className="brand" title="alpha, home">
             <span className="brand-mark">α</span>
             <span>alpha</span>
           </Link>
@@ -275,7 +275,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             {p.label}
           </Link>
         ))}
-        <button onClick={() => setSheet(true)} aria-label="All pages and search" aria-haspopup="dialog">
+        <button onClick={() => setSheet(true)} aria-label="More: all pages and search" aria-haspopup="dialog">
           <Icon d="M4 7h16M4 12h16M4 17h16" />
           More
         </button>
@@ -288,9 +288,9 @@ export default function Shell({ children }: { children: ReactNode }) {
               <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark">α</span><span>alpha</span></div>
               <p style={{ margin: 0, maxWidth: '34ch' }}>An independent research desk for Indian equities. Numbers first, working shown.</p>
             </div>
-            <div><h4>Markets</h4><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>
-            <div><h4>Research</h4><Link href="/screen/">Screen</Link><Link href="/engines/">Engines</Link><Link href="/magic/">Magic Formula</Link><Link href="/reads/">Weekly reads</Link></div>
-            <div><h4>Desk</h4><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
+            <div><h2 className="fh">Markets</h2><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>
+            <div><h2 className="fh">Research</h2><Link href="/screen/">Screen</Link><Link href="/engines/">Engines</Link><Link href="/magic/">Magic Formula</Link><Link href="/reads/">Weekly reads</Link></div>
+            <div><h2 className="fh">Desk</h2><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
           </div>
           <p className="footer-legal">
             For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results.
