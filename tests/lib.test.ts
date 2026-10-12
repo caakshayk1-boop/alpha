@@ -7,6 +7,7 @@ import { ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/
 import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
+import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
   const s = reconcile([
@@ -173,4 +174,20 @@ test('glossary: every entry is complete, anchors are unique and URL-safe, search
   assert.equal(searchGlossary('').length, Object.keys(GLOSSARY).length);
   assert.ok(searchGlossary('roce').some(([k]) => k === 'ROCE'));
   assert.equal(searchGlossary('roce zzzznotaword').length, 0);
+});
+
+test('news: near-identical headlines from different sources group; the same source and unrelated stories do not', () => {
+  const s = (title: string, source: string) => ({ title, summary: '', link: `https://x/${title}`, source });
+  const g = groupStories([s('RBI keeps repo rate unchanged at 5.5 per cent', 'A'), s('RBI keeps repo rate unchanged at 5.5%', 'B'), s('Nifty ends lower as IT stocks drag', 'A'), s('RBI keeps repo rate unchanged at 5.5 per cent today', 'A')]);
+  assert.equal(g.length, 3);
+  assert.equal(g[0].more.length, 1);
+  assert.equal(g[0].more[0].source, 'B');
+});
+test('news: a company matches by ticker or whole name, and says which; substrings do not match', () => {
+  const cos = [{ sym: 'TCS', name: 'Tata Consultancy Services Ltd.' }, { sym: 'IT', name: 'Gartner IT' }, { sym: 'LCL', name: 'Lloyds Construction Ltd' }];
+  assert.equal(shortName('Tata Consultancy Services Ltd.'), 'Tata Consultancy Services');
+  assert.deepEqual(matchCompanies('TCS wins a large deal', cos).map((m) => m.sym), ['TCS']);
+  assert.deepEqual(matchCompanies('Tata Consultancy Services posts results', cos).map((m) => m.basis), ['name “Tata Consultancy Services” in the text']);
+  assert.deepEqual(matchCompanies('The IT sector rallied; ITC and LCLX rose', cos), []);   // short tickers and substrings never match
+  assert.deepEqual(matchCompanies('tcs lowercase mention', cos), []);                    // a ticker must be written as one
 });

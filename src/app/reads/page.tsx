@@ -4,8 +4,25 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Prose, { headingsOf, slug } from '@/components/Prose';
 import { Async, PageHead, Rv } from '@/components/ui';
-import { useFeed } from '@/lib/data';
-import { crore, dateLabel } from '@/lib/format';
+import { useFeed, useShard } from '@/lib/data';
+import { crore, dateLabel, num, pct } from '@/lib/format';
+
+/** The figures the study was written from, beside today's, so a reader never mistakes one for the other. */
+function LatestFigures({ sym, price, mcap, writtenAt }: { sym: string; price: number; mcap: number; writtenAt: string | null }) {
+  const sh = useShard(sym);
+  const row = sh.data?.row;
+  const now = typeof row?.price === 'number' ? row.price : null;
+  const move = now !== null && price > 0 ? (now / price - 1) * 100 : null;
+  return (
+    <div className="grid g2" style={{ margin: '0 0 16px' }} role="group" aria-label="Figures at publication and latest figures">
+      <div className="panel tight"><div className="eyebrow">At publication{writtenAt ? ` · ${dateLabel(writtenAt)}` : ''}</div><div className="num" style={{ marginTop: 6 }}>₹{num(price, 2)} · {crore(mcap)}</div><div className="dim" style={{ fontSize: 13.5 }}>What the study below was written from. It is not updated.</div></div>
+      <div className="panel tight"><div className="eyebrow">Latest{row?.last_date ? ` · ${dateLabel(row.last_date)}` : ''}</div>
+        {sh.loading ? <div className="dim" style={{ marginTop: 6 }}>Loading…</div> : now === null ? <div className="dim" style={{ marginTop: 6 }}>Latest figures are not available for this company.</div> : <div className="num" style={{ marginTop: 6 }}>₹{num(now, 2)}</div>}
+        {move !== null && <div className="dim" style={{ fontSize: 13.5 }}>{pct(move, 1)} in price since publication. Market cap is not shown here: the screen&apos;s figure is not recalculated with the price. The study&apos;s text does not change.</div>}
+      </div>
+    </div>
+  );
+}
 
 export default function Reads() {
   const r = useFeed('weekly_reads');
@@ -44,6 +61,7 @@ export default function Reads() {
                 <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={`/company/?s=${s.sym}`} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
                 {s.corrections && s.corrections.length > 0 && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.map((c) => <li key={c.what}>{dateLabel(c.date)}: {c.what}</li>)}</ul></div>}
+                <LatestFigures key={s.sym} sym={s.sym} price={s.price} mcap={s.mcap_cr} writtenAt={ed?.written_at ?? null} />
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 14px' }}>Review: automatic arithmetic and name checks only. Figures are as at publication; for today&apos;s figures open the company page.</p>
                 {headingsOf(s.study).length > 1 && <nav aria-label="In this study" className="filters" style={{ margin: '0 0 18px' }}><span className="eyebrow">In this study</span>{headingsOf(s.study).map((h) => <a key={h} className="chip" href={`#${slug(h)}`}>{h}</a>)}</nav>}
                 <Prose md={s.study} />
