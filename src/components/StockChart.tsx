@@ -84,7 +84,8 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
       g.fillStyle = text; g.textAlign = 'left'; g.fillText(rel ? v.toFixed(0) : px(v), W - padR + 6, y);
     }
     g.textAlign = 'center'; g.fillStyle = text;
-    for (let k = 0; k < 4; k++) { const i = Math.round(((n - 1) * (k + 0.1)) / 3.2); g.fillText(fmtDate(bars.t[i]), Math.min(Math.max(X(i), 36), W - padR - 30), top + ph + 14); }
+    const nl = W < 520 ? 3 : 4;
+    for (let k = 0; k < nl; k++) { const i = Math.round(((n - 1) * (k + 0.1)) / (nl - 0.8)); g.fillText(fmtDate(bars.t[i]), Math.min(Math.max(X(i), 36), W - padR - 30), top + ph + 14); }
 
     if (on.sr && !rel) for (const l of ind.lv) {
       if (l.price < lo || l.price > hi) continue;

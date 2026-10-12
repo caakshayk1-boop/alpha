@@ -178,7 +178,7 @@ export default function EnginesPage() {
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+              <div className="engine-cards">
                 {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
                   <button key={x.key} onClick={() => { setKey(x.key); setTab('signals'); }} aria-pressed={key === x.key} style={{ textAlign: 'left' }}>
                     <Rv className="panel spot tilt" style={{ height: '100%', borderColor: key === x.key ? 'var(--accent)' : undefined }}>

@@ -107,11 +107,50 @@ function Palette({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+function MoreSheet({ open, onClose, onSearch, path }: { open: boolean; onClose: () => void; onSearch: () => void; path: string }) {
+  const startY = useRef<number | null>(null);
+  const [dy, setDy] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', k);
+    document.documentElement.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', k); document.documentElement.style.overflow = ''; };
+  }, [open, onClose]);
+  return (
+    <div className={`sheet-wrap${open ? ' open' : ''}`} aria-hidden={!open}>
+      <div className="sheet-back" onClick={onClose} />
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="Menu" style={{ transform: open ? `translateY(${dy}px)` : undefined, transition: dy ? 'none' : undefined }}>
+        <div className="sheet-grab" onPointerDown={(e) => { startY.current = e.clientY; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
+          onPointerMove={(e) => { if (startY.current !== null) setDy(Math.max(0, e.clientY - startY.current)); }}
+          onPointerUp={() => { if (dy > 90) onClose(); setDy(0); startY.current = null; }}><i /></div>
+        <button className="sheet-search" onClick={() => { onClose(); window.setTimeout(onSearch, 150); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+          <span>Search companies and pages</span>
+        </button>
+        <div className="sheet-grid">
+          {PAGES.map((p) => (
+            <Link key={p.href} href={p.href} onClick={onClose} aria-current={isActive(path, p.href) ? 'page' : undefined}>
+              <span className="ic"><Icon d={p.icon} /></span>
+              <span>{p.label}</span>
+            </Link>
+          ))}
+        </div>
+        <div className="sheet-foot">
+          <Link href="/about/" onClick={onClose}>Method &amp; sources</Link>
+          <span className="dim">Tip: in Safari, Share → Add to Home Screen for a full-screen app.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? '/';
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [showTop, setShowTop] = useState(false);
+  const [sheet, setSheet] = useState(false);
 
   useEffect(() => {
     initMotion();
@@ -236,8 +275,8 @@ export default function Shell({ children }: { children: ReactNode }) {
             {p.label}
           </Link>
         ))}
-        <button onClick={() => setOpen(true)} aria-label="Search and more pages">
-          <Icon d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" />
+        <button onClick={() => setSheet(true)} aria-label="All pages and search" aria-haspopup="dialog">
+          <Icon d="M4 7h16M4 12h16M4 17h16" />
           More
         </button>
       </nav>
@@ -261,6 +300,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <button className={`totop${showTop ? ' show' : ''}`} aria-label="Back to top" tabIndex={showTop ? 0 : -1} onClick={() => window.scrollTo({ top: 0, behavior: prefersReduced() ? 'auto' : 'smooth' })}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 19V5M5 12l7-7 7 7" /></svg>
       </button>
+      <MoreSheet open={sheet} onClose={() => setSheet(false)} onSearch={() => setOpen(true)} path={path} />
       <Palette open={open} onClose={() => setOpen(false)} />
     </>
   );

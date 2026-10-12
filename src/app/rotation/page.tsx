@@ -26,6 +26,8 @@ export default function RotationPage() {
   const [play, setPlay] = useState(false);
   const [scope, setScope] = useState<'all' | 'index' | 'ind' | 'sec'>('all');
   const [tail, setTail] = useState(8);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => { const m = window.matchMedia('(max-width: 760px)'); const f = () => setNarrow(m.matches); f(); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);
 
   const S = useMemo<Series[]>(() => {
     const d = rot.data;
@@ -83,7 +85,7 @@ export default function RotationPage() {
   const cur = rows.find((x) => x.s.name === sel) ?? null;
 
   // chart geometry
-  const W = 760, H = 520, pad = 46;
+  const W = narrow ? 400 : 760, H = narrow ? 470 : 520, pad = narrow ? 30 : 46;
   const ext = useMemo(() => {
     const d: number[] = [];
     for (const x of rows) for (let k = Math.max(0, t - tail); k <= t; k++) { const r = x.s.ratio[k], m = x.s.mom[k]; if (r !== null && m !== null) d.push(Math.abs(r - 100), Math.abs(m - 100)); }
@@ -200,7 +202,7 @@ export default function RotationPage() {
                       <PhaseTimeline hist={hist} cur={cur} minT={minT} n={n} t={t} dates={rot.data.dates} onScrub={(i) => { setPlay(false); setEnd(i >= n - 1 ? null : i); }} />
                     </div>
                   </Rv>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+                  <div className="phase-cards">
                     {order.map((q) => (
                       <Rv key={q} className="panel tight spot tilt">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="eyebrow" style={{ color: QC[q] }}>{q}</span><span className="num dim">{read.by(q).length}</span></div>
