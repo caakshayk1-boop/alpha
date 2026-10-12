@@ -134,7 +134,7 @@ export default function RotationPage() {
           {read && rot.data && (
             <>
               <Rv className="panel spot" style={{ marginBottom: 14 }}>
-                <div className="eyebrow">Rotation read · AI desk · week ending {date}</div>
+                <div className="eyebrow">Rotation read · calculated from the group indices · week ending {date}</div>
                 <p className="disp" style={{ fontSize: 26, lineHeight: 1.25, margin: '10px 0 8px' }}>
                   {read.by('Leading').length} groups leading, {read.by('Improving').length} improving, {read.by('Weakening').length} weakening, {read.by('Lagging').length} lagging.
                 </p>

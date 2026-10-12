@@ -1,4 +1,12 @@
 export const dash = '—';
+
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…' };
+const decodeOnce = (s: string) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, g: string) => {
+  if (g[0] === '#') { const c = g[1].toLowerCase() === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10); return Number.isFinite(c) && c > 0 && c < 0x110000 ? String.fromCodePoint(c) : m; }
+  return NAMED[g.toLowerCase()] ?? m;
+});
+/** Feed text as plain text: tags removed, entities decoded (twice, for double-encoded feeds), never parsed as HTML so nothing can execute. */
+export const plainText = (s: string | null | undefined): string => decodeOnce(decodeOnce((s ?? '').replace(/<[^>]*>/g, ' '))).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
 export const num = (n: number | null | undefined, dp = 0) =>

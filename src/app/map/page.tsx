@@ -22,10 +22,10 @@ const METRICS: Metric[] = [
   { id: 'r1y', label: 'Year', get: (r) => r.r1y, max: 50, unit: '%', group: 'Price move' },
   { id: 'fromhigh', label: 'From 52-week high', get: (r) => r.from_high, max: 40, unit: '%', group: 'Position' },
   { id: 'rs3m', label: 'Vs index, 3 months', get: (r) => r.rs3m, max: 20, unit: '%', group: 'Position' },
-  { id: 'rsi', label: 'RSI (50 = neutral)', get: (r) => (n(r.rsi) === null ? null : (r.rsi as number) - 50), max: 25, unit: '', group: 'Position' },
-  { id: 'comp', label: 'Composite score (50 = neutral)', get: (r) => (n(r.comp) === null ? null : (r.comp as number) - 50), max: 30, unit: '', group: 'Quality' },
+  { id: 'rsi', label: 'RSI (50 = midpoint)', get: (r) => (n(r.rsi) === null ? null : (r.rsi as number) - 50), max: 25, unit: '', group: 'Position' },
+  { id: 'comp', label: 'Composite percentile (50 = universe median)', get: (r) => (n(r.comp) === null ? null : (r.comp as number) - 50), max: 30, unit: '', group: 'Quality' },
   { id: 'q', label: 'Quality score', get: (r) => (n(r.q) === null ? null : (r.q as number) - 50), max: 40, unit: '', group: 'Quality' },
-  { id: 'roce', label: 'ROCE (15% = neutral)', get: (r) => (n(r.roce) === null ? null : (r.roce as number) - 15), max: 20, unit: '', group: 'Quality' },
+  { id: 'roce', label: 'ROCE (colour centred on 15%)', get: (r) => (n(r.roce) === null ? null : (r.roce as number) - 15), max: 20, unit: '', group: 'Quality' },
   { id: 'pe', label: 'Cheapness: P/E under 25', get: (r) => (n(r.pe) !== null && (r.pe as number) > 0 ? 25 - (r.pe as number) : null), max: 20, unit: '', group: 'Quality' },
 ];
 const SIZES = [

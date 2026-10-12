@@ -155,7 +155,7 @@ export default function Screen() {
 
   return (
     <>
-      <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Ask the market" em="any question." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
+      <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
         <AskScreen rows={s.data?.rows ?? []} />

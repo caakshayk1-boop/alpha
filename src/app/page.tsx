@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Async, Bar, Chg, CountUp, LazyMount, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
+import { EngineVerdict } from '@/components/EvidenceTags';
 import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
@@ -38,7 +39,7 @@ function Orb({ b }: { b: Barometer['today'] | null }) {
       </svg>
       <div className="orb-core">
         <div className="eyebrow">Market barometer</div>
-        <div className="big num" style={{ fontFamily: 'var(--f-display)' }}>{score === null ? '—' : <CountUp value={score} format={(n) => String(Math.round(n))} />}</div>
+        <div className="big num" style={{ fontFamily: 'var(--f-display)' }}>{score === null ? '—' : String(Math.round(score))}</div>
         <div className="cap"><span className="tag" style={{ color }}>{band || 'Reading…'}</span></div>
       </div>
     </div>
@@ -104,7 +105,6 @@ function Teasers() {
   const pulse = useFeed('pulse');
   const t = bar.data?.today;
   const br = pulse.data?.breadth;
-  const tone = ({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>);
   return (
     <section className="wrap section">
       <div className="grid g-7-5">
@@ -116,10 +116,10 @@ function Teasers() {
           <Link className="btn" href="/brief/">Five-minute brief <span aria-hidden>→</span></Link>
         </Rv>
         <Rv className="panel spot">
-          <div className="eyebrow">Engines · tested against luck</div>
+          <div className="eyebrow">Engines · ranking skill and trading result</div>
           <div className="list" style={{ marginTop: 8 }}>
             {Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
-              <Link key={e.key} href="/engines/" className="li"><div><div className="t">{e.id}. {e.name}</div><div className="s">{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</div></div><span className={`tag ${tone[e.status] ?? ''}`}>{e.status}</span></Link>
+              <Link key={e.key} href="/engines/" className="li"><div><div className="t">{e.id}. {e.name}</div><div className="s">{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</div></div><EngineVerdict e={e} compact /></Link>
             ))}
             {!eng.data && Array.from({ length: 5 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
           </div>
@@ -333,7 +333,7 @@ export default function Home() {
       <Hero />
       <Ticker />
       <Teasers />
-      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the lenses agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
+      <section className="wrap section"><SectionHead eyebrow="Calculated insights" title="Evidence across checks" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Board />
       <section className="wrap section">
         <div className="grid g-7-5">

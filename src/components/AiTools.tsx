@@ -54,7 +54,7 @@ export function PortfolioXray() {
     if (sorted[0].val / total > 0.3) notes.push(`${sorted[0].sym} is ${(sorted[0].val / total * 100).toFixed(0)}% of the portfolio: one bad result moves the whole book.`);
     const topSector = [...sector.entries()].sort((a, b) => b[1] - a[1])[0];
     if (topSector[1] / total > 0.4 && sector.size > 1) notes.push(`${(topSector[1] / total * 100).toFixed(0)}% sits in ${topSector[0]}: a sector-wide fall is a portfolio-wide fall.`);
-    if (hs.length < 8) notes.push(`${hs.length} holdings is concentrated; ten to twenty spread across sectors is where single-name risk stops dominating.`);
+    if (hs.length < 8) notes.push(`${hs.length} holdings: risk depends on weights, sector overlap and how the stocks move together, not on the count alone.`);
     if (lowTrend > 50) notes.push(`${lowTrend.toFixed(0)}% of the value is in stocks below their 200-day average: the weight of the portfolio is in downtrends.`);
     const highRisk = hs.filter((h) => h.row.risk?.level === 'HIGH');
     if (highRisk.length) notes.push(`${highRisk.map((h) => h.sym).join(', ')} carry HIGH risk flags on the screen.`);
@@ -64,7 +64,7 @@ export function PortfolioXray() {
   }, [parsed.ok, px.quotes, eng.data]);
   return (
     <Rv className="panel spot">
-      <div className="eyebrow">Portfolio X-ray · AI desk</div>
+      <div className="eyebrow">Portfolio X-ray · calculated in this browser</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Paste holdings as <code>SYMBOL quantity average-price</code>, one per line (price optional). Kept in this browser only; nothing is uploaded.</p>
       <textarea className="field" style={{ width: '100%', minHeight: 120, padding: 12, fontFamily: 'var(--f-mono)', fontSize: 13 }} value={text} onChange={(e) => save(e.target.value)} placeholder={SAMPLE} spellCheck={false} aria-label="Holdings" />
       <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
@@ -190,7 +190,7 @@ export function MarketStance() {
     <Async loading={s.loading || b.loading} error={s.error} rows={1}>
       {bd && (
         <Rv className="panel spot">
-          <div className="eyebrow">Market stance · AI desk</div>
+          <div className="eyebrow">Market stance · calculated from the barometer</div>
           {(() => {
             const conds: [string, boolean, string][] = [
               ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],

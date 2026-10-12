@@ -50,13 +50,14 @@ export default function About() {
       </section>
       <section className="wrap section">
         <Rv className="panel">
-          <div className="eyebrow">Data health, right now</div>
+          <div className="eyebrow">Pipeline jobs: when each last ran</div>
+          <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 14px' }}>This table says whether a job ran on schedule. It does not say the market data is current: a feed can be fetched successfully and still describe an earlier session. Use the data dates above for what each dataset describes.</p>
           <Async loading={h.loading} error={h.error} rows={3}>
             <div className="list">
               {h.data?.datasets.filter((d) => SHOWN.has(d.dataset)).map((d) => (
                 <div className="li" key={d.dataset}>
                   <div><div className="t">{d.dataset}</div><div className="s">{d.source}</div></div>
-                  <div style={{ textAlign: 'right' }}><span className={`tag ${d.status === 'FRESH' ? 'up' : 'warn'}`}>{d.status}</span><div className="s">{d.freshness_age}</div></div>
+                  <div style={{ textAlign: 'right' }}><span className={`tag ${d.status === 'FRESH' ? 'up' : 'warn'}`}>{d.status === 'FRESH' ? 'JOB ON SCHEDULE' : d.status}</span><div className="s">last ran {d.freshness_age} ago</div></div>
                 </div>
               ))}
             </div>

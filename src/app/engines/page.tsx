@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
-import { DataStamp } from '@/components/DataStamp';
+import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
+import { VERDICT_TONE } from '@/components/EvidenceTags';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
 
-const TONE: Record<string, string> = { 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'NO RANKING SKILL': 'down', 'WORSE THAN RANDOM': 'down', 'NOT ENOUGH TRADES': '', 'NOT ENOUGH DATA': '', 'PROFITABLE AFTER COSTS': 'up', 'POSITIVE, NOT SIGNIFICANT': 'acc', 'BREAK-EVEN AFTER COSTS': 'warn', 'LOSES AFTER COSTS': 'down' };
+const TONE = VERDICT_TONE;
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
 const sgn = (v: number | null | undefined, d = 2, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(d)}${suf}` : dash);
 const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.round(v)} trading days` : dash);
@@ -18,7 +19,9 @@ const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.
 const STATE_LABEL: Record<string, string> = { pending: 'Issued · waiting for the next open', open: 'Open', closed: 'Closed', void: 'Void' };
 const EVENT_LABEL: Record<string, string> = { entry: 'Entered', t1: 'T1 reached', t2: 'T2 reached', t3: 'T3 reached', stop: 'Stopped out', stop_after_t1: 'Stopped at entry', stop_after_t2: 'Stopped at T1', time: 'Time limit' };
 
-function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: PxQuote }) {
+function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string }) {
+  // A signal still `pending` once a later session exists in the screen has had its open come and go; the engines have not processed it yet.
+  const overdue = s.status === 'pending' && !!through && through > s.date;
   const [capital, setCapital] = useState('500000');
   const [riskPct, setRiskPct] = useState('1');
   const base = s.entry ?? s.ref_price;
@@ -39,7 +42,7 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
           <Link href={`/company/?s=${encodeURIComponent(s.sym)}`} className="disp" style={{ fontSize: 34, display: 'block', margin: '8px 0 2px' }}>{s.sym}</Link>
           <div className="dim" style={{ fontSize: 13 }}>{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
           <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
+            <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
             {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
             {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
           </div>
@@ -172,6 +175,7 @@ export default function EnginesPage() {
   const sigs = useMemo(() => (feed?.signals ?? []).filter((s) => s.engine === key), [feed, key]);
   const activeSyms = useMemo(() => (feed?.signals ?? []).filter((s) => s.status === 'open' || s.status === 'pending').map((s) => s.sym), [feed]);
   const px = usePx(activeSyms);
+  const newest = useDatasetStatus().items[0]?.reference ?? undefined;
   return (
     <>
       <PageHead eyebrow="Engines" title="Five models," em="judged on data they never saw." lede="Each engine is a machine-learning model that reads 58 measures of every listed stock each evening and ranks the market. The top ranks become signals with a stop, three targets and a time limit priced from the stock's own volatility. Every model is shown against random picks and against a holdout it was never tuned on, whatever the answer is." />
@@ -220,7 +224,7 @@ export default function EnginesPage() {
                   {tab === 'signals' && (sigs.length ? (
                     <>
                       {px.at && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
-                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} />)}</div>
+                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} />)}</div>
                       {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
                   ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}

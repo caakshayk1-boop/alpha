@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, LazyMount, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
+import { EngineVerdict } from '@/components/EvidenceTags';
 import StockChart from '@/components/StockChart';
 import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { useEngines, useFeedWhen, usePx, useShard, type Shard } from '@/lib/data';
@@ -193,7 +194,7 @@ function Company() {
             <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
-          </div><div className="px"><CountUp value={px.quotes[sym]?.price ?? r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
+          </div><div className="px">{num(px.quotes[sym]?.price ?? r.price, 2) === '—' ? '—' : `₹${num(px.quotes[sym]?.price ?? r.price, 2)}`}</div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
       </header>
       {(() => {
         const live = px.quotes[sym]?.price;
@@ -218,7 +219,7 @@ function Company() {
 
       <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
 
-      <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the price could go" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
+      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
 
       <section className="wrap section">
         <div className="grid g-7-5">
@@ -239,7 +240,7 @@ function Company() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
                 <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
                   <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 11, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
-                  <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: <span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[x.engine_status] ?? ''}`}>{x.engine_status}</span></p></div>
+                  <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: {eng.data?.engines[x.engine] ? <EngineVerdict e={eng.data.engines[x.engine]} /> : <span className="tag">{x.engine_status}</span>}</p></div>
                 <PlanOdds sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={x.last_close} />
               </div>
             </Rv>))}</div>

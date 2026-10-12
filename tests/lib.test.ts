@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { breadth200 } from '../src/lib/breadth.ts';
 import { buildCard, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
 import { ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
+import { plainText } from '../src/lib/format.ts';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
   const s = reconcile([
@@ -105,4 +106,20 @@ test('screen parser: a company with no value for a measure never matches a claus
 });
 test('screen parser: a query with no recognised clause filters nothing and says so (empty filter list)', () => {
   assert.equal(parse('hello there').filters.length, 0);
+});
+
+test('plainText: double-encoded entities decode, tags never survive as markup', () => {
+  assert.equal(plainText('S&amp;P 500&amp;nbsp;rises'), 'S&P 500 rises');
+  assert.equal(plainText('Profit &amp;amp; loss'), 'Profit & loss');
+  assert.equal(plainText('<b>Bold</b> move <script>alert(1)</script>'), 'Bold move alert(1)');
+  assert.equal(plainText('&lt;img src=x onerror=alert(1)&gt;'), '');   // entity-encoded markup is dropped, not shown and not parsed
+  assert.equal(plainText(null), '');
+});
+test('plainText: an unknown or out-of-range entity is left alone, not turned into garbage', () => {
+  assert.equal(plainText('a &bogus; b'), 'a &bogus; b');
+  assert.equal(plainText('x &#99999999; y'), 'x &#99999999; y');
+});
+test('rankPhrase: the top of the range never reads as a percentage above 100', () => {
+  assert.doesNotMatch(rankPhrase(100), /100%/);
+  assert.doesNotMatch(rankPhrase(99.6), /100%/);
 });

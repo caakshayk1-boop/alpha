@@ -58,8 +58,8 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
       ) : <p className="muted">No figure on file stands out either way.</p>}
 
       <div className="grid g2" style={{ marginTop: 16 }}>
-        <div><div className="eyebrow" style={{ marginBottom: 8 }}>Where the lenses agree</div>{d.agree.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.agree.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No two lenses clearly agree.</p>}</div>
-        <div><div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warn)' }}>Where they conflict</div>{d.conflicts.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.conflicts.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No conflict between the screen, engines and trend.</p>}</div>
+        <div><div className="eyebrow" style={{ marginBottom: 8 }}>Where available checks agree</div>{d.agree.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.agree.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No two available checks clearly agree.</p>}</div>
+        <div><div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warn)' }}>Where they conflict</div>{d.conflicts.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.conflicts.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No conflict detected among the available checks{d.missing.length ? `; ${d.missing.length} could not be applied, so absence of conflict is not agreement` : ''}.</p>}</div>
       </div>
 
       <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Missing or thin</div>

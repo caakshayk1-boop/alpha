@@ -3,12 +3,13 @@
 import { useMemo, useState } from 'react';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { useFeed } from '@/lib/data';
+import { plainText } from '@/lib/format';
 
 const when = (iso?: string | null) => {
   if (!iso) return 'time not stated';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'time not stated';
-  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}, ${d.toISOString().slice(11, 16)} UTC`;
+  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' })} IST`;
 };
 
 export default function News() {
@@ -25,15 +26,15 @@ export default function News() {
         <Async loading={n.loading} error={n.error}>
           <div className="filters" role="group" aria-label="Topic"><button className="chip" aria-pressed={topic === ''} onClick={() => setTopic('')}>All topics</button>{topics.map(([t]) => <button key={t} className="chip" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)}>{t}</button>)}</div>
           <div className="filters" role="group" aria-label="Source"><button className="chip" aria-pressed={source === ''} onClick={() => setSource('')}>All sources</button>{sources.map((s) => <button key={s} className="chip" aria-pressed={source === s} onClick={() => setSource(source === s ? '' : s)}>{s}</button>)}</div>
-          <p className="dim" style={{ fontSize: 12.5, margin: '0 0 6px' }}>{list.length} {list.length === 1 ? 'story' : 'stories'}. Times are UTC, from each publisher&apos;s feed; add 5 hours 30 minutes for IST.</p>
+          <p className="dim" style={{ fontSize: 12.5, margin: '0 0 6px' }}>{list.length} {list.length === 1 ? 'story' : 'stories'}. Times are shown in Indian Standard Time (IST), converted from each publisher&apos;s feed.</p>
           <div className="list">
             {list.map((s) => (
               <Rv key={s.link}>
                 <a href={s.link} target="_blank" rel="noopener noreferrer" className="li" style={{ padding: '22px 0' }}>
                   <div style={{ minWidth: 0 }}>
                     <div className="eyebrow" style={{ marginBottom: 8 }}>{s.source} · <time dateTime={s.published ?? undefined}>{when(s.published)}</time></div>
-                    <div className="disp" style={{ fontSize: 26, lineHeight: 1.15 }}>{s.title}</div>
-                    {s.summary && s.summary !== s.title && <p className="muted" style={{ margin: '8px 0 0', maxWidth: '64ch', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.summary.replace(/\s+\S*$/, s.summary.length >= 380 ? '…' : '$&')}</p>}
+                    <div className="disp" style={{ fontSize: 26, lineHeight: 1.15 }}>{plainText(s.title)}</div>
+                    {plainText(s.summary) && plainText(s.summary) !== plainText(s.title) && <p className="muted" style={{ margin: '8px 0 0', maxWidth: '64ch', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{plainText(s.summary).replace(/\s+\S*$/, s.summary.length >= 380 ? '…' : '$&')}</p>}
                   </div>
                   <span aria-hidden className="dim">↗</span>
                 </a>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Async, Chg, CountUp, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
+import { EngineVerdict } from '@/components/EvidenceTags';
 import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { dateLabel, heat, num, pct } from '@/lib/format';
@@ -93,7 +94,7 @@ export default function Brief() {
             <Rv className="panel">
               <div className="eyebrow">Market stage</div>
               <div className="disp" style={{ fontSize: 40, margin: '10px 0 4px' }}>{t?.stage.t ?? '—'}</div>
-              <p className="muted" style={{ margin: 0 }}>Barometer <b className="num"><CountUp value={t?.score} format={(n) => String(Math.round(n))} /></b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
+              <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
               <Link href="/rotation/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>See how sector strength is changing →</Link>
             </Rv>
           </div>
@@ -146,7 +147,7 @@ export default function Brief() {
           <SectionHead eyebrow="Engines" title="What the models selected" href="/engines/" cta="All engines" />
           <Async loading={eng.loading} error={null} rows={1}>
             <div className="engine-cards">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
-              <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 12.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[e.status] ?? ''}`}>{e.status}</span></div></Rv>
+              <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 12.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><EngineVerdict e={e} /></div></Rv>
             ))}</div>
           </Async>
 

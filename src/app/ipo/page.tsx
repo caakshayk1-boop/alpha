@@ -46,11 +46,11 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
       </div>
       {u.score && (
         <div style={{ marginTop: 16 }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>What the numbers support · {u.score.points} of {u.score.of} points measured</div>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Mechanical attributes, not a quality rating · {u.score.points} of {u.score.of} points measured</div>
           <div className="meter">{parts.map(([k, v]) => { const [a, b] = v.split('/').map(Number); return <div className="meter-row" key={k}><span className="lab">{k}</span><Bar pct={(a / b) * 100} /><span className="num">{v}</span></div>; })}</div>
           <ul className="dim" style={{ fontSize: 12.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
-            {'Size' in (u.score.parts ?? {}) && <li><b>Size</b>: the issue size, ₹{num(u.issue_size_cr)} cr; bigger issues score higher.</li>}
-            {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({(((u.price_high - u.price_low) / u.price_low) * 100).toFixed(1)}% wide here); a wide band is the underwriter hedging, so narrower scores higher. It is <i>not</i> a valuation.</li> : null}
+            {'Size' in (u.score.parts ?? {}) && <li><b>Size</b>: the issue size, ₹{num(u.issue_size_cr)} cr; this attribute scores a bigger issue higher; size alone says nothing about quality.</li>}
+            {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({(((u.price_high - u.price_low) / u.price_low) * 100).toFixed(1)}% wide here); this attribute scores a narrower band higher. It does not measure valuation and does not establish the underwriter&apos;s intent.</li> : null}
             <li>The P/E post issue and peer P/E shown above are <b>not part of this score</b>: valuation multiples are not measured by it, which is why they appear in the not-measured list.</li>
             <li>Not measured at all: {u.score.not_measured.join(', ')}. The grey-market premium is shown and deliberately not scored.</li>
           </ul>

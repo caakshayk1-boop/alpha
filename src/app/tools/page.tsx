@@ -155,11 +155,11 @@ export default function Tools() {
       <PageHead eyebrow="Tools" title="Small tools," em="honest arithmetic." lede="Calculators for the questions that come up around the research: what a SIP could become, what a return really was, how many shares a stop allows, how deep a hole is. Everything runs in your browser." />
       <section className="wrap">
         <div className="grid g3 swipe" style={{ marginBottom: 14 }}>
-          {[['/compare/', 'Compare companies', 'Up to four, side by side, with the better value marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
+          {[['/compare/', 'Compare companies', 'Up to four, side by side, with the highest or lowest marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
             <Link key={href} href={href}><Rv className="panel spot tilt" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
           ))}
         </div>
-        <SectionHead eyebrow="AI desk" title="Decision tools" />
+        <SectionHead eyebrow="Research tools" title="Decision tools" />
         <div className="grid" style={{ marginBottom: 28 }}>
           <PortfolioXray />
           <ReverseDcf />
