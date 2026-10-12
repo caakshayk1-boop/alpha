@@ -44,6 +44,11 @@ Each corrected study carries a visible `corrections` entry. New `claim_problems(
 - `npm run build`: 20 routes; `node scripts/audit.mjs`: 1316 links, passed
 - news: `test_reads_claims.py`, `test_brief_fit.py` (16), `test_engine_alerts.py` (13) pass
 
+## Found after the audit
+
+- Infosys (INFY) statement history is about 90x too small in the published feed (rev_cr 2,016 against market cap ÷ P/E implying profit of about ₹29,800 cr); it looks like USD labelled as ₹ crore. Eighteen other large caps reconcile. This affects the company page's statement-based figures for INFY and anything derived from absolute statement values. A separate task has been raised; not fixed on this branch.
+- TCS and Reliance have no market cap in the screen.
+
 ## Not verified / owner action
 
 - Live site not re-tested after this branch (not deployed). Smoke test and a Lighthouse rerun are the first steps after deploy.
