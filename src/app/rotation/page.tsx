@@ -16,7 +16,7 @@ const SECTORS = new Set(['Industrials', 'Consumer Cyclical', 'Basic Materials', 
 const quad = (r: number, m: number): Quad => (r >= 100 ? (m >= 100 ? 'Leading' : 'Weakening') : m >= 100 ? 'Improving' : 'Lagging');
 const sma = (a: number[], i: number, n: number) => { let s = 0; for (let k = i - n + 1; k <= i; k++) s += a[k]; return s / n; };
 
-interface Series { name: string; ratio: (number | null)[]; mom: (number | null)[]; rs: (number | null)[]; ret4: number | null; ret13: number | null; members: string[]; real: boolean }
+interface Series { name: string; ratio: (number | null)[]; mom: (number | null)[]; rs: (number | null)[]; ret4: number | null; ret13: number | null; close: (number | null)[]; members: string[]; real: boolean }
 
 export default function RotationPage() {
   const rot = useRotation();
@@ -42,7 +42,7 @@ export default function RotationPage() {
       const sm3 = (i: number) => { const v = [ratio[i], ratio[i - 1], ratio[i - 2]]; return v.every((x) => x !== null) ? (v as number[]).reduce((q, x) => q + x, 0) / 3 : null; };
       for (let i = 18; i < n; i++) { const a = sm3(i), b = sm3(i - 4); if (a !== null && b !== null) mom[i] = 100 + (a - b); }
       const c = g.close, last = c[n - 1], r = (k: number) => (last !== null && c[n - 1 - k] ? (last / (c[n - 1 - k] as number) - 1) * 100 - (nf[n - 1] / nf[n - 1 - k] - 1) * 100 : null);
-      return { name, ratio, mom, rs, ret4: r(4), ret13: r(13), members: g.members, real: g.real_index };
+      return { name, ratio, mom, rs, ret4: r(4), ret13: r(13), close: g.close, members: g.members, real: g.real_index };
     }).filter((s) => s.ratio[n - 1] !== null && s.mom[n - 1] !== null && (s.real || s.members.length >= 6));
   }, [rot.data]);
 
@@ -55,6 +55,7 @@ export default function RotationPage() {
     const id = window.setInterval(() => setEnd((e) => { const cur = e ?? n - 1; if (cur >= n - 1) { setPlay(false); return n - 1; } return cur + 1; }), 450);
     return () => window.clearInterval(id);
   }, [play, n]);
+  useEffect(() => { if (sel) setPlay(false); }, [sel]);   // choosing a group to inspect stops the playback
 
   const rows = useMemo(() => {
     const bySym = new Map<string, Row>((scr.data?.rows ?? []).map((r) => [r.sym, r]));
@@ -67,9 +68,12 @@ export default function RotationPage() {
       // transitions: quadrant 4 weeks ago vs now
       const pr = s.ratio[t - 4], pm = s.mom[t - 4];
       const was = pr !== null && pm !== null && pr !== undefined && pm !== undefined ? quad(pr, pm) : null;
-      return { s, r, m, q: quad(r, m), breadth, mem, was };
+      // relative return over k weeks AS OF the selected week, not the latest one
+      const nf = rot.data?.nifty ?? [];
+      const rel = (k: number) => { const a = s.close[t], b = s.close[t - k]; return a != null && b ? ((a / b - 1) - (nf[t] / nf[t - k] - 1)) * 100 : null; };
+      return { s, r, m, q: quad(r, m), breadth, mem, was, ret4t: rel(4), ret13t: rel(13) };
     }).filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [S, t, scr.data]);
+  }, [S, t, scr.data, rot.data]);
 
   const shown = useMemo(() => rows.filter((x) => scope === 'all' || (scope === 'index' ? x.s.real : scope === 'ind' ? !x.s.real && x.s.name.includes('(alpha group index)') && !SECTORS.has(x.s.name.replace(' (alpha group index)', '')) : !x.s.real && SECTORS.has(x.s.name.replace(' (alpha group index)', '')))), [rows, scope]);
   const hist = useMemo(() => {
@@ -125,6 +129,7 @@ export default function RotationPage() {
   }, [rows]);
 
   const date = rot.data?.dates[t];
+  const past = n > 0 && t < n - 1;     // a historical week is selected
   return (
     <>
       <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="A Relative Rotation Graph for every benchmark group: how strong each is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows. Groups often pass through Improving, Leading, Weakening and Lagging, but not in a fixed order or at a fixed speed. Drag the time machine back to see past weeks." />
@@ -219,15 +224,16 @@ export default function RotationPage() {
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
+                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 12 }}>Week ending {date}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
                       <p style={{ margin: '8px 0' }}><span className="tag" style={{ color: QC[cur.q] }}>{cur.q}</span> <span className="muted" style={{ fontSize: 13 }}>{QNOTE[cur.q]}</span></p>
                       <RsLine s={cur.s} t={t} dates={rot.data.dates} />
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr', margin: '12px 0' }}>
-                        <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.s.ret4} dp={1} /></div></div>
-                        <div><div className="k">13-week vs Nifty</div><div className="v"><Chg v={cur.s.ret13} dp={1} /></div></div>
-                        <div><div className="k">Above 200-day</div><div className="v">{cur.breadth !== null ? `${cur.breadth.toFixed(0)}%` : dash}</div></div>
+                        <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.ret4t} dp={1} /></div></div>
+                        <div><div className="k">13-week vs Nifty</div><div className="v"><Chg v={cur.ret13t} dp={1} /></div></div>
+                        <div><div className="k">Above 200-day{past ? ' (today)' : ''}</div><div className="v">{cur.breadth !== null ? `${cur.breadth.toFixed(0)}%` : dash}</div></div>
                         <div><div className="k">Stocks</div><div className="v">{cur.mem.length}</div></div>
                       </div>
-                      <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength)</div>
+                      <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? ', as of today' : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
                         <Link key={x.sym} href={`/company/?s=${encodeURIComponent(x.sym)}`} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 13 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
@@ -238,13 +244,13 @@ export default function RotationPage() {
 
               <SectionHead title="Every group, by phase" />
               <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 760 }}>
-                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day</th><th>Stocks</th></tr></thead>
+                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ' (today)' : ''}</th><th>Stocks</th></tr></thead>
                 <tbody>{table.map((x) => (
                   <tr key={x.s.name} onClick={() => setSel(x.s.name)} style={{ cursor: 'pointer', background: sel === x.s.name ? 'var(--accent-soft)' : undefined }}>
                     <td><b>{short(x.s.name)}</b>{x.s.real ? <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span> : <span className="tag" style={{ marginLeft: 8 }}>Alpha group index</span>}</td>
                     <td><span className="tag" style={{ color: QC[x.q] }}>{x.q}</span></td>
                     <td className="num">{x.r.toFixed(1)}</td><td className="num">{x.m.toFixed(1)}</td>
-                    <td><Chg v={x.s.ret4} dp={1} /></td><td><Chg v={x.s.ret13} dp={1} /></td>
+                    <td><Chg v={x.ret4t} dp={1} /></td><td><Chg v={x.ret13t} dp={1} /></td>
                     <td className="num">{x.breadth !== null ? <><Bar pct={x.breadth} kind={x.breadth >= 50 ? 'up' : 'down'} /> {x.breadth.toFixed(0)}%</> : dash}</td>
                     <td className="num">{num(x.mem.length)}</td>
                   </tr>))}</tbody>
