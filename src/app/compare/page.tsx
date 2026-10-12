@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
+import { DataStamp } from '@/components/DataStamp';
 import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Chg, Notice, PageHead, Rv } from '@/components/ui';
 import { useFeed } from '@/lib/data';
@@ -64,6 +65,7 @@ function Compare() {
           {syms.map((x, i) => <button key={x} className="chip on" style={{ background: COLORS[i], borderColor: COLORS[i], color: '#0a0c14' }} onClick={() => set(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}>{x} ✕</button>)}
         </div>
         <Async loading={s.loading} error={s.error} rows={3}>
+          {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['screen']} /></div>}
           {rows.length < 2 ? <Notice>Add at least two companies. Try <Link href="/compare/?s=TCS,INFY,HCLTECH" style={{ color: 'var(--accent-2)' }}>TCS, Infosys and HCLTech</Link>.</Notice> : (
             <div className="grid g-7-5" style={{ alignItems: 'start' }}>
               <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
@@ -76,14 +78,14 @@ function Compare() {
                       const vals = rows.map((r) => sp2.get(r));
                       const nums = vals.filter(has);
                       const best = sp2.better && nums.length > 1 ? (sp2.better === 'high' ? Math.max(...nums) : Math.min(...nums)) : null;
-                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { color: 'var(--up)', fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : dash}</td>)}</tr>;
+                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { color: 'var(--up)', fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best ? <span className="sr"> (better value)</span> : null}</td>)}</tr>;
                     })}
                   </tbody>
                 </table>
               </div>
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profile</div><Radar rows={rows} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 10 }}>{rows.map((r, i) => <span key={r.sym} className="num" style={{ color: COLORS[i], fontSize: 12.5 }}>● {r.sym}</span>)}</div>
-                <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Green marks the better value in a row where higher or lower is clearly better. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
+                <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Green marks the better value in a row where higher or lower is clearly better (read aloud as “better value”). A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR columns use the years on file for each company, so periods can differ, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
           )}
         </Async>
@@ -93,5 +95,5 @@ function Compare() {
 }
 
 export default function Page() {
-  return <Suspense fallback={<div className="wrap section" />}><Compare /></Suspense>;
+  return <Suspense fallback={<div className="wrap section"><h1 className="sr">Compare companies side by side</h1></div>}><Compare /></Suspense>;
 }

@@ -94,6 +94,8 @@ function Cagr() {
       <div className="grid g3" style={{ marginTop: 14 }}>
         <Field label="Started with" value={from} set={setFrom} prefix="₹" /><Field label="Ended with" value={to} set={setTo} prefix="₹" /><Field label="Years" value={years} set={setYears} />
       </div>
+      {c === null && <p className="notice" style={{ marginTop: 14 }}>Needs a start and an end value above zero and a number of years above zero. A start of zero has no compound rate, and a total loss has no meaningful one.</p>}
+      {y > 60 && <p className="notice" style={{ marginTop: 14 }}>That is a very long period for a compound rate to mean much.</p>}
       <div className="disp" style={{ fontSize: 56, margin: '16px 0 4px', color: c !== null && c >= 0 ? 'var(--up)' : 'var(--down)' }}>{c === null ? '—' : `${c > 0 ? '+' : ''}${c.toFixed(1)}%`}</div>
       <p className="muted" style={{ margin: 0 }}>a year, compounded{c !== null && c > 0 ? `. At that rate money doubles in about ${(70 / c).toFixed(1)} years.` : '.'}</p>
     </Rv>
@@ -114,7 +116,7 @@ function Position() {
       <div className="grid g4" style={{ marginTop: 14 }}>
         <Field label="Capital" value={capital} set={setCapital} prefix="₹" /><Field label="Risk per trade" value={riskPct} set={setRiskPct} suffix="%" /><Field label="Entry price" value={entry} set={setEntry} prefix="₹" /><Field label="Stop price" value={stop} set={setStop} prefix="₹" />
       </div>
-      {risk <= 0 ? <p className="notice" style={{ marginTop: 14 }}>The stop has to be below the entry for a long position.</p> : (
+      {!(cap > 0) || !(e > 0) || !(s > 0) || !(rp > 0) ? <p className="notice" style={{ marginTop: 14 }}>Capital, risk per trade, entry and stop must each be above zero.</p> : rp > 100 ? <p className="notice" style={{ marginTop: 14 }}>Risk per trade cannot exceed 100% of capital.</p> : risk <= 0 ? <p className="notice" style={{ marginTop: 14 }}>The stop has to be below the entry for a long position.</p> : (
         <>
           <div className="grid g3" style={{ margin: '18px 0 12px' }}>
             <div><div className="eyebrow">Shares</div><div className="disp" style={{ fontSize: 40 }}>{num(qty)}</div></div>
@@ -122,6 +124,8 @@ function Position() {
             <div><div className="eyebrow">If the stop hits</div><div className="disp down" style={{ fontSize: 40 }}>−₹{num(qty * risk, 0)}</div><div className="dim num" style={{ fontSize: 12.5 }}>{((risk / e) * 100).toFixed(1)}% below entry</div></div>
           </div>
           <div className="kv" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>{[1, 2, 3, 4].map((m) => <div key={m}><div className="k">{m}R target</div><div className="v up" style={{ fontSize: 15 }}>₹{num(e + m * risk, 2)}</div><div className="dim num" style={{ fontSize: 12 }}>+₹{num(qty * risk * m, 0)}</div></div>)}</div>
+          {rp > 5 && <p className="notice" style={{ marginTop: 12 }}>Risking {rp}% of capital on one trade is far above the 1–2% most rule sets use: a short run of stops would take a large part of the account.</p>}
+          {qty === 0 && <p className="notice" style={{ marginTop: 12 }}>The risk budget (₹{num(cap * rp / 100, 0)}) is smaller than the risk on a single share (₹{num(risk, 2)}), so the size rounds down to zero shares.</p>}
           {qty * e > cap && <p className="notice" style={{ marginTop: 12 }}>This size needs more than your capital. Widen the stop, cut the risk, or take fewer shares.</p>}
         </>
       )}
@@ -138,6 +142,7 @@ function Recovery() {
     <Rv className="panel">
       <div className="eyebrow">Loss recovery</div>
       <div style={{ maxWidth: 220, marginTop: 14 }}><Field label="After a fall of" value={loss} set={setLoss} suffix="%" /></div>
+      {toNum(loss) >= 100 && <p className="notice" style={{ marginTop: 14 }}>A fall of 100% or more cannot be recovered: nothing is left to grow. Shown for a 99% fall.</p>}
       <div className="disp" style={{ fontSize: 56, margin: '16px 0 4px', color: 'var(--warn)' }}>+{need.toFixed(0)}%</div>
       <p className="muted" style={{ margin: 0 }}>is what it takes to get back to even. Losses are not symmetrical, which is why every plan here starts from the stop.</p>
     </Rv>

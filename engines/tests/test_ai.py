@@ -101,5 +101,18 @@ for sym in bars:
     gaps += [b - a for a, b in zip(ts, ts[1:])]
 check("cooldown respected per stock", not gaps or min(gaps) >= eng.cooldown, min(gaps) if gaps else None)
 
+# ── published results must reconcile (audit 2026-10-12) ─────────────────────
+# "Hit all targets" once exceeded "Reached T3" in every engine because they were
+# computed on different populations. Both now come from one trade list.
+import json
+import ai_finalize as FIN
+res = json.loads((pathlib.Path(__file__).resolve().parent.parent / "research" / "ai_results.json").read_text())["engines"]
+for key, e in res.items():
+    ex, n = e["exits"], e["exits_n"]
+    check(f"{key}: exit categories sum to the trade count", sum(ex.values()) == n, (sum(ex.values()), n))
+    check(f"{key}: n matches the metrics sample", n == e["trades"]["all"]["n"], (n, e["trades"]["all"]["n"]))
+    check(f"{key}: 'all targets' equals 'reached T3'", abs(ex["all_targets"] / n * 100 - e["trades"]["all"]["hit_t3"]) <= 0.1, (ex["all_targets"] / n * 100, e["trades"]["all"]["hit_t3"]))
+    check(f"{key}: alertable matches alert_verdict", e["alertable"] == FIN.alert_verdict(e["ranking_status"], e["trading_status"])[0])
+
 print(f"\n{ok} passed · {fail} failed")
 sys.exit(1 if fail else 0)

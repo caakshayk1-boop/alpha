@@ -13,18 +13,19 @@ export default function Magic() {
   const mf = s.data?.magic_formula;
   return (
     <>
-      <PageHead eyebrow="Magic Formula" title="Greenblatt’s ranking," em="every company." lede="Each company is ranked on return on capital and on earnings yield, the two ranks are added, and the lowest total comes first. Shown with the rules, the exclusions and the places this implementation differs from the book." />
+      <PageHead eyebrow="Magic Formula" title="A Greenblatt-inspired ranking" em="of eligible companies." lede="Eligible companies are ranked on return on capital and on earnings yield, the two ranks are added, and the lowest total comes first. Lenders, insurers, utilities and several other groups are excluded, so not every company is ranked. Shown with the rules, the exclusions and where this implementation differs from the book." />
       <section className="wrap">
         <Async loading={s.loading} error={s.error}>
           {mf && (
             <Rv className="panel" >
               <div className="grid g3">
-                <div><div className="eyebrow">Ranked</div><div className="disp" style={{ fontSize: 56 }}>{num(mf.ranked)}</div><div className="dim">of {num(mf.universe)} screened</div></div>
+                <div><div className="eyebrow">Ranked</div><div className="disp" style={{ fontSize: 56 }}>{num(mf.ranked)}</div><div className="dim">eligible companies, out of {num(mf.universe)} screened ({num(mf.universe - mf.ranked)} excluded or unrankable, listed below). Every figure on Alpha that says &ldquo;rank of N&rdquo; uses this same {num(mf.ranked)}.</div></div>
                 <div><div className="eyebrow">How it works</div><p className="muted" style={{ margin: '12px 0 0' }}>{mf.rules.roc}. {mf.rules.ey}. {mf.rules.combine}.</p></div>
                 <div><div className="eyebrow">Source</div><p className="muted" style={{ margin: '12px 0 0' }}>{mf.rules.source}</p></div>
               </div>
             </Rv>
           )}
+          {mf && <p className="notice" style={{ marginTop: 14 }}><b>Read this before the table:</b> {mf.rules.deviation}</p>}
           <div style={{ height: 24 }} />
           <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Company</th><th>Rank</th><th>ROCE</th><th>ROC rank</th><th>Earnings yield</th><th>EY rank</th><th>Price</th><th>1Y</th></tr></thead><tbody>
             {ranked.slice(0, limit).map((r) => (

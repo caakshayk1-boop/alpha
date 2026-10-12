@@ -67,6 +67,60 @@ async function feed(name) {
   }
 }
 
+// ── one company, sliced out of the big feeds ────────────────────────────
+// /c/<SYM>.json  →  { sym, built_on, count, row, years, swot, inst, season }   (a few KB instead of the 1.5 MB the page would otherwise download)
+// The slice is cut from the same cached feeds the rest of the site reads, so it is as current as they are and can never disagree with the
+// lists: no deploy has to happen for it to refresh. The big strings are never JSON.parse'd: the company's own object is located in the text
+// and only that is parsed, which keeps CPU time to a few milliseconds. If anything fails the request falls through to the static snapshot
+// built at deploy time (header x-shard: snapshot), so a company page still loads.
+const SHARD_TTL = 5 * 60 * 1000;
+const textCache = new Map();
+async function feedText(name) {
+  const hit = textCache.get(name);
+  if (hit && Date.now() - hit.at < SHARD_TTL) return hit.text;
+  const r = await fetch(FEEDS[name], { cf: { cacheTtl: 600, cacheEverything: true } });
+  if (!r.ok) throw new Error(`${name} answered ${r.status}`);
+  const text = await r.text();
+  textCache.set(name, { at: Date.now(), text });
+  return text;
+}
+const reEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// the {...} that starts at text[start], respecting strings and escapes
+function sliceObject(text, start) {
+  let depth = 0, inStr = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    if (inStr) { if (ch === 92) i++; else if (ch === 34) inStr = false; continue; }
+    if (ch === 34) inStr = true;
+    else if (ch === 123) depth++;
+    else if (ch === 125 && --depth === 0) return text.slice(start, i + 1);
+  }
+  return null;
+}
+const parseLoose = (t) => (t ? JSON.parse(t.replace(/\bNaN\b/g, 'null').replace(/-?\bInfinity\b/g, 'null')) : null);
+function rowFor(text, sym) {
+  const m = new RegExp(`\\{\\s*"sym"\\s*:\\s*"${reEsc(sym)}"`).exec(text);
+  return m ? parseLoose(sliceObject(text, m.index)) : null;
+}
+function keyed(text, sym, after) {
+  const from = after ? Math.max(0, text.indexOf(after)) : 0;
+  const m = new RegExp(`"${reEsc(sym)}"\\s*:\\s*\\{`).exec(from ? text.slice(from) : text);
+  return m ? parseLoose(sliceObject(text, from + m.index + m[0].length - 1)) : null;
+}
+async function shard(sym, env) {
+  try {
+    const [screen, detail, swot, season, inst] = await Promise.all([feedText('screen'), feedText('screen-detail'), feedText('swot'), feedText('seasonality'), feedText('institutional').catch(() => '')]);
+    const row = rowFor(screen, sym);
+    if (!row || row.sym !== sym) return null;
+    const builtOn = /"built_on"\s*:\s*"([^"]+)"/.exec(screen)?.[1] ?? null;
+    const count = Number(/"count"\s*:\s*(\d+)/.exec(screen)?.[1]) || null;
+    const body = { sym, built_on: builtOn, count, row, years: keyed(detail, sym, '"detail"')?.years ?? null, swot: keyed(swot, sym, '"swot"'), inst: inst ? keyed(inst, sym, '"rows"') : null, season: keyed(season, sym, '"stocks"') };
+    return withHeaders(new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=120, s-maxage=300', 'x-shard': 'live' } }));
+  } catch {
+    return null;
+  }
+}
+
 // [id, name, group, yahoo symbol, prefix, decimals]
 const INSTRUMENTS = [
   ['nifty', 'Nifty 50', 'India', '^NSEI', '', 0],
@@ -296,6 +350,18 @@ export default {
 
     if (url.pathname.startsWith('/data/') && url.pathname.endsWith('.json')) {
       return feed(url.pathname.slice('/data/'.length, -'.json'.length));
+    }
+    const cm = url.pathname.match(/^\/c\/([A-Za-z0-9&-]{1,20})\.json$/);
+    if (cm) {
+      const sym = decodeURIComponent(cm[1]).toUpperCase();
+      const cache = caches.default;
+      const key = new Request(`https://alpha.askakshay.com/__shard_v1/${encodeURIComponent(sym)}`);
+      const hit = await cache.match(key);
+      if (hit) return withHeaders(hit);
+      const live = await shard(sym, env);
+      if (live) { ctx.waitUntil(cache.put(key, live.clone())); return live; }
+      const snap = await env.ASSETS.fetch(request);
+      return withHeaders(snap.status === 200 ? new Response(snap.body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60', 'x-shard': 'snapshot' } }) : snap);
     }
     if (url.pathname === '/api/px' || url.pathname === '/api/px/') {
       return px(url, ctx);

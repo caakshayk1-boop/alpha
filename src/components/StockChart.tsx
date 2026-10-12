@@ -183,6 +183,10 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
   const overall = bars ? (bars.c[n - 1] / bars.c[0] - 1) * 100 : null;
   const nOverall = bars ? (() => { const f = bars.nifty.find((v) => v !== null), l = [...bars.nifty].reverse().find((v) => v !== null); return f && l ? (l / f - 1) * 100 : null; })() : null;
   const unit = data?.interval === '1wk' ? 'weeks' : 'sessions';
+  // If the stock listed after the start of the chosen range, say so: "over 1Y" would be a claim about a year that did not exist.
+  const spanDays = bars ? (bars.t[n - 1] - bars.t[0]) / 86400 : 0;
+  const nominal = { '3mo': 91, '6mo': 182, '1y': 365, '2y': 730, '5y': 1826 }[range];
+  const spanLabel = spanDays < nominal * 0.9 ? `since its first price on file (${spanDays >= 60 ? `${Math.round(spanDays / 30.4)} months` : `${Math.round(spanDays)} days`}, listed after the start of this range)` : `over ${RLABEL[range]}`;
 
   return (
     <div>
@@ -222,7 +226,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         {data && !data.ok && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>{data.error ?? 'No price history for this symbol.'}</p>}
       </div>
       <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>
-        {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> over {RLABEL[range]} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
+        {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
         The key line is a 3-ATR trailing line: it trails price and flips on a close through it. It reads the trend; it does not predict it. Yahoo prices, cached up to 15 minutes.
       </p>
     </div>

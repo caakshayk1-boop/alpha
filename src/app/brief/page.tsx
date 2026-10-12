@@ -3,8 +3,11 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Async, Chg, CountUp, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
+import { DataStamp } from '@/components/DataStamp';
+import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { dateLabel, heat, num, pct } from '@/lib/format';
+import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
 
 const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -49,14 +52,15 @@ export default function Brief() {
   const secs = [...((pulse.data?.sectors_day?.length ? pulse.data.sectors_day : pulse.data?.sectors) ?? [])].sort((a, b) => b.median - a.median);
   const indexQuotes = (quotes.data?.quotes ?? []).filter((q) => ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'gold', 'crude', 'usdinr'].includes(q.id) && q.price !== null);
 
+  const b200 = useMemo(() => (rows.length ? breadth200(rows) : null), [rows]);
   const headline = useMemo(() => {
     if (!t || !br) return '';
     const tilt = br.up > br.down ? 'More stocks rose than fell' : 'More stocks fell than rose';
-    return `${tilt} (${br.up} up, ${br.down} down), the barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}), and ${Math.round(t.above_200dma_pct)}% of stocks sit above their 200-day average.`;
-  }, [t, br]);
+    return `${tilt} (${br.up} up, ${br.down} down), the barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}), and ${b200 && b200.pct !== null ? `${b200.above} of ${b200.withHistory} stocks with a 200-day history (${Math.round(b200.pct)}%)` : 'a share of stocks'} sit above their 200-day average.`;
+  }, [t, br, b200]);
 
   const copy = async () => {
-    const lines = [`alpha brief — ${dateLabel(new Date().toISOString().slice(0, 10))}`, headline, '',
+    const lines = [`alpha brief — market data as of ${dateLabel(screen.data?.breadth.as_of)}`, headline, '',
       ...indexQuotes.map((q) => `${q.name}: ${q.prefix}${num(q.price, q.dp)} (${pct(q.pct, 2)})`), '',
       secs.length ? `Sectors: ↑ ${secs.slice(0, 3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')} · ↓ ${secs.slice(-3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')}` : '',
       'https://alpha.askakshay.com/brief/'];
@@ -65,7 +69,8 @@ export default function Brief() {
 
   return (
     <>
-      <PageHead eyebrow={dateLabel(new Date().toISOString().slice(0, 10))} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
+      <PageHead eyebrow={screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen', 'barometer', 'engines']} /></section>
       <section className="wrap">
         <Async loading={bar.loading && pulse.loading} error={null} rows={2}>
           <Rv className="panel" style={{ marginBottom: 14 }}>
@@ -89,11 +94,11 @@ export default function Brief() {
               <div className="eyebrow">Market stage</div>
               <div className="disp" style={{ fontSize: 40, margin: '10px 0 4px' }}>{t?.stage.t ?? '—'}</div>
               <p className="muted" style={{ margin: 0 }}>Barometer <b className="num"><CountUp value={t?.score} format={(n) => String(Math.round(n))} /></b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
-              <Link href="/map/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>See sector rotation →</Link>
+              <Link href="/rotation/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>See how sector strength is changing →</Link>
             </Rv>
           </div>
 
-          <SectionHead eyebrow="Overnight" title="What moved" />
+          <SectionHead eyebrow="Over the past week" title="What moved" />
           <div className="grid g2">
             <Rv className="panel"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
             <Rv className="panel"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
@@ -116,11 +121,12 @@ export default function Brief() {
               {byDay.length === 0 && <p className="muted">No results dates on file for the next two weeks.</p>}
               {byDay.map(([day, list]) => (
                 <div key={day} style={{ marginTop: 12 }}>
-                  <div className="num" style={{ fontSize: 12.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : `in ${daysUntil(day)}d`} · {list.length} companies</div>
+                  <div className="num" style={{ fontSize: 12.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : plural(daysUntil(day), 'day').replace(/^/, 'in ')} · {plural(list.length, 'company', 'companies')}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 12 }}>+{list.length - 10} more</span>}</div>
                 </div>
               ))}
-              <Link href="/calendar/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 13 }}>Full results calendar →</Link>
+              <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Dates come from the screen feed, which does not say whether a company has confirmed them or a vendor has estimated them. Check the exchange&apos;s <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>board-meeting announcements ↗</a> before relying on one.</p>
+              <Link href="/calendar/" className="more" style={{ display: 'inline-block', marginTop: 8, color: 'var(--accent-2)', fontSize: 13 }}>Full results calendar →</Link>
             </Rv>
             <Rv className="panel">
               <div className="eyebrow">IPOs</div>

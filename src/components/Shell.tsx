@@ -21,7 +21,21 @@ export const PAGES = [
   { href: '/funds/', label: 'Funds', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
   { href: '/tools/', label: 'Tools', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
   { href: '/news/', label: 'News', icon: 'M4 5h13v14H6a2 2 0 01-2-2zM17 9h3v8a2 2 0 01-2 2M8 9h5M8 13h5' },
+  { href: '/compare/', label: 'Compare', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
+  { href: '/calendar/', label: 'Calendar', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
+  { href: '/watchlist/', label: 'Watchlist', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
+  { href: '/about/', label: 'Method', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
 ] as const;
+
+/** The five jobs people come to do. Every page stays one step away; the header shows five groups instead of seventeen links. */
+export const GROUPS: { label: string; hint: string; hrefs: string[] }[] = [
+  { label: 'Today', hint: 'What is happening now', hrefs: ['/', '/brief/', '/markets/'] },
+  { label: 'Discover', hint: 'Find companies and patterns', hrefs: ['/screen/', '/map/', '/rotation/', '/ipo/', '/funds/', '/news/', '/reads/'] },
+  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/engines/', '/magic/', '/compare/', '/tools/'] },
+  { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/calendar/'] },
+  { label: 'Methods', hint: 'How every number is made', hrefs: ['/about/'] },
+];
+const pageOf = (h: string) => PAGES.find((p) => p.href === h)!;
 
 const Icon = ({ d }: { d: string }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -128,16 +142,20 @@ function MoreSheet({ open, onClose, onSearch, path }: { open: boolean; onClose: 
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
           <span>Search companies and pages</span>
         </button>
-        <div className="sheet-grid">
-          {PAGES.map((p) => (
-            <Link key={p.href} href={p.href} onClick={onClose} aria-current={isActive(path, p.href) ? 'page' : undefined}>
-              <span className="ic"><Icon d={p.icon} /></span>
-              <span>{p.label}</span>
-            </Link>
-          ))}
-        </div>
+        {GROUPS.map((g) => (
+          <div key={g.label}>
+            <div className="sheet-h">{g.label} <span>{g.hint}</span></div>
+            <div className="sheet-grid">
+              {g.hrefs.map((h) => (
+                <Link key={h} href={h} onClick={onClose} aria-current={isActive(path, h) ? 'page' : undefined}>
+                  <span className="ic"><Icon d={pageOf(h).icon} /></span>
+                  <span>{pageOf(h).label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
         <div className="sheet-foot">
-          <Link href="/about/" onClick={onClose}>Method &amp; sources</Link>
           <span className="dim">Tip: in Safari, Share → Add to Home Screen for a full-screen app.</span>
         </div>
       </div>
@@ -243,12 +261,23 @@ export default function Shell({ children }: { children: ReactNode }) {
           </Link>
           <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => glide()}>
             <span className="glide" aria-hidden />
-            {PAGES.map((p) => (
-              <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined} onPointerEnter={(e) => glide(e.currentTarget)} onFocus={(e) => glide(e.currentTarget)}>{p.label}</Link>
-            ))}
+            {GROUPS.map((g) => {
+              const on = g.hrefs.some((h) => isActive(path, h));
+              return (
+                <div className="navgroup" key={g.label}>
+                  <Link href={g.hrefs[0]} aria-current={on ? 'page' : undefined} onPointerEnter={(e) => glide(e.currentTarget)} onFocus={(e) => glide(e.currentTarget)}>{g.label}{g.hrefs.length > 1 && <svg className="caret" width="9" height="9" viewBox="0 0 10 10" aria-hidden><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>}</Link>
+                  {g.hrefs.length > 1 && (
+                    <div className="menu" role="group" aria-label={`${g.label} pages`}>
+                      <div className="menu-hint">{g.hint}</div>
+                      {g.hrefs.map((h) => <Link key={h} href={h} aria-current={isActive(path, h) ? 'page' : undefined}><span className="ic"><Icon d={pageOf(h).icon} /></span>{pageOf(h).label}</Link>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
           <div className="top-actions">
-            <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-label="Search companies and pages">
+            <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-label="Search ⌘K: companies and pages">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span>Search</span>
               <kbd>⌘K</kbd>

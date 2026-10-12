@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Bar, Chg, Rv } from '@/components/ui';
 import { useEngines, useFeed, usePx } from '@/lib/data';
-import { decide } from '@/lib/decision';
+import { breadth200 } from '@/lib/breadth';
+import { decide, screenClass } from '@/lib/decision';
 import { crore, dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
 
@@ -119,22 +120,23 @@ export function ReverseDcf() {
   const r = s.data?.rows.find((x) => x.sym === sym);
   const eps = r && has(r.pe) && r.pe > 0 && has(r.price) ? r.price / r.pe : null;
   const g = r && eps && r.price ? impliedGrowth(r.price, eps, Number(rate) / 100, Math.max(1, Math.min(30, Number(yrs) || 10)), Number(tg) / 100) : null;
-  const valid = Number(rate) > Number(tg);
+  const rateN = Number(rate), yrsN = Number(yrs), tgN = Number(tg);
+  const valid = rateN > tgN && rateN > 0 && rateN <= 50 && yrsN >= 1 && yrsN <= 30 && tgN >= 0 && tgN <= 10;
   return (
     <Rv className="panel spot">
-      <div className="eyebrow">Reverse DCF · what is the price already assuming?</div>
+      <div className="eyebrow">Reverse DCF · an earnings-based teaching model</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Instead of guessing the future and getting a value, start from today&apos;s price and solve for the earnings growth it needs.</p>
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
         {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 13 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
-      {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">The required return must exceed terminal growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
+      {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
         <div className="grid g3" style={{ marginTop: 12 }}>
-          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)}</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
+          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} (screen close)</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
           <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 12 }}>for {yrs} years, then {tg}% forever</div></div>
           <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
             {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 12.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Past growth has cleared what the price assumes.' : `The price assumes ${(g * 100 - r.eps_cagr).toFixed(1)} points more than it has delivered.`}</p>}</div>
         </div>
       )}
-      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model: its value is the question it asks, not the number.</p>
+      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model built on earnings (EPS), not cash flow: it ignores capex, working capital, dilution and changing margins, and a P/E from a depressed or one-off year distorts it badly. Its value is the question it asks, not the number.</p>
     </Rv>
   );
 }
@@ -143,28 +145,37 @@ export function ReverseDcf() {
 export function Confluence({ limit = 8 }: { limit?: number }) {
   const s = useFeed('screen');
   const eng = useEngines();
-  const rows = useMemo(() => {
-    if (!s.data) return [];
+  const MIN_CHECKS = 6;                      // a name needs at least six of the nine checks to apply before it can be ranked at all
+  const { rows, skipped } = useMemo(() => {
+    if (!s.data) return { rows: [], skipped: 0 };
     const sigs = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending');
     const ok = new Set((eng.data ? Object.values(eng.data.engines).filter((e) => e.alertable).map((e) => e.key) : []));
-    return s.data.rows.filter((r) => has(r.turnover_cr) && r.turnover_cr >= 5).map((r) => {
+    let skipped = 0;
+    const out = s.data.rows.filter((r) => has(r.turnover_cr) && r.turnover_cr >= 5).map((r) => {
       const mine = sigs.filter((x) => x.sym === r.sym);
       const d = decide(r, mine);
       const passed = d.checks.filter((c) => c.pass === true).length, known = d.checks.filter((c) => c.pass !== null).length;
       const engines = mine.filter((x) => ok.has(x.engine)).length + mine.filter((x) => !ok.has(x.engine)).length * 0.5;
       const score = (known ? passed / known : 0) * 6 + engines * 2 + (r.mf?.rank && r.mf.rank <= 100 ? 1 : 0) + (r.vd?.c === 'BUY' ? 1 : 0) - (r.risk?.level === 'HIGH' ? 3 : 0);
-      return { r, mine, d, passed, known, score };
-    }).sort((a, b) => b.score - a.score).slice(0, limit);
+      return { r, mine, d, passed, known, total: d.checks.length, score };
+    }).filter((x) => { if (x.known < MIN_CHECKS) { skipped++; return false; } return true; });
+    return { rows: out.sort((a, b) => b.score - a.score).slice(0, limit), skipped };
   }, [s.data, eng.data, limit]);
   return (
     <Async loading={s.loading} error={s.error} rows={3}>
       <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
-        <thead><tr><th>Company</th><th>Checks passed</th><th>Engines</th><th>Verdict</th><th>1Y</th><th>Why it ranks</th></tr></thead>
-        <tbody>{rows.map(({ r, mine, d, passed, known }) => (
-          <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td><td className="num">{passed}/{known}</td><td>{mine.length ? mine.map((m) => <span key={m.id} className="tag acc" style={{ marginRight: 4 }}>{m.engine_name}</span>) : <span className="dim">none</span>}</td><td><span className={`tag ${r.vd?.c === 'BUY' ? 'up' : ''}`}>{r.vd?.c ?? dash}</span></td><td><Chg v={r.r1y} dp={0} /></td><td className="dim" style={{ fontSize: 12.5, whiteSpace: 'normal' }}>{d.bull[0]?.text ?? d.headline}</td></tr>
-        ))}</tbody>
+        <thead><tr><th>Company</th><th>Checks passed</th><th>Engines</th><th>Screen class</th><th>1Y</th><th>Why it ranks</th></tr></thead>
+        <tbody>{rows.map(({ r, mine, d, passed, known, total }) => {
+          const sc = screenClass(r.vd);
+          return (
+            <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td>
+              <td className="num" title={`${passed} passed of ${known} that apply; ${total - known} of ${total} not applicable or unavailable`}>{passed} of {known}{known < total ? <span className="dim"> ({total - known} n/a)</span> : null}</td>
+              <td>{mine.length ? mine.map((m) => <span key={m.id} className="tag acc" style={{ marginRight: 4 }}>{m.engine_name}</span>) : <span className="dim">none</span>}</td>
+              <td><span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span></td><td><Chg v={r.r1y} dp={0} /></td><td className="dim" style={{ fontSize: 12.5, whiteSpace: 'normal' }}>{d.bull[0]?.text ?? d.headline}</td></tr>
+          );
+        })}</tbody>
       </table></div>
-      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Ranks the liquid names (₹5 crore a day or more) by how many of nine fundamental and trend checks pass, plus picks from engines that cleared the alert bar (half weight for the rest), Magic Formula top 100, a BUY verdict, minus a penalty for HIGH risk. Agreement between independent lenses, not a forecast.</p>
+      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p>
     </Async>
   );
 }
@@ -174,6 +185,7 @@ export function MarketStance() {
   const s = useFeed('screen');
   const b = useFeed('barometer');
   const bd = s.data?.breadth, t = b.data?.today;
+  const b2 = useMemo(() => (s.data ? breadth200(s.data.rows) : null), [s.data]);
   return (
     <Async loading={s.loading || b.loading} error={s.error} rows={1}>
       {bd && (
@@ -181,7 +193,7 @@ export function MarketStance() {
           <div className="eyebrow">Market stance · AI desk</div>
           {(() => {
             const conds: [string, boolean, string][] = [
-              ['More than half of stocks above their 200-day', bd.above200 > 50, `${bd.above200.toFixed(0)}% are`],
+              ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],
               ['More than half above their 50-day', bd.above50 > 50, `${bd.above50.toFixed(0)}% are`],
               ['Advancers outnumber decliners', bd.advancing > bd.declining, `${bd.advancing} up, ${bd.declining} down`],
               ['Typical stock is up over the month', bd.median_1m > 0, `median ${bd.median_1m.toFixed(1)}%`],

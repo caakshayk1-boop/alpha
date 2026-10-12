@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Async, Bar, Chg, CountUp, LazyMount, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
+import { DataStamp } from '@/components/DataStamp';
+import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
-import { ago, crore, dateLabel, heat, num, pct } from '@/lib/format';
+import { ago, crore, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import type { Barometer, Quote } from '@/lib/types';
 
@@ -62,22 +64,29 @@ function Hero() {
     return () => window.clearTimeout(t);
   }, []);
   const t = bar.data?.today;
+  const scr = useFeed('screen');
+  const b200 = useMemo(() => (scr.data ? breadth200(scr.data.rows) : null), [scr.data]);
   const words = ['India’s', 'market,'];
   return (
     <section className="wrap hero">
       <div>
-        <div className="eyebrow"><span className="live-dot" /> &nbsp;Independent research desk · Indian equities</div>
+        <div className="eyebrow">Independent research desk · Indian equities</div>
         <h1 ref={h1} className="disp" aria-label="India’s market, measured.">
           {words.map((w, i) => <span className="w" key={w} aria-hidden><i style={{ ['--i' as string]: i }}>{w}&nbsp;</i></span>)}
           <span className="w" aria-hidden><i style={{ ['--i' as string]: 2 }}><em>measured.</em></i></span>
         </h1>
         <p className="lede">
           {t ? (
-            <>On the {dateLabel(t.nifty_date)} close the Nifty stood at <b className="num" style={{ color: 'var(--text)' }}>{num(t.nifty, 0)}</b>, {num(t.drawdown_pct, 1)}% below its high, with {num(t.above_200dma_pct, 0)}% of stocks above their 200-day average and VIX at {num(t.vix, 1)}. Every figure below is computed from filings and exchange data, with the working shown.</>
+            <>
+              As of the {dateLabel(t.nifty_date)} session the Nifty stood at <b className="num" style={{ color: 'var(--text)' }}>{num(t.nifty, 0)}</b>, {num(t.drawdown_pct, 1)}% below its high, with India VIX at {num(t.vix, 1)}.
+              {b200 && b200.pct !== null && scr.data ? <> In the screen ({dateLabel(scr.data.breadth.as_of)}), <b className="num" style={{ color: 'var(--text)' }}>{num(b200.above)} of {num(b200.withHistory)}</b> stocks with a 200-day history ({num(b200.pct, 0)}%) were above their 200-day average.</> : null}
+              {' '}Every figure below is computed from filings and exchange data, with the working shown.
+            </>
           ) : (
             'A live board, a screen of nearly 1,000 companies, weekly company studies, IPOs, funds and the news that touches them. Every figure computed from public data, with the working shown.'
           )}
         </p>
+        <DataStamp ids={['barometer', 'screen', 'engines']} />
         <div className="hero-cta">
           <Link className="btn" href="/brief/">Read today&apos;s brief <span aria-hidden>→</span></Link>
           <Link className="btn ghost" href="/engines/">See the engines</Link>
@@ -143,9 +152,12 @@ function Ticker() {
 function Board() {
   const q = useQuotes();
   const want = ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'gold'];
+  const newest = Math.max(0, ...(q.data?.quotes ?? []).map((x) => x.at ?? 0));
+  const qs = quoteState(newest || null);
+  const boardLabel = q.data ? (qs.word === 'live' ? 'Live quotes' : qs.word === 'unknown' ? 'Quotes' : `Quotes · ${qs.label}`) : 'Quotes';
   return (
     <section className="wrap section">
-      <SectionHead eyebrow="Live" title="The board" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
+      <SectionHead eyebrow={boardLabel} title="The board" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
       <Async loading={q.loading} error={q.error} rows={2}>
         <div className="qgrid">
           {want.map((id) => q.data?.quotes.find((x) => x.id === id && x.price !== null)).filter((x): x is Quote => !!x).map((x) => <QuoteCard key={x.id} q={x} />)}
@@ -158,12 +170,14 @@ function Board() {
 
 function Breadth() {
   const p = useFeed('pulse');
+  const scr = useFeed('screen');
+  const b200 = useMemo(() => (scr.data ? breadth200(scr.data.rows) : null), [scr.data]);
   const b = p.data?.breadth;
   const total = b ? b.up + b.down : 0;
   const rows: [string, number, string?][] = b ? [
     ['Advancing', (b.up / total) * 100, 'up'],
     ['Declining', (b.down / total) * 100, 'down'],
-    ['Above 200-day', (b.above_200dma / b.counted) * 100],
+    ...(b200 && b200.pct !== null ? [[`Above 200-day (${num(b200.above)} of ${num(b200.withHistory)} with history)`, b200.pct] as [string, number]] : []),
   ] : [];
   return (
     <Rv className="panel spot">

@@ -39,7 +39,7 @@ const PHRASES: [RegExp, string, (r: Row) => boolean][] = [
   [/\bprofitable\b/, 'Profitable (positive net margin)', (r) => has(r.net_margin) && r.net_margin > 0],
   [/\bcash[- ]?(generative|rich|backed)\b/, 'Operating cash at least 0.8× profit', (r) => has(r.cfo_pat) && r.cfo_pat >= 0.8],
   [/\bmagic formula\b/, 'In the Magic Formula top 100', (r) => !!r.mf?.rank && r.mf.rank <= 100],
-  [/\bbuy rated\b|\bverdict buy\b|\bscreen says buy\b/, 'Screen verdict BUY', (r) => r.vd?.c === 'BUY'],
+  [/\bbuy rated\b|\bverdict buy\b|\bscreen says buy\b|\bhas a case\b/, 'Screen class: has a case on file', (r) => r.vd?.c === 'BUY'],
   [/\blow risk\b|\bsafe\b/, 'Risk level LOW', (r) => r.risk?.level === 'LOW'],
   [/\bliquid\b|\bhighly traded\b/, 'Turnover ₹10 crore a day or more', (r) => has(r.turnover_cr) && r.turnover_cr >= 10],
   [/\bdividend\b|\bincome\b/, 'Dividend yield 2% or more', (r) => has(r.div_yield) && r.div_yield >= 2],
