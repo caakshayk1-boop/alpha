@@ -26,7 +26,8 @@
   --line-2: rgba(255, 255, 255, 0.16);
   --text: #eaeef3;
   --muted: #9aa5b5;
-  --dim: #7b8798;
+  --dim: #8591a2;          /* 4.9:1 on the lightest raised surface (was 4.3) */
+  --control-line: #606b7e; /* form-field borders: 3.2:1 or more on every surface */
   --accent: #8e9bff;
   --accent-2: #b5beff;
   --accent-ink: #0a0c20;
@@ -36,6 +37,8 @@
   --down: #ff6b7a;
   --down-soft: rgba(255, 107, 122, 0.14);
   --warn: #f5b84a;
+  --up-fill: #1a9566;      /* heat backgrounds that carry light text: 5.3:1 at full strength */
+  --down-fill: #ef5566;
   --glow: rgba(142, 155, 255, 0.16);
   --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
 }
@@ -51,7 +54,8 @@
   --line-2: rgba(14, 18, 23, 0.2);
   --text: #0e1217;
   --muted: #475161;
-  --dim: #626c7b;
+  --dim: #5a6475;          /* 4.8:1 on the darkest raised surface (was 4.3) */
+  --control-line: #737d8e;
   --accent: #4753d9;
   --accent-2: #3340c4;
   --accent-ink: #ffffff;
@@ -60,7 +64,9 @@
   --up-soft: rgba(11, 138, 87, 0.12);
   --down: #b3243a;
   --down-soft: rgba(204, 47, 69, 0.1);
-  --warn: #9a6200;
+  --warn: #8a5700;         /* 4.8:1 on its own tag tint (was 4.1) */
+  --up-fill: var(--up);
+  --down-fill: var(--down);
   --glow: rgba(71, 83, 217, 0.12);
   --shadow: 0 24px 50px -28px rgba(30, 30, 20, 0.35);
 }
@@ -240,7 +246,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; min-width
 .tbl td .co { display: grid; line-height: 1.25; text-align: left; } .tbl td .co b { font-weight: 600; } .tbl td .co span { color: var(--dim); font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 
 .filters { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin-bottom: var(--s-4); }
-.field { height: 40px; padding: 0 14px; border-radius: var(--r-pill); background: var(--panel); border: 1px solid var(--line); color: var(--text); font: inherit; min-width: 220px; }
+.field { height: 40px; padding: 0 14px; border-radius: var(--r-pill); background: var(--panel); border: 1px solid var(--control-line); color: var(--text); font: inherit; min-width: 220px; }
 .field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 select.field { min-width: 0; padding-right: 30px; }
 

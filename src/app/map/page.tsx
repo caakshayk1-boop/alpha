@@ -43,7 +43,7 @@ const COUNTS = [60, 150, 300, 600];
 
 const mix = (a: number[], b: number[], t: number) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
 const NEUTRAL = [38, 44, 54];
-const UP = [24, 164, 108];
+const UP = [16, 130, 86];    // darker than the up colour so white tile labels keep 4.8:1 at full strength
 const DOWN = [206, 52, 76];
 const colorFor = (v: number | null | undefined, max: number) =>
   v === null || v === undefined || !Number.isFinite(v) ? 'rgb(52,56,64)' : mix(NEUTRAL, v >= 0 ? UP : DOWN, Math.min(1, Math.abs(v) / max) ** 0.8);

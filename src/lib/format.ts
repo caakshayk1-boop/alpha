@@ -50,7 +50,7 @@ export const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.ma
 export const heat = (p: number | null | undefined, max = 3) => {
   if (typeof p !== 'number' || !Number.isFinite(p)) return 'var(--panel-2)';
   const a = Math.round(Math.min(1, Math.abs(p) / max) * 62) + 6;
-  return `color-mix(in srgb, ${p >= 0 ? 'var(--up)' : 'var(--down)'} ${a}%, var(--panel-2))`;
+  return `color-mix(in srgb, ${p >= 0 ? 'var(--up-fill)' : 'var(--down-fill)'} ${a}%, var(--panel-2))`;
 };
 
 /** How current a quote is, from its own timestamp (epoch seconds): "live" only within 15 minutes, otherwise "last trade" with its age. */
