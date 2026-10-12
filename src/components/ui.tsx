@@ -144,9 +144,10 @@ export function SectionHead({ title, href, cta, eyebrow }: { title: string; href
   );
 }
 
-export function PageHead({ eyebrow, title, em, lede }: { eyebrow: string; title: string; em?: string; lede?: string }) {
+/** `compact` (the default) puts the working surface inside the first screen; `editorial` keeps the large hero for reading pages. */
+export function PageHead({ eyebrow, title, em, lede, variant = 'compact' }: { eyebrow: string; title: string; em?: string; lede?: string; variant?: 'compact' | 'editorial' }) {
   return (
-    <header className="page-head wrap">
+    <header className={`page-head wrap${variant === 'compact' ? ' compact' : ''}`}>
       <div className="eyebrow"><b>●</b> {eyebrow}</div>
       <h1 className="disp">
         {title} {em && <em>{em}</em>}

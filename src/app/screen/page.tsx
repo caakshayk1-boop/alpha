@@ -74,6 +74,7 @@ export default function Screen() {
   const eng = useEngines();
   const router = useRouter();
   const [q, setQ] = useState('');
+  const [nlTests, setNlTests] = useState<((r: Row) => boolean)[]>([]);
   const [sector, setSector] = useState('');
   const [tier, setTier] = useState('');
   const [conds, setConds] = useState<Cond[]>([]);
@@ -105,6 +106,7 @@ export default function Screen() {
     const term = q.trim().toLowerCase();
     const active = conds.filter((c) => c.v !== '' && Number.isFinite(Number(c.v)));
     const list = (s.data?.rows ?? []).filter((r) => {
+      if (nlTests.length && !nlTests.every((t) => t(r))) return false;
       if (term && !(r.sym.toLowerCase().includes(term) || r.name.toLowerCase().includes(term))) return false;
       if (sector && r.sector !== sector) return false;
       if (tier && r.tier !== tier) return false;
@@ -128,12 +130,12 @@ export default function Screen() {
       if (!has(bv)) return -1;
       return (av - bv) * dir;
     });
-  }, [s.data, q, sector, tier, conds, flags, sort, dir, sigSyms]);
+  }, [s.data, q, sector, tier, conds, flags, sort, dir, sigSyms, nlTests]);
 
   const capture = () => { if (body.current && canAnimate()) flipState.current = Flip.getState(body.current.querySelectorAll('tr')); };
   useEffect(() => {
     if (flipState.current && body.current) { Flip.from(flipState.current, { duration: 0.55, ease: 'power3.inOut' }); flipState.current = null; }
-  }, [sort, dir, conds, flags, sector, tier]);
+  }, [sort, dir, conds, flags, sector, tier, nlTests]);
 
   const applyLens = (l: Lens) => {
     capture();
@@ -151,6 +153,7 @@ export default function Screen() {
     const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; })].join(','))];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'alpha-screen.csv'; a.click();
   };
+  const tierNoCap = useMemo(() => (s.data?.rows ?? []).filter((r) => r.tier && !has(r.mcap_cr)).length, [s.data]);
   const activeLens = LENSES.find((l) => l.id === lens);
 
   return (
@@ -158,7 +161,7 @@ export default function Screen() {
       <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
-        <AskScreen rows={s.data?.rows ?? []} />
+        <AskScreen rows={s.data?.rows ?? []} onTests={setNlTests} />
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />
           <select className="field" aria-label="Sector" value={sector} onChange={(e) => { capture(); setSector(e.target.value); setLimit(PAGE); }}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
@@ -225,7 +228,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
     </>

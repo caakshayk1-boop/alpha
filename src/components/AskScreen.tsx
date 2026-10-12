@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Chg } from '@/components/ui';
 import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
@@ -12,7 +12,7 @@ import { plural } from '@/lib/status';
 
 const EXAMPLES = ['large cap IT roce above 25 low debt', 'small cap uptrend quality growth', 'oversold pharma profitable', 'cheap banks roe above 14', 'near 52 week high momentum cash generative', 'magic formula debt below 0.5 pe under 20', 'dividend yield above 3 low risk'];
 
-export default function AskScreen({ rows }: { rows: Row[] }) {
+export default function AskScreen({ rows, onTests }: { rows: Row[]; onTests?: (tests: ((r: Row) => boolean)[]) => void }) {
   const [q, setQ] = useState('');
   const [off, setOff] = useState<string[]>([]);      // clauses the person has switched off; nothing is ever switched off for them
   const { add, ok } = useCards();
@@ -23,6 +23,8 @@ export default function AskScreen({ rows }: { rows: Row[] }) {
     if (!active.length) return [];
     return rows.filter((r) => active.every((f) => f.test(r))).sort((a, b) => ((b.q ?? 0) + (b.tech ?? 0) + (b.g ?? 0)) - ((a.q ?? 0) + (a.tech ?? 0) + (a.g ?? 0)));
   }, [rows, active]);
+  useEffect(() => { onTests?.(active.map((f) => f.test)); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onTests?.([]), []); // eslint-disable-line react-hooks/exhaustive-deps
   // for a search with no matches: what each single clause costs, so the person can decide which one to give up
   const costs = useMemo(() => (hits.length === 0 && active.length > 1 ? active.map((f) => ({ f, n: rows.filter((r) => active.every((g) => g === f || g.test(r))).length })).sort((a, b) => b.n - a.n) : []), [hits.length, active, rows]);
   const missing = useMemo(() => {
@@ -77,16 +79,7 @@ export default function AskScreen({ rows }: { rows: Row[] }) {
             </div>
           )}
           {hits.length > 0 && <div style={{ margin: '0 0 10px' }}><button className="chip" disabled={!ok} onClick={() => setSaved(add(buildCard({ question: q.trim(), query: { text: q.trim(), applied: active.map((f) => f.label), ignored: [...p.unknown, ...off.map((o) => `switched off: ${o}`)], matches: hits.length }, companies: hits.slice(0, 25).map((r) => ({ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null })) })))} title="Saved in this browser only">{saved ? 'Saved locally ✓' : 'Save as research card'}</button></div>}
-          {hits.length > 0 && (
-            <div className="tbl-wrap" style={{ maxHeight: 460 }}>
-              <table className="tbl" style={{ minWidth: 720 }}>
-                <thead><tr><th>Company</th><th>Sector</th><th>Mkt cap</th><th>Quality</th><th>Growth</th><th>P/E</th><th>ROCE</th><th>3M</th><th>1Y</th></tr></thead>
-                <tbody>{hits.slice(0, 25).map((r) => (
-                  <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td><td className="dim">{r.ind || r.sector}</td><td className="num">{typeof r.mcap_cr === 'number' && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'n/a'}</td><td className="num">{r.q != null ? Math.round(r.q) : dash}</td><td className="num">{r.g != null ? Math.round(r.g) : dash}</td><td className="num">{r.pe ? `${r.pe.toFixed(1)}×` : dash}</td><td className="num">{r.roce != null ? `${r.roce.toFixed(0)}%` : dash}</td><td><Chg v={r.r3m} dp={0} /></td><td><Chg v={r.r1y} dp={0} /></td></tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
+          {onTests && active.length > 0 && hits.length > 0 && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 6px' }}>These clauses filter the table below together with the sector, size and manual filters. One table, one count.</p>}
         </>
       )}
       <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Understood by fixed language rules, not a chatbot: every clause it turned into a filter is a chip you can switch off, every word it ignored is listed, and nothing is ever loosened or dropped for you. A company with no value for a measure cannot match a clause on it. Results are screens, not recommendations.</p>

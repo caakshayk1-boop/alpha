@@ -84,7 +84,7 @@ function Compare() {
                       const yrs = rows.map((r) => yearsOf(r.sym));
                       const periodsAgree = !PERIOD_DEPENDENT.has(sp2.label) || (yrs.every((y) => y !== null) && new Set(yrs).size === 1);
                       const best = sp2.better && periodsAgree && nums.length > 1 ? (sp2.better === 'high' ? Math.max(...nums) : Math.min(...nums)) : null;
-                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { color: 'var(--up)', fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best ? <span className="sr"> (better value)</span> : null}</td>)}</tr>;
+                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { color: 'var(--up)', fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best ? <span className="sr">{sp2.better === 'high' ? ' (highest in this comparison)' : ' (lowest in this comparison)'}</span> : null}</td>)}</tr>;
                     })}
                   </tbody>
                 </table>

@@ -245,6 +245,10 @@ export default function Shell({ children }: { children: ReactNode }) {
     nav.style.setProperty('--w', `${el.offsetWidth}px`);
     nav.style.setProperty('--o', '1');
   }, []);
+  // A menu opens on hover or focus, so after choosing a page it would stay open under the pointer: close it on navigation and on Escape, and let it open again once the pointer has left.
+  const closeMenus = useCallback(() => { const nav = navRef.current; if (!nav) return; if (nav.contains(document.activeElement)) (document.activeElement as HTMLElement).blur(); nav.dataset.closed = '1'; }, []);
+  const lastPath = useRef(path);
+  useEffect(() => { if (lastPath.current !== path) { lastPath.current = path; closeMenus(); } }, [path, closeMenus]);
   useEffect(() => { glide(); const r = () => glide(); window.addEventListener('resize', r); const t = window.setTimeout(r, 120); return () => { window.removeEventListener('resize', r); window.clearTimeout(t); }; }, [path, glide]);
 
   const tabs = ['/', '/brief/', '/screen/', '/engines/'].map((h) => PAGES.find((p) => p.href === h)!);
@@ -259,7 +263,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <span className="brand-mark">α</span>
             <span>alpha</span>
           </Link>
-          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => glide()}>
+          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { glide(); delete navRef.current?.dataset.closed; }} onFocus={() => { delete navRef.current?.dataset.closed; }} onKeyDown={(e) => { if (e.key === 'Escape') closeMenus(); }}>
             <span className="glide" aria-hidden />
             {GROUPS.map((g) => {
               const on = g.hrefs.some((h) => isActive(path, h));
