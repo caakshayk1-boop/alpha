@@ -31,6 +31,17 @@ export function PortfolioXray() {
     }
     return { ok, bad };
   }, [text, bySym]);
+  const lines = useMemo(() => (text === '' ? [] : text.split('\n')).map((l) => l.trim()).map((l) => { const [sym = '', q = '', a = ''] = l.split(/[\s,\t]+/); return { sym, q, a }; }), [text]);
+  const rowIssue = (l: { sym: string; q: string; a: string }): string | null => {
+    if (!bySym.size) return null;
+    if (!l.sym) return 'enter a symbol';
+    if (!bySym.has(l.sym.toUpperCase().replace(/^NSE:/, ''))) return 'symbol not in the screen';
+    if (!(Number(l.q) > 0)) return 'quantity must be above 0';
+    if (l.a !== '' && !(Number(l.a) > 0)) return 'average price must be above 0';
+    return null;
+  };
+  const setCell = (i: number, k: 'sym' | 'q' | 'a', v: string) => save(lines.map((l, j) => { const n = j === i ? { ...l, [k]: v.replace(/\s/g, '') } : l; return [n.sym, n.q, n.a].filter((x, idx) => idx < 2 || x !== '').join(' '); }).join('\n'));
+  const isSample = text.trim() === SAMPLE;
   const px = usePx(parsed.ok.map((h) => h.sym));
   const eng = useEngines();
   const X = useMemo(() => {
@@ -66,10 +77,30 @@ export function PortfolioXray() {
     <Rv className="panel spot">
       <div className="eyebrow">Portfolio X-ray · calculated in this browser</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Paste holdings as <code>SYMBOL quantity average-price</code>, one per line (price optional). Kept in this browser only; nothing is uploaded.</p>
-      <textarea className="field" style={{ width: '100%', minHeight: 120, padding: 12, fontFamily: 'var(--f-mono)', fontSize: 13 }} value={text} onChange={(e) => save(e.target.value)} placeholder={SAMPLE} spellCheck={false} aria-label="Holdings" />
+      {isSample && <p className="notice" role="status"><b>Example holdings, not your portfolio.</b> The figures below describe these four sample names. Edit the rows or clear them to use your own.</p>}
+      {lines.length > 0 && (
+        <div className="tbl-wrap" style={{ maxHeight: 'none', marginBottom: 8 }}>
+          <table className="tbl" style={{ minWidth: 480 }}>
+            <thead><tr><th scope="col">Symbol</th><th scope="col">Quantity</th><th scope="col">Average price (optional)</th><th scope="col">Check</th><th scope="col"><span className="sr">Remove</span></th></tr></thead>
+            <tbody>{lines.map((l, i) => { const issue = rowIssue(l); return (
+              <tr key={i} style={{ cursor: 'default' }}>
+                <td><input className="field" style={{ height: 34, width: 120 }} aria-label={`Symbol, row ${i + 1}`} value={l.sym} onChange={(e) => setCell(i, 'sym', e.target.value.toUpperCase())} spellCheck={false} /></td>
+                <td><input className="field" style={{ height: 34, width: 100 }} inputMode="decimal" aria-label={`Quantity, row ${i + 1}`} value={l.q} onChange={(e) => setCell(i, 'q', e.target.value.replace(/[^\d.]/g, ''))} /></td>
+                <td><input className="field" style={{ height: 34, width: 130 }} inputMode="decimal" aria-label={`Average price, row ${i + 1}`} value={l.a} onChange={(e) => setCell(i, 'a', e.target.value.replace(/[^\d.]/g, ''))} /></td>
+                <td>{issue ? <span className="tag warn">{issue}</span> : <span className="dim">ok</span>}</td>
+                <td><button className="chip" aria-label={`Remove row ${i + 1}`} onClick={() => save(lines.filter((_, j) => j !== i).map((x) => [x.sym, x.q, x.a].filter((y, idx) => idx < 2 || y !== '').join(' ')).join('\n'))}>✕</button></td>
+              </tr>); })}</tbody>
+          </table>
+        </div>
+      )}
+      <details style={{ margin: '4px 0 8px' }}>
+        <summary className="eyebrow" style={{ cursor: 'pointer' }}>Paste many rows (text or CSV)</summary>
+        <textarea className="field" style={{ width: '100%', minHeight: 100, padding: 12, fontFamily: 'var(--f-mono)', fontSize: 13, marginTop: 8 }} value={text} onChange={(e) => save(e.target.value)} placeholder={SAMPLE} spellCheck={false} aria-label="Holdings as text" />
+      </details>
       <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
         <button className="chip" onClick={() => save(SAMPLE)}>Try an example</button>
         <button className="chip" onClick={() => save('')}>Clear</button>
+        <button className="chip" onClick={() => save(text.trim() ? `${text.replace(/\n+$/, '')}\n` : ' ')} title="Add an empty row">+ Row</button>
         <SymbolPicker placeholder="Add a symbol…" onPick={(sym) => save(`${text.trim()}${text.trim() ? '\n' : ''}${sym} 10`)} />
       </div>
       <Async loading={s.loading} error={s.error} rows={1}>
@@ -129,12 +160,25 @@ export function ReverseDcf() {
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
         {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 13 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
       {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
+        <>
         <div className="grid g3" style={{ marginTop: 12 }}>
           <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} (screen close)</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
           <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 12 }}>for {yrs} years, then {tg}% forever</div></div>
           <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
-            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 12.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Past growth has cleared what the price assumes.' : `The price assumes ${(g * 100 - r.eps_cagr).toFixed(1)} points more than it has delivered.`}</p>}</div>
+            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 12.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
         </div>
+        {eps !== null && r.price && (
+          <div className="tbl-wrap" style={{ maxHeight: 'none', marginTop: 14 }}>
+            <table className="tbl" style={{ minWidth: 420 }}>
+              <caption className="dim" style={{ textAlign: 'left', fontSize: 12.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
+              <thead><tr><th scope="col">Required return ↓ · terminal growth →</th>{[3, 5, 7].map((t) => <th key={t} scope="col" className="num">{t}%</th>)}</tr></thead>
+              <tbody>{[10, 12, 14, 16].map((rr) => (
+                <tr key={rr} style={{ cursor: 'default', background: rr === rateN ? 'var(--panel-2)' : undefined }}><th scope="row">{rr}%</th>{[3, 5, 7].map((t) => { const x = rr > t ? impliedGrowth(r.price as number, eps, rr / 100, Math.max(1, Math.min(30, yrsN || 10)), t / 100) : null; return <td key={t} className="num">{x === null ? dash : `${(x * 100).toFixed(1)}%`}</td>; })}</tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+        </>
       )}
       <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model built on earnings (EPS), not cash flow: it ignores capex, working capital, dilution and changing margins, and a P/E from a depressed or one-off year distorts it badly. Its value is the question it asks, not the number.</p>
     </Rv>
