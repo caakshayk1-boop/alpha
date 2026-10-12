@@ -295,8 +295,8 @@ select.field { min-width: 0; padding-right: 30px; }
 .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 var(--up); animation: ping 2s infinite; }
 @keyframes ping { 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
-/* Hidden until revealed, ONLY when initMotion() confirmed this tab can animate. */
-html.anim [data-rv]:not([data-rv='done']) { opacity: 0; transform: translateY(22px) scale(0.985); filter: blur(5px); }
+/* Reveal is a small rise. It must never hide content: an observer that fails to fire (Safari, a throttled tab, effect order) would leave the page blank. */
+html.anim [data-rv]:not([data-rv='done']) { transform: translateY(14px); }   /* a nudge only: content is never made invisible by animation */
 html.anim .hero h1 .w > i { transform: translateY(105%); }
 html.anim .hero h1.go .w > i { transform: none; transition: transform 1s var(--ease); transition-delay: calc(var(--i, 0) * 70ms); }
 
@@ -389,7 +389,7 @@ html.anim .aurora i:nth-child(3) { animation: drift1 52s ease-in-out infinite al
 
 /* page entrance */
 html.anim main.page-in > * { animation: pageIn 0.7s var(--ease) both; }
-@keyframes pageIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pageIn { from { transform: translateY(10px); } to { transform: none; } }
 
 /* chips get a springier press */
 .chip { transition: all 0.25s var(--ease), transform 0.3s var(--spring); } .chip:active { transform: scale(0.94); }
@@ -409,8 +409,7 @@ html.anim .rrg-tail { animation: drawTail 1s var(--ease) both; }
 .pulse { transform-origin: center; opacity: 0.5; }
 html.anim .pulse { animation: rrgPulse 2.4s ease-out infinite; }
 @keyframes rrgPulse { 0% { transform: scale(0.7); opacity: 0.7; } 100% { transform: scale(1.6); opacity: 0; } }
-.radar { opacity: 0; }
-html.anim .radar { opacity: 0.6; }   /* static: an endless decorative sweep was removed (no automatic movement that cannot be paused) */
+.radar { opacity: 0.6; }   /* static: an endless decorative sweep was removed (no automatic movement that cannot be paused) */
 @keyframes sweepRot { to { transform: rotate(360deg); } }
 input[type='range'] { accent-color: var(--accent); }
 

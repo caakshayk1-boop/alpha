@@ -264,7 +264,8 @@ export function LazyMount({ children, minHeight = 200, margin = 500 }: { childre
     if (typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: `${margin}px 0px` });
     io.observe(el);
-    return () => io.disconnect();
+    const fallback = window.setTimeout(() => setNear(true), 3500);   // if the observer never fires (Safari, a throttled tab) the widget still loads
+    return () => { io.disconnect(); window.clearTimeout(fallback); };
   }, [near, margin]);
   return <div ref={ref} style={{ minHeight }}>{near ? children : null}</div>;
 }
