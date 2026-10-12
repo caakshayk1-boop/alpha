@@ -57,6 +57,8 @@ function Compare() {
   const s = useFeed('screen');
   const sh = [useShard(syms[0] ?? ''), useShard(syms[1] ?? ''), useShard(syms[2] ?? ''), useShard(syms[3] ?? '')];
   const yearsOf = (sym: string) => { const i = syms.indexOf(sym); const y = i >= 0 ? sh[i].data?.years : null; return y ? y.length : null; };
+  // the periods a CAGR spans: first and last statement date, not just how many years
+  const spanOf = (sym: string) => { const i = syms.indexOf(sym); const y = i >= 0 ? sh[i].data?.years : null; return y && y.length ? `${y[0].end}|${y[y.length - 1].end}` : null; };
   const rows = useMemo(() => syms.map((x) => s.data?.rows.find((r) => r.sym.toUpperCase() === x)).filter((r): r is Row => !!r), [s.data, syms.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (next: string[]) => router.replace(next.length ? `/compare/?s=${next.join(',')}` : '/compare/');
   return (
@@ -77,12 +79,12 @@ function Compare() {
                   <tbody>
                     <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => <td key={r.sym} className="num">₹{num(r.price, 2)}</td>)}</tr>
                     <tr style={{ cursor: 'default' }}><td>Today</td>{rows.map((r) => <td key={r.sym}><Chg v={r.r1d} dp={1} /></td>)}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}</td>)}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 11 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
                     {SPECS.map((sp2) => {
                       const vals = rows.map((r) => sp2.get(r));
                       const nums = vals.filter(has);
-                      const yrs = rows.map((r) => yearsOf(r.sym));
-                      const periodsAgree = !PERIOD_DEPENDENT.has(sp2.label) || (yrs.every((y) => y !== null) && new Set(yrs).size === 1);
+                      const spans = rows.map((r) => spanOf(r.sym));
+                      const periodsAgree = !PERIOD_DEPENDENT.has(sp2.label) || (spans.every((y) => y !== null) && new Set(spans).size === 1);
                       const best = sp2.better && periodsAgree && nums.length > 1 ? (sp2.better === 'high' ? Math.max(...nums) : Math.min(...nums)) : null;
                       return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { color: 'var(--up)', fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best ? <span className="sr">{sp2.better === 'high' ? ' (highest in this comparison)' : ' (lowest in this comparison)'}</span> : null}</td>)}</tr>;
                     })}
@@ -91,7 +93,7 @@ function Compare() {
               </div>
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profile</div><Radar rows={rows} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 10 }}>{rows.map((r, i) => <span key={r.sym} className="num" style={{ color: COLORS[i], fontSize: 12.5 }}>● {r.sym}</span>)}</div>
-                <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Green marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company has the same number of statement years; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
+                <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Green marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
           )}
         </Async>

@@ -1,20 +1,22 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Chg } from '@/components/ui';
 import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { parse } from '@/lib/nl';
 import type { Row } from '@/lib/types';
-import { crore, dash, num } from '@/lib/format';
+import { num } from '@/lib/format';
 import { plural } from '@/lib/status';
 
 const EXAMPLES = ['large cap IT roce above 25 low debt', 'small cap uptrend quality growth', 'oversold pharma profitable', 'cheap banks roe above 14', 'near 52 week high momentum cash generative', 'magic formula debt below 0.5 pe under 20', 'dividend yield above 3 low risk'];
 
-export default function AskScreen({ rows, onTests }: { rows: Row[]; onTests?: (tests: ((r: Row) => boolean)[]) => void }) {
-  const [q, setQ] = useState('');
-  const [off, setOff] = useState<string[]>([]);      // clauses the person has switched off; nothing is ever switched off for them
+export interface NlState { text: string; off: string[] }   // `off`: clauses the person has switched off; nothing is ever switched off for them
+
+/** The plain-English box. Its state lives in the Screen page (so a saved screen can restore it); `tableRows` is the one table the person is looking at. */
+export default function AskScreen({ rows, tableRows, value, onValue, onTests }: { rows: Row[]; tableRows: Row[]; value: NlState; onValue: (v: NlState) => void; onTests?: (tests: ((r: Row) => boolean)[]) => void }) {
+  const q = value.text, off = value.off;
+  const setQ = (text: string) => onValue({ text, off: [] });
+  const setOff = (f: (o: string[]) => string[]) => onValue({ text: q, off: f(off) });
   const { add, ok } = useCards();
   const [saved, setSaved] = useState(false);
   const p = useMemo(() => parse(q), [q]);
@@ -39,7 +41,7 @@ export default function AskScreen({ rows, onTests }: { rows: Row[]; onTests?: (t
     }
     return out;
   }, [active, rows]);
-  const setText = (v: string) => { setQ(v); setOff([]); setSaved(false); };
+  const setText = (v: string) => { setQ(v); setSaved(false); };
   return (
     <div className="panel spot" style={{ marginBottom: 20 }}>
       <div className="eyebrow">Ask in plain English</div>
@@ -64,7 +66,7 @@ export default function AskScreen({ rows, onTests }: { rows: Row[]; onTests?: (t
             {p.unknown.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0', alignItems: 'center' }}><span className="eyebrow" style={{ color: 'var(--warn)' }}>Ignored</span>{p.unknown.map((w) => <span key={w} className="tag warn">{w}</span>)}<span className="dim" style={{ fontSize: 12.5 }}>These words were not turned into a filter, so they did not change the results.</span></div>}
             {active.length === 0 && p.filters.length === 0 && <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised. This understands a fixed set of phrases: a sector (IT, pharma, banks), a size (large, mid, small cap), a ratio with a number (ROCE above 20, P/E under 25, debt below 0.5) or a state (uptrend, oversold, cheap, near 52 week high). Pick an example above, or use the lenses and filters below.</p>}
             {active.length === 0 && p.filters.length > 0 && <p className="dim" style={{ margin: '8px 0 0' }}>Every clause is switched off, so nothing is being filtered.</p>}
-            {active.length > 0 && <p className="muted" style={{ margin: '8px 0 10px' }}><b className="num" style={{ color: 'var(--text)' }}>{num(hits.length)}</b> of {num(rows.length)} companies match {active.length === 1 ? 'the clause' : `all ${active.length} clauses`}{hits.length > 25 ? '; the best 25 are shown, ranked by quality + trend + growth' : ''}.</p>}
+            {active.length > 0 && <p className="muted" style={{ margin: '8px 0 10px' }}><b className="num" style={{ color: 'var(--text)' }}>{num(hits.length)}</b> of {num(rows.length)} companies match {active.length === 1 ? 'the clause' : `all ${active.length} clauses`} on their own. The table below also applies the sector, size and manual filters and shows <b className="num" style={{ color: 'var(--text)' }}>{num(tableRows.length)}</b>.</p>}
           </div>
           {missing.length > 0 && <ul className="dim" style={{ fontSize: 12.5, margin: '0 0 8px', paddingLeft: 18 }}>{missing.map((m) => <li key={m}>{m}</li>)}</ul>}
           {active.length > 0 && hits.length === 0 && (
@@ -78,7 +80,7 @@ export default function AskScreen({ rows, onTests }: { rows: Row[]; onTests?: (t
               ) : <p className="muted" style={{ margin: '8px 0 0', fontSize: 13.5 }}>The single clause matches no company. Check the number, or pick one of the examples above.</p>}
             </div>
           )}
-          {hits.length > 0 && <div style={{ margin: '0 0 10px' }}><button className="chip" disabled={!ok} onClick={() => setSaved(add(buildCard({ question: q.trim(), query: { text: q.trim(), applied: active.map((f) => f.label), ignored: [...p.unknown, ...off.map((o) => `switched off: ${o}`)], matches: hits.length }, companies: hits.slice(0, 25).map((r) => ({ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null })) })))} title="Saved in this browser only">{saved ? 'Saved locally ✓' : 'Save as research card'}</button></div>}
+          {tableRows.length > 0 && active.length > 0 && <div style={{ margin: '0 0 10px' }}><button className="chip" disabled={!ok} onClick={() => setSaved(add(buildCard({ question: q.trim(), query: { text: q.trim(), applied: active.map((f) => f.label), ignored: [...p.unknown, ...off.map((o) => `switched off: ${o}`)], matches: tableRows.length }, companies: tableRows.slice(0, 25).map((r) => ({ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null })) })))} title="Saved in this browser only">{saved ? 'Saved locally ✓' : 'Save as research card'}</button></div>}
           {onTests && active.length > 0 && hits.length > 0 && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 6px' }}>These clauses filter the table below together with the sector, size and manual filters. One table, one count.</p>}
         </>
       )}

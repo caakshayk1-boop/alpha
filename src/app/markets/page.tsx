@@ -16,7 +16,7 @@ export default function Markets() {
   const missing = q.data ? q.data.total - q.data.live : 0;
   return (
     <>
-      <PageHead eyebrow="Markets" title="Markets" em="at a glance." lede="India, its sectors, the world, commodities, currencies and rates, each with a month of closes behind it. Prices are cached for up to five minutes." />
+      <PageHead eyebrow="Indices, commodities, currencies, rates" title="Markets" em="at a glance." lede="India, its sectors, the world, commodities, currencies and rates, each with a month of closes behind it. Prices are cached for up to five minutes." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['barometer', 'screen']} /><p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Index and commodity prices below are live quotes. The stance, barometer and breadth are from the sessions stamped above.</p></section>
       <section className="wrap section" style={{ paddingBottom: 0 }}><MarketStance /></section>
       <section className="wrap">

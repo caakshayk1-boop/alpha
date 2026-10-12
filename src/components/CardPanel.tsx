@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { Rv } from '@/components/ui';
-import { parseImport, serializeCard, serializeLibrary, summarise, type ResearchCard } from '@/lib/card';
+import { cardDelta, parseImport, serializeCard, serializeLibrary, summarise, type CurrentCompany, type ResearchCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 
 const download = (name: string, text: string) => {
@@ -15,7 +15,7 @@ const download = (name: string, text: string) => {
 };
 
 /** The local research library: cards saved in this browser, export and import without an account. */
-export default function CardPanel({ watchlist, onImportWatchlist }: { watchlist: string[]; onImportWatchlist: (syms: string[]) => void }) {
+export default function CardPanel({ watchlist, onImportWatchlist, current }: { watchlist: string[]; onImportWatchlist: (syms: string[]) => void; current?: Record<string, CurrentCompany | undefined> }) {
   const { cards, ok, addMany, remove, setNote } = useCards();
   const [paste, setPaste] = useState('');
   const [preview, setPreview] = useState<{ cards: ResearchCard[]; watchlist: string[]; warnings: string[] } | null>(null);
@@ -72,6 +72,11 @@ export default function CardPanel({ watchlist, onImportWatchlist }: { watchlist:
                 <div className="t">{c.question ?? 'Untitled research'}</div>
                 <div className="s">{c.companies.slice(0, 8).map((x, i) => <span key={x.sym}>{i ? ', ' : ''}<Link href={`/company/?s=${encodeURIComponent(x.sym)}`} style={{ color: 'var(--accent-2)' }}>{x.sym}</Link></span>)}{c.companies.length > 8 ? ` +${c.companies.length - 8}` : ''} · {c.createdAt.slice(0, 10)}{c.dataStatus.length ? ` · data ${c.dataStatus.filter((s) => s.asOf).map((s) => `${s.id} ${s.asOf}`).join(', ')}` : ''}</div>
                 {c.evidence && c.evidence.length > 0 && <ul className="dim" style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 12.5 }}>{c.evidence.slice(0, 3).map((e) => <li key={e.text}>{e.side === 'for' ? '▲' : '▼'} {e.text}</li>)}</ul>}
+                {current && (() => { const ch = cardDelta(c, current); return (
+                  <div style={{ marginTop: 8 }}>
+                    <div className="eyebrow">Changed since saved ({new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })})</div>
+                    {ch.length ? <ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6 }}>{ch.map((x) => <li key={`${x.sym}-${x.what}`}><b>{x.sym}</b> · {x.what}: {x.before} → {x.after}</li>)}</ul> : <p className="dim" style={{ fontSize: 12.5, margin: '4px 0 0' }}>No change in the saved figures on a newer data date.</p>}
+                  </div>); })()}
                 <label className="sr" htmlFor={`note-${c.id}`}>Note</label>
                 <input id={`note-${c.id}`} className="field" style={{ width: '100%', marginTop: 8, height: 36, fontSize: 13 }} placeholder="Add a private note" defaultValue={c.note ?? ''} onBlur={(e) => setNote(c.id, e.target.value)} />
               </div>

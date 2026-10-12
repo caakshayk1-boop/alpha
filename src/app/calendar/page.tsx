@@ -8,7 +8,11 @@ import { crore, dateLabel } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
 
-const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 864e5);
+/** Calendar days from today in India (IST) to a YYYY-MM-DD date, so "today" does not depend on the reader's own timezone. */
+const daysUntil = (iso: string) => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  return Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 864e5);
+};
 
 export default function Calendar() {
   const s = useFeed('screen');
@@ -37,7 +41,7 @@ export default function Calendar() {
           {['large', 'mid', 'small'].map((t) => <button key={t} className="chip" aria-pressed={tier === t} onClick={() => setTier(tier === t ? '' : t)}>{t[0].toUpperCase() + t.slice(1)} cap</button>)}
           <select className="field" aria-label="Sector" value={sector} onChange={(e) => setSector(e.target.value)}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
         </div>
-        <p className="muted" style={{ margin: '0 0 14px' }}>{plural(total, 'results date')} in the window. <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>Check the NSE board-meeting announcements ↗</a></p>
+        <p className="muted" style={{ margin: '0 0 14px' }}>{plural(total, 'results date')} in the window, counted from today in India (IST). Every date is unverified. <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>Check the NSE board-meeting announcements ↗</a></p>
         <Async loading={s.loading} error={s.error} rows={4}>
           <div className="grid">
             {days.map(([d, list]) => (

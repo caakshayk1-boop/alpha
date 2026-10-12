@@ -28,8 +28,10 @@ export default function Funds() {
       <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="Point-to-point annualised returns set against the worst fall and the volatility it took to get there, over AMFI’s official NAV history. These are lump-sum returns, not SIP returns (a SIP XIRR depends on your instalment dates and is not calculated here). Direct plans only, so the cost lever is already pulled." />
       <section className="wrap">
         <Async loading={f.loading} error={f.error}>
-          <div className="filters" role="group" aria-label="Fund category">
-            {cats.map((c) => <button key={c.key} className="chip" aria-pressed={active?.key === c.key} onClick={() => setCat(c.key)}>{c.label}</button>)}
+          <div className="filters" style={{ alignItems: 'center' }}>
+            <label className="eyebrow" htmlFor="fund-cat">Category</label>
+            <select id="fund-cat" className="field" style={{ height: 38, minWidth: 240 }} value={active?.key ?? ''} onChange={(e) => setCat(e.target.value)}>{cats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
+            {active && <span className="muted num" style={{ fontSize: 13 }}>{funds.length} funds · NAV dates {dateLabel(funds.map((x) => x.nav_date).sort()[0])}{funds.length > 0 && funds.map((x) => x.nav_date).sort()[0] !== funds.map((x) => x.nav_date).sort().slice(-1)[0] ? ` to ${dateLabel(funds.map((x) => x.nav_date).sort().slice(-1)[0])}` : ''}</span>}
           </div>
           {active && <p className="muted" style={{ marginTop: 0 }}>{active.blurb}</p>}
           <div className="filters" role="group" aria-label="Sort by">

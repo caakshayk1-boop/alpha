@@ -11,8 +11,8 @@ export const VERDICT_TONE: Record<string, string> = {
 export function EngineVerdict({ e, compact = false }: { e: Pick<EngineStats, 'ranking_status' | 'ranking_why' | 'trading_status' | 'trading_why'>; compact?: boolean }) {
   return (
     <span className="verdict" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-      <span className={`tag ${VERDICT_TONE[e.ranking_status] ?? ''}`} title={e.ranking_why}>{compact ? '' : 'Ranking · '}{e.ranking_status}</span>
-      <span className={`tag ${VERDICT_TONE[e.trading_status] ?? ''}`} title={e.trading_why}>{compact ? '' : 'Trading · '}{e.trading_status}</span>
+      <span className={`tag ${VERDICT_TONE[e.ranking_status] ?? ''}`} title={e.ranking_why}>{compact ? <span className="sr">Ranking: </span> : 'Ranking · '}{e.ranking_status}</span>
+      <span className={`tag ${VERDICT_TONE[e.trading_status] ?? ''}`} title={e.trading_why}>{compact ? <span className="sr">Trading: </span> : 'Trading · '}{e.trading_status}</span>
     </span>
   );
 }

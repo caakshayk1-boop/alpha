@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { breadth200 } from '../src/lib/breadth.ts';
-import { buildCard, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
+import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
 import { ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
 import { plainText } from '../src/lib/format.ts';
 
@@ -112,7 +112,10 @@ test('plainText: double-encoded entities decode, tags never survive as markup', 
   assert.equal(plainText('S&amp;P 500&amp;nbsp;rises'), 'S&P 500 rises');
   assert.equal(plainText('Profit &amp;amp; loss'), 'Profit & loss');
   assert.equal(plainText('<b>Bold</b> move <script>alert(1)</script>'), 'Bold move alert(1)');
-  assert.equal(plainText('&lt;img src=x onerror=alert(1)&gt;'), '');   // entity-encoded markup is dropped, not shown and not parsed
+  assert.equal(plainText('&lt;img src=x onerror=alert(1)&gt;'), '<img src=x onerror=alert(1)>');   // shown as literal text; React renders it escaped, never as markup
+  assert.equal(plainText('Nifty < 25,000 while Sensex > 80,000'), 'Nifty < 25,000 while Sensex > 80,000');
+  assert.equal(plainText('Nifty &lt; 25,000 while Sensex &gt; 80,000'), 'Nifty < 25,000 while Sensex > 80,000');
+  assert.equal(plainText('P/E<20 and ROE>15'), 'P/E<20 and ROE>15');
   assert.equal(plainText(null), '');
 });
 test('plainText: an unknown or out-of-range entity is left alone, not turned into garbage', () => {
@@ -122,4 +125,19 @@ test('plainText: an unknown or out-of-range entity is left alone, not turned int
 test('rankPhrase: the top of the range never reads as a percentage above 100', () => {
   assert.doesNotMatch(rankPhrase(100), /100%/);
   assert.doesNotMatch(rankPhrase(99.6), /100%/);
+});
+
+test('cardDelta: a real price move on a later data date is reported with both dates; the same date is not a change', () => {
+  const card = buildCard({ companies: [{ sym: 'TCS', name: 'TCS', price: 100, priceAsOf: '2026-10-09' }], nextResults: { TCS: '2026-10-10' } });
+  const later = cardDelta(card, { TCS: { price: 110, asOf: '2026-10-12', nextResults: '2026-10-20', engines: [] } });
+  assert.deepEqual(later.map((c) => c.what.split(' (')[0]), ['Price', 'Next results date']);
+  assert.match(later[0].what, /\+10\.0%/);
+  assert.equal(cardDelta(card, { TCS: { price: 110, asOf: '2026-10-09', nextResults: '2026-10-10', engines: [] } }).length, 0);
+});
+test('cardDelta: missing data on either side yields no change, and a dropped engine plan is named', () => {
+  const card = buildCard({ companies: [{ sym: 'INFY', name: null, price: null, priceAsOf: null }], engines: { INFY: [{ engine: 'Relative', rankingStatus: 'EDGE SHOWN', tradingStatus: null, signalClose: null, stop: null, targets: null }] } });
+  const d = cardDelta(card, { INFY: { price: 50, asOf: '2026-10-12', nextResults: null, engines: [] } });
+  assert.equal(d.length, 1);
+  assert.equal(d[0].after, 'no longer an active signal');
+  assert.deepEqual(cardDelta(card, {}), []);
 });

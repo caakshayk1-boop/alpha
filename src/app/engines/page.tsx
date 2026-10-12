@@ -175,7 +175,7 @@ export default function EnginesPage() {
   const sigs = useMemo(() => (feed?.signals ?? []).filter((s) => s.engine === key), [feed, key]);
   const activeSyms = useMemo(() => (feed?.signals ?? []).filter((s) => s.status === 'open' || s.status === 'pending').map((s) => s.sym), [feed]);
   const px = usePx(activeSyms);
-  const newest = useDatasetStatus().items[0]?.reference ?? undefined;
+  const newest = useDatasetStatus().items.find((i) => i.id === 'screen')?.asOf ?? undefined;
   return (
     <>
       <PageHead eyebrow="Engines" title="Five models," em="judged on data they never saw." lede="Each engine is a machine-learning model that reads 58 measures of every listed stock each evening and ranks the market. The top ranks become signals with a stop, three targets and a time limit priced from the stock's own volatility. Every model is shown against random picks and against a holdout it was never tuned on, whatever the answer is." />

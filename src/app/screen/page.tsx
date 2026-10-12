@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import AskScreen from '@/components/AskScreen';
+import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useEngines, useFeed } from '@/lib/data';
@@ -67,7 +67,7 @@ const LENSES: Lens[] = [
 ];
 
 const PAGE = 60;
-interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; tier: string }
+interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; tier: string; nl?: NlState }
 
 export default function Screen() {
   const s = useFeed('screen');
@@ -75,6 +75,7 @@ export default function Screen() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [nlTests, setNlTests] = useState<((r: Row) => boolean)[]>([]);
+  const [nl, setNl] = useState<NlState>({ text: '', off: [] });
   const [sector, setSector] = useState('');
   const [tier, setTier] = useState('');
   const [conds, setConds] = useState<Cond[]>([]);
@@ -146,8 +147,8 @@ export default function Screen() {
   const updateCond = (i: number, patch: Partial<Cond>) => { capture(); setLens(''); setConds((c) => c.map((x, k) => (k === i ? { ...x, ...patch } : x))); };
   const toggleCol = (id: string) => { const next = cols.includes(id) ? cols.filter((x) => x !== id) : [...cols, id]; const ordered = FIELDS.map((f) => f.id).filter((x) => next.includes(x)); setCols(ordered); persist('alpha-screen-cols', ordered); };
   const toggle = (sym: string) => setPicked((p) => (p.includes(sym) ? p.filter((x) => x !== sym) : p.length < 4 ? [...p, sym] : p));
-  const save = () => { const name = window.prompt('Name this screen'); if (!name) return; const next = [...saved.filter((x) => x.name !== name), { name, conds, flags, sector, tier }]; setSaved(next); persist('alpha-screen-saved', next); };
-  const load = (v: Saved) => { capture(); setConds(v.conds); setFlags(v.flags); setSector(v.sector); setTier(v.tier); setLens(''); };
+  const save = () => { const name = window.prompt('Name this screen'); if (!name) return; const next = [...saved.filter((x) => x.name !== name), { name, conds, flags, sector, tier, nl }]; setSaved(next); persist('alpha-screen-saved', next); };
+  const load = (v: Saved) => { capture(); setConds(v.conds); setFlags(v.flags); setSector(v.sector); setTier(v.tier); setNl(v.nl ?? { text: '', off: [] }); setLimit(PAGE); setLens(''); };
   const csv = () => {
     const head = ['symbol', 'name', 'sector', ...cols.map((c) => F.get(c)?.label ?? c)];
     const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; })].join(','))];
@@ -161,7 +162,7 @@ export default function Screen() {
       <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
-        <AskScreen rows={s.data?.rows ?? []} onTests={setNlTests} />
+        <AskScreen rows={s.data?.rows ?? []} tableRows={rows} value={nl} onValue={(v) => { setNl(v); setLimit(PAGE); }} onTests={setNlTests} />
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />
           <select className="field" aria-label="Sector" value={sector} onChange={(e) => { capture(); setSector(e.target.value); setLimit(PAGE); }}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>

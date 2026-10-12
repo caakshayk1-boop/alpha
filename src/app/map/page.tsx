@@ -158,28 +158,31 @@ export default function MapPage() {
           {(
             <>
               <div style={{ marginBottom: 10 }}><DataStamp ids={['screen']} /></div>
-              <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
-                {metricGroups.map((g) => (
-                  <div className="filters" style={{ margin: 0 }} key={g} role="group" aria-label={`Colour by: ${g}`}>
-                    <span className="eyebrow" style={{ minWidth: 92 }}>{g}</span>
-                    {METRICS.filter((x) => x.group === g).map((x) => <button key={x.id} className="chip" aria-pressed={metric === x.id} onClick={() => setMetric(x.id)}>{x.label}</button>)}
-                  </div>
-                ))}
-                <div className="filters" style={{ margin: 0 }}>
-                  <span className="eyebrow" style={{ minWidth: 92 }}>Size by</span>
-                  {SIZES.map((x) => <button key={x.id} className="chip" aria-pressed={sizeBy === x.id} onClick={() => setSizeBy(x.id)}>{x.label}</button>)}
-                  <span className="eyebrow" style={{ margin: '0 4px 0 12px' }}>Group</span>
-                  {GROUPS.map((x) => <button key={x.id} className="chip" aria-pressed={groupBy === x.id} onClick={() => { setGroupBy(x.id); setZoom(null); }}>{x.label}</button>)}
-                  <span className="eyebrow" style={{ margin: '0 4px 0 12px' }}>Show</span>
-                  {COUNTS.map((x) => <button key={x} className="chip" aria-pressed={count === x} onClick={() => setCount(x)}>Top {x}</button>)}
+              <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 10 }}>
+                <div className="filters" style={{ margin: 0, alignItems: 'center' }}>
+                  <label className="eyebrow" htmlFor="heat-colour">Colour</label>
+                  <select id="heat-colour" className="field" style={{ height: 36, minWidth: 220 }} value={metric} onChange={(e) => setMetric(e.target.value)}>
+                    {metricGroups.map((g) => <optgroup key={g} label={g}>{METRICS.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>)}
+                  </select>
+                  <span className="eyebrow" style={{ marginLeft: 8 }}>Size</span>
+                  <span role="group" aria-label="Size by" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{SIZES.map((x) => <button key={x.id} className="chip" aria-pressed={sizeBy === x.id} onClick={() => setSizeBy(x.id)}>{x.label}</button>)}</span>
+                  <span className="eyebrow" style={{ marginLeft: 8 }}>Group</span>
+                  <span role="group" aria-label="Group by" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{GROUPS.map((x) => <button key={x.id} className="chip" aria-pressed={groupBy === x.id} onClick={() => { setGroupBy(x.id); setZoom(null); }}>{x.label}</button>)}</span>
+                  <input className="field" style={{ minWidth: 160, height: 36, marginLeft: 'auto' }} placeholder="Find a stock…" aria-label="Find a stock on the map" value={query} onChange={(e) => setQuery(e.target.value)} />
                 </div>
-                <div className="filters" style={{ margin: 0 }}>
-                  <span className="eyebrow" style={{ minWidth: 92 }}>Filter</span>
-                  {['large', 'mid', 'small'].map((t) => <button key={t} className="chip" aria-pressed={tiers.has(t)} onClick={() => toggleTier(t)}>{t[0].toUpperCase() + t.slice(1)} cap</button>)}
-                  <button className="chip" aria-pressed={onlyVetted} onClick={() => setOnlyVetted((v) => !v)}>Vetted only</button>
-                  <button className="chip" aria-pressed={vsGroup} onClick={() => setVsGroup((v) => !v)} title="Colour each stock by how far it is from its own group's median">Outliers: vs own {grp.id === 'none' ? 'market' : grp.label.toLowerCase()}</button>
-                  <input className="field" style={{ minWidth: 180, height: 34 }} placeholder="Find a stock…" aria-label="Find a stock on the map" value={query} onChange={(e) => setQuery(e.target.value)} />
-                  <span className="legend" style={{ marginLeft: 'auto' }}>−{m.max}{m.unit} <i /> +{m.max}{m.unit}</span>
+                <div className="filters" style={{ margin: 0, justifyContent: 'space-between', alignItems: 'center' }}>
+                  <details>
+                    <summary className="chip" style={{ cursor: 'pointer', display: 'inline-block' }}>Filters{(tiers.size || onlyVetted || vsGroup || count !== COUNTS[1]) ? ' · active' : ''}</summary>
+                    <div className="filters" style={{ margin: '10px 0 0' }}>
+                      <span className="eyebrow">Show</span>
+                      {COUNTS.map((x) => <button key={x} className="chip" aria-pressed={count === x} onClick={() => setCount(x)}>Top {x}</button>)}
+                      <span className="eyebrow" style={{ marginLeft: 8 }}>Size class</span>
+                      {['large', 'mid', 'small'].map((t) => <button key={t} className="chip" aria-pressed={tiers.has(t)} onClick={() => toggleTier(t)}>{t[0].toUpperCase() + t.slice(1)} cap</button>)}
+                      <button className="chip" aria-pressed={onlyVetted} onClick={() => setOnlyVetted((v) => !v)}>Vetted only</button>
+                      <button className="chip" aria-pressed={vsGroup} onClick={() => setVsGroup((v) => !v)} title="Colour each stock by how far it is from its own group's median">Outliers: vs own {grp.id === 'none' ? 'market' : grp.label.toLowerCase()}</button>
+                    </div>
+                  </details>
+                  <span className="legend">−{m.max}{m.unit} <i /> +{m.max}{m.unit}</span>
                 </div>
               </div>
 

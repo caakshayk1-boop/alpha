@@ -3,7 +3,7 @@
 import { Async, PageHead, Rv } from '@/components/ui';
 import { DataStatusTable } from '@/components/DataStamp';
 import { useEngines, useFeed } from '@/lib/data';
-import { dateLabel } from '@/lib/format';
+import { ago, dateLabel } from '@/lib/format';
 
 const SOURCES: [string, string, string][] = [
   ['Prices, fundamentals, scores', 'Yahoo Finance prices and company statements, scored by the screen', 'Nearly 1,000 companies, rebuilt each evening'],
@@ -57,7 +57,7 @@ export default function About() {
               {h.data?.datasets.filter((d) => SHOWN.has(d.dataset)).map((d) => (
                 <div className="li" key={d.dataset}>
                   <div><div className="t">{d.dataset}</div><div className="s">{d.source}</div></div>
-                  <div style={{ textAlign: 'right' }}><span className={`tag ${d.status === 'FRESH' ? 'up' : 'warn'}`}>{d.status === 'FRESH' ? 'JOB ON SCHEDULE' : d.status}</span><div className="s">last ran {d.freshness_age} ago</div></div>
+                  <div style={{ textAlign: 'right' }}><span className={`tag ${/^(FRESH|LIVE)$/.test(d.status) ? 'up' : 'warn'}`}>{/^(FRESH|LIVE)$/.test(d.status) ? 'JOB RAN OK' : d.status}</span><div className="s">last ran {ago(d.last_successful_update)}</div></div>
                 </div>
               ))}
             </div>

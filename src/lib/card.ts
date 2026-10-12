@@ -119,3 +119,28 @@ export function parseImport(text: string): Parsed<{ cards: ResearchCard[]; watch
 
 /** One line per card for a preview before anything is written. */
 export const summarise = (c: ResearchCard): string => `${c.question ?? 'Untitled research'} · ${c.companies.length ? c.companies.map((x) => x.sym).slice(0, 6).join(', ') + (c.companies.length > 6 ? ` +${c.companies.length - 6}` : '') : 'no companies'} · ${c.createdAt.slice(0, 10)}`;
+
+export interface CurrentCompany { price: number | null; asOf: string | null; nextResults: string | null; engines: { engine: string; rankingStatus: string | null; tradingStatus: string | null }[] }
+export interface Change { sym: string; what: string; before: string; after: string }
+
+/** What differs between a saved card and today's figures. Only real comparisons: a value missing on either side, or the same data date, produces no change, and nothing is invented. */
+export function cardDelta(card: ResearchCard, now: Record<string, CurrentCompany | undefined>): Change[] {
+  const out: Change[] = [];
+  for (const c of card.companies) {
+    const cur = now[c.sym];
+    if (!cur) continue;
+    if (c.price !== null && cur.price !== null && c.priceAsOf && cur.asOf && c.priceAsOf.slice(0, 10) !== cur.asOf.slice(0, 10)) {
+      const p = ((cur.price / c.price) - 1) * 100;
+      out.push({ sym: c.sym, what: `Price (${p >= 0 ? '+' : ''}${p.toFixed(1)}% since saved)`, before: `₹${c.price.toFixed(2)} on ${c.priceAsOf.slice(0, 10)}`, after: `₹${cur.price.toFixed(2)} on ${cur.asOf.slice(0, 10)}` });
+    }
+    const was = card.nextResults?.[c.sym];
+    if (was !== undefined && was !== null && cur.nextResults && was !== cur.nextResults) out.push({ sym: c.sym, what: 'Next results date', before: was, after: cur.nextResults });
+    for (const e of card.engines?.[c.sym] ?? []) {
+      const now2 = cur.engines.find((x) => x.engine === e.engine);
+      if (!now2) { out.push({ sym: c.sym, what: `${e.engine} plan`, before: 'selected', after: 'no longer an active signal' }); continue; }
+      if (e.rankingStatus && now2.rankingStatus && e.rankingStatus !== now2.rankingStatus) out.push({ sym: c.sym, what: `${e.engine} ranking verdict`, before: e.rankingStatus, after: now2.rankingStatus });
+      if (e.tradingStatus && now2.tradingStatus && e.tradingStatus !== now2.tradingStatus) out.push({ sym: c.sym, what: `${e.engine} trading verdict`, before: e.tradingStatus, after: now2.tradingStatus });
+    }
+  }
+  return out;
+}

@@ -202,7 +202,7 @@ export function MarketStance() {
             ];
             const n = conds.filter((c) => c[1]).length;
             const stance = n >= 5 ? 'Broad strength' : n >= 3 ? 'Mixed' : n >= 1 ? 'Weak' : 'Broad weakness';
-            const advice = n >= 5 ? 'Conditions favour trend-following: breakouts have tended to work when most stocks are above their averages.' : n >= 3 ? 'The market is split: selectivity matters more than direction, and stock-specific strength is worth more than sector bets.' : 'Most stocks are in downtrends: new longs are working against the tide, so size smaller, demand more from each setup, and keep stops honest.';
+            const advice = n >= 5 ? 'Most stocks are above their averages. In past data, breakouts have tended to follow such conditions; that is not a forecast.' : n >= 3 ? 'The market is split: about half the tests pass, so stock-level differences are larger than the market-wide direction.' : 'Most stocks are in downtrends. Historically such conditions have carried higher risk for new long positions; this describes the market, not what to do.';
             return (
               <>
                 <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold{t ? `, barometer ${Math.round(t.score)} (${t.band.t.toLowerCase()})` : ''}.</p>

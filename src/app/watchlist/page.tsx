@@ -8,6 +8,7 @@ import { Async, Chg, PageHead } from '@/components/ui';
 import { useEngines, useFeed, usePx } from '@/lib/data';
 import { dash, dateLabel, num } from '@/lib/format';
 import { useStoredList } from '@/lib/store';
+import type { CurrentCompany } from '@/lib/card';
 
 export default function Watchlist() {
   const s = useFeed('screen');
@@ -16,6 +17,11 @@ export default function Watchlist() {
   const px = usePx(list);
   const rows = useMemo(() => list.map((x) => s.data?.rows.find((r) => r.sym === x)).filter((r): r is NonNullable<typeof r> => !!r), [list, s.data]);
   const sigs = useMemo(() => new Map((eng.data?.signals ?? []).map((x) => [x.sym, x])), [eng.data]);
+  const current = useMemo(() => {
+    const m: Record<string, CurrentCompany> = {};
+    for (const r of s.data?.rows ?? []) m[r.sym] = { price: typeof r.price === 'number' ? r.price : null, asOf: r.last_date ?? null, nextResults: r.next_earnings ?? null, engines: (eng.data?.signals ?? []).filter((x) => x.sym === r.sym && (x.status === 'open' || x.status === 'pending')).map((x) => ({ engine: x.engine_name, rankingStatus: eng.data?.engines[x.engine]?.ranking_status ?? null, tradingStatus: eng.data?.engines[x.engine]?.trading_status ?? null })) };
+    return m;
+  }, [s.data, eng.data]);
   const csv = () => {
     const lines = ['symbol,name,price,1d_pct,1m_pct,1y_pct,composite,next_results', ...rows.map((r) => [r.sym, `"${r.name}"`, r.price, r.r1d, r.r1m, r.r1y, r.comp, r.next_earnings].join(','))];
     const a = document.createElement('a');
@@ -29,7 +35,7 @@ export default function Watchlist() {
       <section className="wrap">
         <div className="filters"><SymbolPicker onPick={add} exclude={list} />{rows.length > 0 && <><button className="chip" onClick={csv}>Download CSV</button><Link className="chip" href={`/compare/?s=${rows.slice(0, 4).map((r) => r.sym).join(',')}`}>Compare the first {Math.min(4, rows.length)}</Link></>}</div>
         <Async loading={s.loading} error={s.error} rows={3}>
-          {rows.length === 0 ? <p className="notice">Empty. Search above, or press the star on any company page.</p> : (
+          {rows.length === 0 ? <div className="panel"><div className="eyebrow">Start in three steps</div><ol className="muted" style={{ paddingLeft: 20, lineHeight: 1.8, margin: '8px 0 0' }}><li>Find a company: search above, or <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>run a screen</Link> and press Watch.</li><li>Press the star on its page, or save a Research Card below with the question you are asking.</li><li>Come back: this table shows results dates and engine signals for your names.</li></ol><p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>A watchlist is the names you follow; a Research Card is one question with the figures as they were when you saved it.</p></div> : (
             <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl">
               <thead><tr><th>Company</th><th>Price</th><th>1D</th><th>1M</th><th>1Y</th><th>Composite</th><th>Flags</th><th /></tr></thead>
               <tbody>{rows.map((r) => (
@@ -44,7 +50,7 @@ export default function Watchlist() {
           )}
         </Async>
       </section>
-      <section className="wrap section"><CardPanel watchlist={list} onImportWatchlist={addAll} /></section>
+      <section className="wrap section"><CardPanel watchlist={list} onImportWatchlist={addAll} current={current} /></section>
     </>
   );
 }

@@ -140,7 +140,7 @@ export default function RotationPage() {
                 </p>
                 <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.7, margin: 0 }}>
                   {read.lead && <li><b style={{ color: 'var(--up)' }}>{short(read.lead.s.name)}</b> is the strongest leader (RS-Ratio {read.lead.r.toFixed(1)}); {read.lead.breadth !== null ? `${read.lead.breadth.toFixed(0)}% of its stocks are above their 200-day.` : ''}</li>}
-                  {read.best && <li><b style={{ color: 'var(--accent-2)' }}>{short(read.best.s.name)}</b> has the fastest-rising momentum among groups still below the market line ({read.best.m.toFixed(1)}): the earliest sign of a turn.</li>}
+                  {read.best && <li><b style={{ color: 'var(--accent-2)' }}>{short(read.best.s.name)}</b> has the fastest-rising momentum among groups still below the market line ({read.best.m.toFixed(1)}): a relative-momentum observation only: moving toward the market line is not a confirmed reversal.</li>}
                   {read.fade && <li><b style={{ color: 'var(--warn)' }}>{short(read.fade.s.name)}</b> is still ahead of the market but losing momentum fastest ({read.fade.m.toFixed(1)}): the one to watch for a handover.</li>}
                   {read.moved.length > 0 && <li>Changed phase in the last 4 weeks: {read.moved.slice(0, 5).map((x) => `${short(x.s.name)} (${x.was} → ${x.q})`).join(', ')}{read.moved.length > 5 ? ` and ${read.moved.length - 5} more` : ''}.</li>}
                 </ul>

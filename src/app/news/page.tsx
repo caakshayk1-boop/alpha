@@ -33,8 +33,12 @@ export default function News() {
                 <a href={s.link} target="_blank" rel="noopener noreferrer" className="li" style={{ padding: '22px 0' }}>
                   <div style={{ minWidth: 0 }}>
                     <div className="eyebrow" style={{ marginBottom: 8 }}>{s.source} · <time dateTime={s.published ?? undefined}>{when(s.published)}</time></div>
-                    <div className="disp" style={{ fontSize: 26, lineHeight: 1.15 }}>{plainText(s.title)}</div>
-                    {plainText(s.summary) && plainText(s.summary) !== plainText(s.title) && <p className="muted" style={{ margin: '8px 0 0', maxWidth: '64ch', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{plainText(s.summary).replace(/\s+\S*$/, s.summary.length >= 380 ? '…' : '$&')}</p>}
+                    {(() => {
+                      const title = plainText(s.title), sum = plainText(s.summary);
+                      // the feed cuts long summaries at 380 characters; only then is the last word dropped for an ellipsis
+                      const text = s.summary.length >= 380 ? sum.replace(/\s+\S*$/, '…') : sum;
+                      return <><div className="disp" style={{ fontSize: 26, lineHeight: 1.15 }}>{title}</div>{sum && sum !== title && <p className="muted" style={{ margin: '8px 0 0', maxWidth: '64ch', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{text}</p>}</>;
+                    })()}
                   </div>
                   <span aria-hidden className="dim">↗</span>
                 </a>
