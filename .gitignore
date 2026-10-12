@@ -9,3 +9,4 @@ next-env.d.ts
 engines/__pycache__/
 engines/*.pkl
 public/c/
+.dev.vars*

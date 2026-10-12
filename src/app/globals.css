@@ -263,6 +263,7 @@ select.field { min-width: 0; padding-right: 30px; }
 .ring text { font: 500 24px var(--f-mono); fill: var(--text); }
 @media (max-width: 760px) { .scores { grid-template-columns: repeat(2, 1fr); } .co-head { grid-template-columns: 1fr; } .co-price { text-align: left; } }
 .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-3); overflow: hidden; }
+.kq { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; border-bottom: 1px dotted var(--dim); } .kq:hover, .kq[aria-expanded='true'] { color: var(--accent-2); border-bottom-color: var(--accent-2); } .kq:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
 .kv > div { background: var(--panel); padding: 14px 16px; } .kv .k { font: 500 12px var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); } .kv .v { margin-top: 6px; font: 500 18px var(--f-mono); letter-spacing: -0.02em; }
 .range { position: relative; height: 6px; border-radius: 99px; background: linear-gradient(90deg, var(--down-soft), var(--panel-3), var(--up-soft)); margin: 22px 0 8px; }
 .range .dot { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); transform: translate(-50%, -50%); box-shadow: 0 0 0 1px var(--accent); }

@@ -4,6 +4,8 @@
 //   everything else    the static export in ./out
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
+import { SYSTEM_PROMPT, answerText, buildUserMessage, checkAnswer, factsFor, validateQuestion } from './explain.js';
+
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
 
@@ -338,6 +340,56 @@ async function chart(url, ctx) {
   return res;
 }
 
+// ── /api/explain: a grounded explanation of one company's figures ─────────
+// GET  → { configured }.   POST { sym, question } → { answer, facts, unverifiedNumbers }.
+// Off until the ANTHROPIC_API_KEY secret exists (503, nothing is called). The model never sees anything but facts the Worker
+// builds from that company's own screen row; the browser sends only a symbol and a question. Limits: 300-character question,
+// 400 output tokens, 20-second timeout, a per-address rate limit and a global daily ceiling.
+const EXPLAIN_MODEL = 'claude-haiku-5-5';
+const seen = new Map();            // address -> recent request times (best effort: one isolate)
+let day = { d: '', n: 0 };
+function tooMany(ip) {
+  const now = Date.now();
+  const recent = (seen.get(ip) || []).filter((t) => now - t < 60_000);
+  if (recent.length >= 6) { seen.set(ip, recent); return true; }
+  recent.push(now); seen.set(ip, recent);
+  if (seen.size > 5000) seen.clear();
+  const d = new Date(now).toISOString().slice(0, 10);
+  if (day.d !== d) day = { d, n: 0 };
+  return ++day.n > 800;
+}
+async function explain(request, env) {
+  if (request.method === 'GET') return json({ ok: true, configured: Boolean(env.ANTHROPIC_API_KEY) });
+  if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
+  if (!env.ANTHROPIC_API_KEY) return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
+  if (Number(request.headers.get('content-length') || 0) > 2048) return json({ ok: false, error: 'request too large' }, 413);
+  let body;
+  try { body = await request.json(); } catch { return json({ ok: false, error: 'invalid JSON' }, 400); }
+  const sym = String(body?.sym || '').toUpperCase().trim();
+  if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  const q = validateQuestion(body?.question);
+  if (!q.ok) return json({ ok: false, error: q.error }, 400);
+  if (env.EXPLAIN_LIMIT ? !(await env.EXPLAIN_LIMIT.limit({ key: request.headers.get('cf-connecting-ip') || 'x' })).success : tooMany(request.headers.get('cf-connecting-ip') || 'x')) return json({ ok: false, error: 'too many requests, try again in a minute' }, 429);
+  const res = await shard(sym, env);
+  const data = res ? await res.json().catch(() => null) : null;
+  const facts = factsFor(data);
+  if (facts.length < 5) return json({ ok: false, error: 'no figures on file for this symbol' }, 404);
+  try {
+    const r = await fetch(`${env.ANTHROPIC_BASE || 'https://api.anthropic.com'}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 400, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: buildUserMessage(facts, q.value) }] }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!r.ok) return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
+    const answer = answerText(await r.json());
+    if (!answer) return json({ ok: false, error: 'the explainer returned nothing' }, 502);
+    return json({ ok: true, answer, facts, unverifiedNumbers: checkAnswer(answer, facts), model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: data?.row?.last_date ?? null });
+  } catch {
+    return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -371,6 +423,9 @@ export default {
     }
     if (url.pathname === '/api/ipo-live' || url.pathname === '/api/ipo-live/') {
       return ipoLive();
+    }
+    if (url.pathname === '/api/explain' || url.pathname === '/api/explain/') {
+      return explain(request, env);
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);
