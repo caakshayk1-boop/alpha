@@ -164,6 +164,7 @@ main { position: relative; z-index: 1; padding-bottom: var(--s-8); min-height: 1
 
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--r-pill); font: 500 12px/1 var(--f-ui); border: 1px solid var(--line); color: var(--muted); background: transparent; transition: all 0.2s var(--ease); white-space: nowrap; }
 button.chip:hover { color: var(--text); border-color: var(--line-2); }
+.tabrow { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; } .tabrow::-webkit-scrollbar { display: none; } .tabrow .chip { flex: 0 0 auto; padding: 9px 14px; font-size: 13px; }
 .chip[aria-pressed='true'], .chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .tag { display: inline-block; padding: 3px 8px; border-radius: 6px; font: 500 10.5px/1.2 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; background: var(--panel-3); color: var(--muted); }
 .tag.up { background: var(--up-soft); color: var(--up); } .tag.down { background: var(--down-soft); color: var(--down); } .tag.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); } .tag.acc { background: var(--accent-soft); color: var(--accent-2); }

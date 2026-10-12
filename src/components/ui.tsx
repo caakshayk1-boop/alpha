@@ -225,6 +225,25 @@ export function Segmented<T extends string>({ value, options, onChange, label, r
   );
 }
 
+/** Tabs for a row that can be wider than the screen: scrolls sideways, keeps the selected tab in view, one tab stop with arrow keys. Unlike Segmented it does not assume equal widths. */
+export function TabRow<T extends string>({ value, options, onChange, label }: { value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [value]);
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = options.map(([k]) => k), at = keys.indexOf(value);
+    const next = e.key === 'ArrowRight' ? (at + 1) % keys.length : e.key === 'ArrowLeft' ? (at - 1 + keys.length) % keys.length : e.key === 'Home' ? 0 : e.key === 'End' ? keys.length - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(keys[next]);
+    ref.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  };
+  return (
+    <div ref={ref} role="tablist" aria-label={label} onKeyDown={onKey} className="tabrow">
+      {options.map(([k, l]) => <button key={k} role="tab" className={`chip${value === k ? ' on' : ''}`} aria-selected={value === k} tabIndex={value === k ? 0 : -1} onClick={() => onChange(k)}>{l}</button>)}
+    </div>
+  );
+}
+
 /** An on/off switch. Use for independent yes/no options. */
 export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (

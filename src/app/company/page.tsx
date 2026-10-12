@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useMemo } from 'react';
-import { Async, Bar, Chg, CountUp, LazyMount, Notice, PercentileBars, Rv, SectionHead, Skel } from '@/components/ui';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Async, Bar, Chg, CountUp, LazyMount, Notice, PercentileBars, Rv, SectionHead, Skel, TabRow } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import StockChart from '@/components/StockChart';
@@ -169,12 +169,19 @@ function Company() {
   const eng = useEngines();
   const px = usePx(sym ? [sym] : []);
   const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
+  const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
+  type Tab = (typeof TABS)[number];
+  const [tab, setTab] = useState<Tab>('overview');
+  useEffect(() => { const h = window.location.hash.slice(1) as Tab; if ((TABS as readonly string[]).includes(h)) setTab(h); }, [sym]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pick = (t: Tab) => { setTab(t); try { window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${t}`); } catch { /* history unavailable */ } };
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => sh.data?.row ?? full.data?.rows.find((x) => x.sym.toUpperCase() === sym), [sh.data, full.data, sym]);
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 24 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
   const lender = /financial|bank|insurance|real estate/i.test(`${r.sector} ${r.ind}`);
+  const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Engines (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
+  const view: Tab = tabOptions.some(([k]) => k === tab) ? tab : 'overview';      // a link to #engines on a company with no signal falls back to Overview
   return (
     <>
       <header className="wrap co-head">
@@ -206,16 +213,16 @@ function Company() {
         <PercentileBars items={[{ label: 'Quality', value: r.q }, { label: 'Growth', value: r.g }, { label: 'Value', value: r.v, note: 'higher is cheaper' }, { label: 'Technical', value: r.tech }]} />
         <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: the tick marks the median company (50), which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
+      <section className="wrap" style={{ paddingTop: 0 }}>
+        <TabRow label="Company views" value={view} onChange={pick} options={tabOptions} />
+      </section>
 
+      {view === 'overview' && (<>
       <section className="wrap section">
         <SectionHead eyebrow="Chart" title="Price, trend and levels" />
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
-
       <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
-
-      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
-
       <section className="wrap section">
         <div className="grid g-7-5">
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
@@ -226,7 +233,28 @@ function Company() {
           </Rv>
         </div>
       </section>
-
+      <section className="wrap section">
+        <SectionHead title="Key numbers" />
+        <Rv className="kv">
+          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} />
+          <Kv k="ROCE" v={has(r.roce) ? `${r.roce.toFixed(1)}%` : dash} /><Kv k="ROE" v={has(r.roe) ? `${r.roe.toFixed(1)}%` : dash} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${r.ebit_margin.toFixed(1)}%` : dash} />
+          <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} /><Kv k="Interest cover" v={has(r.icover) ? `${r.icover.toFixed(1)}×` : dash} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${r.div_yield.toFixed(2)}%` : dash} />
+          <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${r.cfo_pat.toFixed(2)}×` : dash} />
+          <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} /><Kv k="RSI (14)" v={has(r.rsi) ? r.rsi.toFixed(0) : dash} />
+          {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} />}
+          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} />
+        </Rv>
+      </section>
+      </>)}
+      {view === 'financials' && (<>
+      <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
+      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
+      </>)}
+      {view === 'valuation' && (<>
+      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
+      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
+      </>)}
+      {view === 'engines' && (<>
       {mySignals.length > 0 && (
         <section className="wrap section">
           <SectionHead eyebrow="Engines" title="Selected by an engine" href="/engines/" cta="How they are tested" />
@@ -241,25 +269,13 @@ function Company() {
             </Rv>))}</div>
         </section>
       )}
-
-      <section className="wrap section">
-        <SectionHead title="Key numbers" />
-        <Rv className="kv">
-          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} />
-          <Kv k="ROCE" v={has(r.roce) ? `${r.roce.toFixed(1)}%` : dash} /><Kv k="ROE" v={has(r.roe) ? `${r.roe.toFixed(1)}%` : dash} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${r.ebit_margin.toFixed(1)}%` : dash} />
-          <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} /><Kv k="Interest cover" v={has(r.icover) ? `${r.icover.toFixed(1)}×` : dash} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${r.div_yield.toFixed(2)}%` : dash} />
-          <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${r.cfo_pat.toFixed(2)}×` : dash} />
-          <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} /><Kv k="RSI (14)" v={has(r.rsi) ? r.rsi.toFixed(0) : dash} />
-          {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} />}
-          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} />
-        </Rv>
-      </section>
-
-      <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
-      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
+      </>)}
+      {view === 'ownership' && (<>
       <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} pre={pre?.inst} /></section>
+      </>)}
+      {view === 'seasonality' && (<>
       <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
-      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
+      </>)}
     </>
   );
 }
