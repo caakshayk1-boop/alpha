@@ -162,11 +162,13 @@ function Teasers() {
 
 function Ticker() {
   const q = useQuotes();
+  const [paused, setPaused] = useState(false);
   const list = (q.data?.quotes ?? []).filter((x) => x.price !== null);
   if (!list.length) return <div className="marquee" style={{ height: 49 }} aria-hidden />;
   const items = [...list, ...list];
   return (
-    <div className="marquee" role="region" aria-label="Live prices">
+    <div className={`marquee${paused ? ' paused' : ''}`} role="region" aria-label="Market prices">
+      <button type="button" className="chip marquee-ctl" aria-pressed={paused} onClick={() => setPaused((p) => !p)} title="Stop or start the scrolling prices">{paused ? '▶ Play' : '⏸ Pause'}</button>
       <div className="marquee-track">
         {items.map((x, i) => (
           <div className="mq-item" key={`${x.id}-${i}`} aria-hidden={i >= list.length}>

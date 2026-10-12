@@ -149,28 +149,36 @@ function Recovery() {
   );
 }
 
+const GROUPS: [string, string][] = [['portfolio', 'Portfolio'], ['valuation', 'Valuation'], ['risk', 'Risk'], ['planning', 'Planning'], ['evidence', 'Evidence']];
+
 export default function Tools() {
   return (
     <>
-      <PageHead eyebrow="Tools" title="Small tools," em="honest arithmetic." lede="Calculators for the questions that come up around the research: what a SIP could become, what a return really was, how many shares a stop allows, how deep a hole is. Everything runs in your browser." />
+      <PageHead eyebrow="Tools" title="Research tools," em="honest arithmetic." lede="Calculators for the questions that come up around the research: what a SIP could become, what a return really was, how many shares a stop allows, how deep a hole is. Everything runs in your browser." />
       <section className="wrap">
         <div className="grid g3 swipe" style={{ marginBottom: 14 }}>
           {[['/compare/', 'Compare companies', 'Up to four, side by side, with the highest or lowest marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
             <Link key={href} href={href}><Rv className="panel spot tilt" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
           ))}
         </div>
-        <SectionHead eyebrow="Research tools" title="Decision tools" />
-        <div className="grid" style={{ marginBottom: 28 }}>
-          <PortfolioXray />
-          <ReverseDcf />
-          <Rv className="panel"><div className="eyebrow">Confluence board</div><p className="muted" style={{ margin: '8px 0 14px' }}>Where independent lenses agree.</p><Confluence limit={10} /></Rv>
-        </div>
-        <SectionHead title="Calculators" />
-        <div className="grid">
-          <Sip />
-          <div className="grid g2"><Cagr /><Recovery /></div>
-          <Position />
-        </div>
+        <nav aria-label="Tool groups" className="filters" style={{ margin: '0 0 8px' }}>
+          {GROUPS.map(([id, label]) => <a key={id} className="chip" href={`#${id}`}>{label}</a>)}
+        </nav>
+        <div id="portfolio" /><SectionHead eyebrow="Portfolio" title="Look at what you hold" />
+        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Paste holdings to see concentration, sector weight and trend. Calculated in this browser; nothing is uploaded.</p>
+        <div className="grid" style={{ marginBottom: 28 }}><PortfolioXray /></div>
+        <div id="valuation" /><SectionHead eyebrow="Valuation" title="What a price assumes" />
+        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Work backwards from a price to the growth it implies, and measure what a return really was.</p>
+        <div className="grid" style={{ marginBottom: 28 }}><ReverseDcf /><Cagr /></div>
+        <div id="risk" /><SectionHead eyebrow="Risk" title="Size and survive" />
+        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>How many shares a stop allows, and how much of a gain a loss takes back.</p>
+        <div className="grid g2" style={{ marginBottom: 28 }}><Position /><Recovery /></div>
+        <div id="planning" /><SectionHead eyebrow="Planning" title="Plan contributions" />
+        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>What a monthly SIP could become under a return you choose. An illustration, not a forecast.</p>
+        <div className="grid" style={{ marginBottom: 28 }}><Sip /></div>
+        <div id="evidence" /><SectionHead eyebrow="Research" title="Evidence across checks" />
+        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Companies where several of the screen&apos;s checks point the same way, with the conflicts and missing checks shown.</p>
+        <div className="grid" style={{ marginBottom: 28 }}><Rv className="panel"><Confluence limit={10} /></Rv></div>
         <p className="dim" style={{ fontSize: 12.5, marginTop: 18 }}>Information and arithmetic only. Not investment, tax or legal advice.</p>
       </section>
     </>
