@@ -1,7 +1,9 @@
 'use client';
 
 import { Async, PageHead, Rv } from '@/components/ui';
-import { useFeed } from '@/lib/data';
+import { DataStatusTable } from '@/components/DataStamp';
+import { useEngines, useFeed } from '@/lib/data';
+import { dateLabel } from '@/lib/format';
 
 const SOURCES: [string, string, string][] = [
   ['Prices, fundamentals, scores', 'Yahoo Finance prices and company statements, scored by the screen', 'Nearly 1,000 companies, rebuilt each evening'],
@@ -19,6 +21,8 @@ const SHOWN = new Set(['Stock screen', 'Markets', 'Market Intelligence', 'Fund s
 
 export default function About() {
   const h = useFeed('data-health');
+  const eng = useEngines();
+  const closed = eng.data ? Object.values(eng.data.live_record).reduce((a, r) => a + r.closed, 0) : null;
   return (
     <>
       <PageHead eyebrow="Method and sources" title="How every number" em="is made." lede="The point of this desk is that you can check it. Here is where each dataset comes from, how fresh it is right now, and what it deliberately does not do." />
@@ -28,13 +32,20 @@ export default function About() {
           <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.8 }}>
             <li>The engines are machine-learning models that rank stocks and name a stop and three targets for the top picks. They are research tools, not advice, and not a recommendation to buy or sell anything.</li>
             <li>Every engine is shown with how it tested on data it never saw, against randomly chosen stocks, including when the answer is that it did not beat them. The survivorship bias of testing on today&apos;s listed companies is stated on the engines page, not hidden.</li>
-            <li>There is no live track record and no paper-trading book. The record is a test on past prices, which can overstate what happens next.</li>
+            <li>The engines&apos; evidence is a test on past prices, which can overstate what happens next. A forward record began on {eng.data?.launched ? dateLabel(eng.data.launched) : 'launch day'}: every signal issued since is tracked to its exit and shown on the Engines page. {closed === null ? '' : closed === 0 ? 'None of those trades has closed yet, so the forward record proves nothing yet.' : `${closed} have closed so far, too few to conclude anything.`} There is no paper-trading book.</li>
             <li>Where a figure cannot be computed it shows a dash, never an estimate.</li>
           </ul>
         </Rv>
         <Rv className="panel">
           <div className="eyebrow">Sources</div>
           <div className="list">{SOURCES.map(([a, b, c]) => <div className="li" key={a}><div><div className="t">{a}</div><div className="s">{b}</div></div><span className="dim" style={{ fontSize: 12.5, textAlign: 'right' }}>{c}</span></div>)}</div>
+        </Rv>
+      </section>
+      <section className="wrap section">
+        <Rv className="panel">
+          <div className="eyebrow">Data dates: which session each dataset describes</div>
+          <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 14px' }}>&ldquo;Describes&rdquo; is the market session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated successfully. They are different things and are never merged. A dataset is judged against the newest session any Alpha dataset carries, not against the clock, so a weekend or an exchange holiday does not make everything look stale.</p>
+          <DataStatusTable />
         </Rv>
       </section>
       <section className="wrap section">

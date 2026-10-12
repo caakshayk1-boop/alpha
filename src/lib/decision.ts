@@ -1,15 +1,18 @@
 import type { EngineSignal, Row } from './types';
+import { ordinal } from './status.ts';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 export interface Point { text: string; weight: number }
 export interface Check { label: string; pass: boolean | null; detail: string }
+export interface Evidence { text: string; side: 'for' | 'against'; source: string }
 export interface Decision {
   dims: { name: string; score: number | null; note: string }[];
   bull: Point[]; bear: Point[]; checks: Check[]; headline: string; triggers: string[];
+  evidence: Evidence[]; agree: string[]; conflicts: string[]; missing: string[]; nextResults: string | null;
 }
 
 /** Deterministic read of one company from the screen's own numbers. Every sentence is built from a figure on the page; nothing is generated or predicted. */
-export function decide(r: Row, sigs: EngineSignal[]): Decision {
+export function decide(r: Row, sigs: EngineSignal[], years?: number | null): Decision {
   const bull: Point[] = [], bear: Point[] = [];
   const lender = /financial|bank|insurance/i.test(`${r.sector} ${r.ind}`);
   const add = (cond: boolean, side: 'bull' | 'bear', text: string, weight: number) => { if (cond) (side === 'bull' ? bull : bear).push({ text, weight }); };
@@ -19,16 +22,17 @@ export function decide(r: Row, sigs: EngineSignal[]): Decision {
   add(has(r.de) && r.de <= 0.3 && !lender, 'bull', `Debt/equity ${r.de?.toFixed(2)}: little leverage to worry about`, 2);
   add(has(r.de) && r.de > 1.5 && !lender, 'bear', `Debt/equity ${r.de?.toFixed(2)}: leverage leaves little room for a bad year`, 3);
   add(has(r.icover) && r.icover < 3 && !lender, 'bear', `Interest cover ${r.icover?.toFixed(1)}×: profits cover interest only thinly`, 2);
-  add(has(r.rev_cagr) && r.rev_cagr >= 15, 'bull', `Revenue has compounded at ${r.rev_cagr?.toFixed(0)}% a year`, 2);
-  add(has(r.eps_cagr) && r.eps_cagr >= 15, 'bull', `EPS has compounded at ${r.eps_cagr?.toFixed(0)}% a year`, 2);
-  add(has(r.rev_cagr) && r.rev_cagr < 0, 'bear', `Revenue has shrunk ${Math.abs(r.rev_cagr ?? 0).toFixed(0)}% a year`, 3);
-  add(has(r.eps_cagr) && r.eps_cagr < 0, 'bear', `EPS has fallen ${Math.abs(r.eps_cagr ?? 0).toFixed(0)}% a year`, 2);
+  const thin = typeof years === 'number' && years < 4;      // under four statement years a CAGR is a year-on-year change, not a trend
+  add(!thin && has(r.rev_cagr) && r.rev_cagr >= 15, 'bull', `Revenue has compounded at ${r.rev_cagr?.toFixed(0)}% a year`, 2);
+  add(!thin && has(r.eps_cagr) && r.eps_cagr >= 15, 'bull', `EPS has compounded at ${r.eps_cagr?.toFixed(0)}% a year`, 2);
+  add(!thin && has(r.rev_cagr) && r.rev_cagr < 0, 'bear', `Revenue has shrunk ${Math.abs(r.rev_cagr ?? 0).toFixed(0)}% a year`, 3);
+  add(!thin && has(r.eps_cagr) && r.eps_cagr < 0, 'bear', `EPS has fallen ${Math.abs(r.eps_cagr ?? 0).toFixed(0)}% a year`, 2);
   add(has(r.cfo_pat) && r.cfo_pat >= 0.9 && !lender, 'bull', `Cash profit is ${r.cfo_pat?.toFixed(2)}× reported profit: earnings are backed by cash`, 2);
   add(has(r.cfo_pat) && r.cfo_pat < 0.5 && !lender, 'bear', `Operating cash is only ${r.cfo_pat?.toFixed(2)}× reported profit: earnings are not turning into cash`, 3);
   add(has(r.piotroski) && r.piotroski >= 7, 'bull', `Piotroski score ${r.piotroski}/${r.piotroski_of ?? 9}: financial health is improving on most tests`, 2);
   add(has(r.piotroski) && r.piotroski <= 3, 'bear', `Piotroski score ${r.piotroski}/${r.piotroski_of ?? 9}: weak on most tests of financial health`, 2);
-  add(has(r.pe_pctile) && r.pe_pctile <= 25, 'bull', `P/E sits at the ${Math.round(r.pe_pctile ?? 0)}th percentile of its own history: cheap against itself`, 2);
-  add(has(r.pe_pctile) && r.pe_pctile >= 80, 'bear', `P/E sits at the ${Math.round(r.pe_pctile ?? 0)}th percentile of its own history: expensive against itself`, 2);
+  add(has(r.pe_pctile) && r.pe_pctile <= 25, 'bull', `P/E sits at the ${ordinal(r.pe_pctile ?? 0)} percentile of its own history: cheap against itself`, 2);
+  add(has(r.pe_pctile) && r.pe_pctile >= 80, 'bear', `P/E sits at the ${ordinal(r.pe_pctile ?? 0)} percentile of its own history: expensive against itself`, 2);
   add(has(r.pe) && r.pe > 60, 'bear', `P/E of ${r.pe?.toFixed(0)}× prices in years of strong growth`, 2);
   add(has(r.rs3m) && r.rs3m >= 70, 'bull', `3-month relative strength ${Math.round(r.rs3m ?? 0)}/100: beating most of the market`, 2);
   add(has(r.rs3m) && r.rs3m <= 30, 'bear', `3-month relative strength ${Math.round(r.rs3m ?? 0)}/100: lagging most of the market`, 2);
@@ -50,10 +54,10 @@ export function decide(r: Row, sigs: EngineSignal[]): Decision {
 
   const dimScore = (v: number | null | undefined): number | null => (has(v) ? Math.round((v - 50) / 25 * 10) / 10 : null);
   const dims = [
-    { name: 'Quality', score: dimScore(r.q), note: has(r.q) ? `${Math.round(r.q)}th percentile of the screen` : 'not scored' },
-    { name: 'Growth', score: dimScore(r.g), note: has(r.g) ? `${Math.round(r.g)}th percentile` : 'not scored' },
-    { name: 'Value', score: dimScore(r.v), note: has(r.v) ? `${Math.round(r.v)}th percentile (higher is cheaper)` : 'not scored' },
-    { name: 'Trend', score: dimScore(r.tech), note: has(r.tech) ? `${Math.round(r.tech)}th percentile` : 'not scored' },
+    { name: 'Quality', score: dimScore(r.q), note: has(r.q) ? `${ordinal(r.q)} percentile of the screen` : 'not scored' },
+    { name: 'Growth', score: dimScore(r.g), note: has(r.g) ? `${ordinal(r.g)} percentile` : 'not scored' },
+    { name: 'Value', score: dimScore(r.v), note: has(r.v) ? `${ordinal(r.v)} percentile (higher is cheaper)` : 'not scored' },
+    { name: 'Trend', score: dimScore(r.tech), note: has(r.tech) ? `${ordinal(r.tech)} percentile` : 'not scored' },
     { name: 'Engines', score: sigs.length ? (good.length ? 2 : 0) : null, note: sigs.length ? `${sigs.length} active plan${sigs.length > 1 ? 's' : ''}` : 'no active plan' },
   ];
 
@@ -61,8 +65,8 @@ export function decide(r: Row, sigs: EngineSignal[]): Decision {
     { label: 'Earns more than it costs to run the capital', pass: lender ? null : has(r.roce) ? r.roce >= 12 : null, detail: has(r.roce) ? `ROCE ${r.roce.toFixed(1)}% (bar 12%)` : 'not available' },
     { label: 'Debt is manageable', pass: lender ? null : has(r.de) ? r.de <= 1 : null, detail: has(r.de) ? `Debt/equity ${r.de.toFixed(2)} (bar 1.0)` : 'not available' },
     { label: 'Profit becomes cash', pass: lender ? null : has(r.cfo_pat) ? r.cfo_pat >= 0.7 : null, detail: has(r.cfo_pat) ? `Cash/profit ${r.cfo_pat.toFixed(2)}× (bar 0.7)` : 'not available' },
-    { label: 'Growing', pass: has(r.rev_cagr) ? r.rev_cagr >= 8 : null, detail: has(r.rev_cagr) ? `Revenue CAGR ${r.rev_cagr.toFixed(1)}% (bar 8%)` : 'not available' },
-    { label: 'Not expensive against its own history', pass: has(r.pe_pctile) ? r.pe_pctile < 70 : null, detail: has(r.pe_pctile) ? `P/E at ${Math.round(r.pe_pctile)}th percentile (bar 70)` : 'not available' },
+    { label: 'Growing', pass: thin ? null : has(r.rev_cagr) ? r.rev_cagr >= 8 : null, detail: thin ? `only ${years} statement years on file: too short for a growth trend` : has(r.rev_cagr) ? `Revenue CAGR ${r.rev_cagr.toFixed(1)}% (bar 8%)` : 'not available' },
+    { label: 'Not expensive against its own history', pass: has(r.pe_pctile) ? r.pe_pctile < 70 : null, detail: has(r.pe_pctile) ? `P/E at ${ordinal(r.pe_pctile)} percentile (bar 70)` : 'not available' },
     { label: 'In an uptrend', pass: has(r.price) && has(r.sma50) && has(r.sma200) ? r.price > r.sma50 && r.sma50 > r.sma200 : null, detail: has(r.sma200) ? `price ${r.price?.toFixed(0)} · 50d ${r.sma50?.toFixed(0)} · 200d ${r.sma200.toFixed(0)}` : 'not available' },
     { label: 'Beating the market', pass: has(r.rs3m) ? r.rs3m >= 50 : null, detail: has(r.rs3m) ? `3-month relative strength ${Math.round(r.rs3m)}/100` : 'not available' },
     { label: 'Liquid enough to trade', pass: has(r.turnover_cr) ? r.turnover_cr >= 5 : null, detail: has(r.turnover_cr) ? `₹${r.turnover_cr.toFixed(1)} crore a day (bar 5)` : 'not available' },
@@ -73,7 +77,8 @@ export function decide(r: Row, sigs: EngineSignal[]): Decision {
 
   const strong = dims.filter((d) => (d.score ?? 0) >= 1).map((d) => d.name.toLowerCase());
   const weak = dims.filter((d) => d.score !== null && d.score <= -1).map((d) => d.name.toLowerCase());
-  const headline = `${passed} of ${known.length} checks pass. ${strong.length ? `Strong on ${strong.join(' and ')}. ` : ''}${weak.length ? `Weak on ${weak.join(' and ')}.` : strong.length ? '' : 'Nothing stands out either way.'}`.trim();
+  const unavailable = checks.length - known.length;
+  const headline = `${passed} of ${known.length} applicable checks pass${unavailable ? ` (${unavailable} of ${checks.length} not applicable or unavailable)` : ''}. ${strong.length ? `Strong on ${strong.join(' and ')}. ` : ''}${weak.length ? `Weak on ${weak.join(' and ')}.` : strong.length ? '' : 'Nothing stands out either way.'}`.trim();
 
   const triggers: string[] = [];
   if (has(r.sma200) && has(r.price)) triggers.push(r.price > r.sma200 ? `A close below the 200-day average (₹${r.sma200.toFixed(0)}) would end the long-term uptrend` : `A close above the 200-day average (₹${r.sma200.toFixed(0)}) would repair the long-term trend`);
@@ -81,7 +86,25 @@ export function decide(r: Row, sigs: EngineSignal[]): Decision {
   for (const s of sigs.filter((x) => x.status === 'open' || x.status === 'pending')) triggers.push(`${s.engine_name} plan: stop ₹${(s.stop_now ?? s.sl).toFixed(2)}, first target ₹${s.targets[0].toFixed(2)}`);
   if (has(r.high52)) triggers.push(`A close above the 52-week high (₹${r.high52.toFixed(0)}) is a new high; a base below it is still a range`);
 
-  return { dims, bull: bull.slice(0, 5), bear: bear.slice(0, 5), checks, headline, triggers: triggers.slice(0, 5) };
+  const srcOf = (t: string) => (t.startsWith('Selected by') ? 'engines' : r.last_date ? `screen, ${r.last_date}` : 'screen');
+  const evidence: Evidence[] = [...bull.map((p) => ({ ...p, side: 'for' as const })), ...bear.map((p) => ({ ...p, side: 'against' as const }))]
+    .sort((x, y) => y.weight - x.weight).slice(0, 5).map((p) => ({ text: p.text, side: p.side, source: srcOf(p.text) }));
+  const score = (name: string) => dims.find((d) => d.name === name)?.score ?? null;
+  const conflicts: string[] = [];
+  const belowLong = has(r.price) && has(r.sma200) && r.price < r.sma200;
+  if (good.length && belowLong) conflicts.push(`${good.map((x) => x.engine_name).join(' and ')} selected it, yet the price is below its 200-day average.`);
+  if ((score('Quality') ?? 0) >= 1 && (score('Trend') ?? 0) <= -1) conflicts.push('Quality scores high but the price trend scores low: a good business the market is not currently rewarding.');
+  if ((score('Value') ?? 0) >= 1 && (score('Growth') ?? 0) <= -1) conflicts.push('It screens cheap, but growth scores low: cheapness may be the price of slow growth.');
+  if (r.vd?.c === 'BUY' && r.risk?.level === 'HIGH') conflicts.push('The screen has a case on file, yet its risk flags are HIGH.');
+  if (good.length && r.vd?.c === 'AVOID') conflicts.push('An engine selected it while the screen excludes it.');
+  const pos = dims.filter((d) => (d.score ?? 0) >= 1 && d.name !== 'Engines').map((d) => d.name.toLowerCase());
+  const neg = dims.filter((d) => d.score !== null && d.score <= -1 && d.name !== 'Engines').map((d) => d.name.toLowerCase());
+  const agree: string[] = [];
+  if (pos.length >= 2) agree.push(`${pos.join(', ')} all point the same way (positive).`);
+  if (neg.length >= 2) agree.push(`${neg.join(', ')} all point the same way (negative).`);
+  const missing = checks.filter((c) => c.pass === null).map((c) => `${c.label}: ${c.detail}`);
+  if (typeof years === 'number' && years < 4) missing.push(`Only ${years} fiscal year${years === 1 ? '' : 's'} of statements on file: multi-year figures are thin.`);
+  return { dims, bull: bull.slice(0, 5), bear: bear.slice(0, 5), checks, headline, triggers: triggers.slice(0, 5), evidence, agree, conflicts, missing, nextResults: r.next_earnings ?? null };
 }
 
 /** The companies most like this one on quality, growth, value, trend, return on capital, margin, leverage and strength. */
@@ -102,4 +125,16 @@ export function lookalikes(r: Row, rows: Row[], k = 6): { row: Row; sim: number 
   const out = pool.filter((p) => p.x.sym !== r.sym).map((p) => ({ row: p.x, d: Math.sqrt(z(p.f).reduce((s, v, i) => s + (v - zm[i]) ** 2, 0)) }));
   out.sort((a, b) => a.d - b.d);
   return out.slice(0, k).map((o) => ({ row: o.row, sim: Math.max(0, Math.round(100 * (1 - o.d / (Math.sqrt(n) * 2.5)))) }));
+}
+
+/** The screen's own classification, worded as a research class and never as an instruction. */
+export function screenClass(vd: { c: string; l: string; o: string } | undefined): { text: string; tone: string; title: string } {
+  if (!vd) return { text: 'Screen: no class', tone: '', title: 'The screen holds no classification for this company.' };
+  const why = vd.o ? ` Reason on file: ${vd.o}.` : '';
+  switch (vd.c) {
+    case 'BUY': return { text: `Screen: ${vd.l.toLowerCase()} case`, tone: 'up', title: `Passes the screen's rules for a ${vd.l.toLowerCase()} case.${why} A research classification, not a recommendation to buy.` };
+    case 'WAIT': return { text: `Screen: ${vd.l.toLowerCase()}`, tone: 'acc', title: `The screen sees a case but not at this price or setup.${why} Not a recommendation.` };
+    case 'AVOID': return { text: 'Screen: excluded', tone: 'down', title: `Excluded by a screen rule.${why}` };
+    default: return { text: 'Screen: no case yet', tone: '', title: `Nothing on file meets the screen's rules.${why}` };
+  }
 }

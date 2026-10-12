@@ -6,7 +6,7 @@
     "directory": "./out",
     "binding": "ASSETS",
     // Only the data proxy and quotes need the Worker; everything else is a static file.
-    "run_worker_first": ["/data/*", "/api/*"],
+    "run_worker_first": ["/data/*", "/api/*", "/c/*"],
     "not_found_handling": "404-page"
   },
   "routes": [{ "pattern": "alpha.askakshay.com", "custom_domain": true }],

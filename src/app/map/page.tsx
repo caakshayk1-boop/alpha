@@ -1,5 +1,6 @@
 'use client';
 
+import { DataStamp } from '@/components/DataStamp';
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Async, Chg, PageHead } from '@/components/ui';
@@ -156,6 +157,7 @@ export default function MapPage() {
         <Async loading={s.loading} error={s.error} rows={3}>
           {(
             <>
+              <div style={{ marginBottom: 10 }}><DataStamp ids={['screen']} /></div>
               <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
                 {metricGroups.map((g) => (
                   <div className="filters" style={{ margin: 0 }} key={g} role="group" aria-label={`Colour by: ${g}`}>
@@ -223,6 +225,18 @@ export default function MapPage() {
                   </div>
                 )}
               </div>
+
+              <details className="panel tight" style={{ marginTop: 14 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {m.label}</summary>
+                <p className="dim" style={{ fontSize: 13, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero; the median is {fmtV(summary.med)}.</p>
+                <div className="tbl-wrap" style={{ maxHeight: 360 }}>
+                  <table className="tbl"><caption className="sr">Stocks on the map by {m.label}</caption>
+                    <thead><tr><th>Stock</th><th>Sector</th><th>{m.label}</th></tr></thead>
+                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).slice(0, 150).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td>{r.name} ({r.sym})</td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
+                  </table>
+                </div>
+                <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>Top 150 shown.</p>
+              </details>
 
               <div className="grid g-7-5" style={{ marginTop: 14 }}>
                 <div className="panel">

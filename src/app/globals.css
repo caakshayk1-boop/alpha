@@ -111,7 +111,7 @@ main { position: relative; z-index: 1; padding-bottom: var(--s-8); min-height: 1
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: var(--s-2); }
 .iconbtn { height: 36px; min-width: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); transition: all 0.2s var(--ease); }
 .iconbtn:hover { color: var(--text); border-color: var(--line-2); background: var(--panel-2); }
-.iconbtn kbd { font: 500 10.5px var(--f-mono); padding: 2px 6px; border-radius: 5px; background: var(--panel-3); color: var(--dim); }
+.iconbtn kbd { font: 500 10.5px var(--f-mono); padding: 2px 6px; border-radius: 5px; background: var(--panel-3); color: var(--muted); }
 .search-btn { min-width: 220px; justify-content: space-between; color: var(--dim); }
 .tabbar { display: none; }
 
@@ -509,3 +509,29 @@ html { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
   .footer { padding: 28px 0 40px; } .footer-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
 }
 @media (hover: none) { .chip:hover, .btn:hover { transform: none; } .tile:hover { transform: none; filter: none; } }
+
+/* data-status stamps */
+.stamp { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; margin: 10px 0 0; }
+.stamp-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.stamp-item b { font-weight: 600; color: var(--text); } .stamp-item em { font-style: normal; color: var(--dim); }
+.stamp-item.up > span:first-child { color: var(--up); } .stamp-item.warn > span:first-child { color: var(--warn); } .stamp-item.down > span:first-child { color: var(--down); }
+@media (max-width: 760px) { .stamp-item { white-space: normal; } }
+
+.evid { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; } .evid li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; } .evid li > span:first-child { flex: none; width: 18px; font-size: 12px; margin-top: 3px; }
+
+/* grouped header navigation with dropdowns */
+.navgroup { position: relative; z-index: 1; }
+.navgroup > a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
+.navgroup .caret { opacity: 0.55; transition: transform 0.25s var(--ease); } .navgroup:hover .caret, .navgroup:focus-within .caret { transform: rotate(180deg); }
+.navgroup .menu { position: absolute; left: 0; top: calc(100% + 8px); min-width: 230px; padding: 8px; border-radius: 16px; background: var(--glass), var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); backdrop-filter: blur(16px); opacity: 0; transform: translateY(-6px); pointer-events: none; visibility: hidden; transition: opacity 0.2s var(--ease), transform 0.25s var(--ease), visibility 0s linear 0.25s; }
+.navgroup:hover .menu, .navgroup:focus-within .menu { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+.navgroup .menu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+.menu-hint { font: 500 10.5px var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); padding: 6px 10px 8px; }
+.navgroup .menu a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: var(--muted); background: transparent; box-shadow: none; }
+.navgroup .menu a:hover, .navgroup .menu a[aria-current='page'] { color: var(--text); background: var(--panel-2); }
+.navgroup .menu .ic { width: 20px; height: 20px; display: grid; place-items: center; color: var(--dim); } .navgroup .menu .ic svg { width: 17px; height: 17px; }
+.sheet-h { font: 600 12px var(--f-ui); letter-spacing: 0.04em; margin: 14px 2px 8px; color: var(--text); } .sheet-h span { font-weight: 400; color: var(--dim); margin-left: 8px; }
+.sheet-grid { margin: 0 0 4px; }
+
+/* links inside running text are underlined, so they are not told apart by colour alone */
+.muted a, .dim a, .notice a, p.dim a { text-decoration: underline; text-underline-offset: 3px; }

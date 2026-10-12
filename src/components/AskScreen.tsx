@@ -3,51 +3,93 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Chg } from '@/components/ui';
+import { buildCard } from '@/lib/card';
+import { useCards } from '@/lib/library';
 import { parse } from '@/lib/nl';
 import type { Row } from '@/lib/types';
 import { crore, dash, num } from '@/lib/format';
+import { plural } from '@/lib/status';
 
 const EXAMPLES = ['large cap IT roce above 25 low debt', 'small cap uptrend quality growth', 'oversold pharma profitable', 'cheap banks roe above 14', 'near 52 week high momentum cash generative', 'magic formula debt below 0.5 pe under 20', 'dividend yield above 3 low risk'];
 
 export default function AskScreen({ rows }: { rows: Row[] }) {
   const [q, setQ] = useState('');
+  const [off, setOff] = useState<string[]>([]);      // clauses the person has switched off; nothing is ever switched off for them
+  const { add, ok } = useCards();
+  const [saved, setSaved] = useState(false);
   const p = useMemo(() => parse(q), [q]);
+  const active = useMemo(() => p.filters.filter((f) => !off.includes(f.label)), [p, off]);
   const hits = useMemo(() => {
-    if (!p.filters.length) return [];
-    return rows.filter((r) => p.filters.every((f) => f.test(r))).sort((a, b) => ((b.q ?? 0) + (b.tech ?? 0) + (b.g ?? 0)) - ((a.q ?? 0) + (a.tech ?? 0) + (a.g ?? 0)));
-  }, [rows, p]);
+    if (!active.length) return [];
+    return rows.filter((r) => active.every((f) => f.test(r))).sort((a, b) => ((b.q ?? 0) + (b.tech ?? 0) + (b.g ?? 0)) - ((a.q ?? 0) + (a.tech ?? 0) + (a.g ?? 0)));
+  }, [rows, active]);
+  // for a search with no matches: what each single clause costs, so the person can decide which one to give up
+  const costs = useMemo(() => (hits.length === 0 && active.length > 1 ? active.map((f) => ({ f, n: rows.filter((r) => active.every((g) => g === f || g.test(r))).length })).sort((a, b) => b.n - a.n) : []), [hits.length, active, rows]);
+  const missing = useMemo(() => {
+    // how many companies a measure could not be read for, per measure named in an active clause: they cannot match it and are not counted as failures of it
+    const out: string[] = [];
+    for (const f of active) {
+      const m = /^(ROCE|ROE|Debt\/equity|P\/E|P\/B|Revenue CAGR|EPS CAGR|Dividend yield|Piotroski|Net margin|EBIT margin|Interest cover|Promoter holding|Market cap|Daily turnover|RSI|Quality score|Value score)\b/.exec(f.label);
+      if (!m) continue;
+      const key = ({ ROCE: 'roce', ROE: 'roe', 'Debt/equity': 'de', 'P/E': 'pe', 'P/B': 'pb', 'Revenue CAGR': 'rev_cagr', 'EPS CAGR': 'eps_cagr', 'Dividend yield': 'div_yield', Piotroski: 'piotroski', 'Net margin': 'net_margin', 'EBIT margin': 'ebit_margin', 'Interest cover': 'icover', 'Promoter holding': 'insiders', 'Market cap': 'mcap_cr', 'Daily turnover': 'turnover_cr', RSI: 'rsi', 'Quality score': 'q', 'Value score': 'v' } as Record<string, keyof Row>)[m[1]];
+      const n = rows.filter((r) => typeof r[key] !== 'number').length;
+      if (n) out.push(`${m[1]}: ${plural(n, 'company', 'companies')} with no value are excluded from this clause`);
+    }
+    return out;
+  }, [active, rows]);
+  const setText = (v: string) => { setQ(v); setOff([]); setSaved(false); };
   return (
     <div className="panel spot" style={{ marginBottom: 20 }}>
-      <div className="eyebrow">AI desk · ask in plain English</div>
+      <div className="eyebrow">Ask in plain English</div>
       <label className="sr" htmlFor="nlq">Describe the stocks you want</label>
-      <input id="nlq" className="field" style={{ width: '100%', margin: '10px 0 8px', height: 48, fontSize: 16 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. small cap uptrend quality growth, debt below 0.5" spellCheck={false} />
+      <input id="nlq" className="field" style={{ width: '100%', margin: '10px 0 8px', height: 48, fontSize: 16 }} value={q} onChange={(e) => setText(e.target.value)} placeholder="e.g. small cap uptrend quality growth, debt below 0.5" spellCheck={false} />
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-        {EXAMPLES.map((x) => <button key={x} className="chip" onClick={() => setQ(x)}>{x}</button>)}
+        {EXAMPLES.map((x) => <button key={x} className="chip" onClick={() => setText(x)}>{x}</button>)}
       </div>
       {q.trim() && (
         <>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0 4px' }}>
-            {p.filters.map((f) => <span key={f.label} className="tag acc">{f.label}</span>)}
-            {p.unknown.length > 0 && <span className="tag warn" title="These words were not turned into a filter">Not understood: {p.unknown.join(' ')}</span>}
+          <div role="status" aria-live="polite">
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0 4px', alignItems: 'center' }}>
+              <span className="eyebrow">Understood</span>
+              {p.filters.length === 0 && <span className="dim">nothing yet</span>}
+              {p.filters.map((f) => {
+                const isOff = off.includes(f.label);
+                return (
+                  <button key={f.label} className={`tag ${isOff ? '' : 'acc'}`} style={{ cursor: 'pointer', textDecoration: isOff ? 'line-through' : 'none', opacity: isOff ? 0.6 : 1 }} aria-pressed={!isOff} title={isOff ? 'Switched off by you: click to apply it again' : 'Click to switch this clause off'} onClick={() => setOff((o) => (isOff ? o.filter((x) => x !== f.label) : [...o, f.label]))}>{f.label} {isOff ? '↺' : '✕'}</button>
+                );
+              })}
+            </div>
+            {p.unknown.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0', alignItems: 'center' }}><span className="eyebrow" style={{ color: 'var(--warn)' }}>Ignored</span>{p.unknown.map((w) => <span key={w} className="tag warn">{w}</span>)}<span className="dim" style={{ fontSize: 12.5 }}>These words were not turned into a filter, so they did not change the results.</span></div>}
+            {active.length === 0 && p.filters.length === 0 && <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised. This understands a fixed set of phrases: a sector (IT, pharma, banks), a size (large, mid, small cap), a ratio with a number (ROCE above 20, P/E under 25, debt below 0.5) or a state (uptrend, oversold, cheap, near 52 week high). Pick an example above, or use the lenses and filters below.</p>}
+            {active.length === 0 && p.filters.length > 0 && <p className="dim" style={{ margin: '8px 0 0' }}>Every clause is switched off, so nothing is being filtered.</p>}
+            {active.length > 0 && <p className="muted" style={{ margin: '8px 0 10px' }}><b className="num" style={{ color: 'var(--text)' }}>{num(hits.length)}</b> of {num(rows.length)} companies match {active.length === 1 ? 'the clause' : `all ${active.length} clauses`}{hits.length > 25 ? '; the best 25 are shown, ranked by quality + trend + growth' : ''}.</p>}
           </div>
-          {p.filters.length === 0 ? <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised yet. Try a sector, a size (large, mid, small cap), a ratio (ROCE above 20, P/E under 25) or a state (uptrend, oversold, cheap).</p> : (
-            <>
-              <p className="muted" style={{ margin: '8px 0 10px' }}><b className="num" style={{ color: 'var(--text)' }}>{num(hits.length)}</b> of {num(rows.length)} companies match every clause{hits.length > 25 ? ', best 25 shown (ranked by quality + trend + growth)' : ''}.</p>
-              {hits.length > 0 && (
-                <div className="tbl-wrap" style={{ maxHeight: 460 }}>
-                  <table className="tbl" style={{ minWidth: 720 }}>
-                    <thead><tr><th>Company</th><th>Sector</th><th>Mkt cap</th><th>Quality</th><th>Growth</th><th>P/E</th><th>ROCE</th><th>3M</th><th>1Y</th></tr></thead>
-                    <tbody>{hits.slice(0, 25).map((r) => (
-                      <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td><td className="dim">{r.ind || r.sector}</td><td className="num">{crore(r.mcap_cr)}</td><td className="num">{r.q != null ? Math.round(r.q) : dash}</td><td className="num">{r.g != null ? Math.round(r.g) : dash}</td><td className="num">{r.pe ? `${r.pe.toFixed(1)}×` : dash}</td><td className="num">{r.roce != null ? `${r.roce.toFixed(0)}%` : dash}</td><td><Chg v={r.r3m} dp={0} /></td><td><Chg v={r.r1y} dp={0} /></td></tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              )}
-            </>
+          {missing.length > 0 && <ul className="dim" style={{ fontSize: 12.5, margin: '0 0 8px', paddingLeft: 18 }}>{missing.map((m) => <li key={m}>{m}</li>)}</ul>}
+          {active.length > 0 && hits.length === 0 && (
+            <div className="panel tight" style={{ background: 'var(--panel-2)', marginBottom: 8 }}>
+              <div className="eyebrow">No company matches. Nothing has been loosened for you.</div>
+              {costs.length > 0 ? (
+                <>
+                  <p className="muted" style={{ margin: '8px 0', fontSize: 13.5 }}>Switch off one clause and see what is left:</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{costs.map(({ f, n }) => <button key={f.label} className="chip" onClick={() => setOff((o) => [...o, f.label])}>Drop &ldquo;{f.label}&rdquo; → {plural(n, 'match', 'matches')}</button>)}</div>
+                </>
+              ) : <p className="muted" style={{ margin: '8px 0 0', fontSize: 13.5 }}>The single clause matches no company. Check the number, or pick one of the examples above.</p>}
+            </div>
+          )}
+          {hits.length > 0 && <div style={{ margin: '0 0 10px' }}><button className="chip" disabled={!ok} onClick={() => setSaved(add(buildCard({ question: q.trim(), query: { text: q.trim(), applied: active.map((f) => f.label), ignored: [...p.unknown, ...off.map((o) => `switched off: ${o}`)], matches: hits.length }, companies: hits.slice(0, 25).map((r) => ({ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null })) })))} title="Saved in this browser only">{saved ? 'Saved locally ✓' : 'Save as research card'}</button></div>}
+          {hits.length > 0 && (
+            <div className="tbl-wrap" style={{ maxHeight: 460 }}>
+              <table className="tbl" style={{ minWidth: 720 }}>
+                <thead><tr><th>Company</th><th>Sector</th><th>Mkt cap</th><th>Quality</th><th>Growth</th><th>P/E</th><th>ROCE</th><th>3M</th><th>1Y</th></tr></thead>
+                <tbody>{hits.slice(0, 25).map((r) => (
+                  <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td><td className="dim">{r.ind || r.sector}</td><td className="num">{typeof r.mcap_cr === 'number' && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'n/a'}</td><td className="num">{r.q != null ? Math.round(r.q) : dash}</td><td className="num">{r.g != null ? Math.round(r.g) : dash}</td><td className="num">{r.pe ? `${r.pe.toFixed(1)}×` : dash}</td><td className="num">{r.roce != null ? `${r.roce.toFixed(0)}%` : dash}</td><td><Chg v={r.r3m} dp={0} /></td><td><Chg v={r.r1y} dp={0} /></td></tr>
+                ))}</tbody>
+              </table>
+            </div>
           )}
         </>
       )}
-      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Understood by fixed language rules, not a chatbot: it shows every clause it turned into a filter and every word it ignored, so you can see exactly what was asked. Results are screens, not recommendations.</p>
+      <p className="dim" style={{ fontSize: 12, margin: '10px 0 0' }}>Understood by fixed language rules, not a chatbot: every clause it turned into a filter is a chip you can switch off, every word it ignored is listed, and nothing is ever loosened or dropped for you. A company with no value for a measure cannot match a clause on it. Results are screens, not recommendations.</p>
     </div>
   );
 }

@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit",
     "worker:dev": "wrangler dev --local --port 8799",
     "deploy": "npm run build && wrangler deploy",
-    "prebuild": "node scripts/shard.mjs"
+    "prebuild": "node scripts/shard.mjs",
+    "test": "node --experimental-strip-types --test tests/lib.test.ts"
   },
   "dependencies": {
     "gsap": "^3.12.5",

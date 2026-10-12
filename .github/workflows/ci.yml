@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
+      - name: Unit tests (data status, breadth, Research Card, screen parser)
+        run: npm test
       # next/font downloads the faces at build time, so this step needs the network.
       - run: npm run build
       - name: Audit links, feeds and endpoints

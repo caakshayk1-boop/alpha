@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AskScreen from '@/components/AskScreen';
+import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useEngines, useFeed } from '@/lib/data';
 import { dash, num } from '@/lib/format';
@@ -155,6 +156,7 @@ export default function Screen() {
   return (
     <>
       <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Ask the market" em="any question." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
         <AskScreen rows={s.data?.rows ?? []} />
         <div className="filters">
@@ -223,7 +225,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)' }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 12.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
     </>

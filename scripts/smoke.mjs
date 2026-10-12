@@ -63,6 +63,8 @@ try {
   const dup = active.map((s) => s.sym).filter((x, i, a) => a.indexOf(x) !== i);
   check('no stock has two active trades', dup.length === 0, dup.join(','));
   check('every engine states its record', eng.every((k) => j.engines[k].status && j.engines[k].metrics && j.engines[k].trades?.holdout && j.engines[k].importance?.length));
+  check('every engine separates ranking, trading and alert verdicts', eng.every((k) => j.engines[k].ranking_status && j.engines[k].trading_status && typeof j.engines[k].alertable === 'boolean' && j.engines[k].alert_why));
+  check('exit outcomes reconcile to the trade count', eng.every((k) => { const e = j.engines[k]; return Object.values(e.exits).reduce((a, b) => a + b, 0) === e.exits_n; }));
   const syms = active.slice(0, 5).map((s) => s.sym);
   if (syms.length) {
     const px = JSON.parse((await get(`/api/px?s=${syms.join(',')}`)).text);

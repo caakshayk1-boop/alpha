@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
+import { DataStamp } from '@/components/DataStamp';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
-import { ago, dash, dateLabel, num } from '@/lib/format';
+import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
 
-const TONE: Record<string, string> = { 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down', 'NOT ENOUGH TRADES': '' };
+const TONE: Record<string, string> = { 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'NO RANKING SKILL': 'down', 'WORSE THAN RANDOM': 'down', 'NOT ENOUGH TRADES': '', 'NOT ENOUGH DATA': '', 'PROFITABLE AFTER COSTS': 'up', 'POSITIVE, NOT SIGNIFICANT': 'acc', 'BREAK-EVEN AFTER COSTS': 'warn', 'LOSES AFTER COSTS': 'down' };
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
 const sgn = (v: number | null | undefined, d = 2, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(d)}${suf}` : dash);
 const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.round(v)} trading days` : dash);
@@ -43,15 +44,15 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
             {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
           </div>
         </div>
-        <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} last={px ?? undefined} />
+        <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
       </div>
       {px !== null && active && (
         <p className="num" style={{ margin: '12px 0 0', fontSize: 13 }}>
-          <b>{live ? 'Live' : 'Last close'} ₹{num(px, 2)}</b>{live ? <> <Chg v={live.pct} /> </> : ' '}· {(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}
+          <b>{live ? (quoteState(live.at).word === 'live' ? 'Live' : 'Last trade') : 'Last close'} ₹{num(px, 2)}</b>{live ? <> <Chg v={live.pct} /> </> : ' '}· {(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}
         </p>
       )}
       <div className="kv" style={{ marginTop: 14 }}>
-        <div><div className="k">{s.entry ? 'Entered' : 'Buy zone'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.entry_zone[0], 2)} – ${num(s.entry_zone[1], 2)}`}</div></div>
+        <div><div className="k">{s.entry ? 'Entered at the open' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 11.5, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
         <div><div className="k">{s.hit > 0 ? 'Stop (moved)' : 'Stop'}</div><div className="v down" style={{ fontSize: 15 }}>₹{num(stop, 2)}{s.hit === 0 ? ` · −${s.risk_pct}%` : ''}</div></div>
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
         <div><div className="k">T1 typically</div><div className="v" style={{ fontSize: 15 }}>{s.typical_days_to_t1 ? `~${Math.round(s.typical_days_to_t1)} sessions` : dash}</div></div>
@@ -92,7 +93,7 @@ function SignalCard({ s, e, live }: { s: EngineSignal; e: EngineStats; live?: Px
           <p className="dim" style={{ fontSize: 12, margin: '6px 0 0' }}>Arithmetic only. Position size is your decision; gaps and costs are not included.</p>
         </details>
       )}
-      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Engine record: <span className={`tag ${TONE[e.status]}`}>{e.status}</span></p>
+      <p className="dim" style={{ fontSize: 12, margin: '12px 0 0' }}>Ranking: <span className={`tag ${TONE[e.ranking_status]}`}>{e.ranking_status}</span> · Trading: <span className={`tag ${TONE[e.trading_status]}`}>{e.trading_status}</span></p>
     </Rv>
   );
 }
@@ -185,7 +186,7 @@ export default function EnginesPage() {
                       <div className="eyebrow">Engine {x.id} · {x.style.split(',')[0]}</div>
                       <div className="disp" style={{ fontSize: 32, margin: '8px 0 4px' }}>{x.name}</div>
                       <div className="muted" style={{ fontSize: 13.5, minHeight: 60 }}>{x.tagline}</div>
-                      <div style={{ margin: '12px 0' }}><span className={`tag ${TONE[x.status]}`}>{x.status}</span></div>
+                      <div style={{ margin: '12px 0', display: 'grid', gap: 5 }}><span className={`tag ${TONE[x.ranking_status]}`} style={{ justifySelf: 'start' }} title={x.ranking_why}>Ranking · {x.ranking_status}</span><span className={`tag ${TONE[x.trading_status]}`} style={{ justifySelf: 'start' }} title={x.trading_why}>Trading · {x.trading_status}</span></div>
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr' }}>
                         <div><div className="k">Signals now</div><div className="v"><CountUp value={x.signal_count} format={(n) => String(Math.round(n))} /></div></div>
                         <div><div className="k">Holdout avg</div><div className={`v ${(x.trades.holdout.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(x.trades.holdout.expectancy_r, 2, 'R')}</div></div>
@@ -194,7 +195,8 @@ export default function EnginesPage() {
                   </button>
                 ))}
               </div>
-              <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Data through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
+              <DataStamp ids={['engines', 'screen']} />
+              <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
 
               {e && (
                 <>
@@ -202,9 +204,13 @@ export default function EnginesPage() {
                   <SectionHead eyebrow={`Engine ${e.id} · ${e.style}`} title={e.name} />
                   <Rv className="panel" style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span className={`tag ${TONE[e.status]}`} style={{ fontSize: 12 }}>{e.status}</span>
-                      <span className="muted" style={{ flex: 1, minWidth: 260 }}>{e.status_why}</span>
+                      <div style={{ display: 'grid', gap: 12, flex: 1, minWidth: 260 }}>
+                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 12 }}>{e.ranking_status}</span><span className="muted">{e.ranking_why}</span></div></div>
+                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 12 }}>{e.trading_status}</span><span className="muted">{e.trading_why}</span></div></div>
+                        <div><span className="eyebrow">Phone alerts</span><div style={{ marginTop: 6 }}><span className={`tag ${e.alertable ? 'up' : ''}`} style={{ fontSize: 12 }}>{e.alertable ? 'ON' : 'OFF'}</span> <span className="muted">{e.alert_why}</span></div></div>
+                      </div>
                     </div>
+                    <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>Ranking skill and trading profit are different claims: a model can order stocks better than chance and still make nothing after stops, exits and costs. Both are shown, and alerts need both.</p>
                     <p className="dim" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
                       Development is {dateLabel(feed.backtest.periods.development[0])} to {dateLabel(feed.backtest.periods.development[1])}; the holdout is everything after. Each prediction in both periods comes from a model trained only on data that was already fully known at the time (walk-forward, refit every quarter, with a gap equal to the prediction horizon). The design and the pass marks were written down before the holdout was read, and it was read once.{!e.alertable && ' This engine does not clear the bar for phone alerts: its signals are shown here, never pushed.'}
                     </p>
@@ -215,7 +221,7 @@ export default function EnginesPage() {
                     <>
                       {px.at && <p className="dim" style={{ fontSize: 12.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
                       <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} />)}</div>
-                      {(e.status === 'WORSE THAN RANDOM' || e.status === 'NO EDGE SHOWN') && <p className="notice" style={{ marginTop: 14 }}>This model has not shown an edge. Its picks are shown so it can be watched, not as recommendations.</p>}
+                      {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
                   ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}
 
@@ -254,8 +260,8 @@ export default function EnginesPage() {
                       <div className="grid g-7-5">
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 8 }}>Cumulative R, by month</div><Curve a={e.equity_curve} b={e.baseline_curve} /></Rv>
                         <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>How trades ended</div>
-                          <div className="meter">{(['stop', 'breakeven', 'target', 'time'] as const).map((k) => { const tot = Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab">{{ stop: 'Stopped out', breakeven: 'Stopped at entry', target: 'Hit all targets', time: 'Timed out' }[k]}</span><Bar pct={((e.exits[k] ?? 0) / tot) * 100} kind={k === 'stop' ? 'down' : k === 'target' ? 'up' : undefined} /><span className="num">{Math.round(((e.exits[k] ?? 0) / tot) * 100)}%</span></div>; })}</div>
-                          <div className="eyebrow" style={{ margin: '22px 0 10px' }}>Reached</div>
+                          <div className="meter">{(['stop', 'breakeven', 'after_t2', 'all_targets', 'time'] as const).map((k) => { const tot = e.exits_n || Object.values(e.exits).reduce((a, b) => a + b, 0) || 1; return <div className="meter-row" key={k}><span className="lab" style={{ minWidth: 150 }}>{{ stop: 'Stopped out, no target', breakeven: 'T1 reached, then stopped at entry', after_t2: 'T2 reached, then stopped at T1', all_targets: 'All three targets (T3)', time: 'Time limit' }[k]}</span><Bar pct={((e.exits[k] ?? 0) / tot) * 100} kind={k === 'stop' ? 'down' : k === 'all_targets' || k === 'after_t2' ? 'up' : undefined} /><span className="num" title={`${e.exits[k] ?? 0} of ${tot} trades`}>{Math.round(((e.exits[k] ?? 0) / tot) * 100)}%</span></div>; })}<p className="dim" style={{ fontSize: 11.5, margin: '8px 0 0' }}>Same {num(e.exits_n || e.trades.all.n)} test trades as the figures below; every trade appears in exactly one row. “All three targets” is the same group that “Reached T3” counts.</p></div>
+                          <div className="eyebrow" style={{ margin: '22px 0 10px' }}>Reached, at any point in the trade (historical frequency, {num(e.trades.all.n)} test trades)</div>
                           <div className="meter">{([['T1', e.trades.all.hit_t1], ['T2', e.trades.all.hit_t2], ['T3', e.trades.all.hit_t3]] as const).map(([l, v]) => <div className="meter-row" key={l}><span className="lab">{l}</span><Bar pct={v ?? 0} kind="up" /><span className="num">{f(v, 0, '%')}</span></div>)}</div>
                         </Rv>
                       </div>

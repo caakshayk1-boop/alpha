@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-12T02:18:31",
+ "generated": "2026-10-12T21:06:50",
  "data_through": "2026-10-09",
  "universe": 950,
  "cost_round_trip_pct": 0.25,
@@ -593,16 +593,24 @@
    "exits": {
     "stop": 1052,
     "breakeven": 600,
-    "target": 539,
+    "after_t2": 300,
+    "all_targets": 239,
     "time": 565
    },
+   "exits_n": 2756,
    "timeline": {
     "median_days_to_t1": 6.0,
     "median_days_held": 13.0,
     "p90_days_held": 25.0
    },
    "status": "LEANING POSITIVE",
-   "status_why": "It ranked stocks better than chance and its trades beat random picks in both periods, but the edge does not survive among the 300 most-traded stocks."
+   "status_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
+   "ranking_status": "LEANING POSITIVE",
+   "ranking_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
+   "trading_status": "POSITIVE, NOT SIGNIFICANT",
+   "trading_why": "Holdout trades averaged +0.17R after costs (month-clustered t +1.42): positive, but too noisy to rule out luck. Random picks with the same exits made -0.06R.",
+   "alertable": true,
+   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
   },
   "barrier": {
    "metrics": {
@@ -1182,16 +1190,24 @@
    "exits": {
     "stop": 1190,
     "breakeven": 572,
-    "target": 562,
+    "after_t2": 295,
+    "all_targets": 267,
     "time": 424
    },
+   "exits_n": 2748,
    "timeline": {
     "median_days_to_t1": 3.0,
     "median_days_held": 7.0,
     "p90_days_held": 15.0
    },
    "status": "LEANING POSITIVE",
-   "status_why": "It ranked stocks better than chance and its trades beat random picks in both periods, but the holdout result is too short or noisy to rule out luck."
+   "status_why": "Its scores ranked stocks better than chance in both periods, but the holdout result is too short or noisy to rule out luck.",
+   "ranking_status": "LEANING POSITIVE",
+   "ranking_why": "Its scores ranked stocks better than chance in both periods, but the holdout result is too short or noisy to rule out luck.",
+   "trading_status": "BREAK-EVEN AFTER COSTS",
+   "trading_why": "Holdout trades averaged -0.04R after costs (month-clustered t -1.00): indistinguishable from zero. It beat random picks by +0.05R, but that is not a profit.",
+   "alertable": false,
+   "alert_why": "Alerts off: its holdout trades did not make money after costs. Its signals are shown on the site, never pushed."
   },
   "relative": {
    "metrics": {
@@ -1771,16 +1787,24 @@
    "exits": {
     "stop": 1050,
     "breakeven": 567,
-    "target": 594,
+    "after_t2": 312,
+    "all_targets": 282,
     "time": 544
    },
+   "exits_n": 2755,
    "timeline": {
     "median_days_to_t1": 6.0,
     "median_days_held": 13.0,
     "p90_days_held": 25.0
    },
    "status": "LEANING POSITIVE",
-   "status_why": "It ranked stocks better than chance and its trades beat random picks in both periods, but the edge does not survive among the 300 most-traded stocks."
+   "status_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
+   "ranking_status": "LEANING POSITIVE",
+   "ranking_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
+   "trading_status": "POSITIVE, NOT SIGNIFICANT",
+   "trading_why": "Holdout trades averaged +0.18R after costs (month-clustered t +0.91): positive, but too noisy to rule out luck. Random picks with the same exits made -0.06R.",
+   "alertable": true,
+   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
   },
   "snapback": {
    "metrics": {
@@ -2360,16 +2384,24 @@
    "exits": {
     "stop": 919,
     "breakeven": 545,
-    "target": 648,
+    "after_t2": 327,
+    "all_targets": 321,
     "time": 592
    },
+   "exits_n": 2704,
    "timeline": {
     "median_days_to_t1": 2.0,
     "median_days_held": 4.0,
     "p90_days_held": 7.0
    },
    "status": "EDGE SHOWN",
-   "status_why": "It ranked stocks better than chance in both periods, the holdout result is statistically solid, its trades beat random picks in both, and the edge survives among the most-traded stocks."
+   "status_why": "Its scores ranked stocks better than chance in both periods, the holdout result is statistically solid, and the skill survives among the 300 most-traded stocks.",
+   "ranking_status": "EDGE SHOWN",
+   "ranking_why": "Its scores ranked stocks better than chance in both periods, the holdout result is statistically solid, and the skill survives among the 300 most-traded stocks.",
+   "trading_status": "BREAK-EVEN AFTER COSTS",
+   "trading_why": "Holdout trades averaged +0.02R after costs (month-clustered t -0.05): indistinguishable from zero. It beat random picks by +0.08R, but that is not a profit.",
+   "alertable": false,
+   "alert_why": "Alerts off: its holdout trades did not make money after costs. Its signals are shown on the site, never pushed."
   },
   "compounder": {
    "metrics": {
@@ -2949,16 +2981,24 @@
    "exits": {
     "stop": 1247,
     "breakeven": 429,
-    "target": 705,
+    "after_t2": 294,
+    "all_targets": 411,
     "time": 230
    },
+   "exits_n": 2611,
    "timeline": {
     "median_days_to_t1": 23.0,
     "median_days_held": 41.0,
     "p90_days_held": 120.0
    },
    "status": "LEANING POSITIVE",
-   "status_why": "It ranked stocks better than chance and its trades beat random picks in both periods, but the holdout result is too short or noisy to rule out luck."
+   "status_why": "Its scores ranked stocks better than chance in both periods, but the holdout result is too short or noisy to rule out luck and the skill is not statistically clear among the 300 most-traded stocks.",
+   "ranking_status": "LEANING POSITIVE",
+   "ranking_why": "Its scores ranked stocks better than chance in both periods, but the holdout result is too short or noisy to rule out luck and the skill is not statistically clear among the 300 most-traded stocks.",
+   "trading_status": "POSITIVE, NOT SIGNIFICANT",
+   "trading_why": "Holdout trades averaged +0.25R after costs (month-clustered t +1.41): positive, but too noisy to rule out luck. Random picks with the same exits made -0.11R.",
+   "alertable": true,
+   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
   }
  }
 }

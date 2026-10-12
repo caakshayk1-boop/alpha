@@ -5,9 +5,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { chartFeed, useFeed } from '@/lib/data';
 import { cone, type Bars } from '@/lib/ta';
 import { Rv, Segmented, Switch } from '@/components/ui';
-import { decide, lookalikes } from '@/lib/decision';
+import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
+import { buildCard } from '@/lib/card';
+import { useCards } from '@/lib/library';
+import { decide, lookalikes, screenClass } from '@/lib/decision';
 import type { EngineSignal, Row } from '@/lib/types';
-import { dash, num } from '@/lib/format';
+import { dash, dateLabel, num } from '@/lib/format';
 
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
 export function ExternalLinks({ sym }: { sym: string }) {
@@ -34,38 +37,50 @@ function Kv({ k, v }: { k: string; v: string }) {
 
 const tone = (s: number | null) => (s === null ? 'var(--dim)' : s >= 1 ? 'var(--up)' : s <= -1 ? 'var(--down)' : 'var(--accent-2)');
 
-export function DecisionDesk({ r, sigs }: { r: Row; sigs: EngineSignal[] }) {
-  const d = useMemo(() => decide(r, sigs), [r, sigs]);
+export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[]; years?: number | null }) {
+  const d = useMemo(() => decide(r, sigs, years), [r, sigs, years]);
+  const today = new Date().toISOString().slice(0, 10);
+  const sc = screenClass(r.vd);
   return (
     <Rv className="panel spot">
-      <div className="eyebrow">Decision desk · computed from this page&apos;s numbers</div>
-      <p className="disp" style={{ fontSize: 28, lineHeight: 1.2, margin: '10px 0 16px' }}>{d.headline}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 18 }}>
-        {d.dims.map((x) => (
-          <div key={x.name} className="panel tight" style={{ background: 'var(--panel-2)' }}>
-            <div className="eyebrow">{x.name}</div>
-            <div style={{ height: 6, borderRadius: 3, background: 'var(--line)', margin: '10px 0 6px', position: 'relative' }}>
-              <span style={{ position: 'absolute', left: `${x.score === null ? 50 : Math.max(2, Math.min(98, 50 + x.score * 20))}%`, top: -3, width: 12, height: 12, marginLeft: -6, borderRadius: 6, background: tone(x.score) }} />
+      <div className="eyebrow">Why this name? · research summary from the figures on this page</div>
+      <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: '10px 0 8px' }}>{d.headline}</p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+        <span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span>
+        {sigs.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => <span key={x.id} className="tag acc" title={`${x.engine_name} engine output, ranking ${x.engine_status}. A research signal, not a recommendation.`}>Engine output · {x.engine_name}</span>)}
+        {r.mf?.rank && r.mf.of ? <span className="tag" title="Greenblatt-inspired ranking of eligible companies">Magic Formula #{r.mf.rank} of {r.mf.of}</span> : null}
+      </div>
+      <DataStamp ids={['screen']} />
+
+      <div className="eyebrow" style={{ margin: '18px 0 8px' }}>The evidence ({d.evidence.length || 'none'})</div>
+      {d.evidence.length ? (
+        <ul className="evid">{d.evidence.map((e) => <li key={e.text}><span className={e.side === 'for' ? 'up' : 'down'} aria-label={e.side === 'for' ? 'in favour' : 'against'}>{e.side === 'for' ? '▲' : '▼'}</span><span>{e.text}<small className="dim"> · {e.source}</small></span></li>)}</ul>
+      ) : <p className="muted">No figure on file stands out either way.</p>}
+
+      <div className="grid g2" style={{ marginTop: 16 }}>
+        <div><div className="eyebrow" style={{ marginBottom: 8 }}>Where the lenses agree</div>{d.agree.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.agree.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No two lenses clearly agree.</p>}</div>
+        <div><div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warn)' }}>Where they conflict</div>{d.conflicts.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.conflicts.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No conflict between the screen, engines and trend.</p>}</div>
+      </div>
+
+      <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Missing or thin</div>
+      {d.missing.length ? <ul className="dim" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6, fontSize: 13 }}>{d.missing.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>All nine checks could be applied.</p>}
+
+      <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Next known event</div>
+      <p className="muted" style={{ margin: 0 }}>{d.nextResults ? (d.nextResults >= today ? `Results due ${dateLabel(d.nextResults)} (date from the screen feed, not confirmed by the company here).` : `Results were expected ${dateLabel(d.nextResults)}: the fundamentals above may not include them yet.`) : 'No date available.'}</p>
+
+      <details style={{ marginTop: 16 }}>
+        <summary className="eyebrow" style={{ cursor: 'pointer' }}>All nine checks, with the number behind each</summary>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8, marginTop: 10 }}>
+          {d.checks.map((c) => (
+            <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5 }}>
+              <span aria-label={c.pass === null ? 'not applicable' : c.pass ? 'pass' : 'fail'} style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: c.pass === null ? 'var(--line)' : c.pass ? 'var(--up-soft)' : 'var(--down-soft)', color: c.pass === null ? 'var(--dim)' : c.pass ? 'var(--up)' : 'var(--down)' }}>{c.pass === null ? '–' : c.pass ? '✓' : '✕'}</span>
+              <span>{c.label}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{c.detail}</small></span>
             </div>
-            <div className="dim" style={{ fontSize: 12 }}>{x.note}</div>
-          </div>
-        ))}
-      </div>
-      <div className="grid g2">
-        <div><div className="eyebrow" style={{ color: 'var(--up)' }}>The case for</div><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6 }}>{d.bull.length ? d.bull.map((p) => <li key={p.text}>{p.text}</li>) : <li className="dim">No standout positives in the numbers.</li>}</ul></div>
-        <div><div className="eyebrow" style={{ color: 'var(--down)' }}>The case against</div><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6 }}>{d.bear.length ? d.bear.map((p) => <li key={p.text}>{p.text}</li>) : <li className="dim">No standout negatives in the numbers.</li>}</ul></div>
-      </div>
-      <div className="eyebrow" style={{ margin: '18px 0 8px' }}>Checklist</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8 }}>
-        {d.checks.map((c) => (
-          <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5 }}>
-            <span aria-label={c.pass === null ? 'not applicable' : c.pass ? 'pass' : 'fail'} style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: c.pass === null ? 'var(--line)' : c.pass ? 'var(--up-soft)' : 'var(--down-soft)', color: c.pass === null ? 'var(--dim)' : c.pass ? 'var(--up)' : 'var(--down)' }}>{c.pass === null ? '–' : c.pass ? '✓' : '✕'}</span>
-            <span>{c.label}<small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>{c.detail}</small></span>
-          </div>
-        ))}
-      </div>
-      {d.triggers.length > 0 && <><div className="eyebrow" style={{ margin: '18px 0 8px' }}>What would change the picture</div><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6, margin: 0 }}>{d.triggers.map((t) => <li key={t}>{t}</li>)}</ul></>}
-      <p className="dim" style={{ fontSize: 12, margin: '16px 0 0' }}>Fixed rules applied to the screen&apos;s figures, shown with the number behind each line. It is a summary of what the data says, not a forecast and not advice. Banks and insurers skip the leverage and cash tests.</p>
+          ))}
+        </div>
+      </details>
+      {d.triggers.length > 0 && <details style={{ marginTop: 10 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>What would change the picture</summary><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6, margin: '10px 0 0' }}>{d.triggers.map((t) => <li key={t}>{t}</li>)}</ul></details>}
+      <p className="dim" style={{ fontSize: 12, margin: '16px 0 0' }}>Fixed rules applied to the figures shown on this page; nothing is generated or forecast. Screen classes and engine outputs are research classifications, not recommendations to buy or sell. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>How this is made</Link>.</p>
     </Rv>
   );
 }
@@ -162,4 +177,31 @@ export function LookalikesLazy({ r }: { r: Row }) {
     return () => io.disconnect();
   }, [near]);
   return <div ref={ref} style={{ minHeight: 120 }}>{near ? <LookalikesLoaded r={r} /> : null}</div>;
+}
+
+/** Saves this company, its evidence and the data dates as a portable card in this browser. */
+export function SaveCardButton({ r, sigs, years }: { r: Row; sigs: EngineSignal[]; years?: number | null }) {
+  const { add, ok } = useCards();
+  const { items } = useDatasetStatus();
+  const [state, setState] = useState<'idle' | 'saved' | 'failed'>('idle');
+  const save = () => {
+    const d = decide(r, sigs, years);
+    const act = sigs.filter((x) => x.status === 'open' || x.status === 'pending');
+    const card = buildCard({
+      question: `Why ${r.sym}?`,
+      companies: [{ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null }],
+      evidence: d.evidence,
+      engines: act.length ? { [r.sym]: act.map((x) => ({ engine: x.engine_name, rankingStatus: x.engine_status, tradingStatus: null, signalClose: x.ref_price, stop: x.sl, targets: x.targets })) } : null,
+      nextResults: { [r.sym]: r.next_earnings ?? null },
+      dataStatus: items.map((i) => ({ id: i.id, asOf: i.asOf, refreshedAt: i.refreshedAt, state: i.state })),
+    });
+    setState(add(card) ? 'saved' : 'failed');
+  };
+  return (
+    <>
+      <button className="chip" onClick={save} disabled={!ok} title="Saved in this browser only. Export it from the Watchlist page to keep a copy.">{state === 'saved' ? 'Saved locally ✓' : 'Save research card'}</button>
+      <span className="sr" role="status">{state === 'saved' ? 'Research card saved in this browser' : state === 'failed' ? 'Could not save: browser storage is blocked or full' : ''}</span>
+      {state === 'failed' && <span className="dim" style={{ fontSize: 12 }}>Storage blocked or full</span>}
+    </>
+  );
 }

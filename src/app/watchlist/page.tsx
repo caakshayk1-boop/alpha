@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
+import CardPanel from '@/components/CardPanel';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useEngines, useFeed, usePx } from '@/lib/data';
 import { dash, dateLabel, num } from '@/lib/format';
@@ -11,7 +12,7 @@ import { useStoredList } from '@/lib/store';
 export default function Watchlist() {
   const s = useFeed('screen');
   const eng = useEngines();
-  const [list, add, remove] = useStoredList('alpha-watchlist');
+  const [list, add, remove, addAll] = useStoredList('alpha-watchlist');
   const px = usePx(list);
   const rows = useMemo(() => list.map((x) => s.data?.rows.find((r) => r.sym === x)).filter((r): r is NonNullable<typeof r> => !!r), [list, s.data]);
   const sigs = useMemo(() => new Map((eng.data?.signals ?? []).map((x) => [x.sym, x])), [eng.data]);
@@ -43,6 +44,7 @@ export default function Watchlist() {
           )}
         </Async>
       </section>
+      <section className="wrap section"><CardPanel watchlist={list} onImportWatchlist={addAll} /></section>
     </>
   );
 }

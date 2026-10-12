@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DataStamp } from '@/components/DataStamp';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
 import { useFeed, useRotation } from '@/lib/data';
 import { dash, num } from '@/lib/format';
@@ -126,7 +127,8 @@ export default function RotationPage() {
   const date = rot.data?.dates[t];
   return (
     <>
-      <PageHead eyebrow="Rotation" title="Where the money" em="is moving." lede="A Relative Rotation Graph for every benchmark group: how strong each is against the Nifty, and whether that strength is rising or fading. Groups travel clockwise: Improving, Leading, Weakening, Lagging. Drag the time machine back to watch past rotations." />
+      <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="A Relative Rotation Graph for every benchmark group: how strong each is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows. Groups often pass through Improving, Leading, Weakening and Lagging, but not in a fixed order or at a fixed speed. Drag the time machine back to see past weeks." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['rotation', 'screen']} /><p className="notice" style={{ marginTop: 10 }}><b>Which groups are official?</b> Only Nifty IT, Nifty Pharma and Nifty Bank are real NSE indices. Every other group is an equal-weighted index that Alpha builds from its own screened stocks, because Yahoo holds no history for the other NSE sector indices. They are labelled &ldquo;NSE index&rdquo; or &ldquo;Alpha group index&rdquo; below.</p></section>
       <section className="wrap">
         <Async loading={rot.loading || scr.loading} error={rot.error ?? scr.error} rows={3}>
           {read && rot.data && (
@@ -239,7 +241,7 @@ export default function RotationPage() {
                 <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day</th><th>Stocks</th></tr></thead>
                 <tbody>{table.map((x) => (
                   <tr key={x.s.name} onClick={() => setSel(x.s.name)} style={{ cursor: 'pointer', background: sel === x.s.name ? 'var(--accent-soft)' : undefined }}>
-                    <td><b>{short(x.s.name)}</b>{x.s.real && <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span>}</td>
+                    <td><b>{short(x.s.name)}</b>{x.s.real ? <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span> : <span className="tag" style={{ marginLeft: 8 }}>Alpha group index</span>}</td>
                     <td><span className="tag" style={{ color: QC[x.q] }}>{x.q}</span></td>
                     <td className="num">{x.r.toFixed(1)}</td><td className="num">{x.m.toFixed(1)}</td>
                     <td><Chg v={x.s.ret4} dp={1} /></td><td><Chg v={x.s.ret13} dp={1} /></td>
@@ -248,7 +250,7 @@ export default function RotationPage() {
                   </tr>))}</tbody>
               </table></div>
               <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>
-                Method: each group&apos;s weekly index level is divided by the Nifty to get relative strength. RS-Ratio is that strength against its own 13-week average (100 = in line); RS-Momentum is 100 plus the 4-week change in a 3-week average of RS-Ratio. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of its industry (or sector) built from the screened stocks, because Yahoo holds no history for the other NSE sector indices. A close cousin of the RRG popularised by Julius de Kempenaer, not the licensed JdK formula. Rotation describes what has happened; a group can stay in a quadrant for months, and the tails turn late.
+                Method: each group&apos;s weekly index level is divided by the Nifty to get relative strength. RS-Ratio is that strength against its own 13-week average (100 = in line); RS-Momentum is 100 plus the 4-week change in a 3-week average of RS-Ratio. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of its industry (or sector) built from the screened stocks, because Yahoo holds no history for the other NSE sector indices. A close cousin of the RRG popularised by Julius de Kempenaer, not the licensed JdK formula. Rotation describes what has happened; a group can stay in a quadrant for months, and the tails turn late. It describes how prices moved relative to the Nifty, not where money went.
               </p>
             </>
           )}

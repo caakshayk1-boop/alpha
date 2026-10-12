@@ -6,10 +6,11 @@ import { Suspense, useMemo } from 'react';
 import { Async, Bar, Chg, CountUp, LazyMount, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
 import StockChart from '@/components/StockChart';
-import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone } from '@/components/CompanyTools';
+import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { useEngines, useFeedWhen, usePx, useShard, type Shard } from '@/lib/data';
 import { useStoredList } from '@/lib/store';
-import { ago, crore, dash, dateLabel, heat, num, pct } from '@/lib/format';
+import { crore, dash, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
+import { ordinal } from '@/lib/status';
 import type { Row, Year } from '@/lib/types';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -90,7 +91,10 @@ function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
   );
 }
 
-function Swot({ sym, pre }: { sym: string; pre?: Shard['swot'] }) {
+/** The upstream text says "3Y median" even when fewer statement years exist; say what was actually used. */
+const honestHistory = (k: string, years?: number) => k.replace(/\b(\d)Y median\b/, (m, n) => (typeof years === 'number' && years < Number(n) ? `median of the ${years} year${years === 1 ? '' : 's'} on file` : m));
+
+function Swot({ sym, pre, years }: { sym: string; pre?: Shard['swot']; years?: number }) {
   const f = useFeedWhen('swot', pre === undefined);
   const s = pre !== undefined ? pre : f.data?.swot[sym];
   const quad: [keyof NonNullable<typeof s>, string, string][] = [['s', 'Strengths', 'var(--up)'], ['w', 'Weaknesses', 'var(--down)'], ['o', 'Opportunities', 'var(--accent-2)'], ['t', 'Threats', 'var(--warn)']];
@@ -101,7 +105,7 @@ function Swot({ sym, pre }: { sym: string; pre?: Shard['swot'] }) {
           {quad.map(([k, label, c]) => (
             <div className="panel tight" key={k}>
               <h4 style={{ color: c }}>{label}</h4>
-              <ul>{s[k].length === 0 ? <li className="dim">None flagged by the rules.</li> : s[k].map((x) => <li key={x.t}>{x.t}<small>{x.k}</small></li>)}</ul>
+              <ul>{s[k].length === 0 ? <li className="dim">None flagged by the rules.</li> : s[k].map((x) => <li key={x.t}>{x.t}<small>{honestHistory(x.k, years)}</small></li>)}</ul>
             </div>
           ))}
         </div>
@@ -188,8 +192,14 @@ function Company() {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
             <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
-          </div><div className="px"><CountUp value={px.quotes[sym]?.price ?? r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? `live · ${ago(px.at)}` : `last close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
+            <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
+          </div><div className="px"><CountUp value={px.quotes[sym]?.price ?? r.price} format={(n) => `₹${num(n, 2)}`} /></div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 12.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
       </header>
+      {(() => {
+        const live = px.quotes[sym]?.price;
+        if (!has(live) || !has(r.price) || r.price <= 0 || Math.abs(live / r.price - 1) <= 0.08) return null;
+        return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${dateLabel(r.last_date)}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
+      })()}
 
       <section className="wrap section">
         <div className="scores">
@@ -198,7 +208,7 @@ function Company() {
           <Rv><Ring value={r.v} label="Value" hue="acc" /></Rv>
           <Rv><Ring value={r.tech} label="Technical" hue="acc" /></Rv>
         </div>
-        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: 50 is the median company, not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
 
       <section className="wrap section">
@@ -206,7 +216,7 @@ function Company() {
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
 
-      <section className="wrap section"><SectionHead eyebrow="AI desk" title="What the numbers add up to" /><DecisionDesk r={r} sigs={mySignals} /></section>
+      <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
 
       <section className="wrap section"><SectionHead eyebrow="AI desk" title="Where the price could go" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
 
@@ -228,9 +238,9 @@ function Company() {
             <Rv key={`${x.engine}${x.date}`} className="panel spot">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
                 <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
-                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Buy zone</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.entry_zone[0], 2)}–{num(x.entry_zone[1], 2)}</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
+                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 14 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 11, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 14 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 13 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 14 }}>{x.max_hold_days} sessions</div></div></div>
                   <p className="dim" style={{ fontSize: 12.5, margin: '12px 0 0' }}>This engine&apos;s record: <span className={`tag ${({ 'EDGE SHOWN': 'up', 'LEANING POSITIVE': 'acc', 'NO EDGE SHOWN': 'warn', 'WORSE THAN RANDOM': 'down' } as Record<string, string>)[x.engine_status] ?? ''}`}>{x.engine_status}</span></p></div>
-                <PlanOdds sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} last={x.last_close} />
+                <PlanOdds sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={x.last_close} />
               </div>
             </Rv>))}</div>
         </section>
@@ -239,18 +249,18 @@ function Company() {
       <section className="wrap section">
         <SectionHead title="Key numbers" />
         <Rv className="kv">
-          <Kv k="Market cap" v={crore(r.mcap_cr)} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} />
+          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} />
           <Kv k="ROCE" v={has(r.roce) ? `${r.roce.toFixed(1)}%` : dash} /><Kv k="ROE" v={has(r.roe) ? `${r.roe.toFixed(1)}%` : dash} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${r.ebit_margin.toFixed(1)}%` : dash} />
           <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} /><Kv k="Interest cover" v={has(r.icover) ? `${r.icover.toFixed(1)}×` : dash} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${r.div_yield.toFixed(2)}%` : dash} />
           <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${r.cfo_pat.toFixed(2)}×` : dash} />
           <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} /><Kv k="RSI (14)" v={has(r.rsi) ? r.rsi.toFixed(0) : dash} />
           {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} />}
-          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${Math.round(r.pe_pctile)}th pctile` : dash} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} />
+          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} />
         </Rv>
       </section>
 
       <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
-      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} /></section>
+      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
       <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} pre={pre?.inst} /></section>
       <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
       <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
@@ -260,7 +270,7 @@ function Company() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="wrap section"><Skel h={64} w="50%" /></div>}>
+    <Suspense fallback={<div className="wrap section"><h1 className="sr">Company research</h1><Skel h={64} w="50%" /></div>}>
       <Company />
     </Suspense>
   );

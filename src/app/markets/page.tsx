@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MarketStance } from '@/components/AiTools';
+import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead, Rv, Spark } from '@/components/ui';
 import { useQuotes } from '@/lib/data';
 import { ago, num } from '@/lib/format';
@@ -16,6 +17,7 @@ export default function Markets() {
   return (
     <>
       <PageHead eyebrow="Markets" title="The board," em="live." lede="India, its sectors, the world, commodities, currencies and rates, each with a month of closes behind it. Prices are cached for up to five minutes." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['barometer', 'screen']} /><p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Index and commodity prices below are live quotes. The stance, barometer and breadth are from the sessions stamped above.</p></section>
       <section className="wrap section" style={{ paddingBottom: 0 }}><MarketStance /></section>
       <section className="wrap">
         <div className="filters" role="group" aria-label="Instrument group">

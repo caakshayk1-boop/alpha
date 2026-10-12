@@ -118,6 +118,7 @@ export interface Pulse {
 }
 
 export interface Barometer {
+  generated_at?: string;
   today: {
     score: number;
     band: { k: string; t: string; c: string };
@@ -128,6 +129,8 @@ export interface Barometer {
     above_200dma_pct: number;
     vix: number;
     nifty_date: string;
+    vix_date?: string;
+    counted?: number;
   };
   history: { date: string; score: number; nifty: number; vix: number }[];
 }
@@ -153,7 +156,7 @@ export interface IpoAwaiting {
 }
 export interface IpoUpcoming extends IpoOpen {
   sector?: string | null; gmp_text?: string | null; revenue_cr?: number | null; pat_cr?: number | null;
-  pe_post_issue?: number | null; peer_pe?: number | null; roce_pct?: number | null;
+  pe_post_issue?: number | null; peer_pe?: number | null; roce_pct?: number | null; enriched_url?: string | null; price_low?: number | null; price_high?: number | null;
   score?: { points: number; of: number; pct: number; parts: Record<string, string>; not_measured: string[]; shown_not_scored: string[] };
 }
 export interface IpoLiveIssue { symbol: string; company: string | null; status: string | null; price_band: string | null; opens: string | null; closes: string | null; total_x: number | null; categories?: { cat: string; x: number }[] }
@@ -176,7 +179,7 @@ export interface Fund {
 }
 export interface Funds { generated_at: string; basis: string; categories: { key: string; label: string; blurb: string; funds: Fund[] }[] }
 
-export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string }
+export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string; model?: string; corrections?: { date: string; what: string }[] }
 export interface Reads { generated_at: string; editions: { week: string; written_at: string; studies: Study[] }[] }
 
 export interface Swot { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] }
@@ -212,7 +215,8 @@ export type EngineStatus = 'EDGE SHOWN' | 'LEANING POSITIVE' | 'NO EDGE SHOWN' |
 export type Period = 'development' | 'holdout';
 export interface EngineStats {
   id: number; key: string; name: string; tagline: string; style: string; how: string[]; kind: 'reg' | 'clf'; horizon_sessions: number;
-  status: EngineStatus; status_why: string; signal_count: number; alertable: boolean; train_rows: number;
+  status: EngineStatus; status_why: string; ranking_status: string; ranking_why: string; trading_status: string; trading_why: string; alert_why: string; exits_n: number;
+  signal_count: number; alertable: boolean; train_rows: number;
   plan: { stop_atr: number; targets_r: number[]; max_hold: number; picks_per_day: number; cooldown: number };
   metrics: Record<Period, RankBlock>;
   robustness: { top300: Record<Period, RankBlock> };

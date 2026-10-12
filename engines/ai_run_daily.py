@@ -31,8 +31,6 @@ EXIT_PLAN = [
     "If nothing has resolved by the time limit, exit what is left at that day's close.",
     "Size so that a stop-out costs an amount you can afford to lose repeatedly. The stop is the plan; the targets are the hope.",
 ]
-ALERT_MIN_HOLDOUT_R = 0.05          # an engine may buzz a phone only if its holdout trades made at least this much after costs
-ALERT_STATUSES = ("EDGE SHOWN", "LEANING POSITIVE")
 
 
 def train_and_score(panel: pd.DataFrame, lab: pd.DataFrame, eng, log=print):
@@ -80,7 +78,12 @@ def explain(sym: str, date, panel: pd.DataFrame, top_features: list[dict], day_s
         pct = float(today[col].rank(pct=True)[sym])
         both = pd.concat([today[col], day_scores], axis=1, join="inner").dropna()
         sign = 1 if len(both) > 30 and both.iloc[:, 0].corr(both.iloc[:, 1], method="spearman") >= 0 else -1
-        place = f"higher than {pct * 100:.0f}% of stocks" if pct >= 0.5 else f"lower than {(1 - pct) * 100:.0f}% of stocks"
+        if pct >= 0.99:
+            place = "among the very highest of all stocks today"
+        elif pct <= 0.01:
+            place = "among the very lowest of all stocks today"
+        else:
+            place = f"higher than about {pct * 100:.0f}% of stocks" if pct >= 0.5 else f"lower than about {(1 - pct) * 100:.0f}% of stocks"
         favour = "the model favours high readings" if sign > 0 else "the model favours low readings"
         out.append(f"{f['label']}: {place} ({favour})")
     return out
@@ -159,14 +162,17 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     engines = {}
     for key, eng in ENGINES.items():
         r = results["engines"][key]
-        holdout_r = r["trades"]["holdout"].get("expectancy_r")
         act = [x for x in view if x["engine"] == key and x["status"] in ("pending", "open")]
         engines[key] = {
             "id": eng.id, "key": key, "name": eng.name, "tagline": eng.tagline, "style": eng.style, "how": eng.how, "kind": eng.kind, "horizon_sessions": eng.H,
-            "status": r["status"], "status_why": r["status_why"], "signal_count": len(act),
-            "alertable": bool(r["status"] in ALERT_STATUSES and (holdout_r or 0) >= ALERT_MIN_HOLDOUT_R),
+            # three separate questions, three separate answers: does it rank, does the plan make money, may it buzz a phone
+            "status": r["ranking_status"], "status_why": r["ranking_why"],
+            "ranking_status": r["ranking_status"], "ranking_why": r["ranking_why"],
+            "trading_status": r["trading_status"], "trading_why": r["trading_why"],
+            "alertable": bool(r["alertable"]), "alert_why": r["alert_why"],
+            "signal_count": len(act),
             "plan": {"stop_atr": eng.stop_atr, "targets_r": list(eng.targets_r), "max_hold": eng.max_hold, "picks_per_day": eng.picks_per_day, "cooldown": eng.cooldown},
-            **{k: r[k] for k in ("metrics", "robustness", "trades", "baseline", "clustered", "equity_curve", "baseline_curve", "exits", "timeline")},
+            **{k: r[k] for k in ("metrics", "robustness", "trades", "baseline", "clustered", "equity_curve", "baseline_curve", "exits", "exits_n", "timeline")},
             "importance": eng_out[key]["importance"][:8], "train_rows": eng_out[key]["train_rows"],
         }
     signals = []
@@ -211,4 +217,4 @@ if __name__ == "__main__":
     dest.write_text(json.dumps(out, separators=(",", ":")))
     print(f"wrote {dest}: {len(out['signals'])} signals in view, data through {out['data_through']}; registry {len(reg['signals'])} trades")
     for k, e in out["engines"].items():
-        print(f"  {e['name']:<11} {e['status']:<18} {e['signal_count']} signals now  alertable={e['alertable']}")
+        print(f"  {e['name']:<11} ranking={e['ranking_status']:<17} trading={e['trading_status']:<26} {e['signal_count']} signals  alertable={e['alertable']}")

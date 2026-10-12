@@ -49,29 +49,58 @@ def curve(trades):
     return [[str(k), round(float(v), 1)] for k, v in m.items()]
 
 
-def verdict(res: dict) -> tuple[str, str]:
+def ranking_verdict(res: dict) -> tuple[str, str]:
+    """RANKING SKILL ONLY: did its scores order stocks better than chance, out of sample? Says nothing about whether trading them paid."""
     dev, hold = res["metrics"]["development"], res["metrics"]["holdout"]
-    td, th = res["trades"]["development"], res["trades"]["holdout"]
-    bd, bh = res["baseline"]["development"], res["baseline"]["holdout"]
+    t3h = res["robustness"]["top300"]["holdout"]
     ic_d, ic_h = dev.get("ic_mean"), hold.get("ic_mean")
-    if None in (ic_d, ic_h) or not td.get("n") or not th.get("n"):
-        return "NOT ENOUGH DATA", "Too little out-of-sample data in one period to judge."
-    beats_d = td["expectancy_r"] > bd.get("expectancy_r", 0)
-    beats_h = th["expectancy_r"] > bh.get("expectancy_r", 0)
-    robust = (res["robustness"]["top300"]["holdout"].get("top_excess_pct") or 0) >= 0
-    if ic_d < 0 and ic_h < 0 and not beats_d and not beats_h:
-        return "WORSE THAN RANDOM", "Its ranking was backwards and its trades lost to random picks in both periods."
-    if ic_d > 0 and ic_h > 0 and (hold.get("ic_t") or 0) >= 2 and beats_d and beats_h and robust:
-        return "EDGE SHOWN", "It ranked stocks better than chance in both periods, the holdout result is statistically solid, its trades beat random picks in both, and the edge survives among the most-traded stocks."
-    if ic_d > 0 and ic_h > 0 and beats_d and beats_h:
-        why = "It ranked stocks better than chance and its trades beat random picks in both periods, but "
+    if None in (ic_d, ic_h):
+        return "NOT ENOUGH DATA", "Too little out-of-sample data in one period to judge its ranking."
+    if ic_d <= 0 and ic_h <= 0:
+        return "NO RANKING SKILL", "Its scores did not rank stocks better than chance in either period."
+    if ic_d > 0 and ic_h > 0 and (hold.get("ic_t") or 0) >= 2 and (t3h.get("ic_mean") or 0) > 0 and (t3h.get("ic_t") or 0) >= 2:
+        return "EDGE SHOWN", "Its scores ranked stocks better than chance in both periods, the holdout result is statistically solid, and the skill survives among the 300 most-traded stocks."
+    if ic_d > 0 and ic_h > 0:
         gaps = []
         if (hold.get("ic_t") or 0) < 2:
             gaps.append("the holdout result is too short or noisy to rule out luck")
-        if not robust:
-            gaps.append("the edge does not survive among the 300 most-traded stocks")
-        return "LEANING POSITIVE", why + " and ".join(gaps) + "."
-    return "NO EDGE SHOWN", "It did not beat random picks in both periods."
+        if not ((t3h.get("ic_mean") or 0) > 0 and (t3h.get("ic_t") or 0) >= 2):
+            gaps.append("the skill is not statistically clear among the 300 most-traded stocks")
+        return "LEANING POSITIVE", "Its scores ranked stocks better than chance in both periods, but " + " and ".join(gaps) + "."
+    return "NO RANKING SKILL", "Its ranking skill was not positive in both periods."
+
+
+def trading_verdict(res: dict) -> tuple[str, str]:
+    """NET TRADING RESULT ONLY: the plan's expectancy in R after the 0.25% round-trip cost, against random picks with the same exits."""
+    td, th = res["trades"]["development"], res["trades"]["holdout"]
+    bh = res["baseline"]["holdout"]
+    ct = res["clustered"]["holdout"].get("t_clustered")
+    if not th.get("n"):
+        return "NOT ENOUGH DATA", "No holdout trades to judge."
+    r, rd = th.get("expectancy_r"), td.get("expectancy_r")
+    gap = r - (bh.get("expectancy_r") or 0)
+    tail = f" (month-clustered t {ct:+.2f})" if isinstance(ct, (int, float)) else ""
+    if r > 0.05 and (ct or 0) >= 2:
+        return "PROFITABLE AFTER COSTS", f"Holdout trades averaged {r:+.2f}R after costs{tail}, {gap:+.2f}R better than random picks with the same exits."
+    if r > 0.05:
+        return "POSITIVE, NOT SIGNIFICANT", f"Holdout trades averaged {r:+.2f}R after costs{tail}: positive, but too noisy to rule out luck. Random picks with the same exits made {bh.get('expectancy_r'):+.2f}R."
+    if r >= -0.05:
+        return "BREAK-EVEN AFTER COSTS", f"Holdout trades averaged {r:+.2f}R after costs{tail}: indistinguishable from zero. It beat random picks by {gap:+.2f}R, but that is not a profit."
+    return "LOSES AFTER COSTS", f"Holdout trades averaged {r:+.2f}R after costs{tail}."
+
+
+def alert_verdict(rank: str, trade: str) -> tuple[bool, str]:
+    """A phone is only buzzed when BOTH hold: it ranks better than chance AND its holdout trades made money after costs."""
+    ok_rank = rank in ("EDGE SHOWN", "LEANING POSITIVE")
+    ok_trade = trade in ("PROFITABLE AFTER COSTS", "POSITIVE, NOT SIGNIFICANT")
+    if ok_rank and ok_trade:
+        return True, "Alerts on: it ranks better than chance and its holdout trades made money after costs."
+    why = []
+    if not ok_rank:
+        why.append("it has not shown ranking skill")
+    if not ok_trade:
+        why.append("its holdout trades did not make money after costs")
+    return False, "Alerts off: " + " and ".join(why) + ". Its signals are shown on the site, never pushed."
 
 
 if __name__ == "__main__":
@@ -104,14 +133,26 @@ if __name__ == "__main__":
             allb += base
         res["trades"]["all"], res["baseline"]["all"] = stats(allt), stats(allb)
         res["equity_curve"], res["baseline_curve"] = curve(allt), curve(allb)
-        res["exits"] = {k: int(sum(1 for t in allt if t.exit_reason == k)) for k in ("stop", "breakeven", "target", "time")}
+        # "target" in the trade ledger covers two endings: all three targets reached, OR T2 reached and the rest stopped at T1.
+        # They are separated here so "all targets" is exactly the share that reached T3.
+        res["exits"] = {"stop": int(sum(1 for t in allt if t.exit_reason == "stop")),
+                        "breakeven": int(sum(1 for t in allt if t.exit_reason == "breakeven")),
+                        "after_t2": int(sum(1 for t in allt if t.exit_reason == "target" and t.hit == 2)),
+                        "all_targets": int(sum(1 for t in allt if t.exit_reason == "target" and t.hit == 3)),
+                        "time": int(sum(1 for t in allt if t.exit_reason == "time"))}
+        res["exits_n"] = len(allt)
         hit = [t.t1_bars for t in allt if t.t1_bars]
         res["timeline"] = {"median_days_to_t1": float(np.median(hit)) if hit else None, "median_days_held": float(np.median([t.bars for t in allt])) if allt else None,
                            "p90_days_held": float(np.percentile([t.bars for t in allt], 90)) if allt else None}
-        status, why = verdict(res)
-        res["status"], res["status_why"] = status, why
+        status, why = ranking_verdict(res)
+        trading, trading_why = trading_verdict(res)
+        alertable, alert_why = alert_verdict(status, trading)
+        res["status"], res["status_why"] = status, why                 # kept as the RANKING verdict: older readers still find it here
+        res["ranking_status"], res["ranking_why"] = status, why
+        res["trading_status"], res["trading_why"] = trading, trading_why
+        res["alertable"], res["alert_why"] = alertable, alert_why
         out["engines"][key] = res
         h, dv = metrics["holdout"], metrics["development"]
-        print(f"{eng.name:<11} {status:<18} IC dev {dv['ic_mean']} (t {dv['ic_t']}) hold {h['ic_mean']} (t {h['ic_t']}) | trades R dev {res['trades']['development'].get('expectancy_r')} hold {res['trades']['holdout'].get('expectancy_r')} | random dev {res['baseline']['development'].get('expectancy_r')} hold {res['baseline']['holdout'].get('expectancy_r')} | top300 hold excess {rob['holdout'].get('top_excess_pct')}%", flush=True)
+        print(f"{eng.name:<11} {status:<17} {trading:<26} IC dev {dv['ic_mean']} (t {dv['ic_t']}) hold {h['ic_mean']} (t {h['ic_t']}) | trades R dev {res['trades']['development'].get('expectancy_r')} hold {res['trades']['holdout'].get('expectancy_r')} | random dev {res['baseline']['development'].get('expectancy_r')} hold {res['baseline']['holdout'].get('expectancy_r')} | top300 hold excess {rob['holdout'].get('top_excess_pct')}%", flush=True)
     pathlib.Path("research/ai_results.json").write_text(json.dumps(out, indent=1))
     print("wrote research/ai_results.json", round(time.time() - t0), "s")
