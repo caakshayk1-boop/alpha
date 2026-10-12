@@ -4,7 +4,7 @@
 //   everything else    the static export in ./out
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
-import { SYSTEM_PROMPT, answerText, buildUserMessage, checkAnswer, factsFor, validateQuestion } from './explain.js';
+import { SYSTEM_PROMPT, advisoryWording, answerText, limitKey, buildUserMessage, checkAnswer, factsFor, validateQuestion } from './explain.js';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -343,39 +343,77 @@ async function chart(url, ctx) {
 // ── /api/explain: a grounded explanation of one company's figures ─────────
 // GET  → { configured }.   POST { sym, question } → { answer, facts, unverifiedNumbers }.
 // Off until the ANTHROPIC_API_KEY secret exists (503, nothing is called). The model never sees anything but facts the Worker
-// builds from that company's own screen row; the browser sends only a symbol and a question. Limits: 300-character question,
-// 400 output tokens, 20-second timeout, a per-address rate limit and a global daily ceiling.
+// builds from that company's own screen row; the browser sends only a symbol and a question.
+// Cost controls, in order of strength: (1) the spend limit on the Anthropic workspace holding the key, which nothing here can
+// replace; (2) the EXPLAIN_LIMIT rate-limit binding when it exists; (3) the in-memory limiter below, which is PER ISOLATE only and
+// is a speed bump, not a global cap; (4) same-origin and JSON-only checks, which stop other sites driving visitors' browsers at it.
 const EXPLAIN_MODEL = 'claude-haiku-5-5';
-const seen = new Map();            // address -> recent request times (best effort: one isolate)
+const MAX_BODY = 2048;
+const seen = new Map();            // address -> recent request times (one isolate)
 let day = { d: '', n: 0 };
-function tooMany(ip) {
+
+function tooMany(key) {
   const now = Date.now();
-  const recent = (seen.get(ip) || []).filter((t) => now - t < 60_000);
-  if (recent.length >= 6) { seen.set(ip, recent); return true; }
-  recent.push(now); seen.set(ip, recent);
-  if (seen.size > 5000) seen.clear();
-  const d = new Date(now).toISOString().slice(0, 10);
+  const recent = (seen.get(key) || []).filter((t) => now - t < 60_000);
+  if (recent.length >= 6) { seen.set(key, recent); return true; }
+  recent.push(now); seen.delete(key); seen.set(key, recent);      // re-insert: Map order is age order
+  if (seen.size > 5000) for (const k of seen.keys()) { seen.delete(k); if (seen.size <= 4000) break; }   // drop the oldest, never everyone
+  return false;
+}
+function overDailyCeiling() {
+  const d = new Date().toISOString().slice(0, 10);
   if (day.d !== d) day = { d, n: 0 };
   return ++day.n > 800;
 }
-async function explain(request, env) {
+/** Body as text, stopping at `max` bytes even when the request is chunked and has no Content-Length. null = too large. */
+async function readCapped(request, max) {
+  const reader = request.body?.getReader();
+  if (!reader) return '';
+  const chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.length;
+    if (n > max) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  return new Blob(chunks).text();
+}
+/** Browsers declare where a request came from. Another site's page must not be able to make visitors spend this budget. */
+function sameSiteOnly(request, url) {
+  const sfs = request.headers.get('sec-fetch-site');
+  const origin = request.headers.get('origin');
+  if (sfs && sfs !== 'same-origin') return false;
+  if (origin && origin !== url.origin) return false;
+  return true;
+}
+async function explain(request, env, url) {
   if (request.method === 'GET') return json({ ok: true, configured: Boolean(env.ANTHROPIC_API_KEY) });
   if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
   if (!env.ANTHROPIC_API_KEY) return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
-  if (Number(request.headers.get('content-length') || 0) > 2048) return json({ ok: false, error: 'request too large' }, 413);
+  if (!sameSiteOnly(request, url)) return json({ ok: false, error: 'not allowed from this origin' }, 403);
+  if (!(request.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) return json({ ok: false, error: 'send application/json' }, 415);   // also forces a CORS preflight, which is refused
+  const text = await readCapped(request, MAX_BODY);
+  if (text === null) return json({ ok: false, error: 'request too large' }, 413);
   let body;
-  try { body = await request.json(); } catch { return json({ ok: false, error: 'invalid JSON' }, 400); }
-  const sym = String(body?.sym || '').toUpperCase().trim();
+  try { body = JSON.parse(text); } catch { return json({ ok: false, error: 'invalid JSON' }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid JSON' }, 400);
+  const sym = String(body.sym || '').toUpperCase().trim();
   if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
-  const q = validateQuestion(body?.question);
+  const q = validateQuestion(body.question);
   if (!q.ok) return json({ ok: false, error: q.error }, 400);
-  if (env.EXPLAIN_LIMIT ? !(await env.EXPLAIN_LIMIT.limit({ key: request.headers.get('cf-connecting-ip') || 'x' })).success : tooMany(request.headers.get('cf-connecting-ip') || 'x')) return json({ ok: false, error: 'too many requests, try again in a minute' }, 429);
+  const key = limitKey(request.headers.get('cf-connecting-ip'));
+  if (env.EXPLAIN_LIMIT ? !(await env.EXPLAIN_LIMIT.limit({ key })).success : tooMany(key)) return json({ ok: false, error: 'too many requests, try again in a minute' }, 429);
   const res = await shard(sym, env);
   const data = res ? await res.json().catch(() => null) : null;
   const facts = factsFor(data);
   if (facts.length < 5) return json({ ok: false, error: 'no figures on file for this symbol' }, 404);
+  if (overDailyCeiling()) return json({ ok: false, error: 'the explainer has reached its limit for today' }, 429);   // counted only for requests that would really call the model
+  // The upstream is fixed. Only a local mock (used in tests) may replace it, so the key can never be sent to another host.
+  const base = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(env.ANTHROPIC_BASE || '') ? env.ANTHROPIC_BASE : 'https://api.anthropic.com';
   try {
-    const r = await fetch(`${env.ANTHROPIC_BASE || 'https://api.anthropic.com'}/v1/messages`, {
+    const r = await fetch(`${base}/v1/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 400, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: buildUserMessage(facts, q.value) }] }),
@@ -384,6 +422,7 @@ async function explain(request, env) {
     if (!r.ok) return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
     const answer = answerText(await r.json());
     if (!answer) return json({ ok: false, error: 'the explainer returned nothing' }, 502);
+    if (advisoryWording(answer)) return json({ ok: false, error: 'The answer was withheld because it used advisory wording. Alpha gives information, not buy or sell views. Try rephrasing the question.' }, 200);
     return json({ ok: true, answer, facts, unverifiedNumbers: checkAnswer(answer, facts), model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: data?.row?.last_date ?? null });
   } catch {
     return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
@@ -425,7 +464,7 @@ export default {
       return ipoLive();
     }
     if (url.pathname === '/api/explain' || url.pathname === '/api/explain/') {
-      return explain(request, env);
+      return explain(request, env, url);
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);

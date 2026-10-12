@@ -1,7 +1,7 @@
 // Run with: node --test tests/   (pure logic of the grounded explainer; no network)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { answerText, buildUserMessage, checkAnswer, factsFor, validateQuestion } from '../worker/explain.js';
+import { advisoryWording, answerText, buildUserMessage, checkAnswer, factsFor, limitKey, validateQuestion } from '../worker/explain.js';
 
 const shard = { row: { name: 'Tata Consultancy Services Ltd.', sector: 'Technology', price: 2125, last_date: '2026-10-12', roce: 62.17, de: 0.09, pe: null, rev_cagr: 5.8, q: 96, piotroski: 7 }, years: [{ fy: 'FY26', rev_cr: 250000.4, pat_cr: 48000 }] };
 
@@ -48,4 +48,18 @@ test('checkAnswer: a number is not accepted just because it is a fact times 100'
   assert.deepEqual(checkAnswer('It could reach 3400.', f), ['3400']);
   assert.deepEqual(checkAnswer('It is 34% below the high [F1].', f), []);
   assert.deepEqual(checkAnswer('That is a fraction of 0.34 [F1].', f), []);
+});
+
+test('limitKey: IPv4 as is; IPv6 collapses to its /64 so rotating the low bits does not give fresh buckets', () => {
+  assert.equal(limitKey('203.0.113.7'), '203.0.113.7');
+  assert.equal(limitKey('2001:db8:abcd:12::1'), limitKey('2001:db8:abcd:12:ffff:ffff:ffff:ffff'));
+  assert.notEqual(limitKey('2001:db8:abcd:12::1'), limitKey('2001:db8:abcd:13::1'));
+  assert.equal(limitKey('::1'), '0:0:0:0');
+  assert.equal(limitKey(null), 'x');
+});
+test('advisoryWording: recommendation language is caught; ordinary analysis is not', () => {
+  assert.equal(advisoryWording('TCS is a strong buy with a price target of 5000.'), true);
+  assert.equal(advisoryWording('You should buy it now.'), true);
+  assert.equal(advisoryWording('ROCE of 62.2% [F8] is high; the company holds little debt and pays a dividend.'), false);
+  assert.equal(advisoryWording('A buyback is a way of returning cash to shareholders.'), false);
 });

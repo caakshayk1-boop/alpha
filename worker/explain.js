@@ -96,3 +96,18 @@ export function answerText(body) {
   const t = parts.map((c) => c.text).join('\n').trim();
   return t ? t.slice(0, 1600) : null;
 }
+
+/** A reply that reads as a recommendation. The model is told not to give one; this is the backstop when a question talks it into it. */
+export function advisoryWording(answer) {
+  return /\b(strong buy|buy rating|a buy|should buy|should sell|should hold|worth buying|accumulate|price target|target price|sell it|buy it|buy the stock|sell the stock)\b/i.test(String(answer));
+}
+
+/** The address a limit is keyed on: an IPv6 user holds a whole /64, so the key is that prefix, not the full address. */
+export function limitKey(ip) {
+  if (!ip || !ip.includes(':')) return ip || 'x';
+  const [head, tail = ''] = ip.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  const full = ip.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
+  return full.slice(0, 4).map((x) => x.replace(/^0+(?=.)/, '')).join(':');
+}
