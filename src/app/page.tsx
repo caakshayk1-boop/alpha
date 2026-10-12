@@ -11,6 +11,7 @@ import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import type { Barometer, Quote } from '@/lib/types';
+import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
 function Orb({ b }: { b: Barometer['today'] | null }) {
   const arc = useRef<SVGCircleElement>(null);
@@ -95,6 +96,36 @@ function Hero() {
         </div>
       </div>
       <Orb b={t ?? null} />
+    </section>
+  );
+}
+
+/** What changed since this browser last saw a different data date. Kept in this browser only; with no earlier snapshot it says so instead of inventing changes. */
+function SinceVisit() {
+  const bar = useFeed('barometer');
+  const pulse = useFeed('pulse');
+  const eng = useEngines();
+  const [diff, setDiff] = useState<VisitDiff | null>(null);
+  const done = useRef(false);
+  useEffect(() => {
+    const t = bar.data?.today, br = pulse.data?.breadth;
+    if (done.current || !t || !br || !eng.data || !t.nifty_date) return;
+    done.current = true;
+    const cur: Snapshot = { asOf: t.nifty_date, score: typeof t.score === 'number' ? t.score : null, up: br.up, down: br.down, signals: eng.data.signals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => `${x.sym}·${x.engine_name}`) };
+    let prev: Snapshot | null = null;
+    try { prev = parseSnapshot(localStorage.getItem('alpha-last-visit')); } catch { /* blocked: behave as a first visit */ }
+    setDiff(diffSnapshots(prev, cur));
+    try { if (!prev || prev.asOf !== cur.asOf) localStorage.setItem('alpha-last-visit', JSON.stringify(cur)); } catch { /* storage blocked or full */ }
+  }, [bar.data, pulse.data, eng.data]);
+  if (!diff) return null;
+  return (
+    <section className="wrap" style={{ paddingTop: 0 }}>
+      <div className="panel tight">
+        <div className="eyebrow">Since your last visit · kept in this browser</div>
+        {diff.kind === 'start' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Tracking starts now. Come back after the next session and this will list what changed. Nothing is uploaded.</p>}
+        {diff.kind === 'same' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 13.5 }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
+        {diff.kind === 'changes' && <><p className="dim" style={{ margin: '6px 0 0', fontSize: 12.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 13.5 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
+      </div>
     </section>
   );
 }
@@ -332,6 +363,7 @@ export default function Home() {
     <>
       <Hero />
       <Ticker />
+      <SinceVisit />
       <Teasers />
       <section className="wrap section"><SectionHead eyebrow="Calculated insights" title="Evidence across checks" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Board />

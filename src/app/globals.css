@@ -274,7 +274,7 @@ select.field { min-width: 0; padding-right: 30px; }
 
 /* ── prose (reads) ────────────────────────────────────── */
 .prose { max-width: 70ch; font-size: 16.5px; line-height: 1.7; color: var(--muted); }
-.prose h2 { font: 400 28px/1.15 var(--f-display); letter-spacing: -0.02em; color: var(--text); margin: 2em 0 0.5em; }
+.prose h2 { scroll-margin-top: 90px; font: 400 28px/1.15 var(--f-display); letter-spacing: -0.02em; color: var(--text); margin: 2em 0 0.5em; }
 .prose strong { color: var(--text); } .prose ul { padding-left: 1.2em; } .prose li { margin: 0.4em 0; }
 
 /* ── command palette ──────────────────────────────────── */
@@ -408,7 +408,7 @@ html.anim .rrg-tail { animation: drawTail 1s var(--ease) both; }
 html.anim .pulse { animation: rrgPulse 2.4s ease-out infinite; }
 @keyframes rrgPulse { 0% { transform: scale(0.7); opacity: 0.7; } 100% { transform: scale(1.6); opacity: 0; } }
 .radar { opacity: 0; }
-html.anim .radar { opacity: 1; animation: sweepRot 14s linear infinite; }
+html.anim .radar { opacity: 0.6; }   /* static: an endless decorative sweep was removed (no automatic movement that cannot be paused) */
 @keyframes sweepRot { to { transform: rotate(360deg); } }
 input[type='range'] { accent-color: var(--accent); }
 

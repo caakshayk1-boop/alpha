@@ -23,6 +23,11 @@ function inline(text: string): ReactNode[] {
 const cells = (line: string) => line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
 const isDivider = (line: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line);
 
+/** URL-safe id for a heading, so an article index can link to it. */
+export const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/** The `##` headings of a study, in order. */
+export const headingsOf = (md: string) => md.split('\n').filter((l) => /^##\s+/.test(l)).map((l) => l.replace(/^##\s+/, '').trim());
+
 export default function Prose({ md }: { md: string }) {
   const out: ReactNode[] = [];
   let bullets: string[] = [];
@@ -50,7 +55,7 @@ export default function Prose({ md }: { md: string }) {
     if (/^\s*\|.*\|\s*$/.test(line)) { if (!isDivider(line)) table.push(cells(line)); continue; }
     if (/^\s*[*-]\s+/.test(line)) { if (table.length) flush(); bullets.push(line.replace(/^\s*[*-]\s+/, '')); continue; }
     flush();
-    if (/^##\s+/.test(line)) out.push(<h2 key={`h${out.length}`}>{line.replace(/^##\s+/, '')}</h2>);
+    if (/^##\s+/.test(line)) out.push(<h2 key={`h${out.length}`} id={slug(line.replace(/^##\s+/, ''))}>{line.replace(/^##\s+/, '')}</h2>);
     else if (line.trim()) out.push(<p key={`p${out.length}`}>{inline(line.trim())}</p>);
   }
   flush();

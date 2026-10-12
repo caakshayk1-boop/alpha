@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import Prose from '@/components/Prose';
+import Prose, { headingsOf, slug } from '@/components/Prose';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { useFeed } from '@/lib/data';
 import { crore, dateLabel } from '@/lib/format';
@@ -44,6 +44,8 @@ export default function Reads() {
                 <div className="dim num" style={{ fontSize: 13, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={`/company/?s=${s.sym}`} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
                 <p className="dim" style={{ fontSize: 12.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
                 {s.corrections && s.corrections.length > 0 && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.map((c) => <li key={c.what}>{dateLabel(c.date)}: {c.what}</li>)}</ul></div>}
+                <p className="dim" style={{ fontSize: 12.5, margin: '0 0 14px' }}>Review: automatic arithmetic and name checks only. Figures are as at publication; for today&apos;s figures open the company page.</p>
+                {headingsOf(s.study).length > 1 && <nav aria-label="In this study" className="filters" style={{ margin: '0 0 18px' }}><span className="eyebrow">In this study</span>{headingsOf(s.study).map((h) => <a key={h} className="chip" href={`#${slug(h)}`}>{h}</a>)}</nav>}
                 <Prose md={s.study} />
                 <details style={{ marginTop: 28 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>The figures this was written from</summary>
                   <ul className="muted num" style={{ fontSize: 13, columns: 2, paddingLeft: 18 }}>{s.facts.map((f) => <li key={f}>{f}</li>)}</ul>
