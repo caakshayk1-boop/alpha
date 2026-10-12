@@ -183,21 +183,30 @@ export default function EnginesPage() {
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
-              <div className="engine-cards">
-                {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
-                  <button key={x.key} onClick={() => { setKey(x.key); setTab('signals'); }} aria-pressed={key === x.key} style={{ textAlign: 'left' }}>
-                    <Rv className="panel spot tilt" style={{ height: '100%', borderColor: key === x.key ? 'var(--accent)' : undefined }}>
-                      <div className="eyebrow">Engine {x.id} · {x.style.split(',')[0]}</div>
-                      <div className="disp" style={{ fontSize: 32, margin: '8px 0 4px' }}>{x.name}</div>
-                      <div className="muted" style={{ fontSize: 13.5, minHeight: 60 }}>{x.tagline}</div>
-                      <div style={{ margin: '12px 0', display: 'grid', gap: 5 }}><span className={`tag ${TONE[x.ranking_status]}`} style={{ justifySelf: 'start' }} title={x.ranking_why}>Ranking · {x.ranking_status}</span><span className={`tag ${TONE[x.trading_status]}`} style={{ justifySelf: 'start' }} title={x.trading_why}>Trading · {x.trading_status}</span></div>
-                      <div className="kv" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                        <div><div className="k">Signals now</div><div className="v"><CountUp value={x.signal_count} format={(n) => String(Math.round(n))} /></div></div>
-                        <div><div className="k">Holdout avg</div><div className={`v ${(x.trades.holdout.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(x.trades.holdout.expectancy_r, 2, 'R')}</div></div>
-                      </div>
-                    </Rv>
-                  </button>
-                ))}
+              <div className="tbl-wrap" style={{ maxHeight: 'none', marginBottom: 14 }}>
+                <table className="tbl" style={{ minWidth: 820 }}>
+                  <caption className="sr">Engines compared. Choose one to see its signals and evidence.</caption>
+                  <thead><tr><th scope="col">Engine</th><th scope="col">Horizon</th><th scope="col">Signals now</th><th scope="col">Ranking skill</th><th scope="col">Trading result after costs</th><th scope="col">Holdout avg</th><th scope="col">Tested trades</th><th scope="col">Live record</th></tr></thead>
+                  <tbody role="radiogroup" aria-label="Engine">
+                    {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
+                      <tr key={x.key} style={{ cursor: 'pointer', outline: key === x.key ? '2px solid var(--accent)' : undefined, outlineOffset: -2 }} onClick={() => { setKey(x.key); setTab('signals'); }}>
+                        <td>
+                          <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
+                            <input type="radio" name="engine" checked={key === x.key} onChange={() => { setKey(x.key); setTab('signals'); }} />
+                            <span className="co"><b>{x.id}. {x.name}</b><span>{x.style.split(',')[0]}</span></span>
+                          </label>
+                        </td>
+                        <td className="num">{x.horizon_sessions} sessions</td>
+                        <td className="num">{x.signal_count}</td>
+                        <td><span className={`tag ${TONE[x.ranking_status]}`} title={x.ranking_why}>{x.ranking_status}</span></td>
+                        <td><span className={`tag ${TONE[x.trading_status]}`} title={x.trading_why}>{x.trading_status}</span></td>
+                        <td className={`num ${(x.trades.holdout.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(x.trades.holdout.expectancy_r, 2, 'R')}</td>
+                        <td className="num">{num(x.trades.all.n ?? 0)}</td>
+                        <td className="num dim">{feed.live_record[x.key]?.closed ?? 0} closed</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               <DataStamp ids={['engines', 'screen']} />
               <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>

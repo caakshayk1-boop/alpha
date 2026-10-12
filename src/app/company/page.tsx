@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
-import { Async, Bar, Chg, CountUp, LazyMount, Notice, Ring, Rv, SectionHead, Skel } from '@/components/ui';
+import { Async, Bar, Chg, CountUp, LazyMount, Notice, PercentileBars, Rv, SectionHead, Skel } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import StockChart from '@/components/StockChart';
@@ -203,13 +203,8 @@ function Company() {
       })()}
 
       <section className="wrap section">
-        <div className="scores">
-          <Rv><Ring value={r.q} label="Quality" hue="acc" /></Rv>
-          <Rv><Ring value={r.g} label="Growth" hue="acc" /></Rv>
-          <Rv><Ring value={r.v} label="Value" hue="acc" /></Rv>
-          <Rv><Ring value={r.tech} label="Technical" hue="acc" /></Rv>
-        </div>
-        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: 50 is the median company, not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+        <PercentileBars items={[{ label: 'Quality', value: r.q }, { label: 'Growth', value: r.g }, { label: 'Value', value: r.v, note: 'higher is cheaper' }, { label: 'Technical', value: r.tech }]} />
+        <p className="dim" style={{ fontSize: 12.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: the tick marks the median company (50), which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
 
       <section className="wrap section">

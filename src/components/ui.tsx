@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { canAnimate, countUp, gsap, observeReveal } from '@/lib/motion';
 import { dash, tone } from '@/lib/format';
+import { ordinal } from '@/lib/status';
 
 /** Fades/rises its children in when scrolled into view (see motion.ts for the safety rules). */
 export function Rv({ as, className, style, children }: { as?: ElementType; className?: string; style?: CSSProperties; children?: ReactNode }) {
@@ -112,6 +113,27 @@ export function Ring({ value, label, hue }: { value: number | null | undefined; 
   );
 }
 
+/** Percentile profile: one labelled row per score, a tick at the median (50), and the value in words. Compact and exact, unlike a ring. */
+export function PercentileBars({ items }: { items: { label: string; value: number | null | undefined; note?: string }[] }) {
+  return (
+    <div className="panel tight" role="group" aria-label="Score percentiles within the screen" style={{ display: 'grid', gap: 10 }}>
+      {items.map(({ label, value, note }) => {
+        const v = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
+        return (
+          <div key={label} style={{ display: 'grid', gridTemplateColumns: '92px 1fr 150px', gap: 12, alignItems: 'center' }}>
+            <span className="eyebrow">{label}</span>
+            <div style={{ position: 'relative', height: 8, borderRadius: 9, background: 'var(--panel-3)' }} role="img" aria-label={v === null ? `${label}: not scored` : `${label}: ${ordinal(v)} percentile`}>
+              {v !== null && <div style={{ width: `${v}%`, height: '100%', borderRadius: 9, background: 'var(--accent)' }} />}
+              <span aria-hidden title="Median company" style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 2, background: 'var(--text)', opacity: 0.55 }} />
+            </div>
+            <span className="num" style={{ fontSize: 13 }}>{v === null ? <span className="dim">not scored</span> : <>{ordinal(v)} percentile</>}{note ? <span className="dim"> · {note}</span> : null}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** A bar that grows from the left to `pct` (0-100). */
 export function Bar({ pct, kind }: { pct: number; kind?: 'up' | 'down' }) {
   const ref = useRef<HTMLElement>(null);
@@ -182,11 +204,22 @@ export function Async({ loading, error, children, rows = 4 }: { loading: boolean
 /** A segmented control with a sliding thumb. Use for one-of-many choices (ranges, modes, tabs). */
 export function Segmented<T extends string>({ value, options, onChange, label, role = 'tablist' }: { value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; label: string; role?: 'tablist' | 'group' }) {
   const i = Math.max(0, options.findIndex(([k]) => k === value));
+  // Tabs follow the arrow-key pattern: one tab stop, Left/Right (and Home/End) move and select.
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (role !== 'tablist') return;
+    const keys = options.map(([k]) => k);
+    const at = keys.indexOf(value);
+    const next = e.key === 'ArrowRight' ? (at + 1) % keys.length : e.key === 'ArrowLeft' ? (at - 1 + keys.length) % keys.length : e.key === 'Home' ? 0 : e.key === 'End' ? keys.length - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(keys[next]);
+    (e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next])?.focus();
+  };
   return (
-    <div className="seg" role={role} aria-label={label} style={{ ['--n' as string]: options.length, ['--i' as string]: i }}>
+    <div className="seg" role={role} aria-label={label} onKeyDown={onKey} style={{ ['--n' as string]: options.length, ['--i' as string]: i }}>
       <span className="thumb" aria-hidden />
       {options.map(([k, l]) => (role === 'tablist'
-        ? <button key={k} role="tab" aria-selected={value === k} onClick={() => onChange(k)}>{l}</button>
+        ? <button key={k} role="tab" aria-selected={value === k} tabIndex={value === k ? 0 : -1} onClick={() => onChange(k)}>{l}</button>
         : <button key={k} aria-pressed={value === k} onClick={() => onChange(k)}>{l}</button>))}
     </div>
   );
