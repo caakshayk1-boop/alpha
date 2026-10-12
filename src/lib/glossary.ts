@@ -21,3 +21,12 @@ export const GLOSSARY: Record<string, Entry> = {
   'P/E vs own history': { name: 'P/E against its own history', what: 'Where today\'s P/E sits among the P/E values this company has had before.', how: 'The percentile of the current P/E within its own history.', read: 'A high percentile means expensive against itself; a low one means cheap against itself.', caveat: 'A company can deserve a different multiple than it used to have, so cheap against itself is not proof of value.' },
   'Daily turnover': { name: 'Daily turnover', what: 'The typical value of the stock traded on a day.', how: 'Average of price × volume per session, in ₹ crore.', read: 'Low turnover means it can be hard to buy or sell in size without moving the price.', caveat: 'It can change quickly around news.' },
 };
+
+/** URL-safe anchor for a metric, so any page can link to its definition on the Methods page. */
+export const metricId = (key: string) => `metric-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
+/** Entries matching a search: every word must appear in the name, the key or the text. Empty search returns all. */
+export function searchGlossary(q: string): [string, Entry][] {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return Object.entries(GLOSSARY).filter(([k, e]) => { const hay = `${k} ${e.name} ${e.what} ${e.how} ${e.read} ${e.caveat}`.toLowerCase(); return words.every((w) => hay.includes(w)); });
+}

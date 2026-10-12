@@ -2,6 +2,7 @@
 
 import { Async, PageHead, Rv } from '@/components/ui';
 import { DataStatusTable } from '@/components/DataStamp';
+import MetricGlossary from '@/components/MetricGlossary';
 import { useEngines, useFeed } from '@/lib/data';
 import { ago, dateLabel } from '@/lib/format';
 
@@ -47,6 +48,11 @@ export default function About() {
           <p className="muted" style={{ fontSize: 14.5, margin: '8px 0 14px' }}>&ldquo;Describes&rdquo; is the market session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated successfully. They are different things and are never merged. A dataset is judged against the newest session any Alpha dataset carries, not against the clock, so a weekend or an exchange holiday does not make everything look stale.</p>
           <DataStatusTable />
         </Rv>
+      </section>
+      <section className="wrap section" id="measures">
+        <h2 className="disp" style={{ fontSize: 34, margin: '0 0 6px' }}>What each measure means</h2>
+        <p className="muted" style={{ margin: '0 0 16px', maxWidth: '70ch' }}>Standard definitions of the figures on a company page, with what to watch out for. Open any label under Key numbers on a company page and you land on the same text.</p>
+        <MetricGlossary />
       </section>
       <section className="wrap section">
         <Rv className="panel">

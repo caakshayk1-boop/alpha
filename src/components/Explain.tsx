@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { GLOSSARY } from '@/lib/glossary';
+import { GLOSSARY, metricId } from '@/lib/glossary';
 
 /** Whether the server-side explainer is switched on. null while unknown. Failure means "not available", never an error shown to the reader. */
 let status: Promise<boolean> | null = null;
@@ -36,7 +36,7 @@ export function MetricPanel({ metric, value, sym, onClose }: { metric: string; v
         <div><b style={{ color: 'var(--text)' }}>How to read it:</b> {e.read}</div>
         <div><b style={{ color: 'var(--text)' }}>Watch out:</b> {e.caveat}</div>
       </dl>
-      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>A standard definition, not advice and not a forecast. Alpha&apos;s own method is on the <a href="/about/" style={{ color: 'var(--accent-2)' }}>Methods</a> page.</p>
+      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>A standard definition, not advice and not a forecast. Every measure is defined on the <a href={`/about/#${metricId(metric)}`} style={{ color: 'var(--accent-2)' }}>Methods</a> page.</p>
     </section>
   );
 }

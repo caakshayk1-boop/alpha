@@ -6,6 +6,7 @@ import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serial
 import { ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
 import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
+import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
   const s = reconcile([
@@ -161,4 +162,15 @@ test('visit: a corrupt stored snapshot is ignored, not trusted', () => {
   assert.equal(parseSnapshot('{not json'), null);
   assert.equal(parseSnapshot(JSON.stringify({ asOf: 'yesterday' })), null);
   assert.equal(parseSnapshot(null), null);
+});
+
+test('glossary: every entry is complete, anchors are unique and URL-safe, search needs every word', () => {
+  const ids = Object.keys(GLOSSARY).map(metricId);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(ids.every((i) => /^metric-[a-z0-9-]+$/.test(i)));
+  for (const [k, e] of Object.entries(GLOSSARY)) assert.ok(e.name && e.what && e.how && e.read && e.caveat, `${k} is missing a field`);
+  assert.equal(metricId('Debt / equity'), 'metric-debt-equity');
+  assert.equal(searchGlossary('').length, Object.keys(GLOSSARY).length);
+  assert.ok(searchGlossary('roce').some(([k]) => k === 'ROCE'));
+  assert.equal(searchGlossary('roce zzzznotaword').length, 0);
 });
