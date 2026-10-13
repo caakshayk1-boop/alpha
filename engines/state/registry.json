@@ -1,24 +1,29 @@
 {
- "last_scan": "2026-10-09",
+ "last_scan": "2026-10-12",
  "launched": "2026-10-09",
  "seen": [
   "barrier:ANUP:2026-10-09",
+  "barrier:ARTEMISMED:2026-10-12",
   "barrier:GALLANTT:2026-10-09",
   "barrier:HIRECT:2026-10-09",
   "barrier:INDOBORAX:2026-10-09",
   "compounder:ANUP:2026-10-09",
+  "compounder:ARTEMISMED:2026-10-12",
   "compounder:GALLANTT:2026-10-09",
   "compounder:JAIBALAJI:2026-10-09",
   "compounder:TSFINV:2026-10-09",
   "rank:ANUP:2026-10-09",
+  "rank:ARTEMISMED:2026-10-12",
   "rank:GHCLTEXTIL:2026-10-09",
   "rank:RAMCOSYS:2026-10-09",
   "rank:RGL:2026-10-09",
   "rank:VADILALIND:2026-10-09",
   "relative:AHLUCONT:2026-10-09",
   "relative:ANUP:2026-10-09",
+  "relative:ARTEMISMED:2026-10-12",
   "relative:RAMCOSYS:2026-10-09",
   "relative:SPORTKING:2026-10-09",
+  "snapback:ARTEMISMED:2026-10-12",
   "snapback:AXISCADES:2026-10-09",
   "snapback:CENTUM:2026-10-09",
   "snapback:ROLEXRINGS:2026-10-09",
@@ -692,6 +697,52 @@
     262.55
    ],
    "turnover_cr": 5.1
+  },
+  "snapback:ARTEMISMED:2026-10-12": {
+   "also": [
+    "relative",
+    "rank",
+    "compounder",
+    "barrier"
+   ],
+   "benchmark": null,
+   "date": "2026-10-12",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    311.45,
+    314.56
+   ],
+   "events": [],
+   "first_seen": "2026-10-12",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:ARTEMISMED:2026-10-12",
+   "issued": "2026-10-12",
+   "max_hold": 7,
+   "name": "Artemis Medicare Services Limited",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [],
+   "ref_price": 311.45,
+   "risk_pct": 5.4,
+   "score": 0.5901,
+   "score_percentile": 100.0,
+   "sector": null,
+   "setup": "Snapback model",
+   "sl": 294.62,
+   "status": "pending",
+   "stop_now": 294.62,
+   "sym": "ARTEMISMED",
+   "targets": [
+    324.91,
+    336.69,
+    353.52
+   ],
+   "turnover_cr": 49.4
   },
   "snapback:AXISCADES:2026-10-09": {
    "also": [],
