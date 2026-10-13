@@ -522,6 +522,9 @@ html { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
 @media (hover: none) { .chip:hover, .btn:hover { transform: none; } .tile:hover { transform: none; filter: none; } }
 
 /* data-status stamps */
+.fresh { border-bottom: 1px solid var(--line); border-left: 4px solid var(--warn); background: var(--panel-2); font-size: 14px; line-height: 1.5; padding: 10px 0; color: var(--text); }
+.fresh.down { border-left-color: var(--down); }
+.fresh b { font-weight: 600; } .fresh a { text-decoration: underline; text-underline-offset: 3px; }
 .stamp { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; margin: 10px 0 0; }
 .stamp-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); white-space: nowrap; }
 .stamp-item b { font-weight: 600; color: var(--text); } .stamp-item em { font-style: normal; color: var(--dim); }

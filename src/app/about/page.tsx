@@ -44,8 +44,8 @@ export default function About() {
       </section>
       <section className="wrap section">
         <Rv className="panel">
-          <div className="eyebrow">Data dates: which session each dataset describes</div>
-          <p className="muted" style={{ fontSize: 14.5, margin: '8px 0 14px' }}>&ldquo;Describes&rdquo; is the market session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated successfully. They are different things and are never merged. A dataset is judged against the newest session any Alpha dataset carries, not against the clock, so a weekend or an exchange holiday does not make everything look stale.</p>
+          <div className="eyebrow" id="data-dates">Data dates: which session each dataset describes</div>
+          <p className="muted" style={{ fontSize: 14.5, margin: '8px 0 14px' }}>&ldquo;Describes&rdquo; is the market session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated successfully. They are different things and are never merged. A daily dataset is judged against the session Alpha should already hold: the last weekday before today in India, with a few hours of grace so the morning build counts as on time. The weekly rotation graph is judged against the last completed week. Weekends never count as late. Alpha holds no exchange-holiday calendar, so just after a holiday a dataset can read one session behind until the next trading day, and a notice appears on every page whenever any dataset is behind.</p>
           <DataStatusTable />
         </Rv>
       </section>

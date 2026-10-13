@@ -5,10 +5,12 @@
  *    refreshedAt  when the source last SUCCEEDED in updating that dataset
  *    (render time is never shown as freshness)
  *
- *  Freshness is decided relative to Alpha's own datasets, never the wall clock: a dataset is `current` when its session is the
- *  newest session any dataset carries, and `delayed` when it is that many trading sessions (weekdays) behind. Exchange holidays are
- *  not known here, so a gap that spans one can read one session longer than it was. `stale` is reserved for a dataset that is
- *  STALE_AFTER_SESSIONS or more behind the newest. */
+ *  Freshness is decided against the CALENDAR when a clock is supplied: `expectedSession(now)` is the session Alpha should already hold
+ *  (India time, with a grace period for the morning build), and a dataset is `current` when it describes that session or a later one.
+ *  A weekly dataset (the rotation graph) is judged against the last completed week instead. Without a clock the old rule applies:
+ *  `current` means "as new as the newest dataset", which cannot notice every dataset freezing together.
+ *  `delayed` is 1 or 2 sessions behind (1 week for a weekly dataset); `stale` is STALE_AFTER_SESSIONS or more (2 weeks for weekly).
+ *  Exchange holidays are not known here, so a gap that spans one can read one session longer than it was. */
 export type Freshness = 'current' | 'delayed' | 'stale' | 'partial' | 'missing' | 'unavailable' | 'error';
 
 export const STALE_AFTER_SESSIONS = 3;
@@ -22,8 +24,19 @@ export interface DatasetInput {
   partial?: boolean;
   error?: boolean;
   note?: string;
+  /** How often the dataset describes a new period. Default daily; the rotation graph is weekly (week-ending Friday). */
+  cadence?: 'daily' | 'weekly';
 }
-export interface DataStatus extends DatasetInput { state: Freshness; lagSessions: number; reference: string | null }
+export interface DataStatus extends DatasetInput {
+  state: Freshness;
+  /** Sessions behind for a daily dataset, weeks behind for a weekly one. */
+  lagSessions: number;
+  unit: 'session' | 'week';
+  /** The session (or week-ending Friday) this dataset was judged against. */
+  reference: string | null;
+  /** What `reference` is: the calendar's expected session, or just the newest dataset. */
+  basis: 'calendar' | 'newest';
+}
 
 const DAY = 86400000;
 const ymd = (s: string) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
@@ -41,30 +54,48 @@ export function sessionsBetween(from: string, to: string): number {
   return n;
 }
 
-/** Decide every dataset's state against the newest session among them. Pure: no clock, no network. */
-export function reconcile(items: DatasetInput[]): DataStatus[] {
-  const dated = items.filter((i) => i.asOf && !i.error).map((i) => i.asOf as string);
-  const reference = dated.length ? dated.reduce((a, b) => (a > b ? a : b)) : null;
+const addDays = (s: string, n: number) => new Date(ymd(s) + n * DAY).toISOString().slice(0, 10);
+const weekday = (s: string) => new Date(ymd(s)).getUTCDay();
+const lastFridayOnOrBefore = (s: string) => { let d = s; while (weekday(d) !== 5) d = addDays(d, -1); return d; };
+
+/** The session whose data Alpha should already hold at `now`: the last weekday strictly before the India (UTC+5:30) date of `now`
+ *  minus 7 hours, so the 05:10 IST morning screen build is on time until 07:00 IST. Exchange holidays are not known. */
+export function expectedSession(now: Date): string {
+  let d = new Date(now.getTime() - 1.5 * 3600000).toISOString().slice(0, 10);   // UTC+5:30 minus 7h grace = UTC minus 1.5h
+  do { d = addDays(d, -1); } while (weekday(d) === 0 || weekday(d) === 6);
+  return d;
+}
+
+/** Decide every dataset's state. With `expected` (see expectedSession) each is judged against the calendar; without it, against the newest dataset. Pure: no clock, no network. */
+export function reconcile(items: DatasetInput[], expected?: string | null): DataStatus[] {
+  const dailyDates = items.filter((i) => i.asOf && !i.error && i.cadence !== 'weekly').map((i) => i.asOf as string);
+  const newest = dailyDates.length ? dailyDates.reduce((a, b) => (a > b ? a : b)) : null;
+  const basis: 'calendar' | 'newest' = expected ? 'calendar' : 'newest';
+  const reference = expected ?? newest;
   return items.map((i) => {
+    const weekly = i.cadence === 'weekly';
+    const target = reference ? (weekly ? lastFridayOnOrBefore(reference) : reference) : null;
     let lag = 0;
     let state: Freshness;
     if (i.error) state = 'error';
     else if (!i.asOf) state = i.refreshedAt ? 'partial' : 'unavailable';
     else {
-      lag = reference ? sessionsBetween(i.asOf, reference) : 0;
-      state = lag === 0 ? 'current' : lag >= STALE_AFTER_SESSIONS ? 'stale' : 'delayed';
+      if (target && i.asOf < target) lag = weekly ? Math.round((ymd(target) - ymd(i.asOf)) / (7 * DAY)) : sessionsBetween(i.asOf, target);
+      state = lag === 0 ? 'current' : lag >= (weekly ? 2 : STALE_AFTER_SESSIONS) ? 'stale' : 'delayed';
       if (i.partial && state === 'current') state = 'partial';
     }
-    return { ...i, state, lagSessions: lag, reference };
+    return { ...i, state, lagSessions: lag, unit: weekly ? 'week' : 'session', reference: target, basis };
   });
 }
 
 /** Human wording for a state, with the lag spelled out. */
 export function describe(s: DataStatus): string {
+  const unit = s.unit === 'week' ? 'week' : 'session';
+  const against = s.basis === 'calendar' ? `the expected ${unit}` : 'the newest data';
   switch (s.state) {
     case 'current': return 'current';
-    case 'delayed': return `${s.lagSessions} session${s.lagSessions === 1 ? '' : 's'} behind the newest data`;
-    case 'stale': return `stale: ${s.lagSessions} sessions behind the newest data`;
+    case 'delayed': return `${plural(s.lagSessions, unit)} behind ${against}`;
+    case 'stale': return `stale: ${plural(s.lagSessions, unit)} behind ${against}`;
     case 'partial': return s.asOf ? 'partial' : 'no session date in the feed';
     case 'missing': return 'missing';
     case 'unavailable': return 'unavailable';

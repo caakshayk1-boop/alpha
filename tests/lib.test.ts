@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { breadth200 } from '../src/lib/breadth.ts';
 import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
-import { ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
+import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
 import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
@@ -295,4 +295,45 @@ test('journal: a link from a signal carries the company and only the numbers tha
   assert.equal(journalHref('M&M', 100, 0, Number.NaN), '/journal/?s=M%26M&p=100');            // zero and NaN are dropped; & is escaped
   const back = new URLSearchParams(journalHref('M&M', 100, 90, 120).split('?')[1]);
   assert.equal(back.get('s'), 'M&M');                                                          // and it reads back as the same symbol
+});
+
+test('expected session: the last weekday before the India date, with 7 hours of grace for the morning build', () => {
+  const at = (iso: string) => expectedSession(new Date(iso));
+  assert.equal(at('2026-10-13T11:52:00Z'), '2026-10-12');   // Tue 17:22 IST -> Monday
+  assert.equal(at('2026-10-13T22:30:00Z'), '2026-10-12');   // Wed 04:00 IST, before the 05:10 build lands: still Monday
+  assert.equal(at('2026-10-14T02:00:00Z'), '2026-10-13');   // Wed 07:30 IST, past the grace: Tuesday
+  assert.equal(at('2026-10-12T03:00:00Z'), '2026-10-09');   // Mon 08:30 IST -> Friday
+  assert.equal(at('2026-10-10T06:00:00Z'), '2026-10-09');   // Sat 11:30 IST -> Friday
+  assert.equal(at('2026-10-11T20:00:00Z'), '2026-10-09');   // Mon 01:30 IST, inside the grace: still Friday
+});
+test('freshness against the calendar: data on schedule is current, even when another dataset is newer', () => {
+  const d = (id: string, asOf: string | null, cadence?: 'weekly') => ({ id, label: id, source: 's', asOf, refreshedAt: asOf, cadence });
+  const s = reconcile([d('screen', '2026-10-12'), d('barometer', '2026-10-13'), d('engines', '2026-10-12'), d('rotation', '2026-10-09', 'weekly')], '2026-10-12');
+  assert.deepEqual(s.map((x) => x.state), ['current', 'current', 'current', 'current']);
+  assert.ok(s.every((x) => x.basis === 'calendar'));
+  // the old rule, with no clock, flags the on-schedule datasets against the barometer: kept for callers that pass none
+  const old = reconcile([d('screen', '2026-10-12'), d('barometer', '2026-10-13')]);
+  assert.equal(old[0].state, 'delayed'); assert.equal(old[0].basis, 'newest');
+});
+test('freshness against the calendar: every dataset frozen together is caught, which the old rule could not do', () => {
+  const frozen = ['screen', 'barometer', 'engines'].map((id) => ({ id, label: id, source: 's', asOf: '2026-10-09', refreshedAt: '2026-10-09' }));
+  assert.deepEqual(reconcile(frozen).map((x) => x.state), ['current', 'current', 'current']);                 // no clock: all "current"
+  const monday = reconcile(frozen, '2026-10-12');                                                             // Mon expected: 1 session behind
+  assert.deepEqual(monday.map((x) => [x.state, x.lagSessions]), [['delayed', 1], ['delayed', 1], ['delayed', 1]]);
+  const wednesday = reconcile(frozen, '2026-10-14');                                                          // Mon, Tue, Wed = 3 sessions
+  assert.deepEqual(wednesday.map((x) => [x.state, x.lagSessions]), [['stale', 3], ['stale', 3], ['stale', 3]]);
+});
+test('a weekly dataset is judged against the last completed week, not against daily sessions', () => {
+  const rot = (expected: string) => reconcile([{ id: 'rotation', label: 'Rotation', source: 's', asOf: '2026-10-09', refreshedAt: '2026-10-12', cadence: 'weekly' as const }], expected)[0];
+  assert.equal(rot('2026-10-12').state, 'current');                                      // Monday: last Friday is the 9th
+  assert.equal(rot('2026-10-14').state, 'current');                                      // Wednesday: still the 9th
+  const late = rot('2026-10-16');                                                        // Friday the 16th has closed: a week behind
+  assert.deepEqual([late.state, late.lagSessions, late.unit], ['delayed', 1, 'week']);
+  assert.equal(rot('2026-10-23').state, 'stale');                                        // two weeks behind
+});
+test('status wording says what it was judged against and in which unit', () => {
+  const mk = (cadence: 'weekly' | undefined, expected: string | undefined) => describeStatus(reconcile([{ id: 'x', label: 'x', source: 's', asOf: '2026-10-09', refreshedAt: null, cadence }], expected)[0]);
+  assert.equal(mk(undefined, '2026-10-12'), '1 session behind the expected session');
+  assert.equal(mk('weekly', '2026-10-16'), '1 week behind the expected week');
+  assert.equal(describeStatus(reconcile([{ id: 'a', label: 'a', source: 's', asOf: '2026-10-08', refreshedAt: null }, { id: 'b', label: 'b', source: 's', asOf: '2026-10-09', refreshedAt: null }])[0]), '1 session behind the newest data');
 });

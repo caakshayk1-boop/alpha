@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { FreshnessBanner } from '@/components/DataStamp';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { feed } from '@/lib/data';
@@ -307,6 +308,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      <FreshnessBanner />
       <main id="main" key={path} className="page-in">{children}</main>
 
       <nav className="tabbar" aria-label="Quick navigation">
