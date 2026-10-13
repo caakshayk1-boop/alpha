@@ -9,6 +9,8 @@ import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
 import { MIN_ENTRIES, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
+import { MIN_LIVE_CLOSED, scoreboard } from '../src/lib/scoreboard.ts';
+import { readFileSync } from 'node:fs';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
   const s = reconcile([
@@ -244,4 +246,39 @@ test('journal: stored data is not trusted; import twice changes nothing', () => 
   const once = mergeJournal([good], parseJournal(raw));
   assert.deepEqual(once, [good]);
   assert.deepEqual(mergeJournal(once, parseJournal(raw)), once);
+});
+
+const eng = (id: number, key: string, exp: number | null) => ({ id, key, name: key.toUpperCase(), trading_status: 'POSITIVE, NOT SIGNIFICANT', trades: { holdout: { n: 1000, win_rate: 55, expectancy_r: exp }, all: {}, development: {} } });
+const sig = (engine: string, status: string, i: number) => ({ id: `${engine}${i}`, engine, status });
+const feedFor = (live: Record<string, { closed: number; win_rate: number; avg_r: number; total_r: number }>, signals: { engine: string; status: string; id: string }[]) =>
+  ({ engines: { c: eng(3, 'c', 0.25), a: eng(1, 'a', 0.1), b: eng(2, 'b', 0.2) }, signals, live_record: live }) as unknown as Parameters<typeof scoreboard>[0];
+
+test('scoreboard: with no closed live trades the live side is progress, never a result', () => {
+  const rows = scoreboard(feedFor({}, [sig('a', 'pending', 1), sig('a', 'pending', 2), sig('a', 'pending', 3), sig('a', 'open', 4), sig('b', 'pending', 5)]));
+  assert.deepEqual(rows.map((r) => r.key), ['a', 'b', 'c']);                       // ordered by engine id, not by object key order
+  const a = rows[0];
+  assert.deepEqual([a.issued, a.pending, a.open, a.closed, a.state, a.progress, a.gapR, a.liveAvgR], [4, 3, 1, 0, 'none', 0, null, null]);
+  assert.equal(rows[2].issued, 0);
+});
+test('scoreboard: a gap to the backtest appears only once 30 live trades have closed', () => {
+  assert.equal(MIN_LIVE_CLOSED, 30);
+  const live = { a: { closed: 12, win_rate: 50, avg_r: 0.1, total_r: 1.2 }, b: { closed: 29, win_rate: 52, avg_r: 0.3, total_r: 8.7 }, c: { closed: 30, win_rate: 48, avg_r: 0.05, total_r: 1.5 } };
+  const [a, b, c] = scoreboard(feedFor(live, []));
+  assert.equal(a.state, 'building'); assert.equal(a.progress, 0.4); assert.equal(a.gapR, null); assert.equal(a.liveAvgR, 0.1);
+  assert.equal(b.state, 'building'); assert.equal(b.gapR, null);                   // 29 is still too few
+  assert.equal(c.state, 'comparable'); assert.equal(c.progress, 1);
+  assert.ok(c.gapR !== null && Math.abs(c.gapR - (0.05 - 0.25)) < 1e-9);           // live 0.05R against backtest 0.25R: 0.20R below
+});
+test('scoreboard: bad numbers are dropped, not shown', () => {
+  const f = feedFor({ a: { closed: 40, win_rate: 50, avg_r: Number.NaN, total_r: 0 } }, []);
+  (f.engines as unknown as Record<string, { trades: { holdout: { expectancy_r: number | null } } }>).a.trades.holdout.expectancy_r = null;
+  const a = scoreboard(f)[0];
+  assert.equal(a.state, 'comparable'); assert.equal(a.liveAvgR, null); assert.equal(a.holdoutExpR, null); assert.equal(a.gapR, null);
+});
+test('scoreboard: the real engines feed today has five engines, 16 issued signals and no closed live trade', () => {
+  const feed = JSON.parse(readFileSync(new URL('../public/engines.json', import.meta.url), 'utf8'));
+  const rows = scoreboard(feed);
+  assert.equal(rows.length, 5);
+  assert.equal(rows.reduce((n, r) => n + r.issued, 0), feed.signals.length);
+  assert.ok(rows.every((r) => r.closed === 0 && r.state === 'none' && r.holdoutN !== null && r.holdoutExpR !== null));
 });

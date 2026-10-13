@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
+import Scoreboard from '@/components/Scoreboard';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { VERDICT_TONE } from '@/components/EvidenceTags';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
@@ -210,6 +211,8 @@ export default function EnginesPage() {
               </div>
               <DataStamp ids={['engines', 'screen']} />
               <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
+
+              <Scoreboard feed={feed} />
 
               {e && (
                 <>
