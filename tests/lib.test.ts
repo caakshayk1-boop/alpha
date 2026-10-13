@@ -8,7 +8,7 @@ import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
-import { MIN_ENTRIES, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
+import { MIN_ENTRIES, journalHref, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
 import { MIN_LIVE_CLOSED, scoreboard } from '../src/lib/scoreboard.ts';
 import { readFileSync } from 'node:fs';
 
@@ -281,4 +281,12 @@ test('scoreboard: the real engines feed today has five engines, 16 issued signal
   assert.equal(rows.length, 5);
   assert.equal(rows.reduce((n, r) => n + r.issued, 0), feed.signals.length);
   assert.ok(rows.every((r) => r.closed === 0 && r.state === 'none' && r.holdoutN !== null && r.holdoutExpR !== null));
+});
+
+test('journal: a link from a signal carries the company and only the numbers that are usable', () => {
+  assert.equal(journalHref('BSE', 2997.18, 2664.16, 3996.24), '/journal/?s=BSE&p=2997.18&sl=2664.16&t=3996.24');
+  assert.equal(journalHref('TCS', 3100.456, null, undefined), '/journal/?s=TCS&p=3100.46');   // rounded to paise; no stop or target invented
+  assert.equal(journalHref('M&M', 100, 0, Number.NaN), '/journal/?s=M%26M&p=100');            // zero and NaN are dropped; & is escaped
+  const back = new URLSearchParams(journalHref('M&M', 100, 90, 120).split('?')[1]);
+  assert.equal(back.get('s'), 'M&M');                                                          // and it reads back as the same symbol
 });

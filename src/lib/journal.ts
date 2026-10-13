@@ -89,3 +89,11 @@ export function mergeJournal(current: JournalEntry[], incoming: JournalEntry[]):
   const ids = new Set(current.map((e) => e.id));
   return [...current, ...incoming.filter((e) => !ids.has(e.id))];
 }
+
+/** Link to the journal pre-filled from a signal: company, price, stop and first target. A missing or unusable number is left out, not guessed. */
+export function journalHref(sym: string, price: number | null | undefined, stop: number | null | undefined, target: number | null | undefined): string {
+  const q = new URLSearchParams({ s: sym });
+  const put = (k: string, v: number | null | undefined) => { if (typeof v === 'number' && Number.isFinite(v) && v > 0) q.set(k, String(Math.round(v * 100) / 100)); };
+  put('p', price); put('sl', stop); put('t', target);
+  return `/journal/?${q.toString()}`;
+}

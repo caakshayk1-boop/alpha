@@ -10,6 +10,7 @@ import { VERDICT_TONE } from '@/components/EvidenceTags';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
+import { journalHref } from '@/lib/journal';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
 
 const TONE = VERDICT_TONE;
@@ -97,6 +98,7 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
           <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>Arithmetic only. Position size is your decision; gaps and costs are not included.</p>
         </details>
       )}
+      <div style={{ marginTop: 12 }}><Link className="chip" href={journalHref(s.sym, base, s.sl, s.targets[0])} title="Open the journal with this company, price, stop and first target filled in. You write the reason.">Journal this signal</Link></div>
       <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Ranking: <span className={`tag ${TONE[e.ranking_status]}`}>{e.ranking_status}</span> · Trading: <span className={`tag ${TONE[e.trading_status]}`}>{e.trading_status}</span></p>
     </Rv>
   );
