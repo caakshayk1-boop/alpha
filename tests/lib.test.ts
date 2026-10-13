@@ -275,12 +275,18 @@ test('scoreboard: bad numbers are dropped, not shown', () => {
   const a = scoreboard(f)[0];
   assert.equal(a.state, 'comparable'); assert.equal(a.liveAvgR, null); assert.equal(a.holdoutExpR, null); assert.equal(a.gapR, null);
 });
-test('scoreboard: the real engines feed today has five engines, 16 issued signals and no closed live trade', () => {
+test('scoreboard: on the real engines feed, whatever its date, every engine has a row and the states follow the rules', () => {
   const feed = JSON.parse(readFileSync(new URL('../public/engines.json', import.meta.url), 'utf8'));
   const rows = scoreboard(feed);
-  assert.equal(rows.length, 5);
-  assert.equal(rows.reduce((n, r) => n + r.issued, 0), feed.signals.length);
-  assert.ok(rows.every((r) => r.closed === 0 && r.state === 'none' && r.holdoutN !== null && r.holdoutExpR !== null));
+  assert.equal(rows.length, Object.keys(feed.engines).length);
+  assert.equal(rows.reduce((n, r) => n + r.issued, 0), feed.signals.length);                  // every signal belongs to exactly one engine row
+  for (const r of rows) {
+    assert.equal(r.closed, feed.live_record[r.key]?.closed ?? feed.signals.filter((x: { engine: string; status: string }) => x.engine === r.key && x.status === 'closed').length);
+    assert.equal(r.state, r.closed === 0 ? 'none' : r.closed < MIN_LIVE_CLOSED ? 'building' : 'comparable');
+    assert.ok(r.progress >= 0 && r.progress <= 1);
+    assert.ok(r.holdoutN !== null && r.holdoutExpR !== null);                                 // the backtest side is always present
+    assert.ok(r.state === 'comparable' || r.gapR === null);                                   // no gap before 30 closed trades
+  }
 });
 
 test('journal: a link from a signal carries the company and only the numbers that are usable', () => {
