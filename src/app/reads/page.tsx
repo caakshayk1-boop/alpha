@@ -73,7 +73,8 @@ export default function Reads() {
           </div>
         </Async>
       </section>
-      <style>{`@media (max-width: 860px) { .wrap > .grid[style] { grid-template-columns: 1fr !important; } .wrap > .grid > .list { position: static !important; } }`}</style>
+      {/* Raw text on purpose: React escapes `>` inside a <style> child on the server but not in the browser, which failed hydration. */}
+      <style dangerouslySetInnerHTML={{ __html: '@media (max-width: 860px) { .wrap > .grid[style] { grid-template-columns: 1fr !important; } .wrap > .grid > .list { position: static !important; } }' }} />
     </>
   );
 }

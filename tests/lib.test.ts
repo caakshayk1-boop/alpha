@@ -10,6 +10,7 @@ import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
 import { MIN_ENTRIES, journalHref, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
 import { MIN_LIVE_CLOSED, scoreboard } from '../src/lib/scoreboard.ts';
+import { takeaway, vixWord } from '../src/lib/takeaway.ts';
 import { readFileSync } from 'node:fs';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
@@ -336,4 +337,42 @@ test('status wording says what it was judged against and in which unit', () => {
   assert.equal(mk(undefined, '2026-10-12'), '1 session behind the expected session');
   assert.equal(mk('weekly', '2026-10-16'), '1 week behind the expected week');
   assert.equal(describeStatus(reconcile([{ id: 'a', label: 'a', source: 's', asOf: '2026-10-08', refreshedAt: null }, { id: 'b', label: 'b', source: 's', asOf: '2026-10-09', refreshedAt: null }])[0]), '1 session behind the newest data');
+});
+
+const TK = { score: 35, band: 'Weak', stage: 'Slightly cheaper', nifty: 22721.95, drawdownPct: 13.84, vix: 14.12, asOf: '2026-10-13', above200: 470, with200: 930, previous: { score: 29, date: '2026-10-09' } };
+test('takeaway: the headline and facts are built only from the figures given, in plain words', () => {
+  const t = takeaway(TK);
+  assert.equal(t.available, true);
+  assert.equal(t.headline, 'A weak market, 13.8% below its high.');
+  assert.equal(t.sub, 'Barometer 35 of 100 (up from 29 on 9 Oct 2026). India VIX 14.1, normal. 51% of stocks sit above their 200-day average.');   // 470/930 = 50.5% -> 51
+  assert.deepEqual(t.facts.map((f) => [f.id, f.value, f.note, f.tone]), [
+    ['barometer', '35 / 100', 'Weak · Slightly cheaper', 'down'],
+    ['nifty', '22,722', '13.8% below its high', 'neutral'],
+    ['breadth', '51%', '470 of 930 with history', 'neutral'],
+    ['vix', '14.1', 'normal', 'neutral'],
+  ]);
+});
+test('takeaway: tone follows the band; a missing figure drops its sentence and tile instead of being invented', () => {
+  const firm = takeaway({ ...TK, score: 60, band: 'Firm', stage: null, drawdownPct: 0.4, vix: null, nifty: null, above200: null, with200: null, previous: null });
+  assert.equal(firm.headline, 'A firm market, close to its high.');
+  assert.equal(firm.sub, 'Barometer 60 of 100.');
+  assert.deepEqual(firm.facts.map((f) => [f.id, f.note, f.tone]), [['barometer', 'Firm', 'up']]);
+  assert.equal(takeaway({ ...TK, band: 'Mixed', score: 48, drawdownPct: null }).headline, 'A mixed market.');
+  assert.equal(takeaway({ ...TK, band: 'Mixed', score: 48 }).facts[0].tone, 'neutral');
+  assert.equal(takeaway({ ...TK, band: 'Poor', score: 20 }).facts[0].tone, 'down');
+  assert.equal(takeaway({ ...TK, band: 'Strong', score: 80 }).facts[0].tone, 'up');
+});
+test('takeaway: the change wording, the 1% threshold, and the zero-denominator guard', () => {
+  assert.match(takeaway({ ...TK, previous: { score: 35, date: '2026-10-09' } }).sub, /\(unchanged from 35 on 9 Oct 2026\)/);
+  assert.match(takeaway({ ...TK, previous: { score: 40, date: '2026-10-09' } }).sub, /\(down from 40 on 9 Oct 2026\)/);
+  assert.equal(takeaway({ ...TK, drawdownPct: 1.0 }).headline, 'A weak market, 1.0% below its high.');
+  assert.equal(takeaway({ ...TK, drawdownPct: 0.99 }).headline, 'A weak market, close to its high.');
+  const none = takeaway({ ...TK, with200: 0 });
+  assert.ok(!/200-day/.test(none.sub) && !none.facts.some((f) => f.id === 'breadth'));
+});
+test('takeaway: nothing is shown as a reading when the Barometer is unavailable; VIX words match the Barometer source', () => {
+  const t = takeaway({ ...TK, score: null });
+  assert.deepEqual([t.available, t.facts.length], [false, 0]);
+  assert.match(t.headline, /not available/);
+  assert.deepEqual([11.99, 12, 15.99, 16, 19.99, 20, 25.99, 26].map(vixWord), ['very calm', 'normal', 'normal', 'unsettled', 'unsettled', 'jumpy', 'jumpy', 'stressed']);
 });

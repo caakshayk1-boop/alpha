@@ -9,43 +9,10 @@ import { EngineVerdict } from '@/components/EvidenceTags';
 import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
-import { canAnimate, gsap } from '@/lib/motion';
-import type { Barometer, Quote } from '@/lib/types';
+import { PAGES } from '@/components/Shell';
+import { takeaway } from '@/lib/takeaway';
+import type { Quote } from '@/lib/types';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
-
-function Orb({ b }: { b: Barometer['today'] | null }) {
-  const arc = useRef<SVGCircleElement>(null);
-  const r = 150;
-  const c = 2 * Math.PI * r;
-  const score = b?.score ?? null;
-  useEffect(() => {
-    if (!arc.current || score === null || !canAnimate()) return;
-    gsap.fromTo(arc.current, { strokeDashoffset: c }, { strokeDashoffset: c * (1 - score / 100), duration: 1.8, ease: 'power3.out', delay: 0.3, immediateRender: false });
-  }, [score, c]);
-  const band = b?.band.t ?? '';
-  const color = !b ? 'var(--accent)' : b.band.c === 'dn' ? 'var(--down)' : b.band.c === 'up' ? 'var(--up)' : 'var(--accent)';
-  return (
-    <div className="orb" role="img" aria-label={score === null ? 'Market barometer loading' : `Market barometer: ${score} out of 100, ${band}`}>
-      <svg viewBox="0 0 400 400" aria-hidden>
-        <g className="orb-ring-spin"><circle cx="200" cy="200" r="190" fill="none" stroke="var(--line-2)" strokeWidth="1" strokeDasharray="2 10" /></g>
-        <g className="orb-ring-spin rev"><circle cx="200" cy="200" r="172" fill="none" stroke="var(--accent)" strokeOpacity=".35" strokeWidth="1" strokeDasharray="60 40 8 40" /></g>
-        {Array.from({ length: 60 }, (_, i) => {
-          const a = (i / 60) * Math.PI * 2;
-          const major = i % 5 === 0;
-          const r1 = 150 + (major ? -16 : -10);
-          return <line key={i} x1={200 + Math.cos(a) * 128} y1={200 + Math.sin(a) * 128} x2={200 + Math.cos(a) * (major ? 112 : 118)} y2={200 + Math.sin(a) * (major ? 112 : 118)} stroke="var(--line-2)" strokeWidth={major ? 1.5 : 1} data-r={r1} />;
-        })}
-        <circle cx="200" cy="200" r={r} fill="none" stroke="var(--panel-3)" strokeWidth="10" />
-        {score !== null && <circle ref={arc} cx="200" cy="200" r={r} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - score / 100)} transform="rotate(-90 200 200)" />}
-      </svg>
-      <div className="orb-core">
-        <div className="eyebrow">Market barometer</div>
-        <div className="big num" style={{ fontFamily: 'var(--f-display)' }}>{score === null ? '—' : String(Math.round(score))}</div>
-        <div className="cap"><span className="tag" style={{ color }}>{band || 'Reading…'}</span></div>
-      </div>
-    </div>
-  );
-}
 
 function QuoteCard({ q }: { q: Quote }) {
   const up = (q.pct ?? 0) >= 0;
@@ -58,44 +25,88 @@ function QuoteCard({ q }: { q: Quote }) {
   );
 }
 
-function Hero() {
+/** The point of the day in one sentence, then the four figures behind it. The sentence is built by lib/takeaway.ts from the data only. */
+function TodayHero() {
   const bar = useFeed('barometer');
-  const h1 = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    const t = window.setTimeout(() => h1.current?.classList.add('go'), 60);
-    return () => window.clearTimeout(t);
-  }, []);
-  const t = bar.data?.today;
   const scr = useFeed('screen');
+  const t = bar.data?.today;
   const b200 = useMemo(() => (scr.data ? breadth200(scr.data.rows) : null), [scr.data]);
-  const words = ['India’s', 'market,'];
+  const tk = useMemo(() => {
+    if (!t) return null;
+    const prev = [...(bar.data?.history ?? [])].reverse().find((r) => r.date < t.nifty_date);
+    return takeaway({
+      score: typeof t.score === 'number' ? t.score : null, band: t.band?.t ?? null, stage: t.stage?.t ?? null, nifty: t.nifty ?? null,
+      drawdownPct: t.drawdown_pct ?? null, vix: t.vix ?? null, asOf: t.nifty_date ?? null,
+      above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev ? { score: prev.score, date: prev.date } : null,
+    });
+  }, [t, bar.data, b200]);
+  const [lead, ...rest] = (tk?.headline ?? '').split(', ');
   return (
-    <section className="wrap hero">
-      <div>
-        <div className="eyebrow">Independent research desk · Indian equities</div>
-        <h1 ref={h1} className="disp" aria-label="India’s market, measured.">
-          {words.map((w, i) => <span className="w" key={w} aria-hidden><i style={{ ['--i' as string]: i }}>{w}&nbsp;</i></span>)}
-          <span className="w" aria-hidden><i style={{ ['--i' as string]: 2 }}><em>measured.</em></i></span>
-        </h1>
-        <p className="lede">
-          {t ? (
+    <section className="wrap today">
+      <div className="today-grid">
+        <div className="today-text">
+          <div className="eyebrow">{t ? `Today · market data to ${dateLabel(t.nifty_date)}` : 'Today'}</div>
+          {tk ? (
             <>
-              As of the {dateLabel(t.nifty_date)} session the Nifty stood at <b className="num" style={{ color: 'var(--text)' }}>{num(t.nifty, 0)}</b>, {num(t.drawdown_pct, 1)}% below its high, with India VIX at {num(t.vix, 1)}.
-              {b200 && b200.pct !== null && scr.data ? <> In the screen ({dateLabel(scr.data.breadth.as_of)}), <b className="num" style={{ color: 'var(--text)' }}>{num(b200.above)} of {num(b200.withHistory)}</b> stocks with a 200-day history ({num(b200.pct, 0)}%) were above their 200-day average.</> : null}
-              {' '}Every figure below is computed from filings and exchange data, with the working shown.
+              <h1 className="disp today-h">{lead}{rest.length > 0 && <>, <em>{rest.join(', ')}</em></>}</h1>
+              <p className="today-sub">{tk.sub}</p>
+            </>
+          ) : bar.error ? (
+            <>
+              <h1 className="disp today-h">The market read is not available right now.</h1>
+              <p className="today-sub">The latest readings could not be loaded. Nothing is estimated in their place.</p>
             </>
           ) : (
-            'A live board, a screen of nearly 1,000 companies, weekly company studies, IPOs, funds and the news that touches them. Every figure computed from public data, with the working shown.'
+            <div aria-busy="true" aria-label="Loading today's market read"><Skel h={64} w="70%" style={{ margin: '14px 0 12px' }} /><Skel h={22} w="55%" /></div>
           )}
-        </p>
-        <DataStamp ids={['barometer', 'screen', 'engines']} />
-        <div className="hero-cta">
-          <Link className="btn" href="/brief/">Read today&apos;s brief <span aria-hidden>→</span></Link>
-          <Link className="btn ghost" href="/engines/">See the engines</Link>
-          <Link className="btn ghost" href="/map/">Heat lab</Link>
+          <div className="today-cta">
+            <Link className="btn" href="/brief/">Read the five-minute brief <span aria-hidden>→</span></Link>
+            <Link className="btn ghost" href="/engines/">See today&apos;s signals</Link>
+          </div>
         </div>
+        {tk && tk.facts.length > 0 && (
+          <div className="facts" role="list">
+            {tk.facts.map((f) => (
+              <div className="fact" role="listitem" key={f.id}>
+                <div className="k">{f.label}</div>
+                <div className={`v ${f.tone === 'up' ? 'up' : f.tone === 'down' ? 'down' : ''}`}>{f.value}</div>
+                <div className="n">{f.note}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <Orb b={t ?? null} />
+      <DataStamp ids={['barometer', 'screen', 'engines']} />
+    </section>
+  );
+}
+
+/** The four things people come here to do, each one tap away. */
+function JobTiles() {
+  const scr = useFeed('screen');
+  const eng = useEngines();
+  const icon = (href: string) => PAGES.find((p) => p.href === href)?.icon ?? '';
+  const open = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending').length;
+  const Tile = ({ href, title, line, live, d, onClick }: { href?: string; title: string; line: string; live?: string; d: string; onClick?: () => void }) => {
+    const body = (
+      <>
+        <span className="ic" aria-hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg></span>
+        <span className="t">{title}</span>
+        <span className="l">{line}</span>
+        {live && <span className="m">{live}</span>}
+      </>
+    );
+    return href ? <Link className="job" href={href}>{body}</Link> : <button type="button" className="job" onClick={onClick}>{body}</button>;
+  };
+  return (
+    <section className="wrap" style={{ paddingTop: 0 }}>
+      <div className="eyebrow" style={{ margin: '0 0 12px' }}>What would you like to do?</div>
+      <div className="jobs">
+        <Tile href="/screen/" title="Find stocks" line="Filter the whole market by quality, growth, value and trend." live={scr.data ? `${num(scr.data.rows.length)} companies screened` : undefined} d={icon('/screen/')} />
+        <Tile title="Look up a company" line="Search by name or symbol for its full picture." live="Press / to search from anywhere" d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" onClick={() => window.dispatchEvent(new Event('alpha:search'))} />
+        <Tile href="/engines/" title="See the signals" line="What the five models are watching, and how they have done." live={eng.data ? `${open} signal${open === 1 ? '' : 's'} waiting or open` : undefined} d={icon('/engines/')} />
+        <Tile href="/watchlist/" title="Keep track" line="Your watchlist, and a journal of why you decided." live="Private, kept in this browser" d={icon('/watchlist/')} />
+      </div>
     </section>
   );
 }
@@ -363,7 +374,8 @@ export default function Home() {
   const latest = h.data?.datasets?.filter((d) => own.has(d.dataset)).map((d) => d.last_successful_update).sort().pop();
   return (
     <>
-      <Hero />
+      <TodayHero />
+      <JobTiles />
       <Ticker />
       <SinceVisit />
       <Teasers />

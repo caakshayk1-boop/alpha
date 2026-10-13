@@ -180,6 +180,8 @@ export default function Shell({ children }: { children: ReactNode }) {
       else if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); setOpen(true); }
     };
     window.addEventListener('keydown', key);
+    const openSearch = () => setOpen(true);   // a page can ask for the palette: window.dispatchEvent(new Event('alpha:search'))
+    window.addEventListener('alpha:search', openSearch);
     // pointer-follow light on .spot panels (fine pointers only)
     const fine = window.matchMedia('(pointer: fine)').matches;
     let hot: HTMLElement | null = null;
@@ -223,6 +225,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     prog();
     return () => {
       window.removeEventListener('keydown', key);
+      window.removeEventListener('alpha:search', openSearch);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerout', leave);
       window.removeEventListener('scroll', onScroll);

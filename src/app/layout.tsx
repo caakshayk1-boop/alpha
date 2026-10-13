@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter_Tight, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
+import { Inter_Tight, Instrument_Serif } from 'next/font/google';
 import Shell from '@/components/Shell';
 import './globals.css';
 
 const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://alpha.askakshay.com'),
@@ -25,7 +24,7 @@ const themeScript = `try{var t=localStorage.getItem('alpha-theme');if(!t)t=match
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-theme="dark" className={`${display.variable} ${ui.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme="dark" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

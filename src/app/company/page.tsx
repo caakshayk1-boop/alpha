@@ -191,7 +191,7 @@ function Company() {
     <>
       <header className="wrap co-head">
         <div>
-          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)' }}>← Screen</Link> &nbsp;·&nbsp; {r.sector} · {r.ind}</div>
+          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)' }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
           <h1 className="disp">{r.name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span className="tag acc">{r.sym}</span>
