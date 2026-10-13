@@ -8,6 +8,7 @@ import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
+import { MIN_ENTRIES, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
 
 test('freshness: the observed 8 Oct / 9 Oct mismatch is surfaced, not hidden', () => {
   const s = reconcile([
@@ -190,4 +191,57 @@ test('news: a company matches by ticker or whole name, and says which; substring
   assert.deepEqual(matchCompanies('Tata Consultancy Services posts results', cos).map((m) => m.basis), ['name “Tata Consultancy Services” in the text']);
   assert.deepEqual(matchCompanies('The IT sector rallied; ITC and LCLX rose', cos), []);   // short tickers and substrings never match
   assert.deepEqual(matchCompanies('tcs lowercase mention', cos), []);                    // a ticker must be written as one
+});
+
+const near = (a: number | null, b: number) => assert.ok(a !== null && Math.abs(a - b) < 1e-9, `${a} is not ${b}`);
+const J = (over: Partial<Parameters<typeof outcome>[0]> = {}) => ({ id: 'a', date: '2026-10-01', sym: 'ABC', action: 'took' as const, why: 'Breakout above resistance on volume', price: 100, stop: 90, target: 130, ...over });
+
+test('journal: outcome is arithmetic from the decision price, the stop and today\'s price', () => {
+  const up = outcome(J(), 110);
+  assert.equal(up.state, 'open'); near(up.movePct, 10); near(up.r, 1);
+  const down = outcome(J(), 89);
+  assert.equal(down.state, 'below-stop'); near(down.movePct, -11); near(down.r, -1.1);
+  const hit = outcome(J(), 130);
+  assert.equal(hit.state, 'above-target'); near(hit.r, 3);
+});
+test('journal: nothing is invented when a price or a stop is missing', () => {
+  assert.deepEqual(outcome(J(), null), { state: 'no-price', movePct: null, r: null });
+  assert.deepEqual(outcome(J({ price: null }), 110), { state: 'no-reference', movePct: null, r: null });
+  const noStop = outcome(J({ stop: null, target: null }), 80);
+  assert.equal(noStop.r, null); assert.equal(noStop.state, 'open'); near(noStop.movePct, -20);
+});
+test('journal: an entry needs a company, a real date, a reason and a sane stop and target', () => {
+  const f = { date: '2026-10-01', sym: ' abc ', action: 'took', why: 'Breakout above resistance on volume', price: '100', stop: '90', target: '130' };
+  const ok = makeEntry(f, 'x');
+  assert.ok('entry' in ok && ok.entry.sym === 'ABC' && ok.entry.price === 100 && ok.entry.stop === 90 && ok.entry.target === 130);
+  for (const bad of [{ sym: '' }, { date: '2026-13-45' }, { action: 'bought' }, { why: 'too short' }, { stop: '100' }, { stop: '110' }, { target: '95' }, { price: 'abc' }, { price: '-5' }]) {
+    assert.ok('error' in makeEntry({ ...f, ...bad }, 'x'), JSON.stringify(bad));
+  }
+  const noNumbers = makeEntry({ ...f, price: '', stop: '', target: '' }, 'x');
+  assert.ok('entry' in noNumbers && noNumbers.entry.price === null && noNumbers.entry.stop === null);
+});
+test('journal: an average is shown only once a group has enough measured entries', () => {
+  const took = [10, 20, 30, 40, 50].map((m, i) => J({ id: `t${i}`, sym: `T${i}`, price: 100, stop: null, target: null, action: 'took' }));
+  const skipped = [1, 2, 3, 4].map((_, i) => J({ id: `s${i}`, sym: `S${i}`, action: 'skipped', stop: null, target: null }));
+  const px: Record<string, number> = { T0: 110, T1: 120, T2: 130, T3: 140, T4: 150, S0: 101, S1: 102, S2: 103, S3: 104 };
+  const sum = summarise([...took, ...skipped], (s) => px[s] ?? null);
+  const t = sum.find((g) => g.action === 'took')!, s = sum.find((g) => g.action === 'skipped')!, w = sum.find((g) => g.action === 'watching')!;
+  assert.equal(MIN_ENTRIES, 5);
+  assert.ok(t.enough && t.measured === 5); near(t.avgMovePct, 30);
+  assert.ok(!s.enough && s.measured === 4 && s.avgMovePct === null);
+  assert.ok(!w.enough && w.entries === 0);
+});
+test('journal: stored data is not trusted; import twice changes nothing', () => {
+  const good = J({ id: 'g1' });
+  const raw = serializeJournal([good]);
+  assert.deepEqual(parseJournal(raw), [good]);
+  assert.deepEqual(parseJournal(JSON.stringify([good])), [good]);
+  const messy = JSON.stringify({ entries: [good, good, { id: 'bad1' }, null, 5, { ...good, id: 'bad2', action: 'bought' }, { ...good, id: 'bad3', date: 'yesterday' }, { ...good, id: 'ok2', sym: 'xyz', price: -3, stop: 'x' }] });
+  const parsed = parseJournal(messy);
+  assert.deepEqual(parsed.map((e) => e.id), ['g1', 'ok2']);
+  assert.equal(parsed[1].sym, 'XYZ'); assert.equal(parsed[1].price, null); assert.equal(parsed[1].stop, null);
+  assert.deepEqual(parseJournal('not json'), []); assert.deepEqual(parseJournal(null), []);
+  const once = mergeJournal([good], parseJournal(raw));
+  assert.deepEqual(once, [good]);
+  assert.deepEqual(mergeJournal(once, parseJournal(raw)), once);
 });

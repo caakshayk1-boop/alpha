@@ -24,6 +24,7 @@ export const PAGES = [
   { href: '/compare/', label: 'Compare', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
   { href: '/calendar/', label: 'Calendar', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
   { href: '/watchlist/', label: 'Watchlist', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
+  { href: '/journal/', label: 'Journal', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
   { href: '/about/', label: 'Method', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
 ] as const;
 
@@ -32,7 +33,7 @@ export const GROUPS: { label: string; hint: string; hrefs: string[] }[] = [
   { label: 'Today', hint: 'What is happening now', hrefs: ['/', '/brief/', '/markets/'] },
   { label: 'Discover', hint: 'Find companies and patterns', hrefs: ['/screen/', '/map/', '/rotation/', '/ipo/', '/funds/', '/news/', '/reads/'] },
   { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/engines/', '/magic/', '/compare/', '/tools/'] },
-  { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/calendar/'] },
+  { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/journal/', '/calendar/'] },
   { label: 'Methods', hint: 'How every number is made', hrefs: ['/about/'] },
 ];
 const pageOf = (h: string) => PAGES.find((p) => p.href === h)!;
