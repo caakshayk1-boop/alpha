@@ -123,6 +123,54 @@ async function shard(sym, env) {
   }
 }
 
+// ── the market in a few hundred bytes ───────────────────────────────────
+// /api/summary  →  { as_of, built_on, count, day: { up, down, flat, counted }, above200: { above, withHistory }, sectors: [{ name, n, median }] }
+// Everything comes from screen.json's own rows for one day, so the counts and the sector medians can never disagree. Today and
+// the Brief need these few figures to paint their headline; without this they download the whole 490 KB screen first.
+// The rows are scanned as text (no JSON.parse of the big feed), the same CPU budget as the shard route. `day` is the
+// one-day move (r1d); screen.breadth.advancing/declining are one-WEEK counts (stock_screen.py) and are not used here.
+const NUM = '([-0-9.eE]+|null|NaN)';
+const fin = (s) => s !== 'null' && s !== 'NaN' && Number.isFinite(Number(s));
+const median = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+export function summarise(text) {
+  const asOf = /"breadth"\s*:\s*\{[^{}]*"as_of"\s*:\s*"([^"]+)"/.exec(text)?.[1] ?? null;
+  const count = (text.match(/"sym"\s*:/g) || []).length;
+  const builtOn = /"built_on"\s*:\s*"([^"]+)"/.exec(text.slice(0, 2000))?.[1] ?? null;   // top-level key, near the start
+  let above = 0, withHistory = 0;
+  for (const m of text.matchAll(new RegExp(`"price"\\s*:\\s*${NUM}[^{}]*?"sma200"\\s*:\\s*${NUM}`, 'g'))) {
+    if (fin(m[1]) && fin(m[2])) { withHistory++; if (Number(m[1]) > Number(m[2])) above++; }
+  }
+  // The day is counted on r1d alone (r1d occurs once per row): a row with no sector key still counts in the day.
+  let up = 0, down = 0, flat = 0;
+  for (const m of text.matchAll(new RegExp(`"r1d"\\s*:\\s*${NUM}`, 'g'))) {
+    if (!fin(m[1])) continue;
+    const v = Number(m[1]);
+    if (v > 0) up++; else if (v < 0) down++; else flat++;
+  }
+  const bySector = new Map();
+  for (const m of text.matchAll(new RegExp(`"sector"\\s*:\\s*("[^"]*"|null)[^{}]*?"r1d"\\s*:\\s*${NUM}`, 'g'))) {
+    const name = m[1] === 'null' ? '' : JSON.parse(m[1]);
+    if (name && fin(m[2])) bySector.set(name, [...(bySector.get(name) ?? []), Number(m[2])]);
+  }
+  const sectors = [...bySector.entries()].map(([name, a]) => ({ name, n: a.length, median: median(a) })).sort((a, b) => b.median - a.median);
+  return { as_of: asOf, built_on: builtOn, count, day: { up, down, flat, counted: up + down + flat }, above200: { above, withHistory }, sectors };
+}
+async function summary(ctx) {
+  const cache = caches.default;
+  const key = new Request('https://alpha.askakshay.com/__summary_v3');
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  try {
+    const body = summarise(await feedText('screen'));
+    if (body.count < 500) return json({ ok: false, error: 'screen looks empty' }, 502);
+    const res = new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300, s-maxage=600' } });
+    ctx.waitUntil(cache.put(key, res.clone()));
+    return withHeaders(res);
+  } catch (e) {
+    return json({ ok: false, error: `summary failed: ${e.message}` }, 502);
+  }
+}
+
 // [id, name, group, yahoo symbol, prefix, decimals]
 const INSTRUMENTS = [
   ['nifty', 'Nifty 50', 'India', '^NSEI', '', 0],
@@ -465,6 +513,9 @@ export default {
     }
     if (url.pathname === '/api/explain' || url.pathname === '/api/explain/') {
       return explain(request, env, url);
+    }
+    if (url.pathname === '/api/summary' || url.pathname === '/api/summary/') {
+      return summary(ctx);
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);

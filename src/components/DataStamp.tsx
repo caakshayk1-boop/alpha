@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEngines, useFeed, useRotation } from '@/lib/data';
+import { useEngines, useFeed, useRotation, useSummary } from '@/lib/data';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
 import { describe, expectedSession, reconcile, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
@@ -18,7 +18,8 @@ const refreshed = (s: string | null) => {
 
 /** Every dataset Alpha reads, with the session it describes and when it last refreshed, judged against the session Alpha should already hold (see expectedSession). */
 export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
-  const scr = useFeed('screen');
+  // The screen's dates come from /api/summary (1 KB), not the 480 KB screen itself: a freshness stamp must not cost a page its speed.
+  const scr = useSummary();
   const bar = useFeed('barometer');
   const eng = useEngines();
   const rot = useRotation();
@@ -28,7 +29,7 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
     const list: DatasetInput[] = [];
     const lastWeek = rot.data?.dates[rot.data.dates.length - 1];
     const rotThrough = rot.data && lastWeek ? weekThrough(lastWeek, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
-    list.push(scr.data ? { id: 'screen', label: 'Screen', source: 'Alpha screen: company filings and Yahoo Finance prices', asOf: scr.data.breadth.as_of, refreshedAt: scr.data.built_on ?? null } : { id: 'screen', label: 'Screen', source: 'Alpha screen', asOf: null, refreshedAt: null, error: !!scr.error });
+    list.push(scr.data ? { id: 'screen', label: 'Screen', source: 'Alpha screen: company filings and Yahoo Finance prices', asOf: scr.data.as_of, refreshedAt: scr.data.built_on ?? null } : { id: 'screen', label: 'Screen', source: 'Alpha screen', asOf: null, refreshedAt: null, error: !!scr.error });
     list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: bar.data.today.nifty_date ?? null, refreshedAt: bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
     list.push(eng.data ? { id: 'engines', label: 'Engines', source: 'Alpha engines: models retrained on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Engines', source: 'Alpha engines', asOf: null, refreshedAt: null, error: !!eng.error });
     list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
@@ -57,7 +58,7 @@ export function DataStatusTable() {
   const { items, loading } = useDatasetStatus();
   if (loading && !items.some((i) => i.asOf)) return <p className="dim">Reading the data dates…</p>;
   return (
-    <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+    <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
       <table className="tbl" style={{ minWidth: 640 }}>
         <thead><tr><th>Dataset</th><th>Describes (session or week)</th><th>Last refreshed</th><th>State</th><th>Source</th></tr></thead>
         <tbody>

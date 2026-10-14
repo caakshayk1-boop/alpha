@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { RotationFeed, ChartFeed, Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed } from './types';
+import type { RotationFeed, ChartFeed, Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed, Summary } from './types';
 
 /** feed name -> payload type */
 export interface FeedMap {
@@ -24,10 +24,19 @@ export type FeedName = keyof FeedMap;
 const BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? '';
 const memo = new Map<string, Promise<unknown>>();
 
+/** Requests started by the inline script in app/layout.tsx before this bundle ran (Today only). Each is used once. */
+function early<T>(url: string): Promise<T> | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const pre = (window as Window & { __alphaPre?: Record<string, Promise<unknown>> }).__alphaPre;
+  const hit = pre?.[url] as Promise<T> | undefined;
+  if (hit && pre) delete pre[url];
+  return hit;
+}
+
 function load<T>(url: string): Promise<T> {
   let p = memo.get(url) as Promise<T> | undefined;
   if (!p) {
-    p = fetch(url).then(async (r) => {
+    p = early<T>(url) ?? fetch(url).then(async (r) => {
       if (!r.ok) throw new Error(`${url} answered ${r.status}`);
       return (await r.json()) as T;
     });
@@ -43,6 +52,7 @@ export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => loa
 export const rotationFeed = (): Promise<RotationFeed> => load<RotationFeed>(`${BASE}/rotation.json`);
 export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
+export const summaryFeed = (): Promise<Summary> => load<Summary>(`${BASE}/api/summary`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
 
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean }
@@ -76,6 +86,8 @@ export const useEngines = (): Loaded<EnginesFeed> => useLoaded(enginesFeed, 'eng
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation');
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');
+/** The day's breadth, 200-day share and sector medians in under 2 KB, so a headline never waits on the 490 KB screen. */
+export const useSummary = (): Loaded<Summary> => useLoaded(summaryFeed, 'summary');
 
 /** Live prices for a set of symbols, refreshed every 60 seconds while the tab is visible. Empty until the first answer. */
 export function usePx(symbols: string[]): { quotes: Record<string, import('./types').PxQuote>; at: string | null } {

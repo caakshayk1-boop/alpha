@@ -40,7 +40,7 @@ export default function Prose({ md }: { md: string }) {
     if (table.length) {
       const [head, ...body] = table;
       out.push(
-        <div className="tbl-wrap" key={`t${out.length}`} style={{ maxHeight: 'none', margin: '14px 0' }}>
+        <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" key={`t${out.length}`} style={{ maxHeight: 'none', margin: '14px 0' }}>
           <table className="tbl" style={{ minWidth: 0 }}>
             <thead><tr>{head.map((c, i) => <th key={i}>{inline(c)}</th>)}</tr></thead>
             <tbody>{body.map((r, i) => <tr key={i} style={{ cursor: 'default' }}>{r.map((c, j) => <td key={j}>{inline(c)}</td>)}</tr>)}</tbody>

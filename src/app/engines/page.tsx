@@ -126,7 +126,7 @@ function RankTable({ e }: { e: EngineStats }) {
     ['Most-traded 300, development', e.robustness.top300.development], ['Most-traded 300, holdout', e.robustness.top300.holdout],
   ];
   return (
-    <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+    <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
       <table className="tbl" style={{ minWidth: 700 }}>
         <thead><tr><th>Where</th><th>Sessions</th><th>Rank skill (IC)</th><th>t-stat</th><th>Days it was positive</th><th>Top picks beat the market by</th><th>Best vs worst decile</th></tr></thead>
         <tbody>
@@ -150,7 +150,7 @@ function RankTable({ e }: { e: EngineStats }) {
 function StatsTable({ e }: { e: EngineStats }) {
   const rows: [string, TradeBlock, TradeBlock, number | null | undefined][] = (['development', 'holdout'] as const).map((k) => [PERIOD_LABEL[k], e.trades[k], e.baseline[k], e.clustered[k]?.t_clustered]);
   return (
-    <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+    <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
       <table className="tbl" style={{ minWidth: 760 }}>
         <thead><tr><th>Period</th><th>Trades</th><th>Win rate</th><th>Avg R per trade</th><th>Random stocks, same exits</th><th>Month-clustered t</th><th>Reached T1</th><th>Stopped out</th></tr></thead>
         <tbody>
@@ -316,7 +316,7 @@ export default function EnginesPage() {
                   {tab === 'board' && (
                     <>
                       <p className="muted" style={{ marginTop: 0 }}>Every stock is read against the benchmark of its own group. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of that industry built from the screened stocks (Yahoo holds no daily history for the other NSE sector indices). A group is in an <b>uptrend</b> when it is above a rising 50-day average, and <b>leading</b> when it is ahead of the Nifty over three months. Engine 3 uses these benchmarks directly; the others see them as inputs.</p>
-                      <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
+                      <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
                         <thead><tr><th>Benchmark</th><th>Stocks</th><th>1 month</th><th>3 months</th><th>vs Nifty, 3 months</th><th>Trend</th><th>Leading</th></tr></thead>
                         <tbody>{feed.benchmarks.map((g) => <tr key={g.name} style={{ cursor: 'default' }}><td><b>{g.name.replace(' (alpha group index)', '')}</b>{g.real_index && <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span>}</td><td className="num">{g.members ?? dash}</td><td><Chg v={g.r1m} dp={1} /></td><td><Chg v={g.r3m} dp={1} /></td><td><Chg v={g.vs_nifty_3m} dp={1} /></td><td><span className={`tag ${g.uptrend ? 'up' : 'down'}`}>{g.uptrend ? 'up' : 'not up'}</span></td><td><span className={`tag ${g.leads_nifty ? 'up' : 'warn'}`}>{g.leads_nifty ? 'leading' : 'lagging'}</span></td></tr>)}</tbody>
                       </table></div>

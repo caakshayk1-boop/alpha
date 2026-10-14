@@ -10,6 +10,7 @@ import { useEngines, useFeed } from '@/lib/data';
 import { dash, num } from '@/lib/format';
 import { canAnimate, Flip } from '@/lib/motion';
 import { useStoredList } from '@/lib/store';
+import { fromQuery, toQuery } from '@/lib/screenUrl';
 import type { Row } from '@/lib/types';
 
 type Num = number | null | undefined;
@@ -67,6 +68,9 @@ const LENSES: Lens[] = [
 ];
 
 const PAGE = 60;
+const FLAGS: ReadonlySet<string> = new Set<Flag>(['vetted', 'ahimsa', 'uptrend', 'magic', 'signal']);
+const LENS_IDS: ReadonlySet<string> = new Set(LENSES.map((l) => l.id));
+const TIERS: ReadonlySet<string> = new Set(['large', 'mid', 'small']);
 interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; tier: string; nl?: NlState }
 
 export default function Screen() {
@@ -98,6 +102,20 @@ export default function Screen() {
       const sv = JSON.parse(localStorage.getItem('alpha-screen-saved') ?? '[]'); if (Array.isArray(sv)) setSaved(sv);
     } catch { /* storage blocked or corrupt: defaults */ }
   }, []);
+  // The view lives in the address: read it once on arrival, then keep it current with replaceState (no history entry per keystroke),
+  // so refresh, Back from a company page and a shared link all restore the same filters and sort.
+  const fromUrl = useRef(false);
+  useEffect(() => {
+    const st = fromQuery(window.location.search, { fields: F, flags: FLAGS, lenses: LENS_IDS, tiers: TIERS });
+    setQ(st.q); setSector(st.sector); setTier(st.tier); setConds(st.conds); setFlags(st.flags as Flag[]); setLens(st.lens); setSort(st.sort); setDir(st.dir);
+    if (st.ask) setNl({ text: st.ask, off: st.off });
+    fromUrl.current = true;
+  }, []);
+  useEffect(() => {
+    if (!fromUrl.current) return;
+    const next = `${window.location.pathname}${toQuery({ q, sector, tier, conds, flags, lens, sort, dir, ask: nl.text, off: nl.off })}`;
+    if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(window.history.state, '', next);
+  }, [q, sector, tier, conds, flags, lens, sort, dir, nl]);
   const persist = (key: string, v: unknown) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* not persisted */ } };
 
   const sectors = useMemo(() => Array.from(new Set((s.data?.rows ?? []).map((r) => r.sector).filter(Boolean))).sort(), [s.data]);
@@ -204,7 +222,7 @@ export default function Screen() {
         {showCols && <div className="panel tight" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>{FIELDS.map((f) => <button key={f.id} className="chip" aria-pressed={cols.includes(f.id)} onClick={() => toggleCol(f.id)}>{f.label}</button>)}</div>}
 
         <Async loading={s.loading} error={s.error} rows={6}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)">
             <table className="tbl">
               <thead>
                 <tr>

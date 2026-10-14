@@ -38,7 +38,7 @@ export default function Funds() {
             <span className="eyebrow">Sort</span>
             {([['r3', '3-yr return'], ['r5', '5-yr return'], ['r1', '1-yr return'], ['dd3', 'Smallest fall'], ['volatility', 'Lowest volatility']] as const).map(([k, l]) => <button key={k} className="chip" aria-pressed={sort === k} onClick={() => setSort(k)}>{l}</button>)}
           </div>
-          <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Fund</th><th>NAV</th><th>1Y</th><th>3Y p.a.</th><th>5Y p.a.</th><th>Worst fall (3Y)</th><th>Volatility</th><th>Rolling 3Y worst / median</th></tr></thead><tbody>
+          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Fund</th><th>NAV</th><th>1Y</th><th>3Y p.a.</th><th>5Y p.a.</th><th>Worst fall (3Y)</th><th>Volatility</th><th>Rolling 3Y worst / median</th></tr></thead><tbody>
             {funds.map((x) => (
               <tr key={x.code} style={{ cursor: 'default' }}>
                 <td><div className="co"><b>{x.name.replace(/ - Direct Plan - Growth/i, '')}</b><span>{x.house} · {num(x.history_years, 1)} yrs of history · AMFI scheme {x.code}</span></div></td>

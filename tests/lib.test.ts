@@ -466,3 +466,26 @@ test('company matching never names a bank inside a longer name, or a generic wor
   assert.deepEqual(m('General Motors recalls cars'), []);                                      // "General" is an ordinary word even for a large company
   assert.deepEqual(m('Ircon to monetise assets'), []);                                         // small company, 5 letters: precision over recall
 });
+
+import { fromQuery, SCREEN_DEFAULT, toQuery } from '../src/lib/screenUrl.ts';
+const allow = { fields: new Set(['roce', 'de', 'pe', 'comp']), flags: new Set(['vetted', 'uptrend']), lenses: new Set(['quality']), tiers: new Set(['large', 'mid', 'small']) };
+
+test('screenUrl: a full state survives the round trip through the address', () => {
+  const s = { ...SCREEN_DEFAULT, q: 'bank', sector: 'Financial Services', tier: 'large', conds: [{ f: 'roce', op: '>=' as const, v: '20' }, { f: 'de', op: '<=' as const, v: '0.5' }], flags: ['vetted'], lens: 'quality', sort: 'pe', dir: 1 as const, ask: 'roce above 20', off: ['ROCE ≥ 20'] };
+  assert.deepEqual(fromQuery(toQuery(s), allow), s);
+});
+
+test('screenUrl: the default state writes nothing to the address', () => {
+  assert.equal(toQuery(SCREEN_DEFAULT), '');
+  assert.deepEqual(fromQuery('', allow), SCREEN_DEFAULT);
+});
+
+test('screenUrl: unknown measures, flags, lenses, sizes and non-numbers from a link are dropped, not trusted', () => {
+  const s = fromQuery('?f=evil:min:1&f=roce:min:abc&f=roce:min:15&only=vetted,admin&lens=x&size=huge&sort=__proto__:asc', allow);
+  assert.deepEqual(s.conds, [{ f: 'roce', op: '>=', v: '15' }]);
+  assert.deepEqual(s.flags, ['vetted']);
+  assert.equal(s.lens, '');
+  assert.equal(s.tier, '');
+  assert.equal(s.sort, 'comp');
+  assert.equal(s.dir, -1);
+});

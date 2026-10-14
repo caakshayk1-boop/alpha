@@ -132,7 +132,7 @@ export default function Journal() {
         <SectionHead eyebrow="Entries" title={`${list.length} ${list.length === 1 ? 'decision' : 'decisions'} on record`} />
         <Async loading={screen.loading} error={screen.error} rows={3}>
           {sorted.length === 0 ? <Notice>No entries yet. Add one above, or from a company page.</Notice> : (
-            <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl">
+            <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl">
               <thead><tr><th>Date</th><th>Company</th><th>Did</th><th>Why</th><th>Then</th><th>Now</th><th>Move</th><th>R</th><th /></tr></thead>
               <tbody>{sorted.map((e) => {
                 const q = quote.get(e.sym);

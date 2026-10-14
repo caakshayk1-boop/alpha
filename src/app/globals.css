@@ -67,7 +67,7 @@
   --up-soft: rgba(11, 138, 87, 0.12);
   --down: #b3243a;
   --down-soft: rgba(204, 47, 69, 0.1);
-  --warn: #8a5700;         /* 4.8:1 on its own tag tint (was 4.1) */
+  --warn: #7a4d00;         /* 4.65:1 or more on its own tag tint over every light surface (was #8a5700: 3.96 on panel-3) */
   --up-fill: var(--up);
   --down-fill: var(--down);
   --glow: rgba(71, 83, 217, 0.12);
@@ -185,6 +185,10 @@ button.chip:hover { color: var(--text); border-color: var(--line-2); }
 .today { padding: clamp(28px, 5vw, 64px) 0 var(--s-5); }
 .today-h { font-size: clamp(40px, 6.4vw, 84px); line-height: 1.04; margin: 14px 0 18px; max-width: 17ch; text-wrap: balance; }
 .today-h em { font-style: italic; color: var(--accent-2); }
+.today-sub-skel { height: calc(1.55em * 3); }
+@media (max-width: 980px) { .today-sub-skel { height: calc(1.55em * 2); } }
+@media (max-width: 600px) { .today-sub-skel { height: calc(1.55em * 3); } }
+@media (max-width: 340px) { .today-sub-skel { height: calc(1.55em * 4); } }
 .today-sub { font-size: clamp(17px, 1.6vw, 20px); line-height: 1.55; color: var(--muted); max-width: 62ch; margin: 0; }
 .today-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 .today-grid .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
@@ -265,7 +269,8 @@ select.field { min-width: 0; padding-right: 30px; }
 .map { position: relative; width: 100%; height: min(72vh, 760px); min-height: 460px; border-radius: var(--r-3); overflow: hidden; background: var(--bg-2); border: 1px solid var(--line); }
 .tile { position: absolute; overflow: hidden; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--bg) 60%, transparent); border-radius: 4px; display: flex; flex-direction: column; justify-content: flex-start; cursor: pointer; transition: filter 0.2s, transform 0.3s var(--ease), z-index 0s; color: #fff; }
 .tile:hover { filter: brightness(1.22) saturate(1.15); z-index: 5; transform: scale(1.03); }
-.tile b { font: 600 12px/1.15 var(--f-ui); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); } .tile span { font: 500 11px var(--f-mono); opacity: 0.92; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+/* No text shadow: fills are dark enough for plain white (4.8:1 at the strongest green, more for every weaker fill), and a translucent shadow only lowers measured contrast. */
+.tile b { font: 600 12px/1.15 var(--f-ui); } .tile span { font: 500 11px var(--f-mono); }
 .tile.sectorhead { pointer-events: none; }
 .legend { display: flex; align-items: center; gap: 8px; font: 500 12px var(--f-mono); color: var(--dim); }
 .legend i { width: 160px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, #c4364a, #3a2a30 50%, #1f9d68); }
@@ -355,7 +360,7 @@ html.anim [data-rv]:not([data-rv='done']) { transform: translateY(14px); }   /* 
 /* segmented control with a sliding thumb */
 .seg { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: var(--r-pill); background: var(--panel-2); border: 1px solid var(--line); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .seg::-webkit-scrollbar { display: none; }
-.seg > .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n)); border-radius: var(--r-pill); background: var(--accent); transition: transform 0.45s var(--spring); }
+.seg > .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n)); border-radius: var(--r-pill); background: var(--accent); transform: translateX(calc(var(--i) * 100%)); transition: transform 0.45s var(--spring); }
 .seg > button { position: relative; z-index: 1; padding: 7px 14px; border-radius: var(--r-pill); font: 500 12.5px/1 var(--f-ui); color: var(--muted); white-space: nowrap; transition: color 0.25s; text-align: center; }
 .seg > button[aria-selected='true'], .seg > button[aria-pressed='true'] { color: var(--accent-ink); }
 .seg > button:not([aria-selected='true']):hover { color: var(--text); }

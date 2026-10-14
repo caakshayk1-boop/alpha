@@ -74,7 +74,7 @@ function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
       {years.length === 0 ? <Notice>No statements are held for this company.</Notice> : (
         <>
           <div className="grid g2">{bars('rev_cr', 'Revenue, ₹ crore')}{bars('pat_cr', 'Net profit, ₹ crore')}</div>
-          <div className="tbl-wrap" style={{ marginTop: 20, maxHeight: 'none' }}>
+          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ marginTop: 20, maxHeight: 'none' }}>
             <table className="tbl" style={{ minWidth: 560 }}>
               <thead><tr><th>₹ crore</th>{years.map((y) => <th key={y.fy}>{y.fy}</th>)}</tr></thead>
               <tbody>
@@ -185,7 +185,7 @@ function Company() {
     <>
       <header className="wrap co-head">
         <div>
-          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)' }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
+          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
           <h1 className="disp">{r.name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span className="tag acc">{r.sym}</span>

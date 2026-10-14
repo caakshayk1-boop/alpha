@@ -6,8 +6,7 @@ import { Async, Bar, Chg, CountUp, LazyMount, Notice, Rv, SectionHead, Skel, Spa
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { EngineVerdict } from '@/components/EvidenceTags';
-import { breadth200 } from '@/lib/breadth';
-import { useEngines, useFeed, useQuotes } from '@/lib/data';
+import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { ago, crore, dateLabel, heat, num, pct, quoteState, rupeeBand } from '@/lib/format';
 import { PAGES } from '@/components/Shell';
 import { takeaway } from '@/lib/takeaway';
@@ -28,18 +27,20 @@ function QuoteCard({ q }: { q: Quote }) {
 /** The point of the day in one sentence, then the four figures behind it. The sentence is built by lib/takeaway.ts from the data only. */
 function TodayHero() {
   const bar = useFeed('barometer');
-  const scr = useFeed('screen');
+  const sum = useSummary();
   const t = bar.data?.today;
-  const b200 = useMemo(() => (scr.data ? breadth200(scr.data.rows) : null), [scr.data]);
+  const b200 = sum.data?.above200 ?? null;
+  // Wait for both small feeds (or a failed summary) so the sentence and its four facts appear once, at their final size.
+  const ready = !!t && (!!sum.data || !!sum.error);
   const tk = useMemo(() => {
-    if (!t) return null;
+    if (!t || !ready) return null;
     const prev = [...(bar.data?.history ?? [])].reverse().find((r) => r.date < t.nifty_date);
     return takeaway({
       score: typeof t.score === 'number' ? t.score : null, band: t.band?.t ?? null, stage: t.stage?.t ?? null, nifty: t.nifty ?? null,
       drawdownPct: t.drawdown_pct ?? null, vix: t.vix ?? null, asOf: t.nifty_date ?? null,
       above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev ? { score: prev.score, date: prev.date } : null,
     });
-  }, [t, bar.data, b200]);
+  }, [t, ready, bar.data, b200]);
   const [lead, ...rest] = (tk?.headline ?? '').split(', ');
   return (
     <section className="wrap today">
@@ -57,13 +58,20 @@ function TodayHero() {
               <p className="today-sub">The latest readings could not be loaded. Nothing is estimated in their place.</p>
             </>
           ) : (
-            <div aria-busy="true" aria-label="Loading today's market read"><Skel h={64} w="70%" style={{ margin: '14px 0 12px' }} /><Skel h={22} w="55%" /></div>
+            <div aria-busy="true" aria-label="Loading today's market read">
+              {/* Placeholders in the headline's own type units (two headline lines, then the sentence's lines), so nothing below moves when the read arrives. */}
+              <div className="today-h" aria-hidden><span className="skel" style={{ display: 'block', height: '2.08em', width: '85%' }} /></div>
+              <div className="today-sub today-sub-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '92%' }} /></div>
+            </div>
           )}
           <div className="today-cta">
             <Link className="btn" href="/brief/">Read the five-minute brief <span aria-hidden>→</span></Link>
             <Link className="btn ghost" href="/engines/">See today&apos;s signals</Link>
           </div>
         </div>
+        {!tk && !bar.error && (
+          <div className="facts" aria-hidden>{Array.from({ length: 4 }, (_, i) => <div className="fact" key={i} style={{ minHeight: 122 }}><Skel h={14} w="60%" /><Skel h={30} w="45%" style={{ margin: '10px 0 8px' }} /><Skel h={14} w="70%" /></div>)}</div>
+        )}
         {tk && tk.facts.length > 0 && (
           <div className="facts" role="list">
             {tk.facts.map((f) => (
@@ -83,7 +91,7 @@ function TodayHero() {
 
 /** The four things people come here to do, each one tap away. */
 function JobTiles() {
-  const scr = useFeed('screen');
+  const sum = useSummary();
   const eng = useEngines();
   const icon = (href: string) => PAGES.find((p) => p.href === href)?.icon ?? '';
   const open = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending').length;
@@ -102,7 +110,7 @@ function JobTiles() {
     <section className="wrap" style={{ paddingTop: 0 }}>
       <div className="eyebrow" style={{ margin: '0 0 12px' }}>What would you like to do?</div>
       <div className="jobs">
-        <Tile href="/screen/" title="Find stocks" line="Filter the whole market by quality, growth, value and trend." live={scr.data ? `${num(scr.data.rows.length)} companies screened` : undefined} d={icon('/screen/')} />
+        <Tile href="/screen/" title="Find stocks" line="Filter the whole market by quality, growth, value and trend." live={sum.data ? `${num(sum.data.count)} companies screened` : undefined} d={icon('/screen/')} />
         <Tile title="Look up a company" line="Search by name or symbol for its full picture." live="Press / to search from anywhere" d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" onClick={() => window.dispatchEvent(new Event('alpha:search'))} />
         <Tile href="/engines/" title="See the signals" line="What the five models are watching, and how they have done." live={eng.data ? `${open} signal${open === 1 ? '' : 's'} waiting or open` : undefined} d={icon('/engines/')} />
         <Tile href="/watchlist/" title="Keep track" line="Your watchlist, and a journal of why you decided." live="Private, kept in this browser" d={icon('/watchlist/')} />
@@ -184,46 +192,47 @@ function Board() {
   );
 }
 
+/** The day's breadth: how many stocks closed up or down on the screen's latest session. One-day moves (r1d) from the same rows
+ *  as the sector medians beside it, so the two panels describe the same day and the same stocks. */
 function Breadth() {
-  const p = useFeed('pulse');
-  const scr = useFeed('screen');
-  const b = p.data?.breadth;
-  const total = b ? b.up + b.down : 0;
-  const rows: [string, number, string?][] = b ? [
-    ['Advancing', (b.up / total) * 100, 'up'],
-    ['Declining', (b.down / total) * 100, 'down'],
+  const sum = useSummary();
+  const d = sum.data?.day;
+  const b200 = sum.data?.above200;
+  const rows: [string, number, 'up' | 'down' | undefined][] = d && d.counted ? [
+    ['Rose', (d.up / d.counted) * 100, 'up'],
+    ['Fell', (d.down / d.counted) * 100, 'down'],
   ] : [];
   return (
     <Rv className="panel spot">
-      <div className="eyebrow">Breadth · {p.data?.universe ?? '—'} stocks</div>
+      <div className="eyebrow">Breadth · {sum.data ? `${dateLabel(sum.data.as_of)} · ${num(d?.counted ?? 0)} stocks` : '—'}</div>
       <div className="disp" style={{ fontSize: 44, margin: '14px 0 18px' }}>
-        {b ? <>{num(b.up)} <span className="dim" style={{ fontSize: 24 }}>up</span> · {num(b.down)} <span className="dim" style={{ fontSize: 24 }}>down</span></> : <Skel h={44} />}
+        {d ? <>{num(d.up)} <span className="dim" style={{ fontSize: 24 }}>rose</span> · {num(d.down)} <span className="dim" style={{ fontSize: 24 }}>fell</span></> : <Skel h={44} />}
       </div>
       <div className="meter">
         {rows.map(([l, v, k]) => (
           <div className="meter-row" key={l}>
             <span className="lab">{l}</span>
-            <Bar pct={v} kind={k as 'up' | 'down' | undefined} />
+            <Bar pct={v} kind={k} />
             <span className="num">{v.toFixed(0)}%</span>
           </div>
         ))}
       </div>
-      {b && <p className="dim" style={{ fontSize: 13.5, margin: '16px 0 0' }}>Median stock {pct(b.median)} over the last week window · {b.at_52w_high} at a 52-week high</p>}
+      {d && b200 && <p className="dim" style={{ fontSize: 13.5, margin: '16px 0 0' }}>{d.flat ? `${num(d.flat)} unchanged · ` : ''}{num(b200.above)} of {num(b200.withHistory)} above their 200-day average</p>}
     </Rv>
   );
 }
 
+/** Median one-day move of each sector's stocks, from the same rows and the same day as Breadth. */
 function Sectors() {
-  const p = useFeed('pulse');
-  const list = (p.data?.sectors_day?.length ? p.data.sectors_day : p.data?.sectors) ?? [];
-  const label = p.data?.sectors_day?.length ? 'Today' : 'Over the week';
+  const sum = useSummary();
+  const list = sum.data?.sectors ?? [];
   return (
     <Rv className="panel spot">
-      <div className="eyebrow">Sectors · median stock · {label}</div>
+      <div className="eyebrow">Sectors · median stock · {sum.data ? dateLabel(sum.data.as_of) : '—'}</div>
       <div className="sector-strip" style={{ marginTop: 16 }}>
-        {list.length === 0 && Array.from({ length: 8 }, (_, i) => <Skel key={i} h={76} />)}
-        {[...list].sort((a, b) => b.median - a.median).map((s) => (
-          <div className="sector-cell" key={s.name} style={{ ['--c' as string]: heat(s.median) }} title={`${s.n} stocks, ${s.up} up`}>
+        {!sum.data && Array.from({ length: 8 }, (_, i) => <Skel key={i} h={76} />)}
+        {list.map((s) => (
+          <div className="sector-cell" key={s.name} style={{ ['--c' as string]: heat(s.median) }} title={`median of ${s.n} stocks`}>
             <span className="n">{s.name}</span>
             <span className="v">{pct(s.median)}</span>
           </div>
@@ -336,13 +345,14 @@ export default function Home() {
           <Sectors />
         </div>
       </section>
+      {/* Below the fold: these feeds (pulse 34 KB, news, IPO, weekly reads 103 KB) load only when the reader gets near them. */}
       <section className="wrap section">
-        <SectionHead eyebrow="Today" title="What moved, and what was said" />
-        <div className="grid g2"><Movers /><News /></div>
+        <SectionHead eyebrow="This week" title="What moved, and what was said" />
+        <LazyMount minHeight={520}><div className="grid g2"><Movers /><News /></div></LazyMount>
       </section>
       <section className="wrap section">
         <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
-        <div className="grid g2"><IpoCard /><ReadCard /></div>
+        <LazyMount minHeight={260}><div className="grid g2"><IpoCard /><ReadCard /></div></LazyMount>
       </section>
     </>
   );

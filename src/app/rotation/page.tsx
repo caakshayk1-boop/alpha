@@ -248,7 +248,7 @@ export default function RotationPage() {
               </div>
 
               <SectionHead title="Every group, by phase" />
-              <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 760 }}>
+              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 760 }}>
                 <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ' (today)' : ''}</th><th>Stocks</th></tr></thead>
                 <tbody>{table.map((x) => (
                   <tr key={x.s.name} onClick={() => setSel(x.s.name)} style={{ cursor: 'pointer', background: sel === x.s.name ? 'var(--accent-soft)' : undefined }}>

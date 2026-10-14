@@ -80,7 +80,7 @@ export function PortfolioXray() {
       <p className="muted" style={{ margin: '8px 0 12px' }}>Paste holdings as <code>SYMBOL quantity average-price</code>, one per line (price optional). Kept in this browser only; nothing is uploaded.</p>
       {isSample && <p className="notice" role="status"><b>Example holdings, not your portfolio.</b> The figures below describe these four sample names. Edit the rows or clear them to use your own.</p>}
       {lines.length > 0 && (
-        <div className="tbl-wrap" style={{ maxHeight: 'none', marginBottom: 8 }}>
+        <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none', marginBottom: 8 }}>
           <table className="tbl" style={{ minWidth: 480 }}>
             <thead><tr><th scope="col">Symbol</th><th scope="col">Quantity</th><th scope="col">Average price (optional)</th><th scope="col">Check</th><th scope="col"><span className="sr">Remove</span></th></tr></thead>
             <tbody>{lines.map((l, i) => { const issue = rowIssue(l); return (
@@ -119,7 +119,7 @@ export function PortfolioXray() {
             </div>
             {X.notes.length > 0 && <div className="panel tight" style={{ background: 'var(--panel-2)', marginBottom: 14 }}><div className="eyebrow" style={{ marginBottom: 6 }}>What stands out</div><ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{X.notes.map((n) => <li key={n}>{n}</li>)}</ul></div>}
             <div className="grid g-7-5">
-              <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 520 }}>
+              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 520 }}>
                 <thead><tr><th>Holding</th><th>Weight</th><th>Value</th><th>P/L</th><th>Desk read</th></tr></thead>
                 <tbody>{X.hs.map((h) => (
                   <tr key={h.sym}><td><Link href={`/company/?s=${encodeURIComponent(h.sym)}`}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
@@ -169,7 +169,7 @@ export function ReverseDcf() {
             {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
         </div>
         {eps !== null && r.price && (
-          <div className="tbl-wrap" style={{ maxHeight: 'none', marginTop: 14 }}>
+          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none', marginTop: 14 }}>
             <table className="tbl" style={{ minWidth: 420 }}>
               <caption className="dim" style={{ textAlign: 'left', fontSize: 13.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
               <thead><tr><th scope="col">Required return ↓ · terminal growth →</th>{[3, 5, 7].map((t) => <th key={t} scope="col" className="num">{t}%</th>)}</tr></thead>
@@ -250,7 +250,7 @@ export function MarketStance() {
             const conds: [string, boolean, string][] = [
               ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],
               ['More than half above their 50-day', bd.above50 > 50, `${bd.above50.toFixed(0)}% are`],
-              ['Advancers outnumber decliners', bd.advancing > bd.declining, `${bd.advancing} up, ${bd.declining} down`],
+              ['More stocks up than down over the past week', bd.advancing > bd.declining, `${bd.advancing} up, ${bd.declining} down over 5 sessions`],
               ['Typical stock is up over the month', bd.median_1m > 0, `median ${bd.median_1m.toFixed(1)}%`],
               ['New 52-week highs are broad (over 3% of names)', bd.at_52w_high / bd.counted > 0.03, `${bd.at_52w_high} of ${bd.counted}`],
               ['Nifty positive over the year', bd.nifty_1y > 0, `${bd.nifty_1y.toFixed(1)}%`],

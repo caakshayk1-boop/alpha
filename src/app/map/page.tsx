@@ -124,7 +124,7 @@ export default function MapPage() {
     const items = [...by.entries()].map(([name, list]) => ({ value: list.reduce((t, r) => t + (sz.get(r) ?? 0), 0), data: { name, list } }));
     const groups = squarify(items, { x: 0, y: 0, w: size.w, h: size.h });
     const tiles = groups.flatMap((g) => {
-      const head = grp.id === 'none' ? 0 : g.w > 70 && g.h > 46 ? 17 : 0;
+      const head = grp.id === 'none' ? 0 : g.w > 70 && g.h > 46 ? 24 : 0;
       return squarify(g.data.list.map((r) => ({ value: sz.get(r) ?? 0, data: r })), { x: g.x + 1, y: g.y + head + 1, w: g.w - 2, h: g.h - head - 2 });
     });
     return { groups, tiles };
@@ -198,8 +198,8 @@ export default function MapPage() {
               <div className="map" ref={box} onMouseLeave={() => setTip(null)}>
                 <div ref={stage} style={{ position: 'absolute', inset: 0 }}>
                   {layout.groups.map((g) => g.w > 70 && g.h > 46 && grp.id !== 'none' ? (
-                    <button key={g.data.name} className="tile sectorhead" style={{ left: g.x, top: g.y, width: g.w, height: 17, padding: '1px 6px', background: 'rgba(0,0,0,.45)', border: 0, pointerEvents: 'auto', cursor: zoom ? 'default' : 'zoom-in' }} onClick={() => !zoom && setZoom(g.data.name)} aria-label={`Zoom into ${g.data.name}`}>
-                      <b style={{ fontSize: 12, opacity: 0.92 }}>{g.data.name}{!zoom ? ' ⌕' : ''}</b>
+                    <button key={g.data.name} className="tile sectorhead" style={{ left: g.x, top: g.y, width: g.w, height: 24, padding: '4px 6px', background: 'rgba(10,12,16,.82)', border: 0, pointerEvents: 'auto', cursor: zoom ? 'default' : 'zoom-in' }} onClick={() => !zoom && setZoom(g.data.name)} aria-label={`Zoom into ${g.data.name}`}>
+                      <b style={{ fontSize: 12 }}>{g.data.name}{!zoom ? ' ⌕' : ''}</b>
                     </button>
                   ) : null)}
                   {layout.tiles.map((t) => {
@@ -207,14 +207,18 @@ export default function MapPage() {
                     const v = valueOf(r);
                     const font = labelFor(t.w, t.h, r.sym);
                     const showV = font >= 9 && t.h > font * 2.4 && t.w > 38;
+                    // A tile under 24px is too small to aim at by touch or reach usefully by keyboard; the text version below lists every
+                    // stock as a link, so tiny tiles stay mouse-clickable but leave the tab order and the accessibility tree.
+                    const tiny = t.w < 24 || t.h < 24;
+                    const a11y = tiny ? { 'aria-hidden': true } : { role: 'link', tabIndex: 0, 'aria-label': showV ? `${r.sym} ${fmtV(v)}, ${r.name}` : font > 0 ? `${r.sym}, ${r.name}, ${fmtV(v)}` : `${r.name} (${r.sym}), ${fmtV(v)}` };
                     return (
-                      <div key={r.sym} className="tile" role="link" tabIndex={0} aria-label={`${r.name}, ${fmtV(v)}`}
+                      <div key={r.sym} className="tile" {...a11y}
                         style={{ left: t.x, top: t.y, width: t.w, height: t.h, background: colorFor(v, m.max), padding: font ? 2 : 0, opacity: dimmed(r) ? 0.18 : 1, outline: sel?.sym === r.sym ? '2px solid #fff' : undefined, alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
                         onMouseMove={(e) => { const b = box.current?.getBoundingClientRect(); if (b) setTip({ r, x: e.clientX - b.left, y: e.clientY - b.top }); }}
                         onFocus={() => setSel(r)}
                         onClick={() => setSel(r)} onKeyDown={(e) => { if (e.key === 'Enter') setSel(r); }}>
                         {font > 0 && <b style={{ fontSize: font, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'clip', maxWidth: '100%' }}>{r.sym}</b>}
-                        {showV && <span style={{ fontSize: Math.max(8, font * 0.78) }}>{fmtV(v)}</span>}
+                        {showV && <>{' '}<span style={{ fontSize: Math.max(8, font * 0.78) }}>{fmtV(v)}</span></>}
                       </div>
                     );
                   })}
@@ -232,13 +236,13 @@ export default function MapPage() {
               <details className="panel tight" style={{ marginTop: 14 }}>
                 <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {m.label}</summary>
                 <p className="dim" style={{ fontSize: 14, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero; the median is {fmtV(summary.med)}.</p>
-                <div className="tbl-wrap" style={{ maxHeight: 360 }}>
+                <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 360 }}>
                   <table className="tbl"><caption className="sr">Stocks on the map by {m.label}</caption>
                     <thead><tr><th>Stock</th><th>Sector</th><th>{m.label}</th></tr></thead>
-                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).slice(0, 150).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td>{r.name} ({r.sym})</td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
+                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.name} ({r.sym})</Link></td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
                   </table>
                 </div>
-                <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Top 150 shown.</p>
+                <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Every stock on the map with a value, strongest first. Each name opens its company page.</p>
               </details>
 
               <div className="grid g-7-5" style={{ marginTop: 14 }}>

@@ -73,7 +73,7 @@ function Compare() {
           {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['screen']} /></div>}
           {rows.length < 2 ? <Notice>Add at least two companies. Try <Link href="/compare/?s=TCS,INFY,HCLTECH" style={{ color: 'var(--accent-2)' }}>TCS, Infosys and HCLTech</Link>.</Notice> : (
             <div className="grid g-7-5" style={{ alignItems: 'start' }}>
-              <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
                 <table className="tbl" style={{ minWidth: 560 }}>
                   <thead><tr><th>Measure</th>{rows.map((r, i) => <th key={r.sym} style={{ color: COLORS[i] }}><Link href={`/company/?s=${r.sym}`}>{r.sym}</Link></th>)}</tr></thead>
                   <tbody>

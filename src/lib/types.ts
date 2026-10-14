@@ -77,6 +77,16 @@ export interface Breadth {
   as_of: string;
 }
 
+/** /api/summary: one day's figures from screen.json's own rows (worker/index.js `summarise`). `day` is the one-day move. */
+export interface Summary {
+  as_of: string | null;
+  built_on: string | null;
+  count: number;
+  day: { up: number; down: number; flat: number; counted: number };
+  above200: { above: number; withHistory: number };
+  sectors: { name: string; n: number; median: number }[];
+}
+
 export interface Screen {
   ok: boolean;
   built_on: string;

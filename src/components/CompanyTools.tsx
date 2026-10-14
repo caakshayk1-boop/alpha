@@ -90,7 +90,7 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
   if (!sims.length) return <p className="notice">Not enough complete data to find look-alikes for this company.</p>;
   return (
     <>
-      <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+      <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
         <table className="tbl" style={{ minWidth: 640 }}>
           <thead><tr><th>Company</th><th>Match</th><th>Quality</th><th>Growth</th><th>Value</th><th>Trend</th><th>P/E</th><th>1Y</th></tr></thead>
           <tbody>

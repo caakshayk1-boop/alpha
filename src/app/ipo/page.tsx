@@ -96,7 +96,7 @@ export default function Ipo() {
 
               <div style={{ height: 36 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />
-              <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
+              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
                 {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${a.pe_post_issue.toFixed(1)}×` : dash}</td><td className="num">{a.peer_pe ? `${a.peer_pe.toFixed(1)}×` : dash}</td></tr>)}
                 {d.awaiting_listing.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>None awaiting listing.</td></tr>}
               </tbody></table></div>

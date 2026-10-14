@@ -27,11 +27,11 @@ export default function MetricGlossary() {
             <div className="eyebrow">{k}</div>
             <h3 className="disp" style={{ fontSize: 24, margin: '6px 0 6px' }}>{e.name}</h3>
             <p style={{ margin: '0 0 8px' }}>{e.what}</p>
-            <dl className="muted" style={{ margin: 0, display: 'grid', gap: 6, fontSize: 15 }}>
+            <div className="muted" style={{ margin: 0, display: "grid", gap: 6, fontSize: 15 }}>
               <div><b style={{ color: 'var(--text)' }}>How it is worked out:</b> {e.how}</div>
               <div><b style={{ color: 'var(--text)' }}>How to read it:</b> {e.read}</div>
               <div><b style={{ color: 'var(--text)' }}>Watch out:</b> {e.caveat}</div>
-            </dl>
+            </div>
           </section>
         ))}
       </div>

@@ -5,9 +5,8 @@ import { useMemo, useState } from 'react';
 import { Async, Chg, CountUp, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
 import { EngineVerdict } from '@/components/EvidenceTags';
-import { breadth200 } from '@/lib/breadth';
-import { useEngines, useFeed, useQuotes } from '@/lib/data';
-import { dateLabel, heat, num, pct } from '@/lib/format';
+import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
+import { dateLabel, heat, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
 
@@ -22,11 +21,11 @@ export default function Brief() {
   const news = useFeed('news');
   const season = useFeed('seasonality');
   const quotes = useQuotes();
+  const sum = useSummary();
   const eng = useEngines();
   const [copied, setCopied] = useState(false);
 
   const t = bar.data?.today;
-  const br = pulse.data?.breadth;
   const rows = useMemo(() => screen.data?.rows ?? [], [screen.data]);
 
   const moved = useMemo(() => rows.filter((r) => has((r as Row & { rank_move?: number }).rank_move)).sort((a, b) => Math.abs((b as Row & { rank_move: number }).rank_move) - Math.abs((a as Row & { rank_move: number }).rank_move)).slice(0, 6), [rows]);
@@ -50,15 +49,19 @@ export default function Brief() {
       .sort((a, b) => b.rec[0] - a.rec[0] || b.rec[1] - a.rec[1]).slice(0, 8);
   }, [season.data, rows, month]);
 
-  const secs = [...((pulse.data?.sectors_day?.length ? pulse.data.sectors_day : pulse.data?.sectors) ?? [])].sort((a, b) => b.median - a.median);
+  // One day, one universe: the count, the 200-day share and the sector medians all come from the screen's own rows (/api/summary).
+  const secs = sum.data?.sectors ?? [];
+  const day = sum.data?.day;
+  const b200 = sum.data?.above200;
   const indexQuotes = (quotes.data?.quotes ?? []).filter((q) => ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'gold', 'crude', 'usdinr'].includes(q.id) && q.price !== null);
 
-  const b200 = useMemo(() => (rows.length ? breadth200(rows) : null), [rows]);
   const headline = useMemo(() => {
-    if (!t || !br) return '';
-    const tilt = br.up > br.down ? 'More stocks rose than fell' : 'More stocks fell than rose';
-    return `${tilt} (${br.up} up, ${br.down} down), the barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}), and ${b200 && b200.pct !== null ? `${b200.above} of ${b200.withHistory} stocks with a 200-day history (${Math.round(b200.pct)}%)` : 'a share of stocks'} sit above their 200-day average.`;
-  }, [t, br, b200]);
+    if (!t) return '';
+    if (!day || !sum.data) return sum.error ? `The barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}). The day's breadth could not be loaded, and nothing is estimated in its place.` : '';
+    const tilt = day.up > day.down ? 'more stocks rose than fell' : day.up < day.down ? 'more stocks fell than rose' : 'as many stocks rose as fell';
+    const share = b200 && b200.withHistory ? ` ${b200.above} of ${b200.withHistory} stocks with a 200-day history (${Math.round((b200.above / b200.withHistory) * 100)}%) sit above their 200-day average.` : '';
+    return `On ${dateLabel(sum.data.as_of)}, ${tilt} (${day.up} up, ${day.down} down). The barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}).${share}`;
+  }, [t, day, b200, sum.data, sum.error]);
 
   const copy = async () => {
     const lines = [`alpha brief — market data as of ${dateLabel(screen.data?.breadth.as_of)}`, headline, '',
@@ -73,13 +76,14 @@ export default function Brief() {
       <PageHead eyebrow={screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen', 'barometer', 'engines']} /></section>
       <section className="wrap">
-        <Async loading={bar.loading && pulse.loading} error={null} rows={2}>
+        <Async loading={bar.loading && sum.loading} error={null} rows={2}>
           <Rv className="panel" style={{ marginBottom: 14 }}>
             <div className="eyebrow">The read</div>
             <p className="disp" style={{ fontSize: 'clamp(24px, 3vw, 38px)', lineHeight: 1.15, margin: '12px 0 14px', maxWidth: '40ch' }}>{headline || 'Reading the market…'}</p>
             <button className="chip" onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button>
           </Rv>
 
+          {indexQuotes.length > 0 && (() => { const qs = quoteState(Math.max(0, ...indexQuotes.map((q) => q.at ?? 0)) || null); return <div className="eyebrow" style={{ margin: '4px 0 10px' }}>{qs.word === 'live' ? 'Live quotes' : qs.word === 'unknown' ? 'Quotes' : `Index quotes · ${qs.label}`}</div>; })()}
           <div className="qgrid" style={{ marginBottom: 12 }}>
             {indexQuotes.map((q) => (
               <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /></Rv>
@@ -88,8 +92,8 @@ export default function Brief() {
 
           <div className="grid g-7-5">
             <Rv className="panel">
-              <div className="eyebrow">Sectors · median stock</div>
-              <div className="sector-strip" style={{ marginTop: 14 }}>{secs.map((s) => <div className="sector-cell" key={s.name} style={{ ['--c' as string]: heat(s.median) }}><span className="n">{s.name}</span><span className="v">{pct(s.median)}</span></div>)}</div>
+              <div className="eyebrow">Sectors · median one-day move · {sum.data ? dateLabel(sum.data.as_of) : '—'}</div>
+              <div className="sector-strip" style={{ marginTop: 14 }}>{secs.map((s) => <div className="sector-cell" title={`median of ${s.n} stocks`} key={s.name} style={{ ['--c' as string]: heat(s.median) }}><span className="n">{s.name}</span><span className="v">{pct(s.median)}</span></div>)}</div>
             </Rv>
             <Rv className="panel">
               <div className="eyebrow">Market stage</div>
@@ -146,14 +150,14 @@ export default function Brief() {
 
           <SectionHead eyebrow="Engines" title="What the models selected" href="/engines/" cta="All engines" />
           <Async loading={eng.loading} error={null} rows={1}>
-            <div className="engine-cards">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
+            <div className="engine-cards" tabIndex={0} role="region" aria-label="Engines (scrolls sideways)">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
               <Rv key={e.key} className="panel spot"><div className="eyebrow">Engine {e.id} · {e.name}</div><div className="disp" style={{ fontSize: 44 }}>{e.signal_count}</div><div className="dim" style={{ fontSize: 13.5 }}>signal{e.signal_count === 1 ? '' : 's'} now</div><div style={{ marginTop: 10 }}><EngineVerdict e={e} /></div></Rv>
             ))}</div>
           </Async>
 
           <SectionHead eyebrow="Wire" title="Headlines" href="/news/" cta="All stories" />
           <Rv className="panel"><div className="list">{(news.data ?? []).slice(0, 6).map((s) => <a key={s.link} href={s.link} target="_blank" rel="noopener noreferrer" className="li"><div><div className="t">{s.title}</div><div className="s">{s.source}</div></div><span aria-hidden className="dim">↗</span></a>)}</div></Rv>
-          <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Information only, not investment advice. This brief is also sent to Telegram at 08:00 and 20:00 MYT.</p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Information only, not investment advice. A brief is also sent to Telegram at 08:00 and 20:00 MYT on weekdays.</p>
         </Async>
       </section>
     </>

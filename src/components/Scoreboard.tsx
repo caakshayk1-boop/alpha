@@ -23,7 +23,7 @@ export default function Scoreboard({ feed }: { feed: EnginesFeed }) {
           ? `Nothing has closed since launch${feed.launched ? ` on ${dateLabel(feed.launched)}` : ''}: ${issuedAll} ${issuedAll === 1 ? 'signal has' : 'signals have'} been issued and none has resolved yet, so there is no live result to show. That is the honest position, and it will fill in as trades close.`
           : `${closedAll} trades have closed since launch. A live average is set beside the backtest only after ${MIN_LIVE_CLOSED} closed trades for that engine.`}
       </p>
-      <div className="tbl-wrap" style={{ maxHeight: 'none' }}>
+      <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
         <table className="tbl">
           <thead><tr><th>Engine</th><th>Backtest, unseen data</th><th>Live since launch</th><th>Closed trades needed</th><th>Live vs backtest</th></tr></thead>
           <tbody>
