@@ -83,10 +83,10 @@ export default function Brief() {
             <button className="chip" onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button>
           </Rv>
 
-          {indexQuotes.length > 0 && (() => { const qs = quoteState(Math.max(0, ...indexQuotes.map((q) => q.at ?? 0)) || null); return <div className="eyebrow" style={{ margin: '4px 0 10px' }}>{qs.word === 'live' ? 'Live quotes' : qs.word === 'unknown' ? 'Quotes' : `Index quotes · ${qs.label}`}</div>; })()}
+          {indexQuotes.length > 0 && <div className="eyebrow" style={{ margin: '4px 0 10px' }}>Quotes · each card shows its own last trade</div>}
           <div className="qgrid" style={{ marginBottom: 12 }}>
             {indexQuotes.map((q) => (
-              <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /></Rv>
+              <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /><div className="qtime">{quoteState(q.at).label}</div></Rv>
             ))}
           </div>
 

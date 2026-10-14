@@ -20,6 +20,7 @@ function QuoteCard({ q }: { q: Quote }) {
       <div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div>
       <div className="px">{q.prefix}{num(q.price, q.dp)}</div>
       <Spark series={q.series} up={up} />
+      <div className="qtime">{quoteState(q.at).label}</div>
     </Rv>
   );
 }
@@ -176,9 +177,8 @@ function Teasers() {
 function Board() {
   const q = useQuotes();
   const want = ['sensex', 'banknifty', 'usdinr', 'spx', 'gold', 'brent'];   // Nifty 50 and India VIX are already in the headline facts
-  const newest = Math.max(0, ...(q.data?.quotes ?? []).map((x) => x.at ?? 0));
-  const qs = quoteState(newest || null);
-  const boardLabel = q.data ? (qs.word === 'live' ? 'Live quotes' : qs.word === 'unknown' ? 'Quotes' : `Quotes · ${qs.label}`) : 'Quotes';
+  // Markets keep different hours (Sensex shut while the S&P trades), so each card states its own last-trade time; no group label claims "live".
+  const boardLabel = 'Quotes';
   return (
     <section className="wrap section">
       <SectionHead eyebrow={boardLabel} title="Other markets" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
