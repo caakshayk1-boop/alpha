@@ -6,6 +6,7 @@ import { Async, Chg, LazyMount, Rv, SectionHead, Skel, Spark } from '@/component
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
+import { MarketSession } from '@/components/MarketSession';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { crore, dateLabel, num, pct, quoteState, rupeeBand } from '@/lib/format';
@@ -63,6 +64,7 @@ function TodayHero() {
       ) : (
         <div aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
       )}
+      <div className="stamp" style={{ marginTop: 0 }}><MarketSession /></div>
       <DataStamp ids={['barometer', 'screen', 'engines']} />
 
       <div className="hero2">

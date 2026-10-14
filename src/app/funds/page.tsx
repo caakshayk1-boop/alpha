@@ -1,58 +1,119 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Async, Chg, PageHead } from '@/components/ui';
+// Funds: compare the three direct-plan funds the pipeline lists per category, on return, the falls it took to get there,
+// and what each one actually holds. Primary action: pick a category. Category and sort live in the address.
+
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Async, Chg, PageHead, Rv, TabRow } from '@/components/ui';
 import { useFeed } from '@/lib/data';
 import { dash, dateLabel, num } from '@/lib/format';
+import { ordinal } from '@/lib/status';
+import type { Fund } from '@/lib/types';
 
-type SortKey = 'r3' | 'r5' | 'r1' | 'volatility' | 'dd3';
+type SortKey = 'r3' | 'r5' | 'r1' | 'dd3' | 'volatility';
+const SORTS: readonly (readonly [SortKey, string])[] = [['r3', '3-yr return'], ['r5', '5-yr return'], ['r1', '1-yr return'], ['dd3', 'Smallest fall'], ['volatility', 'Lowest volatility']];
+const isSort = (x: string | null): x is SortKey => SORTS.some(([k]) => k === x);
+const fin = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
+const short = (n: string) => n.replace(/\s*-\s*Direct Plan\s*-\s*Growth( Option)?/i, '').replace(/\s*-\s*Direct\s*-\s*Growth/i, '');
 
-export default function Funds() {
+function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: string }) {
+  const p = f.portfolio;
+  const headline = fin(f.r3) ? { v: f.r3, l: '3-year return, a year' } : fin(f.since_inception) ? { v: f.since_inception, l: `since launch (${num(f.history_years, 1)} yrs), a year` } : null;
+  // newest four calendar years, newest first (the feed's order is not guaranteed: sort, never slice blindly)
+  const cal = [...(f.calendar ?? [])].sort((a, b) => b.year - a.year).slice(0, 4);
+  const calMax = Math.max(5, ...cal.map((c) => Math.abs(c.ret)));
+  return (
+    <Rv className="panel" style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
+      <div>
+        <span className="tag acc">#{rank} by {sortLabel.toLowerCase()}</span>
+        <h2 style={{ font: '600 18px/1.3 var(--f-ui)', margin: '10px 0 2px' }}>{short(f.name)}</h2>
+        <div className="dim" style={{ fontSize: 13.5 }}>{f.house} · launched {dateLabel(f.inception)}</div>
+      </div>
+      <div>
+        <div className="disp" style={{ fontSize: 44, lineHeight: 1 }}>{headline ? <Chg v={headline.v} dp={1} /> : dash}</div>
+        <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>{headline ? headline.l : 'not enough history'}{fin(f.percentile_r3) ? ` · ${ordinal(f.percentile_r3)} percentile in its category` : ''}</div>
+      </div>
+      <div className="kv" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+        <div><div className="k">1 year</div><div className="v">{fin(f.r1) ? <Chg v={f.r1} dp={1} /> : dash}</div></div>
+        <div><div className="k">5 years, a year</div><div className="v">{fin(f.r5) ? <Chg v={f.r5} dp={1} /> : <span className="dim" style={{ fontSize: 14 }}>{f.history_years < 5 ? 'under 5 yrs old' : dash}</span>}</div></div>
+        <div><div className="k">Worst fall, 3 yrs</div><div className="v down">{fin(f.dd3) ? `${f.dd3.toFixed(1)}%` : dash}</div></div>
+        <div><div className="k">Volatility</div><div className="v">{fin(f.volatility) ? `${f.volatility.toFixed(1)}%` : dash}</div></div>
+      </div>
+      {cal.length > 0 && (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Calendar years</div>
+          <div className="secbars" style={{ marginTop: 0 }}>
+            {cal.map((c) => (
+              <div className="secbar" key={c.year} style={{ gridTemplateColumns: '48px minmax(0, 1fr) 64px' }}>
+                <span className="num">{c.year}</span>
+                <span className="track" aria-hidden><i style={c.ret >= 0 ? { left: '50%', width: `${(Math.abs(c.ret) / calMax) * 50}%`, background: 'var(--up)' } : { right: '50%', width: `${(Math.abs(c.ret) / calMax) * 50}%`, background: 'var(--down)' }} /></span>
+                <span className={`v num ${c.ret >= 0 ? 'up' : 'down'}`}>{c.ret >= 0 ? '+' : ''}{c.ret.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {p && (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>What it holds · as on {p.as_on}</div>
+          <p className="muted" style={{ margin: '0 0 8px', fontSize: 14 }}>{num(p.holdings_count)} holdings{fin(p.equity_pct) ? `, ${p.equity_pct.toFixed(0)}% in equity` : ''}.</p>
+          {p.top_sectors.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{p.top_sectors.slice(0, 3).map((s) => <span key={s.name} className="tag">{s.name} {s.pct.toFixed(0)}%</span>)}</div>}
+          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4, fontSize: 14 }}>
+            {p.top_stocks.slice(0, 5).map((s) => <li key={s.name}><span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{s.name}</span><span className="num dim">{s.pct.toFixed(1)}%</span></span></li>)}
+          </ol>
+          {p.source_url && <a className="dim" href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 3 }}>Holdings source: ETMoney ↗</a>}
+        </div>
+      )}
+      <div className="dim num" style={{ fontSize: 13, borderTop: '1px solid var(--line)', paddingTop: 10 }}>NAV ₹{num(f.nav, 2)} on {dateLabel(f.nav_date)} · AMFI scheme {f.code}</div>
+    </Rv>
+  );
+}
+
+function FundsPage() {
   const f = useFeed('funds');
+  const sp = useSearchParams();
+  const router = useRouter();
+  const cats = f.data?.categories ?? [];
   const [cat, setCat] = useState('');
   const [sort, setSort] = useState<SortKey>('r3');
-  const cats = f.data?.categories ?? [];
+  useEffect(() => { const c = sp.get('cat'); const s = sp.get('sort'); if (c) setCat(c); if (isSort(s)) setSort(s); }, [sp]);
   const active = cats.find((c) => c.key === cat) ?? cats[0];
-  const funds = useMemo(() => {
-    const list = [...(active?.funds ?? [])];
-    // drawdown and volatility: lower magnitude is better; returns: higher is better
-    return list.sort((a, b) => {
-      const av = a[sort], bv = b[sort];
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      return sort === 'volatility' ? av - bv : sort === 'dd3' ? bv - av : bv - av;
-    });
-  }, [active, sort]);
+  const go = (c: string, s: SortKey) => { setCat(c); setSort(s); router.replace(`/funds/?cat=${encodeURIComponent(c)}${s === 'r3' ? '' : `&sort=${s}`}`, { scroll: false }); };
+  const funds = useMemo(() => [...(active?.funds ?? [])].sort((a, b) => {
+    const av = a[sort], bv = b[sort];
+    if (!fin(av)) return 1;
+    if (!fin(bv)) return -1;
+    return sort === 'volatility' ? av - bv : bv - av;          // fall (dd3) is negative: the smallest fall is the largest number
+  }), [active, sort]);
+  const sortLabel = SORTS.find(([k]) => k === sort)?.[1] ?? '';
+  const navDates = funds.map((x) => x.nav_date).sort();
   return (
     <>
-      <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="Annualised returns set against the worst fall and the volatility it took to get there, from AMFI's official NAV history. These are lump-sum returns, not SIP returns, for direct plans only." />
+      <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="For each category, the three direct-plan funds with the highest 3-year return in the screen, shown with the worst fall they took, how much they swing, and what they actually hold. Lump-sum returns from AMFI's official NAV history, not SIP returns." />
       <section className="wrap">
-        <Async loading={f.loading} error={f.error}>
-          <div className="filters" style={{ alignItems: 'center' }}>
-            <label className="eyebrow" htmlFor="fund-cat">Category</label>
-            <select id="fund-cat" className="field" style={{ height: 38, minWidth: 240 }} value={active?.key ?? ''} onChange={(e) => setCat(e.target.value)}>{cats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
-            {active && <span className="muted num" style={{ fontSize: 14 }}>{funds.length} funds · NAV dates {dateLabel(funds.map((x) => x.nav_date).sort()[0])}{funds.length > 0 && funds.map((x) => x.nav_date).sort()[0] !== funds.map((x) => x.nav_date).sort().slice(-1)[0] ? ` to ${dateLabel(funds.map((x) => x.nav_date).sort().slice(-1)[0])}` : ''}</span>}
+        <Async loading={f.loading} error={f.error} rows={3}>
+          {cats.length > 0 && <TabRow label="Fund categories" value={active?.key ?? ''} onChange={(k) => go(k, sort)} options={cats.map((c) => [c.key, c.label] as const)} />}
+          {active && <p className="muted" style={{ margin: '14px 0 12px', maxWidth: '70ch' }}>{active.blurb}</p>}
+          <div className="filters" role="group" aria-label="Order the funds by">
+            <span className="eyebrow">Order by</span>
+            {SORTS.map(([k, l]) => <button key={k} className="chip" aria-pressed={sort === k} onClick={() => go(active?.key ?? '', k)}>{l}</button>)}
           </div>
-          {active && <p className="muted" style={{ marginTop: 0 }}>{active.blurb}</p>}
-          <div className="filters" role="group" aria-label="Sort by">
-            <span className="eyebrow">Sort</span>
-            {([['r3', '3-yr return'], ['r5', '5-yr return'], ['r1', '1-yr return'], ['dd3', 'Smallest fall'], ['volatility', 'Lowest volatility']] as const).map(([k, l]) => <button key={k} className="chip" aria-pressed={sort === k} onClick={() => setSort(k)}>{l}</button>)}
+          <div className="grid g3" style={{ alignItems: 'start' }}>{funds.map((x, i) => <FundCard key={x.code} f={x} rank={i + 1} sortLabel={sortLabel} />)}</div>
+          <div className="panel tight" style={{ marginTop: 14 }}>
+            <p className="dim" style={{ fontSize: 13.5, margin: 0, lineHeight: 1.6 }}>
+              <b style={{ color: 'var(--text)' }}>How these three are chosen:</b> the highest 3-year returns in the category. A ranking on past returns favours what has
+              just done well, and last period&apos;s leaders often do not lead the next. Read the worst fall and the holdings before the return.
+              {navDates.length > 0 && <> NAV dates {dateLabel(navDates[0])}{navDates[0] !== navDates[navDates.length - 1] ? ` to ${dateLabel(navDates[navDates.length - 1])}` : ''}.</>}
+              {' '}{(f.data?.basis ?? '').replace(/\.\s*$/, '')}. 1, 3 and 5-year figures are annualised changes in NAV between two dates; the worst fall is the deepest peak-to-trough drop in the last three years; volatility is the annualised standard deviation of monthly returns over the last three years (one NAV per month, so daily valuation noise does not inflate it). Not investment advice.
+            </p>
           </div>
-          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Fund</th><th>NAV</th><th>1Y</th><th>3Y p.a.</th><th>5Y p.a.</th><th>Worst fall (3Y)</th><th>Volatility</th><th>Rolling 3Y worst / median</th></tr></thead><tbody>
-            {funds.map((x) => (
-              <tr key={x.code} style={{ cursor: 'default' }}>
-                <td><div className="co"><b>{x.name.replace(/ - Direct Plan - Growth/i, '')}</b><span>{x.house} · {num(x.history_years, 1)} yrs of history · AMFI scheme {x.code}</span></div></td>
-                <td className="num">₹{num(x.nav, 2)}<div className="dim" style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>as of {dateLabel(x.nav_date)}</div></td>
-                <td><Chg v={x.r1} dp={1} /></td><td><Chg v={x.r3} dp={1} /></td><td><Chg v={x.r5} dp={1} /></td>
-                <td className="num down">{x.dd3 == null ? dash : `${x.dd3.toFixed(1)}%`}</td>
-                <td className="num">{x.volatility == null ? dash : `${x.volatility.toFixed(1)}%`}</td>
-                <td className="num">{x.rolling3y ? `${x.rolling3y.worst.toFixed(1)}% / ${x.rolling3y.median.toFixed(1)}%` : dash}</td>
-              </tr>
-            ))}
-          </tbody></table></div>
-          <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>{f.data?.basis}. Method: 1Y, 3Y and 5Y are annualised changes in NAV between two dates (a dash where the fund has not existed that long); &ldquo;worst fall&rdquo; is the deepest peak-to-trough NAV drop in the last three years; volatility is the annualised standard deviation of daily NAV changes; &ldquo;rolling 3Y&rdquo; takes every possible three-year window in the fund&apos;s history and shows the worst and the median annualised result. Funds with under three years of history have no 3Y figures. Past returns do not indicate future returns. Expense ratios are not in the data, which is why only direct plans are listed.</p>
         </Async>
       </section>
     </>
   );
+}
+
+export default function Page() {
+  return <Suspense fallback={<div className="wrap section"><h1 className="sr">Direct-plan funds</h1></div>}><FundsPage /></Suspense>;
 }

@@ -20,9 +20,10 @@ Each item has a pass/fail check.
 - [x] 8. (moved: Company was item 7; this batch shipped Tokens/shell, Today, Brief, Company.)
 
 ## Batch 3
-- [ ] 9. Funds and Compare relook.
-- [ ] 10. Audit F4 + F5: engine limits beside every plan level; one-line conflicts statement.
-- [ ] 11. Audit F7 + F10: CSP header; NSE open/closed chip.
+- [x] 9. Funds and Compare relook. Funds: three cards per category with holdings and calendar years (fixed: years showed the OLDEST four, hiding 2025; volatility was described as daily, it is monthly). Compare: small multiples, no gain/loss colours as identity, visible best tags, rows from shards.
+- [x] 10. Audit F4: limits line inside every plan-level block (survivorship, cost, no slippage).
+- [ ] 10b. Audit F5: conflicts statement. NEEDS AKSHAY: does he hold positions in names on the site?
+- [x] 11. Audit F7 + F10: CSP in public/_headers (sweep: no violations); NSE session chip read from the Nifty's last trade (holiday-proof).
 - [ ] 12. Screen, Engines, Markets, News, IPO, Reads polish pass on the v3 system.
 
 ## Batch 3: later

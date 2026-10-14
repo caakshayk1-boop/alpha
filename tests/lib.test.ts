@@ -489,3 +489,14 @@ test('screenUrl: unknown measures, flags, lenses, sizes and non-numbers from a l
   assert.equal(s.sort, 'comp');
   assert.equal(s.dir, -1);
 });
+
+import { sessionOf } from '../src/lib/session.ts';
+test('market session: open needs a fresh Nifty trade inside NSE hours; a stale trade on a weekday (a holiday) reads closed', () => {
+  const at = (iso: string) => Date.parse(iso) / 1000;
+  // Wed 14 Oct 2026, 11:00 IST = 05:30 UTC
+  assert.equal(sessionOf(at('2026-10-14T05:25:00Z'), Date.parse('2026-10-14T05:30:00Z'))?.open, true);
+  assert.equal(sessionOf(at('2026-10-13T10:00:00Z'), Date.parse('2026-10-14T05:30:00Z'))?.open, false, 'no trade today: holiday or feed stall');
+  assert.equal(sessionOf(at('2026-10-14T10:00:00Z'), Date.parse('2026-10-14T10:05:00Z'))?.open, false, '15:35 IST is after the close');
+  assert.equal(sessionOf(null), null);
+  assert.match(sessionOf(at('2026-10-14T10:01:12Z'), Date.parse('2026-10-14T18:00:00Z'))?.label ?? '', /closed · Nifty last traded 14 Oct, 15:31 IST/);
+});

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Async, Chg, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
+import { MarketSession } from '@/components/MarketSession';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { dateLabel, num, pct, quoteState } from '@/lib/format';
@@ -90,7 +91,7 @@ export default function Brief() {
           </div>
 
         <Async loading={bar.loading || sum.loading} error={null} rows={2}>
-          {indexQuotes.length > 0 && <div id="quotes" data-sec className="eyebrow" style={{ margin: '4px 0 10px' }}>Quotes · each card shows its own last trade</div>}
+          {indexQuotes.length > 0 && <div id="quotes" data-sec style={{ margin: '4px 0 10px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}><span className="eyebrow">Quotes · each card shows its own last trade</span><span className="stamp" style={{ margin: 0 }}><MarketSession /></span></div>}
           <div className="qgrid" style={{ marginBottom: 12 }}>
             {indexQuotes.map((q) => (
               <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /><div className="qtime">{quoteState(q.at).label}</div></Rv>

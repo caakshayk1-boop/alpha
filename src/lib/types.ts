@@ -186,6 +186,8 @@ export interface Fund {
   dd3: number | null; volatility: number | null; calendar?: { year: number; ret: number }[];
   rolling3y?: { best: number; worst: number; median: number; windows: number; above_7pct: number };
   percentile_r3?: number;
+  /** Holdings read from ETMoney by the data pipeline (trading-dashboard fund_portfolio.py); absent when not available. */
+  portfolio?: { as_on: string; holdings_count: number; equity_pct: number | null; top_sectors: { name: string; pct: number }[]; top_stocks: { name: string; pct: number }[]; source_url?: string };
 }
 export interface Funds { generated_at: string; basis: string; categories: { key: string; label: string; blurb: string; funds: Fund[] }[] }
 

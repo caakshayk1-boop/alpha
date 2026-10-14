@@ -21,7 +21,7 @@ const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.
 const STATE_LABEL: Record<string, string> = { pending: 'Issued · waiting for the next open', open: 'Open', closed: 'Closed', void: 'Void' };
 const EVENT_LABEL: Record<string, string> = { entry: 'Entered', t1: 'T1 reached', t2: 'T2 reached', t3: 'T3 reached', stop: 'Stopped out', stop_after_t1: 'Stopped at entry', stop_after_t2: 'Stopped at T1', time: 'Time limit' };
 
-function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string }) {
+function SignalCard({ s, e, live, through, cost }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string; cost?: number }) {
   // A signal still `pending` once a later session exists in the screen has had its open come and go; the engines have not processed it yet.
   const overdue = s.status === 'pending' && !!through && through > s.date;
   const [capital, setCapital] = useState('500000');
@@ -57,7 +57,7 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
         {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
         {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
       </div>
-      <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
+      <PlanOdds cost={cost} sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
       {px !== null && active && (
         <p className="sig-dist num">{(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}</p>
       )}
@@ -248,7 +248,7 @@ export default function EnginesPage() {
                   {tab === 'signals' && (sigs.length ? (
                     <>
                       {px.at && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
-                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} />)}</div>
+                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} cost={feed.backtest.cost_round_trip_pct} />)}</div>
                       {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
                   ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}
