@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useEngines, useFeed, useRotation } from '@/lib/data';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
-import { describe, expectedSession, reconcile, type DataStatus, type DatasetInput } from '@/lib/status';
+import { describe, expectedSession, reconcile, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
 
 const TONE: Record<DataStatus['state'], string> = { current: 'up', delayed: 'warn', stale: 'down', partial: 'warn', missing: 'down', unavailable: 'down', error: 'down' };
 const ICON: Record<DataStatus['state'], string> = { current: '●', delayed: '◐', stale: '○', partial: '◐', missing: '○', unavailable: '○', error: '✕' };
@@ -26,10 +26,12 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
   const expected = useMemo(() => expectedSession(new Date()), []);
   const items = useMemo<DataStatus[]>(() => {
     const list: DatasetInput[] = [];
+    const lastWeek = rot.data?.dates[rot.data.dates.length - 1];
+    const rotThrough = rot.data && lastWeek ? weekThrough(lastWeek, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
     list.push(scr.data ? { id: 'screen', label: 'Screen', source: 'Alpha screen: company filings and Yahoo Finance prices', asOf: scr.data.breadth.as_of, refreshedAt: scr.data.built_on ?? null } : { id: 'screen', label: 'Screen', source: 'Alpha screen', asOf: null, refreshedAt: null, error: !!scr.error });
     list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: bar.data.today.nifty_date ?? null, refreshedAt: bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
     list.push(eng.data ? { id: 'engines', label: 'Engines', source: 'Alpha engines: models retrained on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Engines', source: 'Alpha engines', asOf: null, refreshedAt: null, error: !!eng.error });
-    list.push(rot.data ? { id: 'rotation', label: 'Rotation', cadence: 'weekly', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rot.data.dates[rot.data.dates.length - 1] ?? null, refreshedAt: rot.data.generated ?? null, note: 'Weekly: the last bar is the week ending on this date.' } : { id: 'rotation', label: 'Rotation', cadence: 'weekly', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
+    list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
     return reconcile(list, expected);
   }, [expected, scr.data, scr.error, bar.data, bar.error, eng.data, eng.error, rot.data, rot.error]);
   return { items, loading: scr.loading || bar.loading || eng.loading || rot.loading };

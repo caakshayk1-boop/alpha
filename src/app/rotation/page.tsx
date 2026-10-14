@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
-import { useFeed, useRotation } from '@/lib/data';
+import { useEngines, useFeed, useRotation } from '@/lib/data';
+import { weekThrough } from '@/lib/status';
 import { dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
 
@@ -20,6 +21,7 @@ interface Series { name: string; ratio: (number | null)[]; mom: (number | null)[
 
 export default function RotationPage() {
   const rot = useRotation();
+  const eng = useEngines();
   const scr = useFeed('screen');
   const [end, setEnd] = useState<number | null>(null);
   const [sel, setSel] = useState<string | null>(null);
@@ -130,6 +132,9 @@ export default function RotationPage() {
 
   const date = rot.data?.dates[t];
   const past = n > 0 && t < n - 1;     // a historical week is selected
+  // The newest point is labelled with the Friday that ends its week even while the week is still running; say what it runs to.
+  const wt = date && !past && rot.data ? weekThrough(date, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
+  const weekLabel = wt?.inProgress ? `${date} (week in progress, data through ${wt.through})` : date;
   return (
     <>
       <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="A Relative Rotation Graph for every benchmark group: how strong each is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows. Groups often pass through Improving, Leading, Weakening and Lagging, but not in a fixed order or at a fixed speed. Drag the time machine back to see past weeks." />
@@ -139,7 +144,7 @@ export default function RotationPage() {
           {read && rot.data && (
             <>
               <Rv className="panel spot" style={{ marginBottom: 14 }}>
-                <div className="eyebrow">Rotation read · calculated from the group indices · week ending {date}</div>
+                <div className="eyebrow">Rotation read · calculated from the group indices · week ending {weekLabel}</div>
                 <p className="disp" style={{ fontSize: 26, lineHeight: 1.25, margin: '10px 0 8px' }}>
                   {read.by('Leading').length} groups leading, {read.by('Improving').length} improving, {read.by('Weakening').length} weakening, {read.by('Lagging').length} lagging.
                 </p>
@@ -224,7 +229,7 @@ export default function RotationPage() {
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
-                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 13 }}>Week ending {date}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
+                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 13 }}>Week ending {weekLabel}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
                       <p style={{ margin: '8px 0' }}><span className="tag" style={{ color: QC[cur.q] }}>{cur.q}</span> <span className="muted" style={{ fontSize: 14 }}>{QNOTE[cur.q]}</span></p>
                       <RsLine s={cur.s} t={t} dates={rot.data.dates} />
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr', margin: '12px 0' }}>

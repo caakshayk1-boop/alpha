@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { breadth200 } from '../src/lib/breadth.ts';
 import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
-import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween } from '../src/lib/status.ts';
+import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween, weekThrough } from '../src/lib/status.ts';
 import { plainText } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
@@ -375,4 +375,22 @@ test('takeaway: nothing is shown as a reading when the Barometer is unavailable;
   assert.deepEqual([t.available, t.facts.length], [false, 0]);
   assert.match(t.headline, /not available/);
   assert.deepEqual([11.99, 12, 15.99, 16, 19.99, 20, 25.99, 26].map(vixWord), ['very calm', 'normal', 'normal', 'unsettled', 'unsettled', 'jumpy', 'jumpy', 'stressed']);
+});
+
+
+test('rotation week: an unfinished week is labelled with the date its data runs to, never with the Friday still to come', () => {
+  // Tuesday 13 Oct: the newest point carries Friday 16 Oct, the engines hold data through the 13th.
+  assert.deepEqual(weekThrough('2026-10-16', '2026-10-13', null), { through: '2026-10-13', inProgress: true });
+  assert.deepEqual(weekThrough('2026-10-09', '2026-10-13', null), { through: '2026-10-09', inProgress: false });   // a finished week keeps its label
+  assert.deepEqual(weekThrough('2026-10-16', '2026-10-16', null), { through: '2026-10-16', inProgress: false });   // Friday's own close
+  assert.deepEqual(weekThrough('2026-10-16', null, '2026-10-13T20:20:40'), { through: '2026-10-13', inProgress: true });   // falls back to when the file was built
+  assert.deepEqual(weekThrough('2026-10-16', null, null), { through: '2026-10-16', inProgress: false });           // nothing known: nothing claimed
+});
+test('rotation freshness: judged like a daily feed against the date its data runs to, so a rebuild that stopped mid-week is caught', () => {
+  const rot = (asOf: string, expected: string) => reconcile([{ id: 'rotation', label: 'Rotation', source: 's', asOf, refreshedAt: asOf }], expected)[0];
+  assert.equal(rot('2026-10-13', '2026-10-12').state, 'current');                 // built through Tuesday, expected Monday
+  const frozen = rot('2026-10-09', '2026-10-13');                                  // still on Friday when Tuesday is expected: Mon, Tue = 2 sessions
+  assert.deepEqual([frozen.state, frozen.lagSessions], ['delayed', 2]);
+  const wed = rot('2026-10-09', '2026-10-14');                                     // Wednesday expected: Mon, Tue, Wed = 3 sessions
+  assert.deepEqual([wed.state, wed.lagSessions], ['stale', 3]);
 });

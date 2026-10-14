@@ -88,6 +88,16 @@ export function reconcile(items: DatasetInput[], expected?: string | null): Data
   });
 }
 
+/** The rotation graph labels its latest point with the Friday that ENDS the week, even while that week is still running, so on a Tuesday
+ *  the last label is a date three days in the future. What the data actually runs to is the newest daily bar behind it: the engines'
+ *  `data_through` when known, otherwise the date the file was generated. A label after that date is the week IN PROGRESS. With neither
+ *  date known nothing is claimed and the label stands. */
+export function weekThrough(weekEnding: string, dataThrough: string | null, generated: string | null): { through: string; inProgress: boolean } {
+  const ref = dataThrough ?? (generated ? generated.slice(0, 10) : null);
+  if (!ref || ref >= weekEnding) return { through: weekEnding, inProgress: false };
+  return { through: ref, inProgress: true };
+}
+
 /** Human wording for a state, with the lag spelled out. */
 export function describe(s: DataStatus): string {
   const unit = s.unit === 'week' ? 'week' : 'session';
