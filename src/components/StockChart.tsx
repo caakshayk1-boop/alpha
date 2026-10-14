@@ -18,6 +18,10 @@ const css = (n: string, fb: string) => (typeof document === 'undefined' ? fb : g
 const fmtDate = (t: number) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
 const px = (v: number) => num(v, v < 100 ? 2 : 0);
 
+/** The axis font is the UI face; read once per page, not on every redraw (getComputedStyle forces a style pass). */
+let axisFontCache = '';
+const axisFont = () => (axisFontCache ||= `500 11px ${getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim() || 'system-ui'}, system-ui, sans-serif`);
+
 export default function StockChart({ sym, plans = [] }: { sym: string; plans?: Plan[] }) {
   const [range, setRange] = useState<(typeof RANGES)[number]>('1y');
   const [mode, setMode] = useState<Mode>('candles');
@@ -77,7 +81,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
     }
     const m = (hi - lo) * 0.07; lo -= m; hi += m;
     const Y = (v: number) => top + ph - ((v - lo) / (hi - lo)) * ph;
-    g.font = '11px ui-monospace, Menlo, monospace'; g.textBaseline = 'middle';
+    g.font = axisFont(); g.textBaseline = 'middle';
     for (let k = 0; k <= 3; k++) {
       const v = lo + ((hi - lo) * (k + 0.5)) / 4, y = Y(v);
       g.strokeStyle = grid; g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke();
@@ -191,12 +195,12 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ minHeight: 52 }}>
+        <div className="chart-state">
           {state ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span className={`tag ${state.up ? 'up' : 'down'}`} style={{ fontSize: 14, padding: '5px 12px' }}>{state.up ? '▲ UPTREND' : '▼ DOWNTREND'}</span>
-                <span className="muted" style={{ fontSize: 15 }}>{state.days} {unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{state.move.toFixed(1)}%</b></span>
+                <span className="muted" style={{ fontSize: 15 }}>{state.days} {state.days === 1 ? unit.replace(/s$/, '') : unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{state.move.toFixed(1)}%</b></span>
               </div>
               <div className="dim num" style={{ fontSize: 13.5, marginTop: 6 }}>
                 Key line ₹{px(state.klNow)} · price is {Math.abs(state.dist).toFixed(1)}% {state.up ? 'above' : 'below'} it · a close {state.up ? 'below' : 'above'} flips the trend
@@ -225,7 +229,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         {err && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>Could not load {sym} history ({err}).</p>}
         {data && !data.ok && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>{data.error ?? 'No price history for this symbol.'}</p>}
       </div>
-      <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>
+      <p className="dim" style={{ fontSize: 13, margin: '8px 0 0', minHeight: '3.2em' }}>
         {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
         The key line is a 3-ATR trailing line: it trails price and flips on a close through it. It reads the trend; it does not predict it. Yahoo prices, cached up to 15 minutes.
       </p>

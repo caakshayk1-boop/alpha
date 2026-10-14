@@ -42,10 +42,13 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
 export function DataStamp({ ids, className }: { ids: string[]; className?: string }) {
   const { items, loading } = useDatasetStatus();
   const shown = ids.map((id) => items.find((i) => i.id === id)).filter((x): x is DataStatus => !!x);
-  if (loading && !shown.some((s) => s.asOf)) return <div className={`stamp ${className ?? ''}`} aria-busy="true"><span className="dim">Checking data dates…</span></div>;
+  // A dataset still loading shows as "checking", never as "no date / unavailable" (that would be a false alarm), and its pill
+  // has the same shape as the finished one so the row keeps its size (no layout shift).
+  const checking = (label: string, key: string) => <span key={key} className="stamp-item" aria-busy="true"><span aria-hidden>○</span> <b>{label}</b> <span className="num">checking date</span> <em>status</em></span>;
+  if (loading && !shown.some((s) => s.asOf)) return <div className={`stamp ${className ?? ''}`} aria-label="Checking data dates">{ids.map((id) => checking(items.find((i) => i.id === id)?.label ?? id, id))}</div>;
   return (
     <div className={`stamp ${className ?? ''}`} role="group" aria-label="Data dates">
-      {shown.map((s) => (
+      {shown.map((s) => (loading && !s.asOf && s.state !== 'error' ? checking(s.label, s.id) :
         <span key={s.id} className={`stamp-item ${TONE[s.state]}`} title={`${s.source}. Describes: ${s.asOf ? dateLabel(s.asOf) : 'no session date'}. Last refreshed: ${refreshed(s.refreshedAt)}.${s.note ? ` ${s.note}` : ''}`}>
           <span aria-hidden>{ICON[s.state]}</span> <b>{s.label}</b> <span className="num">{s.asOf ? dateLabel(s.asOf) : 'no date'}</span> <em>{describe(s)}</em>
         </span>

@@ -167,13 +167,13 @@ function MoreSheet({ open, onClose, onSearch, path }: { open: boolean; onClose: 
 export default function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? '/';
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [showTop, setShowTop] = useState(false);
   const [sheet, setSheet] = useState(false);
 
   useEffect(() => {
     initMotion();
-    setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => !o); }
       else if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); setOpen(true); }
@@ -181,36 +181,6 @@ export default function Shell({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', key);
     const openSearch = () => setOpen(true);   // a page can ask for the palette: window.dispatchEvent(new Event('alpha:search'))
     window.addEventListener('alpha:search', openSearch);
-    // pointer-follow light on .spot panels (fine pointers only)
-    const fine = window.matchMedia('(pointer: fine)').matches;
-    let hot: HTMLElement | null = null;
-    const move = (e: PointerEvent) => {
-      const el = e.target as HTMLElement | null;
-      const t = el?.closest<HTMLElement>('.spot');
-      if (t) {
-        const r = t.getBoundingClientRect();
-        t.style.setProperty('--mx', `${e.clientX - r.left}px`);
-        t.style.setProperty('--my', `${e.clientY - r.top}px`);
-        if (t.classList.contains('tilt') && document.documentElement.classList.contains('anim')) {
-          t.classList.add('is-tilting');
-          t.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 5}deg`);
-          t.style.setProperty('--rx', `${-((e.clientY - r.top) / r.height - 0.5) * 5}deg`);
-          hot = t;
-        }
-      }
-      if (hot && hot !== t) { hot.classList.remove('is-tilting'); hot.style.removeProperty('--rx'); hot.style.removeProperty('--ry'); hot = null; }
-      const b = el?.closest<HTMLElement>('.btn');
-      if (b && document.documentElement.classList.contains('anim')) {
-        const r = b.getBoundingClientRect();
-        b.style.setProperty('--tx', `${(e.clientX - r.left - r.width / 2) * 0.12}px`);
-        b.style.setProperty('--ty', `${(e.clientY - r.top - r.height / 2) * 0.18}px`);
-      }
-    };
-    const leave = (e: PointerEvent) => {
-      const b = (e.target as HTMLElement | null)?.closest<HTMLElement>('.btn');
-      if (b) { b.style.removeProperty('--tx'); b.style.removeProperty('--ty'); }
-    };
-    if (fine) { window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerout', leave, { passive: true }); }
     // scroll progress: one custom property, no layout
     let raf = 0;
     const prog = () => {
@@ -225,8 +195,6 @@ export default function Shell({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener('keydown', key);
       window.removeEventListener('alpha:search', openSearch);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerout', leave);
       window.removeEventListener('scroll', onScroll);
       if (raf) window.cancelAnimationFrame(raf);
     };
@@ -240,15 +208,6 @@ export default function Shell({ children }: { children: ReactNode }) {
   };
 
   const navRef = useRef<HTMLElement>(null);
-  const glide = useCallback((target?: HTMLElement | null) => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const el = target ?? nav.querySelector<HTMLElement>('a[aria-current="page"]');
-    if (!el) { nav.style.setProperty('--o', '0'); return; }
-    nav.style.setProperty('--x', `${el.offsetLeft}px`);
-    nav.style.setProperty('--w', `${el.offsetWidth}px`);
-    nav.style.setProperty('--o', '1');
-  }, []);
   // A menu opens on hover or focus, so after choosing a page it would stay open under the pointer: close it on navigation and on Escape, and let it open again once the pointer has left.
   const lastEscape = useRef(false);
   const closeMenus = useCallback((keepFocus = false) => {
@@ -263,9 +222,9 @@ export default function Shell({ children }: { children: ReactNode }) {
   }, []);
   const lastPath = useRef(path);
   useEffect(() => { if (lastPath.current !== path) { lastPath.current = path; closeMenus(); } }, [path, closeMenus]);
-  useEffect(() => { glide(); const r = () => glide(); window.addEventListener('resize', r); const t = window.setTimeout(r, 120); return () => { window.removeEventListener('resize', r); window.clearTimeout(t); }; }, [path, glide]);
 
   const tabs = ['/', '/brief/', '/screen/', '/engines/'].map((h) => PAGES.find((p) => p.href === h)!);
+  const tabIndex = Math.max(0, tabs.findIndex((p) => isActive(path, p.href))) + (tabs.some((p) => isActive(path, p.href)) ? 0 : 4);
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
@@ -273,16 +232,15 @@ export default function Shell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <div className="wrap">
           <Link href="/" className="brand" title="alpha, home">
-            <span className="brand-mark">α</span>
+            <span className="brand-mark" aria-hidden><i /></span>
             <span>alpha</span>
           </Link>
-          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { glide(); delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { closeMenus(true); window.setTimeout(() => { lastEscape.current = false; }, 0); } }} onClick={(e) => { if ((e.target as HTMLElement).closest('.menu a')) closeMenus(); }}>
-            <span className="glide" aria-hidden />
+          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { closeMenus(true); window.setTimeout(() => { lastEscape.current = false; }, 0); } }} onClick={(e) => { if ((e.target as HTMLElement).closest('.menu a')) closeMenus(); }}>
             {GROUPS.map((g) => {
               const on = g.hrefs.some((h) => isActive(path, h));
               return (
                 <div className="navgroup" key={g.label}>
-                  <Link href={g.hrefs[0]} aria-current={on ? 'page' : undefined} onPointerEnter={(e) => glide(e.currentTarget)} onFocus={(e) => glide(e.currentTarget)}>{g.label}{g.hrefs.length > 1 && <svg className="caret" width="9" height="9" viewBox="0 0 10 10" aria-hidden><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>}</Link>
+                  <Link href={g.hrefs[0]} aria-current={on ? 'page' : undefined}>{g.label}{g.hrefs.length > 1 && <svg className="caret" width="9" height="9" viewBox="0 0 10 10" aria-hidden><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>}</Link>
                   {g.hrefs.length > 1 && (
                     <div className="menu" role="group" aria-label={`${g.label} pages`}>
                       <div className="menu-hint">{g.hint}</div>
@@ -315,14 +273,16 @@ export default function Shell({ children }: { children: ReactNode }) {
       <FreshnessBanner />
       <main id="main" key={path} className="page-in">{children}</main>
 
-      <nav className="tabbar" aria-label="Quick navigation">
+      {/* One pill slides to the current tab; a page outside the four tabs lights "More". Reduced motion: it moves without sliding. */}
+      <nav className="tabbar" aria-label="Quick navigation" style={{ ['--ti' as string]: tabIndex }}>
+        <span className="tab-pill" aria-hidden />
         {tabs.map((p) => (
           <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined}>
             <Icon d={p.icon} />
             {p.label}
           </Link>
         ))}
-        <button onClick={() => setSheet(true)} aria-label="More: all pages and search" aria-haspopup="dialog">
+        <button onClick={() => setSheet(true)} aria-label="More: all pages and search" aria-haspopup="dialog" data-on={tabs.some((p) => isActive(path, p.href)) ? undefined : '1'}>
           <Icon d="M4 7h16M4 12h16M4 17h16" />
           More
         </button>
@@ -332,7 +292,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <div className="wrap">
           <div className="footer-grid">
             <div>
-              <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark">α</span><span>alpha</span></div>
+              <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark" aria-hidden><i /></span><span>alpha</span></div>
               <p style={{ margin: 0, maxWidth: '34ch' }}>An independent research desk for Indian equities. Numbers first, working shown.</p>
             </div>
             <div><h2 className="fh">Markets</h2><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>

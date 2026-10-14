@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Async, Bar, Chg, CountUp, LazyMount, Notice, Rv, SectionHead, Skel, Spark } from '@/components/ui';
+import { Async, Chg, LazyMount, Rv, SectionHead, Skel, Spark } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
+import { SectorBars } from '@/components/SectorBars';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
-import { ago, crore, dateLabel, heat, num, pct, quoteState, rupeeBand } from '@/lib/format';
-import { PAGES } from '@/components/Shell';
-import { takeaway } from '@/lib/takeaway';
+import { crore, dateLabel, num, pct, quoteState, rupeeBand } from '@/lib/format';
+import { takeaway, vixWord } from '@/lib/takeaway';
+import { useStoredList } from '@/lib/store';
 import type { Quote } from '@/lib/types';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
@@ -25,96 +26,100 @@ function QuoteCard({ q }: { q: Quote }) {
   );
 }
 
-/** The point of the day in one sentence, then the four figures behind it. The sentence is built by lib/takeaway.ts from the data only. */
+const GAUGE_LEN = Math.PI * 52;   // the semicircle path below: radius 52
+
+/** Today's read: the headline sentence, then one ink card for the Barometer and one card for the day's breadth.
+ *  Every word is built from the data (lib/takeaway.ts and /api/summary); a missing figure drops its pill, never estimated. */
 function TodayHero() {
   const bar = useFeed('barometer');
   const sum = useSummary();
   const t = bar.data?.today;
   const b200 = sum.data?.above200 ?? null;
-  // Wait for both small feeds (or a failed summary) so the sentence and its four facts appear once, at their final size.
+  // Wait for both small feeds (or a failed summary) so the cards appear once, at their final size.
   const ready = !!t && (!!sum.data || !!sum.error);
+  const prev = useMemo(() => (t ? [...(bar.data?.history ?? [])].reverse().find((r) => r.date < t.nifty_date) ?? null : null), [t, bar.data]);
   const tk = useMemo(() => {
     if (!t || !ready) return null;
-    const prev = [...(bar.data?.history ?? [])].reverse().find((r) => r.date < t.nifty_date);
     return takeaway({
       score: typeof t.score === 'number' ? t.score : null, band: t.band?.t ?? null, stage: t.stage?.t ?? null, nifty: t.nifty ?? null,
       drawdownPct: t.drawdown_pct ?? null, vix: t.vix ?? null, asOf: t.nifty_date ?? null,
       above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev ? { score: prev.score, date: prev.date } : null,
     });
-  }, [t, ready, bar.data, b200]);
+  }, [t, ready, prev, b200]);
   const [lead, ...rest] = (tk?.headline ?? '').split(', ');
+  const score = typeof t?.score === 'number' ? Math.round(t.score) : null;
+  const change = prev && score !== null ? (score > prev.score ? `up from ${prev.score} on ${dateLabel(prev.date)}` : score < prev.score ? `down from ${prev.score} on ${dateLabel(prev.date)}` : `unchanged since ${dateLabel(prev.date)}`) : null;
+  const pct200 = b200 && b200.withHistory ? Math.round((b200.above / b200.withHistory) * 100) : null;
+  const day = sum.data?.day;
+  const share = (n: number) => (day && day.counted ? (n / day.counted) * 100 : 0);
+  const weekday = t?.nifty_date ? new Date(`${t.nifty_date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : null;
   return (
     <section className="wrap today">
-      <div className="today-grid">
-        <div className="today-text">
-          <div className="eyebrow">{t ? `Today · market data to ${dateLabel(t.nifty_date)}` : 'Today'}</div>
-          {tk ? (
-            <>
-              <h1 className="disp today-h">{lead}{rest.length > 0 && <>, <em>{rest.join(', ')}</em></>}</h1>
-              <p className="today-sub">{tk.sub}</p>
-            </>
-          ) : bar.error ? (
-            <>
-              <h1 className="disp today-h">The market read is not available right now.</h1>
-              <p className="today-sub">The latest readings could not be loaded. Nothing is estimated in their place.</p>
-            </>
-          ) : (
-            <div aria-busy="true" aria-label="Loading today's market read">
-              {/* Placeholders in the headline's own type units (two headline lines, then the sentence's lines), so nothing below moves when the read arrives. */}
-              <div className="today-h" aria-hidden><span className="skel" style={{ display: 'block', height: '2.08em', width: '85%' }} /></div>
-              <div className="today-sub today-sub-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '92%' }} /></div>
-            </div>
-          )}
-          <div className="today-cta">
-            <Link className="btn" href="/brief/">Read the five-minute brief <span aria-hidden>→</span></Link>
-            <Link className="btn ghost" href="/engines/">See today&apos;s signals</Link>
-          </div>
-        </div>
-        {!tk && !bar.error && (
-          <div className="facts" aria-hidden>{Array.from({ length: 4 }, (_, i) => <div className="fact" key={i} style={{ minHeight: 122 }}><Skel h={14} w="60%" /><Skel h={30} w="45%" style={{ margin: '10px 0 8px' }} /><Skel h={14} w="70%" /></div>)}</div>
-        )}
-        {tk && tk.facts.length > 0 && (
-          <div className="facts" role="list">
-            {tk.facts.map((f) => (
-              <div className="fact" role="listitem" key={f.id}>
-                <div className="k">{f.label}</div>
-                <div className={`v ${f.tone === 'up' ? 'up' : f.tone === 'down' ? 'down' : ''}`}>{f.value}</div>
-                <div className="n">{f.note}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="eyebrow">{weekday ? `${weekday} · market close` : 'Today'}</div>
+      {tk && tk.available ? (
+        <h1 className="disp today-h">{lead}{rest.length > 0 && <>, <em>{rest.join(', ')}</em></>}</h1>
+      ) : bar.error ? (
+        <h1 className="disp today-h">The market read is not available right now.</h1>
+      ) : (
+        <div aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
+      )}
       <DataStamp ids={['barometer', 'screen', 'engines']} />
+
+      <div className="hero2">
+        {tk && tk.available && t && score !== null ? (
+          <section className="sky" aria-label="Market barometer">
+            <div>
+              <div className="eyebrow">Market barometer</div>
+              <div className="sky-big">{t.band.t}{change ? `, ${change}` : ''}</div>
+              <div className="sky-pills">
+                {typeof t.nifty === 'number' && <span className="sky-pill">Nifty <b>{num(t.nifty, 0)}</b></span>}
+                {typeof t.vix === 'number' && <span className="sky-pill">VIX {num(t.vix, 1)} · {vixWord(t.vix)}</span>}
+                {pct200 !== null && <span className="sky-pill">{pct200}% above 200-day</span>}
+                {t.stage?.t && <span className="sky-pill">Valuation: {t.stage.t.toLowerCase()}</span>}
+              </div>
+              <Link className="sky-link" href="/brief/">Read the five-minute brief →</Link>
+            </div>
+            <svg className="gauge" viewBox="0 0 132 92" role="img" aria-label={`Barometer ${score} of 100`}>
+              <path d="M14 78 A52 52 0 0 1 118 78" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="10" strokeLinecap="round" />
+              <path d="M14 78 A52 52 0 0 1 118 78" fill="none" stroke="var(--lime)" strokeWidth="10" strokeLinecap="round" strokeDasharray={GAUGE_LEN} strokeDashoffset={GAUGE_LEN * (1 - Math.max(0, Math.min(100, score)) / 100)} />
+              <text className="v" x="66" y="72" textAnchor="middle">{score}</text>
+              <text className="s" x="66" y="88" textAnchor="middle">of 100</text>
+            </svg>
+          </section>
+        ) : (
+          <div className="sky" aria-hidden={!bar.error}>{bar.error ? <p style={{ margin: 0 }}>The Barometer could not be loaded. Nothing is estimated in its place.</p> : <Skel h={120} w="70%" />}</div>
+        )}
+
+        <section className="breadth2" aria-label="The day's breadth">
+          <div className="eyebrow">{sum.data ? `${dateLabel(sum.data.as_of)} · ${num(day?.counted ?? 0)} stocks` : 'Breadth'}</div>
+          {day && day.counted ? (
+            <>
+              <div className="row"><div className="n up">{num(day.up)}<small>rose</small></div><div className="n down">{num(day.down)}<small>fell</small></div></div>
+              <div className="split" aria-hidden><i className="u" style={{ width: `${share(day.up)}%` }} /><i className="f" style={{ width: `${share(day.flat)}%` }} /><i className="d" style={{ width: `${share(day.down)}%` }} /></div>
+              <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
+              {b200 && <div className="foot">{num(b200.above)} of {num(b200.withHistory)} with a 200-day history sit above it.</div>}
+            </>
+          ) : sum.error ? <p className="muted" style={{ marginTop: 12 }}>The day&apos;s breadth could not be loaded. Nothing is estimated in its place.</p> : <Skel h={100} style={{ marginTop: 14 }} />}
+        </section>
+      </div>
     </section>
   );
 }
 
-/** The four things people come here to do, each one tap away. */
+/** The four things people come here to do. Pastel is brand colour only: it never means up or down. */
 function JobTiles() {
   const sum = useSummary();
   const eng = useEngines();
-  const icon = (href: string) => PAGES.find((p) => p.href === href)?.icon ?? '';
+  const [watch] = useStoredList('alpha-watchlist');
   const open = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending').length;
-  const Tile = ({ href, title, line, live, d, onClick }: { href?: string; title: string; line: string; live?: string; d: string; onClick?: () => void }) => {
-    const body = (
-      <>
-        <span className="ic" aria-hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg></span>
-        <span className="t">{title}</span>
-        <span className="l">{line}</span>
-        {live && <span className="m">{live}</span>}
-      </>
-    );
-    return href ? <Link className="job" href={href}>{body}</Link> : <button type="button" className="job" onClick={onClick}>{body}</button>;
-  };
   return (
-    <section className="wrap" style={{ paddingTop: 0 }}>
-      <div className="eyebrow" style={{ margin: '0 0 12px' }}>What would you like to do?</div>
-      <div className="jobs">
-        <Tile href="/screen/" title="Find stocks" line="Filter the whole market by quality, growth, value and trend." live={sum.data ? `${num(sum.data.count)} companies screened` : undefined} d={icon('/screen/')} />
-        <Tile title="Look up a company" line="Search by name or symbol for its full picture." live="Press / to search from anywhere" d="M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4" onClick={() => window.dispatchEvent(new Event('alpha:search'))} />
-        <Tile href="/engines/" title="See the signals" line="What the five models are watching, and how they have done." live={eng.data ? `${open} signal${open === 1 ? '' : 's'} waiting or open` : undefined} d={icon('/engines/')} />
-        <Tile href="/watchlist/" title="Keep track" line="Your watchlist, and a journal of why you decided." live="Private, kept in this browser" d={icon('/watchlist/')} />
+    <section className="wrap" style={{ paddingTop: 8 }} aria-labelledby="jobs-h">
+      <h2 id="jobs-h" className="eyebrow" style={{ margin: '0 0 12px' }}>What would you like to do?</h2>
+      <div className="jobs2">
+        <Link className="job2 t-lav" href="/screen/"><span className="big">{sum.data ? num(sum.data.count) : '—'}</span><span><span className="t">Find stocks</span><span className="l">companies screened on quality, growth, value and trend</span></span></Link>
+        <button type="button" className="job2 t-mint" onClick={() => window.dispatchEvent(new Event('alpha:search'))}><span className="big"><kbd>/</kbd></span><span><span className="t">Look up a company</span><span className="l">by name or symbol, from any page</span></span></button>
+        <Link className="job2 t-lime" href="/engines/"><span className="big">{eng.data ? num(open) : '—'}</span><span><span className="t">See the signals</span><span className="l">waiting or open across the five engines</span></span></Link>
+        <Link className="job2 t-peach" href="/watchlist/"><span className="big">{num(watch.length)}</span><span><span className="t">Keep track</span><span className="l">{watch.length === 1 ? 'name' : 'names'} on your watchlist, kept in this browser</span></span></Link>
       </div>
     </section>
   );
@@ -137,15 +142,14 @@ function SinceVisit() {
     setDiff(diffSnapshots(prev, cur));
     try { if (!prev || prev.asOf !== cur.asOf) localStorage.setItem('alpha-last-visit', JSON.stringify(cur)); } catch { /* storage blocked or full */ }
   }, [bar.data, pulse.data, eng.data]);
-  if (!diff || diff.kind === 'start') return null;
+  if (!diff) return <div className="panel" aria-hidden><Skel h={90} /></div>;
   return (
-    <section className="wrap" style={{ paddingTop: 0 }}>
-      <div className="panel tight">
-        <div className="eyebrow">Since your last visit · kept in this browser</div>
-        {diff.kind === 'same' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 14.5 }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
-        {diff.kind === 'changes' && <><p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 14.5 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
-      </div>
-    </section>
+    <Rv className="panel">
+      <div className="eyebrow">Since your last visit · kept in this browser</div>
+      {diff.kind === 'start' && <p className="disp" style={{ fontSize: 24, lineHeight: 1.25, margin: '12px 0 0' }}>First visit from this browser. Next time, what changed since today will show here.</p>}
+      {diff.kind === 'same' && <p className="disp" style={{ fontSize: 24, lineHeight: 1.25, margin: '12px 0 0' }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
+      {diff.kind === 'changes' && <><p className="dim" style={{ margin: '10px 0 0', fontSize: 13.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul style={{ margin: '6px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 15 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
+    </Rv>
   );
 }
 
@@ -189,56 +193,6 @@ function Board() {
         {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}. Commodities are futures contracts.</p>}
       </Async>
     </section>
-  );
-}
-
-/** The day's breadth: how many stocks closed up or down on the screen's latest session. One-day moves (r1d) from the same rows
- *  as the sector medians beside it, so the two panels describe the same day and the same stocks. */
-function Breadth() {
-  const sum = useSummary();
-  const d = sum.data?.day;
-  const b200 = sum.data?.above200;
-  const rows: [string, number, 'up' | 'down' | undefined][] = d && d.counted ? [
-    ['Rose', (d.up / d.counted) * 100, 'up'],
-    ['Fell', (d.down / d.counted) * 100, 'down'],
-  ] : [];
-  return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Breadth · {sum.data ? `${dateLabel(sum.data.as_of)} · ${num(d?.counted ?? 0)} stocks` : '—'}</div>
-      <div className="disp" style={{ fontSize: 44, margin: '14px 0 18px' }}>
-        {d ? <>{num(d.up)} <span className="dim" style={{ fontSize: 24 }}>rose</span> · {num(d.down)} <span className="dim" style={{ fontSize: 24 }}>fell</span></> : <Skel h={44} />}
-      </div>
-      <div className="meter">
-        {rows.map(([l, v, k]) => (
-          <div className="meter-row" key={l}>
-            <span className="lab">{l}</span>
-            <Bar pct={v} kind={k} />
-            <span className="num">{v.toFixed(0)}%</span>
-          </div>
-        ))}
-      </div>
-      {d && b200 && <p className="dim" style={{ fontSize: 13.5, margin: '16px 0 0' }}>{d.flat ? `${num(d.flat)} unchanged · ` : ''}{num(b200.above)} of {num(b200.withHistory)} above their 200-day average</p>}
-    </Rv>
-  );
-}
-
-/** Median one-day move of each sector's stocks, from the same rows and the same day as Breadth. */
-function Sectors() {
-  const sum = useSummary();
-  const list = sum.data?.sectors ?? [];
-  return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Sectors · median stock · {sum.data ? dateLabel(sum.data.as_of) : '—'}</div>
-      <div className="sector-strip" style={{ marginTop: 16 }}>
-        {!sum.data && Array.from({ length: 8 }, (_, i) => <Skel key={i} h={76} />)}
-        {list.map((s) => (
-          <div className="sector-cell" key={s.name} style={{ ['--c' as string]: heat(s.median) }} title={`median of ${s.n} stocks`}>
-            <span className="n">{s.name}</span>
-            <span className="v">{pct(s.median)}</span>
-          </div>
-        ))}
-      </div>
-    </Rv>
   );
 }
 
@@ -328,23 +282,16 @@ function ReadCard() {
 }
 
 export default function Home() {
-  const h = useFeed('data-health');
-  const own = new Set(['Stock screen', 'Markets', 'Market Intelligence', 'Fund screen']);
-  const latest = h.data?.datasets?.filter((d) => own.has(d.dataset)).map((d) => d.last_successful_update).sort().pop();
   return (
     <>
       <TodayHero />
       <JobTiles />
-      <SinceVisit />
+      <section className="wrap section">
+        <div className="grid g2"><SectorBars /><SinceVisit /></div>
+      </section>
       <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Teasers />
       <Board />
-      <section className="wrap section">
-        <div className="grid g-7-5">
-          <Breadth />
-          <Sectors />
-        </div>
-      </section>
       {/* Below the fold: these feeds (pulse 34 KB, news, IPO, weekly reads 103 KB) load only when the reader gets near them. */}
       <section className="wrap section">
         <SectionHead eyebrow="This week" title="What moved, and what was said" />

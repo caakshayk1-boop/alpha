@@ -78,22 +78,3 @@ export function observeReveal(el: HTMLElement): () => void {
   return () => io?.unobserve(el);
 }
 
-/** Animate a number inside `el` from its current text to `to`. Falls back to setting it directly. */
-export function countUp(el: HTMLElement, to: number, fmt: (n: number) => string, duration = 1.2) {
-  if (!canAnimate()) {
-    el.textContent = fmt(to);
-    return;
-  }
-  const o = { v: 0 };
-  gsap.to(o, {
-    v: to,
-    duration,
-    ease: 'power2.out',
-    onUpdate: () => {
-      el.textContent = fmt(o.v);
-    },
-    onComplete: () => {
-      el.textContent = fmt(to);
-    },
-  });
-}

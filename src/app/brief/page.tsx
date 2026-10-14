@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Async, Chg, CountUp, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
+import { Async, Chg, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
+import { SectorBars } from '@/components/SectorBars';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
-import { dateLabel, heat, num, pct, quoteState } from '@/lib/format';
+import { dateLabel, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
 
+const TOC: [string, string][] = [['read', 'The read'], ['quotes', 'Quotes'], ['sectors', 'Sectors'], ['moved', 'What moved'], ['screen', 'Screen changes'], ['calendar', 'Calendar'], ['seasonal', 'Seasonal record'], ['engines', 'Engines'], ['wire', 'Headlines']];
 const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 864e5);
 
@@ -75,40 +77,44 @@ export default function Brief() {
     <>
       <PageHead eyebrow={screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen', 'barometer', 'engines']} /></section>
-      <section className="wrap">
-        <Async loading={bar.loading && sum.loading} error={null} rows={2}>
-          <Rv className="panel" style={{ marginBottom: 14 }}>
+      <section className="wrap readgrid">
+        <nav className="toc" aria-label="Sections of the brief">
+          <div className="eyebrow">In this brief</div>
+          {TOC.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+        </nav>
+        <div style={{ minWidth: 0 }}>
+        <div id="read" data-sec className="read-ink" style={{ marginBottom: 14 }}>
             <div className="eyebrow">The read</div>
-            <p className="disp" style={{ fontSize: 'clamp(24px, 3vw, 38px)', lineHeight: 1.15, margin: '12px 0 14px', maxWidth: '40ch' }}>{headline || 'Reading the market…'}</p>
+            <p>{headline || (bar.error ? 'The market read could not be loaded. Nothing is estimated in its place.' : 'Reading the market…')}</p>
             <button className="chip" onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button>
-          </Rv>
+          </div>
 
-          {indexQuotes.length > 0 && <div className="eyebrow" style={{ margin: '4px 0 10px' }}>Quotes · each card shows its own last trade</div>}
+        <Async loading={bar.loading || sum.loading} error={null} rows={2}>
+          {indexQuotes.length > 0 && <div id="quotes" data-sec className="eyebrow" style={{ margin: '4px 0 10px' }}>Quotes · each card shows its own last trade</div>}
           <div className="qgrid" style={{ marginBottom: 12 }}>
             {indexQuotes.map((q) => (
               <Rv key={q.id} className="qcard spot"><div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div><div className="px">{q.prefix}{num(q.price, q.dp)}</div><Spark series={q.series} up={(q.pct ?? 0) >= 0} /><div className="qtime">{quoteState(q.at).label}</div></Rv>
             ))}
           </div>
 
-          <div className="grid g-7-5">
+          <div id="sectors" data-sec className="grid g-7-5">
+            <SectorBars />
             <Rv className="panel">
-              <div className="eyebrow">Sectors · median one-day move · {sum.data ? dateLabel(sum.data.as_of) : '—'}</div>
-              <div className="sector-strip" style={{ marginTop: 14 }}>{secs.map((s) => <div className="sector-cell" title={`median of ${s.n} stocks`} key={s.name} style={{ ['--c' as string]: heat(s.median) }}><span className="n">{s.name}</span><span className="v">{pct(s.median)}</span></div>)}</div>
-            </Rv>
-            <Rv className="panel">
-              <div className="eyebrow">Market stage</div>
+              <div className="eyebrow">Valuation stage · from the Barometer</div>
               <div className="disp" style={{ fontSize: 40, margin: '10px 0 4px' }}>{t?.stage.t ?? '—'}</div>
               <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
               <Link href="/rotation/" className="more" style={{ display: 'inline-block', marginTop: 14, color: 'var(--accent-2)', fontSize: 14 }}>See how sector strength is changing →</Link>
             </Rv>
           </div>
 
+          <div id="moved" data-sec />
           <SectionHead eyebrow="Over the past week" title="What moved" />
           <div className="grid g2">
             <Rv className="panel"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
             <Rv className="panel"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
           </div>
 
+          <div id="screen" data-sec />
           <SectionHead eyebrow="Screen" title="What changed since the last build" />
           <Async loading={screen.loading} error={screen.error} rows={1}>
             <Rv className="panel">
@@ -119,6 +125,7 @@ export default function Brief() {
             </Rv>
           </Async>
 
+          <div id="calendar" data-sec />
           <SectionHead eyebrow="Next 14 days" title="Calendar" />
           <div className="grid g2">
             <Rv className="panel">
@@ -141,6 +148,7 @@ export default function Brief() {
             </Rv>
           </div>
 
+          <div id="seasonal" data-sec />
           <SectionHead eyebrow={new Date().toLocaleString('en-IN', { month: 'long' })} title="The seasonal record" />
           <Rv className="panel">
             <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={`/company/?s=${sym}`} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
@@ -148,6 +156,7 @@ export default function Brief() {
             <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
           </Rv>
 
+          <div id="engines" data-sec />
           <SectionHead eyebrow="Engines" title="What the models selected" href="/engines/" cta="All engines" />
           <Async loading={eng.loading} error={null} rows={1}>
             <div className="engine-cards" tabIndex={0} role="region" aria-label="Engines (scrolls sideways)">{Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
@@ -155,10 +164,12 @@ export default function Brief() {
             ))}</div>
           </Async>
 
+          <div id="wire" data-sec />
           <SectionHead eyebrow="Wire" title="Headlines" href="/news/" cta="All stories" />
           <Rv className="panel"><div className="list">{(news.data ?? []).slice(0, 6).map((s) => <a key={s.link} href={s.link} target="_blank" rel="noopener noreferrer" className="li"><div><div className="t">{s.title}</div><div className="s">{s.source}</div></div><span aria-hidden className="dim">↗</span></a>)}</div></Rv>
           <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Information only, not investment advice. A brief is also sent to Telegram at 08:00 and 20:00 MYT on weekdays.</p>
         </Async>
+        </div>
       </section>
     </>
   );

@@ -13,11 +13,17 @@ Each item has a pass/fail check.
 - [x] 4. (shipped, live) Screen filters live in the address, so Back, refresh and a shared link restore them.
       Check: set 3 filters and a sort, reload, and the same rows appear. Back from a company page returns to the same view.
 
-## Batch 2: new look (WAITING FOR APPROVAL of the direction in the session)
-- [ ] 5. Tokens and shell: light-first paper theme, ink hero card, pastel job tiles, sliding tab indicator.
-- [ ] 6. Brief relook (reading layout, section index).
-- [ ] 7. Company relook (Tickertape-style scorecard on Alpha's own Q/G/V/T scores, chart first).
-- [ ] 8. Funds and Compare relook.
+## Batch 2: new look (approved 15 Oct)
+- [x] 5. Tokens and shell: light-first paper theme, ink hero card, pastel job tiles, sliding tab indicator.
+- [x] 6. Brief relook (reading layout, section index).
+- [x] 7. Company relook (Tickertape-style scorecard on Alpha's own Q/G/V/T scores, chart first).
+- [x] 8. (moved: Company was item 7; this batch shipped Tokens/shell, Today, Brief, Company.)
+
+## Batch 3
+- [ ] 9. Funds and Compare relook.
+- [ ] 10. Audit F4 + F5: engine limits beside every plan level; one-line conflicts statement.
+- [ ] 11. Audit F7 + F10: CSP header; NSE open/closed chip.
+- [ ] 12. Screen, Engines, Markets, News, IPO, Reads polish pass on the v3 system.
 
 ## Batch 3: later
 - [ ] 9. Richer news feed. Needs a change in `trading-dashboard` (the data repo). That's a separate repo, so it gets its own confirmation.

@@ -4,7 +4,7 @@ import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, CountUp, LazyMount, Notice, PercentileBars, Rv, SectionHead, Skel, TabRow } from '@/components/ui';
+import { Async, Bar, Chg, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
 import PlanOdds from '@/components/PlanOdds';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { AskCompany, MetricPanel } from '@/components/Explain';
@@ -208,19 +208,20 @@ function Company() {
         return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${dateLabel(r.last_date)}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
+      <section className="wrap" style={{ paddingTop: 8 }}>
+        <h2 className="sr">Price chart</h2>
+        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
+      </section>
       <section className="wrap section">
-        <PercentileBars items={[{ label: 'Quality', value: r.q }, { label: 'Growth', value: r.g }, { label: 'Value', value: r.v, note: 'higher is cheaper' }, { label: 'Technical', value: r.tech }]} />
-        <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions: the tick marks the median company (50), which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+        <SectionHead eyebrow="Scorecard" title="Where it ranks today" />
+        <Scorecard of={s.count} items={[{ label: 'Quality', value: r.q, tone: 'lav', note: 'ROCE, ROE, margins, debt and interest cover' }, { label: 'Growth', value: r.g, tone: 'mint', note: 'Revenue, EBITDA and EPS growth' }, { label: 'Value', value: r.v, tone: 'lime', note: 'P/E and P/B against its own history; higher is cheaper' }, { label: 'Technical', value: r.tech, tone: 'peach', note: 'Trend, momentum, breakouts and volume' }]} />
+        <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions. 50 is the median company, which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
       <section className="wrap" style={{ paddingTop: 0 }}>
         <TabRow label="Company views" value={view} onChange={pick} options={tabOptions} />
       </section>
 
       {view === 'overview' && (<>
-      <section className="wrap section">
-        <SectionHead eyebrow="Chart" title="Price, trend and levels" />
-        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
-      </section>
       <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
       <section className="wrap section">
         <div className="grid g-7-5">

@@ -7,7 +7,7 @@ import PlanOdds from '@/components/PlanOdds';
 import Scoreboard from '@/components/Scoreboard';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { VERDICT_TONE, verdictText } from '@/components/EvidenceTags';
-import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
+import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
 import { journalHref } from '@/lib/journal';

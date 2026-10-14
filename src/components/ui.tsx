@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
-import { canAnimate, countUp, gsap, observeReveal } from '@/lib/motion';
+import { canAnimate, gsap, observeReveal } from '@/lib/motion';
 import { dash, tone } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 
@@ -19,28 +19,6 @@ export function Rv({ as, className, style, children }: { as?: ElementType; class
 }
 
 /** A number that counts up once on screen. Renders the final value in the markup, so it is right with no JS. */
-export function CountUp({ value, format, className }: { value: number | null | undefined; format: (n: number) => string; className?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof value !== 'number' || !Number.isFinite(value)) return;
-    if (!canAnimate()) return;
-    const io = new IntersectionObserver((es) => {
-      if (es.some((e) => e.isIntersecting)) {
-        io.disconnect();
-        countUp(el, value, format);
-      }
-    });
-    io.observe(el);
-    return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-  return (
-    <span ref={ref} className={className}>
-      {typeof value === 'number' && Number.isFinite(value) ? format(value) : dash}
-    </span>
-  );
-}
 
 /** Signed change with colour that is never the only signal: the sign and arrow are text too. */
 export function Chg({ v, dp = 2, suffix = '%' }: { v: number | null | undefined; dp?: number; suffix?: string }) {
@@ -90,6 +68,28 @@ export function Spark({ series, up, height = 38 }: { series: number[] | undefine
 }
 
 /** Percentile profile: one labelled row per score, a tick at the median (50), and the value in words. Compact and exact, unlike a ring. */
+/** Four scores as cards: the percentile, a bar, and its plain meaning (which third of the screened companies). Card colours are
+ *  brand pastels for telling the four apart; they never mean good or bad. Percentiles describe a rank today, not a prediction. */
+export function Scorecard({ items, of }: { items: { label: string; value: number | null | undefined; note?: string; tone: 'lav' | 'mint' | 'lime' | 'peach' }[]; of?: number }) {
+  const third = (v: number) => (v >= 200 / 3 ? 'Top third' : v >= 100 / 3 ? 'Middle third' : 'Bottom third');
+  return (
+    <div className="score4" role="list" aria-label="Scores within the screen">
+      {items.map(({ label, value, note, tone }) => {
+        const v = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : null;
+        return (
+          <div className={`scard t-${tone}`} role="listitem" key={label}>
+            <span className="k">{label}</span>
+            <span className="v">{v === null ? '—' : v}<small>{v === null ? 'not scored' : '/ 100'}</small></span>
+            {v !== null && <span className="bar2" role="img" aria-label={`${label}: ${ordinal(v)} percentile`}><i style={{ width: `${v}%` }} /></span>}
+            <span className="w">{v === null ? 'No score' : third(v)}{of ? <span className="n" style={{ fontWeight: 400 }}> of {of.toLocaleString('en-IN')}</span> : null}</span>
+            {note && <span className="n">{note}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PercentileBars({ items }: { items: { label: string; value: number | null | undefined; note?: string }[] }) {
   return (
     <div className="panel tight" role="group" aria-label="Score percentiles within the screen" style={{ display: 'grid', gap: 10 }}>
