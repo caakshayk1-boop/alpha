@@ -2,19 +2,24 @@
 
 import { Async, Bar, Chg, Notice, PageHead, Rv, SectionHead } from '@/components/ui';
 import { useFeed, useIpoLive } from '@/lib/data';
-import { ago, dash, dateLabel, num } from '@/lib/format';
+import { ago, dash, dateLabel, nseDate, num, rupeeBand } from '@/lib/format';
 import type { IpoLiveIssue, IpoUpcoming } from '@/lib/types';
 
 function LiveBook({ i }: { i: IpoLiveIssue }) {
   const cats = [...(i.categories ?? [])].sort((a, b) => b.x - a.x);
   const max = Math.max(1, ...cats.map((c) => c.x), i.total_x ?? 0);
+  const noBids = !i.total_x && cats.every((c) => !c.x);
   return (
     <Rv className="panel spot">
       <div className="eyebrow">Live subscription · {i.status ?? 'active'}</div>
       <div className="disp" style={{ fontSize: 30, margin: '12px 0 4px' }}>{i.company ?? i.symbol}</div>
-      <div className="dim num" style={{ fontSize: 14, marginBottom: 18 }}>{i.price_band} · {i.opens} to {i.closes}</div>
-      <div className="disp" style={{ fontSize: 56 }}>{i.total_x != null ? `${i.total_x.toFixed(2)}×` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
-      {cats.length > 0 && (
+      <div className="dim num" style={{ fontSize: 14, marginBottom: 18 }}>{[i.price_band ? rupeeBand(i.price_band) : null, i.opens && i.closes ? `open ${nseDate(i.opens)} to ${nseDate(i.closes)}` : null].filter(Boolean).join(' · ')}</div>
+      {noBids ? (
+        <div className="muted" style={{ fontSize: 16, lineHeight: 1.5 }}>No bids reported yet. NSE publishes the book during the day, so this fills in as bidding starts.</div>
+      ) : (
+        <div className="disp" style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>{i.total_x != null ? `${i.total_x.toFixed(2)}×` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
+      )}
+      {!noBids && cats.length > 0 && (
         <div className="meter" style={{ marginTop: 18 }}>
           {cats.map((c) => (
             <div className="meter-row" key={c.cat}>
@@ -36,7 +41,7 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
       <div className="eyebrow">Opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}{u.sector ? ` · ${u.sector}` : ''}</div>
       <div className="disp" style={{ fontSize: 34, margin: '12px 0' }}>{u.company}</div>
       <div className="kv">
-        <div><div className="k">Price band</div><div className="v" style={{ fontSize: 15 }}>{u.price_band}</div></div>
+        <div><div className="k">Price band</div><div className="v" style={{ fontSize: 15 }}>{rupeeBand(u.price_band)}</div></div>
         <div><div className="k">Issue size</div><div className="v">₹{num(u.issue_size_cr)} cr</div></div>
         <div><div className="k">Lot · minimum</div><div className="v" style={{ fontSize: 15 }}>{u.lot_size} · ₹{num(u.min_investment)}</div></div>
         <div><div className="k">Grey market (unofficial)</div><div className="v" style={{ fontSize: 15 }}>{u.gmp_text ?? dash}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>Source and time are not stated in the feed; not scored.</div></div>
@@ -77,7 +82,7 @@ export default function Ipo() {
               {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (updated {ago(d.generated_at)}).</Notice><div style={{ height: 24 }} /></>}
 
               <ol className="filters" aria-label="Issue lifecycle" style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
-                {([['Upcoming', d.upcoming.length, 'upcoming'], ['Open', liveIssues.length || d.open.length, 'open'], ['Closed, awaiting listing', d.awaiting_listing.length, 'closed'], ['Listed (measured)', d.recent_listed.filter((r) => r.measured).length, 'listed']] as const).map(([l, n, id], i) => <li key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{i > 0 && <span aria-hidden className="dim">→</span>}{n > 0 ? <a className="chip" href={`#${id}`}>{l} · {n}</a> : <span className="chip" aria-disabled="true" style={{ opacity: 0.55 }}>{l} · none</span>}</li>)}
+                {([['Upcoming', d.upcoming.length, 'upcoming'], ['Open', liveIssues.length || d.open.length, 'open'], ['Closed, awaiting listing', d.awaiting_listing.length, 'closed'], ['Listed (measured)', d.recent_listed.filter((r) => r.measured).length, 'listed']] as const).map(([l, n, id], i) => <li key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{i > 0 && <span aria-hidden className="dim step-arrow">→</span>}{n > 0 ? <a className="chip" href={`#${id}`}>{l} · {n}</a> : <span className="chip" aria-disabled="true" style={{ opacity: 0.55 }}>{l} · none</span>}</li>)}
               </ol>
               <div id="upcoming" /><SectionHead eyebrow="Next" title="Opening soon" />
               {d.upcoming.length === 0 ? <p className="muted">No mainboard issue is scheduled to open yet.</p> : <div className="grid g2">{d.upcoming.map((u) => <Upcoming key={u.symbol} u={u} />)}</div>}
@@ -87,12 +92,12 @@ export default function Ipo() {
                 <div className="grid g2">{d.open.map((o) => (
                   <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{o.days_left > 0 ? `${o.days_left} day${o.days_left > 1 ? 's' : ''} left` : 'closes today'}</div>
                     <div className="disp" style={{ fontSize: 30, margin: '12px 0' }}>{o.company}</div>
-                    <div className="dim num">{o.price_band} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div></Rv>))}</div></>}
+                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div></Rv>))}</div></>}
 
               <div style={{ height: 36 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />
               <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
-                {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{a.price_band}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${a.pe_post_issue.toFixed(1)}×` : dash}</td><td className="num">{a.peer_pe ? `${a.peer_pe.toFixed(1)}×` : dash}</td></tr>)}
+                {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${a.pe_post_issue.toFixed(1)}×` : dash}</td><td className="num">{a.peer_pe ? `${a.peer_pe.toFixed(1)}×` : dash}</td></tr>)}
                 {d.awaiting_listing.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>None awaiting listing.</td></tr>}
               </tbody></table></div>
 

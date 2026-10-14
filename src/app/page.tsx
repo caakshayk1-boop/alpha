@@ -8,7 +8,7 @@ import { DataStamp } from '@/components/DataStamp';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { breadth200 } from '@/lib/breadth';
 import { useEngines, useFeed, useQuotes } from '@/lib/data';
-import { ago, crore, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
+import { ago, crore, dateLabel, heat, num, pct, quoteState, rupeeBand } from '@/lib/format';
 import { PAGES } from '@/components/Shell';
 import { takeaway } from '@/lib/takeaway';
 import type { Quote } from '@/lib/types';
@@ -128,12 +128,11 @@ function SinceVisit() {
     setDiff(diffSnapshots(prev, cur));
     try { if (!prev || prev.asOf !== cur.asOf) localStorage.setItem('alpha-last-visit', JSON.stringify(cur)); } catch { /* storage blocked or full */ }
   }, [bar.data, pulse.data, eng.data]);
-  if (!diff) return null;
+  if (!diff || diff.kind === 'start') return null;
   return (
     <section className="wrap" style={{ paddingTop: 0 }}>
       <div className="panel tight">
         <div className="eyebrow">Since your last visit · kept in this browser</div>
-        {diff.kind === 'start' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 14.5 }}>Tracking starts now. Come back after the next session and this will list what changed. Nothing is uploaded.</p>}
         {diff.kind === 'same' && <p className="muted" style={{ margin: '6px 0 0', fontSize: 14.5 }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
         {diff.kind === 'changes' && <><p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 14.5 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
       </div>
@@ -143,65 +142,38 @@ function SinceVisit() {
 
 function Teasers() {
   const eng = useEngines();
-  const bar = useFeed('barometer');
-  const pulse = useFeed('pulse');
-  const t = bar.data?.today;
-  const br = pulse.data?.breadth;
+  const list = Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id);
+  const total = list.reduce((n, e) => n + e.signal_count, 0);
   return (
     <section className="wrap section">
-      <div className="grid g-7-5">
-        <Rv className="panel spot">
-          <div className="eyebrow">The brief</div>
-          <p className="disp" style={{ fontSize: 'clamp(24px, 2.6vw, 34px)', lineHeight: 1.15, margin: '12px 0 14px' }}>
-            {t && br ? <>{br.up > br.down ? 'More stocks rose than fell' : 'More stocks fell than rose'}: {br.up} up, {br.down} down. The barometer reads {Math.round(t.score)}, {t.band.t.toLowerCase()}; the market stage is “{t.stage.t.toLowerCase()}”.</> : 'Reading the market…'}
-          </p>
-          <Link className="btn" href="/brief/">Five-minute brief <span aria-hidden>→</span></Link>
-        </Rv>
-        <Rv className="panel spot">
-          <div className="eyebrow">Engines · ranking skill and trading result</div>
-          <div className="list" style={{ marginTop: 8 }}>
-            {Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id).map((e) => (
-              <Link key={e.key} href="/engines/" className="li"><div><div className="t">{e.id}. {e.name}</div><div className="s">{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</div></div><EngineVerdict e={e} compact /></Link>
-            ))}
-            {!eng.data && Array.from({ length: 5 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
-          </div>
-        </Rv>
-      </div>
+      <SectionHead eyebrow="Signals" title="Where the five models stand" href="/engines/" cta={eng.data ? `${total} signal${total === 1 ? '' : 's'} now` : 'All engines'} />
+      <Rv className="panel">
+        <ul className="erows">
+          {list.map((e) => (
+            <li key={e.key}>
+              <Link href="/engines/" className="erow">
+                <span className="erow-id"><b>{e.id}. {e.name}</b><span>{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</span></span>
+                <EngineVerdict e={e} compact />
+              </Link>
+            </li>
+          ))}
+          {!eng.data && Array.from({ length: 5 }, (_, i) => <li key={i}><Skel h={52} style={{ margin: '6px 0' }} /></li>)}
+        </ul>
+        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Ranking skill and trading result are different claims, so each engine shows both. Open an engine for its plan levels and track record.</p>
+      </Rv>
     </section>
-  );
-}
-
-function Ticker() {
-  const q = useQuotes();
-  const [paused, setPaused] = useState(false);
-  const list = (q.data?.quotes ?? []).filter((x) => x.price !== null);
-  if (!list.length) return <div className="marquee" style={{ height: 49 }} aria-hidden />;
-  const items = [...list, ...list];
-  return (
-    <div className={`marquee${paused ? ' paused' : ''}`} role="region" aria-label="Market prices">
-      <button type="button" className="chip marquee-ctl" aria-pressed={paused} onClick={() => setPaused((p) => !p)} title="Stop or start the scrolling prices">{paused ? '▶ Play' : '⏸ Pause'}</button>
-      <div className="marquee-track">
-        {items.map((x, i) => (
-          <div className="mq-item" key={`${x.id}-${i}`} aria-hidden={i >= list.length}>
-            <span className="nm">{x.name}</span>
-            <span className="num">{x.prefix}{num(x.price, x.dp)}</span>
-            <Chg v={x.pct} />
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
 function Board() {
   const q = useQuotes();
-  const want = ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'gold'];
+  const want = ['sensex', 'banknifty', 'usdinr', 'spx', 'gold', 'brent'];   // Nifty 50 and India VIX are already in the headline facts
   const newest = Math.max(0, ...(q.data?.quotes ?? []).map((x) => x.at ?? 0));
   const qs = quoteState(newest || null);
   const boardLabel = q.data ? (qs.word === 'live' ? 'Live quotes' : qs.word === 'unknown' ? 'Quotes' : `Quotes · ${qs.label}`) : 'Quotes';
   return (
     <section className="wrap section">
-      <SectionHead eyebrow={boardLabel} title="The board" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
+      <SectionHead eyebrow={boardLabel} title="Other markets" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
       <Async loading={q.loading} error={q.error} rows={2}>
         <div className="qgrid">
           {want.map((id) => q.data?.quotes.find((x) => x.id === id && x.price !== null)).filter((x): x is Quote => !!x).map((x) => <QuoteCard key={x.id} q={x} />)}
@@ -215,13 +187,11 @@ function Board() {
 function Breadth() {
   const p = useFeed('pulse');
   const scr = useFeed('screen');
-  const b200 = useMemo(() => (scr.data ? breadth200(scr.data.rows) : null), [scr.data]);
   const b = p.data?.breadth;
   const total = b ? b.up + b.down : 0;
   const rows: [string, number, string?][] = b ? [
     ['Advancing', (b.up / total) * 100, 'up'],
     ['Declining', (b.down / total) * 100, 'down'],
-    ...(b200 && b200.pct !== null ? [[`Above 200-day (${num(b200.above)} of ${num(b200.withHistory)} with history)`, b200.pct] as [string, number]] : []),
   ] : [];
   return (
     <Rv className="panel spot">
@@ -322,7 +292,7 @@ function IpoCard() {
       {open.slice(0, 2).map((o) => (
         <div key={o.symbol} style={{ marginTop: 14 }}>
           <div className="disp" style={{ fontSize: 26 }}>{o.company}</div>
-          <div className="dim num" style={{ fontSize: 14, marginTop: 6 }}>{o.price_band} · closes {o.close_date} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div>
+          <div className="dim num" style={{ fontSize: 14, marginTop: 6 }}>{rupeeBand(o.price_band)} · closes {dateLabel(o.close_date)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div>
         </div>
       ))}
       <Link className="more" href="/ipo/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 14 }}>Open and recent listings →</Link>
@@ -376,10 +346,9 @@ export default function Home() {
     <>
       <TodayHero />
       <JobTiles />
-      <Ticker />
       <SinceVisit />
+      <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Teasers />
-      <section className="wrap section"><SectionHead eyebrow="Calculated insights" title="Evidence across checks" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Board />
       <section className="wrap section">
         <div className="grid g-7-5">
@@ -393,7 +362,7 @@ export default function Home() {
       </section>
       <section className="wrap section">
         <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
-        <div className="grid g3"><MagicLeaders /><div className="grid"><IpoCard /><ReadCard /></div><Rv className="panel spot"><div className="eyebrow">How to read this</div><p className="lede" style={{ fontSize: 15, marginTop: 14 }}>Every score, rank and flag has its rule written beside it, and every dataset says when it last updated. Where a number cannot be computed it shows a dash, never a guess.</p><Link className="more" href="/about/" style={{ color: 'var(--accent-2)', fontSize: 14 }}>Method and sources →</Link>{latest && <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Data last refreshed {ago(latest)}</p>}</Rv></div>
+        <div className="grid g3"><MagicLeaders /><IpoCard /><ReadCard /></div>
       </section>
     </>
   );

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { breadth200 } from '../src/lib/breadth.ts';
 import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
 import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween, weekThrough } from '../src/lib/status.ts';
-import { plainText } from '../src/lib/format.ts';
+import { nseDate, plainText, rupeeBand } from '../src/lib/format.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
@@ -393,4 +393,13 @@ test('rotation freshness: judged like a daily feed against the date its data run
   assert.deepEqual([frozen.state, frozen.lagSessions], ['delayed', 2]);
   const wed = rot('2026-10-09', '2026-10-14');                                     // Wednesday expected: Mon, Tue, Wed = 3 sessions
   assert.deepEqual([wed.state, wed.lagSessions], ['stale', 3]);
+});
+
+test('NSE dates and price bands read like the rest of the site', () => {
+  assert.equal(nseDate('14-Oct-2026'), '14 Oct 2026');
+  assert.equal(nseDate('04-OCT-2026'), '4 Oct 2026');
+  assert.equal(nseDate('2026-10-14'), '2026-10-14');   // not an NSE date: left alone, never guessed
+  assert.equal(rupeeBand('Rs.275 to Rs.289'), '₹275 to ₹289');
+  assert.equal(rupeeBand('Rs. 1,875 to Rs. 1,900'), '₹1,875 to ₹1,900');
+  assert.equal(rupeeBand(null), '—');
 });

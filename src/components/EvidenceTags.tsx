@@ -7,12 +7,15 @@ export const VERDICT_TONE: Record<string, string> = {
   'BREAK-EVEN AFTER COSTS': 'warn', 'LOSES AFTER COSTS': 'down',
 };
 
+/** The data holds verdicts in capitals so they can be compared exactly; people read them in sentence case. Display only. */
+export const verdictText = (v: string): string => v.charAt(0) + v.slice(1).toLowerCase();
+
 /** An engine's two claims, always together: how well it ranks stocks, and what trading its plan returned after costs. They differ, so no surface may show one alone. */
 export function EngineVerdict({ e, compact = false }: { e: Pick<EngineStats, 'ranking_status' | 'ranking_why' | 'trading_status' | 'trading_why'>; compact?: boolean }) {
   return (
     <span className="verdict" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-      <span className={`tag ${VERDICT_TONE[e.ranking_status] ?? ''}`} title={e.ranking_why}>{compact ? <span className="sr">Ranking: </span> : 'Ranking · '}{e.ranking_status}</span>
-      <span className={`tag ${VERDICT_TONE[e.trading_status] ?? ''}`} title={e.trading_why}>{compact ? <span className="sr">Trading: </span> : 'Trading · '}{e.trading_status}</span>
+      <span className={`tag ${VERDICT_TONE[e.ranking_status] ?? ''}`} title={e.ranking_why}>{compact ? <span className="sr">Ranking: </span> : 'Ranking · '}{verdictText(e.ranking_status)}</span>
+      <span className={`tag ${VERDICT_TONE[e.trading_status] ?? ''}`} title={e.trading_why}>{compact ? <span className="sr">Trading: </span> : 'Trading · '}{verdictText(e.trading_status)}</span>
     </span>
   );
 }

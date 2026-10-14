@@ -70,7 +70,7 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
 
       <details style={{ marginTop: 16 }}>
         <summary className="eyebrow" style={{ cursor: 'pointer' }}>All nine checks, with the number behind each</summary>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8, marginTop: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 8, marginTop: 10 }}>
           {d.checks.map((c) => (
             <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14.5 }}>
               <span aria-label={c.pass === null ? 'not applicable' : c.pass ? 'pass' : 'fail'} style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 13, background: c.pass === null ? 'var(--line)' : c.pass ? 'var(--up-soft)' : 'var(--down-soft)', color: c.pass === null ? 'var(--dim)' : c.pass ? 'var(--up)' : 'var(--down)' }}>{c.pass === null ? '–' : c.pass ? '✓' : '✕'}</span>

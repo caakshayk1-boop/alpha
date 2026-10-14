@@ -29,7 +29,7 @@ export default function Markets() {
                 <div className="qrow"><span className="nm">{x.name}</span><span className="tag">{x.group}</span></div>
                 <div className="qrow"><span className="px">{x.prefix}{num(x.price, x.dp)}{x.group === 'Rates' ? '%' : ''}</span>{x.group === 'Rates' && typeof x.prev === 'number' && typeof x.price === 'number' ? <span className={`chg num ${x.price - x.prev >= 0 ? 'up' : 'down'}`}>{x.price - x.prev >= 0 ? '+' : '−'}{Math.abs((x.price - x.prev) * 100).toFixed(1)} bp</span> : <Chg v={x.pct} />}</div>
                 <Spark series={x.series} up={(x.pct ?? 0) >= 0} height={46} />
-                <div className="dim" style={{ fontSize: 13, fontFamily: 'var(--f-mono)' }}>1 month · {quoteState(x.at).label}</div>
+                <div className="dim" style={{ fontSize: 13, fontFamily: 'var(--f-mono)' }}>{quoteState(x.at).label}</div>
               </Rv>
             ))}
           </div>

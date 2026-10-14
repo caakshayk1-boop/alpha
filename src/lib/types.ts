@@ -179,7 +179,7 @@ export interface Fund {
 }
 export interface Funds { generated_at: string; basis: string; categories: { key: string; label: string; blurb: string; funds: Fund[] }[] }
 
-export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string; model?: string; corrections?: { date: string; what: string }[] }
+export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string; model?: string; corrections?: { date: string; fix: string }[] }
 export interface Reads { generated_at: string; editions: { week: string; written_at: string; studies: Study[] }[] }
 
 export interface Swot { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] }

@@ -33,6 +33,16 @@ export const dateLabel = (iso: string | null | undefined) => {
   return Number.isNaN(d.getTime()) ? dash : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+/** NSE writes dates as "14-Oct-2026"; the rest of the site writes "14 Oct 2026". Anything else is returned unchanged. */
+export const nseDate = (v: string | null | undefined): string => {
+  if (!v) return dash;
+  const m = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(v.trim());
+  return m ? `${Number(m[1])} ${m[2][0].toUpperCase()}${m[2].slice(1).toLowerCase()} ${m[3]}` : v;
+};
+
+/** "Rs.275 to Rs.289" becomes "₹275 to ₹289", so one currency sign is used everywhere. */
+export const rupeeBand = (v: string | null | undefined): string => (v ? v.replace(/Rs\.?\s*/gi, '₹').replace(/\s+to\s+/i, ' to ').trim() : dash);
+
 export const ago = (iso: string | null | undefined) => {
   if (!iso) return dash;
   const t = new Date(iso).getTime();

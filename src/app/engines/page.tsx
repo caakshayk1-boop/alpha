@@ -6,7 +6,7 @@ import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
 import Scoreboard from '@/components/Scoreboard';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
-import { VERDICT_TONE } from '@/components/EvidenceTags';
+import { VERDICT_TONE, verdictText } from '@/components/EvidenceTags';
 import { Async, Bar, Chg, CountUp, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
@@ -38,27 +38,31 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
   const b = s.benchmark;
   return (
     <Rv className="panel spot">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16 }}>
-        <div>
+      <div className="sig-head">
+        <div className="sig-id">
           <div className="eyebrow">{s.setup} · {s.horizon} · issued {dateLabel(s.issued)}</div>
-          <Link href={`/company/?s=${encodeURIComponent(s.sym)}`} className="disp" style={{ fontSize: 34, display: 'block', margin: '8px 0 2px' }}>{s.sym}</Link>
-          <div className="dim" style={{ fontSize: 14 }}>{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
-          <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
-            {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
-            {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
-          </div>
+          <Link href={`/company/?s=${encodeURIComponent(s.sym)}`} className="disp sig-sym">{s.sym}</Link>
+          <div className="sig-name">{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
         </div>
-        <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
+        {px !== null && active && (
+          <div className="sig-now">
+            <div className="k">{live ? (quoteState(live.at).word === 'live' ? 'Live' : 'Last trade') : 'Last close'}</div>
+            <div className="v num">₹{num(px, 2)}</div>
+            {live && <Chg v={live.pct} />}
+          </div>
+        )}
       </div>
+      <div className="sig-tags">
+        <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
+        {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
+        {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
+      </div>
+      <PlanOdds sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
       {px !== null && active && (
-        <p className="num" style={{ margin: '12px 0 0', fontSize: 14 }}>
-          <b>{live ? (quoteState(live.at).word === 'live' ? 'Live' : 'Last trade') : 'Last close'} ₹{num(px, 2)}</b>{live ? <> <Chg v={live.pct} /> </> : ' '}· {(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}
-        </p>
+        <p className="sig-dist num">{(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}</p>
       )}
       <div className="kv" style={{ marginTop: 14 }}>
-        <div><div className="k">{s.entry ? 'Entered at the open' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? `₹${num(s.entry, 2)} · ${dateLabel(s.entry_date)}` : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
-        <div><div className="k">{s.hit > 0 ? 'Stop (moved)' : 'Stop'}</div><div className="v down" style={{ fontSize: 15 }}>₹{num(stop, 2)}{s.hit === 0 ? ` · −${s.risk_pct}%` : ''}</div></div>
+        <div><div className="k">{s.entry ? 'Entered at the open on' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? dateLabel(s.entry_date) : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
         <div><div className="k">T1 typically</div><div className="v" style={{ fontSize: 15 }}>{s.typical_days_to_t1 ? `~${Math.round(s.typical_days_to_t1)} sessions` : dash}</div></div>
         <div><div className="k">Avg daily turnover</div><div className="v" style={{ fontSize: 15 }}>₹{num(s.turnover_cr, 1)} cr</div></div>
@@ -80,16 +84,16 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
       )}
       {s.void_reason && <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Void: {s.void_reason}.</p>}
       {s.reasons.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>What the model is reading today</div>
-          <ul className="muted" style={{ paddingLeft: 18, margin: 0, fontSize: 14.5 }}>{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-          <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>These are the inputs the model leans on most, and where this stock stands on each. They describe what it sees, not why the price will move.</p>
-        </div>
+        <details className="sig-why">
+          <summary>What the model is reading today</summary>
+          <ul className="muted">{s.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+          <p className="dim">These are the inputs the model leans on most, and where this stock stands on each. They describe what it sees, not why the price will move.</p>
+        </details>
       )}
       {s.turnover_cr < 5 && active && <p className="notice" style={{ marginTop: 12, fontSize: 13.5 }}>Thinly traded: about ₹{num(s.turnover_cr, 1)} crore changes hands a day. Fills at the next open may be far from the plan, and the 0.25% cost in the tests may be too kind.</p>}
       {active && (
-        <details style={{ marginTop: 14 }}>
-          <summary className="eyebrow" style={{ cursor: 'pointer' }}>How many shares fit your risk?</summary>
+        <details className="sig-why">
+          <summary>How many shares fit your risk?</summary>
           <div className="filters" style={{ marginTop: 10 }}>
             <label className="muted" style={{ fontSize: 14 }}>Capital ₹ <input className="field" style={{ minWidth: 110, height: 34 }} inputMode="numeric" value={capital} onChange={(ev) => setCapital(ev.target.value.replace(/[^\d]/g, ''))} /></label>
             <label className="muted" style={{ fontSize: 14 }}>Risk % <input className="field" style={{ minWidth: 60, width: 70, height: 34 }} inputMode="decimal" value={riskPct} onChange={(ev) => setRiskPct(ev.target.value.replace(/[^\d.]/g, ''))} /></label>
@@ -99,7 +103,6 @@ function SignalCard({ s, e, live, through }: { s: EngineSignal; e: EngineStats; 
         </details>
       )}
       <div style={{ marginTop: 12 }}><Link className="chip" href={journalHref(s.sym, base, s.sl, s.targets[0])} title="Open the journal with this company, price, stop and first target filled in. You write the reason.">Journal this signal</Link></div>
-      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Ranking: <span className={`tag ${TONE[e.ranking_status]}`}>{e.ranking_status}</span> · Trading: <span className={`tag ${TONE[e.trading_status]}`}>{e.trading_status}</span></p>
     </Rv>
   );
 }
@@ -186,30 +189,25 @@ export default function EnginesPage() {
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
-              <div className="tbl-wrap" style={{ maxHeight: 'none', marginBottom: 14 }}>
-                <table className="tbl" style={{ minWidth: 820 }}>
-                  <caption className="sr">Engines compared. Choose one to see its signals and evidence.</caption>
-                  <thead><tr><th scope="col">Engine</th><th scope="col">Horizon</th><th scope="col">Signals now</th><th scope="col">Ranking skill</th><th scope="col">Trading result after costs</th><th scope="col">Holdout avg</th><th scope="col">Tested trades</th><th scope="col">Live record</th></tr></thead>
-                  <tbody role="radiogroup" aria-label="Engine">
-                    {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => (
-                      <tr key={x.key} style={{ cursor: 'pointer', outline: key === x.key ? '2px solid var(--accent)' : undefined, outlineOffset: -2 }} onClick={() => { setKey(x.key); setTab('signals'); }}>
-                        <td>
-                          <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
-                            <input type="radio" name="engine" checked={key === x.key} onChange={() => { setKey(x.key); setTab('signals'); }} />
-                            <span className="co"><b>{x.id}. {x.name}</b><span>{x.style.split(',')[0]}</span></span>
-                          </label>
-                        </td>
-                        <td className="num">{x.horizon_sessions} sessions</td>
-                        <td className="num">{x.signal_count}</td>
-                        <td><span className={`tag ${TONE[x.ranking_status]}`} title={x.ranking_why}>{x.ranking_status}</span></td>
-                        <td><span className={`tag ${TONE[x.trading_status]}`} title={x.trading_why}>{x.trading_status}</span></td>
-                        <td className={`num ${(x.trades.holdout.expectancy_r ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(x.trades.holdout.expectancy_r, 2, 'R')}</td>
-                        <td className="num">{num(x.trades.all.n ?? 0)}</td>
-                        <td className="num dim">{feed.live_record[x.key]?.closed ?? 0} closed</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="epick" role="radiogroup" aria-label="Engine">
+                {Object.values(feed.engines).sort((a, b) => a.id - b.id).map((x) => {
+                  const hr = x.trades.holdout.expectancy_r;
+                  return (
+                    <label key={x.key} className={`ecard${key === x.key ? ' on' : ''}`}>
+                      <input type="radio" name="engine" checked={key === x.key} onChange={() => { setKey(x.key); setTab('signals'); }} />
+                      <span className="ecard-top">
+                        <b>{x.id}. {x.name}</b>
+                        <span className="dim">{x.style.split(',')[0]} · {x.horizon_sessions} sessions</span>
+                      </span>
+                      <span className="ecard-sig"><b className="num">{x.signal_count}</b> signal{x.signal_count === 1 ? '' : 's'} now</span>
+                      <span className="ecard-tags">
+                        <span className={`tag ${TONE[x.ranking_status]}`} title={x.ranking_why}>Ranking · {verdictText(x.ranking_status)}</span>
+                        <span className={`tag ${TONE[x.trading_status]}`} title={x.trading_why}>Trading · {verdictText(x.trading_status)}</span>
+                      </span>
+                      <span className="ecard-foot dim">Holdout <b className={`num ${(hr ?? 0) >= 0 ? 'up' : 'down'}`}>{sgn(hr, 2, 'R')}</b> per trade · {num(x.trades.all.n ?? 0)} tested trades · {feed.live_record[x.key]?.closed ?? 0} live closed</span>
+                    </label>
+                  );
+                })}
               </div>
               <DataStamp ids={['engines', 'screen']} />
               <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
@@ -223,8 +221,8 @@ export default function EnginesPage() {
                   <Rv className="panel" style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ display: 'grid', gap: 12, flex: 1, minWidth: 260 }}>
-                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 13 }}>{e.ranking_status}</span><span className="muted">{e.ranking_why}</span></div></div>
-                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 13 }}>{e.trading_status}</span><span className="muted">{e.trading_why}</span></div></div>
+                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 13 }}>{verdictText(e.ranking_status)}</span><span className="muted">{e.ranking_why}</span></div></div>
+                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 13 }}>{verdictText(e.trading_status)}</span><span className="muted">{e.trading_why}</span></div></div>
                         <div><span className="eyebrow">Phone alerts</span><div style={{ marginTop: 6 }}><span className={`tag ${e.alertable ? 'up' : ''}`} style={{ fontSize: 13 }}>{e.alertable ? 'ON' : 'OFF'}</span> <span className="muted">{e.alert_why}</span></div></div>
                       </div>
                     </div>

@@ -6,7 +6,7 @@ export interface Odds { t1?: number; t2?: number; t3?: number; stopped?: number 
  *  Targets are volatility multiples, not chart levels, so what makes them meaningful is the measured reach, shown beside them. */
 export default function PlanOdds({ sl, entry, targets, rMultiples, odds, last, n }: { sl: number; entry: number; targets: number[]; rMultiples: number[]; odds: Odds; last?: number; n?: number }) {
   const row = (label: string, price: number, p: number | undefined, tone: 'up' | 'down' | 'flat', note?: string) => (
-    <div key={label} style={{ display: 'grid', gridTemplateColumns: '38px 1fr 54px', gap: 8, alignItems: 'center', fontSize: 13.5 }}>
+    <div key={label} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr) 56px', gap: 8, alignItems: 'center', fontSize: 13.5 }}>
       <span className={`num ${tone}`} style={{ fontWeight: 600 }}>{label}</span>
       <span className="num" style={{ color: 'var(--text)' }}>₹{num(price, 2)} <span className="dim">{price === entry ? '' : `${price > entry ? '+' : '−'}${Math.abs((price / entry - 1) * 100).toFixed(1)}%`}{note ? ` · ${note}` : ''}</span></span>
       <span style={{ display: 'block', height: 6, borderRadius: 3, background: 'var(--panel-3)', position: 'relative' }} title={p === undefined ? undefined : `${p.toFixed(0)}% of test trades`}>
@@ -16,8 +16,8 @@ export default function PlanOdds({ sl, entry, targets, rMultiples, odds, last, n
   );
   const pct = (v?: number) => (typeof v === 'number' ? `${v.toFixed(0)}%` : '—');
   return (
-    <div style={{ minWidth: 230 }} aria-label="Plan levels and how often each was reached in tests">
-      <div className="eyebrow" style={{ marginBottom: 10 }}>Plan levels · how often this engine&apos;s test trades got there</div>
+    <div className="plan" aria-label="Plan levels and how often each was reached in tests">
+      <div className="eyebrow" style={{ marginBottom: 10 }}>Plan levels · how often this engine&apos;s test trades reached each</div>
       <div style={{ display: 'grid', gap: 7 }}>
         {[...targets].map((t, i) => [t, i] as const).reverse().map(([t, i]) => row(`T${i + 1}`, t, [odds.t1, odds.t2, odds.t3][i], 'up', `${rMultiples[i]}R`))}
         {row('Entry', entry, undefined, 'flat')}

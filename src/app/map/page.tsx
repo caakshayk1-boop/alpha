@@ -55,12 +55,12 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
-/** Label that is always legible: the font is derived from the tile, and only a tile too small for 6px text goes unlabeled. */
+/** Label that is always legible: the font is derived from the tile, and a tile too small for a 10px label goes unlabeled. */
 function labelFor(w: number, h: number, sym: string) {
-  const byWidth = (w - 6) / (Math.max(sym.length, 3) * 0.62);
+  const byWidth = (w - 6) / (Math.max(sym.length, 3) * 0.7);
   const byHeight = (h - 4) * 0.55;
   const font = Math.min(15, byWidth, byHeight);
-  return font >= 6 ? font : 0;
+  return font >= 10 ? font : 0;   // below 10px a label is noise; the list under the map carries every name
 }
 
 export default function MapPage() {
@@ -161,14 +161,14 @@ export default function MapPage() {
               <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 10 }}>
                 <div className="filters" style={{ margin: 0, alignItems: 'center' }}>
                   <label className="eyebrow" htmlFor="heat-colour">Colour</label>
-                  <select id="heat-colour" className="field" style={{ height: 36, minWidth: 220 }} value={metric} onChange={(e) => setMetric(e.target.value)}>
+                  <select id="heat-colour" className="field" style={{ height: 36, minWidth: 0, width: 'min(100%, 260px)' }} value={metric} onChange={(e) => setMetric(e.target.value)}>
                     {metricGroups.map((g) => <optgroup key={g} label={g}>{METRICS.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>)}
                   </select>
                   <span className="eyebrow" style={{ marginLeft: 8 }}>Size</span>
                   <span role="group" aria-label="Size by" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{SIZES.map((x) => <button key={x.id} className="chip" aria-pressed={sizeBy === x.id} onClick={() => setSizeBy(x.id)}>{x.label}</button>)}</span>
                   <span className="eyebrow" style={{ marginLeft: 8 }}>Group</span>
                   <span role="group" aria-label="Group by" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{GROUPS.map((x) => <button key={x.id} className="chip" aria-pressed={groupBy === x.id} onClick={() => { setGroupBy(x.id); setZoom(null); }}>{x.label}</button>)}</span>
-                  <input className="field" style={{ minWidth: 160, height: 36, marginLeft: 'auto' }} placeholder="Find a stock…" aria-label="Find a stock on the map" value={query} onChange={(e) => setQuery(e.target.value)} />
+                  <input className="field" style={{ minWidth: 0, width: 'min(100%, 200px)', height: 36, marginLeft: 'auto' }} placeholder="Find a stock…" aria-label="Find a stock on the map" value={query} onChange={(e) => setQuery(e.target.value)} />
                 </div>
                 <div className="filters" style={{ margin: 0, justifyContent: 'space-between', alignItems: 'center' }}>
                   <details>
@@ -199,7 +199,7 @@ export default function MapPage() {
                 <div ref={stage} style={{ position: 'absolute', inset: 0 }}>
                   {layout.groups.map((g) => g.w > 70 && g.h > 46 && grp.id !== 'none' ? (
                     <button key={g.data.name} className="tile sectorhead" style={{ left: g.x, top: g.y, width: g.w, height: 17, padding: '1px 6px', background: 'rgba(0,0,0,.45)', border: 0, pointerEvents: 'auto', cursor: zoom ? 'default' : 'zoom-in' }} onClick={() => !zoom && setZoom(g.data.name)} aria-label={`Zoom into ${g.data.name}`}>
-                      <b style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', opacity: 0.9 }}>{g.data.name}{!zoom ? ' ⌕' : ''}</b>
+                      <b style={{ fontSize: 12, opacity: 0.92 }}>{g.data.name}{!zoom ? ' ⌕' : ''}</b>
                     </button>
                   ) : null)}
                   {layout.tiles.map((t) => {

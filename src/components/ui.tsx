@@ -120,13 +120,13 @@ export function PercentileBars({ items }: { items: { label: string; value: numbe
       {items.map(({ label, value, note }) => {
         const v = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
         return (
-          <div key={label} style={{ display: 'grid', gridTemplateColumns: '92px 1fr 150px', gap: 12, alignItems: 'center' }}>
+          <div key={label} className="pbar">
             <span className="eyebrow">{label}</span>
-            <div style={{ position: 'relative', height: 8, borderRadius: 9, background: 'var(--panel-3)' }} role="img" aria-label={v === null ? `${label}: not scored` : `${label}: ${ordinal(v)} percentile`}>
+            <div className="pbar-track" style={{ position: 'relative', height: 8, borderRadius: 9, background: 'var(--panel-3)' }} role="img" aria-label={v === null ? `${label}: not scored` : `${label}: ${ordinal(v)} percentile`}>
               {v !== null && <div style={{ width: `${v}%`, height: '100%', borderRadius: 9, background: 'var(--accent)' }} />}
               <span aria-hidden title="Median company" style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 2, background: 'var(--text)', opacity: 0.55 }} />
             </div>
-            <span className="num" style={{ fontSize: 14 }}>{v === null ? <span className="dim">not scored</span> : <>{ordinal(v)} percentile</>}{note ? <span className="dim"> · {note}</span> : null}</span>
+            <span className="num pbar-v">{v === null ? <span className="dim">not scored</span> : <>{ordinal(v)} percentile</>}{note ? <span className="dim"> · {note}</span> : null}</span>
           </div>
         );
       })}

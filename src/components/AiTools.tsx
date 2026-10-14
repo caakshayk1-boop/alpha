@@ -207,19 +207,28 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
   }, [s.data, eng.data, limit]);
   return (
     <Async loading={s.loading} error={s.error} rows={3}>
-      <div className="tbl-wrap" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 640 }}>
-        <thead><tr><th>Company</th><th>Checks passed</th><th>Engines</th><th>Screen class</th><th>1Y</th><th>Why it ranks</th></tr></thead>
-        <tbody>{rows.map(({ r, mine, d, passed, known, total }) => {
+      <ul className="picks">
+        {rows.map(({ r, mine, d, passed, known, total }) => {
           const sc = screenClass(r.vd);
           return (
-            <tr key={r.sym}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`}><b>{r.sym}</b> <span className="dim">{r.name}</span></Link></td>
-              <td className="num" title={`${passed} passed of ${known} that apply; ${total - known} of ${total} not applicable or unavailable`}>{passed} of {known}{known < total ? <span className="dim"> ({total - known} n/a)</span> : null}</td>
-              <td>{mine.length ? mine.map((m) => <span key={m.id} className="tag acc" style={{ marginRight: 4 }}>{m.engine_name}</span>) : <span className="dim">none</span>}</td>
-              <td><span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span></td><td><Chg v={r.r1y} dp={0} /></td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{d.bull[0]?.text ?? d.headline}</td></tr>
+            <li key={r.sym}>
+              <Link className="pick" href={`/company/?s=${encodeURIComponent(r.sym)}`}>
+                <span className="pick-id"><b>{r.sym}</b><span>{r.name}</span></span>
+                <span className="pick-score" title={`${passed} passed of ${known} that apply; ${total - known} of ${total} not applicable or unavailable`}>
+                  <b className="num">{passed} of {known}</b><span>checks passed{known < total ? ` · ${total - known} n/a` : ''}</span>
+                </span>
+                <span className="pick-chg"><Chg v={r.r1y} dp={0} /><span>1 year</span></span>
+                <span className="pick-tags">
+                  <span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span>
+                  {mine.map((m) => <span key={m.id} className="tag acc">{m.engine_name} signal</span>)}
+                </span>
+                <span className="pick-why">{d.bull[0]?.text ?? d.headline}</span>
+              </Link>
+            </li>
           );
-        })}</tbody>
-      </table></div>
-      <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p>
+        })}
+      </ul>
+      <details className="sig-why"><summary>How this list is ranked</summary><p className="dim">Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p></details>
     </Async>
   );
 }
@@ -251,7 +260,7 @@ export function MarketStance() {
               <>
                 <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold{t ? `, barometer ${Math.round(t.score)} (${t.band.t.toLowerCase()})` : ''}.</p>
                 <p className="muted" style={{ margin: '0 0 14px' }}>{advice}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 8 }}>
                   {conds.map(([l, ok, d]) => (
                     <div key={l} style={{ display: 'flex', gap: 10, fontSize: 14.5 }}>
                       <span style={{ width: 20, height: 20, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 13, background: ok ? 'var(--up-soft)' : 'var(--down-soft)', color: ok ? 'var(--up)' : 'var(--down)' }}>{ok ? '✓' : '✕'}</span>
