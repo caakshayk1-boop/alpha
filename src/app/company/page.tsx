@@ -1,5 +1,6 @@
 'use client';
 
+import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -25,14 +26,7 @@ function Kv({ k, v, onPick, on }: { k: string; v: string; onPick?: (k: string, v
 }
 
 function Range({ r }: { r: Row }) {
-  if (!has(r.low52) || !has(r.high52) || !has(r.price) || r.high52 <= r.low52) return null;
-  const p = Math.max(0, Math.min(100, ((r.price - r.low52) / (r.high52 - r.low52)) * 100));
-  return (
-    <div>
-      <div className="range" role="img" aria-label={`Price is ${p.toFixed(0)}% of the way from the 52-week low to the high`}><span className="dot" style={{ left: `${p}%` }} /></div>
-      <div className="qrow num" style={{ fontSize: 14 }}><span>52w low ₹{num(r.low52, 2)}</span><span className="dim">{p.toFixed(0)}% of range</span><span>52w high ₹{num(r.high52, 2)}</span></div>
-    </div>
-  );
+  return <RangeBar row={r} />;
 }
 
 function Returns({ r }: { r: Row }) {

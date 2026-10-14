@@ -4,6 +4,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CompanyPeek } from '@/components/Peek';
 import { Async, Chg, PageHead, Rv } from '@/components/ui';
 import { useEngines, useFeed } from '@/lib/data';
 import { screenClass } from '@/lib/decision';
@@ -35,6 +36,7 @@ export default function News() {
   const [source, setSource] = useState('');
   const [view, setView] = useState<View>('all');
   const [q, setQ] = useState('');
+  const [peek, setPeek] = useState<string | null>(null);
   const ready = useRef(false);
   const [seen, setSeen] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
@@ -117,7 +119,7 @@ export default function News() {
 
               {rail.length > 0 && (
                 <ul className="chiprow" aria-label="Companies named most today">
-                  {rail.slice(0, 6).map(({ sym }) => <li key={sym}><Link className="namedco" href={`/company/?s=${encodeURIComponent(sym)}`}><b>{sym}</b><Chg v={byIndex.get(sym)?.r1d} dp={1} /></Link></li>)}
+                  {rail.slice(0, 6).map(({ sym }) => <li key={sym}><button type="button" className="namedco" onClick={() => setPeek(sym)}><b>{sym}</b><Chg v={byIndex.get(sym)?.r1d} dp={1} /></button></li>)}
                 </ul>
               )}
 
@@ -170,12 +172,12 @@ export default function News() {
                                       const sc = r ? screenClass(r.vd) : null;
                                       return (
                                         <li key={m.sym}>
-                                          <Link href={`/company/?s=${encodeURIComponent(m.sym)}`} className="namedco" title={`Matched on ${m.basis}`}>
+                                          <button type="button" className="namedco" onClick={() => setPeek(m.sym)} title={`Matched on ${m.basis}. Opens a quick look.`}>
                                             <b>{m.sym}</b>
                                             {r && <Chg v={r.r1d} dp={1} />}
                                             {signalSyms.has(m.sym) && <span className="tag acc">Engine signal</span>}
                                             {sc && sc.text && <span className="tag">{sc.text}</span>}
-                                          </Link>
+                                          </button>
                                         </li>
                                       );
                                     })}
@@ -213,10 +215,10 @@ export default function News() {
                         const r = byIndex.get(sym);
                         return (
                           <li key={sym}>
-                            <Link href={`/company/?s=${encodeURIComponent(sym)}`} className="railrow">
+                            <button type="button" className="railrow" onClick={() => setPeek(sym)}>
                               <span className="railid"><b>{sym}</b><span>{r?.name}</span></span>
                               <span className="railmv"><Chg v={r?.r1d} dp={1} /><span>{n} {n === 1 ? 'story' : 'stories'}</span></span>
-                            </Link>
+                            </button>
                           </li>
                         );
                       })}
@@ -242,6 +244,7 @@ export default function News() {
           )}
         </Async>
       </section>
+      <CompanyPeek sym={peek} onClose={() => setPeek(null)} />
     </>
   );
 }

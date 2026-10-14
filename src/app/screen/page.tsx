@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { CompanyPeek } from '@/components/Peek';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
@@ -72,7 +72,7 @@ interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; ti
 export default function Screen() {
   const s = useFeed('screen');
   const eng = useEngines();
-  const router = useRouter();
+  const [peek, setPeek] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [nlTests, setNlTests] = useState<((r: Row) => boolean)[]>([]);
   const [nl, setNl] = useState<NlState>({ text: '', off: [] });
@@ -214,11 +214,11 @@ export default function Screen() {
               </thead>
               <tbody ref={body}>
                 {rows.slice(0, limit).map((r) => (
-                  <tr key={r.sym} data-flip-id={r.sym} tabIndex={0} onClick={() => router.push(`/company/?s=${encodeURIComponent(r.sym)}`)} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/company/?s=${encodeURIComponent(r.sym)}`); }}>
+                  <tr key={r.sym} data-flip-id={r.sym} tabIndex={0} onClick={() => setPeek(r.sym)} onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) setPeek(r.sym); }} title="Open a quick look">
                     <td>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input type="checkbox" aria-label={`Select ${r.sym} to compare`} checked={picked.includes(r.sym)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.sym)} />
-                        <div className="co"><b>{r.sym} {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
+                        <div className="co"><b><Link href={`/company/?s=${encodeURIComponent(r.sym)}`} onClick={(e) => e.stopPropagation()} title="Open the full page">{r.sym}</Link> {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
                       </div>
                     </td>
                     {cols.map((c) => { const f = F.get(c)!; const v = f.get(r); return <td key={c}>{!has(v) ? <span className="dim">{dash}</span> : f.kind === 'chg' ? <Chg v={v} dp={1} /> : c === 'comp' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ width: 44, height: 5, borderRadius: 9, background: 'var(--panel-3)', overflow: 'hidden', display: 'inline-block' }}><i style={{ display: 'block', height: '100%', width: `${Math.max(0, Math.min(100, v))}%`, background: 'var(--accent)' }} /></span><b className="num">{f.fmt(v)}</b></span> : <span className="num">{f.fmt(v)}</span>}</td>; })}
@@ -232,6 +232,7 @@ export default function Screen() {
           <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
+      <CompanyPeek sym={peek} onClose={() => setPeek(null)} />
     </>
   );
 }

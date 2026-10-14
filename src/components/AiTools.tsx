@@ -1,5 +1,6 @@
 'use client';
 
+import { FactorStrip } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
@@ -222,6 +223,7 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
                   <span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span>
                   {mine.map((m) => <span key={m.id} className="tag acc">{m.engine_name} signal</span>)}
                 </span>
+                <span className="pick-fac"><FactorStrip row={r} /></span>
                 <span className="pick-why">{d.bull[0]?.text ?? d.headline}</span>
               </Link>
             </li>

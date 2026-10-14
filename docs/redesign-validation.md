@@ -22,6 +22,12 @@ Environment: local production build (`npm run build`) served by `wrangler dev --
 | Client bundle secret grep (`ANTHROPIC`, `sk-ant` in `out/_next`) | none found |
 | Mutation test of the news matcher guard | removing the "name inside a longer name" guard makes a test fail; restored, all pass |
 
+## Company quick look (added after the mockup review)
+| Check | Result |
+|---|---|
+| Screen row opens a slide-over instead of navigating; filter and scroll position kept; symbol link still opens the full page; Escape and Close close it; focus moves in, is trapped, and returns without scrolling; News chips and rail open it | pass at 390 and 1440 px (66 checks) |
+| Sideways overflow with the panel open at 390 px | was 422 px (locking scroll on `<body>` widened the phone viewport); fixed by locking `<html>`, re-measured 390 px |
+
 ## Visual flaws found by looking, and fixed (more than five)
 1. "Evidence across checks" table became 200 px rows on phones → readable pick cards.
 2. Engine comparison table hid the verdict columns on phones → engine cards.
