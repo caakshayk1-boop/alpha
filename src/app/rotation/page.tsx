@@ -137,7 +137,7 @@ export default function RotationPage() {
   const weekLabel = wt?.inProgress ? `${date} (week in progress, data through ${wt.through})` : date;
   return (
     <>
-      <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="A Relative Rotation Graph for every benchmark group: how strong each is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows. Groups often pass through Improving, Leading, Weakening and Lagging, but not in a fixed order or at a fixed speed. Drag the time machine back to see past weeks." />
+      <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="How strong each benchmark group is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows, and groups do not pass through the phases in a fixed order. Drag the time machine back to see past weeks." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['rotation', 'screen']} /><div className="notice" style={{ marginTop: 10 }}><b>Index identity:</b> only Nifty IT, Pharma and Bank are NSE indices; every other group is an Alpha equal-weighted index. <details style={{ display: 'inline' }}><summary style={{ display: 'inline', cursor: 'pointer', color: 'var(--accent-2)' }}>Why</summary> Yahoo holds no history for the other NSE sector indices, so Alpha builds each group from its own screened stocks. Each is labelled &ldquo;NSE index&rdquo; or &ldquo;Alpha group index&rdquo; below.</details></div></section>
       <section className="wrap">
         <Async loading={rot.loading || scr.loading} error={rot.error ?? scr.error} rows={3}>

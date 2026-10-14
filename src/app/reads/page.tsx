@@ -36,7 +36,7 @@ export default function Reads() {
   const written = ed?.written_at ? new Date(ed.written_at) : null;
   return (
     <>
-      <PageHead variant="editorial" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." lede="One a sector, every Saturday: what they sell, how the money works, and what would break it. Figures come from the screen. The prose is written by a language model from those figures, then checked automatically for arithmetic and percentile wording; business descriptions are the model's general knowledge unless a source is cited on the study. It is not an analyst's research, and any correction is listed on the study itself." />
+      <PageHead variant="editorial" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." lede="One sector a week, every Saturday: what they sell, how the money works, and what would break it. Figures come from the screen. The prose is written by a language model from those figures and checked automatically for arithmetic. Business descriptions are the model's general knowledge unless a source is cited. It is not analyst research, and corrections are listed on each study." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
           <div className="filters" role="group" aria-label="Edition">

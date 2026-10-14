@@ -1,67 +1,245 @@
+// Purpose: read the day's stories against the market. Primary action: open a story, or tap a stock it names to see that company.
+// Everything here is rule-based and shows its basis: themes from words in the story, stocks from the exact name or ticker, moves from the screen's last close.
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Async, PageHead, Rv } from '@/components/ui';
-import { useFeed, useFeedWhen } from '@/lib/data';
-import { groupStories, matchCompanies } from '@/lib/news';
-import { useStoredList } from '@/lib/store';
-import { plainText } from '@/lib/format';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Async, Chg, PageHead, Rv } from '@/components/ui';
+import { useEngines, useFeed } from '@/lib/data';
+import { screenClass } from '@/lib/decision';
+import { dateLabel, plainText } from '@/lib/format';
+import { groupStories } from '@/lib/news';
+import { BUCKETS, TOPICS, bucketOf, makeMatcher, summarise, topicsOf, type Bucket, type Mention, type TopicId } from '@/lib/newsdesk';
 
-const when = (iso?: string | null) => {
-  if (!iso) return 'time not stated';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return 'time not stated';
-  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' })} IST`;
+const SEEN = 'alpha-news-seen', SAVED = 'alpha-news-saved', VISIT = 'alpha-news-visit', WATCH = 'alpha-watchlist';
+type View = 'all' | 'unread' | 'saved' | 'watch';
+const VIEWS: readonly [View, string][] = [['all', 'All'], ['unread', 'Unread'], ['saved', 'Saved'], ['watch', 'Watchlist']];
+
+const read = (key: string): string[] => { try { const v = JSON.parse(localStorage.getItem(key) ?? '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; } catch { return []; } };
+const write = (key: string, v: string[]) => { try { localStorage.setItem(key, JSON.stringify(v.slice(-400))); } catch { /* storage blocked or full: the page works without it */ } };
+
+const clock = (iso?: string | null) => {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'time not stated';
+  const o = { timeZone: 'Asia/Kolkata' } as const;
+  return `${d.toLocaleDateString('en-GB', { ...o, day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('en-GB', { ...o, hour: '2-digit', minute: '2-digit', hour12: false })} IST`;
 };
 
 export default function News() {
-  const n = useFeed('news');
-  const [watch] = useStoredList('alpha-watchlist');
-  const [mine, setMine] = useState(false);
-  const scr = useFeedWhen('screen', mine && watch.length > 0);     // the big feed is fetched only when this filter is used
-  const cos = useMemo(() => (scr.data?.rows ?? []).filter((r) => watch.includes(r.sym)).map((r) => ({ sym: r.sym, name: r.name })), [scr.data, watch]);
+  const feed = useFeed('news');
+  const scr = useFeed('screen');
+  const eng = useEngines();
+
+  // state kept in the address, so a filtered view can be shared or returned to
+  const [topic, setTopic] = useState<TopicId | ''>('');
   const [source, setSource] = useState('');
-  const [topic, setTopic] = useState('');
-  const topics: [string, RegExp][] = [['Markets', /nifty|sensex|market|stocks?|shares?|index|equity/i], ['Companies', /results?|profit|earnings|quarter|ipo|acquisition|stake|order/i], ['Economy', /rbi|inflation|gdp|rate|budget|economy|fiscal|tax|trade/i], ['Commodities & FX', /oil|crude|gold|silver|rupee|dollar|currency|commodity/i]];
-  const sources = useMemo(() => Array.from(new Set((n.data ?? []).map((s) => s.source))).sort(), [n.data]);
-  const list = useMemo(() => (n.data ?? []).filter((s) => (!source || s.source === source) && (!topic || topics.find((t) => t[0] === topic)?.[1].test(`${s.title} ${s.summary}`))).sort((a, b) => (b.published ?? '').localeCompare(a.published ?? '')), [n.data, source, topic]); // eslint-disable-line react-hooks/exhaustive-deps
-  const matched = useMemo(() => new Map(list.map((s) => [s.link, matchCompanies(`${plainText(s.title)} ${plainText(s.summary)}`, cos)])), [list, cos]);
-  const shown = useMemo(() => (mine ? list.filter((s) => (matched.get(s.link) ?? []).length > 0) : list), [mine, list, matched]);
-  const groups = useMemo(() => groupStories(shown), [shown]);
+  const [view, setView] = useState<View>('all');
+  const [q, setQ] = useState('');
+  const ready = useRef(false);
+  const [seen, setSeen] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
+  const [watch, setWatch] = useState<string[]>([]);
+  const [lastVisit, setLastVisit] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const t = p.get('topic'), v = p.get('view');
+    if (TOPICS.some((x) => x.id === t)) setTopic(t as TopicId);
+    if (VIEWS.some(([k]) => k === v)) setView(v as View);
+    setSource(p.get('source') ?? ''); setQ(p.get('q') ?? '');
+    setSeen(read(SEEN)); setSaved(read(SAVED)); setWatch(read(WATCH));
+    const prev = Number(read(VISIT)[0]);
+    setLastVisit(Number.isFinite(prev) && prev > 0 ? prev : null);
+    write(VISIT, [String(Date.now())]);
+    ready.current = true;
+    const tick = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  useEffect(() => {
+    if (!ready.current) return;
+    const p = new URLSearchParams();
+    if (topic) p.set('topic', topic); if (source) p.set('source', source); if (view !== 'all') p.set('view', view); if (q.trim()) p.set('q', q.trim());
+    const s = p.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${s ? `?${s}` : ''}`);
+  }, [topic, source, view, q]);
+
+  const markSeen = useCallback((link: string) => setSeen((cur) => { if (cur.includes(link)) return cur; const n = [...cur, link]; write(SEEN, n); return n; }), []);
+  const toggleSaved = useCallback((link: string) => setSaved((cur) => { const n = cur.includes(link) ? cur.filter((x) => x !== link) : [...cur, link]; write(SAVED, n); return n; }), []);
+
+  const rows = scr.data?.rows;
+  const byIndex = useMemo(() => new Map((rows ?? []).map((r) => [r.sym, r])), [rows]);
+  const cos = useMemo(() => (rows ?? []).map((r) => ({ sym: r.sym, name: r.name, mcap: r.mcap_cr })), [rows]);
+  const signalSyms = useMemo(() => new Set((eng.data?.signals ?? []).filter((s) => s.status === 'open' || s.status === 'pending').map((s) => s.sym)), [eng.data]);
+
+  const match = useMemo(() => makeMatcher(cos), [cos]);
+  const items = useMemo(() => (feed.data ?? []).map((story) => {
+    const text = `${plainText(story.title)}. ${plainText(story.summary)}`;
+    return { story, topics: topicsOf(text), mentions: match(text) as Mention[], text: text.toLowerCase() };
+  }), [feed.data, match]);
+  const desk = useMemo(() => summarise(items, (sym) => byIndex.get(sym)?.sector), [items, byIndex]);
+  const sources = useMemo(() => Array.from(new Set(items.map((i) => i.story.source))).sort(), [items]);
+
+  const query = q.trim().toLowerCase();
+  const shown = useMemo(() => items.filter((i) => {
+    if (topic && !i.topics.includes(topic)) return false;
+    if (source && i.story.source !== source) return false;
+    if (query && !i.text.includes(query) && !i.mentions.some((m) => m.sym.toLowerCase() === query)) return false;
+    if (view === 'unread' && seen.includes(i.story.link)) return false;
+    if (view === 'saved' && !saved.includes(i.story.link)) return false;
+    if (view === 'watch' && !i.mentions.some((m) => watch.includes(m.sym))) return false;
+    return true;
+  }).sort((a, b) => (b.story.published ?? '').localeCompare(a.story.published ?? '')), [items, topic, source, query, view, seen, saved, watch]);
+
+  const groups = useMemo(() => groupStories(shown.map((i) => ({ ...i.story, _i: i }))), [shown]);
+  const sections = useMemo(() => BUCKETS.map((b) => ({ b, gs: groups.filter((g) => bucketOf(g.lead.published, now) === b) })).filter((s) => s.gs.length > 0), [groups, now]);
+
+  const unreadCount = items.filter((i) => !seen.includes(i.story.link)).length;
+  const newSince = lastVisit ? items.filter((i) => i.story.published && new Date(i.story.published).getTime() > lastVisit).length : null;
+  const filtered = !!(topic || source || query || view !== 'all');
+  const clear = () => { setTopic(''); setSource(''); setQ(''); setView('all'); };
+  const rail = desk.names.slice(0, 8);
+  const topTheme = desk.themes[0];
+
   return (
     <>
-      <PageHead eyebrow="News" title="The wire," em="filtered." lede="Stories from the sources you would check anyway, in one list, newest first. Each opens at the publisher. Topics are matched by keywords in the headline and summary, so they are a convenience, not a classification." />
-      <section className="wrap" style={{ maxWidth: 860 }}>
-        <Async loading={n.loading} error={n.error}>
-          <div className="filters" role="group" aria-label="Topic"><button className="chip" aria-pressed={topic === ''} onClick={() => setTopic('')}>All topics</button>{topics.map(([t]) => <button key={t} className="chip" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)}>{t}</button>)}</div>
-          <div className="filters" role="group" aria-label="Source"><button className="chip" aria-pressed={source === ''} onClick={() => setSource('')}>All sources</button>{sources.map((s) => <button key={s} className="chip" aria-pressed={source === s} onClick={() => setSource(source === s ? '' : s)}>{s}</button>)}</div>
-          <div className="filters" role="group" aria-label="Relevance"><button className="chip" aria-pressed={mine} onClick={() => setMine((v) => !v)} disabled={watch.length === 0} title={watch.length === 0 ? 'Add companies to your watchlist first' : 'Only stories that name a company on your watchlist'}>Only my watchlist{watch.length ? ` (${watch.length})` : ''}</button>{watch.length === 0 && <span className="dim" style={{ fontSize: 14 }}>Your watchlist is empty. <a href="/watchlist/" style={{ color: 'var(--accent-2)' }}>Add companies</a> to filter by them.</span>}{mine && scr.loading && <span className="dim" style={{ fontSize: 14 }}>Loading company names…</span>}</div>
-          <p className="dim" style={{ fontSize: 13.5, margin: '0 0 6px' }}>{groups.length} {groups.length === 1 ? 'story' : 'stories'}{shown.length !== groups.length ? ` (${shown.length} reports; repeated coverage is grouped)` : ''}. Times are shown in Indian Standard Time (IST), converted from each publisher&apos;s feed.</p>
-          <div className="list">
-            {groups.map(({ lead: s, more }) => (
-              <Rv key={s.link}>
-                <a href={s.link} target="_blank" rel="noopener noreferrer" className="li" style={{ padding: '22px 0' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="eyebrow" style={{ marginBottom: 8 }}>{s.source} · <time dateTime={s.published ?? undefined}>{when(s.published)}</time></div>
-                    {(() => {
-                      const title = plainText(s.title), sum = plainText(s.summary);
-                      // the feed cuts long summaries at 380 characters; only then is the last word dropped for an ellipsis
-                      const text = s.summary.length >= 380 ? sum.replace(/\s+\S*$/, '…') : sum;
-                      return <><div className="disp" style={{ fontSize: 26, lineHeight: 1.15 }}>{title}</div>{sum && sum !== title && <p className="muted" style={{ margin: '8px 0 0', maxWidth: '64ch', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{text}</p>}</>;
-                    })()}
+      <PageHead eyebrow="News desk" title="The day's stories," em="read against the market." lede="Each story is tied to the companies it names, with their last move and any open signal. Themes and company links come from the words in the story, and the basis is always shown." />
+      <section className="wrap">
+        <Async loading={feed.loading} error={feed.error}>
+          {feed.data && (
+            <>
+              <div className="deskline" role="status">
+                <b>{desk.stories} stories</b> from {desk.sources} {desk.sources === 1 ? 'source' : 'sources'}
+                {topTheme && <> · most covered: <b>{topTheme.label.toLowerCase()}</b> ({topTheme.n})</>}
+                {rows && <> · <b>{desk.names.length}</b> {desk.names.length === 1 ? 'company' : 'companies'} named</>}
+                {newSince !== null && <> · <b>{newSince}</b> new since your last visit</>}
+              </div>
+
+              {rail.length > 0 && (
+                <ul className="chiprow" aria-label="Companies named most today">
+                  {rail.slice(0, 6).map(({ sym }) => <li key={sym}><Link className="namedco" href={`/company/?s=${encodeURIComponent(sym)}`}><b>{sym}</b><Chg v={byIndex.get(sym)?.r1d} dp={1} /></Link></li>)}
+                </ul>
+              )}
+
+              <div className="newsgrid">
+                <div className="newsmain">
+                  <div className="newsbar">
+                    <div className="seg2" role="group" aria-label="Which stories">
+                      {VIEWS.map(([k, l]) => <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}>{l}{k === 'unread' ? ` (${unreadCount})` : k === 'saved' ? ` (${saved.filter((s) => items.some((i) => i.story.link === s)).length})` : ''}</button>)}
+                    </div>
+                    <label className="sr" htmlFor="news-q">Search stories or a symbol</label>
+                    <input id="news-q" className="field" type="search" placeholder="Search stories or a symbol" value={q} onChange={(e) => setQ(e.target.value)} />
                   </div>
-                  <span aria-hidden className="dim">↗</span>
-                </a>
-                {(more.length > 0 || (matched.get(s.link) ?? []).length > 0) && (
-                  <div className="dim" style={{ fontSize: 14, margin: '-12px 0 18px', display: 'grid', gap: 6 }}>
-                    {(matched.get(s.link) ?? []).length > 0 && <div>Mentions: {(matched.get(s.link) ?? []).map((m) => <span key={m.sym} className="tag" title={`Matched because ${m.basis}`} style={{ marginRight: 6 }}>{m.sym} · {m.basis}</span>)}</div>}
-                    {more.length > 0 && <details><summary style={{ cursor: 'pointer' }}>Also reported by {more.length} other {more.length === 1 ? 'source' : 'sources'}</summary><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{more.map((m) => <li key={m.link}><a href={m.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)' }}>{m.source}: {plainText(m.title)} ↗</a></li>)}</ul></details>}
+                  <div className="tabrow" role="group" aria-label="Theme">
+                    <button type="button" className="chip" aria-pressed={topic === ''} onClick={() => setTopic('')}>All themes</button>
+                    {TOPICS.map((t) => { const n = desk.themes.find((x) => x.id === t.id)?.n ?? 0; return <button key={t.id} type="button" className="chip" aria-pressed={topic === t.id} disabled={n === 0} onClick={() => setTopic(topic === t.id ? '' : t.id)}>{t.label} · {n}</button>; })}
                   </div>
-                )}
-              </Rv>
-            ))}
-            {groups.length === 0 && <p className="notice">{mine ? 'No story names a company on your watchlist right now.' : 'No story matches these filters.'}</p>}
-          </div>
+                  <div className="newsmeta">
+                    <label className="muted" htmlFor="news-src">Source</label>
+                    <select id="news-src" className="field" value={source} onChange={(e) => setSource(e.target.value)}>
+                      <option value="">All {sources.length} sources</option>
+                      {sources.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    {filtered && <button type="button" className="chip" onClick={clear}>Clear filters</button>}
+                    {unreadCount > 0 && <button type="button" className="chip" onClick={() => { const n = Array.from(new Set([...seen, ...items.map((i) => i.story.link)])); setSeen(n); write(SEEN, n); }}>Mark all read</button>}
+                  </div>
+
+                  {sections.map(({ b, gs }) => (
+                    <section key={b} aria-label={b}>
+                      <h2 className="bucket">{b} <span>{gs.length}</span></h2>
+                      <ul className="stories">
+                        {gs.map(({ lead, more }) => {
+                          const it = (lead as typeof lead & { _i: (typeof items)[number] })._i;
+                          const s = it.story, isNew = lastVisit !== null && !!s.published && new Date(s.published).getTime() > lastVisit, isRead = seen.includes(s.link), isSaved = saved.includes(s.link);
+                          const sum = plainText(s.summary), title = plainText(s.title);
+                          const text = s.summary.length >= 380 ? sum.replace(/\s+\S*$/, '…') : sum;
+                          return (
+                            <li key={s.link}>
+                              <Rv className={`story${isRead ? ' read' : ''}`}>
+                                <div className="story-meta">
+                                  <span>{s.source} · <time dateTime={s.published ?? undefined}>{clock(s.published)}</time></span>
+                                  {isNew && !isRead && <span className="tag acc">New</span>}
+                                  {more.length > 0 && <span className="tag">{more.length + 1} sources</span>}
+                                </div>
+                                <a className="story-h" href={s.link} target="_blank" rel="noopener noreferrer" onClick={() => markSeen(s.link)}>{title}<span className="sr"> (opens the publisher in a new tab)</span><span aria-hidden className="ext">↗</span></a>
+                                {text && text !== title && <p className="story-s">{text}</p>}
+                                {it.mentions.length > 0 && (
+                                  <ul className="named" aria-label="Companies named in this story">
+                                    {it.mentions.slice(0, 5).map((m) => {
+                                      const r = byIndex.get(m.sym);
+                                      const sc = r ? screenClass(r.vd) : null;
+                                      return (
+                                        <li key={m.sym}>
+                                          <Link href={`/company/?s=${encodeURIComponent(m.sym)}`} className="namedco" title={`Matched on ${m.basis}`}>
+                                            <b>{m.sym}</b>
+                                            {r && <Chg v={r.r1d} dp={1} />}
+                                            {signalSyms.has(m.sym) && <span className="tag acc">Engine signal</span>}
+                                            {sc && sc.text && <span className="tag">{sc.text}</span>}
+                                          </Link>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                                {it.topics.length > 0 && <div className="story-tags">{it.topics.map((t) => <button key={t} type="button" className="tag" onClick={() => setTopic(t)}>{TOPICS.find((x) => x.id === t)?.label}</button>)}</div>}
+                                {more.length > 0 && <details className="sig-why"><summary>Also reported by {more.length} other {more.length === 1 ? 'source' : 'sources'}</summary><ul>{more.map((m) => <li key={m.link}><a href={m.link} target="_blank" rel="noopener noreferrer" onClick={() => markSeen(m.link)}>{m.source}: {plainText(m.title)}</a></li>)}</ul></details>}
+                                <div className="story-act">
+                                  <button type="button" className="chip" aria-pressed={isSaved} onClick={() => toggleSaved(s.link)}>{isSaved ? '★ Saved' : '☆ Save'}</button>
+                                  {!isRead ? <button type="button" className="chip" onClick={() => markSeen(s.link)}>Mark read</button> : <span className="dim">Read</span>}
+                                </div>
+                              </Rv>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                  {groups.length === 0 && (
+                    <div className="notice">
+                      {view === 'watch' ? (watch.length === 0 ? 'Your watchlist is empty. Add companies on their pages, and stories that name them will collect here.' : 'No story names a company on your watchlist right now.')
+                        : view === 'saved' ? 'Nothing saved yet. Use Save on a story to keep it here.' : view === 'unread' ? 'You have read everything that is here.' : 'No story matches these filters.'}
+                      {filtered && <> <button type="button" className="chip" onClick={clear}>Clear filters</button></>}
+                    </div>
+                  )}
+                </div>
+
+                <aside className="newsrail" aria-label="In the news today">
+                  <Rv className="panel">
+                    <div className="eyebrow">Stocks in the news</div>
+                    {!rows && <p className="muted" style={{ fontSize: 14 }}>Loading the company list to match names…</p>}
+                    {rows && rail.length === 0 && <p className="muted" style={{ fontSize: 14, margin: '8px 0 0' }}>No story names a screened company by its full name or ticker today. That is a fact about today&apos;s stories, not a gap in the match.</p>}
+                    <ul className="railist">
+                      {rail.map(({ sym, n }) => {
+                        const r = byIndex.get(sym);
+                        return (
+                          <li key={sym}>
+                            <Link href={`/company/?s=${encodeURIComponent(sym)}`} className="railrow">
+                              <span className="railid"><b>{sym}</b><span>{r?.name}</span></span>
+                              <span className="railmv"><Chg v={r?.r1d} dp={1} /><span>{n} {n === 1 ? 'story' : 'stories'}</span></span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {rail.length > 0 && <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Day move is the screen&apos;s last close{rows?.[0]?.last_date ? ` (${dateLabel(rows[0].last_date)})` : ''}, not a live quote.</p>}
+                  </Rv>
+                  {desk.sectors.length > 0 && (
+                    <Rv className="panel">
+                      <div className="eyebrow">Sectors in the news</div>
+                      <ul className="railist">
+                        {desk.sectors.slice(0, 6).map((s) => <li key={s.sector} className="sectorrow"><span>{s.sector}</span><b className="num">{s.n}</b></li>)}
+                      </ul>
+                      <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Count of named companies in each sector.</p>
+                    </Rv>
+                  )}
+                  <Rv className="panel">
+                    <div className="eyebrow">How to read this page</div>
+                    <p className="muted" style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.55 }}>Stories are fetched from the publishers&apos; own feeds and the summaries are theirs. Themes are matched on words, and a company is linked only when its ticker or full name is written in the story. Nothing here is scored, ranked or advice. Read, saved and last-visit are kept in this browser only.</p>
+                  </Rv>
+                </aside>
+              </div>
+            </>
+          )}
         </Async>
       </section>
     </>

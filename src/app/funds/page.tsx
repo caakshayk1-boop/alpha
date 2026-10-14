@@ -25,7 +25,7 @@ export default function Funds() {
   }, [active, sort]);
   return (
     <>
-      <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="Point-to-point annualised returns set against the worst fall and the volatility it took to get there, over AMFI’s official NAV history. These are lump-sum returns, not SIP returns (a SIP XIRR depends on your instalment dates and is not calculated here). Direct plans only, so the cost lever is already pulled." />
+      <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="Annualised returns set against the worst fall and the volatility it took to get there, from AMFI's official NAV history. These are lump-sum returns, not SIP returns, for direct plans only." />
       <section className="wrap">
         <Async loading={f.loading} error={f.error}>
           <div className="filters" style={{ alignItems: 'center' }}>

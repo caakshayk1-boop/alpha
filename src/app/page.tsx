@@ -318,26 +318,6 @@ function ReadCard() {
   );
 }
 
-function MagicLeaders() {
-  const s = useFeed('screen');
-  const top = (s.data?.rows ?? []).filter((r) => typeof r.mf?.rank === 'number').sort((a, b) => (a.mf!.rank as number) - (b.mf!.rank as number)).slice(0, 5);
-  return (
-    <Rv className="panel">
-      <div className="sec-h" style={{ marginBottom: 8, paddingBottom: 12 }}><h2 style={{ fontSize: 26 }}>Magic Formula leaders</h2><Link className="more" href="/magic/">Full ranking →</Link></div>
-      <div className="list">
-        {s.loading && Array.from({ length: 5 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
-        {top.map((r) => (
-          <Link key={r.sym} href={`/company/?s=${r.sym}`} className="li">
-            <div><div className="t">{r.sym}</div><div className="s">{r.name}</div></div>
-            <div style={{ textAlign: 'right' }}><div className="num">#{r.mf!.rank as number}</div><div className="s num">ROCE {num(r.roce, 1)}%</div></div>
-          </Link>
-        ))}
-        {!s.loading && top.length === 0 && <Notice>The ranking is rebuilt with each screen update.</Notice>}
-      </div>
-    </Rv>
-  );
-}
-
 export default function Home() {
   const h = useFeed('data-health');
   const own = new Set(['Stock screen', 'Markets', 'Market Intelligence', 'Fund screen']);
@@ -362,7 +342,7 @@ export default function Home() {
       </section>
       <section className="wrap section">
         <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
-        <div className="grid g3"><MagicLeaders /><IpoCard /><ReadCard /></div>
+        <div className="grid g2"><IpoCard /><ReadCard /></div>
       </section>
     </>
   );

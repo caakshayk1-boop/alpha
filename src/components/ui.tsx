@@ -89,30 +89,6 @@ export function Spark({ series, up, height = 38 }: { series: number[] | undefine
   );
 }
 
-/** Radial score 0-100 that sweeps to its value. */
-export function Ring({ value, label, hue }: { value: number | null | undefined; label: string; hue?: 'up' | 'down' | 'acc' }) {
-  const ref = useRef<SVGCircleElement>(null);
-  const r = 44;
-  const c = 2 * Math.PI * r;
-  const v = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
-  const color = hue === 'up' ? 'var(--up)' : hue === 'down' ? 'var(--down)' : 'var(--accent)';
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || v === null || !canAnimate()) return;
-    gsap.fromTo(el, { strokeDashoffset: c }, { strokeDashoffset: c * (1 - v / 100), duration: 1.3, ease: 'power3.out', immediateRender: false });
-  }, [v, c]);
-  return (
-    <div className="ring panel tight" role="img" aria-label={`${label}: ${v === null ? 'not available' : Math.round(v)} out of 100`}>
-      <svg viewBox="0 0 108 108" aria-hidden>
-        <circle cx="54" cy="54" r={r} fill="none" stroke="var(--panel-3)" strokeWidth="8" />
-        {v !== null && <circle ref={ref} cx="54" cy="54" r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} transform="rotate(-90 54 54)" />}
-        <text x="54" y="62" textAnchor="middle">{v === null ? dash : Math.round(v)}</text>
-      </svg>
-      <div className="lab">{label}</div>
-    </div>
-  );
-}
-
 /** Percentile profile: one labelled row per score, a tick at the median (50), and the value in words. Compact and exact, unlike a ring. */
 export function PercentileBars({ items }: { items: { label: string; value: number | null | undefined; note?: string }[] }) {
   return (

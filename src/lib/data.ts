@@ -39,7 +39,6 @@ function load<T>(url: string): Promise<T> {
 }
 
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
-export const pxFeed = (syms: string[]): Promise<PxFeed> => load<PxFeed>(`${BASE}/api/px?s=${encodeURIComponent(syms.join(','))}`);
 export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => load<ChartFeed>(`${BASE}/api/chart?s=${encodeURIComponent(sym)}&r=${range}`);
 export const rotationFeed = (): Promise<RotationFeed> => load<RotationFeed>(`${BASE}/rotation.json`);
 export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);

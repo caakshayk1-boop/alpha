@@ -16,7 +16,6 @@ export const PAGES = [
   { href: '/map/', label: 'Map', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
   { href: '/rotation/', label: 'Rotation', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
   { href: '/engines/', label: 'Engines', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
-  { href: '/magic/', label: 'Magic', icon: 'M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z' },
   { href: '/reads/', label: 'Reads', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
   { href: '/ipo/', label: 'IPO', icon: 'M12 3v18M5 10l7-7 7 7' },
   { href: '/funds/', label: 'Funds', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
@@ -33,7 +32,7 @@ export const PAGES = [
 export const GROUPS: { label: string; hint: string; hrefs: string[] }[] = [
   { label: 'Today', hint: 'What is happening now', hrefs: ['/', '/brief/', '/markets/'] },
   { label: 'Discover', hint: 'Find companies and patterns', hrefs: ['/screen/', '/map/', '/rotation/', '/ipo/', '/funds/', '/news/', '/reads/'] },
-  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/engines/', '/magic/', '/compare/', '/tools/'] },
+  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/engines/', '/compare/', '/tools/'] },
   { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/journal/', '/calendar/'] },
   { label: 'Methods', hint: 'How every number is made', hrefs: ['/about/'] },
 ];
@@ -251,14 +250,17 @@ export default function Shell({ children }: { children: ReactNode }) {
     nav.style.setProperty('--o', '1');
   }, []);
   // A menu opens on hover or focus, so after choosing a page it would stay open under the pointer: close it on navigation and on Escape, and let it open again once the pointer has left.
-  const closeMenus = useCallback(() => {
-    const nav = navRef.current; if (!nav) return;
-    nav.dataset.closed = '1';                                   // set first, so moving focus to the trigger does not reopen it
-    const a = document.activeElement as HTMLElement | null;
-    const trigger = a?.closest('.navgroup')?.querySelector<HTMLElement>(':scope > a');
-    if (a && trigger && a !== trigger) trigger.focus();         // keep the keyboard user's place instead of dropping focus to the page
-  }, []);
   const lastEscape = useRef(false);
+  const closeMenus = useCallback((keepFocus = false) => {
+    const nav = navRef.current; if (!nav) return;
+    nav.dataset.closed = '1';                                   // forced-closed until the pointer leaves the nav
+    const a = document.activeElement as HTMLElement | null;
+    if (!a || !nav.contains(a)) return;
+    // Escape keeps the keyboard user's place on the group's trigger. A click or a page change drops focus instead:
+    // focus left inside the menu would hold it open (:focus-within), and refocusing the trigger re-ran the onFocus handler that reopens it.
+    const trigger = a.closest('.navgroup')?.querySelector<HTMLElement>(':scope > a');
+    if (keepFocus && trigger && a !== trigger) { lastEscape.current = true; trigger.focus(); } else a.blur();
+  }, []);
   const lastPath = useRef(path);
   useEffect(() => { if (lastPath.current !== path) { lastPath.current = path; closeMenus(); } }, [path, closeMenus]);
   useEffect(() => { glide(); const r = () => glide(); window.addEventListener('resize', r); const t = window.setTimeout(r, 120); return () => { window.removeEventListener('resize', r); window.clearTimeout(t); }; }, [path, glide]);
@@ -267,7 +269,6 @@ export default function Shell({ children }: { children: ReactNode }) {
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
-      <div className="aurora" aria-hidden><i /><i /><i /></div>
       <div className="progress" aria-hidden />
       <header className="topbar">
         <div className="wrap">
@@ -275,7 +276,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <span className="brand-mark">α</span>
             <span>alpha</span>
           </Link>
-          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { glide(); delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { lastEscape.current = true; closeMenus(); window.setTimeout(() => { lastEscape.current = false; }, 0); } }}>
+          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { glide(); delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { closeMenus(true); window.setTimeout(() => { lastEscape.current = false; }, 0); } }} onClick={(e) => { if ((e.target as HTMLElement).closest('.menu a')) closeMenus(); }}>
             <span className="glide" aria-hidden />
             {GROUPS.map((g) => {
               const on = g.hrefs.some((h) => isActive(path, h));
@@ -335,7 +336,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <p style={{ margin: 0, maxWidth: '34ch' }}>An independent research desk for Indian equities. Numbers first, working shown.</p>
             </div>
             <div><h2 className="fh">Markets</h2><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>
-            <div><h2 className="fh">Research</h2><Link href="/screen/">Screen</Link><Link href="/engines/">Engines</Link><Link href="/magic/">Magic Formula</Link><Link href="/reads/">Weekly reads</Link></div>
+            <div><h2 className="fh">Research</h2><Link href="/screen/">Screen</Link><Link href="/engines/">Engines</Link><Link href="/reads/">Weekly reads</Link></div>
             <div><h2 className="fh">Desk</h2><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
           </div>
           <p className="footer-legal">

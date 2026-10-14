@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
 import Scoreboard from '@/components/Scoreboard';
@@ -176,6 +176,19 @@ export default function EnginesPage() {
   const q = useEngines();
   const [key, setKey] = useState<string>('relative');
   const [tab, setTab] = useState<'signals' | 'how' | 'record' | 'board' | 'exits'>('signals');
+  // The chosen engine and view live in the address, so a reload or a shared link lands on the same screen.
+  const ready = useRef(false);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const k = p.get('engine'), t = p.get('tab');
+    if (k) setKey(k);
+    if (t === 'signals' || t === 'how' || t === 'record' || t === 'board' || t === 'exits') setTab(t);
+    ready.current = true;
+  }, []);
+  useEffect(() => {
+    if (!ready.current) return;
+    window.history.replaceState(null, '', `${window.location.pathname}?engine=${encodeURIComponent(key)}${tab === 'signals' ? '' : `&tab=${tab}`}`);
+  }, [key, tab]);
   const feed = q.data;
   const e = feed?.engines[key];
   const sigs = useMemo(() => (feed?.signals ?? []).filter((s) => s.engine === key), [feed, key]);
@@ -184,7 +197,7 @@ export default function EnginesPage() {
   const newest = useDatasetStatus().items.find((i) => i.id === 'screen')?.asOf ?? undefined;
   return (
     <>
-      <PageHead eyebrow="Engines" title="Five models," em="judged on data they never saw." lede="Each engine is a machine-learning model that reads 58 measures of every listed stock each evening and ranks the market. The top ranks become signals with a stop, three targets and a time limit priced from the stock's own volatility. Every model is shown against random picks and against a holdout it was never tuned on, whatever the answer is." />
+      <PageHead eyebrow="Engines" title="Five models," em="judged on data they never saw." lede="Five machine-learning models each rank every listed stock every evening, from 58 measures. The top ranks become signals with a stop, three targets and a time limit. Each is shown against random picks and against a holdout it never saw, whatever the answer is." />
       <section className="wrap">
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
@@ -212,24 +225,23 @@ export default function EnginesPage() {
               <DataStamp ids={['engines', 'screen']} />
               <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
 
-              <Scoreboard feed={feed} />
-
               {e && (
                 <>
                   <div style={{ height: 36 }} />
                   <SectionHead eyebrow={`Engine ${e.id} · ${e.style}`} title={e.name} />
-                  <Rv className="panel" style={{ marginBottom: 14 }}>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'grid', gap: 12, flex: 1, minWidth: 260 }}>
-                        <div><span className="eyebrow">Ranking skill</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.ranking_status]}`} style={{ fontSize: 13 }}>{verdictText(e.ranking_status)}</span><span className="muted">{e.ranking_why}</span></div></div>
-                        <div><span className="eyebrow">Net trading result</span><div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}><span className={`tag ${TONE[e.trading_status]}`} style={{ fontSize: 13 }}>{verdictText(e.trading_status)}</span><span className="muted">{e.trading_why}</span></div></div>
-                        <div><span className="eyebrow">Phone alerts</span><div style={{ marginTop: 6 }}><span className={`tag ${e.alertable ? 'up' : ''}`} style={{ fontSize: 13 }}>{e.alertable ? 'ON' : 'OFF'}</span> <span className="muted">{e.alert_why}</span></div></div>
-                      </div>
+                  <Rv className="panel verdict-panel">
+                    <div className="verdict3">
+                      <div><div className="k">Ranking skill</div><span className={`tag ${TONE[e.ranking_status]}`}>{verdictText(e.ranking_status)}</span><p>{e.ranking_why}</p></div>
+                      <div><div className="k">Net trading result</div><span className={`tag ${TONE[e.trading_status]}`}>{verdictText(e.trading_status)}</span><p>{e.trading_why}</p></div>
+                      <div><div className="k">Phone alerts</div><span className={`tag ${e.alertable ? 'up' : ''}`}>{e.alertable ? 'On' : 'Off'}</span><p>{e.alert_why}</p></div>
                     </div>
-                    <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Ranking skill and trading profit are different claims: a model can order stocks better than chance and still make nothing after stops, exits and costs. Both are shown, and alerts need both.</p>
-                    <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>
+                    <details className="sig-why">
+                      <summary>How to read these verdicts</summary>
+                      <p className="dim">Ranking skill and trading profit are different claims: a model can order stocks better than chance and still make nothing after stops, exits and costs. Both are shown, and alerts need both.</p>
+                      <p className="dim">
                       Development is {dateLabel(feed.backtest.periods.development[0])} to {dateLabel(feed.backtest.periods.development[1])}; the holdout is everything after. Each prediction in both periods comes from a model trained only on data that was already fully known at the time (walk-forward, refit every quarter, with a gap equal to the prediction horizon). The design and the pass marks were written down before the holdout was read, and it was read once.{!e.alertable && ' This engine does not clear the bar for phone alerts: its signals are shown here, never pushed.'}
                     </p>
+                    </details>
                   </Rv>
                   <div style={{ margin: '0 0 18px' }}><Segmented label="Engine views" value={tab} onChange={setTab} options={[['signals', `Signals now (${sigs.length})`], ['how', 'How it picks'], ['record', 'Track record'], ['board', 'Sector board'], ['exits', 'Exit plan']] as const} /></div>
 
@@ -320,6 +332,9 @@ export default function EnginesPage() {
                   )}
                 </>
               )}
+
+              <div style={{ height: 36 }} />
+              <Scoreboard feed={feed} />
               <p className="notice" style={{ marginTop: 28 }}>Engines are research tools that describe what a statistical model would have selected. They are not investment advice, not a recommendation to buy or sell any security, and not a promise of future results. Past tests can overstate what happens next. Never risk money you cannot afford to lose, and check prices at your broker before acting.</p>
             </>
           )}

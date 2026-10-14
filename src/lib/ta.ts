@@ -28,12 +28,6 @@ export const rsi = (c: number[], n = 14): (number | null)[] => {
   return out;
 };
 
-export const atr = (b: Bars, n = 14): number | null => {
-  if (b.c.length <= n) return null;
-  let s = 0;
-  for (let i = b.c.length - n; i < b.c.length; i++) s += Math.max(b.h[i] - b.l[i], Math.abs(b.h[i] - b.c[i - 1]), Math.abs(b.l[i] - b.c[i - 1]));
-  return s / n;
-};
 
 export interface Level { price: number; touches: number; kind: 'support' | 'resistance' }
 

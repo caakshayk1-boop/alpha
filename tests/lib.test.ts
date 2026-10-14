@@ -5,6 +5,7 @@ import { breadth200 } from '../src/lib/breadth.ts';
 import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serializeLibrary, CARD_VERSION } from '../src/lib/card.ts';
 import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween, weekThrough } from '../src/lib/status.ts';
 import { nseDate, plainText, rupeeBand } from '../src/lib/format.ts';
+import { bucketOf, mentionsIn, summarise as summariseNews, topicsOf } from '../src/lib/newsdesk.ts';
 import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
@@ -402,4 +403,66 @@ test('NSE dates and price bands read like the rest of the site', () => {
   assert.equal(rupeeBand('Rs.275 to Rs.289'), '₹275 to ₹289');
   assert.equal(rupeeBand('Rs. 1,875 to Rs. 1,900'), '₹1,875 to ₹1,900');
   assert.equal(rupeeBand(null), '—');
+});
+
+test('news themes come from words in the story, several allowed, none allowed', () => {
+  assert.deepEqual(topicsOf('Sebi proposes fine for firms, Nifty slips'), ['markets', 'policy']);
+  assert.deepEqual(topicsOf('A quiet day'), []);
+  assert.ok(topicsOf('Crude oil jumps as Middle East tension rises').includes('commodities'));
+  assert.ok(!topicsOf('Interest rate talk').includes('economy'));   // "rate" alone is not a theme; the old matcher over-tagged it
+});
+
+test('news time buckets use India dates, and a clock slightly ahead is still "now"', () => {
+  const now = Date.parse('2026-10-14T06:00:00Z');                    // 11:30 IST on 14 Oct
+  assert.equal(bucketOf('2026-10-14T04:00:00Z', now), 'Last 3 hours');
+  assert.equal(bucketOf('2026-10-14T01:00:00Z', now), 'Earlier today');   // 06:30 IST, same India day
+  assert.equal(bucketOf('2026-10-13T20:00:00Z', now), 'Earlier today');   // 01:30 IST on 14 Oct: already today in India
+  assert.equal(bucketOf('2026-10-13T10:00:00Z', now), 'Yesterday');
+  assert.equal(bucketOf('2026-10-10T10:00:00Z', now), 'Older');
+  assert.equal(bucketOf('2026-10-14T06:30:00Z', now), 'Last 3 hours');
+  assert.equal(bucketOf(null, now), 'Time not stated');
+  assert.equal(bucketOf('garbage', now), 'Time not stated');
+});
+
+test('company mentions are strict: capitals for tickers, the name as written, never a common word', () => {
+  const cos = [{ sym: 'RELIANCE', name: 'Reliance Industries Ltd.' }, { sym: 'DELTACORP', name: 'Delta Corp Ltd.' }, { sym: 'ITC', name: 'ITC Ltd.' }, { sym: 'TCS', name: 'Tata Consultancy Services Ltd.' }];
+  assert.deepEqual(mentionsIn('Reliance Industries plans a new unit', cos).map((m) => m.sym), ['RELIANCE']);
+  assert.deepEqual(mentionsIn('Delta flight delayed by weather', cos), []);                 // a bare "Delta" is the airline as often as the company
+  assert.deepEqual(mentionsIn('Delta Corp shares jump', cos).map((m) => m.sym), ['DELTACORP']);
+  assert.deepEqual(mentionsIn('Reliance said on Monday', cos), []);                         // bare "Reliance" could be several companies: no guess
+  assert.deepEqual(mentionsIn('shares of itc rose', cos), []);
+  assert.deepEqual(mentionsIn('ITC and TCS lead gains', cos).map((m) => m.sym), ['ITC', 'TCS']);
+  assert.deepEqual(mentionsIn('TCSX rises', cos), []);                                      // a ticker is its own word
+});
+
+test('the desk summary counts what is in the stories and nothing else', () => {
+  const st = (source: string) => ({ title: 't', summary: '', link: source, source });
+  const d = summariseNews([
+    { story: st('ET'), topics: ['markets', 'policy'], mentions: [{ sym: 'AAA', basis: 'x' }] },
+    { story: st('ET'), topics: ['policy'], mentions: [{ sym: 'AAA', basis: 'x' }, { sym: 'BBB', basis: 'y' }] },
+    { story: st('BBC'), topics: [], mentions: [] },
+  ], (sym) => ({ AAA: 'Energy', BBB: 'Energy' }[sym]));
+  assert.equal(d.stories, 3); assert.equal(d.sources, 2);
+  assert.deepEqual(d.themes.map((t) => [t.id, t.n]), [['policy', 2], ['markets', 1]]);
+  assert.deepEqual(d.names, [{ sym: 'AAA', n: 2 }, { sym: 'BBB', n: 1 }]);
+  assert.deepEqual(d.sectors, [{ sector: 'Energy', n: 2 }]);   // two distinct companies, not three mentions
+});
+
+test('company matching never names a bank inside a longer name, or a generic word', () => {
+  const cos = [
+    { sym: 'BANKINDIA', name: 'Bank of India Ltd.', mcap: 55000 }, { sym: 'SBIN', name: 'State Bank of India', mcap: 700000 },
+    { sym: 'INFY', name: 'Infosys Ltd.', mcap: 600000 }, { sym: 'KTKBANK', name: 'Karnataka Bank Ltd.', mcap: 6000 },
+    { sym: 'IGIL', name: 'International Gemmological Institute (India) Ltd.', mcap: 9000 }, { sym: 'RELIANCE', name: 'Reliance Industries Ltd.', mcap: 1900000 },
+    { sym: 'RPOWER', name: 'Reliance Power Ltd.', mcap: 9000 }, { sym: 'GICRE', name: 'General Insurance Corporation of India', mcap: 60000 },
+    { sym: 'IRCON', name: 'Ircon International Ltd.', mcap: 9000 },
+  ];
+  const m = (t: string) => mentionsIn(t, cos).map((x) => x.sym);
+  assert.deepEqual(m('The Reserve Bank of India kept rates unchanged'), []);                 // the tail of a longer name
+  assert.deepEqual(m('Shares of Bank of India rose 3%'), ['BANKINDIA']);
+  assert.deepEqual(m('Infosys wins a large deal'), ['INFY']);                                  // large, and no other company starts with it
+  assert.deepEqual(m('Karnataka Bank said'), ['KTKBANK']);                                     // full name still matches
+  assert.deepEqual(m('Karnataka reports record rain; International flights resume'), []);       // places and generic words never match alone
+  assert.deepEqual(m('Reliance to expand'), []);                                               // two companies share the word: no guess
+  assert.deepEqual(m('General Motors recalls cars'), []);                                      // "General" is an ordinary word even for a large company
+  assert.deepEqual(m('Ircon to monetise assets'), []);                                         // small company, 5 letters: precision over recall
 });
