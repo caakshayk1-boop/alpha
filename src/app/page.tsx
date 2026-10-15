@@ -7,6 +7,11 @@ import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
 import { MarketSession } from '@/components/MarketSession';
+import { MarketClock } from '@/components/MarketClock';
+import { dayLabel, TodayProvider, useToday } from '@/components/widgets/DayContext';
+import { IndexStrip } from '@/components/widgets/IndexStrip';
+import { LiveMovers } from '@/components/widgets/LiveMovers';
+import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { crore, dateLabel, num, pct, quoteState, rupeeBand } from '@/lib/format';
@@ -31,10 +36,12 @@ function QuoteCard({ q }: { q: Quote }) {
 const GAUGE_LEN = Math.PI * 52;   // the semicircle path below: radius 52
 
 /** Today's read: the headline sentence, then one ink card for the Barometer and one card for the day's breadth.
- *  Every word is built from the data (lib/takeaway.ts and /api/summary); a missing figure drops its pill, never estimated. */
+ *  Every word is built from the data (lib/takeaway.ts, /api/summary, and for breadth the one "today" rule in lib/live.ts);
+ *  a missing figure drops its pill, never estimated. */
 function TodayHero() {
   const bar = useFeed('barometer');
   const sum = useSummary();
+  const today = useToday();
   const t = bar.data?.today;
   const b200 = sum.data?.above200 ?? null;
   // Wait for both small feeds (or a failed summary) so the cards appear once, at their final size.
@@ -52,7 +59,9 @@ function TodayHero() {
   const score = typeof t?.score === 'number' ? Math.round(t.score) : null;
   const change = prev && score !== null ? (score > prev.score ? `up from ${prev.score} on ${dateLabel(prev.date)}` : score < prev.score ? `down from ${prev.score} on ${dateLabel(prev.date)}` : `unchanged since ${dateLabel(prev.date)}`) : null;
   const pct200 = b200 && b200.withHistory ? Math.round((b200.above / b200.withHistory) * 100) : null;
-  const day = sum.data?.day;
+  const day = today?.day ?? null;
+  const dayStamp = dayLabel(day, today?.live.snap ?? null);
+  const dayFailed = !day && !!today && !today.live.loading && !!sum.error;
   const share = (n: number) => (day && day.counted ? (n / day.counted) * 100 : 0);
   const weekday = t?.nifty_date ? new Date(`${t.nifty_date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : null;
   return (
@@ -67,6 +76,8 @@ function TodayHero() {
       )}
       <div className="stamp" style={{ marginTop: 0 }}><MarketSession /></div>
       <DataStamp ids={['barometer', 'screen', 'engines']} />
+      {/* the header hides its clock below 1240px, so the clock moves here on narrow screens */}
+      <div className="today-clock"><MarketClock /></div>
 
       <div className="hero2">
         {tk && tk.available && t && score !== null ? (
@@ -94,7 +105,7 @@ function TodayHero() {
         )}
 
         <section className="breadth2" aria-label="The day's breadth">
-          <div className="eyebrow">{sum.data ? `${dateLabel(sum.data.as_of)} · ${num(day?.counted ?? 0)} stocks` : 'Breadth'}</div>
+          <div className="eyebrow">{day && dayStamp ? `${dayStamp} · ${num(day.counted)} stocks` : 'Breadth'}</div>
           {day && day.counted ? (
             <>
               <div className="row"><div className="n up">{num(day.up)}<small>rose</small></div><div className="n down">{num(day.down)}<small>fell</small></div></div>
@@ -102,7 +113,7 @@ function TodayHero() {
               <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
               {b200 && <div className="foot">{num(b200.above)} of {num(b200.withHistory)} with a 200-day history sit above it.</div>}
             </>
-          ) : sum.error ? <p className="muted" style={{ marginTop: 12 }}>The day&apos;s breadth could not be loaded. Nothing is estimated in its place.</p> : <Skel h={100} style={{ marginTop: 14 }} />}
+          ) : dayFailed ? <p className="muted" style={{ marginTop: 12 }}>The day&apos;s breadth could not be loaded. Nothing is estimated in its place.</p> : <Skel h={100} style={{ marginTop: 14 }} />}
         </section>
       </div>
     </section>
@@ -183,7 +194,8 @@ function Teasers() {
 
 function Board() {
   const q = useQuotes();
-  const want = ['sensex', 'banknifty', 'usdinr', 'spx', 'gold', 'brent'];   // Nifty 50 and India VIX are already in the headline facts
+  // Nifty 50, Sensex, Nifty Bank, India VIX, USD/INR, gold and Brent sit in the index strip near the top; nothing shows twice.
+  const want = ['spx'];
   // Markets keep different hours (Sensex shut while the S&P trades), so each card states its own last-trade time; no group label claims "live".
   const boardLabel = 'Quotes';
   return (
@@ -193,7 +205,7 @@ function Board() {
         <div className="qgrid">
           {want.map((id) => q.data?.quotes.find((x) => x.id === id && x.price !== null)).filter((x): x is Quote => !!x).map((x) => <QuoteCard key={x.id} q={x} />)}
         </div>
-        {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}. Commodities are futures contracts.</p>}
+        {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}.</p>}
       </Async>
     </section>
   );
@@ -286,11 +298,15 @@ function ReadCard() {
 
 export default function Home() {
   return (
-    <>
+    <TodayProvider>
       <TodayHero />
       <JobTiles />
+      <IndexStrip />
       <section className="wrap section">
         <div className="grid g2"><SectorBars /><SinceVisit /></div>
+      </section>
+      <section className="wrap section" aria-label="Today's movers and your watchlist">
+        <div className="grid g2"><LiveMovers /><LiveWatchlist /></div>
       </section>
       <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
       <Teasers />
@@ -304,6 +320,6 @@ export default function Home() {
         <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
         <LazyMount minHeight={260}><div className="grid g2"><IpoCard /><ReadCard /></div></LazyMount>
       </section>
-    </>
+    </TodayProvider>
   );
 }

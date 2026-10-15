@@ -896,3 +896,36 @@ html.anim .mclock.on i { animation: livePing 2.4s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { html.anim .mclock.on i { animation: none; } }
 .flash { border-radius: 6px; transition: background-color 0.6s var(--ease); padding: 0 2px; margin: 0 -2px; }
 .flash-up { background-color: var(--up-soft); transition: none; } .flash-down { background-color: var(--down-soft); transition: none; }
+
+/* agent: today-widgets */
+/* Today hero: the market clock shows here only where the header hides it (same 1240px breakpoint as .mclock above) */
+.today-clock { display: none; margin-top: 10px; min-height: 36px; }
+@media (max-width: 1240px) { .today-clock { display: block; } .today-clock .mclock { display: inline-flex; } }
+/* index strip: fixed order, no marquee; on narrow screens it scrolls sideways inside its own box, never the page */
+.istrip-sec { padding: var(--s-3) 0 0; }
+.istrip-h { margin: 0 0 10px; }
+.istrip { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); max-width: 100%; }
+.istrip:focus-visible { outline-offset: -2px; }
+.istrip ul { display: flex; margin: 0; padding: 0; list-style: none; min-width: max-content; }
+.istrip-i { flex: 1 0 148px; display: grid; gap: 4px; padding: 14px 18px; border-right: 1px solid var(--line); min-height: 104px; align-content: start; }
+.istrip-i:last-child { border-right: 0; }
+.istrip-i .nm { font-size: 13px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.istrip-i .px { font: 500 20px/1.15 var(--f-mono); letter-spacing: -0.02em; white-space: nowrap; }
+.istrip-i .ch { font-size: 13.5px; white-space: nowrap; }
+.istrip-i .qt { font-size: 12px; color: var(--dim); white-space: nowrap; }
+.istrip-note { font-size: 13.5px; margin: 8px 0 0; }
+@media (min-width: 1100px) { .istrip ul { min-width: 0; } .istrip-i { flex: 1 1 0; min-width: 0; } }
+/* live movers and watchlist panels */
+.lw { min-height: 420px; }
+.lw-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.lw-h h2 { font-size: 26px; margin: 0; }
+.lw-stamp { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--panel-2); font: 500 12.5px var(--f-ui); color: var(--muted); white-space: nowrap; }
+.lw-stamp::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+.lw-stamp.on { color: var(--text); } .lw-stamp.on::before { background: var(--up); }
+.lw-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 4px 24px; }
+.lw-sub { margin: 14px 0 0; }
+.lw-list { margin: 0; padding: 0; list-style: none; }
+.lw-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-empty { margin: 14px 0 0; }
+.lw-foot { font-size: 13px; margin: 12px 0 0; }
+.lw-more { display: inline-block; margin-top: 14px; color: var(--accent-2); font-size: 14px; }

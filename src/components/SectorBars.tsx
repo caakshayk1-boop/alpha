@@ -1,22 +1,37 @@
 'use client';
 
 import { Rv, Skel } from '@/components/ui';
-import { useSummary } from '@/lib/data';
-import { dateLabel, pct } from '@/lib/format';
+import { dayLabel, useToday, type TodayData } from '@/components/widgets/DayContext';
+import { useDay, useSummary } from '@/lib/data';
+import { pct } from '@/lib/format';
 
-/** Median one-day move of each sector's stocks, from /api/summary: the same rows and the same day as the breadth figures it
- *  sits beside. Bars grow left (fall) or right (rise) from a centre line, scaled to the largest move shown; the sign and the
- *  colour both say the direction, so colour is never the only cue. */
+/** Median one-day move of each sector's stocks, under the site's one rule for "today" (lib/live.ts): the live snapshot when it
+ *  is a newer session than the end-of-day screen and covers 90% of it, otherwise the screen's close. The label says which and
+ *  when. Bars grow left (fall) or right (rise) from a centre line, scaled to the largest move shown; the sign and the colour
+ *  both say the direction, so colour is never the only cue. On the Today page it reads the page's shared copy; elsewhere
+ *  (the Brief) it loads its own. */
 export function SectorBars() {
+  const shared = useToday();
+  return shared ? <Bars t={shared} /> : <OwnBars />;
+}
+
+function OwnBars() {
+  const { day, live, loading } = useDay();
   const sum = useSummary();
-  const list = sum.data?.sectors ?? [];
+  return <Bars t={{ day, live, loading, screenAsOf: sum.data?.as_of ?? null, summaryError: sum.error }} />;
+}
+
+function Bars({ t }: { t: TodayData }) {
+  const { day, live } = t;
+  const list = day?.sectors ?? [];
   const max = Math.max(0.5, ...list.map((s) => Math.abs(s.median)));
+  const failed = !day && !live.loading && !!t.summaryError;
   return (
     <Rv className="panel">
-      <div className="eyebrow">Sectors · median one-day move · {sum.data ? dateLabel(sum.data.as_of) : '—'}</div>
+      <div className="eyebrow">Sectors · median one-day move · {dayLabel(day, live.snap) ?? '—'}</div>
       <div className="secbars">
-        {!sum.data && !sum.error && Array.from({ length: 11 }, (_, i) => <Skel key={i} h={22} />)}
-        {sum.error && <p className="muted" style={{ margin: 0 }}>Sector moves could not be loaded. Nothing is estimated in their place.</p>}
+        {!day && !failed && Array.from({ length: 11 }, (_, i) => <Skel key={i} h={22} />)}
+        {failed && <p className="muted" style={{ margin: 0 }}>Sector moves could not be loaded. Nothing is estimated in their place.</p>}
         {list.map((s) => {
           const w = (Math.abs(s.median) / max) * 50;
           return (
