@@ -40,7 +40,7 @@ const tone = (s: number | null) => (s === null ? 'var(--dim)' : s >= 1 ? 'var(--
 
 export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[]; years?: number | null }) {
   const d = useMemo(() => decide(r, sigs, years), [r, sigs, years]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });   // the India date, not UTC (UTC is a day behind until 05:30 IST)
   const sc = screenClass(r.vd);
   return (
     <Rv className="panel spot">

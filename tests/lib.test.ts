@@ -542,3 +542,39 @@ test('nse clock: hours, next open across a weekend, before the bell', () => {
   assert.equal(nseClock(Date.parse('2026-10-15T03:00:00Z')).minutesToNext, 45);
   assert.equal(nseClock(Date.parse('2026-10-15T11:00:00Z')).nextLabel, 'opens 09:15 IST tomorrow');
 });
+
+import { priceLabel, priceView, sessionLabel } from '../src/lib/price.ts';
+test('price: per-symbol live rule follows pickDay (newer session wins, a tie keeps the close) and labels say which', () => {
+  const t = Date.parse('2026-10-15T04:50:00Z') / 1000;                       // Thu 10:20 IST
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 1, quotes: { INFY: [1115.65, 1088, t] } }], 1)!;
+  const row = { price: 1088, r1d: 2.1, last_date: '2026-10-14' };
+  const live = priceView('INFY', row, snap, null);
+  assert.deepEqual([live.source, live.price, live.pct, live.session], ['live', 1115.65, 2.54, '2026-10-15']);
+  assert.equal(priceLabel(live, (t + 120) * 1000).text, 'live 10:20 IST');
+  assert.equal(priceLabel(live, (t + 40 * 60) * 1000).text, 'last trade 10:20 IST', 'quiet inside hours: not called live');
+  assert.equal(priceLabel(live, Date.parse('2026-10-15T12:00:00Z')).text, '15 Oct 2026 close', 'after the bell it is the day close');
+  const tie = priceView('INFY', { ...row, last_date: '2026-10-15', price: 1110 }, snap, null);
+  assert.deepEqual([tie.source, tie.price], ['close', 1110], 'same session: the vetted close wins');
+  assert.equal(priceLabel(tie).text, '15 Oct 2026 close');
+  const q = priceView('TCS', row, snap, { price: 3000, pct: 1, at: t });
+  assert.equal(q.source, 'quote', 'a symbol missing from the snapshot falls back to its own quote');
+  const old = priceView('TCS', row, snap, { price: 3000, pct: 1, at: Date.parse('2026-10-14T10:00:00Z') / 1000 });
+  assert.deepEqual([old.source, old.price, old.pct], ['close', 1088, 2.1], 'a quote no newer than the close does not replace it');
+  assert.equal(priceView('X', null, null, null).price, null);
+  assert.equal(sessionLabel('2026-10-14'), '14 Oct 2026');
+  assert.equal(sessionLabel(null), 'date not stated');
+});
+
+test('price: a stock that did not trade in the live session never shows a day move (CCAVENUE, +901% on 12 Oct)', () => {
+  const t = Date.parse('2026-10-15T04:50:00Z') / 1000;
+  const old = Date.parse('2026-10-12T09:00:00Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 2, quotes: { INFY: [1115.65, 1088, t], CCAVENUE: [1001, 100, old] } }], 2)!;
+  assert.equal(snap.session, '2026-10-15');
+  const v = priceView('CCAVENUE', { price: 99, r1d: 0, last_date: '2026-10-10' }, snap, null);
+  assert.deepEqual([v.source, v.price, v.pct, v.session], ['stale', 1001, null, '2026-10-12']);
+  assert.equal(priceLabel(v, (t + 60) * 1000).text, 'last traded 12 Oct 2026');
+  const c = priceView('CCAVENUE', { price: 1001, r1d: 0.5, last_date: '2026-10-14' }, snap, null);
+  assert.equal(c.source, 'close', 'a close newer than its last trade stays the close');
+  const q = priceView('CCAVENUE', { price: 99, r1d: 0, last_date: '2026-10-10' }, mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 1, quotes: { INFY: [1115.65, 1088, t] } }], 1), { price: 1001, pct: 901, at: old });
+  assert.deepEqual([q.source, q.pct], ['stale', null], 'the per-symbol quote follows the same rule');
+});

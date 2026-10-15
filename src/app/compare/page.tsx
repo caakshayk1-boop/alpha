@@ -5,8 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { DataStamp } from '@/components/DataStamp';
 import SymbolPicker from '@/components/SymbolPicker';
-import { Async, Chg, Notice, PageHead, Rv } from '@/components/ui';
-import { useFeedWhen, useShard } from '@/lib/data';
+import { Async, Chg, Flash, Notice, PageHead, Rv } from '@/components/ui';
+import { useFeedWhen, useLive, useShard } from '@/lib/data';
+import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { crore, dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -73,6 +74,7 @@ function Compare() {
   const shardRows = sh.map((x) => x.data?.row ?? null);
   const rows = useMemo(() => syms.map((x, i) => shardRows[i] ?? s.data?.rows.find((r) => r.sym.toUpperCase() === x)).filter((r): r is Row => !!r), [s.data, syms.join(','), ...shardRows]); // eslint-disable-line react-hooks/exhaustive-deps
   const loading = syms.some((x, i) => !!x && sh[i].loading) || (needFull && s.loading);
+  const lv = useLive();
   const set = (next: string[]) => router.replace(next.length ? `/compare/?s=${next.join(',')}` : '/compare/');
   return (
     <>
@@ -83,7 +85,7 @@ function Compare() {
           {syms.map((x) => <button key={x} className="chip on" onClick={() => set(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}>{x} ✕</button>)}
         </div>
         <Async loading={loading} error={needFull ? s.error : null} rows={3}>
-          {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['screen']} /></div>}
+          {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['prices', 'screen']} /></div>}
           {rows.length < 2 ? (
             <div className="panel">
               <div className="eyebrow">Start with a set</div>
@@ -96,8 +98,8 @@ function Compare() {
                 <table className="tbl" style={{ minWidth: 560 }}>
                   <thead><tr><th>Measure</th>{rows.map((r) => <th key={r.sym}><Link href={companyHref(r.sym)}>{r.sym}</Link></th>)}</tr></thead>
                   <tbody>
-                    <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => <td key={r.sym} className="num">₹{num(r.price, 2)}</td>)}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Today</td>{rows.map((r) => <td key={r.sym}><Chg v={r.r1d} dp={1} /></td>)}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} className="num"><Flash value={pv.price}>₹{num(pv.price, 2)}</Flash><div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{priceLabel(pv).text}</div></td>; })}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Day move</td>{rows.map((r) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td>; })}</tr>
                     <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 12 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
                     {SPECS.map((sp2) => {
                       const vals = rows.map((r) => sp2.get(r));
@@ -111,7 +113,7 @@ function Compare() {
                 </table>
               </div>
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r) => <Radar key={r.sym} r={r} />)}</div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>A tag marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
+                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
           )}
         </Async>

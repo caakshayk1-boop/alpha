@@ -5,6 +5,27 @@ import { useFeed, useIpoLive } from '@/lib/data';
 import { ago, dash, dateLabel, nseDate, num, rupeeBand } from '@/lib/format';
 import type { IpoLiveIssue, IpoUpcoming } from '@/lib/types';
 
+/** The mirror's generated_at has no timezone. It is written by ipo_radar.py with datetime.now() on a GitHub runner, which runs
+ *  in UTC, so a stamp without an offset is read as UTC (not as the reader's local time). */
+const utc = (iso: string | null | undefined) => (iso && !/(Z|[+-]\d\d:?\d\d)$/.test(iso) ? `${iso}Z` : iso);
+const istStamp = (iso: string | null | undefined) => {
+  const d = iso ? new Date(utc(iso) as string) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'time not stated';
+  const o = { timeZone: 'Asia/Kolkata' } as const;
+  return `${d.toLocaleDateString('en-GB', { ...o, day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('en-GB', { ...o, hour: '2-digit', minute: '2-digit', hour12: false })} IST`;
+};
+/** Days from today in India to a YYYY-MM-DD close date. The feed's own days_left is fixed when the mirror is built, so it goes
+ *  stale overnight; the close date does not. */
+const daysTo = (iso: string) => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  return Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 864e5);
+};
+const leftLabel = (o: { close_date?: string | null; days_left: number }) => {
+  const n = o.close_date && /^\d{4}-\d{2}-\d{2}$/.test(o.close_date) ? daysTo(o.close_date) : null;
+  if (n === null) return o.days_left > 0 ? `${o.days_left} day${o.days_left > 1 ? 's' : ''} left when the mirror was built` : 'closing day when the mirror was built';
+  return n > 0 ? `${n} day${n > 1 ? 's' : ''} left · closes ${dateLabel(o.close_date)}` : n === 0 ? 'Closes today' : `Closed ${dateLabel(o.close_date)}`;
+};
+
 function LiveBook({ i }: { i: IpoLiveIssue }) {
   const cats = [...(i.categories ?? [])].sort((a, b) => b.x - a.x);
   const max = Math.max(1, ...cats.map((c) => c.x), i.total_x ?? 0);
@@ -79,20 +100,21 @@ export default function Ipo() {
           {d && (
             <>
               {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 13.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 36 }} /></>}
-              {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (updated {ago(d.generated_at)}).</Notice><div style={{ height: 24 }} /></>}
+              {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (built {istStamp(d.generated_at)}, {ago(utc(d.generated_at))}).</Notice><div style={{ height: 24 }} /></>}
 
               <ol className="filters" aria-label="Issue lifecycle" style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
                 {([['Upcoming', d.upcoming.length, 'upcoming'], ['Open', liveIssues.length || d.open.length, 'open'], ['Closed, awaiting listing', d.awaiting_listing.length, 'closed'], ['Listed (measured)', d.recent_listed.filter((r) => r.measured).length, 'listed']] as const).map(([l, n, id], i) => <li key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{i > 0 && <span aria-hidden className="dim step-arrow">→</span>}{n > 0 ? <a className="chip" href={`#${id}`}>{l} · {n}</a> : <span className="chip" aria-disabled="true" style={{ opacity: 0.55 }}>{l} · none</span>}</li>)}
               </ol>
+              <p className="dim" style={{ fontSize: 13.5, margin: '-8px 0 20px' }}>Upcoming, closed and listed issues come from the daily mirror, built {istStamp(d.generated_at)}{liveIssues.length > 0 ? '; open books above are live from NSE' : ''}.</p>
               <div id="upcoming" /><SectionHead eyebrow="Next" title="Opening soon" />
               {d.upcoming.length === 0 ? <p className="muted">No mainboard issue is scheduled to open yet.</p> : <div className="grid g2">{d.upcoming.map((u) => <Upcoming key={u.symbol} u={u} />)}</div>}
 
               {liveIssues.length === 0 && d.open.length > 0 && <>
                 <div style={{ height: 36 }} /><div id="open" /><SectionHead title="Open (daily mirror)" />
                 <div className="grid g2">{d.open.map((o) => (
-                  <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{o.days_left > 0 ? `${o.days_left} day${o.days_left > 1 ? 's' : ''} left` : 'closes today'}</div>
+                  <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{leftLabel(o)}</div>
                     <div className="disp" style={{ fontSize: 30, margin: '12px 0' }}>{o.company}</div>
-                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div></Rv>))}</div></>}
+                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed as of ${istStamp(d.generated_at)}` : 'subscription pending'}</div></Rv>))}</div></>}
 
               <div style={{ height: 36 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />
@@ -110,7 +132,7 @@ export default function Ipo() {
                     return <div className="meter-row" key={r.symbol} style={{ gridTemplateColumns: '120px 1fr 80px' }}><span className="lab">{r.symbol}</span><Bar pct={Math.min(100, (Math.abs(v) / 60) * 100)} kind={v >= 0 ? 'up' : 'down'} /><Chg v={v} dp={1} /></div>;
                   })}
                 </div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '14px 0 0' }}>Measured from the first close, not the issue price. Bars saturate at ±60%. {d.recent_listed.filter((r) => r.measured).length} of the last {d.recent_listed.length} listings have enough trading history to measure.</p>
+                <p className="dim" style={{ fontSize: 13.5, margin: '14px 0 0' }}>Measured from the first close to the last close in the mirror built {istStamp(d.generated_at)}, not from the issue price. Bars saturate at ±60%. {d.recent_listed.filter((r) => r.measured).length} of the last {d.recent_listed.length} listings have enough trading history to measure.</p>
               </div>
             </>
           )}

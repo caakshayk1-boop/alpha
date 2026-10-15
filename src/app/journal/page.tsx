@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Chg, Notice, PageHead, SectionHead, Segmented } from '@/components/ui';
-import { useFeed } from '@/lib/data';
+import { useFeed, useLive } from '@/lib/data';
+import { priceLabel, priceView } from '@/lib/price';
 import { dash, dateLabel, num } from '@/lib/format';
 import { ACTIONS, MIN_ENTRIES, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '@/lib/journal';
 import type { JournalAction, JournalEntry } from '@/lib/journal';
@@ -59,11 +60,13 @@ export default function Journal() {
   }, []);
 
   const rows = screen.data?.rows;
+  const lv = useLive();
+  // "Now" follows the site's one rule (lib/price.ts): the live price when it is a newer session than the screen, else the close.
   const quote = useMemo(() => {
-    const m = new Map<string, { price: number | null; asOf: string | null }>();
-    for (const r of rows ?? []) m.set(r.sym, { price: typeof r.price === 'number' ? r.price : null, asOf: r.last_date ?? null });
+    const m = new Map<string, { price: number | null; label: string }>();
+    for (const r of rows ?? []) { const pv = priceView(r.sym, r, lv.snap); m.set(r.sym, { price: pv.price, label: priceLabel(pv).text }); }
     return m;
-  }, [rows]);
+  }, [rows, lv.snap]);
   const priceOf = useCallback((s: string) => quote.get(s)?.price ?? null, [quote]);
   const summary = useMemo(() => summarise(list, priceOf), [list, priceOf]);
   const sorted = useMemo(() => [...list].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [list]);
@@ -126,7 +129,7 @@ export default function Journal() {
             </div>
           ))}
         </div>
-        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Average move since the day you decided, from the price in the screen. Skipped and watched names show what happened without you. This is a record of your habits, not evidence about any stock, and a handful of entries says little.</p>
+        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Average move since the day you decided, to the price now (live while NSE trades, otherwise the latest close). Skipped and watched names show what happened without you. This is a record of your habits, not evidence about any stock, and a handful of entries says little.</p>
       </section>
 
       <section className="wrap section">
@@ -145,8 +148,8 @@ export default function Journal() {
                     <td><span className={`tag ${e.action === 'took' ? 'acc' : ''}`}>{LABEL[e.action]}</span></td>
                     <td style={{ textAlign: 'left', maxWidth: 360, whiteSpace: 'normal' }}>{e.why}</td>
                     <td className="num">{e.price !== null ? `₹${num(e.price, 2)}` : dash}</td>
-                    <td className="num" title={q?.asOf ? `Screen price as of ${dateLabel(q.asOf)}` : undefined}>{q?.price != null ? `₹${num(q.price, 2)}` : dash}</td>
-                    <td>{o.movePct !== null ? <Chg v={o.movePct} dp={1} /> : dash}{o.state === 'below-stop' && <span className="tag down" style={{ marginLeft: 6 }} title="Today's price is at or below your stop. It may have gone below earlier and come back, or the reverse: only today's price is checked.">at/below stop</span>}{o.state === 'above-target' && <span className="tag up" style={{ marginLeft: 6 }} title="Today's price is at or above your target.">at/above target</span>}</td>
+                    <td className="num">{q?.price != null ? <>₹{num(q.price, 2)}<div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{q.label}</div></> : dash}</td>
+                    <td>{o.movePct !== null ? <Chg v={o.movePct} dp={1} /> : dash}{o.state === 'below-stop' && <span className="tag down" style={{ marginLeft: 6 }} title="The price now is at or below your stop. It may have gone below earlier and come back, or the reverse: only the price now is checked.">at/below stop</span>}{o.state === 'above-target' && <span className="tag up" style={{ marginLeft: 6 }} title="The price now is at or above your target.">at/above target</span>}</td>
                     <td className="num">{o.r !== null ? `${o.r >= 0 ? '+' : '−'}${Math.abs(o.r).toFixed(1)}R` : dash}</td>
                     <td><button className="chip" onClick={() => save(list.filter((x) => x.id !== e.id))} aria-label={`Delete the ${e.sym} entry from ${dateLabel(e.date)}`}>✕</button></td>
                   </tr>
@@ -155,7 +158,7 @@ export default function Journal() {
             </table></div>
           )}
         </Async>
-        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Move and R compare today&apos;s screen price with the price you wrote down, for a long idea. Only today&apos;s price is checked, so a stop or target touched in between is not seen. R needs a stop.</p>
+        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Move and R compare the price now (dated under each figure) with the price you wrote down, for a long idea. Only the price now is checked, so a stop or target touched in between is not seen. R needs a stop.</p>
       </section>
 
       <section className="wrap section">

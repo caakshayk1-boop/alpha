@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useEngines, useFeed, useRotation, useSummary } from '@/lib/data';
+import { useEffect, useMemo, useState } from 'react';
+import { useEngines, useFeed, useLive, useRotation, useSummary } from '@/lib/data';
+import { priceLabel } from '@/lib/price';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
 import { describe, expectedSession, reconcile, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
@@ -38,16 +39,40 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
   return { items, loading: scr.loading || bar.loading || eng.loading || rot.loading };
 }
 
-/** A compact stamp: dataset, session, state. The full source and refresh time are in the tooltip and in the Data status table on About. */
+/** The "prices" stamp: what the stock prices on this page are, under the same rule as every price (lib/price.ts). "Prices ·
+ *  10:26 IST live" while NSE is trading, otherwise "Prices · 15 Oct 2026 close". Without a live snapshot it falls back to the
+ *  screen's close and says so in the tooltip. Only mounted where a page asks for it, so pages without prices start no poll. */
+function PricesStamp({ screenAsOf }: { screenAsOf: string | null }) {
+  const { snap, loading } = useLive();
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => { setNow(Date.now()); const t = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(t); }, []);
+  if (now === null || (loading && !screenAsOf)) return <span className="stamp-item" aria-busy="true"><span aria-hidden>○</span> <b>Prices</b> <span className="num">checking time</span> <em>status</em></span>;
+  // the live snapshot only describes the day when it is a newer session than the screen (or the same one, which reads the same)
+  const useSnap = !!snap && (!screenAsOf || snap.session >= screenAsOf);
+  const l = useSnap ? priceLabel({ source: 'live', session: snap!.session, at: snap!.newest }, now) : priceLabel({ source: 'close', session: screenAsOf, at: null }, now);
+  const [when, word] = l.live ? [l.text.replace(/^live /, ''), 'live'] : l.text.startsWith('last trade ') ? [l.text.replace(/^last trade /, ''), 'last trade'] : [l.text.replace(/ close$/, ''), 'close'];
+  const src = useSnap ? `Yahoo Finance quotes for ${snap!.count} of ${snap!.universe} screened stocks, refreshed every minute while trading` : `Live quotes unavailable: prices are the screen's close`;
+  return (
+    <span className={`stamp-item${l.live ? ' up' : ''}`} title={`${src}. A price is labelled live only inside NSE hours with a trade in the last 15 minutes.`}>
+      <span aria-hidden>{l.live ? '●' : '○'}</span> <b>Prices</b> <span className="num">{when}</span> <em>{word}</em>
+    </span>
+  );
+}
+
+/** A compact stamp: dataset, session, state. The full source and refresh time are in the tooltip and in the Data status table on About.
+ *  The id "prices" adds the live-or-close price stamp (PricesStamp). */
 export function DataStamp({ ids, className }: { ids: string[]; className?: string }) {
   const { items, loading } = useDatasetStatus();
+  const prices = ids.includes('prices') ? <PricesStamp key="prices" screenAsOf={items.find((i) => i.id === 'screen')?.asOf ?? null} /> : null;
+  ids = ids.filter((id) => id !== 'prices');
   const shown = ids.map((id) => items.find((i) => i.id === id)).filter((x): x is DataStatus => !!x);
   // A dataset still loading shows as "checking", never as "no date / unavailable" (that would be a false alarm), and its pill
   // has the same shape as the finished one so the row keeps its size (no layout shift).
   const checking = (label: string, key: string) => <span key={key} className="stamp-item" aria-busy="true"><span aria-hidden>○</span> <b>{label}</b> <span className="num">checking date</span> <em>status</em></span>;
-  if (loading && !shown.some((s) => s.asOf)) return <div className={`stamp ${className ?? ''}`} aria-label="Checking data dates">{ids.map((id) => checking(items.find((i) => i.id === id)?.label ?? id, id))}</div>;
+  if (loading && !shown.some((s) => s.asOf)) return <div className={`stamp ${className ?? ''}`} aria-label="Checking data dates">{prices}{ids.map((id) => checking(items.find((i) => i.id === id)?.label ?? id, id))}</div>;
   return (
     <div className={`stamp ${className ?? ''}`} role="group" aria-label="Data dates">
+      {prices}
       {shown.map((s) => (loading && !s.asOf && s.state !== 'error' ? checking(s.label, s.id) :
         <span key={s.id} className={`stamp-item ${TONE[s.state]}`} title={`${s.source}. Describes: ${s.asOf ? dateLabel(s.asOf) : 'no session date'}. Last refreshed: ${refreshed(s.refreshedAt)}.${s.note ? ` ${s.note}` : ''}`}>
           <span aria-hidden>{ICON[s.state]}</span> <b>{s.label}</b> <span className="num">{s.asOf ? dateLabel(s.asOf) : 'no date'}</span> <em>{describe(s)}</em>

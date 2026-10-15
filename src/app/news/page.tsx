@@ -1,14 +1,15 @@
 // Purpose: read the day's stories against the market. Primary action: open a story, or tap a stock it names to see that company.
-// Everything here is rule-based and shows its basis: themes from words in the story, stocks from the exact name or ticker, moves from the screen's last close.
+// Everything here is rule-based and shows its basis: themes from words in the story, stocks from the exact name or ticker, day moves from the live snapshot or the screen's close, whichever is the newer session (lib/price.ts).
 'use client';
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CompanyPeek } from '@/components/Peek';
 import { Async, Chg, PageHead, Rv } from '@/components/ui';
-import { useEngines, useFeed } from '@/lib/data';
+import { useEngines, useFeed, useLive } from '@/lib/data';
+import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { screenClass } from '@/lib/decision';
-import { dateLabel, plainText } from '@/lib/format';
+import { plainText } from '@/lib/format';
 import { groupStories } from '@/lib/news';
 import { BUCKETS, TOPICS, bucketOf, makeMatcher, summarise, topicsOf, type Bucket, type Mention, type TopicId } from '@/lib/newsdesk';
 
@@ -30,6 +31,7 @@ export default function News() {
   const feed = useFeed('news');
   const scr = useFeed('screen');
   const eng = useEngines();
+  const lv = useLive();
 
   // state kept in the address, so a filtered view can be shared or returned to
   const [topic, setTopic] = useState<TopicId | ''>('');
@@ -72,6 +74,10 @@ export default function News() {
   const rows = scr.data?.rows;
   const byIndex = useMemo(() => new Map((rows ?? []).map((r) => [r.sym, r])), [rows]);
   const cos = useMemo(() => (rows ?? []).map((r) => ({ sym: r.sym, name: r.name, mcap: r.mcap_cr })), [rows]);
+  // Day moves follow the site's one rule (lib/price.ts): live when the snapshot is a newer session than the screen, else the close.
+  const asOf = scr.data?.breadth.as_of ?? rows?.[0]?.last_date ?? null;
+  const mv = (sym: string) => priceView(sym, byIndex.get(sym), lv.snap).pct;
+  const dayNote = lv.snap && (!asOf || lv.snap.session > asOf) ? priceLabel({ source: 'live', session: lv.snap.session, at: lv.snap.newest }).text : `${sessionLabel(asOf)} close`;
   const signalSyms = useMemo(() => new Set((eng.data?.signals ?? []).filter((s) => s.status === 'open' || s.status === 'pending').map((s) => s.sym)), [eng.data]);
 
   const match = useMemo(() => makeMatcher(cos), [cos]);
@@ -118,8 +124,8 @@ export default function News() {
               </div>
 
               {rail.length > 0 && (
-                <ul className="chiprow" aria-label="Companies named most today">
-                  {rail.slice(0, 6).map(({ sym }) => <li key={sym}><button type="button" className="namedco" onClick={() => setPeek(sym)}><b>{sym}</b><Chg v={byIndex.get(sym)?.r1d} dp={1} /></button></li>)}
+                <ul className="chiprow" aria-label={`Companies named most in these stories, with the day move (${dayNote})`}>
+                  {rail.slice(0, 6).map(({ sym }) => <li key={sym}><button type="button" className="namedco" onClick={() => setPeek(sym)}><b>{sym}</b><Chg v={mv(sym)} dp={1} /></button></li>)}
                 </ul>
               )}
 
@@ -174,7 +180,7 @@ export default function News() {
                                         <li key={m.sym}>
                                           <button type="button" className="namedco" onClick={() => setPeek(m.sym)} title={`Matched on ${m.basis}. Opens a quick look.`}>
                                             <b>{m.sym}</b>
-                                            {r && <Chg v={r.r1d} dp={1} />}
+                                            {r && <Chg v={mv(m.sym)} dp={1} />}
                                             {signalSyms.has(m.sym) && <span className="tag acc">Engine signal</span>}
                                             {sc && sc.text && <span className="tag">{sc.text}</span>}
                                           </button>
@@ -205,11 +211,11 @@ export default function News() {
                   )}
                 </div>
 
-                <aside className="newsrail" aria-label="In the news today">
+                <aside className="newsrail" aria-label="Stocks and sectors in these stories">
                   <Rv className="panel">
                     <div className="eyebrow">Stocks in the news</div>
                     {!rows && <p className="muted" style={{ fontSize: 14 }}>Loading the company list to match names…</p>}
-                    {rows && rail.length === 0 && <p className="muted" style={{ fontSize: 14, margin: '8px 0 0' }}>No story names a screened company by its full name or ticker today. That is a fact about today&apos;s stories, not a gap in the match.</p>}
+                    {rows && rail.length === 0 && <p className="muted" style={{ fontSize: 14, margin: '8px 0 0' }}>No story here names a screened company by its full name or ticker. That is a fact about these stories, not a gap in the match.</p>}
                     <ul className="railist">
                       {rail.map(({ sym, n }) => {
                         const r = byIndex.get(sym);
@@ -217,13 +223,13 @@ export default function News() {
                           <li key={sym}>
                             <button type="button" className="railrow" onClick={() => setPeek(sym)}>
                               <span className="railid"><b>{sym}</b><span>{r?.name}</span></span>
-                              <span className="railmv"><Chg v={r?.r1d} dp={1} /><span>{n} {n === 1 ? 'story' : 'stories'}</span></span>
+                              <span className="railmv"><Chg v={mv(sym)} dp={1} /><span>{n} {n === 1 ? 'story' : 'stories'}</span></span>
                             </button>
                           </li>
                         );
                       })}
                     </ul>
-                    {rail.length > 0 && <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Day move is the screen&apos;s last close{rows?.[0]?.last_date ? ` (${dateLabel(rows[0].last_date)})` : ''}, not a live quote.</p>}
+                    {rail.length > 0 && <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Day move: {dayNote}. The same rule prices every page: live while NSE trades, otherwise the latest close.</p>}
                   </Rv>
                   {desk.sectors.length > 0 && (
                     <Rv className="panel">
