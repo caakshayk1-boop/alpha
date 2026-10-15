@@ -124,7 +124,7 @@ export default function Screen() {
   // screen, every row carries the live price and move, so the table, the filters, the sort, the plain-English box and the CSV
   // all read the same displayed number. A stock the live snapshot does not cover shows a dash rather than an older close.
   const asOf = s.data?.breadth.as_of ?? null;
-  const { view: tv } = useToday(asOf);
+  const { view: tv, day } = useToday(asOf);
   const base = useMemo<Row[]>(() => {
     const list = s.data?.rows ?? [];
     if (!tv.live) return list;
@@ -263,7 +263,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}.{tv.live ? ` Price and Today % are live, as of ${tv.at} IST on ${tv.session}; a stock with no live trade shows a dash. Every other column is the ${asOf ?? 'latest'} close.` : ''} A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}.{tv.live ? ` Price and Today % are live, as of ${tv.at} IST on ${tv.session}; a stock with no trade in this session shows a dash${day?.stale ? ` (${day.stale} today)` : ''} and never passes a filter on those two. Every other column is the ${asOf ?? 'latest'} close.` : ''} A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
       <CompanyPeek sym={peek} onClose={() => setPeek(null)} />

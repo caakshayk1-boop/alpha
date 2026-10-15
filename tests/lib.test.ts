@@ -553,7 +553,8 @@ test('nse clock: hours, next open across a weekend, before the bell', () => {
 import { istHM, movers, sessionDay, tally, todayView } from '../src/lib/today.ts';
 
 test('todayView: live day reads the snapshot; a stock it lacks shows nothing, never the older close', () => {
-  const snap = { pct: { AAA: 1.25, BBB: -0.5, CCC: 0 }, price: { AAA: 101.25, BBB: 99.5, CCC: 10 }, newest: Date.UTC(2026, 9, 15, 9, 2) / 1000, session: '2026-10-15', count: 3, universe: 3, fetchedAt: '' };
+  const now = Date.UTC(2026, 9, 15, 9, 2) / 1000, old = Date.UTC(2026, 9, 12, 9, 59) / 1000;
+  const snap = { pct: { AAA: 1.25, BBB: -0.5, CCC: 0, OLD: 901.45 }, price: { AAA: 101.25, BBB: 99.5, CCC: 10, OLD: 138.5 }, at: { AAA: now, BBB: now, CCC: now, OLD: old }, newest: now, session: '2026-10-15', count: 4, universe: 4, fetchedAt: '' };
   const day = { source: 'live' as const, session: '2026-10-15', up: 1, down: 1, flat: 1, counted: 3, sectors: [] };
   const v = todayView(day, snap, '2026-10-14');
   assert.equal(v.live, true);
@@ -564,6 +565,17 @@ test('todayView: live day reads the snapshot; a stock it lacks shows nothing, ne
   assert.equal(v.price('BBB', 1), 99.5);
   assert.equal(v.pct('ZZZ', 3.3), null);
   assert.equal(v.price('ZZZ', 50), null);
+  // a quote whose last trade is in an older session has no move today (CCAVENUE, 15 Oct 2026: +901% off a 12 Oct trade)
+  assert.equal(v.pct('OLD', 0), null);
+  assert.equal(v.price('OLD', 138.3), null);
+});
+
+test('dayFromLive: a stale quote is left out of breadth and sectors, and counted as stale', () => {
+  const t = Date.parse('2026-10-15T04:50:00Z') / 1000, old = Date.parse('2026-10-12T09:59:59Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 3, quotes: { A: [101, 100, t], B: [99, 100, t], Z: [138.5, 13.83, old] } }], 3)!;
+  const d = dayFromLive(snap, { built_on: 'x', as_of: '2026-10-14', count: 3, rows: [['A', 'Tech', 'A'], ['B', 'Tech', 'B'], ['Z', 'Tech', 'Z']] });
+  assert.deepEqual([d.up, d.down, d.flat, d.counted, d.stale], [1, 1, 0, 2, 1]);
+  assert.deepEqual(d.sectors, [{ name: 'Tech', n: 2, median: 0 }]);
 });
 
 test('todayView: close day (or no day yet) reads the screen row, dated by the screen', () => {

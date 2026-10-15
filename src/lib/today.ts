@@ -1,8 +1,8 @@
 /** One-day values per stock under the rule in lib/live.ts (pickDay): when the day's source is live, a stock's "today" move
  *  and price are the live snapshot's, and a stock the snapshot does not cover shows nothing (never the older close, which
  *  would mix two sessions in one column). When the source is the close, they are the screen's own r1d and price.
- *  Pure functions only, no imports beyond types: tested in tests/lib.test.ts. */
-import type { DayFigures, LiveSnap } from './live';
+ *  Pure functions only (plus live.ts's inSession, so the stale-quote rule lives in one place): tested in tests/lib.test.ts. */
+import { inSession, type DayFigures, type LiveSnap } from './live.ts';
 
 const IST_HM = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
 const IST_WD = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
@@ -43,8 +43,9 @@ export function todayView(day: DayFigures | null, snap: LiveSnap | null, screenA
     const at = istHM(snap.newest);
     return {
       live: true, session: day.session, at, tag: `live ${at}`, asOf: `live ${day.session} ${at} IST`,
-      pct: (sym) => fin(snap.pct[sym]),
-      price: (sym) => fin(snap.price[sym]),
+      // a stock with no trade in this session has no move today: nothing is shown, counted, coloured or ranked for it
+      pct: (sym) => (inSession(snap, sym) ? fin(snap.pct[sym]) : null),
+      price: (sym) => (inSession(snap, sym) ? fin(snap.price[sym]) : null),
     };
   }
   return {

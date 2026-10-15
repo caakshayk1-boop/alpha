@@ -86,7 +86,7 @@ export default function Brief() {
     if (!today) return sum.error && live.error ? `${baro} The day's breadth could not be loaded, and nothing is estimated in its place.` : '';
     const tilt = today.up > today.down ? 'more stocks rose than fell' : today.up < today.down ? 'more stocks fell than rose' : 'as many stocks rose as fell';
     const when = today.source === 'live' ? `On ${sessionDay(today.session)} (live, ${tv.at} IST)` : `On ${dateLabel(today.session)}`;
-    const flat = today.flat ? `, ${today.flat} unchanged` : '';
+    const flat = (today.flat ? `, ${today.flat} unchanged` : '') + (today.stale ? `; ${today.stale} with no trade this session left out` : '');
     // the 200-day share is a close figure (it needs the day's 200-day average), so it says which close when the day is live
     const share = b200 && b200.withHistory ? ` ${today.source === 'live' && sum.data ? `At the ${dateLabel(sum.data.as_of)} close, ` : ''}${b200.above} of ${b200.withHistory} stocks with a 200-day history (${Math.round((b200.above / b200.withHistory) * 100)}%) sat above their 200-day average.` : '';
     return `${when}, ${tilt} (${today.up} up, ${today.down} down${flat}). ${baro}${share}`;
@@ -118,7 +118,7 @@ export default function Brief() {
 
   return (
     <>
-      <PageHead eyebrow={screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
+      <PageHead eyebrow={today?.source === 'live' ? `Live prices ${tv.at} IST · screen of ${dateLabel(screen.data?.breadth.as_of)}` : screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="in five minutes." lede="Where the market stands, what moved, what changes in the screen, what is on the calendar, and which engines have something to say. Built from the same feeds as every other page." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen', 'barometer', 'engines']} /></section>
       <section className="wrap readgrid">
         <nav className="toc" aria-label="Sections of the brief">

@@ -195,7 +195,7 @@ export default function MapPage() {
                   </details>
                   <span className="legend">−{m.max}{m.unit} <i /> +{m.max}{m.unit}</span>
                 </div>
-                <p className="lv-metric" aria-live="polite"><b>{mLabel}</b>{isToday && day ? <> · whole market {day.source === 'live' ? 'live' : 'at the close'}: <span className="up">▲ {num(day.up)} up</span>, <span className="down">▼ {num(day.down)} down</span>, {num(day.flat)} unchanged, of {num(day.counted)} priced</> : null}</p>
+                <p className="lv-metric" aria-live="polite"><b>{mLabel}</b>{isToday && day ? <> · whole market {day.source === 'live' ? 'live' : 'at the close'}: <span className="up">▲ {num(day.up)} up</span>, <span className="down">▼ {num(day.down)} down</span>, {num(day.flat)} unchanged, of {num(day.counted)} priced{day.stale ? `; ${num(day.stale)} with no trade this session left out` : ''}</> : null}</p>
               </div>
 
               <div className="grid g4" style={{ marginBottom: 12 }}>
