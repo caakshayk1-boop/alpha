@@ -32,6 +32,8 @@ export interface LiveSnap {
   /** symbol -> one-day change in percent, rounded to 2 dp, from the live price against the previous close */
   pct: Record<string, number>;
   price: Record<string, number>;
+  /** symbol -> its own last trade (epoch seconds); a symbol whose last trade is in an older session than `session` is stale (suspended, renamed) */
+  at: Record<string, number>;
   /** newest trade in the snapshot (epoch seconds) and the IST session date it belongs to */
   newest: number;
   session: string;
@@ -48,6 +50,7 @@ export const istDate = (epochS: number): string => IST_DATE.format(new Date(epoc
 export function mergeLive(parts: (LivePart | null | undefined)[], universe: number): LiveSnap | null {
   const pct: Record<string, number> = {};
   const price: Record<string, number> = {};
+  const at: Record<string, number> = {};
   let newest = 0;
   let fetchedAt = '';
   for (const p of parts) {
@@ -58,12 +61,13 @@ export function mergeLive(parts: (LivePart | null | undefined)[], universe: numb
       if (!(px > 0) || !(prev > 0) || !(t > 0)) continue;
       pct[sym] = Math.round(((px - prev) / prev) * 10000) / 100;
       price[sym] = px;
+      at[sym] = t;
       if (t > newest) newest = t;
     }
   }
   const count = Object.keys(pct).length;
   if (!count) return null;
-  return { pct, price, newest, session: istDate(newest), count, universe, fetchedAt };
+  return { pct, price, at, newest, session: istDate(newest), count, universe, fetchedAt };
 }
 
 export interface DayFigures {

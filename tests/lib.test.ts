@@ -518,6 +518,12 @@ test('live: IST session date, merge of halves, and a failed half is missing, not
   assert.equal(snap.session, '2026-10-15');
   assert.equal(snap.count, 2);
   assert.equal(mergeLive([null, undefined], 4), null);
+  // each symbol keeps its own last trade, so a stale one (suspended, renamed) can be told apart from the session's trades
+  const old = Date.parse('2026-10-12T09:59:59Z') / 1000;
+  const mixed = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 2, quotes: { A: [110, 100, t], Z: [138.5, 13.83, old] } }], 2)!;
+  assert.deepEqual(mixed.at, { A: t, Z: old });
+  assert.equal(mixed.session, '2026-10-15');
+  assert.equal(istDate(mixed.at.Z), '2026-10-12');
 });
 
 test('live: day figures use the universe sectors; pickDay prefers the newer session and needs 90% coverage', () => {
