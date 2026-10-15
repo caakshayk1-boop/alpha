@@ -144,3 +144,23 @@ export function useDay(): { day: DayFigures | null; live: ReturnType<typeof useL
   }, [sum.data, lv.snap, lv.universe]);
   return { day, live: lv, loading: sum.loading && lv.loading };
 }
+
+/** Index, commodity and currency quotes (/api/quotes), refreshed every 60 s while the tab is visible (timer, not rAF). */
+export function useLiveQuotes(): Loaded<QuotesFeed> {
+  const [state, set] = useState<Loaded<QuotesFeed>>({ data: null, error: null, loading: true });
+  useEffect(() => {
+    let alive = true, timer = 0;
+    const tick = async () => {
+      try {
+        const r = await fetch(`${BASE}/api/quotes`, { cache: 'no-store' });
+        if (!r.ok) throw new Error(`quotes answered ${r.status}`);
+        const data = (await r.json()) as QuotesFeed;
+        if (alive) set({ data, error: null, loading: false });
+      } catch (e) { if (alive) set((s) => ({ data: s.data, error: e instanceof Error ? e.message : 'failed', loading: false })); }
+      if (alive) timer = window.setTimeout(function again() { if (document.visibilityState === 'visible') void tick(); else timer = window.setTimeout(again, 60_000); }, 60_000);
+    };
+    void tick();
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, []);
+  return state;
+}

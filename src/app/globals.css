@@ -894,3 +894,5 @@ html.anim .mclock.on i { animation: livePing 2.4s ease-out infinite; }
 @keyframes livePing { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--up) 55%, transparent); } 80%, 100% { box-shadow: 0 0 0 7px transparent; } }
 @media (max-width: 1240px) { .mclock { display: none; } }
 @media (prefers-reduced-motion: reduce) { html.anim .mclock.on i { animation: none; } }
+.flash { border-radius: 6px; transition: background-color 0.6s var(--ease); padding: 0 2px; margin: 0 -2px; }
+.flash-up { background-color: var(--up-soft); transition: none; } .flash-down { background-color: var(--down-soft); transition: none; }

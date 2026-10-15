@@ -247,3 +247,21 @@ export function LazyMount({ children, minHeight = 200, margin = 500 }: { childre
   }, [near, margin]);
   return <div ref={ref} style={{ minHeight }}>{near ? children : null}</div>;
 }
+
+/** Wraps a value and tints it for 600 ms when it genuinely changes between refreshes (never on first render, never with an
+ *  invented in-between value). Direction comes from the caller; reduced motion keeps the tint without the fade. */
+export function Flash({ value, dir, children }: { value: number | string | null | undefined; dir?: 'up' | 'down' | null; children: ReactNode }) {
+  const prev = useRef(value);
+  const [on, setOn] = useState<'' | 'up' | 'down'>('');
+  useEffect(() => {
+    if (prev.current !== undefined && prev.current !== null && value !== prev.current) {
+      setOn(dir ?? (typeof value === 'number' && typeof prev.current === 'number' ? (value > prev.current ? 'up' : 'down') : 'up'));
+      const t = window.setTimeout(() => setOn(''), 600);
+      prev.current = value;
+      return () => window.clearTimeout(t);
+    }
+    prev.current = value;
+    return undefined;
+  }, [value, dir]);
+  return <span className={`flash${on ? ` flash-${on}` : ''}`}>{children}</span>;
+}
