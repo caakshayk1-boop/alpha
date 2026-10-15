@@ -109,26 +109,34 @@ export function usePx(symbols: string[]): { quotes: Record<string, import('./typ
   return state;
 }
 
-/** The whole screened market, live (/api/live, two halves) with the universe's sectors. Refreshes every 60 s while trades are
- *  fresh and the tab is visible, every 10 minutes otherwise; a timer, not an observer or rAF, so a background tab catches up
- *  when it is shown again. Bypasses the load() memo on purpose: this one must change. */
-export function useLive(): { snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null } {
-  const [state, set] = useState<{ snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null }>({ snap: null, universe: null, loading: true, error: null });
+/** The whole screened market, live (/api/live, two halves) with the universe's sectors. ONE fetch loop per page, shared by
+ *  every component that asks (the header clock, the hero, the widgets): it starts with the first subscriber and stops with the
+ *  last. Refreshes every 60 s while trades are fresh and the tab is visible, every 10 minutes otherwise; a timer, not an
+ *  observer or rAF, so a background tab catches up when it is shown again. Bypasses the load() memo on purpose. */
+type LiveState = { snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null };
+const liveHub = { state: { snap: null, universe: null, loading: true, error: null } as LiveState, subs: new Set<(s: LiveState) => void>(), timer: 0, running: false, gen: 0 };
+async function liveTick(gen: number) {
+  const getJson = async <T,>(u: string): Promise<T | null> => { try { const r = await fetch(u, { cache: 'no-store' }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; } };
+  const [uni, a, b] = await Promise.all([load<Universe>(`${BASE}/universe.json`).catch(() => null), getJson<LivePart>(`${BASE}/api/live?part=0`), getJson<LivePart>(`${BASE}/api/live?part=1`)]);
+  if (!liveHub.running || gen !== liveHub.gen) return;   // a stopped or restarted loop exits instead of running twice
+  const snap = mergeLive([a, b], uni?.count ?? 0);
+  // a failed refresh keeps the last good snapshot (its time is on every label), instead of blanking the page
+  liveHub.state = { snap: snap ?? liveHub.state.snap, universe: uni ?? liveHub.state.universe, loading: false, error: snap ? null : 'live prices unavailable' };
+  liveHub.subs.forEach((f) => f(liveHub.state));
+  const fresh = !!liveHub.state.snap && Date.now() / 1000 - liveHub.state.snap.newest < 30 * 60;
+  const next = () => { liveHub.timer = window.setTimeout(() => { if (!liveHub.running || gen !== liveHub.gen) return; if (document.visibilityState === 'visible') void liveTick(gen); else next(); }, fresh ? 60_000 : 600_000); };
+  next();
+}
+export function useLive(): LiveState {
+  const [state, set] = useState<LiveState>(liveHub.state);
   useEffect(() => {
-    let alive = true;
-    let timer = 0;
-    const getJson = async <T,>(u: string): Promise<T | null> => { try { const r = await fetch(u, { cache: 'no-store' }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; } };
-    const tick = async () => {
-      const [uni, a, b] = await Promise.all([load<Universe>(`${BASE}/universe.json`).catch(() => null), getJson<LivePart>(`${BASE}/api/live?part=0`), getJson<LivePart>(`${BASE}/api/live?part=1`)]);
-      if (!alive) return;
-      const snap = mergeLive([a, b], uni?.count ?? 0);
-      set({ snap, universe: uni, loading: false, error: snap ? null : 'live prices unavailable' });
-      const fresh = !!snap && Date.now() / 1000 - snap.newest < 30 * 60;
-      const next = () => { timer = window.setTimeout(() => { if (document.visibilityState === 'visible') void tick(); else next(); }, fresh ? 60_000 : 600_000); };
-      next();
+    liveHub.subs.add(set);
+    set(liveHub.state);
+    if (!liveHub.running) { liveHub.running = true; liveHub.gen += 1; void liveTick(liveHub.gen); }
+    return () => {
+      liveHub.subs.delete(set);
+      if (!liveHub.subs.size) { liveHub.running = false; window.clearTimeout(liveHub.timer); }
     };
-    void tick();
-    return () => { alive = false; window.clearTimeout(timer); };
   }, []);
   return state;
 }

@@ -37,15 +37,16 @@ export function LiveWatchlist() {
           <ul className="list lw-list">
             {watch.slice(0, SHOW).map((sym) => {
               const p = snap?.pct[sym], px = snap?.price[sym], at = snap?.at[sym];
-              // a symbol with no trade in this session (suspended, renamed) keeps an old price: show it with its date, no "today" move
+              // no trade in this session (suspended, or a corporate action the feed has half-applied): the feed's price itself is
+              // unreliable then (CCAVENUE, 15 Oct: 'price' 13.83 beside daily closes of 138.30), so show only the date, no price
               const stale = !!snap && typeof at === 'number' && istDate(at) !== snap.session;
               return (
                 <li key={sym}>
                   <Link href={companyHref(sym)} className="li">
                     <div style={{ minWidth: 0 }}><div className="t">{sym}</div><div className="s lw-nm">{names.get(sym) ?? 'Not in the screened universe'}</div></div>
                     <div style={{ textAlign: 'right' }}>
-                      {loading ? <Skel h={18} w={72} /> : stale && typeof px === 'number' && typeof at === 'number' ? (
-                        <><span className="num">₹{num(px, 2)}</span><div className="s dim">last traded {dateLabel(istDate(at))}</div></>
+                      {loading ? <Skel h={18} w={72} /> : stale && typeof at === 'number' ? (
+                        <span className="s dim">no trade since {dateLabel(istDate(at))}</span>
                       ) : typeof p === 'number' && typeof px === 'number' ? (
                         <><Flash value={p}><Chg v={p} /></Flash><div className="s num">₹{num(px, 2)}</div></>
                       ) : <span className="s dim">no live price</span>}
