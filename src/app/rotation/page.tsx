@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataStamp } from '@/components/DataStamp';
+import { sessionLabel } from '@/lib/price';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
 import { useEngines, useFeed, useRotation } from '@/lib/data';
 import { weekThrough } from '@/lib/status';
@@ -132,6 +133,8 @@ export default function RotationPage() {
   }, [rows]);
 
   const date = rot.data?.dates[t];
+  // breadth and members always come from the latest screen, whatever week is selected: name its session, not the week's date
+  const screenOn = sessionLabel(scr.data?.breadth.as_of);
   const past = n > 0 && t < n - 1;     // a historical week is selected
   // The newest point is labelled with the Friday that ends its week even while the week is still running; say what it runs to.
   const wt = date && !past && rot.data ? weekThrough(date, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
@@ -230,16 +233,16 @@ export default function RotationPage() {
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
-                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 13 }}>Week ending {weekLabel}{past ? ` · phase and relative returns are as of this week; breadth and members below are today's, from the latest screen (${rot.data.dates[n - 1]}), not reconstructed for this week` : ''}</p>
+                      <p className="dim num" style={{ margin: '4px 0 0', fontSize: 13 }}>Week ending {weekLabel}{past ? ` · phase and relative returns are as of this week; breadth and members below are from the latest screen (the ${screenOn} close), not reconstructed for this week` : ''}</p>
                       <p style={{ margin: '8px 0' }}><span className="tag" style={{ color: QC[cur.q] }}>{cur.q}</span> <span className="muted" style={{ fontSize: 14 }}>{QNOTE[cur.q]}</span></p>
                       <RsLine s={cur.s} t={t} dates={rot.data.dates} />
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr', margin: '12px 0' }}>
                         <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.ret4t} dp={1} /></div></div>
                         <div><div className="k">13-week vs Nifty</div><div className="v"><Chg v={cur.ret13t} dp={1} /></div></div>
-                        <div><div className="k">Above 200-day{past ? ' (today)' : ''}</div><div className="v">{cur.breadth !== null ? `${cur.breadth.toFixed(0)}%` : dash}</div></div>
+                        <div><div className="k">Above 200-day{past ? ` (${screenOn})` : ''}</div><div className="v">{cur.breadth !== null ? `${cur.breadth.toFixed(0)}%` : dash}</div></div>
                         <div><div className="k">Stocks</div><div className="v">{cur.mem.length}</div></div>
                       </div>
-                      <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? ', as of today' : ''})</div>
+                      <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? `, as of the ${screenOn} close` : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
                         <Link key={x.sym} href={companyHref(x.sym)} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
@@ -250,7 +253,7 @@ export default function RotationPage() {
 
               <SectionHead title="Every group, by phase" />
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 760 }}>
-                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ' (today)' : ''}</th><th>Stocks</th></tr></thead>
+                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ` (${screenOn})` : ''}</th><th>Stocks</th></tr></thead>
                 <tbody>{table.map((x) => (
                   <tr key={x.s.name} onClick={() => setSel(x.s.name)} style={{ cursor: 'pointer', background: sel === x.s.name ? 'var(--accent-soft)' : undefined }}>
                     <td><b>{short(x.s.name)}</b>{x.s.real ? <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span> : <span className="tag" style={{ marginLeft: 8 }}>Alpha group index</span>}</td>

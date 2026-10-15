@@ -7,9 +7,10 @@ import PlanOdds from '@/components/PlanOdds';
 import Scoreboard from '@/components/Scoreboard';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { VERDICT_TONE, verdictText } from '@/components/EvidenceTags';
-import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
+import { Async, Bar, Chg, Flash, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
 import { useEngines, usePx } from '@/lib/data';
-import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
+import { ago, dash, dateLabel, num } from '@/lib/format';
+import { priceLabel, priceView } from '@/lib/price';
 import { journalHref } from '@/lib/journal';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -22,7 +23,7 @@ const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.
 const STATE_LABEL: Record<string, string> = { pending: 'Issued · waiting for the next open', open: 'Open', closed: 'Closed', void: 'Void' };
 const EVENT_LABEL: Record<string, string> = { entry: 'Entered', t1: 'T1 reached', t2: 'T2 reached', t3: 'T3 reached', stop: 'Stopped out', stop_after_t1: 'Stopped at entry', stop_after_t2: 'Stopped at T1', time: 'Time limit' };
 
-function SignalCard({ s, e, live, through, cost }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string; cost?: number }) {
+function SignalCard({ s, e, live, through, closeOn, cost }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string; closeOn?: string; cost?: number }) {
   // A signal still `pending` once a later session exists in the screen has had its open come and go; the engines have not processed it yet.
   const overdue = s.status === 'pending' && !!through && through > s.date;
   const [capital, setCapital] = useState('500000');
@@ -32,7 +33,10 @@ function SignalCard({ s, e, live, through, cost }: { s: EngineSignal; e: EngineS
   const cap = Number(capital) || 0;
   const rp = Number(riskPct) || 0;
   const qty = risk > 0 ? Math.floor((cap * rp / 100) / risk) : 0;
-  const px = live?.price ?? s.last_close ?? null;
+  // the engines' last close (dated data_through) unless this symbol's own quote is a newer session (lib/price.ts)
+  const pv = priceView(s.sym, { price: s.last_close ?? null, last_date: closeOn ?? null }, null, live);
+  const px = pv.price;
+  const pl = priceLabel(pv);
   const stop = s.stop_now ?? s.sl;
   const nextT = s.targets[Math.min(s.hit, 2)];
   const active = s.status === 'open' || s.status === 'pending';
@@ -47,9 +51,10 @@ function SignalCard({ s, e, live, through, cost }: { s: EngineSignal; e: EngineS
         </div>
         {px !== null && active && (
           <div className="sig-now">
-            <div className="k">{live ? (quoteState(live.at).word === 'live' ? 'Live' : 'Last trade') : 'Last close'}</div>
-            <div className="v num">₹{num(px, 2)}</div>
-            {live && <Chg v={live.pct} />}
+            <div className="k">{pl.live ? 'Live' : pv.source === 'close' ? 'Last close' : 'Last trade'}</div>
+            <div className="v num"><Flash value={px}>₹{num(px, 2)}</Flash></div>
+            {pv.source !== 'close' && <Chg v={pv.pct} />}
+            <div className="dim" style={{ fontSize: 12 }}>{pl.live ? pl.text.replace(/^live /, '') : pl.text}</div>
           </div>
         )}
       </div>
@@ -248,8 +253,8 @@ export default function EnginesPage() {
 
                   {tab === 'signals' && (sigs.length ? (
                     <>
-                      {px.at && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>Live prices as of {ago(px.at)}, refreshed every minute while this page is open. Plans are fixed at issue and never move with the price.</p>}
-                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} cost={feed.backtest.cost_round_trip_pct} />)}</div>
+                      {px.at && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>Quotes fetched {ago(px.at)} and refreshed every minute while this page is open; each card says whether its price is live, a last trade or a close. Plans are fixed at issue and never move with the price.</p>}
+                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} closeOn={feed.data_through} cost={feed.backtest.cost_round_trip_pct} />)}</div>
                       {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
                   ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}

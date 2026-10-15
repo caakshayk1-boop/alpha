@@ -4,20 +4,24 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Prose, { headingsOf, slug } from '@/components/Prose';
 import { Async, PageHead, Rv } from '@/components/ui';
-import { useFeed, useShard } from '@/lib/data';
+import { useFeed, useLive, useShard } from '@/lib/data';
+import { priceLabel, priceView } from '@/lib/price';
 import { crore, dateLabel, num, pct } from '@/lib/format';
 import { companyHref } from '@/lib/slug';
 
 /** The figures the study was written from, beside today's, so a reader never mistakes one for the other. */
 function LatestFigures({ sym, price, mcap, writtenAt }: { sym: string; price: number; mcap: number; writtenAt: string | null }) {
   const sh = useShard(sym);
+  const lv = useLive();
   const row = sh.data?.row;
-  const now = typeof row?.price === 'number' ? row.price : null;
+  // the same rule as every price on the site (lib/price.ts): live when newer than the screen close, else the close
+  const pv = row ? priceView(sym, row, lv.snap) : null;
+  const now = pv?.price ?? null;
   const move = now !== null && price > 0 ? (now / price - 1) * 100 : null;
   return (
     <div className="grid g2" style={{ margin: '0 0 16px' }} role="group" aria-label="Figures at publication and latest figures">
       <div className="panel tight"><div className="eyebrow">At publication{writtenAt ? ` · ${dateLabel(writtenAt)}` : ''}</div><div className="num" style={{ marginTop: 6 }}>₹{num(price, 2)} · {crore(mcap)}</div><div className="dim" style={{ fontSize: 13.5 }}>What the study below was written from. It is not updated.</div></div>
-      <div className="panel tight"><div className="eyebrow">Latest{row?.last_date ? ` · ${dateLabel(row.last_date)}` : ''}</div>
+      <div className="panel tight"><div className="eyebrow">Latest{pv ? ` · ${priceLabel(pv).text}` : ''}</div>
         {sh.loading ? <div className="dim" style={{ marginTop: 6 }}>Loading…</div> : now === null ? <div className="dim" style={{ marginTop: 6 }}>Latest figures are not available for this company.</div> : <div className="num" style={{ marginTop: 6 }}>₹{num(now, 2)}</div>}
         {move !== null && <div className="dim" style={{ fontSize: 13.5 }}>{pct(move, 1)} in price since publication. Market cap is not shown here: the screen&apos;s figure is not recalculated with the price. The study&apos;s text does not change.</div>}
       </div>

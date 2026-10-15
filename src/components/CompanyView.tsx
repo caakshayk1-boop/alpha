@@ -3,16 +3,18 @@
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
+import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
+import { DataStamp } from '@/components/DataStamp';
 import PlanOdds from '@/components/PlanOdds';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
 import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
-import { useEngines, useFeedWhen, usePx, useShard, type Shard } from '@/lib/data';
+import { useEngines, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
+import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
-import { crore, dash, dateLabel, heat, num, pct, quoteState } from '@/lib/format';
+import { crore, dash, heat, num, pct } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row, Year } from '@/lib/types';
 
@@ -165,6 +167,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const pre = sh.data;
   const eng = useEngines();
   const px = usePx(sym ? [sym] : []);
+  const lv = useLive();
   const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
   const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
   type Tab = (typeof TABS)[number];
@@ -179,6 +182,11 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 24 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
   const lender = /financial|bank|insurance|real estate/i.test(`${r.sector} ${r.ind}`);
+  // Price and day move follow the site's one rule: the live snapshot when it is a newer session than the screen, then this
+  // symbol's own quote, then the screen close. Everything below the header is the screen close, and says which day that is.
+  const pv = priceView(r.sym, r, lv.snap, px.quotes[sym]);
+  const pl = priceLabel(pv);
+  const closeOn = sessionLabel(r.last_date);
   const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Engines (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
   const view: Tab = tabOptions.some(([k]) => k === tab) ? tab : 'overview';      // a link to #engines on a company with no signal falls back to Overview
   return (
@@ -200,12 +208,13 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
-          </div><div className="px">{num(px.quotes[sym]?.price ?? r.price, 2) === '—' ? '—' : `₹${num(px.quotes[sym]?.price ?? r.price, 2)}`}</div><div style={{ marginTop: 6 }}><Chg v={px.quotes[sym]?.pct ?? r.r1d} /> <span className="dim" style={{ fontSize: 13.5 }}>{px.quotes[sym] ? quoteState(px.quotes[sym].at).label : `screen close ${r.last_date ? dateLabel(r.last_date) : ''}`}</span></div></div>
+          </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div></div>
       </header>
+      <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
       {(() => {
-        const live = px.quotes[sym]?.price;
+        const live = pv.source === 'close' ? null : pv.price;
         if (!has(live) || !has(r.price) || r.price <= 0 || Math.abs(live / r.price - 1) <= 0.08) return null;
-        return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${dateLabel(r.last_date)}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
+        return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
       <section className="wrap" style={{ paddingTop: 8 }}>
@@ -213,7 +222,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
       <section className="wrap section">
-        <SectionHead eyebrow="Scorecard" title="Where it ranks today" />
+        <SectionHead eyebrow={`Scorecard · screen close ${closeOn}`} title="Where it ranks" />
         <Scorecard of={s.count} items={[{ label: 'Quality', value: r.q, tone: 'lav', note: 'ROCE, ROE, margins, debt and interest cover' }, { label: 'Growth', value: r.g, tone: 'mint', note: 'Revenue, EBITDA and EPS growth' }, { label: 'Value', value: r.v, tone: 'lime', note: 'P/E and P/B against its own history; higher is cheaper' }, { label: 'Technical', value: r.tech, tone: 'peach', note: 'Trend, momentum, breakouts and volume' }]} />
         <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions. 50 is the median company, which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
@@ -225,7 +234,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
       <section className="wrap section">
         <div className="grid g-7-5">
-          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
+          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
             {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{r.vd.o}.</p> : <p className="muted">Nothing notable.</p>}
             {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
@@ -235,6 +244,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       </section>
       <section className="wrap section">
         <SectionHead title="Key numbers" />
+        <p className="dim" style={{ fontSize: 13.5, margin: '-6px 2px 12px' }}>From the screen: price-based ratios use the {closeOn} close; the rest come from the latest filed statements.</p>
         <Rv className="kv">
           <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
           <Kv k="ROCE" v={has(r.roce) ? `${r.roce.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROCE'} /><Kv k="ROE" v={has(r.roe) ? `${r.roe.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROE'} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${r.ebit_margin.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EBIT margin'} />
