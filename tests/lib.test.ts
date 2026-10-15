@@ -548,3 +548,12 @@ test('nse clock: hours, next open across a weekend, before the bell', () => {
   assert.equal(nseClock(Date.parse('2026-10-15T03:00:00Z')).minutesToNext, 45);
   assert.equal(nseClock(Date.parse('2026-10-15T11:00:00Z')).nextLabel, 'opens 09:15 IST tomorrow');
 });
+
+test('live: a stock not traded in the current session keeps its price but has no move (CCAVENUE +901%, 15 Oct 2026)', () => {
+  const now = Date.parse('2026-10-15T04:50:00Z') / 1000, old = Date.parse('2026-10-12T09:59:00Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 2, quotes: { INFY: [1115.9, 1088, now], CCAVENUE: [138.5, 13.83, old] } }], 2)!;
+  assert.deepEqual(Object.keys(snap.pct), ['INFY']);
+  assert.equal(snap.price.CCAVENUE, 138.5);
+  assert.deepEqual(snap.stale, ['CCAVENUE']);
+  assert.equal(snap.count, 1);
+});

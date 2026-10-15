@@ -37,6 +37,10 @@ export interface LiveSnap {
   /** newest trade in the snapshot (epoch seconds) and the IST session date it belongs to */
   newest: number;
   session: string;
+  /** stocks priced but not traded in `session` (suspended, or a corporate action the feed has not adjusted for): they keep
+   *  price and `at` but have NO `pct`, so no page can count, colour or rank them as today's move. */
+  stale: string[];
+  /** stocks with a move in `session` (excludes stale) */
   count: number;
   universe: number;
   fetchedAt: string;
@@ -65,9 +69,14 @@ export function mergeLive(parts: (LivePart | null | undefined)[], universe: numb
       if (t > newest) newest = t;
     }
   }
+  if (!newest) return null;
+  const session = istDate(newest);
+  // CCAVENUE, 15 Oct 2026: last traded 12 Oct, previous close 13.83 against 138.50 (an unadjusted consolidation) = "+901%".
+  const stale = Object.keys(at).filter((sym) => istDate(at[sym]) !== session).sort();
+  for (const sym of stale) delete pct[sym];
   const count = Object.keys(pct).length;
   if (!count) return null;
-  return { pct, price, at, newest, session: istDate(newest), count, universe, fetchedAt };
+  return { pct, price, at, newest, session, stale, count, universe, fetchedAt };
 }
 
 export interface DayFigures {
