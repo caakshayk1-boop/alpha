@@ -19,9 +19,10 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { themeColor: '#f5f3ee', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
-// Today's headline needs two small feeds. Start them while the page's JavaScript is still downloading, on Today only, and let
-// lib/data.ts pick up the same requests (window.__alphaPre) instead of fetching again. Other pages are untouched.
-const prefetchScript = `try{if(location.pathname==='/'){var p=window.__alphaPre={};['/api/summary','/data/barometer.json'].forEach(function(u){p[u]=fetch(u).then(function(r){if(!r.ok)throw new Error(u+' answered '+r.status);return r.json()});p[u].catch(function(){})})}}catch(e){}`;
+// Start the first data a page waits on while its JavaScript is still downloading, and let lib/data.ts pick up the same
+// requests (window.__alphaPre) instead of fetching again. Today: the summary and the Barometer. A company page: its live slice
+// and the default 1-year chart, under the exact URLs the page itself requests ("_" in the address is "&" in the symbol).
+const prefetchScript = `try{var L=location.pathname,u=[];if(L==='/')u=['/api/summary','/data/barometer.json'];else{var m=/^\\/company\\/([A-Za-z0-9_-]{1,20})\\/$/.exec(L);if(m){var s=encodeURIComponent(m[1].toUpperCase().replace(/_/g,'&'));u=['/c/'+s+'.json','/api/chart?s='+s+'&r=1y']}}if(u.length){var p=window.__alphaPre={};u.forEach(function(x){p[x]=fetch(x).then(function(r){if(!r.ok)throw new Error(x+' answered '+r.status);return r.json()});p[x].catch(function(){})})}}catch(e){}`;
 
 // Runs before first paint so there is no flash of the wrong theme. Light is the default (v3); a reader who chose dark keeps it.
 const themeScript = `try{var t=localStorage.getItem('alpha-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}`;
