@@ -25,6 +25,7 @@
   "compounder:GALLANTT:2026-10-09",
   "compounder:JAIBALAJI:2026-10-09",
   "compounder:JAIBALAJI:2026-10-14",
+  "compounder:RELAXO:2026-10-15",
   "compounder:TSFINV:2026-10-09",
   "compounder:TSFINV:2026-10-14",
   "compounder:TSFINV:2026-10-15",
@@ -43,6 +44,7 @@
   "rank:VENKEYS:2026-10-14",
   "rank:VENKEYS:2026-10-15",
   "relative:AHLUCONT:2026-10-09",
+  "relative:AHLUCONT:2026-10-15",
   "relative:ANUP:2026-10-09",
   "relative:ARTEMISMED:2026-10-12",
   "relative:ARTEMISMED:2026-10-13",
@@ -63,7 +65,9 @@
   "snapback:DIVGIITTS:2026-10-14",
   "snapback:LAURUSLABS:2026-10-14",
   "snapback:ROLEXRINGS:2026-10-09",
+  "snapback:SHILPAMED:2026-10-15",
   "snapback:SMSPHARMA:2026-10-09",
+  "snapback:STLTECH:2026-10-15",
   "snapback:SUNFLAG:2026-10-15",
   "snapback:UNIPARTS:2026-10-15",
   "snapback:VADILALIND:2026-10-14",
@@ -1195,7 +1199,9 @@
    "turnover_cr": 3.1
   },
   "relative:RELAXO:2026-10-15": {
-   "also": [],
+   "also": [
+    "compounder"
+   ],
    "benchmark": {
     "benchmark_3m_pct": -5.1,
     "leads_nifty": false,
@@ -1777,6 +1783,61 @@
    ],
    "turnover_cr": 45.0
   },
+  "snapback:SHILPAMED:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -0.7,
+    "leads_nifty": true,
+    "members": null,
+    "name": "Nifty Pharma",
+    "stock_3m_pct": 44.7,
+    "stock_vs_benchmark_pct": 45.4,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    922.1,
+    931.32
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:SHILPAMED:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 7,
+   "name": "Shilpa Medicare Ltd.",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "RSI (2): among the very lowest of all stocks today (the model favours low readings)",
+    "market rank of distance from 52-week high: higher than about 68% of stocks (the model favours high readings)",
+    "benchmark vs its 50-day: higher than about 62% of stocks (the model favours high readings)",
+    "benchmark momentum vs Nifty: higher than about 73% of stocks (the model favours high readings)",
+    "market rank of 12-1 month momentum: higher than about 99% of stocks (the model favours high readings)"
+   ],
+   "ref_price": 922.1,
+   "risk_pct": 6.0,
+   "score": 0.5649,
+   "score_percentile": 99.9,
+   "sector": "Healthcare",
+   "setup": "Snapback model",
+   "sl": 866.77,
+   "status": "pending",
+   "stop_now": 866.77,
+   "sym": "SHILPAMED",
+   "targets": [
+    966.36,
+    1005.09,
+    1060.41
+   ],
+   "turnover_cr": 83.5
+  },
   "snapback:SMSPHARMA:2026-10-09": {
    "also": [],
    "benchmark": {
@@ -1842,6 +1903,61 @@
     507.61
    ],
    "turnover_cr": 63.8
+  },
+  "snapback:STLTECH:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -5.3,
+    "leads_nifty": false,
+    "members": 13,
+    "name": "Telecommunication (alpha group index)",
+    "stock_3m_pct": 62.3,
+    "stock_vs_benchmark_pct": 67.5,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    878.45,
+    887.23
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:STLTECH:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 7,
+   "name": "Sterlite Technologies Ltd.",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "RSI (2): lower than about 99% of stocks (the model favours low readings)",
+    "market rank of distance from 52-week high: higher than about 66% of stocks (the model favours high readings)",
+    "benchmark vs its 50-day: higher than about 78% of stocks (the model favours high readings)",
+    "benchmark momentum vs Nifty: lower than about 82% of stocks (the model favours high readings)",
+    "market rank of 12-1 month momentum: among the very highest of all stocks today (the model favours high readings)"
+   ],
+   "ref_price": 878.45,
+   "risk_pct": 6.0,
+   "score": 0.5544,
+   "score_percentile": 99.8,
+   "sector": "Technology",
+   "setup": "Snapback model",
+   "sl": 825.74,
+   "status": "pending",
+   "stop_now": 825.74,
+   "sym": "STLTECH",
+   "targets": [
+    920.62,
+    957.51,
+    1010.22
+   ],
+   "turnover_cr": 175.4
   },
   "snapback:SUNFLAG:2026-10-15": {
    "also": [],
