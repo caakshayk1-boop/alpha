@@ -1,5 +1,5 @@
 {
- "last_scan": "2026-10-14",
+ "last_scan": "2026-10-15",
  "launched": "2026-10-09",
  "seen": [
   "barrier:ANUP:2026-10-09",
@@ -8,41 +8,53 @@
   "barrier:ARTEMISMED:2026-10-14",
   "barrier:GALLANTT:2026-10-09",
   "barrier:GHCLTEXTIL:2026-10-14",
+  "barrier:GHCLTEXTIL:2026-10-15",
   "barrier:HIRECT:2026-10-09",
   "barrier:INDOBORAX:2026-10-09",
   "barrier:SPORTKING:2026-10-14",
+  "barrier:SPORTKING:2026-10-15",
   "barrier:STOVEKRAFT:2026-10-14",
+  "barrier:STOVEKRAFT:2026-10-15",
   "compounder:ANUP:2026-10-09",
   "compounder:ANUP:2026-10-14",
+  "compounder:ANUP:2026-10-15",
   "compounder:ARTEMISMED:2026-10-12",
   "compounder:ARTEMISMED:2026-10-13",
   "compounder:ARTEMISMED:2026-10-14",
+  "compounder:CRIZAC:2026-10-15",
   "compounder:GALLANTT:2026-10-09",
   "compounder:JAIBALAJI:2026-10-09",
   "compounder:JAIBALAJI:2026-10-14",
   "compounder:TSFINV:2026-10-09",
   "compounder:TSFINV:2026-10-14",
+  "compounder:TSFINV:2026-10-15",
   "rank:ANUP:2026-10-09",
   "rank:ARTEMISMED:2026-10-12",
   "rank:ARTEMISMED:2026-10-13",
   "rank:ARTEMISMED:2026-10-14",
   "rank:GHCLTEXTIL:2026-10-09",
   "rank:GHCLTEXTIL:2026-10-14",
+  "rank:GHCLTEXTIL:2026-10-15",
   "rank:RAMCOSYS:2026-10-09",
   "rank:RGL:2026-10-09",
   "rank:SPORTKING:2026-10-14",
+  "rank:SPORTKING:2026-10-15",
   "rank:VADILALIND:2026-10-09",
   "rank:VENKEYS:2026-10-14",
+  "rank:VENKEYS:2026-10-15",
   "relative:AHLUCONT:2026-10-09",
   "relative:ANUP:2026-10-09",
   "relative:ARTEMISMED:2026-10-12",
   "relative:ARTEMISMED:2026-10-13",
   "relative:ARTEMISMED:2026-10-14",
+  "relative:HEMIPROP:2026-10-15",
   "relative:MAXHEALTH:2026-10-14",
   "relative:PRSMJOHNSN:2026-10-14",
   "relative:RAMCOSYS:2026-10-09",
+  "relative:RELAXO:2026-10-15",
   "relative:SPORTKING:2026-10-09",
   "relative:STARCEMENT:2026-10-14",
+  "relative:STARCEMENT:2026-10-15",
   "snapback:ARTEMISMED:2026-10-12",
   "snapback:ARTEMISMED:2026-10-13",
   "snapback:ARTEMISMED:2026-10-14",
@@ -52,7 +64,10 @@
   "snapback:LAURUSLABS:2026-10-14",
   "snapback:ROLEXRINGS:2026-10-09",
   "snapback:SMSPHARMA:2026-10-09",
-  "snapback:VADILALIND:2026-10-14"
+  "snapback:SUNFLAG:2026-10-15",
+  "snapback:UNIPARTS:2026-10-15",
+  "snapback:VADILALIND:2026-10-14",
+  "snapback:VADILALIND:2026-10-15"
  ],
  "signals": {
   "barrier:HIRECT:2026-10-09": {
@@ -88,7 +103,7 @@
    "horizon": "swing",
    "id": "barrier:HIRECT:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 1136.5,
+   "last_close": 1094.8,
    "max_hold": 15,
    "name": "Hirect Limited",
    "r_multiples": [
@@ -96,7 +111,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.36,
+   "r_open": -0.2,
    "reasons": [
     "market rank of illiquidity: higher than 97% of stocks (the model favours high readings)",
     "benchmark momentum vs Nifty: higher than 88% of stocks (the model favours high readings)",
@@ -201,16 +216,26 @@
    "date": "2026-10-14",
    "engine": "barrier",
    "engine_name": "Barrier",
+   "entry": 859.5,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     850.8,
     859.31
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 859.5
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "swing",
    "id": "barrier:STOVEKRAFT:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 846.0,
    "max_hold": 15,
    "name": "Stove Kraft Limited",
    "r_multiples": [
@@ -218,6 +243,7 @@
     2.0,
     3.5
    ],
+   "r_open": -0.25,
    "reasons": [
     "traded value: lower than about 90% of stocks (the model favours low readings)",
     "market rank of illiquidity: higher than about 88% of stocks (the model favours high readings)",
@@ -232,7 +258,7 @@
    "sector": "Consumer Cyclical",
    "setup": "Barrier model",
    "sl": 806.35,
-   "status": "pending",
+   "status": "open",
    "stop_now": 806.35,
    "sym": "STOVEKRAFT",
    "targets": [
@@ -241,6 +267,61 @@
     1006.38
    ],
    "turnover_cr": 8.0
+  },
+  "compounder:CRIZAC:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -1.6,
+    "leads_nifty": true,
+    "members": 46,
+    "name": "Consumer Services (alpha group index)",
+    "stock_3m_pct": -19.3,
+    "stock_vs_benchmark_pct": -17.8,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "compounder",
+   "engine_name": "Compounder",
+   "entry_zone": [
+    152.35,
+    153.87
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "long",
+   "id": "compounder:CRIZAC:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 126,
+   "name": "Crizac Ltd.",
+   "r_multiples": [
+    1.5,
+    3.0,
+    5.0
+   ],
+   "reasons": [
+    "illiquidity: among the very highest of all stocks today (the model favours high readings)",
+    "traded value: lower than about 98% of stocks (the model favours low readings)",
+    "market rank of distance from 52-week high: lower than about 97% of stocks (the model favours high readings)",
+    "63-day volatility: higher than about 59% of stocks (the model favours high readings)",
+    "distance from 52-week low: lower than about 99% of stocks (the model favours high readings)"
+   ],
+   "ref_price": 152.35,
+   "risk_pct": 13.5,
+   "score": 0.6489,
+   "score_percentile": 100.0,
+   "sector": "Consumer Defensive",
+   "setup": "Compounder model",
+   "sl": 131.81,
+   "status": "pending",
+   "stop_now": 131.81,
+   "sym": "CRIZAC",
+   "targets": [
+    183.16,
+    213.96,
+    255.04
+   ],
+   "turnover_cr": 4.2
   },
   "compounder:GALLANTT:2026-10-09": {
    "also": [
@@ -283,7 +364,7 @@
    "horizon": "long",
    "id": "compounder:GALLANTT:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 588.05,
+   "last_close": 628.15,
    "max_hold": 126,
    "name": "Gallantt Ispat Ltd.",
    "r_multiples": [
@@ -291,7 +372,7 @@
     3.0,
     5.0
    ],
-   "r_open": 0.82,
+   "r_open": 1.16,
    "reasons": [
     "illiquidity: higher than 98% of stocks (the model favours high readings)",
     "traded value: lower than 99% of stocks (the model favours low readings)",
@@ -349,7 +430,7 @@
    "horizon": "long",
    "id": "compounder:JAIBALAJI:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 65.52,
+   "last_close": 74.91,
    "max_hold": 126,
    "name": "JAI BALAJI INDUSTRIES Ltd.",
    "r_multiples": [
@@ -357,7 +438,7 @@
     3.0,
     5.0
    ],
-   "r_open": -0.16,
+   "r_open": 1.14,
    "reasons": [
     "illiquidity: higher than 100% of stocks (the model favours high readings)",
     "traded value: lower than 98% of stocks (the model favours low readings)",
@@ -415,7 +496,7 @@
    "horizon": "long",
    "id": "compounder:TSFINV:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 403.25,
+   "last_close": 396.05,
    "max_hold": 126,
    "name": "TSF Investments Ltd.",
    "r_multiples": [
@@ -423,7 +504,7 @@
     3.0,
     5.0
    ],
-   "r_open": -0.09,
+   "r_open": -0.25,
    "reasons": [
     "traded value: lower than 98% of stocks (the model favours low readings)",
     "illiquidity: higher than 99% of stocks (the model favours high readings)",
@@ -476,14 +557,20 @@
      "fraction": 1.0,
      "kind": "entry",
      "price": 124.05
+    },
+    {
+     "date": "2026-10-14",
+     "fraction": 0.333,
+     "kind": "t1",
+     "price": 136.23
     }
    ],
    "first_seen": "2026-10-09",
-   "hit": 0,
+   "hit": 1,
    "horizon": "positional",
    "id": "rank:GHCLTEXTIL:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 131.61,
+   "last_close": 129.42,
    "max_hold": 25,
    "name": "GHCL Textiles Limited",
    "r_multiples": [
@@ -491,7 +578,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.62,
+   "r_open": 0.63,
    "reasons": [
     "market rank of illiquidity: higher than 95% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: higher than 89% of stocks (the model favours high readings)",
@@ -507,7 +594,7 @@
    "setup": "Rank model",
    "sl": 111.87,
    "status": "open",
-   "stop_now": 111.87,
+   "stop_now": 124.05,
    "sym": "GHCLTEXTIL",
    "targets": [
     136.23,
@@ -549,7 +636,7 @@
    "horizon": "positional",
    "id": "rank:RGL:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 167.78,
+   "last_close": 164.47,
    "max_hold": 25,
    "name": "Renaissance Global Limited",
    "r_multiples": [
@@ -557,7 +644,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.42,
+   "r_open": 0.23,
    "reasons": [
     "market rank of illiquidity: higher than 91% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: higher than 69% of stocks (the model favours high readings)",
@@ -617,7 +704,7 @@
    "horizon": "positional",
    "id": "rank:VADILALIND:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 7230.0,
+   "last_close": 7128.0,
    "max_hold": 25,
    "name": "Vadilal Industries Limited",
    "r_multiples": [
@@ -625,7 +712,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.14,
+   "r_open": -0.07,
    "reasons": [
     "market rank of illiquidity: higher than 89% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: higher than 77% of stocks (the model favours high readings)",
@@ -664,16 +751,26 @@
    "date": "2026-10-14",
    "engine": "rank",
    "engine_name": "Rank",
+   "entry": 1713.0,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     1702.0,
     1719.02
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 1713.0
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "positional",
    "id": "rank:VENKEYS:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 1658.8,
    "max_hold": 25,
    "name": "Venky's (India) Limited",
    "r_multiples": [
@@ -681,6 +778,7 @@
     2.0,
     3.5
    ],
+   "r_open": -0.37,
    "reasons": [
     "market rank of illiquidity: higher than about 90% of stocks (the model favours low readings)",
     "market rank of 12-1 month momentum: higher than about 66% of stocks (the model favours high readings)",
@@ -695,7 +793,7 @@
    "sector": "Consumer Defensive",
    "setup": "Rank model",
    "sl": 1567.53,
-   "status": "pending",
+   "status": "open",
    "stop_now": 1567.53,
    "sym": "VENKEYS",
    "targets": [
@@ -738,7 +836,7 @@
    "horizon": "positional",
    "id": "relative:AHLUCONT:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 565.2,
+   "last_close": 563.25,
    "max_hold": 25,
    "name": "Ahluwalia Contracts (India) Ltd.",
    "r_multiples": [
@@ -746,7 +844,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.19,
+   "r_open": 0.14,
    "reasons": [
     "market rank of illiquidity: higher than 99% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: lower than 94% of stocks (the model favours high readings)",
@@ -808,7 +906,7 @@
    "horizon": "positional",
    "id": "relative:ANUP:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 1511.1,
+   "last_close": 1483.0,
    "max_hold": 25,
    "name": "The Anup Engineering Ltd.",
    "r_multiples": [
@@ -816,7 +914,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.21,
+   "r_open": -0.05,
    "reasons": [
     "market rank of illiquidity: higher than 99% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: lower than 86% of stocks (the model favours high readings)",
@@ -841,6 +939,61 @@
    ],
    "turnover_cr": 4.2
   },
+  "relative:HEMIPROP:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -2.8,
+    "leads_nifty": true,
+    "members": 26,
+    "name": "Services (alpha group index)",
+    "stock_3m_pct": -18.0,
+    "stock_vs_benchmark_pct": -15.2,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "relative",
+   "engine_name": "Relative",
+   "entry_zone": [
+    111.76,
+    112.88
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "relative:HEMIPROP:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 25,
+   "name": "Hemisphere Properties India Ltd.",
+   "r_multiples": [
+    1.0,
+    2.0,
+    3.5
+   ],
+   "reasons": [
+    "market rank of illiquidity: higher than about 99% of stocks (the model favours low readings)",
+    "market rank of 12-1 month momentum: lower than about 78% of stocks (the model favours high readings)",
+    "distance from 52-week high: lower than about 77% of stocks (the model favours high readings)",
+    "63-day volatility: lower than about 91% of stocks (the model favours high readings)",
+    "126-day return: lower than about 78% of stocks (the model favours high readings)"
+   ],
+   "ref_price": 111.76,
+   "risk_pct": 5.5,
+   "score": 0.5801,
+   "score_percentile": 99.8,
+   "sector": "Real Estate",
+   "setup": "Relative model",
+   "sl": 105.67,
+   "status": "pending",
+   "stop_now": 105.67,
+   "sym": "HEMIPROP",
+   "targets": [
+    117.85,
+    123.94,
+    133.08
+   ],
+   "turnover_cr": 3.2
+  },
   "relative:MAXHEALTH:2026-10-14": {
    "also": [],
    "benchmark": {
@@ -855,16 +1008,26 @@
    "date": "2026-10-14",
    "engine": "relative",
    "engine_name": "Relative",
+   "entry": 853.0,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     852.5,
     861.02
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 853.0
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "positional",
    "id": "relative:MAXHEALTH:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 858.0,
    "max_hold": 25,
    "name": "Max Healthcare Institute Ltd.",
    "r_multiples": [
@@ -872,6 +1035,7 @@
     2.0,
     3.5
    ],
+   "r_open": 0.08,
    "reasons": [
     "market rank of illiquidity: lower than about 90% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: lower than about 61% of stocks (the model favours high readings)",
@@ -886,7 +1050,7 @@
    "sector": "Healthcare",
    "setup": "Relative model",
    "sl": 792.66,
-   "status": "pending",
+   "status": "open",
    "stop_now": 792.66,
    "sym": "MAXHEALTH",
    "targets": [
@@ -910,16 +1074,26 @@
    "date": "2026-10-14",
    "engine": "relative",
    "engine_name": "Relative",
+   "entry": 99.63,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     98.98,
     99.97
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 99.63
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "positional",
    "id": "relative:PRSMJOHNSN:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 99.25,
    "max_hold": 25,
    "name": "Prism Johnson Ltd.",
    "r_multiples": [
@@ -927,6 +1101,7 @@
     2.0,
     3.5
    ],
+   "r_open": -0.05,
    "reasons": [
     "market rank of illiquidity: higher than about 99% of stocks (the model favours high readings)",
     "market rank of 12-1 month momentum: lower than about 87% of stocks (the model favours high readings)",
@@ -941,7 +1116,7 @@
    "sector": "Basic Materials",
    "setup": "Relative model",
    "sl": 92.36,
-   "status": "pending",
+   "status": "open",
    "stop_now": 92.36,
    "sym": "PRSMJOHNSN",
    "targets": [
@@ -1019,6 +1194,61 @@
    ],
    "turnover_cr": 3.1
   },
+  "relative:RELAXO:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -5.1,
+    "leads_nifty": false,
+    "members": 41,
+    "name": "Consumer Durables (alpha group index)",
+    "stock_3m_pct": -18.8,
+    "stock_vs_benchmark_pct": -13.7,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "relative",
+   "engine_name": "Relative",
+   "entry_zone": [
+    294.35,
+    297.29
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "relative:RELAXO:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 25,
+   "name": "Relaxo Footwears Ltd.",
+   "r_multiples": [
+    1.0,
+    2.0,
+    3.5
+   ],
+   "reasons": [
+    "market rank of illiquidity: higher than about 99% of stocks (the model favours low readings)",
+    "market rank of 12-1 month momentum: lower than about 86% of stocks (the model favours high readings)",
+    "distance from 52-week high: lower than about 82% of stocks (the model favours high readings)",
+    "63-day volatility: higher than about 89% of stocks (the model favours high readings)",
+    "126-day return: lower than about 61% of stocks (the model favours high readings)"
+   ],
+   "ref_price": 294.35,
+   "risk_pct": 6.9,
+   "score": 0.5888,
+   "score_percentile": 99.9,
+   "sector": "Consumer Cyclical",
+   "setup": "Relative model",
+   "sl": 274.01,
+   "status": "pending",
+   "stop_now": 274.01,
+   "sym": "RELAXO",
+   "targets": [
+    314.69,
+    335.02,
+    365.53
+   ],
+   "turnover_cr": 6.6
+  },
   "relative:SPORTKING:2026-10-09": {
    "also": [
     "rank",
@@ -1048,14 +1278,20 @@
      "fraction": 1.0,
      "kind": "entry",
      "price": 196.45
+    },
+    {
+     "date": "2026-10-14",
+     "fraction": 0.333,
+     "kind": "t1",
+     "price": 215.34
     }
    ],
    "first_seen": "2026-10-09",
-   "hit": 0,
+   "hit": 1,
    "horizon": "positional",
    "id": "relative:SPORTKING:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 209.62,
+   "last_close": 217.36,
    "max_hold": 25,
    "name": "Sportking India Limited",
    "r_multiples": [
@@ -1063,7 +1299,7 @@
     2.0,
     3.5
    ],
-   "r_open": 0.7,
+   "r_open": 1.07,
    "reasons": [
     "market rank of 12-1 month momentum: higher than 96% of stocks (the model favours high readings)",
     "market rank of illiquidity: higher than 96% of stocks (the model favours high readings)",
@@ -1079,7 +1315,7 @@
    "setup": "Relative model",
    "sl": 177.56,
    "status": "open",
-   "stop_now": 177.56,
+   "stop_now": 196.45,
    "sym": "SPORTKING",
    "targets": [
     215.34,
@@ -1102,16 +1338,26 @@
    "date": "2026-10-14",
    "engine": "relative",
    "engine_name": "Relative",
+   "entry": 168.63,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     170.36,
     172.06
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 168.63
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "positional",
    "id": "relative:STARCEMENT:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 171.54,
    "max_hold": 25,
    "name": "Star Cement Ltd.",
    "r_multiples": [
@@ -1119,6 +1365,7 @@
     2.0,
     3.5
    ],
+   "r_open": 0.37,
    "reasons": [
     "market rank of illiquidity: among the very highest of all stocks today (the model favours high readings)",
     "market rank of 12-1 month momentum: lower than about 82% of stocks (the model favours high readings)",
@@ -1133,7 +1380,7 @@
    "sector": "Basic Materials",
    "setup": "Relative model",
    "sl": 160.76,
-   "status": "pending",
+   "status": "open",
    "stop_now": 160.76,
    "sym": "STARCEMENT",
    "targets": [
@@ -1173,7 +1420,7 @@
    "horizon": "swing",
    "id": "snapback:ARTEMISMED:2026-10-12",
    "issued": "2026-10-12",
-   "last_close": 301.75,
+   "last_close": 303.0,
    "max_hold": 7,
    "name": "Artemis Medicare Services Limited",
    "r_multiples": [
@@ -1181,7 +1428,7 @@
     1.5,
     2.5
    ],
-   "r_open": -0.54,
+   "r_open": -0.46,
    "reasons": [],
    "ref_price": 311.45,
    "risk_pct": 5.4,
@@ -1233,7 +1480,7 @@
    "horizon": "swing",
    "id": "snapback:AXISCADES:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 2086.9,
+   "last_close": 2020.5,
    "max_hold": 7,
    "name": "AXISCADES Technologies Ltd.",
    "r_multiples": [
@@ -1241,7 +1488,7 @@
     1.5,
     2.5
    ],
-   "r_open": -0.02,
+   "r_open": -0.52,
    "reasons": [
     "benchmark vs its 50-day: higher than 56% of stocks (the model favours high readings)",
     "market rank of distance from 52-week high: higher than 82% of stocks (the model favours high readings)",
@@ -1299,7 +1546,7 @@
    "horizon": "swing",
    "id": "snapback:CENTUM:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 4100.8,
+   "last_close": 3981.0,
    "max_hold": 7,
    "name": "Centum Electronics Limited",
    "r_multiples": [
@@ -1307,7 +1554,7 @@
     1.5,
     2.5
    ],
-   "r_open": 0.1,
+   "r_open": -0.39,
    "reasons": [
     "benchmark vs its 50-day: higher than 81% of stocks (the model favours high readings)",
     "distance from 52-week high: higher than 60% of stocks (the model favours high readings)",
@@ -1346,16 +1593,26 @@
    "date": "2026-10-14",
    "engine": "snapback",
    "engine_name": "Snapback",
+   "entry": 962.0,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     960.2,
     969.8
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 962.0
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "swing",
    "id": "snapback:DIVGIITTS:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 927.1,
    "max_hold": 7,
    "name": "Divgi Torqtransfer Systems Limited",
    "r_multiples": [
@@ -1363,6 +1620,7 @@
     1.5,
     2.5
    ],
+   "r_open": -0.59,
    "reasons": [
     "benchmark vs its 50-day: higher than about 98% of stocks (the model favours high readings)",
     "market rank of distance from 52-week high: lower than about 69% of stocks (the model favours high readings)",
@@ -1377,7 +1635,7 @@
    "sector": "Consumer Cyclical",
    "setup": "Snapback model",
    "sl": 902.59,
-   "status": "pending",
+   "status": "open",
    "stop_now": 902.59,
    "sym": "DIVGIITTS",
    "targets": [
@@ -1401,16 +1659,26 @@
    "date": "2026-10-14",
    "engine": "snapback",
    "engine_name": "Snapback",
+   "entry": 2025.0,
+   "entry_date": "2026-10-15",
    "entry_zone": [
     2036.9,
     2057.27
    ],
-   "events": [],
+   "events": [
+    {
+     "date": "2026-10-15",
+     "fraction": 1.0,
+     "kind": "entry",
+     "price": 2025.0
+    }
+   ],
    "first_seen": "2026-10-14",
    "hit": 0,
    "horizon": "swing",
    "id": "snapback:LAURUSLABS:2026-10-14",
    "issued": "2026-10-14",
+   "last_close": 2018.5,
    "max_hold": 7,
    "name": "Laurus Labs Ltd.",
    "r_multiples": [
@@ -1418,6 +1686,7 @@
     1.5,
     2.5
    ],
+   "r_open": -0.14,
    "reasons": [
     "benchmark vs its 50-day: lower than about 60% of stocks (the model favours high readings)",
     "market rank of distance from 52-week high: higher than about 99% of stocks (the model favours high readings)",
@@ -1432,7 +1701,7 @@
    "sector": "Healthcare",
    "setup": "Snapback model",
    "sl": 1976.97,
-   "status": "pending",
+   "status": "open",
    "stop_now": 1976.97,
    "sym": "LAURUSLABS",
    "targets": [
@@ -1475,7 +1744,7 @@
    "horizon": "swing",
    "id": "snapback:ROLEXRINGS:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 169.98,
+   "last_close": 167.87,
    "max_hold": 7,
    "name": "Rolex Rings Limited",
    "r_multiples": [
@@ -1483,7 +1752,7 @@
     1.5,
     2.5
    ],
-   "r_open": -0.09,
+   "r_open": -0.27,
    "reasons": [
     "benchmark vs its 50-day: higher than 87% of stocks (the model favours high readings)",
     "market rank of distance from 52-week high: higher than 71% of stocks (the model favours high readings)",
@@ -1541,7 +1810,7 @@
    "horizon": "swing",
    "id": "snapback:SMSPHARMA:2026-10-09",
    "issued": "2026-10-09",
-   "last_close": 438.3,
+   "last_close": 424.95,
    "max_hold": 7,
    "name": "SMS Pharmaceuticals Limited",
    "r_multiples": [
@@ -1549,7 +1818,7 @@
     1.5,
     2.5
    ],
-   "r_open": -0.31,
+   "r_open": -0.8,
    "reasons": [
     "benchmark vs its 50-day: higher than 77% of stocks (the model favours high readings)",
     "market rank of distance from 52-week high: higher than 86% of stocks (the model favours high readings)",
@@ -1573,6 +1842,116 @@
     507.61
    ],
    "turnover_cr": 63.8
+  },
+  "snapback:SUNFLAG:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": 16.5,
+    "leads_nifty": true,
+    "members": 31,
+    "name": "Basic Materials (alpha group index)",
+    "stock_3m_pct": 20.3,
+    "stock_vs_benchmark_pct": 3.8,
+    "uptrend": true
+   },
+   "date": "2026-10-15",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    423.45,
+    427.68
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:SUNFLAG:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 7,
+   "name": "Sunflag Iron And Steel Company Limited",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "RSI (2): lower than about 95% of stocks (the model favours low readings)",
+    "market rank of distance from 52-week high: higher than about 83% of stocks (the model favours high readings)",
+    "benchmark momentum vs Nifty: higher than about 95% of stocks (the model favours high readings)",
+    "benchmark vs its 50-day: higher than about 87% of stocks (the model favours high readings)",
+    "5-day return: lower than about 95% of stocks (the model favours low readings)"
+   ],
+   "ref_price": 423.45,
+   "risk_pct": 5.7,
+   "score": 0.5514,
+   "score_percentile": 99.8,
+   "sector": "Basic Materials",
+   "setup": "Snapback model",
+   "sl": 399.28,
+   "status": "pending",
+   "stop_now": 399.28,
+   "sym": "SUNFLAG",
+   "targets": [
+    442.78,
+    459.7,
+    483.87
+   ],
+   "turnover_cr": 36.4
+  },
+  "snapback:UNIPARTS:2026-10-15": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": 8.9,
+    "leads_nifty": true,
+    "members": 62,
+    "name": "Industrials (alpha group index)",
+    "stock_3m_pct": 4.0,
+    "stock_vs_benchmark_pct": -4.8,
+    "uptrend": false
+   },
+   "date": "2026-10-15",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    718.2,
+    725.38
+   ],
+   "events": [],
+   "first_seen": "2026-10-15",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:UNIPARTS:2026-10-15",
+   "issued": "2026-10-15",
+   "max_hold": 7,
+   "name": "Uniparts India Limited",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "RSI (2): lower than about 95% of stocks (the model favours low readings)",
+    "market rank of distance from 52-week high: lower than about 51% of stocks (the model favours high readings)",
+    "benchmark momentum vs Nifty: higher than about 88% of stocks (the model favours high readings)",
+    "benchmark vs its 50-day: higher than about 83% of stocks (the model favours high readings)",
+    "5-day return: lower than about 97% of stocks (the model favours low readings)"
+   ],
+   "ref_price": 718.2,
+   "risk_pct": 5.6,
+   "score": 0.5526,
+   "score_percentile": 100.0,
+   "sector": "Industrials",
+   "setup": "Snapback model",
+   "sl": 677.95,
+   "status": "pending",
+   "stop_now": 677.95,
+   "sym": "UNIPARTS",
+   "targets": [
+    750.4,
+    778.58,
+    818.83
+   ],
+   "turnover_cr": 8.5
   }
  }
 }
