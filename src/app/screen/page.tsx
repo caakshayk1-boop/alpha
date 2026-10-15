@@ -13,6 +13,7 @@ import { useStoredList } from '@/lib/store';
 import { fromQuery, toQuery } from '@/lib/screenUrl';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { useToday } from '@/lib/useToday';
 
 type Num = number | null | undefined;
 interface Field { id: string; label: string; get: (r: Row) => Num; fmt: (v: number) => string; kind?: 'chg'; step?: number }
@@ -119,13 +120,25 @@ export default function Screen() {
   }, [q, sector, tier, conds, flags, lens, sort, dir, nl]);
   const persist = (key: string, v: unknown) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* not persisted */ } };
 
+  // Price and Today % follow the site's one rule for "today" (lib/live.ts): while live prices describe a newer session than the
+  // screen, every row carries the live price and move, so the table, the filters, the sort, the plain-English box and the CSV
+  // all read the same displayed number. A stock the live snapshot does not cover shows a dash rather than an older close.
+  const asOf = s.data?.breadth.as_of ?? null;
+  const { view: tv } = useToday(asOf);
+  const base = useMemo<Row[]>(() => {
+    const list = s.data?.rows ?? [];
+    if (!tv.live) return list;
+    return list.map((r) => { const price = tv.price(r.sym, r.price); return { ...r, price, r1d: tv.pct(r.sym, r.r1d), last_date: price === null ? r.last_date : tv.session ?? r.last_date }; });
+  }, [s.data, tv]);
+  const liveCol = (c: string) => tv.live && (c === 'price' || c === 'r1d');
+
   const sectors = useMemo(() => Array.from(new Set((s.data?.rows ?? []).map((r) => r.sector).filter(Boolean))).sort(), [s.data]);
   const sigSyms = useMemo(() => new Set((eng.data?.signals ?? []).map((x) => x.sym)), [eng.data]);
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
     const active = conds.filter((c) => c.v !== '' && Number.isFinite(Number(c.v)));
-    const list = (s.data?.rows ?? []).filter((r) => {
+    const list = base.filter((r) => {
       if (nlTests.length && !nlTests.every((t) => t(r))) return false;
       if (term && !(r.sym.toLowerCase().includes(term) || r.name.toLowerCase().includes(term))) return false;
       if (sector && r.sector !== sector) return false;
@@ -150,7 +163,7 @@ export default function Screen() {
       if (!has(bv)) return -1;
       return (av - bv) * dir;
     });
-  }, [s.data, q, sector, tier, conds, flags, sort, dir, sigSyms, nlTests]);
+  }, [base, q, sector, tier, conds, flags, sort, dir, sigSyms, nlTests]);
 
   const capture = () => { if (body.current && canAnimate()) flipState.current = Flip.getState(body.current.querySelectorAll('tr')); };
   useEffect(() => {
@@ -169,8 +182,10 @@ export default function Screen() {
   const save = () => { const name = window.prompt('Name this screen'); if (!name) return; const next = [...saved.filter((x) => x.name !== name), { name, conds, flags, sector, tier, nl }]; setSaved(next); persist('alpha-screen-saved', next); };
   const load = (v: Saved) => { capture(); setConds(v.conds); setFlags(v.flags); setSector(v.sector); setTier(v.tier); setNl(v.nl ?? { text: '', off: [] }); setLimit(PAGE); setLens(''); };
   const csv = () => {
-    const head = ['symbol', 'name', 'sector', ...cols.map((c) => F.get(c)?.label ?? c)];
-    const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; })].join(','))];
+    // the displayed values, plus where they came from: live price and move carry their time, everything else the screen's date
+    const stamp = tv.live ? `price and today: ${tv.asOf}; other columns: close ${asOf ?? 'unknown'}` : `close ${asOf ?? 'unknown'}`;
+    const head = ['symbol', 'name', 'sector', ...cols.map((c) => `"${(F.get(c)?.label ?? c) + (liveCol(c) ? ` (${tv.tag} IST)` : '')}"`), 'as_of'];
+    const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; }), `"${stamp}"`].join(','))];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'alpha-screen.csv'; a.click();
   };
   const tierNoCap = useMemo(() => (s.data?.rows ?? []).filter((r) => r.tier && !has(r.mcap_cr)).length, [s.data]);
@@ -181,7 +196,7 @@ export default function Screen() {
       <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
-        <AskScreen rows={s.data?.rows ?? []} tableRows={rows} value={nl} onValue={(v) => { setNl(v); setLimit(PAGE); }} onTests={setNlTests} />
+        <AskScreen rows={base} tableRows={rows} value={nl} onValue={(v) => { setNl(v); setLimit(PAGE); }} onTests={setNlTests} />
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />
           <select className="field" aria-label="Sector" value={sector} onChange={(e) => { capture(); setSector(e.target.value); setLimit(PAGE); }}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
@@ -228,7 +243,7 @@ export default function Screen() {
               <thead>
                 <tr>
                   <th scope="col" style={{ minWidth: 250 }}>Company</th>
-                  {cols.map((c) => { const f = F.get(c)!; return <th key={c} scope="col" aria-sort={sort === c ? (dir === 1 ? 'ascending' : 'descending') : undefined} onClick={() => setSortKey(c)}>{f.label.replace(' %', '').replace(' (₹ cr)', '')}{sort === c ? (dir === 1 ? ' ↑' : ' ↓') : ''}</th>; })}
+                  {cols.map((c) => { const f = F.get(c)!; return <th key={c} scope="col" aria-sort={sort === c ? (dir === 1 ? 'ascending' : 'descending') : undefined} onClick={() => setSortKey(c)}>{f.label.replace(' %', '').replace(' (₹ cr)', '')}{liveCol(c) && <span className="lv-tag"> ({tv.tag})</span>}{sort === c ? (dir === 1 ? ' ↑' : ' ↓') : ''}</th>; })}
                 </tr>
               </thead>
               <tbody ref={body}>
@@ -248,7 +263,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}. A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}.{tv.live ? ` Price and Today % are live, as of ${tv.at} IST on ${tv.session}; a stock with no live trade shows a dash. Every other column is the ${asOf ?? 'latest'} close.` : ''} A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
         </Async>
       </section>
       <CompanyPeek sym={peek} onClose={() => setPeek(null)} />

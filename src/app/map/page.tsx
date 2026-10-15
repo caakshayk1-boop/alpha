@@ -10,6 +10,8 @@ import { canAnimate, gsap } from '@/lib/motion';
 import { squarify } from '@/lib/treemap';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { useToday } from '@/lib/useToday';
+import { sessionDate, tally } from '@/lib/today';
 
 type Metric = { id: string; label: string; get: (r: Row) => number | null | undefined; max: number; unit: string; invert?: boolean; group: string };
 const n = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -80,6 +82,9 @@ export default function MapPage() {
   const [zoom, setZoom] = useState<string | null>(null);
   const [sel, setSel] = useState<Row | null>(null);
   const [tip, setTip] = useState<{ r: Row; x: number; y: number } | null>(null);
+  // "Today" follows the site's one rule (lib/live.ts): live prices when they describe a newer session, else the screen's close.
+  const asOf = s.data?.breadth.as_of ?? null;
+  const { view: tv, day } = useToday(asOf);
 
   useLayoutEffect(() => {
     const measure = () => box.current && setSize({ w: box.current.clientWidth, h: box.current.clientHeight });
@@ -91,6 +96,11 @@ export default function MapPage() {
   }, [s.loading]);
 
   const m = METRICS.find((x) => x.id === metric) ?? METRICS[0];
+  const isToday = m.id === 'r1d';
+  const todayLabel = tv.live ? `Today · live ${tv.at} IST` : `Today · ${sessionDate(asOf)} close`;
+  // the label the metric carries everywhere it is shown: today names its source and time, every other measure the screen's date
+  const mLabel = isToday ? todayLabel : `${m.label} · ${sessionDate(asOf)} close`;
+  const raw = useMemo(() => (isToday ? (r: Row) => tv.pct(r.sym, r.r1d) : (r: Row) => n(m.get(r))), [isToday, tv, m]);
   const grp = GROUPS.find((g) => g.id === groupBy) ?? GROUPS[0];
   const sz = SIZES.find((x) => x.id === sizeBy) ?? SIZES[0];
 
@@ -103,18 +113,18 @@ export default function MapPage() {
 
   // "vs group": each stock minus its group's median, which separates a stock's own story from its sector's
   const valueOf = useMemo(() => {
-    if (!vsGroup) return (r: Row) => n(m.get(r));
+    if (!vsGroup) return raw;
     const by = new Map<string, number[]>();
     for (const r of universe) {
-      const v = n(m.get(r));
+      const v = raw(r);
       if (v !== null) by.set(grp.get(r), [...(by.get(grp.get(r)) ?? []), v]);
     }
     const med = new Map([...by.entries()].map(([k, v]) => [k, median(v) as number]));
     return (r: Row) => {
-      const v = n(m.get(r));
+      const v = raw(r);
       return v === null ? null : v - (med.get(grp.get(r)) ?? 0);
     };
-  }, [vsGroup, universe, m, grp]);
+  }, [vsGroup, universe, raw, grp]);
 
   const shown = useMemo(() => (zoom ? universe.filter((r) => grp.get(r) === zoom) : universe), [universe, zoom, grp]);
 
@@ -134,9 +144,9 @@ export default function MapPage() {
   // summary strip for what is on screen right now
   const summary = useMemo(() => {
     const vals = shown.map((r) => valueOf(r)).filter((v): v is number => v !== null);
-    const up = vals.filter((v) => v > 0).length;
-    const ranked = shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v);
-    return { n: vals.length, up, down: vals.length - up, med: median(vals), top: ranked.slice(0, 5), bottom: ranked.slice(-5).reverse() };
+    const t = tally(vals);   // an unchanged stock is neither up nor down
+    const ranked = shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v || a.r.sym.localeCompare(b.r.sym));
+    return { n: vals.length, up: t.up, down: t.down, flat: t.flat, med: median(vals), top: ranked.slice(0, 5), bottom: ranked.slice(-5).reverse(), ranked };
   }, [shown, valueOf]);
 
   useEffect(() => {
@@ -163,7 +173,7 @@ export default function MapPage() {
                 <div className="filters" style={{ margin: 0, alignItems: 'center' }}>
                   <label className="eyebrow" htmlFor="heat-colour">Colour</label>
                   <select id="heat-colour" className="field" style={{ height: 36, minWidth: 0, width: 'min(100%, 260px)' }} value={metric} onChange={(e) => setMetric(e.target.value)}>
-                    {metricGroups.map((g) => <optgroup key={g} label={g}>{METRICS.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</optgroup>)}
+                    {metricGroups.map((g) => <optgroup key={g} label={g}>{METRICS.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{x.id === 'r1d' ? todayLabel : x.label}</option>)}</optgroup>)}
                   </select>
                   <span className="eyebrow" style={{ marginLeft: 8 }}>Size</span>
                   <span role="group" aria-label="Size by" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{SIZES.map((x) => <button key={x.id} className="chip" aria-pressed={sizeBy === x.id} onClick={() => setSizeBy(x.id)}>{x.label}</button>)}</span>
@@ -185,11 +195,12 @@ export default function MapPage() {
                   </details>
                   <span className="legend">−{m.max}{m.unit} <i /> +{m.max}{m.unit}</span>
                 </div>
+                <p className="lv-metric" aria-live="polite"><b>{mLabel}</b>{isToday && day ? <> · whole market {day.source === 'live' ? 'live' : 'at the close'}: <span className="up">▲ {num(day.up)} up</span>, <span className="down">▼ {num(day.down)} down</span>, {num(day.flat)} unchanged, of {num(day.counted)} priced</> : null}</p>
               </div>
 
               <div className="grid g4" style={{ marginBottom: 12 }}>
                 <div className="panel tight"><div className="eyebrow">On screen</div><div className="disp" style={{ fontSize: 34 }}>{num(summary.n)}</div></div>
-                <div className="panel tight"><div className="eyebrow">Up vs down</div><div className="disp" style={{ fontSize: 34 }}><span className="up">{summary.up}</span> <span className="dim">/</span> <span className="down">{summary.down}</span></div></div>
+                <div className="panel tight"><div className="eyebrow">Up vs down</div><div className="disp" style={{ fontSize: 34 }}><span className="up">{summary.up}</span> <span className="dim">/</span> <span className="down">{summary.down}</span></div>{summary.flat > 0 && <div className="dim num" style={{ fontSize: 13 }}>{summary.flat} unchanged</div>}</div>
                 <div className="panel tight"><div className="eyebrow">Median</div><div className="disp" style={{ fontSize: 34 }}>{fmtV(summary.med)}</div></div>
                 <div className="panel tight"><div className="eyebrow">Leaders</div><div className="num" style={{ fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>{summary.top.map((x) => x.r.sym).join(' · ') || '—'}</div></div>
               </div>
@@ -228,19 +239,20 @@ export default function MapPage() {
                   <div style={{ position: 'absolute', left: Math.min(tip.x + 14, size.w - 230), top: Math.min(tip.y + 14, size.h - 120), pointerEvents: 'none', zIndex: 9, minWidth: 210, padding: '10px 13px', borderRadius: 12, background: 'rgba(8,10,14,.92)', border: '1px solid var(--line-2)', color: '#fff' }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{tip.r.name}</div>
                     <div className="num" style={{ fontSize: 12, opacity: 0.75 }}>{tip.r.sym} · {tip.r.sector} · {crore(tip.r.mcap_cr)}</div>
-                    <div className="num" style={{ marginTop: 5, fontSize: 13 }}>{m.label}: <b>{fmtV(valueOf(tip.r))}</b></div>
-                    <div className="num" style={{ fontSize: 12, opacity: 0.8 }}>1D {pct(tip.r.r1d)} · 1M {pct(tip.r.r1m)} · 1Y {pct(tip.r.r1y)}</div>
+                    <div className="num" style={{ marginTop: 5, fontSize: 13 }}>{mLabel}: <b>{fmtV(valueOf(tip.r))}</b></div>
+                    <div className="num" style={{ fontSize: 12, opacity: 0.8 }}>₹{num(tv.price(tip.r.sym, tip.r.price), 2)} · today {pct(tv.pct(tip.r.sym, tip.r.r1d))} ({tv.tag})</div>
+                    <div className="num" style={{ fontSize: 12, opacity: 0.8 }}>1M {pct(tip.r.r1m)} · 1Y {pct(tip.r.r1y)} ({sessionDate(asOf)} close)</div>
                   </div>
                 )}
               </div>
 
               <details className="panel tight" style={{ marginTop: 14 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {m.label}</summary>
-                <p className="dim" style={{ fontSize: 14, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero; the median is {fmtV(summary.med)}.</p>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {mLabel}</summary>
+                <p className="dim" style={{ fontSize: 14, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero, {summary.down} below{summary.flat ? `, ${summary.flat} unchanged` : ''}; the median is {fmtV(summary.med)}.</p>
                 <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 360 }}>
-                  <table className="tbl"><caption className="sr">Stocks on the map by {m.label}</caption>
-                    <thead><tr><th>Stock</th><th>Sector</th><th>{m.label}</th></tr></thead>
-                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td><Link href={companyHref(r.sym)} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.name} ({r.sym})</Link></td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
+                  <table className="tbl"><caption className="sr">Stocks on the map by {mLabel}</caption>
+                    <thead><tr><th>Stock</th><th>Sector</th><th>{mLabel}</th></tr></thead>
+                    <tbody>{summary.ranked.map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td><Link href={companyHref(r.sym)} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.name} ({r.sym})</Link></td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
                   </table>
                 </div>
                 <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Every stock on the map with a value, strongest first. Each name opens its company page.</p>
@@ -253,9 +265,10 @@ export default function MapPage() {
                       <div className="eyebrow">Selected · {sel.sector}</div>
                       <div className="disp" style={{ fontSize: 32, margin: '8px 0' }}>{sel.name}</div>
                       <div className="kv">
-                        <div><div className="k">Price</div><div className="v">₹{num(sel.price, 2)}</div></div>
+                        <div><div className="k">Price · {tv.tag}</div><div className="v">₹{num(tv.price(sel.sym, sel.price), 2)}</div></div>
                         <div><div className="k">Market cap</div><div className="v" style={{ fontSize: 15 }}>{crore(sel.mcap_cr)}</div></div>
-                        <div><div className="k">1D · 1M · 1Y</div><div className="v" style={{ fontSize: 15 }}><Chg v={sel.r1d} dp={1} /> <Chg v={sel.r1m} dp={0} /> <Chg v={sel.r1y} dp={0} /></div></div>
+                        <div><div className="k">Today · {tv.tag}</div><div className="v" style={{ fontSize: 15 }}><Chg v={tv.pct(sel.sym, sel.r1d)} dp={2} /></div></div>
+                        <div><div className="k">1M · 1Y · {sessionDate(asOf)}</div><div className="v" style={{ fontSize: 15 }}><Chg v={sel.r1m} dp={0} /> <Chg v={sel.r1y} dp={0} /></div></div>
                         <div><div className="k">P/E · ROCE</div><div className="v" style={{ fontSize: 15 }}>{n(sel.pe) !== null ? (sel.pe as number).toFixed(1) : '—'} · {n(sel.roce) !== null ? `${(sel.roce as number).toFixed(1)}%` : '—'}</div></div>
                         <div><div className="k">Composite</div><div className="v">{n(sel.comp) !== null ? Math.round(sel.comp as number) : '—'}</div></div>
                         <div><div className="k">From 52w high</div><div className="v">{n(sel.from_high) !== null ? `${(sel.from_high as number).toFixed(0)}%` : '—'}</div></div>

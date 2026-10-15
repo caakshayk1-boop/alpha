@@ -542,3 +542,45 @@ test('nse clock: hours, next open across a weekend, before the bell', () => {
   assert.equal(nseClock(Date.parse('2026-10-15T03:00:00Z')).minutesToNext, 45);
   assert.equal(nseClock(Date.parse('2026-10-15T11:00:00Z')).nextLabel, 'opens 09:15 IST tomorrow');
 });
+
+// ── per-stock "today" (lib/today.ts) ──
+import { istHM, movers, sessionDay, tally, todayView } from '../src/lib/today.ts';
+
+test('todayView: live day reads the snapshot; a stock it lacks shows nothing, never the older close', () => {
+  const snap = { pct: { AAA: 1.25, BBB: -0.5, CCC: 0 }, price: { AAA: 101.25, BBB: 99.5, CCC: 10 }, newest: Date.UTC(2026, 9, 15, 9, 2) / 1000, session: '2026-10-15', count: 3, universe: 3, fetchedAt: '' };
+  const day = { source: 'live' as const, session: '2026-10-15', up: 1, down: 1, flat: 1, counted: 3, sectors: [] };
+  const v = todayView(day, snap, '2026-10-14');
+  assert.equal(v.live, true);
+  assert.equal(v.at, '14:32');                       // 09:02 UTC = 14:32 IST
+  assert.equal(v.tag, 'live 14:32');
+  assert.equal(v.asOf, 'live 2026-10-15 14:32 IST');
+  assert.equal(v.pct('AAA', 9.9), 1.25);
+  assert.equal(v.price('BBB', 1), 99.5);
+  assert.equal(v.pct('ZZZ', 3.3), null);
+  assert.equal(v.price('ZZZ', 50), null);
+});
+
+test('todayView: close day (or no day yet) reads the screen row, dated by the screen', () => {
+  const day = { source: 'close' as const, session: '2026-10-14', up: 1, down: 0, flat: 0, counted: 1, sectors: [] };
+  for (const d of [day, null]) {
+    const v = todayView(d, null, '2026-10-14');
+    assert.equal(v.live, false);
+    assert.equal(v.tag, '14 Oct 2026 close');
+    assert.equal(v.asOf, 'close 2026-10-14');
+    assert.equal(v.pct('AAA', 2.5), 2.5);
+    assert.equal(v.pct('AAA', null), null);
+    assert.equal(v.price('AAA', Number.NaN), null);
+  }
+});
+
+test('tally and movers: zero is unchanged, missing is uncounted, ties break on the symbol', () => {
+  assert.deepEqual(tally([1, -1, 0, null, undefined, Number.NaN, 2]), { up: 2, down: 1, flat: 1, counted: 4 });
+  const m = movers([{ sym: 'B', v: 2 }, { sym: 'A', v: 2 }, { sym: 'C', v: -3 }, { sym: 'D', v: 0 }, { sym: 'E', v: null }], 5);
+  assert.deepEqual(m.up.map((x) => x.sym), ['A', 'B']);
+  assert.deepEqual(m.down.map((x) => x.sym), ['C']);
+});
+
+test('istHM and sessionDay: IST clock and a calendar date that no time zone can shift', () => {
+  assert.equal(istHM(Date.UTC(2026, 9, 15, 18, 45) / 1000), '00:15');
+  assert.equal(sessionDay('2026-10-15'), 'Thu 15 Oct');
+});
