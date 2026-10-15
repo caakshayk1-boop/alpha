@@ -6,7 +6,6 @@ import { Async, Chg, LazyMount, Rv, SectionHead, Skel, Spark } from '@/component
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
-import { MarketSession } from '@/components/MarketSession';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, TodayProvider, useToday } from '@/components/widgets/DayContext';
 import { IndexStrip } from '@/components/widgets/IndexStrip';
@@ -74,7 +73,6 @@ function TodayHero() {
       ) : (
         <div role="status" aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
       )}
-      <div className="stamp" style={{ marginTop: 0 }}><MarketSession /></div>
       <DataStamp ids={['barometer', 'screen', 'engines']} />
       {/* the header hides its clock below 1240px, so the clock moves here on narrow screens */}
       <div className="today-clock"><MarketClock /></div>

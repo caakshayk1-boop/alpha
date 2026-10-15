@@ -10,7 +10,7 @@ const dur = (m: number) => (m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor((
 /** The header's market clock. "Open" needs both the hours and a trade in the last 15 minutes (a holiday has the hours but no
  *  trades), so it never claims a market is trading when it is not. Ticks on a 30 s timer, not rAF. */
 export function MarketClock() {
-  const { snap } = useLive();
+  const { snap, loading } = useLive();
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => { setNow(Date.now()); const t = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(t); }, []);
   if (now === null) return <span className="mclock" aria-hidden />;
@@ -18,7 +18,7 @@ export function MarketClock() {
   const trading = c.inHours && !!snap && now / 1000 - snap.newest < 15 * 60;
   const label = trading
     ? `NSE open · prices ${IST_TIME.format(new Date(snap!.newest * 1000))} IST`
-    : c.inHours ? 'NSE: no trades in 15 min' : `NSE closed · ${c.nextLabel}`;
+    : c.inHours ? (loading && !snap ? 'NSE · checking prices' : 'NSE: no trades in 15 min') : `NSE closed · ${c.nextLabel}`;
   return (
     <span className={`mclock${trading ? ' on' : ''}`} role="status" title={trading ? `Closes in ${dur(c.minutesToNext)}` : `${c.nextLabel}, in ${dur(c.minutesToNext)}`}>
       <i aria-hidden />{label}

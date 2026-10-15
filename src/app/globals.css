@@ -844,7 +844,7 @@ button.chip:hover { color: var(--text); border-color: var(--line-2); }
 @media (max-width: 400px) { .sky { min-height: 308px; } }
 @media (max-width: 340px) { .sky { min-height: 360px; } }
 .today-h-skel { height: 1.04em; } @media (max-width: 760px) { .today-h-skel { height: 2.08em; } }
-.read-ink p { min-height: calc(1.18em * 3); } @media (max-width: 760px) { .read-ink p { min-height: calc(1.18em * 6); } }
+.read-ink p { min-height: calc(1.18em * 4); } @media (max-width: 760px) { .read-ink p { min-height: calc(1.18em * 8); } }
 .chart-state { min-height: 60px; } @media (max-width: 760px) { .chart-state { min-height: 112px; } }
 
 /* ═══ motion v3 (2026-10-15) ═══════════════════════════════════════════════
@@ -934,3 +934,10 @@ html.anim .mclock.on i { animation: livePing 2.4s ease-out infinite; }
 .lw-empty { margin: 14px 0 0; }
 .lw-foot { font-size: 13px; margin: 12px 0 0; }
 .lw-more { display: inline-block; margin-top: 14px; color: var(--accent-2); font-size: 14px; }
+
+/* phones: the freshness stamps are ONE scrollable line, so their height never changes as dates arrive (layout shift) */
+@media (max-width: 760px) {
+  .stamp { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; padding-bottom: 2px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
+  .stamp::-webkit-scrollbar { display: none; }
+  .stamp-item { flex: none; }
+}
