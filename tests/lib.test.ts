@@ -507,3 +507,38 @@ test('company slug: & round-trips through _, plain and hyphenated symbols are un
   assert.equal(companyHref('M&M'), '/company/M_M/');
   assert.equal(slugToSym('m_m'), 'M&M');
 });
+
+import { dayFromLive, istDate, mergeLive, pickDay } from '../src/lib/live.ts';
+test('live: IST session date, merge of halves, and a failed half is missing, not zero', () => {
+  assert.equal(istDate(Date.parse('2026-10-14T19:00:00Z') / 1000), '2026-10-15', '00:30 IST is the next calendar day');
+  const t = Date.parse('2026-10-15T04:50:00Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 2, fetched_at: 'a', count: 2, quotes: { A: [110, 100, t], B: [90, 100, t] } }, { ok: false, part: 1, parts: 2, fetched_at: 'b', count: 0, quotes: {} }], 4);
+  assert.ok(snap);
+  assert.deepEqual(snap.pct, { A: 10, B: -10 });
+  assert.equal(snap.session, '2026-10-15');
+  assert.equal(snap.count, 2);
+  assert.equal(mergeLive([null, undefined], 4), null);
+});
+
+test('live: day figures use the universe sectors; pickDay prefers the newer session and needs 90% coverage', () => {
+  const t = Date.parse('2026-10-15T04:50:00Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 3, quotes: { A: [101, 100, t], B: [99, 100, t], C: [100, 100, t] } }], 3)!;
+  const live = dayFromLive(snap, { built_on: 'x', as_of: '2026-10-14', count: 3, rows: [['A', 'Tech', 'A Ltd'], ['B', 'Tech', 'B Ltd'], ['C', 'Bank', 'C Ltd']] });
+  assert.deepEqual([live.up, live.down, live.flat, live.counted], [1, 1, 1, 3]);
+  assert.deepEqual(live.sectors.map((s) => [s.name, s.median]), [['Bank', 0], ['Tech', 0]]);
+  const close = { source: 'close' as const, session: '2026-10-14', up: 5, down: 1, flat: 0, counted: 6, sectors: [] };
+  assert.equal(pickDay(close, live, 1)?.source, 'live', 'a newer live session wins');
+  assert.equal(pickDay(close, live, 0.5)?.source, 'close', 'half the market is not the market');
+  assert.equal(pickDay({ ...close, session: '2026-10-15' }, live, 1)?.source, 'close', 'same session: the vetted close wins');
+  assert.equal(pickDay(null, null, 0), null);
+});
+
+import { nseClock } from '../src/lib/live.ts';
+test('nse clock: hours, next open across a weekend, before the bell', () => {
+  assert.deepEqual(nseClock(Date.parse('2026-10-15T05:00:00Z')).inHours, true);   // Thu 10:30 IST
+  const fri = nseClock(Date.parse('2026-10-16T11:00:00Z'));                          // Fri 16:30 IST
+  assert.equal(fri.inHours, false); assert.equal(fri.nextLabel, 'opens 09:15 IST Mon');
+  assert.equal(nseClock(Date.parse('2026-10-15T03:00:00Z')).nextLabel, 'opens 09:15 IST today');   // 08:30 IST
+  assert.equal(nseClock(Date.parse('2026-10-15T03:00:00Z')).minutesToNext, 45);
+  assert.equal(nseClock(Date.parse('2026-10-15T11:00:00Z')).nextLabel, 'opens 09:15 IST tomorrow');
+});

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FreshnessBanner } from '@/components/DataStamp';
+import { MarketClock } from '@/components/MarketClock';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { feed } from '@/lib/data';
@@ -275,6 +276,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="top-actions">
+            <MarketClock />
             <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-label="Search ⌘K: companies and pages">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span>Search</span>

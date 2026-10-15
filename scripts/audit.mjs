@@ -15,7 +15,7 @@ const known = (p) => {
   if (clean === '/' || clean === '') return true;
   return existsSync(join(OUT, clean)) || existsSync(join(OUT, clean, 'index.html')) || existsSync(join(OUT, `${clean}.html`));
 };
-const live = new Set(['/api/quotes', '/api/px', '/api/chart', '/api/ipo-live', '/api/explain', '/api/summary']);
+const live = new Set(['/api/quotes', '/api/px', '/api/chart', '/api/ipo-live', '/api/explain', '/api/summary', '/api/live']);
 const feeds = new Set(readFileSync('worker/index.js', 'utf8').match(/^\s{2}'?([a-z0-9_-]+)'?:\s*`\$\{(?:SIGNAL_)?RAW\}/gm)?.map((l) => l.trim().replace(/^'?([a-z0-9_-]+)'?:.*/, '$1')) ?? []);
 let checked = 0;
 for (const f of pages) {

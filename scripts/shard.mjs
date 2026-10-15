@@ -20,6 +20,11 @@ try {
     n++;
   }
   console.log(`shard: ${n} companies, screen built ${screen.built_on}`);
+  // The live-price universe: every screened symbol with its sector, read by /api/live (worker) and lib/live.ts. Sorted, so
+  // the Worker's two halves are stable between requests.
+  const uni = screen.rows.filter((r) => /^[A-Za-z0-9&-]{1,20}$/.test(r.sym)).map((r) => [r.sym, r.sector ?? '', r.name ?? r.sym]).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  writeFileSync('public/universe.json', JSON.stringify({ built_on: screen.built_on, as_of: screen.breadth?.as_of ?? null, count: uni.length, rows: uni }));
+  console.log(`shard: universe.json with ${uni.length} symbols`);
   // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.
   const slug = (sym) => sym.replace(/&/g, '_');
   const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alpha.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);

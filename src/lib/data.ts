@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { dayFromLive, mergeLive, pickDay, type DayFigures, type LivePart, type LiveSnap, type Universe } from './live';
 import type { RotationFeed, ChartFeed, Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed, Summary } from './types';
 
 /** feed name -> payload type */
@@ -106,4 +107,40 @@ export function usePx(symbols: string[]): { quotes: Record<string, import('./typ
     return () => { live = false; window.clearInterval(t); };
   }, [key]);
   return state;
+}
+
+/** The whole screened market, live (/api/live, two halves) with the universe's sectors. Refreshes every 60 s while trades are
+ *  fresh and the tab is visible, every 10 minutes otherwise; a timer, not an observer or rAF, so a background tab catches up
+ *  when it is shown again. Bypasses the load() memo on purpose: this one must change. */
+export function useLive(): { snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null } {
+  const [state, set] = useState<{ snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null }>({ snap: null, universe: null, loading: true, error: null });
+  useEffect(() => {
+    let alive = true;
+    let timer = 0;
+    const getJson = async <T,>(u: string): Promise<T | null> => { try { const r = await fetch(u, { cache: 'no-store' }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; } };
+    const tick = async () => {
+      const [uni, a, b] = await Promise.all([load<Universe>(`${BASE}/universe.json`).catch(() => null), getJson<LivePart>(`${BASE}/api/live?part=0`), getJson<LivePart>(`${BASE}/api/live?part=1`)]);
+      if (!alive) return;
+      const snap = mergeLive([a, b], uni?.count ?? 0);
+      set({ snap, universe: uni, loading: false, error: snap ? null : 'live prices unavailable' });
+      const fresh = !!snap && Date.now() / 1000 - snap.newest < 30 * 60;
+      const next = () => { timer = window.setTimeout(() => { if (document.visibilityState === 'visible') void tick(); else next(); }, fresh ? 60_000 : 600_000); };
+      next();
+    };
+    void tick();
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, []);
+  return state;
+}
+
+/** The day's breadth and sector moves under the one rule in lib/live.ts: the newer session wins, live needs 90% coverage. */
+export function useDay(): { day: DayFigures | null; live: ReturnType<typeof useLive>; loading: boolean } {
+  const sum = useSummary();
+  const lv = useLive();
+  const day = useMemo(() => {
+    const close: DayFigures | null = sum.data && sum.data.as_of ? { source: 'close', session: sum.data.as_of, ...sum.data.day, sectors: sum.data.sectors } : null;
+    const live = lv.snap && lv.universe ? dayFromLive(lv.snap, lv.universe) : null;
+    return pickDay(close, live, lv.snap && lv.universe?.count ? lv.snap.count / lv.universe.count : 0);
+  }, [sum.data, lv.snap, lv.universe]);
+  return { day, live: lv, loading: sum.loading && lv.loading };
 }

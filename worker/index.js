@@ -171,6 +171,50 @@ async function summary(ctx) {
   }
 }
 
+// ── the whole screened market, live ─────────────────────────────────────
+// /api/live?part=0|1  →  { ok, part, parts, fetched_at, count, quotes: { SYM: [price, previousClose, lastTradeEpochS] } }
+// Yahoo's batch endpoint answers 20 symbols per call (more returns nothing), so 990 symbols are 50 calls. Each half is 25 calls
+// plus one asset read, inside the 50-subrequest limit of any Workers plan. The universe is public/universe.json (built with
+// the deploy). A symbol Yahoo does not price is absent, never zero. Cached 60 s while trades are fresh, 10 minutes otherwise.
+const LIVE_PARTS = 2;
+async function live(url, env, ctx) {
+  const part = Number(url.searchParams.get('part'));
+  if (!Number.isInteger(part) || part < 0 || part >= LIVE_PARTS) return json({ ok: false, error: 'part must be 0 or 1' }, 400);
+  const cache = caches.default;
+  const key = new Request(`https://alpha.askakshay.com/__live_v1/${part}`);
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  try {
+    const u = await env.ASSETS.fetch(new Request('https://alpha.askakshay.com/universe.json'));
+    if (!u.ok) return json({ ok: false, error: `universe ${u.status}` }, 502);
+    const all = (await u.json()).rows.map((r) => r[0]);
+    const half = Math.ceil(all.length / LIVE_PARTS);
+    const syms = all.slice(part * half, (part + 1) * half);
+    const batches = [];
+    for (let i = 0; i < syms.length; i += 20) batches.push(syms.slice(i, i + 20));
+    const quotes = {};
+    await Promise.all(batches.map(async (b) => {
+      try {
+        const q = b.map((x) => encodeURIComponent(`${x}.NS`)).join(',');
+        const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/spark?symbols=${q}&range=1d&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+        if (!r.ok) return;
+        for (const x of (await r.json())?.spark?.result ?? []) {
+          const m = x?.response?.[0]?.meta;
+          const price = Number(m?.regularMarketPrice), prev = Number(m?.chartPreviousClose ?? m?.previousClose), t = Number(m?.regularMarketTime);
+          if (price > 0 && prev > 0 && t > 0) quotes[String(x.symbol).replace(/\.NS$/, '')] = [price, prev, t];
+        }
+      } catch { /* this batch is absent, never zero */ }
+    }));
+    const newest = Math.max(0, ...Object.values(quotes).map((q) => q[2]));
+    const fresh = Date.now() / 1000 - newest < 30 * 60;
+    const res = json({ ok: Object.keys(quotes).length > 0, part, parts: LIVE_PARTS, fetched_at: new Date().toISOString(), requested: syms.length, count: Object.keys(quotes).length, quotes }, 200, `public, max-age=${fresh ? 30 : 300}, s-maxage=${fresh ? 60 : 600}`);
+    if (Object.keys(quotes).length) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch (e) {
+    return json({ ok: false, error: `live failed: ${e.message}` }, 502);
+  }
+}
+
 // [id, name, group, yahoo symbol, prefix, decimals]
 const INSTRUMENTS = [
   ['nifty', 'Nifty 50', 'India', '^NSEI', '', 0],
@@ -518,6 +562,9 @@ export default {
     }
     if (url.pathname === '/api/explain' || url.pathname === '/api/explain/') {
       return explain(request, env, url);
+    }
+    if (url.pathname === '/api/live' || url.pathname === '/api/live/') {
+      return live(url, env, ctx);
     }
     if (url.pathname === '/api/summary' || url.pathname === '/api/summary/') {
       return summary(ctx);
