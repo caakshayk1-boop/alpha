@@ -111,7 +111,7 @@ function TodayHero() {
               <div className="row"><div className="n up">{num(day.up)}<small>rose</small></div><div className="n down">{num(day.down)}<small>fell</small></div></div>
               <div className="split" aria-hidden><i className="u" style={{ width: `${share(day.up)}%` }} /><i className="f" style={{ width: `${share(day.flat)}%` }} /><i className="d" style={{ width: `${share(day.down)}%` }} /></div>
               <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
-              {b200 && <div className="foot">{num(b200.above)} of {num(b200.withHistory)} with a 200-day history sit above it.</div>}
+              {b200 && <div className="foot">At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of {num(b200.withHistory)} with a 200-day history sat above their 200-day average.</div>}
             </>
           ) : dayFailed ? <p className="muted" style={{ marginTop: 12 }}>The day&apos;s breadth could not be loaded. Nothing is estimated in its place.</p> : <Skel h={100} style={{ marginTop: 14 }} />}
         </section>
