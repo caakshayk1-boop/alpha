@@ -897,6 +897,11 @@ html.anim .mclock.on i { animation: livePing 2.4s ease-out infinite; }
 .flash { border-radius: 6px; transition: background-color 0.6s var(--ease); padding: 0 2px; margin: 0 -2px; }
 .flash-up { background-color: var(--up-soft); transition: none; } .flash-down { background-color: var(--down-soft); transition: none; }
 
+/* agent: live-views */
+/* the heat map names the source and time of the measure it is coloured by; screen headers carry "(live HH:MM)" */
+.lv-metric { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.lv-metric b { color: var(--text); font-weight: 600; }
+.lv-tag { font-weight: 500; color: var(--dim); white-space: nowrap; }
 /* agent: today-widgets */
 /* Today hero: the market clock shows here only where the header hides it (same 1240px breakpoint as .mclock above) */
 .today-clock { display: none; margin-top: 10px; min-height: 36px; }

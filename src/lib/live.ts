@@ -85,22 +85,34 @@ export interface DayFigures {
   session: string;
   up: number; down: number; flat: number; counted: number;
   sectors: { name: string; n: number; median: number }[];
+  /** live only: universe stocks with a quote whose last trade is in an older session, left out of every figure */
+  stale?: number;
 }
 
 const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 
-/** The day's breadth and sector medians from a live snapshot, over the screen's universe and its sectors. */
+/** True when a symbol traded in the snapshot's own session. A quote whose last trade is older (suspended, renamed, or a
+ *  previous close the source never adjusted: CCAVENUE showed +901% on 15 Oct off a 12 Oct trade) has no move for this day. */
+export const inSession = (snap: LiveSnap, sym: string): boolean => typeof snap.pct[sym] === 'number' && snap.at[sym] > 0 && istDate(snap.at[sym]) === snap.session;
+
+/** The day's breadth and sector medians from a live snapshot, over the screen's universe and its sectors. Stale quotes
+ *  (see inSession) are left out and counted in `stale`. */
 export function dayFromLive(snap: LiveSnap, uni: Universe): DayFigures {
-  let up = 0, down = 0, flat = 0;
+  let up = 0, down = 0, flat = 0, stale = 0;
   const bySector = new Map<string, number[]>();
+  // mergeLive already removed the move of every stock not traded this session (snap.stale); count those in the universe so
+  // pages can say how many were left out. inSession stays as a second guard for snapshots built elsewhere.
+  const staleSet = new Set(snap.stale ?? []);
   for (const [sym, sector] of uni.rows) {
+    if (staleSet.has(sym)) { stale++; continue; }
     const v = snap.pct[sym];
     if (typeof v !== 'number') continue;
+    if (!inSession(snap, sym)) { stale++; continue; }
     if (v > 0) up++; else if (v < 0) down++; else flat++;
     if (sector) bySector.set(sector, [...(bySector.get(sector) ?? []), v]);
   }
   const sectors = [...bySector.entries()].map(([name, a]) => ({ name, n: a.length, median: Math.round(median(a) * 100) / 100 })).sort((a, b) => b.median - a.median || a.name.localeCompare(b.name));
-  return { source: 'live', session: snap.session, up, down, flat, counted: up + down + flat, sectors };
+  return { source: 'live', session: snap.session, up, down, flat, counted: up + down + flat, sectors, stale };
 }
 
 /** Which source describes the day. Live only when it is a newer session than the close AND covers most of the universe

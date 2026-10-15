@@ -12,3 +12,4 @@ public/c/
 .dev.vars*
 public/sitemap-companies.xml
 public/universe.json
+.claude/
