@@ -8,6 +8,7 @@ import { useFeed } from '@/lib/data';
 import { dash, dateLabel, num } from '@/lib/format';
 import { ACTIONS, MIN_ENTRIES, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '@/lib/journal';
 import type { JournalAction, JournalEntry } from '@/lib/journal';
+import { companyHref } from '@/lib/slug';
 
 const KEY = 'alpha-journal';
 const LABEL: Record<JournalAction, string> = { took: 'Took it', skipped: 'Skipped', watching: 'Watching' };
@@ -140,7 +141,7 @@ export default function Journal() {
                 return (
                   <tr key={e.id} style={{ cursor: 'default' }}>
                     <td className="num">{dateLabel(e.date)}</td>
-                    <td><Link href={`/company/?s=${encodeURIComponent(e.sym)}`} className="co"><b>{e.sym}</b></Link></td>
+                    <td><Link href={companyHref(e.sym)} className="co"><b>{e.sym}</b></Link></td>
                     <td><span className={`tag ${e.action === 'took' ? 'acc' : ''}`}>{LABEL[e.action]}</span></td>
                     <td style={{ textAlign: 'left', maxWidth: 360, whiteSpace: 'normal' }}>{e.why}</td>
                     <td className="num">{e.price !== null ? `₹${num(e.price, 2)}` : dash}</td>

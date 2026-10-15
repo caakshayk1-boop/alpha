@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Async, Chg, PageHead, Rv, SectionHead, Spark } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
@@ -11,6 +11,7 @@ import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { dateLabel, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 const TOC: [string, string][] = [['read', 'The read'], ['quotes', 'Quotes'], ['sectors', 'Sectors'], ['moved', 'What moved'], ['screen', 'Screen changes'], ['calendar', 'Calendar'], ['seasonal', 'Seasonal record'], ['engines', 'Engines'], ['wire', 'Headlines']];
 const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -27,6 +28,23 @@ export default function Brief() {
   const sum = useSummary();
   const eng = useEngines();
   const [copied, setCopied] = useState(false);
+  // Which section is in view, for the index. Scroll position is read on a timer-coalesced scroll handler (no observer:
+  // observers never fire in a background tab, and the index must still be right when the reader comes back).
+  const [here, setHere] = useState('read');
+  useEffect(() => {
+    let t = 0;
+    const read = () => {
+      t = 0;
+      const y = window.innerHeight * 0.3;
+      let cur = TOC[0][0];
+      for (const [id] of TOC) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= y) cur = id; }
+      setHere(cur);
+    };
+    const on = () => { if (!t) t = window.setTimeout(read, 80); };
+    window.addEventListener('scroll', on, { passive: true });
+    read();
+    return () => { window.removeEventListener('scroll', on); if (t) window.clearTimeout(t); };
+  }, []);
 
   const t = bar.data?.today;
   const rows = useMemo(() => screen.data?.rows ?? [], [screen.data]);
@@ -81,7 +99,7 @@ export default function Brief() {
       <section className="wrap readgrid">
         <nav className="toc" aria-label="Sections of the brief">
           <div className="eyebrow">In this brief</div>
-          {TOC.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+          {TOC.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={here === id ? 'true' : undefined}>{label}</a>)}
         </nav>
         <div style={{ minWidth: 0 }}>
         <div id="read" data-sec className="read-ink" style={{ marginBottom: 14 }}>
@@ -111,8 +129,8 @@ export default function Brief() {
           <div id="moved" data-sec />
           <SectionHead eyebrow="Over the past week" title="What moved" />
           <div className="grid g2">
-            <Rv className="panel"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
-            <Rv className="panel"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+            <Rv className="panel"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+            <Rv className="panel"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
           </div>
 
           <div id="screen" data-sec />
@@ -120,7 +138,7 @@ export default function Brief() {
           <Async loading={screen.loading} error={screen.error} rows={1}>
             <Rv className="panel">
               {moved.length === 0 ? <p className="muted">No ranking moves recorded in the latest build.</p> : (
-                <div className="list">{moved.map((r) => { const mv = (r as Row & { rank_move: number }).rank_move; return <Link key={r.sym} href={`/company/?s=${r.sym}`} className="li"><div><div className="t">{r.sym} · {r.name}</div><div className="s">Composite {num(r.comp, 0)} · {r.sector}</div></div><span className={`num ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? `▲ up ${mv}` : `▼ down ${Math.abs(mv)}`} places</span></Link>; })}</div>
+                <div className="list">{moved.map((r) => { const mv = (r as Row & { rank_move: number }).rank_move; return <Link key={r.sym} href={companyHref(r.sym)} className="li"><div><div className="t">{r.sym} · {r.name}</div><div className="s">Composite {num(r.comp, 0)} · {r.sector}</div></div><span className={`num ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? `▲ up ${mv}` : `▼ down ${Math.abs(mv)}`} places</span></Link>; })}</div>
               )}
               <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Places moved in the composite ranking against the previous build. A description of the data, not a call.</p>
             </Rv>
@@ -135,7 +153,7 @@ export default function Brief() {
               {byDay.map(([day, list]) => (
                 <div key={day} style={{ marginTop: 12 }}>
                   <div className="num" style={{ fontSize: 13.5, color: 'var(--accent-2)' }}>{dateLabel(day)} · {daysUntil(day) === 0 ? 'today' : plural(daysUntil(day), 'day').replace(/^/, 'in ')} · {plural(list.length, 'company', 'companies')}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 13 }}>+{list.length - 10} more</span>}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{list.slice(0, 10).map((r) => <Link key={r.sym} className="chip" href={companyHref(r.sym)}>{r.sym}</Link>)}{list.length > 10 && <span className="dim" style={{ fontSize: 13 }}>+{list.length - 10} more</span>}</div>
                 </div>
               ))}
               <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Dates come from the screen feed, which does not say whether a company has confirmed them or a vendor has estimated them. Check the exchange&apos;s <a href="https://www.nseindia.com/companies-listing/corporate-filings-board-meetings" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>board-meeting announcements ↗</a> before relying on one.</p>
@@ -152,7 +170,7 @@ export default function Brief() {
           <div id="seasonal" data-sec />
           <SectionHead eyebrow={new Date().toLocaleString('en-IN', { month: 'long' })} title="The seasonal record" />
           <Rv className="panel">
-            <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={`/company/?s=${sym}`} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
+            <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={companyHref(sym)} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
             {seasonal.length === 0 && <p className="muted">No vetted name clears the 75% bar this month.</p>}
             <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Vetted names only. A calendar month has no causal pull on a price: this is what repeatedly happened, not what will.</p>
           </Rv>

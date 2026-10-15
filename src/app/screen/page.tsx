@@ -12,6 +12,7 @@ import { canAnimate, Flip } from '@/lib/motion';
 import { useStoredList } from '@/lib/store';
 import { fromQuery, toQuery } from '@/lib/screenUrl';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 type Num = number | null | undefined;
 interface Field { id: string; label: string; get: (r: Row) => Num; fmt: (v: number) => string; kind?: 'chg'; step?: number }
@@ -236,7 +237,7 @@ export default function Screen() {
                     <td>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input type="checkbox" aria-label={`Select ${r.sym} to compare`} checked={picked.includes(r.sym)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.sym)} />
-                        <div className="co"><b><Link href={`/company/?s=${encodeURIComponent(r.sym)}`} onClick={(e) => e.stopPropagation()} title="Open the full page">{r.sym}</Link> {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
+                        <div className="co"><b><Link href={companyHref(r.sym)} onClick={(e) => e.stopPropagation()} title="Open the full page">{r.sym}</Link> {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
                       </div>
                     </td>
                     {cols.map((c) => { const f = F.get(c)!; const v = f.get(r); return <td key={c}>{!has(v) ? <span className="dim">{dash}</span> : f.kind === 'chg' ? <Chg v={v} dp={1} /> : c === 'comp' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ width: 44, height: 5, borderRadius: 9, background: 'var(--panel-3)', overflow: 'hidden', display: 'inline-block' }}><i style={{ display: 'block', height: '100%', width: `${Math.max(0, Math.min(100, v))}%`, background: 'var(--accent)' }} /></span><b className="num">{f.fmt(v)}</b></span> : <span className="num">{f.fmt(v)}</span>}</td>; })}

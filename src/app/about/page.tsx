@@ -26,7 +26,7 @@ export default function About() {
   const closed = eng.data ? Object.values(eng.data.live_record).reduce((a, r) => a + r.closed, 0) : null;
   return (
     <>
-      <PageHead variant="editorial" eyebrow="Method and sources" title="How every number" em="is made." lede="The point of this desk is that you can check it. Here is where each dataset comes from, how fresh it is right now, and what it deliberately does not do." />
+      <PageHead eyebrow="Method and sources" title="How every number" em="is made." lede="The point of this desk is that you can check it. Here is where each dataset comes from, how fresh it is right now, and what it deliberately does not do." />
       <section className="wrap grid g2" style={{ alignItems: 'start' }}>
         <Rv className="panel">
           <div className="eyebrow">What this is not</div>

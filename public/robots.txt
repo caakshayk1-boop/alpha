@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Sitemap: https://alpha.askakshay.com/sitemap.xml
+Sitemap: https://alpha.askakshay.com/sitemap-companies.xml

@@ -8,6 +8,7 @@ import { useEngines, useFeed, useRotation } from '@/lib/data';
 import { weekThrough } from '@/lib/status';
 import { dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 type Quad = 'Leading' | 'Weakening' | 'Lagging' | 'Improving';
 const QC: Record<Quad, string> = { Leading: 'var(--up)', Improving: 'var(--accent-2)', Weakening: 'var(--warn)', Lagging: 'var(--down)' };
@@ -240,7 +241,7 @@ export default function RotationPage() {
                       </div>
                       <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? ', as of today' : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
-                        <Link key={x.sym} href={`/company/?s=${encodeURIComponent(x.sym)}`} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
+                        <Link key={x.sym} href={companyHref(x.sym)} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
                     </>
                   ) : <p className="muted" style={{ marginTop: 10 }}>Select any dot, phase chip or table row to see its tail, its strength line against the Nifty, its breadth and its strongest stocks. The current week is shown unless you move the time machine.</p>}

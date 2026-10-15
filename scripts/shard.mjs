@@ -1,7 +1,7 @@
 // shard.mjs — runs before every build. Splits the big company feeds into one small file per company, public/c/<SYM>.json,
 // so a company page downloads about 6 KB instead of 1.5 MB and parses none of the other 988. If a feed cannot be read the
 // build carries on without shards: the page falls back to the full feeds (slower, never wrong).
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIG = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -20,7 +20,14 @@ try {
     n++;
   }
   console.log(`shard: ${n} companies, screen built ${screen.built_on}`);
+  // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.
+  const slug = (sym) => sym.replace(/&/g, '_');
+  const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alpha.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);
+  writeFileSync('public/sitemap-companies.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
+  console.log(`shard: sitemap-companies.xml with ${urls.length} pages`);
 } catch (e) {
   console.warn(`shard: skipped (${e.message}). Company pages will use the full feeds.`);
   if (!existsSync('public/c')) mkdirSync('public/c', { recursive: true });
+  // no shards means no company pages are built, so the company sitemap must list none
+  if (!readdirSync('public/c').some((f) => f.endsWith('.json'))) writeFileSync('public/sitemap-companies.xml', '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n');
 }

@@ -334,7 +334,7 @@ select.field { min-width: 0; padding-right: 30px; }
 @keyframes ping { 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
 /* Reveal is a small rise. It must never hide content: an observer that fails to fire (Safari, a throttled tab, effect order) would leave the page blank. */
-html.anim [data-rv]:not([data-rv='done']) { transform: translateY(14px); }   /* a nudge only: content is never made invisible by animation */
+/* Reveal: lib/motion.ts hides only off-screen [data-rv] (inline, set while out of view) and fades each in once on arrival. */
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -599,7 +599,7 @@ a.erow:hover .erow-id b { color: var(--accent-2); }
   .step-arrow { display: none; }
 }
 
-.chip { max-width: 100%; } .chip.wrap { white-space: normal; text-align: left; line-height: 1.3; }
+.chip { max-width: 100%; } .chip.chip-wrap { white-space: normal; text-align: left; line-height: 1.3; }   /* not ".wrap": that is the page container class (full width) */
 .field { max-width: 100%; }
 
 .pbar { display: grid; grid-template-columns: 92px minmax(60px, 1fr) minmax(0, 190px); gap: 12px; align-items: center; }
@@ -610,7 +610,7 @@ a.erow:hover .erow-id b { color: var(--accent-2); }
 .epick { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr)); gap: var(--s-3); margin-bottom: var(--s-4); }
 .ecard { position: relative; display: grid; gap: 8px; align-content: start; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); cursor: pointer; transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
 .ecard:hover { border-color: var(--line-2); }
-.ecard.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 10px 28px -16px var(--accent); }
+.ecard.on { border-color: var(--sel-bg); box-shadow: 0 0 0 1px var(--sel-bg); }
 .ecard input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
 .ecard:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ecard-top { display: grid; gap: 2px; } .ecard-top b { font: 600 17px/1.25 var(--f-ui); } .ecard-top span { font-size: 13.5px; }
@@ -846,3 +846,42 @@ button.chip:hover { color: var(--text); border-color: var(--line-2); }
 .today-h-skel { height: 1.04em; } @media (max-width: 760px) { .today-h-skel { height: 2.08em; } }
 .read-ink p { min-height: calc(1.18em * 3); } @media (max-width: 760px) { .read-ink p { min-height: calc(1.18em * 6); } }
 .chart-state { min-height: 60px; } @media (max-width: 760px) { .chart-state { min-height: 112px; } }
+
+/* ═══ motion v3 (2026-10-15) ═══════════════════════════════════════════════
+   Pointer light: a soft spotlight follows the pointer across cards (fine pointers only; set by lib/motion.ts initPointerLight).
+   Lift: cards rise 2px under the pointer. Both are transform/opacity only and switched off for reduced motion. */
+.panel, .fact, .qcard, .job2, .scard, .story, .pick, .ecard, .sky, .read-ink, .breadth2 { position: relative; isolation: isolate; }
+.panel::after, .fact::after, .qcard::after, .job2::after, .scard::after, .story::after, .pick::after, .ecard::after, .sky::after, .read-ink::after, .breadth2::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; opacity: 0;
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 11%, transparent), transparent 62%);
+  transition: opacity var(--dur-base) var(--ease);
+}
+.sky::after, .read-ink::after { z-index: 0; background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(214, 242, 106, 0.13), transparent 60%); }
+.sky > *, .read-ink > * { position: relative; z-index: 1; }
+.lit::after { opacity: 1; }
+@media (pointer: fine) {
+  .fact, .qcard, .job2, .scard, .pick, .ecard, .story, .breadth2 { transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); }
+  .fact.lit, .qcard.lit, .job2.lit, .scard.lit, .pick.lit, .ecard.lit, .story.lit, .breadth2.lit { transform: translateY(-2px); box-shadow: 0 14px 30px -20px rgba(18, 21, 40, 0.35); }
+  .panel.lit { border-color: color-mix(in srgb, var(--accent) 28%, var(--line)); }
+  .stamp-item.lit, .kv > div.lit { background: var(--panel-2); }
+}
+/* theme switch: colours cross-fade for 400 ms, then the transition is removed again */
+html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *::after { transition: background-color 0.4s var(--ease), color 0.4s var(--ease), border-color 0.4s var(--ease), fill 0.4s var(--ease) !important; }
+/* header: one ink pill slides to the active section */
+.nav { position: relative; }
+.nav .ink-pill { position: absolute; top: 4px; bottom: 4px; left: 0; width: var(--pw, 0); transform: translateX(var(--px, 0)); border-radius: var(--r-pill); background: var(--sel-bg); opacity: var(--po, 0); transition: transform var(--dur-slow) var(--ease), width var(--dur-slow) var(--ease), opacity var(--dur-base); pointer-events: none; z-index: 0; }
+.nav.has-pill .navgroup > a[aria-current='page'] { background: transparent; }
+/* gauge: the arc sweeps to its value once */
+html.anim .gauge .arc { animation: gaugeIn 0.9s var(--ease) both 0.15s; }
+@keyframes gaugeIn { from { stroke-dashoffset: var(--len); } }
+/* Brief index: the section in view is marked */
+.toc a { position: relative; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.toc a[aria-current='true'] { color: var(--text); background: var(--panel); box-shadow: inset 2px 0 0 var(--accent); }
+@media (max-width: 1000px) { .toc a[aria-current='true'] { background: var(--sel-bg); color: var(--sel-fg); box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .lit::after { opacity: 0; }
+  .fact.lit, .qcard.lit, .job2.lit, .scard.lit, .pick.lit, .ecard.lit, .story.lit, .breadth2.lit { transform: none; }
+  .nav .ink-pill { transition: none; }
+  html.anim .gauge .arc { animation: none; }
+}
+.spark-none { display: flex; align-items: center; font-size: 12.5px; color: var(--dim); border-top: 1px dashed var(--line-2); }

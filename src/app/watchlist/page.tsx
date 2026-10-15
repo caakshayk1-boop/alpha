@@ -9,6 +9,7 @@ import { useEngines, useFeed, usePx } from '@/lib/data';
 import { dash, dateLabel, num } from '@/lib/format';
 import { useStoredList } from '@/lib/store';
 import type { CurrentCompany } from '@/lib/card';
+import { companyHref } from '@/lib/slug';
 
 export default function Watchlist() {
   const s = useFeed('screen');
@@ -40,7 +41,7 @@ export default function Watchlist() {
               <thead><tr><th>Company</th><th>Price</th><th>1D</th><th>1M</th><th>1Y</th><th>Composite</th><th>Flags</th><th /></tr></thead>
               <tbody>{rows.map((r) => (
                 <tr key={r.sym} style={{ cursor: 'default' }}>
-                  <td><Link href={`/company/?s=${r.sym}`} className="co"><b>{r.sym}</b><span>{r.name}</span></Link></td>
+                  <td><Link href={companyHref(r.sym)} className="co"><b>{r.sym}</b><span>{r.name}</span></Link></td>
                   <td className="num">₹{num(px.quotes[r.sym]?.price ?? r.price, 2)}{px.quotes[r.sym] && <span className="tag acc" style={{ marginLeft: 6 }}>live</span>}</td><td><Chg v={px.quotes[r.sym]?.pct ?? r.r1d} dp={1} /></td><td><Chg v={r.r1m} dp={1} /></td><td><Chg v={r.r1y} dp={1} /></td>
                   <td className="num">{typeof r.comp === 'number' ? Math.round(r.comp) : dash}</td>
                   <td style={{ textAlign: 'left' }}>{r.next_earnings && <span className="tag">Results {dateLabel(r.next_earnings)}</span>} {sigs.get(r.sym) && <Link href="/engines/" className="tag acc">{sigs.get(r.sym)?.engine_name} signal</Link>}</td>

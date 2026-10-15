@@ -48,7 +48,7 @@ export default function AskScreen({ rows, tableRows, value, onValue, onTests }: 
       <label className="sr" htmlFor="nlq">Describe the stocks you want</label>
       <input id="nlq" className="field" style={{ width: '100%', margin: '10px 0 8px', height: 48, fontSize: 16 }} value={q} onChange={(e) => setText(e.target.value)} placeholder="e.g. small cap uptrend quality growth, debt below 0.5" spellCheck={false} />
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-        {EXAMPLES.map((x) => <button key={x} className="chip wrap" onClick={() => setText(x)}>{x}</button>)}
+        {EXAMPLES.map((x) => <button key={x} className="chip chip-wrap" onClick={() => setText(x)}>{x}</button>)}
       </div>
       {q.trim() && (
         <>

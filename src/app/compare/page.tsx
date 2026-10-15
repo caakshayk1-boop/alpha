@@ -9,6 +9,7 @@ import { Async, Chg, Notice, PageHead, Rv } from '@/components/ui';
 import { useFeedWhen, useShard } from '@/lib/data';
 import { crore, dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 const has = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -46,7 +47,7 @@ function Radar({ r }: { r: Row }) {
   const label = AXES.map(([l, g]) => `${l} ${has(g(r)) ? Math.round(g(r) as number) : 'not scored'}`).join(', ');
   return (
     <figure style={{ margin: 0, textAlign: 'center' }}>
-      <figcaption style={{ font: '600 15px var(--f-ui)' }}><Link href={`/company/?s=${r.sym}`}>{r.sym}</Link></figcaption>
+      <figcaption style={{ font: '600 15px var(--f-ui)' }}><Link href={companyHref(r.sym)}>{r.sym}</Link></figcaption>
       <svg viewBox="-24 0 208 160" style={{ width: '100%', maxWidth: 200, display: 'block', margin: '0 auto' }} role="img" aria-label={`${r.sym} scores: ${label}`}>
         {[50, 100].map((g) => <polygon key={g} points={AXES.map((_, i) => pt(i, g).join(',')).join(' ')} fill="none" stroke="var(--line-2)" />)}
         {AXES.map(([l], i) => { const [x, y] = pt(i, 128); return <text key={l} x={x} y={y + 3} textAnchor="middle" fontSize="9" fill="var(--dim)" fontFamily="var(--f-ui)">{l}</text>; })}
@@ -93,7 +94,7 @@ function Compare() {
             <div className="grid g-7-5" style={{ alignItems: 'start' }}>
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
                 <table className="tbl" style={{ minWidth: 560 }}>
-                  <thead><tr><th>Measure</th>{rows.map((r) => <th key={r.sym}><Link href={`/company/?s=${r.sym}`}>{r.sym}</Link></th>)}</tr></thead>
+                  <thead><tr><th>Measure</th>{rows.map((r) => <th key={r.sym}><Link href={companyHref(r.sym)}>{r.sym}</Link></th>)}</tr></thead>
                   <tbody>
                     <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => <td key={r.sym} className="num">₹{num(r.price, 2)}</td>)}</tr>
                     <tr style={{ cursor: 'default' }}><td>Today</td>{rows.map((r) => <td key={r.sym}><Chg v={r.r1d} dp={1} /></td>)}</tr>

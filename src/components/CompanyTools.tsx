@@ -11,6 +11,7 @@ import { useCards } from '@/lib/library';
 import { decide, lookalikes, screenClass } from '@/lib/decision';
 import type { EngineSignal, Row } from '@/lib/types';
 import { dash, dateLabel, num } from '@/lib/format';
+import { companyHref } from '@/lib/slug';
 
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
 export function ExternalLinks({ sym }: { sym: string }) {
@@ -96,7 +97,7 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
           <tbody>
             <tr style={{ cursor: 'default', background: 'var(--accent-soft)' }}><td><b>{r.sym}</b> <span className="dim">(this)</span></td><td className="num">—</td><td className="num">{r.q ?? dash}</td><td className="num">{r.g ?? dash}</td><td className="num">{r.v ?? dash}</td><td className="num">{r.tech ?? dash}</td><td className="num">{r.pe ? `${r.pe.toFixed(1)}×` : dash}</td><td className="num">{r.r1y != null ? `${r.r1y.toFixed(0)}%` : dash}</td></tr>
             {sims.map(({ row, sim }) => (
-              <tr key={row.sym}><td><Link href={`/company/?s=${encodeURIComponent(row.sym)}`}><b>{row.sym}</b> <span className="dim">{row.name}</span></Link></td><td className="num">{sim}%</td><td className="num">{row.q != null ? Math.round(row.q) : dash}</td><td className="num">{row.g != null ? Math.round(row.g) : dash}</td><td className="num">{row.v != null ? Math.round(row.v) : dash}</td><td className="num">{row.tech != null ? Math.round(row.tech) : dash}</td><td className="num">{row.pe ? `${row.pe.toFixed(1)}×` : dash}</td><td className="num">{row.r1y != null ? `${row.r1y.toFixed(0)}%` : dash}</td></tr>
+              <tr key={row.sym}><td><Link href={companyHref(row.sym)}><b>{row.sym}</b> <span className="dim">{row.name}</span></Link></td><td className="num">{sim}%</td><td className="num">{row.q != null ? Math.round(row.q) : dash}</td><td className="num">{row.g != null ? Math.round(row.g) : dash}</td><td className="num">{row.v != null ? Math.round(row.v) : dash}</td><td className="num">{row.tech != null ? Math.round(row.tech) : dash}</td><td className="num">{row.pe ? `${row.pe.toFixed(1)}×` : dash}</td><td className="num">{row.r1y != null ? `${row.r1y.toFixed(0)}%` : dash}</td></tr>
             ))}
           </tbody>
         </table>

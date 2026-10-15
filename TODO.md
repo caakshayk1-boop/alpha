@@ -24,8 +24,17 @@ Each item has a pass/fail check.
 - [x] 10. Audit F4: limits line inside every plan-level block (survivorship, cost, no slippage).
 - [ ] 10b. Audit F5: conflicts statement. NEEDS AKSHAY: does he hold positions in names on the site?
 - [x] 11. Audit F7 + F10: CSP in public/_headers (sweep: no violations); NSE session chip read from the Nifty's last trade (holiday-proof).
-- [ ] 12. Screen, Engines, Markets, News, IPO, Reads polish pass on the v3 system.
+- [x] 12. Polish pass: Screen examples were full-width (".wrap" class collided with the page container); 8 Markets sector cards
+      had blank charts (Yahoo has one bar for those indices: now said plainly); Reads/About headers aligned; engine glow removed.
+
+## Batch 4 (15 Oct)
+- [x] 13. Motion: pointer light + lift on cards, scroll reveal (it never ran: child effects registered before motion was on),
+      sliding ink nav pill, Brief index scrollspy, gauge sweep, theme cross-fade. All off for reduced motion.
+- [x] 14. Indexable company pages: /company/<SYM>/ x990, own title/description/canonical, pre-rendered content, company sitemap,
+      301 from /company/?s=, live fallback for companies with no pre-built page.
+- [x] 15. Safari engine: WebKit 27.2 with iPhone 15 emulation, 21/21 routes pass. Real iPhone / iOS Simulator NOT done
+      (no iOS runtime installed; ~7 GB Xcode download is the owner's call).
 
 ## Batch 3: later
 - [ ] 9. Richer news feed. Needs a change in `trading-dashboard` (the data repo). That's a separate repo, so it gets its own confirmation.
-- [ ] 10. Real-device check (iPhone Safari) and the WebKit engine pass.
+- [~] 10. WebKit pass done (item 15). Real device still open.

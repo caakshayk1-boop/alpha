@@ -487,6 +487,11 @@ export default {
       return Response.redirect('https://alpha.askakshay.com/', 301);
     }
 
+    // Old company address: /company/?s=INFY is permanently /company/INFY/ ("&" becomes "_", see src/lib/slug.ts).
+    if (url.pathname === '/company/' && url.searchParams.get('s')) {
+      const sym = url.searchParams.get('s').trim().toUpperCase();
+      if (/^[A-Z0-9&-]{1,20}$/.test(sym)) return withHeaders(Response.redirect(`${url.origin}/company/${sym.replace(/&/g, '_')}/`, 301));
+    }
     if (url.pathname.startsWith('/data/') && url.pathname.endsWith('.json')) {
       return feed(url.pathname.slice('/data/'.length, -'.json'.length));
     }

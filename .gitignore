@@ -10,3 +10,4 @@ engines/__pycache__/
 engines/*.pkl
 public/c/
 .dev.vars*
+public/sitemap-companies.xml

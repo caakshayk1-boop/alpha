@@ -9,6 +9,7 @@ import { crore, num, pct } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import { squarify } from '@/lib/treemap';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 type Metric = { id: string; label: string; get: (r: Row) => number | null | undefined; max: number; unit: string; invert?: boolean; group: string };
 const n = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -239,7 +240,7 @@ export default function MapPage() {
                 <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 360 }}>
                   <table className="tbl"><caption className="sr">Stocks on the map by {m.label}</caption>
                     <thead><tr><th>Stock</th><th>Sector</th><th>{m.label}</th></tr></thead>
-                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td><Link href={`/company/?s=${encodeURIComponent(r.sym)}`} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.name} ({r.sym})</Link></td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
+                    <tbody>{shown.map((r) => ({ r, v: valueOf(r) })).filter((x): x is { r: Row; v: number } => x.v !== null).sort((a, b) => b.v - a.v).map(({ r, v }) => <tr key={r.sym} style={{ cursor: 'default' }}><td><Link href={companyHref(r.sym)} style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>{r.name} ({r.sym})</Link></td><td>{r.sector}</td><td className="num">{fmtV(v)}</td></tr>)}</tbody>
                   </table>
                 </div>
                 <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Every stock on the map with a value, strongest first. Each name opens its company page.</p>
@@ -259,7 +260,7 @@ export default function MapPage() {
                         <div><div className="k">Composite</div><div className="v">{n(sel.comp) !== null ? Math.round(sel.comp as number) : '—'}</div></div>
                         <div><div className="k">From 52w high</div><div className="v">{n(sel.from_high) !== null ? `${(sel.from_high as number).toFixed(0)}%` : '—'}</div></div>
                       </div>
-                      <Link className="btn" href={`/company/?s=${encodeURIComponent(sel.sym)}`} style={{ marginTop: 14 }}>Open {sel.sym} <span aria-hidden>→</span></Link>
+                      <Link className="btn" href={companyHref(sel.sym)} style={{ marginTop: 14 }}>Open {sel.sym} <span aria-hidden>→</span></Link>
                     </>
                   ) : <p className="muted" style={{ margin: 0 }}>Select a tile for the numbers behind it. {zoom ? '' : 'Select a sector title to zoom into it.'}</p>}
                 </div>

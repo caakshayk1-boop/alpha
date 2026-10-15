@@ -44,7 +44,9 @@ export function Spark({ series, up, height = 38 }: { series: number[] | undefine
     const len = p.getTotalLength();
     gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.4, ease: 'power2.out', immediateRender: false, clearProps: 'strokeDasharray,strokeDashoffset' });
   }, [pts.length]);
-  if (pts.length < 2) return <svg className="spark" viewBox="0 0 100 38" aria-hidden />;
+  // Yahoo returns a single daily bar for several NSE sector indices (FMCG, Auto, Metal, Energy, Realty, PSU Bank, Infra, Media):
+  // say so in the space the line would fill, rather than leave a blank that reads as broken. Nothing is drawn or estimated.
+  if (pts.length < 2) return <div className="spark spark-none" style={{ height }}>No daily history in the price feed</div>;
   const lo = Math.min(...pts);
   const hi = Math.max(...pts);
   const span = hi - lo || 1;
@@ -167,7 +169,7 @@ export function Notice({ children }: { children: ReactNode }) {
 export function Async({ loading, error, children, rows = 4 }: { loading: boolean; error: string | null; children: ReactNode; rows?: number }) {
   if (loading)
     return (
-      <div className="grid" aria-busy="true" aria-label="Loading">
+      <div className="grid" role="status" aria-busy="true" aria-label="Loading">
         {Array.from({ length: rows }, (_, i) => (
           <Skel key={i} h={72} />
         ))}

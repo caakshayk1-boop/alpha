@@ -5,8 +5,9 @@ import { FreshnessBanner } from '@/components/DataStamp';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { feed } from '@/lib/data';
-import { initMotion, prefersReduced } from '@/lib/motion';
+import { fadeTheme, initMotion, initPointerLight, prefersReduced } from '@/lib/motion';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 export const PAGES = [
   { href: '/', label: 'Today', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
@@ -76,7 +77,7 @@ function Palette({ open, onClose }: { open: boolean; onClose: () => void }) {
       if (sc < 9) scored.push([sc, r]);
     }
     scored.sort((a, b) => a[0] - b[0] || a[1].sym.length - b[1].sym.length);
-    const cos: Hit[] = scored.slice(0, 10).map(([, r]) => ({ kind: 'company', label: r.sym, sub: `${r.name} · ${r.sector}`, href: `/company/?s=${encodeURIComponent(r.sym)}` }));
+    const cos: Hit[] = scored.slice(0, 10).map(([, r]) => ({ kind: 'company', label: r.sym, sub: `${r.name} · ${r.sector}`, href: companyHref(r.sym) }));
     return [...cos, ...pages];
   }, [q, rows]);
 
@@ -173,6 +174,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     initMotion();
+    const stopLight = initPointerLight();
     setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => !o); }
@@ -196,18 +198,38 @@ export default function Shell({ children }: { children: ReactNode }) {
       window.removeEventListener('keydown', key);
       window.removeEventListener('alpha:search', openSearch);
       window.removeEventListener('scroll', onScroll);
+      stopLight();
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);
 
   const flip = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
+    fadeTheme();
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('alpha-theme', next); } catch { /* private mode: the theme just will not persist */ }
     setTheme(next);
   };
 
   const navRef = useRef<HTMLElement>(null);
+  // The ink pill slides to the active section when the page changes (and settles on resize). Reduced motion: it jumps.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return undefined;
+    const place = () => {
+      const a = nav.querySelector<HTMLElement>('.navgroup > a[aria-current="page"]');
+      if (!a) { nav.style.setProperty('--po', '0'); return; }
+      const g = a.parentElement as HTMLElement;
+      nav.style.setProperty('--px', `${g.offsetLeft}px`);
+      nav.style.setProperty('--pw', `${a.offsetWidth}px`);
+      nav.style.setProperty('--po', '1');
+      nav.classList.add('has-pill');
+    };
+    place();
+    const t = window.setTimeout(place, 150);   // after web fonts settle the widths
+    window.addEventListener('resize', place);
+    return () => { window.clearTimeout(t); window.removeEventListener('resize', place); };
+  }, [path]);
   // A menu opens on hover or focus, so after choosing a page it would stay open under the pointer: close it on navigation and on Escape, and let it open again once the pointer has left.
   const lastEscape = useRef(false);
   const closeMenus = useCallback((keepFocus = false) => {
@@ -236,6 +258,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <span>alpha</span>
           </Link>
           <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { closeMenus(true); window.setTimeout(() => { lastEscape.current = false; }, 0); } }} onClick={(e) => { if ((e.target as HTMLElement).closest('.menu a')) closeMenus(); }}>
+            <span className="ink-pill" aria-hidden />
             {GROUPS.map((g) => {
               const on = g.hrefs.some((h) => isActive(path, h));
               return (

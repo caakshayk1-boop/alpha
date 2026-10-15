@@ -14,6 +14,7 @@ import { takeaway, vixWord } from '@/lib/takeaway';
 import { useStoredList } from '@/lib/store';
 import type { Quote } from '@/lib/types';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
+import { companyHref } from '@/lib/slug';
 
 function QuoteCard({ q }: { q: Quote }) {
   const up = (q.pct ?? 0) >= 0;
@@ -62,7 +63,7 @@ function TodayHero() {
       ) : bar.error ? (
         <h1 className="disp today-h">The market read is not available right now.</h1>
       ) : (
-        <div aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
+        <div role="status" aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
       )}
       <div className="stamp" style={{ marginTop: 0 }}><MarketSession /></div>
       <DataStamp ids={['barometer', 'screen', 'engines']} />
@@ -83,7 +84,7 @@ function TodayHero() {
             </div>
             <svg className="gauge" viewBox="0 0 132 92" role="img" aria-label={`Barometer ${score} of 100`}>
               <path d="M14 78 A52 52 0 0 1 118 78" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="10" strokeLinecap="round" />
-              <path d="M14 78 A52 52 0 0 1 118 78" fill="none" stroke="var(--lime)" strokeWidth="10" strokeLinecap="round" strokeDasharray={GAUGE_LEN} strokeDashoffset={GAUGE_LEN * (1 - Math.max(0, Math.min(100, score)) / 100)} />
+              <path className="arc" d="M14 78 A52 52 0 0 1 118 78" fill="none" stroke="var(--lime)" strokeWidth="10" strokeLinecap="round" strokeDasharray={GAUGE_LEN} strokeDashoffset={GAUGE_LEN * (1 - Math.max(0, Math.min(100, score)) / 100)} style={{ ['--len' as string]: GAUGE_LEN }} />
               <text className="v" x="66" y="72" textAnchor="middle">{score}</text>
               <text className="s" x="66" y="88" textAnchor="middle">of 100</text>
             </svg>
@@ -215,7 +216,7 @@ function Movers() {
       <div className="list">
         {!list && Array.from({ length: 6 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
         {list?.slice(0, 8).map((m) => (
-          <Link key={m.sym} href={`/company/?s=${m.sym}`} className="li">
+          <Link key={m.sym} href={companyHref(m.sym)} className="li">
             <div><div className="t">{m.sym}</div><div className="s">{m.name} · {m.sector}</div></div>
             <div style={{ textAlign: 'right' }}>
               {tab === 'vol' ? <span className="num">{m.vol_spike?.toFixed(1)}× volume</span> : <Chg v={m.r1w} dp={1} />}

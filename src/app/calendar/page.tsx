@@ -7,6 +7,7 @@ import { useFeed } from '@/lib/data';
 import { crore, dateLabel } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 /** Calendar days from today in India (IST) to a YYYY-MM-DD date, so "today" does not depend on the reader's own timezone. */
 const daysUntil = (iso: string) => {
@@ -51,7 +52,7 @@ export default function Calendar() {
                   <span className="num dim" style={{ fontSize: 13.5 }}>{daysUntil(d) === 0 ? 'today' : `in ${plural(daysUntil(d), 'day')}`} · {plural(list.length, 'company', 'companies')}</span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-                  {list.slice(0, 30).map((r) => <Link key={r.sym} className="chip" href={`/company/?s=${r.sym}`} title={`${r.name} · ${crore(r.mcap_cr)}`}>{r.sym}</Link>)}
+                  {list.slice(0, 30).map((r) => <Link key={r.sym} className="chip" href={companyHref(r.sym)} title={`${r.name} · ${crore(r.mcap_cr)}`}>{r.sym}</Link>)}
                   {list.length > 30 && <span className="dim" style={{ fontSize: 13.5, alignSelf: 'center' }}>+{list.length - 30} smaller</span>}
                 </div>
               </Rv>

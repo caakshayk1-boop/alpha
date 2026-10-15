@@ -6,6 +6,7 @@ import Prose, { headingsOf, slug } from '@/components/Prose';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { useFeed, useShard } from '@/lib/data';
 import { crore, dateLabel, num, pct } from '@/lib/format';
+import { companyHref } from '@/lib/slug';
 
 /** The figures the study was written from, beside today's, so a reader never mistakes one for the other. */
 function LatestFigures({ sym, price, mcap, writtenAt }: { sym: string; price: number; mcap: number; writtenAt: string | null }) {
@@ -36,7 +37,7 @@ export default function Reads() {
   const written = ed?.written_at ? new Date(ed.written_at) : null;
   return (
     <>
-      <PageHead variant="editorial" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." lede="One sector a week, every Saturday: what they sell, how the money works, and what would break it. Figures come from the screen. The prose is written by a language model from those figures and checked automatically for arithmetic. Business descriptions are the model's general knowledge unless a source is cited. It is not analyst research, and corrections are listed on each study." />
+      <PageHead eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." lede="One sector a week, every Saturday: what they sell, how the money works, and what would break it. Figures come from the screen. The prose is written by a language model from those figures and checked automatically for arithmetic. Business descriptions are the model's general knowledge unless a source is cited. It is not analyst research, and corrections are listed on each study." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
           <div className="filters" role="group" aria-label="Edition">
@@ -58,7 +59,7 @@ export default function Reads() {
               <Rv key={s.sym} className="panel">
                 <div className="eyebrow">{s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
                 <h2 className="disp" style={{ fontSize: 'clamp(34px, 4vw, 52px)', margin: '12px 0 8px' }}>{s.name}</h2>
-                <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={`/company/?s=${s.sym}`} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
+                <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={companyHref(s.sym)} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
                 {s.corrections && s.corrections.some((c) => c.fix?.trim()) && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.filter((c) => c.fix?.trim()).map((c) => <li key={c.fix}>{dateLabel(c.date)}: {c.fix}</li>)}</ul></div>}
                 <LatestFigures key={s.sym} sym={s.sym} price={s.price} mcap={s.mcap_cr} writtenAt={ed?.written_at ?? null} />

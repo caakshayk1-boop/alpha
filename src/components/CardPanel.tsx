@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { Rv } from '@/components/ui';
 import { cardDelta, parseImport, serializeCard, serializeLibrary, summarise, type CurrentCompany, type ResearchCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
+import { companyHref } from '@/lib/slug';
 
 const download = (name: string, text: string) => {
   const a = document.createElement('a');
@@ -70,7 +71,7 @@ export default function CardPanel({ watchlist, onImportWatchlist, current }: { w
             <div key={c.id} className="li" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="t">{c.question ?? 'Untitled research'}</div>
-                <div className="s">{c.companies.slice(0, 8).map((x, i) => <span key={x.sym}>{i ? ', ' : ''}<Link href={`/company/?s=${encodeURIComponent(x.sym)}`} style={{ color: 'var(--accent-2)' }}>{x.sym}</Link></span>)}{c.companies.length > 8 ? ` +${c.companies.length - 8}` : ''} · {c.createdAt.slice(0, 10)}{c.dataStatus.length ? ` · data ${c.dataStatus.filter((s) => s.asOf).map((s) => `${s.id} ${s.asOf}`).join(', ')}` : ''}</div>
+                <div className="s">{c.companies.slice(0, 8).map((x, i) => <span key={x.sym}>{i ? ', ' : ''}<Link href={companyHref(x.sym)} style={{ color: 'var(--accent-2)' }}>{x.sym}</Link></span>)}{c.companies.length > 8 ? ` +${c.companies.length - 8}` : ''} · {c.createdAt.slice(0, 10)}{c.dataStatus.length ? ` · data ${c.dataStatus.filter((s) => s.asOf).map((s) => `${s.id} ${s.asOf}`).join(', ')}` : ''}</div>
                 {c.evidence && c.evidence.length > 0 && <ul className="dim" style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 13.5 }}>{c.evidence.slice(0, 3).map((e) => <li key={e.text}>{e.side === 'for' ? '▲' : '▼'} {e.text}</li>)}</ul>}
                 {current && (() => { const ch = cardDelta(c, current); return (
                   <div style={{ marginTop: 8 }}>

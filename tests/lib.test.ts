@@ -500,3 +500,10 @@ test('market session: open needs a fresh Nifty trade inside NSE hours; a stale t
   assert.equal(sessionOf(null), null);
   assert.match(sessionOf(at('2026-10-14T10:01:12Z'), Date.parse('2026-10-14T18:00:00Z'))?.label ?? '', /closed · Nifty last traded 14 Oct, 15:31 IST/);
 });
+
+import { companyHref, slugToSym, symToSlug } from '../src/lib/slug.ts';
+test('company slug: & round-trips through _, plain and hyphenated symbols are untouched', () => {
+  for (const s of ['INFY', 'M&M', 'J&KBANK', 'BAJAJ-AUTO', 'GMRP&UI']) assert.equal(slugToSym(symToSlug(s)), s);
+  assert.equal(companyHref('M&M'), '/company/M_M/');
+  assert.equal(slugToSym('m_m'), 'M&M');
+});

@@ -12,6 +12,7 @@ import { useEngines, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num, quoteState } from '@/lib/format';
 import { journalHref } from '@/lib/journal';
 import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 const TONE = VERDICT_TONE;
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
@@ -41,7 +42,7 @@ function SignalCard({ s, e, live, through, cost }: { s: EngineSignal; e: EngineS
       <div className="sig-head">
         <div className="sig-id">
           <div className="eyebrow">{s.setup} · {s.horizon} · issued {dateLabel(s.issued)}</div>
-          <Link href={`/company/?s=${encodeURIComponent(s.sym)}`} className="disp sig-sym">{s.sym}</Link>
+          <Link href={companyHref(s.sym)} prefetch={false} className="disp sig-sym">{s.sym}</Link>
           <div className="sig-name">{s.name}{s.sector ? ` · ${s.sector}` : ''}</div>
         </div>
         {px !== null && active && (

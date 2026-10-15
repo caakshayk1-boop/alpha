@@ -9,6 +9,7 @@ import { useEngines, useFeed } from '@/lib/data';
 import { crore, dateLabel, num } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 const fin = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 const FACTORS = [['Quality', 'Q', 'q'], ['Growth', 'G', 'g'], ['Value', 'V', 'v'], ['Technical', 'T', 'tech']] as const;
@@ -92,7 +93,7 @@ export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () 
   }, [sym]);
 
   if (!sym) return null;
-  const href = `/company/?s=${encodeURIComponent(sym)}`;
+  const href = companyHref(sym);
   return (
     <div className="peek-back" onClick={onClose}>
       <div ref={panel} className="peek" role="dialog" aria-modal="true" aria-label={`${sym}: quick look`} onClick={(e) => e.stopPropagation()}>

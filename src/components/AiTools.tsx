@@ -10,6 +10,7 @@ import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
 import { crore, dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
+import { companyHref } from '@/lib/slug';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 const SAMPLE = 'TCS 20 3400\nHDFCBANK 30 1650\nRELIANCE 15 2400\nDIXON 3 11000';
@@ -122,7 +123,7 @@ export function PortfolioXray() {
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 520 }}>
                 <thead><tr><th>Holding</th><th>Weight</th><th>Value</th><th>P/L</th><th>Desk read</th></tr></thead>
                 <tbody>{X.hs.map((h) => (
-                  <tr key={h.sym}><td><Link href={`/company/?s=${encodeURIComponent(h.sym)}`}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
+                  <tr key={h.sym}><td><Link href={companyHref(h.sym)}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
                 ))}</tbody>
               </table></div>
               <div><div className="eyebrow" style={{ marginBottom: 10 }}>By sector</div><div className="meter">{X.sector.map(([n, v]) => <div className="meter-row" key={n}><span className="lab" style={{ minWidth: 130 }}>{n}</span><Bar pct={v / X.total * 100} kind="up" /><span className="num">{(v / X.total * 100).toFixed(0)}%</span></div>)}</div></div>
@@ -213,7 +214,7 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
           const sc = screenClass(r.vd);
           return (
             <li key={r.sym}>
-              <Link className="pick" href={`/company/?s=${encodeURIComponent(r.sym)}`}>
+              <Link className="pick" href={companyHref(r.sym)}>
                 <span className="pick-id"><b>{r.sym}</b><span>{r.name}</span></span>
                 <span className="pick-score" title={`${passed} passed of ${known} that apply; ${total - known} of ${total} not applicable or unavailable`}>
                   <b className="num">{passed} of {known}</b><span>checks passed{known < total ? ` · ${total - known} n/a` : ''}</span>
