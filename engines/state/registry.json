@@ -69,6 +69,7 @@
   "relative:SPORTKING:2026-10-09",
   "relative:STARCEMENT:2026-10-14",
   "relative:STARCEMENT:2026-10-15",
+  "relative:YESBANK:2026-10-16",
   "snapback:ARTEMISMED:2026-10-12",
   "snapback:ARTEMISMED:2026-10-13",
   "snapback:ARTEMISMED:2026-10-14",
@@ -77,6 +78,7 @@
   "snapback:DIVGIITTS:2026-10-14",
   "snapback:HDBFS:2026-10-16",
   "snapback:LAURUSLABS:2026-10-14",
+  "snapback:LUPIN:2026-10-16",
   "snapback:ROLEXRINGS:2026-10-09",
   "snapback:RRKABEL:2026-10-16",
   "snapback:SHILPAMED:2026-10-15",
@@ -1942,6 +1944,61 @@
    ],
    "turnover_cr": 329.4
   },
+  "snapback:LUPIN:2026-10-16": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": 0.5,
+    "leads_nifty": true,
+    "members": null,
+    "name": "Nifty Pharma",
+    "stock_3m_pct": -19.7,
+    "stock_vs_benchmark_pct": -20.2,
+    "uptrend": false
+   },
+   "date": "2026-10-16",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    1961.6,
+    1981.22
+   ],
+   "events": [],
+   "first_seen": "2026-10-16",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:LUPIN:2026-10-16",
+   "issued": "2026-10-16",
+   "max_hold": 7,
+   "name": "Lupin Ltd.",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "benchmark vs its 50-day: lower than about 50% of stocks (the model favours low readings)",
+    "market rank of distance from 52-week high: lower than about 53% of stocks (the model favours high readings)",
+    "market rank of 12-1 month momentum: higher than about 57% of stocks (the model favours high readings)",
+    "distance from 52-week high: lower than about 53% of stocks (the model favours high readings)",
+    "market rank of illiquidity: lower than about 88% of stocks (the model favours low readings)"
+   ],
+   "ref_price": 1961.6,
+   "risk_pct": 2.4,
+   "score": 0.5481,
+   "score_percentile": 99.8,
+   "sector": "Healthcare",
+   "setup": "Snapback model",
+   "sl": 1914.52,
+   "status": "pending",
+   "stop_now": 1914.52,
+   "sym": "LUPIN",
+   "targets": [
+    1999.26,
+    2032.22,
+    2079.3
+   ],
+   "turnover_cr": 141.7
+  },
   "snapback:ROLEXRINGS:2026-10-09": {
    "also": [],
    "benchmark": {
@@ -2400,7 +2457,9 @@
    "turnover_cr": 8.5
   },
   "snapback:YESBANK:2026-10-16": {
-   "also": [],
+   "also": [
+    "relative"
+   ],
    "benchmark": {
     "benchmark_3m_pct": -4.6,
     "leads_nifty": true,
