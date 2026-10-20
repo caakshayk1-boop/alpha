@@ -10,24 +10,25 @@ import { fadeTheme, initMotion, initPointerLight, prefersReduced } from '@/lib/m
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 
+/** `desc` is the one line a menu shows under each page: what that page answers, never what to do with it. */
 export const PAGES = [
-  { href: '/', label: 'Today', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
-  { href: '/brief/', label: 'Brief', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5' },
-  { href: '/markets/', label: 'Markets', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
-  { href: '/screen/', label: 'Screen', icon: 'M4 6h16M7 12h10M10 18h4' },
-  { href: '/map/', label: 'Map', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
-  { href: '/rotation/', label: 'Rotation', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
-  { href: '/engines/', label: 'Engines', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
-  { href: '/reads/', label: 'Reads', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
-  { href: '/ipo/', label: 'IPO', icon: 'M12 3v18M5 10l7-7 7 7' },
-  { href: '/funds/', label: 'Funds', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
-  { href: '/tools/', label: 'Tools', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
-  { href: '/news/', label: 'News', icon: 'M4 5h13v14H6a2 2 0 01-2-2zM17 9h3v8a2 2 0 01-2 2M8 9h5M8 13h5' },
-  { href: '/compare/', label: 'Compare', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
-  { href: '/calendar/', label: 'Calendar', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
-  { href: '/watchlist/', label: 'Watchlist', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
-  { href: '/journal/', label: 'Journal', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
-  { href: '/about/', label: 'Method', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
+  { href: '/', label: 'Today', desc: 'The takeaway, breadth and the four jobs for this session', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
+  { href: '/brief/', label: 'Brief', desc: 'The day’s market read, section by section', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5' },
+  { href: '/markets/', label: 'Markets', desc: 'Indices, sectors, commodities, currencies and rates', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
+  { href: '/screen/', label: 'Screen', desc: 'Nearly 1,000 companies filtered on quality, growth and value', icon: 'M4 6h16M7 12h10M10 18h4' },
+  { href: '/map/', label: 'Map', desc: 'Every stock as a tile, coloured by the measure you pick', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
+  { href: '/rotation/', label: 'Rotation', desc: 'Which sector groups are gaining or losing relative strength', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
+  { href: '/engines/', label: 'Engines', desc: 'Five models’ signals, judged on data they never saw', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
+  { href: '/reads/', label: 'Reads', desc: 'Seven companies from one sector, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
+  { href: '/ipo/', label: 'IPO', desc: 'Books open now, issues ahead and recent listings', icon: 'M12 3v18M5 10l7-7 7 7' },
+  { href: '/funds/', label: 'Funds', desc: 'Direct-plan funds by category: return against risk', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
+  { href: '/tools/', label: 'Tools', desc: 'Size a position, test a plan’s arithmetic, X-ray holdings', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
+  { href: '/news/', label: 'News', desc: 'Stories tied to the companies they name', icon: 'M4 5h13v14H6a2 2 0 01-2-2zM17 9h3v8a2 2 0 01-2 2M8 9h5M8 13h5' },
+  { href: '/compare/', label: 'Compare', desc: 'Two to four companies, every number in one table', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
+  { href: '/calendar/', label: 'Calendar', desc: 'Results dates on file, largest companies first', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
+  { href: '/watchlist/', label: 'Watchlist', desc: 'Your names, kept privately in this browser', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
+  { href: '/journal/', label: 'Journal', desc: 'Why you decided, and where the price went after', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
+  { href: '/about/', label: 'Method', desc: 'Where each number comes from and how fresh it is', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
 ] as const;
 
 /** The five jobs people come to do. Every page stays one step away; the header shows five groups instead of seventeen links. */
@@ -120,6 +121,63 @@ function Palette({ open, onClose }: { open: boolean; onClose: () => void }) {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/** The reader's accent. Violet is the default and carries no attribute; the others set `data-accent` on <html>, which swaps the
+ *  accent tokens in globals.css (every text step checked at 4.5:1 on every surface, both themes: docs/agents/design.md). The
+ *  inline head script in app/layout.tsx applies the saved choice before first paint, so there is no flash. */
+export const ACCENTS = [['violet', 'Violet'], ['cyan', 'Electric cyan'], ['lime', 'Lime'], ['coral', 'Coral']] as const;
+export type Accent = (typeof ACCENTS)[number][0];
+const readAccent = (): Accent => { const a = document.documentElement.dataset.accent; return ACCENTS.some(([k]) => k === a) ? (a as Accent) : 'violet'; };
+function applyAccent(a: Accent) {
+  fadeTheme();
+  if (a === 'violet') delete document.documentElement.dataset.accent; else document.documentElement.dataset.accent = a;
+  try { localStorage.setItem('alpha-accent', a); } catch { /* private mode: the choice lasts for this page only */ }
+}
+
+function AccentPicker() {
+  const [open, setOpen] = useState(false);
+  const [acc, setAcc] = useState<Accent>('violet');
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { setAcc(readAccent()); }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); box.current?.querySelector<HTMLElement>('.accentbtn')?.focus(); } };
+    window.addEventListener('pointerdown', away);
+    window.addEventListener('keydown', key);
+    window.setTimeout(() => box.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus(), 10);
+    return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', key); };
+  }, [open]);
+  const pick = (a: Accent) => { applyAccent(a); setAcc(a); };
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ACCENTS.map(([k]) => k);
+    const at = keys.indexOf(acc);
+    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (at + 1) % keys.length : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (at - 1 + keys.length) % keys.length : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    pick(keys[next]);
+    e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
+  const label = ACCENTS.find(([k]) => k === acc)?.[1] ?? 'Violet';
+  return (
+    <div className="accentpick" ref={box}>
+      <button className="accentbtn" aria-expanded={open} aria-controls="accentpop" aria-label={`Accent colour: ${label}. Change`} onClick={() => setOpen((o) => !o)}>
+        <i aria-hidden />
+      </button>
+      {open && (
+        <div className="accentpop" id="accentpop" role="radiogroup" aria-label="Accent colour" onKeyDown={onKey}>
+          <div className="menu-hint">Accent colour</div>
+          {ACCENTS.map(([k, l]) => (
+            <button key={k} role="radio" aria-checked={acc === k} tabIndex={acc === k ? 0 : -1} data-sw={k} onClick={() => { pick(k); setOpen(false); }}>
+              <i aria-hidden />{l}
+            </button>
+          ))}
+          <p className="dim">Only the highlight changes. Gains and losses keep green and red, always with a sign.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -268,7 +326,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                   {g.hrefs.length > 1 && (
                     <div className="menu" role="group" aria-label={`${g.label} pages`}>
                       <div className="menu-hint">{g.hint}</div>
-                      {g.hrefs.map((h) => <Link key={h} href={h} aria-current={isActive(path, h) ? 'page' : undefined}><span className="ic"><Icon d={pageOf(h).icon} /></span>{pageOf(h).label}</Link>)}
+                      {g.hrefs.map((h) => <Link key={h} href={h} aria-current={isActive(path, h) ? 'page' : undefined}><span className="ic"><Icon d={pageOf(h).icon} /></span><span className="mi"><b>{pageOf(h).label}</b><span>{pageOf(h).desc}</span></span></Link>)}
                     </div>
                   )}
                 </div>
@@ -282,6 +340,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span>Search</span>
               <kbd>⌘K</kbd>
             </button>
+            <AccentPicker />
             <button className="themeswitch" role="switch" aria-checked={theme === 'light'} onClick={flip} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
               <svg className="s1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
               <svg className="s2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>

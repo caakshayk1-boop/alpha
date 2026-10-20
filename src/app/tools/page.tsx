@@ -1,184 +1,80 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { Confluence, PortfolioXray, ReverseDcf } from '@/components/AiTools';
 import { PageHead, Rv, SectionHead } from '@/components/ui';
-import { num } from '@/lib/format';
-import { canAnimate, gsap } from '@/lib/motion';
+import { Cagr, ExpectedValue, Position, Recovery, Sip } from './calc';
 
-const toNum = (s: string) => { const n = Number(s.replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
-const lakh = (v: number) => (v >= 1e7 ? `₹${(v / 1e7).toFixed(2)} cr` : v >= 1e5 ? `₹${(v / 1e5).toFixed(2)} L` : `₹${num(v, 0)}`);
+/** The decision board: each card is one question a tool answers, in one line, with one action. */
+const BOARD: { id: string; n: string; q: string; a: string; go: string; href?: string }[] = [
+  { id: 'size', n: '01', q: 'How many shares does my stop allow?', a: 'Size from capital, risk per trade, entry and stop.', go: 'Size a position' },
+  { id: 'ev', n: '02', q: 'Is this plan worth taking, on its own numbers?', a: 'Expected value, break-even win rate and the spread over many trades.', go: 'Test a plan' },
+  { id: 'xray', n: '03', q: 'What am I really holding?', a: 'Concentration, sector weight, trend and quality of pasted holdings.', go: 'X-ray holdings' },
+  { id: 'dcf', n: '04', q: 'What growth does today’s price assume?', a: 'Reverse DCF: solve for the earnings growth a price needs.', go: 'Solve for growth' },
+  { id: 'cagr', n: '05', q: 'What was the annual return?', a: 'The steady yearly rate between a start and an end value.', go: 'Work out a rate' },
+  { id: 'recovery', n: '06', q: 'How deep is this hole?', a: 'The gain it takes to get back to even after a fall.', go: 'Measure a fall' },
+  { id: 'sip', n: '07', q: 'What could a monthly SIP become?', a: 'Contributions and step-ups at a return you choose, with a band.', go: 'Project a SIP' },
+  { id: 'compare', n: '08', q: 'How do these companies line up?', a: 'Two to four companies, every number in one table.', go: 'Compare companies', href: '/compare/' },
+];
 
-function Field({ label, value, set, suffix, prefix }: { label: string; value: string; set: (v: string) => void; suffix?: string; prefix?: string }) {
-  return (
-    <label style={{ display: 'grid', gap: 6, fontSize: 14, color: 'var(--muted)' }}>
-      {label}
-      <span style={{ position: 'relative', display: 'block' }}>
-        {prefix && <span className="dim" style={{ position: 'absolute', left: 14, top: 10 }}>{prefix}</span>}
-        <input className="field" style={{ width: '100%', paddingLeft: prefix ? 30 : 14, paddingRight: suffix ? 38 : 14 }} inputMode="decimal" value={value} onChange={(e) => set(e.target.value.replace(/[^\d.,]/g, ''))} />
-        {suffix && <span className="dim" style={{ position: 'absolute', right: 14, top: 10 }}>{suffix}</span>}
-      </span>
-    </label>
-  );
-}
-
-function Sip() {
-  const [monthly, setMonthly] = useState('25000');
-  const [step, setStep] = useState('10');
-  const [ret, setRet] = useState('12');
-  const [years, setYears] = useState('15');
-  const path = useRef<SVGPathElement>(null);
-  const data = useMemo(() => {
-    const Y = Math.min(50, Math.max(1, Math.round(toNum(years))));
-    const series = (rate: number) => {
-      const out: { y: number; value: number; invested: number }[] = [{ y: 0, value: 0, invested: 0 }];
-      let value = 0, invested = 0, m = toNum(monthly);
-      const r = Math.pow(1 + rate / 100, 1 / 12) - 1;
-      for (let yr = 1; yr <= Y; yr++) {
-        for (let k = 0; k < 12; k++) { value = (value + m) * (1 + r); invested += m; }
-        out.push({ y: yr, value, invested });
-        m *= 1 + toNum(step) / 100;
-      }
-      return out;
-    };
-    const base = series(toNum(ret));
-    return { Y, base, low: series(Math.max(0, toNum(ret) - 3)), high: series(toNum(ret) + 3) };
-  }, [monthly, step, ret, years]);
-  const last = data.base[data.base.length - 1];
-  const W = 560, H = 200, pad = 8;
-  const max = Math.max(...data.high.map((p) => p.value), 1);
-  const X = (y: number) => pad + (y / data.Y) * (W - 2 * pad);
-  const Yv = (v: number) => H - pad - (v / max) * (H - 2 * pad);
-  const line = (s: { y: number; value: number }[]) => s.map((p, i) => `${i ? 'L' : 'M'}${X(p.y).toFixed(1)},${Yv(p.value).toFixed(1)}`).join(' ');
-  useEffect(() => {
-    const p = path.current;
-    if (!p || !canAnimate()) return;
-    const len = p.getTotalLength();
-    gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1, ease: 'power2.out', immediateRender: false, clearProps: 'strokeDasharray,strokeDashoffset' });
-  }, [data.base.length, ret, monthly]);
-  return (
-    <Rv className="panel">
-      <div className="eyebrow">SIP planner</div>
-      <div className="grid g4" style={{ marginTop: 14 }}>
-        <Field label="Monthly amount" value={monthly} set={setMonthly} prefix="₹" />
-        <Field label="Yearly step-up" value={step} set={setStep} suffix="%" />
-        <Field label="Return a year" value={ret} set={setRet} suffix="%" />
-        <Field label="Years" value={years} set={setYears} />
-      </div>
-      <div className="grid g3" style={{ margin: '18px 0' }}>
-        <div><div className="eyebrow">You put in</div><div className="disp" style={{ fontSize: 36 }}>{lakh(last.invested)}</div></div>
-        <div><div className="eyebrow">It grows to</div><div className="disp" style={{ fontSize: 36, color: 'var(--accent-2)' }}>{lakh(last.value)}</div></div>
-        <div><div className="eyebrow">Growth is</div><div className="disp" style={{ fontSize: 36 }}>{last.invested ? `${(last.value / last.invested).toFixed(1)}×` : '—'}</div></div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label={`SIP growth over ${data.Y} years`}>
-        <path d={`${line(data.high)} L${X(data.Y)},${Yv(0)} L${X(0)},${Yv(0)} Z`} fill="var(--accent-soft)" opacity=".5" />
-        <path d={`${line(data.low)} L${X(data.Y)},${Yv(0)} L${X(0)},${Yv(0)} Z`} fill="var(--bg)" opacity=".7" />
-        <path d={line(data.base.map((p) => ({ y: p.y, value: p.invested })))} fill="none" stroke="var(--dim)" strokeWidth="1.6" strokeDasharray="5 4" />
-        <path ref={path} d={line(data.base)} fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" />
-      </svg>
-      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Solid line: grows at {ret}% a year. Shaded band: 3 points either side ({lakh(data.low[data.low.length - 1].value)} to {lakh(data.high[data.high.length - 1].value)}). Dashed: what you put in. Returns are an assumption you type, not a forecast, and real returns arrive unevenly. No tax or inflation is modelled.</p>
-    </Rv>
-  );
-}
-
-function Cagr() {
-  const [from, setFrom] = useState('100000');
-  const [to, setTo] = useState('250000');
-  const [years, setYears] = useState('5');
-  const f = toNum(from), t = toNum(to), y = toNum(years);
-  const c = f > 0 && t > 0 && y > 0 ? (Math.pow(t / f, 1 / y) - 1) * 100 : null;
-  return (
-    <Rv className="panel">
-      <div className="eyebrow">What was the annual return?</div>
-      <div className="grid g3" style={{ marginTop: 14 }}>
-        <Field label="Started with" value={from} set={setFrom} prefix="₹" /><Field label="Ended with" value={to} set={setTo} prefix="₹" /><Field label="Years" value={years} set={setYears} />
-      </div>
-      {c === null && <p className="notice" style={{ marginTop: 14 }}>Needs a start and an end value above zero and a number of years above zero. A start of zero has no compound rate, and a total loss has no meaningful one.</p>}
-      {y > 60 && <p className="notice" style={{ marginTop: 14 }}>That is a very long period for a compound rate to mean much.</p>}
-      <div className="disp" style={{ fontSize: 56, margin: '16px 0 4px', color: c !== null && c >= 0 ? 'var(--up)' : 'var(--down)' }}>{c === null ? '—' : `${c > 0 ? '+' : ''}${c.toFixed(1)}%`}</div>
-      <p className="muted" style={{ margin: 0 }}>a year, compounded{c !== null && c > 0 ? `. At that rate money doubles in about ${(70 / c).toFixed(1)} years.` : '.'}</p>
-    </Rv>
-  );
-}
-
-function Position() {
-  const [capital, setCapital] = useState('1000000');
-  const [riskPct, setRiskPct] = useState('1');
-  const [entry, setEntry] = useState('500');
-  const [stop, setStop] = useState('470');
-  const cap = toNum(capital), rp = toNum(riskPct), e = toNum(entry), s = toNum(stop);
-  const risk = e - s;
-  const qty = risk > 0 && cap > 0 ? Math.floor((cap * rp / 100) / risk) : 0;
-  return (
-    <Rv className="panel">
-      <div className="eyebrow">Position size from your stop</div>
-      <div className="grid g4" style={{ marginTop: 14 }}>
-        <Field label="Capital" value={capital} set={setCapital} prefix="₹" /><Field label="Risk per trade" value={riskPct} set={setRiskPct} suffix="%" /><Field label="Entry price" value={entry} set={setEntry} prefix="₹" /><Field label="Stop price" value={stop} set={setStop} prefix="₹" />
-      </div>
-      {!(cap > 0) || !(e > 0) || !(s > 0) || !(rp > 0) ? <p className="notice" style={{ marginTop: 14 }}>Capital, risk per trade, entry and stop must each be above zero.</p> : rp > 100 ? <p className="notice" style={{ marginTop: 14 }}>Risk per trade cannot exceed 100% of capital.</p> : risk <= 0 ? <p className="notice" style={{ marginTop: 14 }}>The stop has to be below the entry for a long position.</p> : (
-        <>
-          <div className="grid g3" style={{ margin: '18px 0 12px' }}>
-            <div><div className="eyebrow">Shares</div><div className="disp" style={{ fontSize: 40 }}>{num(qty)}</div></div>
-            <div><div className="eyebrow">Position value</div><div className="disp" style={{ fontSize: 40 }}>{lakh(qty * e)}</div><div className="dim num" style={{ fontSize: 13.5 }}>{cap ? ((qty * e / cap) * 100).toFixed(0) : 0}% of capital</div></div>
-            <div><div className="eyebrow">If the stop hits</div><div className="disp down" style={{ fontSize: 40 }}>−₹{num(qty * risk, 0)}</div><div className="dim num" style={{ fontSize: 13.5 }}>{((risk / e) * 100).toFixed(1)}% below entry</div></div>
-          </div>
-          <div className="kv" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>{[1, 2, 3, 4].map((m) => <div key={m}><div className="k">{m}R target</div><div className="v up" style={{ fontSize: 15 }}>₹{num(e + m * risk, 2)}</div><div className="dim num" style={{ fontSize: 13 }}>+₹{num(qty * risk * m, 0)}</div></div>)}</div>
-          {rp > 5 && <p className="notice" style={{ marginTop: 12 }}>Risking {rp}% of capital on one trade is far above the 1–2% most rule sets use: a short run of stops would take a large part of the account.</p>}
-          {qty === 0 && <p className="notice" style={{ marginTop: 12 }}>The risk budget (₹{num(cap * rp / 100, 0)}) is smaller than the risk on a single share (₹{num(risk, 2)}), so the size rounds down to zero shares.</p>}
-          {qty * e > cap && <p className="notice" style={{ marginTop: 12 }}>This size needs more than your capital. Widen the stop, cut the risk, or take fewer shares.</p>}
-        </>
-      )}
-      <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Arithmetic only: a gap can fill you below the stop, and costs are not included. Position size is your decision.</p>
-    </Rv>
-  );
-}
-
-function Recovery() {
-  const [loss, setLoss] = useState('30');
-  const l = Math.min(99, toNum(loss));
-  const need = l > 0 ? (l / (100 - l)) * 100 : 0;
-  return (
-    <Rv className="panel">
-      <div className="eyebrow">Loss recovery</div>
-      <div style={{ maxWidth: 220, marginTop: 14 }}><Field label="After a fall of" value={loss} set={setLoss} suffix="%" /></div>
-      {toNum(loss) >= 100 && <p className="notice" style={{ marginTop: 14 }}>A fall of 100% or more cannot be recovered: nothing is left to grow. Shown for a 99% fall.</p>}
-      <div className="disp" style={{ fontSize: 56, margin: '16px 0 4px', color: 'var(--warn)' }}>+{need.toFixed(0)}%</div>
-      <p className="muted" style={{ margin: 0 }}>is what it takes to get back to even. Losses are not symmetrical, which is why every plan here starts from the stop.</p>
-    </Rv>
-  );
-}
-
-const GROUPS: [string, string][] = [['portfolio', 'Portfolio'], ['valuation', 'Valuation'], ['risk', 'Risk'], ['planning', 'Planning'], ['evidence', 'Evidence']];
+const NAV: [string, string][] = [['risk', 'Risk'], ['portfolio', 'Portfolio'], ['valuation', 'Valuation'], ['planning', 'Planning'], ['evidence', 'Evidence']];
 
 export default function Tools() {
   return (
     <>
-      <PageHead eyebrow="Tools" title="Research tools," em="honest arithmetic." lede="Calculators for the questions that come up around the research: what a SIP could become, what a return really was, how many shares a stop allows, how deep a hole is. Everything runs in your browser." />
+      <PageHead eyebrow="Tools" title="Think a decision through," em="with the working shown." lede="Each tool answers one question with arithmetic you can check line by line. Change an input and every step updates. Everything runs in this browser, and nothing here is a recommendation." />
       <section className="wrap">
-        <div className="grid g3 swipe" style={{ marginBottom: 14 }}>
-          {[['/compare/', 'Compare companies', 'Up to four, side by side, with the highest or lowest marked and a score profile.'], ['/calendar/', 'Results calendar', 'Who reports in the next 7 to 60 days, largest first.'], ['/watchlist/', 'Watchlist', 'Your names, kept privately in this browser, flagged for results and signals.']].map(([href, t, d]) => (
-            <Link key={href} href={href}><Rv className="panel spot tilt" style={{ height: '100%' }}><div className="disp" style={{ fontSize: 28 }}>{t}</div><p className="muted" style={{ margin: '8px 0 0' }}>{d}</p></Rv></Link>
+        <ol className="board" aria-label="What each tool answers">
+          {BOARD.map((b) => (
+            <li key={b.id}>
+              <Rv className="board-card">
+                <span className="board-n" aria-hidden>{b.n}</span>
+                <h2 className="board-q">{b.q}</h2>
+                <p className="board-a">{b.a}</p>
+                {b.href ? <Link className="board-go" href={b.href}>{b.go} <span aria-hidden>→</span></Link> : <a className="board-go" href={`#${b.id}`}>{b.go} <span aria-hidden>↓</span></a>}
+              </Rv>
+            </li>
           ))}
-        </div>
-        <nav aria-label="Tool groups" className="filters" style={{ margin: '0 0 8px' }}>
-          {GROUPS.map(([id, label]) => <a key={id} className="chip" href={`#${id}`}>{label}</a>)}
+        </ol>
+
+        <nav aria-label="Tool groups" className="toolnav">
+          {NAV.map(([id, label]) => <a key={id} className="chip" href={`#${id}`}>{label}</a>)}
         </nav>
-        <div id="portfolio" /><SectionHead eyebrow="Portfolio" title="Look at what you hold" />
-        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Paste holdings to see concentration, sector weight and trend. Calculated in this browser; nothing is uploaded.</p>
-        <div className="grid" style={{ marginBottom: 28 }}><PortfolioXray /></div>
-        <div id="valuation" /><SectionHead eyebrow="Valuation" title="What a price assumes" />
-        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Work backwards from a price to the growth it implies, and measure what a return really was.</p>
-        <div className="grid" style={{ marginBottom: 28 }}><ReverseDcf /><Cagr /></div>
-        <div id="risk" /><SectionHead eyebrow="Risk" title="Size and survive" />
-        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>How many shares a stop allows, and how much of a gain a loss takes back.</p>
-        <div className="grid g2" style={{ marginBottom: 28 }}><Position /><Recovery /></div>
-        <div id="planning" /><SectionHead eyebrow="Planning" title="Plan contributions" />
-        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>What a monthly SIP could become under a return you choose. An illustration, not a forecast.</p>
-        <div className="grid" style={{ marginBottom: 28 }}><Sip /></div>
-        <div id="evidence" /><SectionHead eyebrow="Research" title="Evidence across checks" />
-        <p className="muted" style={{ margin: '0 0 12px', maxWidth: '70ch' }}>Companies where several of the screen&apos;s checks point the same way, with the conflicts and missing checks shown.</p>
-        <div className="grid" style={{ marginBottom: 28 }}><Rv className="panel"><Confluence limit={10} /></Rv></div>
+
+        <div className="toolsec" id="risk">
+          <SectionHead eyebrow="Risk" title="Size it, then test it" />
+          <div className="toolstack">
+            <div id="size" className="anchor"><Position /></div>
+            <div id="ev" className="anchor"><ExpectedValue /></div>
+            <div id="recovery" className="anchor"><Recovery /></div>
+          </div>
+        </div>
+
+        <div className="toolsec" id="portfolio">
+          <SectionHead eyebrow="Portfolio" title="Look at what you hold" />
+          <p className="toolsec-l">Paste holdings to see concentration, sector weight and trend. Calculated in this browser; nothing is uploaded.</p>
+          <div id="xray" className="anchor"><PortfolioXray /></div>
+        </div>
+
+        <div className="toolsec" id="valuation">
+          <SectionHead eyebrow="Valuation" title="What a price assumes" />
+          <p className="toolsec-l">Work backwards from a price to the growth it implies, and measure what a return really was.</p>
+          <div className="toolstack">
+            <div id="dcf" className="anchor"><ReverseDcf /></div>
+            <div id="cagr" className="anchor"><Cagr /></div>
+          </div>
+        </div>
+
+        <div className="toolsec" id="planning">
+          <SectionHead eyebrow="Planning" title="Plan contributions" />
+          <div id="sip" className="anchor"><Sip /></div>
+        </div>
+
+        <div className="toolsec" id="evidence">
+          <SectionHead eyebrow="Research" title="Evidence across checks" />
+          <p className="toolsec-l">Companies where several of the screen&apos;s checks point the same way, with the conflicts and missing checks shown.</p>
+          <Rv className="panel"><Confluence limit={10} /></Rv>
+        </div>
         <p className="dim" style={{ fontSize: 13.5, marginTop: 18 }}>Information and arithmetic only. Not investment, tax or legal advice.</p>
       </section>
     </>
