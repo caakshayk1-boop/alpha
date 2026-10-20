@@ -14,7 +14,6 @@ type Mode = 'candles' | 'line' | 'rel';
 type On = { s50: boolean; s200: boolean; vol: boolean; rsi: boolean; sr: boolean; plan: boolean };
 const INDICATORS: [keyof On, string][] = [['s50', '50-day'], ['s200', '200-day'], ['vol', 'Volume'], ['rsi', 'RSI'], ['sr', 'Support / resistance'], ['plan', 'Engine plan']];
 
-const css = (n: string, fb: string) => (typeof document === 'undefined' ? fb : getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb);
 const fmtDate = (t: number) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
 const px = (v: number) => num(v, v < 100 ? 2 : 0);
 
@@ -56,7 +55,13 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
   useEffect(() => {
     const c = cv.current, box = wrap.current;
     if (!c || !box || !bars || !ind) return;
+    // Every read (width, theme colours) happens BEFORE the canvas is resized: resizing invalidates style, and a colour read
+    // after it forced a full-document style pass on every draw (about 0.5 s of a throttled phone's first paint, 20 Oct 2026).
     const W = box.clientWidth || 800;
+    const cs = getComputedStyle(document.documentElement);
+    const css = (n: string, fb: string) => cs.getPropertyValue(n).trim() || fb;
+    const up = css('--up', '#3ddc97'), down = css('--down', '#ff6b7a'), text = css('--muted', '#9aa5b5'), grid = css('--line', 'rgba(255,255,255,.08)'), acc = css('--accent', '#8e9bff'), warn = css('--warn', '#f5b84a');
+    const font = axisFont();
     const rel = mode === 'rel';
     const H = 300 + (on.vol && !rel ? 52 : 0) + (on.rsi ? 76 : 0);
     const dpr = window.devicePixelRatio || 1;
@@ -65,7 +70,6 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
     if (!g) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
-    const up = css('--up', '#3ddc97'), down = css('--down', '#ff6b7a'), text = css('--muted', '#9aa5b5'), grid = css('--line', 'rgba(255,255,255,.08)'), acc = css('--accent', '#8e9bff'), warn = css('--warn', '#f5b84a');
     const n = bars.c.length, padL = 6, padR = 58, top = 8, ph = 264;
     const pw = W - padL - padR, step = pw / n, X = (i: number) => padL + (i + 0.5) * step;
     const base = bars.c[0], nb = bars.nifty.find((v) => v !== null) ?? null;
@@ -81,7 +85,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
     }
     const m = (hi - lo) * 0.07; lo -= m; hi += m;
     const Y = (v: number) => top + ph - ((v - lo) / (hi - lo)) * ph;
-    g.font = axisFont(); g.textBaseline = 'middle';
+    g.font = font; g.textBaseline = 'middle';
     for (let k = 0; k <= 3; k++) {
       const v = lo + ((hi - lo) * (k + 0.5)) / 4, y = Y(v);
       g.strokeStyle = grid; g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke();
