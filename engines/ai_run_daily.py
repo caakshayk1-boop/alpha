@@ -15,6 +15,7 @@ import pandas as pd
 
 import ai_trades as T
 import context
+import conviction
 import features as F
 import labels as L
 import registry
@@ -89,6 +90,11 @@ def explain(sym: str, date, panel: pd.DataFrame, top_features: list[dict], day_s
     return out
 
 
+def _breadth_on(breadth: pd.Series, date) -> float | None:
+    v = breadth.get(pd.Timestamp(date))
+    return None if v is None or pd.isna(v) else float(v)
+
+
 def bench_meta(ctx: Ctx, sym: str, df: pd.DataFrame, t: int) -> dict | None:
     g = ctx.group_name(sym)
     if g is None:
@@ -136,6 +142,7 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     last = reg.get("last_scan")            # sessions the scanner has not looked at yet: just the latest one, or those a dropped run missed (at most five)
     unseen = dates[dates > pd.Timestamp(last)] if last else dates[-1:]
     lo = unseen[-5:][0] if len(unseen) else dates[-1]
+    breadth = panel["breadth_50"].groupby(level="date").first()        # one market-wide value per session, closes up to that date
     candidates, eng_out = [], {}
     for key, eng in ENGINES.items():
         scores, model, nrows = train_and_score(panel, lab, eng, log)
@@ -154,6 +161,7 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
                 "score": round(float(s.meta["score"]), 4), "score_percentile": round(rk * 100, 1) if rk is not None else None,
                 "turnover_cr": round(float((df["Close"] * df["Volume"]).iloc[-20:].mean() / 1e7), 1),
                 "reasons": explain(s.sym, s.date, panel, imp, day_scores), "benchmark": bench_meta(ctx, s.sym, df, s.t),
+                **dict(zip(("conviction", "conviction_why"), conviction.tier(_breadth_on(breadth, s.date)))),     # fixed at issue, like the plan
             })
         eng_out[key] = {"importance": imp, "train_rows": nrows}
     registry.update(reg, candidates, bars, today)
@@ -178,6 +186,8 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     signals = []
     for e in view:
         st = engines[e["engine"]]
+        if "conviction" not in e:              # issued before the tier existed: the same rule on the same signal-date breadth
+            e["conviction"], e["conviction_why"] = conviction.tier(_breadth_on(breadth, pd.Timestamp(e["issued"])))
         signals.append({**e, "engine_status": st["status"], "engine_name": st["name"], "max_hold_days": e["max_hold"], "typical_days_to_t1": st["timeline"].get("median_days_to_t1"),
                         "also_names": [engines[x]["name"] for x in e.get("also", []) if x in engines]})
     order = {"open": 0, "pending": 1, "closed": 2, "void": 3}
@@ -185,6 +195,7 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     return {"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "data_through": today,
             "backtest": {"generated": results["generated"], "data_through": results["data_through"], "universe": results["universe"], "cost_round_trip_pct": results["cost_round_trip_pct"],
                          "periods": results["periods"], "features": results["features"], "notes": results.get("notes", [])},
+            "conviction_rule": conviction.RULE,
             "launched": reg.get("launched"), "live_record": registry.forward_record(reg), "exit_plan": EXIT_PLAN, "benchmarks": sector_board(ctx), "engines": engines, "signals": signals}
 
 
