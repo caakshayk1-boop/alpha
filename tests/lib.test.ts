@@ -683,3 +683,127 @@ test('sessionHead: live in hours, close after the bell, "latest close" before th
   assert.equal(sessionHead('2026-10-19', { newest: t('2026-10-19T10:00:00Z') / 1000, session: '2026-10-19' }, t('2026-10-20T03:19:00Z')), 'Monday 19 October · latest close · NSE opens 09:15 IST today');
   assert.equal(sessionHead(null, null), null);
 });
+
+import { addSessions, closeBasis, markSignal, noSessionDays, position, railOf, sessionsAfter, summarise as summariseBook, timeLimitDate, type PlanSignal } from '../src/lib/positions.ts';
+
+// engines/common.py walk(): entry 100, stop 90 (R = 10), targets 110/120/135, time limit 7 sessions from a Monday entry.
+const psig = (over: Partial<PlanSignal> = {}): PlanSignal => ({
+  status: 'open', date: '2026-10-09', ref_price: 99, entry: 100, entry_date: '2026-10-12', sl: 90, stop_now: 90, targets: [110, 120, 135],
+  hit: 0, max_hold_days: 7, last_close: 104, events: [{ date: '2026-10-12', kind: 'entry', price: 100, fraction: 1 }], ...over,
+});
+const pLive = (price: number, session = '2026-10-15') => ({ price, source: 'live' as const, session, at: Date.UTC(2026, 9, 15, 5, 0) / 1000 });
+const pnear = (a: number | null | undefined, b: number) => typeof a === 'number' && Math.abs(a - b) < 1e-9;
+
+test('positions: the time limit is session max_hold counting the entry session as 1, weekdays only', () => {
+  assert.equal(timeLimitDate('2026-10-12', 7), '2026-10-20');          // Mon 12 -> Tue 20 (12,13,14,15,16,19,20)
+  assert.equal(timeLimitDate('2026-10-12', 1), '2026-10-12');
+  assert.equal(addSessions('2026-10-16', 1), '2026-10-19');            // Friday + 1 = Monday
+  assert.equal(sessionsAfter('2026-10-16', '2026-10-20'), 2);
+  assert.equal(sessionsAfter('2026-10-20', '2026-10-16'), -2);
+});
+test('positions: a weekday the live snapshot proves had no trading moves the time limit a session later', () => {
+  // 20 Oct 2026: newest trade in the whole snapshot was 19 Oct 15:30 IST, fetched 20 Oct 21:26 IST: 20 Oct was not a session
+  const fetched = Date.parse('2026-10-20T15:56:13Z') / 1000;
+  assert.deepEqual(noSessionDays('2026-10-19', fetched), ['2026-10-20']);
+  assert.deepEqual(noSessionDays('2026-10-19', Date.parse('2026-10-20T03:50:00Z') / 1000), []);          // 09:20 IST: too early to tell
+  assert.deepEqual(noSessionDays('2026-10-20', fetched), []);                                            // traded today
+  assert.deepEqual(noSessionDays('2026-10-16', Date.parse('2026-10-18T06:00:00Z') / 1000), []);          // a weekend is not a holiday
+  const skip = new Set(['2026-10-20']);
+  assert.equal(timeLimitDate('2026-10-12', 7, skip), '2026-10-21');
+  const p = position(psig(), { price: 104, source: 'live', session: '2026-10-19', at: 1 }, '2026-10-19', ['2026-10-20']);
+  assert.deepEqual([p.timeDue, p.sessionsLeft, p.state], ['2026-10-21', 1, 'hold']);
+});
+test('positions: the engines\' close is dated per stock from the quote, never assumed to be data_through', () => {
+  const at19 = Date.parse('2026-10-19T10:00:00Z') / 1000;   // 19 Oct 15:30 IST
+  // ROLEXRINGS, 20 Oct 2026: feed said data_through 19 Oct, last_close 173.14; Yahoo: 19 Oct close 168.89, previous 173.14
+  assert.deepEqual(closeBasis(173.14, '2026-10-19', { price: 168.89, prev: 173.14, at: at19 }), { closeOn: '2026-10-16', quoteNewer: true });
+  assert.deepEqual(closeBasis(301.25, '2026-10-19', { price: 301.25, prev: 306.35, at: at19 }), { closeOn: '2026-10-19', quoteNewer: false });   // ARTEMISMED
+  assert.deepEqual(closeBasis(489.1, '2026-10-19', { price: 458.2, prev: 472.4, at: at19 }), { closeOn: null, quoteNewer: true });                // INDOBORAX: older, undated
+  assert.deepEqual(closeBasis(173.14, '2026-10-19', null), { closeOn: '2026-10-19', quoteNewer: false });                                           // no quote: the feed's date
+  const s = { ...psig({ entry: 170.99, sl: 159.26, stop_now: 170.99, hit: 1, targets: [177.04, 183.95, 193.83], last_close: 173.14, entry_date: '2026-10-12',
+    events: [{ date: '2026-10-12', kind: 'entry', price: 170.99, fraction: 1 }, { date: '2026-10-16', kind: 't1', price: 177.04, fraction: 0.333 }] }), sym: 'ROLEXRINGS' };
+  const m = markSignal(s, '2026-10-19', null, { price: 168.89, prev: 173.14, pct: -2.45, at: at19 }, ['2026-10-20']);
+  assert.deepEqual([m.pv.source, m.pos.live, m.pos.price, m.pos.closeOn, m.pos.state], ['quote', true, 168.89, '2026-10-16', 'stop-hit']);   // below the stop at entry
+  assert.ok(pnear(m.pos.r, ((177.04 - 170.99) / 3 + (2 / 3) * (168.89 - 170.99)) / (170.99 - 159.26)));
+});
+test('positions: a live price from a newer session marks the trade; R = (price - entry) / (entry - stop) before any target', () => {
+  const p = position(psig(), pLive(106), '2026-10-14');
+  assert.equal(p.live, true);
+  assert.ok(pnear(p.r, 0.6) && pnear(p.pct, 6));
+  assert.equal(p.state, 'hold');
+  assert.equal(p.toStop?.r, -1.6);
+  assert.deepEqual([p.toNext?.label, p.toNext?.r], ['T1', 0.4]);
+  assert.ok(pnear(p.sinceClose, ((106 - 104) / 104) * 100));
+  assert.equal(p.timeDue, '2026-10-20');
+  assert.equal(p.sessionsLeft, 3);
+});
+test('positions: a price no newer than the engines\' close is that close, dated, with no "since close" move', () => {
+  const p = position(psig(), { price: 999, source: 'live', session: '2026-10-14', at: 1 }, '2026-10-14');
+  assert.deepEqual([p.live, p.price, p.session, p.sinceClose], [false, 104, '2026-10-14', null]);
+  assert.ok(pnear(p.r, 0.4));
+  // a stale quote (no trade this session) is never a live move either
+  const q = position(psig(), { price: 120, source: 'stale', session: '2026-10-13', at: 1 }, '2026-10-14');
+  assert.deepEqual([q.price, q.live], [104, false]);
+});
+test('positions: the stop is checked first; at or below it the plan exits everything (common.py:97)', () => {
+  const p = position(psig(), pLive(90), '2026-10-14');
+  assert.equal(p.state, 'stop-hit');
+  assert.ok(pnear(p.r, -1));
+  assert.match(p.action, /exits the whole position at the stop/);
+  assert.equal(p.changed.what, 'Latest price at the stop');
+});
+test('positions: T1 at the latest price sells a third and moves the stop to entry; T2 moves it to T1 (common.py:111)', () => {
+  const a = position(psig(), pLive(111), '2026-10-14');
+  assert.deepEqual([a.state, a.reachedNow, a.stop], ['target-hit', 1, 100]);
+  assert.match(a.action, /moves the stop on the rest to entry/);
+  const b = position(psig(), pLive(125), '2026-10-14');
+  assert.deepEqual([b.state, b.reachedNow, b.stop], ['target-hit', 2, 110]);
+  const c = position(psig(), pLive(140), '2026-10-14');
+  assert.equal(c.state, 'all-targets');
+  assert.equal(c.toNext, null);
+});
+test('positions: after a booked T1 the mark is the realised third plus two thirds at the price (registry.py:74)', () => {
+  const s = psig({ hit: 1, stop_now: 100, events: [{ date: '2026-10-12', kind: 'entry', price: 100, fraction: 1 }, { date: '2026-10-14', kind: 't1', price: 110, fraction: 0.333 }] });
+  const p = position(s, pLive(115), '2026-10-14');
+  assert.ok(pnear(p.r, (10 / 3 + (2 / 3) * 15) / 10));   // 1.3333R
+  assert.equal(p.state, 'hold');
+  assert.equal(p.toStop?.label, 'Stop (entry)');
+  assert.deepEqual([p.changed.what, p.changed.session], ['T1 reached; stop moved to entry', '2026-10-14']);
+  // back at entry: the stop at entry is reached, the two thirds go at entry, the trade ends at the realised third
+  const q = position(s, pLive(100), '2026-10-14');
+  assert.equal(q.state, 'stop-hit');
+  assert.match(q.action, /remaining two thirds/);
+  assert.match(q.action, /\+0\.33R/);
+});
+test('positions: the time-limit session says exit at today\'s close; a passed one says the evening run books it', () => {
+  assert.equal(position(psig(), pLive(104, '2026-10-20'), '2026-10-19').state, 'time-due');
+  assert.equal(position(psig(), pLive(104, '2026-10-21'), '2026-10-19').state, 'time-passed');
+  assert.equal(position(psig(), pLive(112, '2026-10-20'), '2026-10-19').state, 'target-hit');   // a target that day comes before the close
+});
+test('positions: pending shows the distance to the signal close, never an R or a P&L', () => {
+  const s = psig({ status: 'pending', entry: null, entry_date: null, last_close: null, events: [], date: '2026-10-16', ref_price: 100 });
+  const a = position(s, null, '2026-10-16');
+  assert.deepEqual([a.state, a.r, a.pct, a.price], ['awaiting-entry', null, null, 100]);
+  const b = position(s, pLive(102, '2026-10-19'), '2026-10-16');
+  assert.equal(b.live, true);
+  assert.ok(pnear(b.toEntry?.pct, ((100 - 102) / 102) * 100));
+  assert.match(b.action, /Entry was due at the 19 Oct 2026 open/);
+});
+test('positions: the rail is a linear price scale from the stop to T3, stretched to include the price', () => {
+  const r = railOf({ entry: 100, stop: 90, price: 106, sl: 90, targets: [110, 120, 135] });
+  assert.equal(r.at(90), 0); assert.equal(r.at(135), 100);
+  assert.ok(pnear(r.at(100), (10 / 45) * 100));
+  assert.equal(railOf({ entry: 100, stop: 90, price: 80, sl: 90, targets: [110, 120, 135] }).at(80), 0);
+});
+test('positions: on the real engines feed every open signal marks to its own r_open at the last close (registry.py:74)', () => {
+  const feed = JSON.parse(readFileSync(new URL('../public/engines.json', import.meta.url), 'utf8')) as { data_through: string; signals: (PlanSignal & { r_open?: number; sym: string })[] };
+  const open = feed.signals.filter((s) => s.status === 'open');
+  assert.ok(open.length > 0);
+  for (const s of open) {
+    const p = position(s, null, feed.data_through);
+    assert.equal(p.price, s.last_close);
+    assert.ok(Math.abs((p.r ?? Number.NaN) - (s.r_open ?? Number.NaN)) <= 0.005 + 1e-9, `${s.sym}: ${p.r} vs ${s.r_open}`);
+  }
+  const book = summariseBook(open.map((s) => position(s, null, feed.data_through)));
+  assert.deepEqual([book.open, book.live], [open.length, 0]);
+});
