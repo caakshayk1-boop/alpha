@@ -4,15 +4,17 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Curve from '@/components/Curve';
 import PlanOdds from '@/components/PlanOdds';
+import { PaperBlock, PaperBook } from '@/components/PaperPosition';
 import Scoreboard from '@/components/Scoreboard';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { VERDICT_TONE, verdictText } from '@/components/EvidenceTags';
 import { Async, Bar, Chg, Flash, PageHead, Rv, SectionHead, Segmented } from '@/components/ui';
-import { useEngines, usePx } from '@/lib/data';
+import { useEngines, useLive, usePx } from '@/lib/data';
 import { ago, dash, dateLabel, num } from '@/lib/format';
-import { priceLabel, priceView } from '@/lib/price';
+import { priceLabel, priceView, type PriceView } from '@/lib/price';
+import { markSignal, noSessionDays, type Position } from '@/lib/positions';
 import { journalHref } from '@/lib/journal';
-import type { EngineSignal, EngineStats, Period, PxQuote, RankBlock, TradeBlock } from '@/lib/types';
+import type { EngineSignal, EngineStats, Period, RankBlock, TradeBlock } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 
 const TONE = VERDICT_TONE;
@@ -23,7 +25,7 @@ const days = (v: number | null | undefined) => (typeof v === 'number' ? `${Math.
 const STATE_LABEL: Record<string, string> = { pending: 'Issued · waiting for the next open', open: 'Open', closed: 'Closed', void: 'Void' };
 const EVENT_LABEL: Record<string, string> = { entry: 'Entered', t1: 'T1 reached', t2: 'T2 reached', t3: 'T3 reached', stop: 'Stopped out', stop_after_t1: 'Stopped at entry', stop_after_t2: 'Stopped at T1', time: 'Time limit' };
 
-function SignalCard({ s, e, live, through, closeOn, cost }: { s: EngineSignal; e: EngineStats; live?: PxQuote; through?: string; closeOn?: string; cost?: number }) {
+function SignalCard({ s, e, pv, pos, through, cost }: { s: EngineSignal; e: EngineStats; pv: PriceView; pos: Position; through?: string; cost?: number }) {
   // A signal still `pending` once a later session exists in the screen has had its open come and go; the engines have not processed it yet.
   const overdue = s.status === 'pending' && !!through && through > s.date;
   const [capital, setCapital] = useState('500000');
@@ -33,12 +35,11 @@ function SignalCard({ s, e, live, through, closeOn, cost }: { s: EngineSignal; e
   const cap = Number(capital) || 0;
   const rp = Number(riskPct) || 0;
   const qty = risk > 0 ? Math.floor((cap * rp / 100) / risk) : 0;
-  // the engines' last close (dated data_through) unless this symbol's own quote is a newer session (lib/price.ts)
-  const pv = priceView(s.sym, { price: s.last_close ?? null, last_date: closeOn ?? null }, null, live);
+  // the engines' last close (dated data_through) unless the live snapshot or this symbol's own quote is a newer session
+  // (lib/price.ts); the paper block below marks the trade to the same price (lib/positions.ts)
   const px = pv.price;
   const pl = priceLabel(pv);
   const stop = s.stop_now ?? s.sl;
-  const nextT = s.targets[Math.min(s.hit, 2)];
   const active = s.status === 'open' || s.status === 'pending';
   const b = s.benchmark;
   return (
@@ -59,14 +60,13 @@ function SignalCard({ s, e, live, through, closeOn, cost }: { s: EngineSignal; e
         )}
       </div>
       <div className="sig-tags">
-        <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}{s.status === 'open' && typeof s.r_open === 'number' ? ` · ${s.r_open > 0 ? '+' : ''}${s.r_open.toFixed(2)}R so far` : ''}</span>
+        <span className={`tag ${s.status === 'open' ? 'acc' : s.status === 'closed' ? ((s.r_net ?? 0) >= 0 ? 'up' : 'down') : s.status === 'void' ? 'warn' : ''}`}>{overdue ? `Issued · status not updated since ${dateLabel(s.date)}` : STATE_LABEL[s.status]}{s.status === 'closed' && typeof s.r_net === 'number' ? ` · ${s.r_net > 0 ? '+' : ''}${s.r_net.toFixed(2)}R` : ''}</span>
+        {s.conviction === 'high' && <span className="tag acc" title={s.conviction_why}>High conviction</span>}
         {s.score_percentile !== null && <span className="tag acc">Model rank: top {Math.max(0.1, 100 - s.score_percentile).toFixed(1)}%</span>}
         {s.also_names.length > 0 && <span className="tag">Also selected by {s.also_names.join(', ')}</span>}
       </div>
+      {active && <PaperBlock s={s} p={pos} />}
       <PlanOdds cost={cost} sl={stop} entry={base} targets={s.targets} rMultiples={s.r_multiples} odds={{ t1: e.trades.all.hit_t1, t2: e.trades.all.hit_t2, t3: e.trades.all.hit_t3, stopped: e.trades.all.stopped }} n={e.trades.all.n} last={px ?? undefined} />
-      {px !== null && active && (
-        <p className="sig-dist num">{(((px - stop) / px) * 100).toFixed(1)}% above the stop · {nextT > px ? `${(((nextT - px) / px) * 100).toFixed(1)}% to T${Math.min(s.hit, 2) + 1}` : 'past the next target'}</p>
-      )}
       <div className="kv" style={{ marginTop: 14 }}>
         <div><div className="k">{s.entry ? 'Entered at the open on' : 'Signal close'}</div><div className="v" style={{ fontSize: 15 }}>{s.entry ? dateLabel(s.entry_date) : `₹${num(s.ref_price, 2)}`}</div>{!s.entry && <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>Entry in tests: the next session&apos;s open. Skipped if it opens past T1 or below the stop.</div>}</div>
         <div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{s.max_hold_days} sessions</div></div>
@@ -200,6 +200,19 @@ export default function EnginesPage() {
   const sigs = useMemo(() => (feed?.signals ?? []).filter((s) => s.engine === key), [feed, key]);
   const activeSyms = useMemo(() => (feed?.signals ?? []).filter((s) => s.status === 'open' || s.status === 'pending').map((s) => s.sym), [feed]);
   const px = usePx(activeSyms);
+  const lv = useLive();
+  // one price per signal under the site's rule (lib/price.ts), and the paper position marked to it (lib/positions.ts)
+  const marks = useMemo(() => {
+    const out = new Map<string, { pv: PriceView; pos: Position }>();
+    if (!feed) return out;
+    // weekdays the live snapshot proves were not sessions (a holiday), so a time limit is not dated on one
+    const noSession = noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null);
+    for (const s of feed.signals) {
+      out.set(s.id, markSignal(s, feed.data_through, lv.snap, px.quotes[s.sym], noSession));
+    }
+    return out;
+  }, [feed, px.quotes, lv.snap]);
+  const bookRows = useMemo(() => (feed?.signals ?? []).filter((s) => (s.status === 'open' || s.status === 'pending') && marks.has(s.id)).map((s) => ({ s, p: marks.get(s.id)!.pos })), [feed, marks]);
   const newest = useDatasetStatus().items.find((i) => i.id === 'screen')?.asOf ?? undefined;
   return (
     <>
@@ -229,6 +242,7 @@ export default function EnginesPage() {
                 })}
               </div>
               <DataStamp ids={['engines', 'screen']} />
+              <PaperBook rows={bookRows} ready={!lv.loading} engineName={(k) => feed.engines[k]?.name ?? k} cost={feed.backtest.cost_round_trip_pct} />
               <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Prices through {dateLabel(feed.data_through)} · {feed.backtest.universe} stocks · round-trip cost of {feed.backtest.cost_round_trip_pct}% charged on every test trade · the models retrain and rescore after each market close.</p>
 
               {e && (
@@ -254,7 +268,7 @@ export default function EnginesPage() {
                   {tab === 'signals' && (sigs.length ? (
                     <>
                       {px.at && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>Quotes fetched {ago(px.at)} and refreshed every minute while this page is open; each card says whether its price is live, a last trade or a close. Plans are fixed at issue and never move with the price.</p>}
-                      <div className="grid g2">{sigs.map((s) => <SignalCard key={s.id} s={s} e={e} live={px.quotes[s.sym]} through={newest} closeOn={feed.data_through} cost={feed.backtest.cost_round_trip_pct} />)}</div>
+                      <div className="grid g2">{sigs.map((s) => { const m = marks.get(s.id); return m ? <SignalCard key={s.id} s={s} e={e} pv={m.pv} pos={m.pos} through={newest} cost={feed.backtest.cost_round_trip_pct} /> : null; })}</div>
                       {(e.ranking_status === 'NO RANKING SKILL' || !e.alertable) && <p className="notice" style={{ marginTop: 14 }}>{e.ranking_status === 'NO RANKING SKILL' ? 'This model has not shown ranking skill.' : `This engine's holdout trades are ${e.trading_status.toLowerCase()}.`} Its picks are shown so it can be watched, not as recommendations.</p>}
                     </>
                   ) : <p className="notice">This engine has no open or pending signal at the latest close: each stock can carry only one active trade, and its best-ranked names are already held by another engine or inside the cooldown. Method, record and exits are in the other tabs.</p>)}

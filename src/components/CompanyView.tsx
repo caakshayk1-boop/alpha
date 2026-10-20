@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
 import PlanOdds from '@/components/PlanOdds';
+import { PaperBlock } from '@/components/PaperPosition';
+import { markSignal, noSessionDays } from '@/lib/positions';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
@@ -270,15 +272,20 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       {mySignals.length > 0 && (
         <section className="wrap section">
           <SectionHead eyebrow="Engines" title="Selected by an engine" href="/engines/" cta="How they are tested" />
-          <div className="grid g2">{mySignals.map((x) => (
+          <div className="grid g2">{mySignals.map((x) => {
+            // the same price rule and paper mark as the Engines page: the engines' close unless a live session is newer
+            const through = eng.data?.data_through ?? null;
+            const { pos: xpos } = markSignal(x, through, lv.snap, px.quotes[sym], noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null));
+            return (
             <Rv key={`${x.engine}${x.date}`} className="panel spot">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
-                <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>
+                <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>{x.conviction === 'high' && <span className="tag acc" style={{ marginTop: 8 }} title={x.conviction_why}>High conviction</span>}
                   <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 15 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 15 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 14 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{x.max_hold_days} sessions</div></div></div>
                   <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>This engine&apos;s record: {eng.data?.engines[x.engine] ? <EngineVerdict e={eng.data.engines[x.engine]} /> : <span className="tag">{x.engine_status}</span>}</p></div>
-                <PlanOdds cost={eng.data?.backtest.cost_round_trip_pct} sl={x.sl} entry={x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={x.last_close} />
+                <PlanOdds cost={eng.data?.backtest.cost_round_trip_pct} sl={x.stop_now ?? x.sl} entry={x.entry ?? x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={xpos.price ?? x.last_close ?? undefined} />
               </div>
-            </Rv>))}</div>
+              {(x.status === 'open' || x.status === 'pending') && <PaperBlock s={x} p={xpos} />}
+            </Rv>); })}</div>
         </section>
       )}
       </>)}

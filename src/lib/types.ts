@@ -248,6 +248,8 @@ export interface EngineSignal {
   max_hold: number; max_hold_days: number; reasons: string[]; typical_days_to_t1: number | null; engine_status: string; score: number; score_percentile: number | null; turnover_cr: number;
   entry?: number; entry_date?: string; events: EngineEvent[]; hit: number; stop_now?: number; r_open?: number; r_net?: number; exit_reason?: string; closed_date?: string; last_close?: number; void_reason?: string;
   benchmark: EngineBenchmark | null; also_names: string[];
+  /** optional, added by the engines when present: shown as a small tag, never inferred here */
+  conviction?: 'high' | 'standard'; conviction_why?: string;
 }
 export interface BenchmarkRow { name: string; members: number | null; r1m: number; r3m: number; vs_nifty_3m: number; uptrend: boolean; leads_nifty: boolean; real_index: boolean }
 export interface EnginesFeed {
