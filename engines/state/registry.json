@@ -20,6 +20,7 @@
   "barrier:SPORTKING:2026-10-15",
   "barrier:STOVEKRAFT:2026-10-14",
   "barrier:STOVEKRAFT:2026-10-15",
+  "barrier:STOVEKRAFT:2026-10-19",
   "barrier:VENKEYS:2026-10-16",
   "barrier:VENKEYS:2026-10-19",
   "compounder:AHLUCONT:2026-10-19",
@@ -43,6 +44,7 @@
   "compounder:TSFINV:2026-10-09",
   "compounder:TSFINV:2026-10-14",
   "compounder:TSFINV:2026-10-15",
+  "compounder:TSFINV:2026-10-19",
   "rank:AEROENTER:2026-10-19",
   "rank:ANUP:2026-10-09",
   "rank:ARTEMISMED:2026-10-12",
@@ -50,10 +52,12 @@
   "rank:ARTEMISMED:2026-10-14",
   "rank:ARTEMISMED:2026-10-19",
   "rank:DALMIASUG:2026-10-16",
+  "rank:DEEDEV:2026-10-19",
   "rank:GHCLTEXTIL:2026-10-09",
   "rank:GHCLTEXTIL:2026-10-14",
   "rank:GHCLTEXTIL:2026-10-15",
   "rank:GHCLTEXTIL:2026-10-16",
+  "rank:ONEPOINT:2026-10-19",
   "rank:RAMCOSYS:2026-10-09",
   "rank:RGL:2026-10-09",
   "rank:RGL:2026-10-19",
@@ -78,6 +82,7 @@
   "relative:HEMIPROP:2026-10-15",
   "relative:MAXHEALTH:2026-10-14",
   "relative:ONEPOINT:2026-10-19",
+  "relative:POLICYBZR:2026-10-19",
   "relative:PRSMJOHNSN:2026-10-14",
   "relative:RAMCOSYS:2026-10-09",
   "relative:RELAXO:2026-10-15",
@@ -96,6 +101,7 @@
   "snapback:DIVGIITTS:2026-10-14",
   "snapback:FUSION:2026-10-19",
   "snapback:HDBFS:2026-10-16",
+  "snapback:HDBFS:2026-10-19",
   "snapback:LAURUSLABS:2026-10-14",
   "snapback:LUPIN:2026-10-16",
   "snapback:ROLEXRINGS:2026-10-09",
@@ -108,6 +114,7 @@
   "snapback:VADILALIND:2026-10-14",
   "snapback:VADILALIND:2026-10-15",
   "snapback:VENUSPIPES:2026-10-19",
+  "snapback:YASHO:2026-10-19",
   "snapback:YESBANK:2026-10-16"
  ],
  "signals": {
@@ -1426,7 +1433,9 @@
    "turnover_cr": 289.2
   },
   "relative:ONEPOINT:2026-10-19": {
-   "also": [],
+   "also": [
+    "rank"
+   ],
    "benchmark": {
     "benchmark_3m_pct": 7.6,
     "leads_nifty": true,
@@ -1479,6 +1488,61 @@
     107.57
    ],
    "turnover_cr": 40.5
+  },
+  "relative:POLICYBZR:2026-10-19": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": -6.6,
+    "leads_nifty": false,
+    "members": 98,
+    "name": "Financial Services (alpha group index)",
+    "stock_3m_pct": -34.7,
+    "stock_vs_benchmark_pct": -28.1,
+    "uptrend": false
+   },
+   "date": "2026-10-19",
+   "engine": "relative",
+   "engine_name": "Relative",
+   "entry_zone": [
+    1035.0,
+    1045.35
+   ],
+   "events": [],
+   "first_seen": "2026-10-19",
+   "hit": 0,
+   "horizon": "positional",
+   "id": "relative:POLICYBZR:2026-10-19",
+   "issued": "2026-10-19",
+   "max_hold": 25,
+   "name": "PB Fintech Ltd.",
+   "r_multiples": [
+    1.0,
+    2.0,
+    3.5
+   ],
+   "reasons": [
+    "market rank of 12-1 month momentum: higher than about 53% of stocks (the model favours high readings)",
+    "market rank of illiquidity: lower than about 91% of stocks (the model favours low readings)",
+    "distance from 52-week high: lower than about 94% of stocks (the model favours high readings)",
+    "ATR as % of price: higher than about 98% of stocks (the model favours high readings)",
+    "illiquidity: lower than about 91% of stocks (the model favours low readings)"
+   ],
+   "ref_price": 1035.0,
+   "risk_pct": 12.0,
+   "score": 0.5807,
+   "score_percentile": 99.8,
+   "sector": "Financial Services",
+   "setup": "Relative model",
+   "sl": 910.8,
+   "status": "pending",
+   "stop_now": 910.8,
+   "sym": "POLICYBZR",
+   "targets": [
+    1159.2,
+    1283.4,
+    1469.7
+   ],
+   "turnover_cr": 964.0
   },
   "relative:PRSMJOHNSN:2026-10-14": {
    "also": [],
@@ -2080,7 +2144,8 @@
   },
   "snapback:DEEDEV:2026-10-19": {
    "also": [
-    "relative"
+    "relative",
+    "rank"
    ],
    "benchmark": {
     "benchmark_3m_pct": 9.0,
@@ -2998,6 +3063,61 @@
     2106.45
    ],
    "turnover_cr": 44.5
+  },
+  "snapback:YASHO:2026-10-19": {
+   "also": [],
+   "benchmark": {
+    "benchmark_3m_pct": 16.3,
+    "leads_nifty": true,
+    "members": 30,
+    "name": "Basic Materials (alpha group index)",
+    "stock_3m_pct": 15.1,
+    "stock_vs_benchmark_pct": -1.2,
+    "uptrend": true
+   },
+   "date": "2026-10-19",
+   "engine": "snapback",
+   "engine_name": "Snapback",
+   "entry_zone": [
+    3533.6,
+    3568.94
+   ],
+   "events": [],
+   "first_seen": "2026-10-19",
+   "hit": 0,
+   "horizon": "swing",
+   "id": "snapback:YASHO:2026-10-19",
+   "issued": "2026-10-19",
+   "max_hold": 7,
+   "name": "Yasho Industries Limited",
+   "r_multiples": [
+    0.8,
+    1.5,
+    2.5
+   ],
+   "reasons": [
+    "benchmark vs its 50-day: higher than about 90% of stocks (the model favours high readings)",
+    "market rank of distance from 52-week high: lower than about 70% of stocks (the model favours high readings)",
+    "benchmark momentum vs Nifty: higher than about 94% of stocks (the model favours high readings)",
+    "distance from 52-week high: lower than about 70% of stocks (the model favours high readings)",
+    "RSI (2): lower than about 87% of stocks (the model favours low readings)"
+   ],
+   "ref_price": 3533.6,
+   "risk_pct": 6.0,
+   "score": 0.5776,
+   "score_percentile": 99.9,
+   "sector": "Basic Materials",
+   "setup": "Snapback model",
+   "sl": 3321.58,
+   "status": "pending",
+   "stop_now": 3321.58,
+   "sym": "YASHO",
+   "targets": [
+    3703.21,
+    3851.62,
+    4063.64
+   ],
+   "turnover_cr": 13.4
   },
   "snapback:YESBANK:2026-10-16": {
    "also": [
