@@ -289,6 +289,9 @@ async function quote([id, name, group, symbol, prefix, dp]) {
       series: pts.length >= 2 ? pts.map(([, c]) => Math.round(c * 1000) / 1000) : [],
       state: meta?.marketState || null,
       at: meta?.regularMarketTime || null,
+      // 52-week range (Yahoo's own, equal to the max high / min low of the daily bars): the live Barometer's trend input
+      hi52: Number(meta?.fiftyTwoWeekHigh) > 0 ? Number(meta.fiftyTwoWeekHigh) : null,
+      lo52: Number(meta?.fiftyTwoWeekLow) > 0 ? Number(meta.fiftyTwoWeekLow) : null,
     };
   } catch (e) {
     // Omitted by the client, never drawn as 0%: a flat market and a dead feed must not look alike.
@@ -298,7 +301,7 @@ async function quote([id, name, group, symbol, prefix, dp]) {
 
 async function quotes(ctx) {
   const cache = caches.default;
-  const key = new Request('https://alpha.askakshay.com/__quotes_v2');
+  const key = new Request('https://alpha.askakshay.com/__quotes_v3');
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const list = await Promise.all(INSTRUMENTS.map(quote));

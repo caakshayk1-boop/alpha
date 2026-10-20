@@ -26,7 +26,7 @@ export function nseClock(now = Date.now()): { inHours: boolean; nextLabel: strin
 
 export type LiveQuote = [price: number, prevClose: number, lastTradeEpochS: number];
 export interface LivePart { ok: boolean; part: number; parts: number; fetched_at: string; count: number; quotes: Record<string, LiveQuote> }
-export interface Universe { built_on: string; as_of: string | null; count: number; rows: [sym: string, sector: string, name: string][] }
+export interface Universe { built_on: string; as_of: string | null; count: number; rows: [sym: string, sector: string, name: string, sma200?: number | null, high52?: number | null][] }
 
 export interface LiveSnap {
   /** symbol -> one-day change in percent, rounded to 2 dp, from the live price against the previous close */

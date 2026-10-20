@@ -142,7 +142,7 @@ export interface Barometer {
     vix_date?: string;
     counted?: number;
   };
-  history: { date: string; score: number; nifty: number; vix: number }[];
+  history: { date: string; score: number; nifty: number; vix: number; nifty_date?: string }[];
 }
 
 export interface Regime {
@@ -210,7 +210,7 @@ export interface SeasonFeed { years: number; months: string[]; caveats: string[]
 
 export interface Quote {
   id: string; name: string; group: string; symbol: string; prefix: string; dp: number;
-  price: number | null; prev?: number; pct?: number; series?: number[]; state?: string | null; at?: number | null;
+  price: number | null; prev?: number; pct?: number; series?: number[]; state?: string | null; at?: number | null; hi52?: number | null; lo52?: number | null;
 }
 export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; total: number; quotes: Quote[] }
 

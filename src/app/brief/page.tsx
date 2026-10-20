@@ -7,6 +7,7 @@ import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
 import { MarketSession } from '@/components/MarketSession';
 import { EngineVerdict } from '@/components/EvidenceTags';
+import { useBarometer } from '@/lib/useBarometer';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { dateLabel, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
@@ -48,7 +49,9 @@ export default function Brief() {
     return () => { window.removeEventListener('scroll', on); if (t) window.clearTimeout(t); };
   }, []);
 
-  const t = bar.data?.today;
+  // The reading shown is the one the site uses everywhere: live when its session is newer than the published file.
+  const baroView = useBarometer().view;
+  const t = useMemo(() => (baroView ? { score: baroView.reading.score, band: baroView.reading.band, stage: baroView.reading.stage ?? { t: '—' }, nifty_date: baroView.session, drawdown_pct: baroView.reading.drawdownPct, vix: baroView.reading.vix, live: baroView.source === 'live' } : undefined), [baroView]);
   // The day (headline, movers, copied text) follows the site's one rule in lib/live.ts: live when it is a newer session.
   const { view: tv, day: today, live } = useToday(screen.data?.breadth.as_of ?? null);
   const rows = useMemo(() => screen.data?.rows ?? [], [screen.data]);
@@ -82,7 +85,7 @@ export default function Brief() {
   const headline = useMemo(() => {
     if (!t) return '';
     // the Barometer keeps its own date: it is built from the index close, not from the day's prices
-    const baro = `The barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}) as of ${sessionDate(t.nifty_date)}.`;
+    const baro = `The barometer reads ${Math.round(t.score)}/100 (${t.band.t.toLowerCase()}) as of ${sessionDate(t.nifty_date)}${t.live ? ', computed live' : ''}.`;
     if (!today) return sum.error && live.error ? `${baro} The day's breadth could not be loaded, and nothing is estimated in its place.` : '';
     const tilt = today.up > today.down ? 'more stocks rose than fell' : today.up < today.down ? 'more stocks fell than rose' : 'as many stocks rose as fell';
     const when = today.source === 'live' ? `On ${sessionDay(today.session)} (live, ${tv.at} IST)` : `On ${dateLabel(today.session)}`;

@@ -647,3 +647,39 @@ test('price: a stock that did not trade in the live session never shows a day mo
   const q = priceView('CCAVENUE', { price: 99, r1d: 0, last_date: '2026-10-10' }, mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 1, quotes: { INFY: [1115.65, 1088, t] } }], 1), { price: 1001, pct: 901, at: old });
   assert.deepEqual([q.source, q.pct], ['stale', null], 'the per-symbol quote follows the same rule');
 });
+
+import { computeBarometer, pyRound, stageOf, vixScore } from '../src/lib/barometer.ts';
+test('barometer: reproduces the published 16 Oct 2026 reading from its own inputs (41, Mixed, Slightly cheaper)', () => {
+  // Published components: trend 23.0, breadth 48.0 (473/985), participation 58.4 (575/985), volatility 70 (VIX 14.06), highs 0.0.
+  // hi and lo are chosen to give the published trend position (23%) and drawdown (12.24%).
+  const c = 23146.150390625, hi = c / (1 - 0.1224), lo = (c - 0.23 * hi) / 0.77;
+  const r = computeBarometer(c, hi, lo, { counted: 985, above200: 473, up: 575, at52wHigh: 0 }, 14.0600004196167)!;
+  assert.deepEqual(r.parts.map((p) => [p.key, p.score]), [['trend', 23], ['breadth', 48], ['participation', 58.4], ['volatility', 70], ['highs', 0]]);
+  assert.equal(r.score, 41);
+  assert.equal(r.band.t, 'Mixed');
+  assert.equal(r.stage?.t, 'Slightly cheaper');
+  assert.equal(r.drawdownPct, 12.24);
+  assert.equal(r.coverage.complete, true);
+});
+
+test('barometer: Python rounding (halves to even), VIX bands, stages, and honest coverage when inputs are missing', () => {
+  assert.equal(pyRound(40.5), 40); assert.equal(pyRound(41.5), 42); assert.equal(pyRound(40.56), 41);
+  assert.deepEqual([vixScore(11.9), vixScore(12), vixScore(16), vixScore(20), vixScore(26)], [85, 70, 50, 28, 10]);
+  assert.equal(stageOf(26, 20).k, 'deep'); assert.equal(stageOf(16, 40).k, 'real'); assert.equal(stageOf(10, 80).k, 'early'); assert.equal(stageOf(9.9, 10).k, 'none');
+  const r = computeBarometer(null, null, null, { counted: 100, above200: 50, up: null, at52wHigh: null }, null)!;
+  assert.equal(r.score, 50);
+  assert.deepEqual(r.coverage.missing, ['trend', 'participation', 'volatility', 'highs']);
+  assert.equal(r.coverage.complete, false);
+  assert.equal(computeBarometer(1, 2, 0, { counted: 0, above200: 1, up: 1, at52wHigh: 0 }, 14), null);
+});
+
+import { sessionHead } from '../src/lib/session.ts';
+test('sessionHead: live in hours, close after the bell, "latest close" before the open (the 20 Oct 2026 screenshot)', () => {
+  const t = (iso: string) => Date.parse(iso);
+  const live = { newest: t('2026-10-20T09:12:00Z') / 1000, session: '2026-10-20' };
+  assert.equal(sessionHead('2026-10-20', live, t('2026-10-20T09:14:00Z')), 'Tuesday 20 October · live 14:42 IST');
+  assert.equal(sessionHead('2026-10-20', live, t('2026-10-20T15:00:00Z')), 'Tuesday 20 October · market close');
+  // 08:49 IST on Tue 20 Oct, before the bell: the newest session is Monday's close, said as such
+  assert.equal(sessionHead('2026-10-19', { newest: t('2026-10-19T10:00:00Z') / 1000, session: '2026-10-19' }, t('2026-10-20T03:19:00Z')), 'Monday 19 October · latest close · NSE opens 09:15 IST today');
+  assert.equal(sessionHead(null, null), null);
+});

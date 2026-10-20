@@ -20,9 +20,10 @@ try {
     n++;
   }
   console.log(`shard: ${n} companies, screen built ${screen.built_on}`);
-  // The live-price universe: every screened symbol with its sector, read by /api/live (worker) and lib/live.ts. Sorted, so
+  // The live-price universe: every screened symbol with its sector, name, 200-day average and 52-week high (the live Barometer's
+  // breadth inputs, as of the screen build), read by /api/live (worker) and lib/live.ts. Sorted, so
   // the Worker's two halves are stable between requests.
-  const uni = screen.rows.filter((r) => /^[A-Za-z0-9&-]{1,20}$/.test(r.sym)).map((r) => [r.sym, r.sector ?? '', r.name ?? r.sym]).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const uni = screen.rows.filter((r) => /^[A-Za-z0-9&-]{1,20}$/.test(r.sym)).map((r) => [r.sym, r.sector ?? '', r.name ?? r.sym, Number.isFinite(r.sma200) ? r.sma200 : null, Number.isFinite(r.high52) ? r.high52 : null]).sort((a, b) => (a[0] < b[0] ? -1 : 1));
   writeFileSync('public/universe.json', JSON.stringify({ built_on: screen.built_on, as_of: screen.breadth?.as_of ?? null, count: uni.length, rows: uni }));
   console.log(`shard: universe.json with ${uni.length} symbols`);
   // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.

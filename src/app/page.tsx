@@ -14,6 +14,9 @@ import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
 import { EngineVerdict } from '@/components/EvidenceTags';
 import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
 import { crore, dateLabel, num, pct, quoteState, rupeeBand } from '@/lib/format';
+import { useBarometer } from '@/lib/useBarometer';
+import { sessionHead } from '@/lib/session';
+import { istHM } from '@/lib/today';
 import { takeaway, vixWord } from '@/lib/takeaway';
 import { useStoredList } from '@/lib/store';
 import type { Quote } from '@/lib/types';
@@ -38,37 +41,40 @@ const GAUGE_LEN = Math.PI * 52;   // the semicircle path below: radius 52
  *  Every word is built from the data (lib/takeaway.ts, /api/summary, and for breadth the one "today" rule in lib/live.ts);
  *  a missing figure drops its pill, never estimated. */
 function TodayHero() {
-  const bar = useFeed('barometer');
+  const baro = useBarometer();
   const sum = useSummary();
   const today = useToday();
-  const t = bar.data?.today;
+  const v = baro.view;
+  const r = v?.reading ?? null;
   const b200 = sum.data?.above200 ?? null;
   // Wait for both small feeds (or a failed summary) so the cards appear once, at their final size.
-  const ready = !!t && (!!sum.data || !!sum.error);
-  const prev = useMemo(() => (t ? [...(bar.data?.history ?? [])].reverse().find((r) => r.date < t.nifty_date) ?? null : null), [t, bar.data]);
+  const ready = !!v && (!!sum.data || !!sum.error);
+  const prev = v?.previous ?? null;
   const tk = useMemo(() => {
-    if (!t || !ready) return null;
+    if (!v || !r || !ready) return null;
     return takeaway({
-      score: typeof t.score === 'number' ? t.score : null, band: t.band?.t ?? null, stage: t.stage?.t ?? null, nifty: t.nifty ?? null,
-      drawdownPct: t.drawdown_pct ?? null, vix: t.vix ?? null, asOf: t.nifty_date ?? null,
-      above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev ? { score: prev.score, date: prev.date } : null,
+      score: r.score, band: r.band.t, stage: r.stage?.t ?? null, nifty: r.nifty,
+      drawdownPct: r.drawdownPct, vix: r.vix, asOf: v.session,
+      above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev,
     });
-  }, [t, ready, prev, b200]);
+  }, [v, r, ready, prev, b200]);
   const [lead, ...rest] = (tk?.headline ?? '').split(', ');
-  const score = typeof t?.score === 'number' ? Math.round(t.score) : null;
+  const score = r ? r.score : null;
   const change = prev && score !== null ? (score > prev.score ? `up from ${prev.score} on ${dateLabel(prev.date)}` : score < prev.score ? `down from ${prev.score} on ${dateLabel(prev.date)}` : `unchanged since ${dateLabel(prev.date)}`) : null;
+  const baroStamp = v ? (v.source === 'live' && v.at ? `live ${istHM(v.at)} IST` : `${dateLabel(v.session)} close`) : null;
   const pct200 = b200 && b200.withHistory ? Math.round((b200.above / b200.withHistory) * 100) : null;
   const day = today?.day ?? null;
   const dayStamp = dayLabel(day, today?.live.snap ?? null);
   const dayFailed = !day && !!today && !today.live.loading && !!sum.error;
   const share = (n: number) => (day && day.counted ? (n / day.counted) * 100 : 0);
-  const weekday = t?.nifty_date ? new Date(`${t.nifty_date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : null;
+  // The headline date is the NEWEST session any figure on this page describes, with the market's state beside it.
+  const headDate = sessionHead(day?.session ?? v?.session ?? null, today?.live.snap ?? null);
   return (
     <section className="wrap today">
-      <div className="eyebrow">{weekday ? `${weekday} · market close` : 'Today'}</div>
+      <div className="eyebrow">{headDate ?? 'Today'}</div>
       {tk && tk.available ? (
         <h1 className="disp today-h">{lead}{rest.length > 0 && <>, <em>{rest.join(', ')}</em></>}</h1>
-      ) : bar.error ? (
+      ) : baro.error ? (
         <h1 className="disp today-h">The market read is not available right now.</h1>
       ) : (
         <div role="status" aria-busy="true" aria-label="Loading today's market read"><div className="today-h today-h-skel" aria-hidden><span className="skel" style={{ display: 'block', height: '100%', width: '78%' }} /></div></div>
@@ -78,16 +84,16 @@ function TodayHero() {
       <div className="today-clock"><MarketClock /></div>
 
       <div className="hero2">
-        {tk && tk.available && t && score !== null ? (
+        {tk && tk.available && r && score !== null ? (
           <section className="sky" aria-label="Market barometer">
             <div>
-              <div className="eyebrow">Market barometer</div>
-              <div className="sky-big">{t.band.t}{change ? `, ${change}` : ''}</div>
+              <div className="eyebrow">Market barometer{baroStamp ? ` · ${baroStamp}` : ''}</div>
+              <div className="sky-big">{r.band.t}{change ? `, ${change}` : ''}</div>
               <div className="sky-pills">
-                {typeof t.nifty === 'number' && <span className="sky-pill">Nifty <b>{num(t.nifty, 0)}</b></span>}
-                {typeof t.vix === 'number' && <span className="sky-pill">VIX {num(t.vix, 1)} · {vixWord(t.vix)}</span>}
+                {typeof r.nifty === 'number' && <span className="sky-pill">Nifty <b>{num(r.nifty, 0)}</b></span>}
+                {typeof r.vix === 'number' && <span className="sky-pill">VIX {num(r.vix, 1)} · {vixWord(r.vix)}</span>}
                 {pct200 !== null && <span className="sky-pill">{pct200}% above 200-day</span>}
-                {t.stage?.t && <span className="sky-pill">Valuation: {t.stage.t.toLowerCase()}</span>}
+                {r.stage?.t && <span className="sky-pill">Valuation: {r.stage.t.toLowerCase()}</span>}
               </div>
               <Link className="sky-link" href="/brief/">Read the five-minute brief →</Link>
             </div>
@@ -99,7 +105,7 @@ function TodayHero() {
             </svg>
           </section>
         ) : (
-          <div className="sky" aria-hidden={!bar.error}>{bar.error ? <p style={{ margin: 0 }}>The Barometer could not be loaded. Nothing is estimated in its place.</p> : <Skel h={120} w="70%" />}</div>
+          <div className="sky" aria-hidden={!baro.error}>{baro.error ? <p style={{ margin: 0 }}>The Barometer could not be loaded. Nothing is estimated in its place.</p> : <Skel h={120} w="70%" />}</div>
         )}
 
         <section className="breadth2" aria-label="The day's breadth">

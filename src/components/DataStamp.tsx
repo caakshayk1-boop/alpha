@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useEngines, useFeed, useLive, useRotation, useSummary } from '@/lib/data';
+import { useBarometer } from '@/lib/useBarometer';
 import { priceLabel } from '@/lib/price';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
@@ -22,6 +23,7 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
   // The screen's dates come from /api/summary (1 KB), not the 480 KB screen itself: a freshness stamp must not cost a page its speed.
   const scr = useSummary();
   const bar = useFeed('barometer');
+  const baro = useBarometer();
   const eng = useEngines();
   const rot = useRotation();
   // Judged against the calendar (the session Alpha should already hold), not against its own newest dataset.
@@ -31,11 +33,11 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
     const lastWeek = rot.data?.dates[rot.data.dates.length - 1];
     const rotThrough = rot.data && lastWeek ? weekThrough(lastWeek, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
     list.push(scr.data ? { id: 'screen', label: 'Screen', source: 'Alpha screen: company filings and Yahoo Finance prices', asOf: scr.data.as_of, refreshedAt: scr.data.built_on ?? null } : { id: 'screen', label: 'Screen', source: 'Alpha screen', asOf: null, refreshedAt: null, error: !!scr.error });
-    list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: bar.data.today.nifty_date ?? null, refreshedAt: bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
+    list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: baro.view?.source === 'live' ? 'Computed live in Alpha from the Nifty, India VIX and every screened stock (same formula as the published reading)' : 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: baro.view?.session ?? bar.data.today.nifty_date ?? null, refreshedAt: baro.view?.source === 'live' && baro.view.at ? new Date(baro.view.at * 1000).toISOString() : bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
     list.push(eng.data ? { id: 'engines', label: 'Engines', source: 'Alpha engines: models retrained on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Engines', source: 'Alpha engines', asOf: null, refreshedAt: null, error: !!eng.error });
-    list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
+    list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined, cadence: 'weekly' } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
     return reconcile(list, expected);
-  }, [expected, scr.data, scr.error, bar.data, bar.error, eng.data, eng.error, rot.data, rot.error]);
+  }, [expected, scr.data, scr.error, bar.data, bar.error, baro.view, eng.data, eng.error, rot.data, rot.error]);
   return { items, loading: scr.loading || bar.loading || eng.loading || rot.loading };
 }
 
