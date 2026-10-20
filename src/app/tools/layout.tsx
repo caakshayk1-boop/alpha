@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Decision tools and calculators',
-  description: 'Portfolio X-ray, reverse DCF, a confluence board, SIP, CAGR, position size and loss-recovery calculators that run in your browser.',
-  openGraph: { title: 'Decision tools and calculators', description: 'Portfolio X-ray, reverse DCF, a confluence board, SIP, CAGR, position size and loss-recovery calculators that run in your browser.', url: '/tools/', type: 'website' },
+  description: 'Position size from a stop, expected value of a plan, portfolio X-ray, reverse DCF, CAGR, loss recovery and SIP, each with its working shown.',
+  openGraph: { title: 'Decision tools and calculators', description: 'Position size from a stop, expected value of a plan, portfolio X-ray, reverse DCF, CAGR, loss recovery and SIP, each with its working shown.', url: '/tools/', type: 'website' },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

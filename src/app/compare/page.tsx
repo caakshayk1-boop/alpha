@@ -80,17 +80,39 @@ function Compare() {
     <>
       <PageHead eyebrow="Compare" title="Side by side," em="up to four." lede="Pick companies, see every number in one table, with the highest or lowest marked where that is meaningful, and each one's score profile drawn on the same scale." />
       <section className="wrap">
-        <div className="filters">
-          <SymbolPicker onPick={(x) => syms.length < 4 && set([...syms, x])} placeholder={syms.length < 4 ? 'Add a company…' : 'Four is the limit'} exclude={syms} />
-          {syms.map((x) => <button key={x} className="chip on" onClick={() => set(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}>{x} ✕</button>)}
+        <div className="cmp-bar">
+          <ol className="cmp-slots" aria-label={`Companies chosen: ${syms.length} of 4`}>
+            {[0, 1, 2, 3].map((i) => {
+              const x = syms[i];
+              return x
+                ? <li key={x} className="cmp-slot on"><span className="cmp-i" aria-hidden>{i + 1}</span><Link href={companyHref(x)}><b>{x}</b></Link><button className="cmp-x" onClick={() => set(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}>✕</button></li>
+                : <li key={`e${i}`} className="cmp-slot"><span className="cmp-i" aria-hidden>{i + 1}</span><span className="dim">{i < 2 ? 'Add a company' : 'Optional'}</span></li>;
+            })}
+          </ol>
+          <div className="cmp-add">
+            <SymbolPicker onPick={(x) => syms.length < 4 && set([...syms, x])} placeholder={syms.length < 4 ? 'Type a symbol or name…' : 'Four is the limit'} exclude={syms} />
+            {syms.length > 0 && <button className="chip" onClick={() => set([])}>Clear all</button>}
+          </div>
         </div>
         <Async loading={loading} error={needFull ? s.error : null} rows={3}>
           {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['prices', 'screen']} /></div>}
           {rows.length < 2 ? (
-            <div className="panel">
-              <div className="eyebrow">Start with a set</div>
-              <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: '10px 0 14px' }}>Add two to four companies above, or open a ready-made comparison.</p>
-              <div className="filters" style={{ margin: 0 }}>{EXAMPLES.map(([l, q]) => <button key={l} className="chip" onClick={() => set(q.split(','))}>{l}: {q.split(',').join(', ')}</button>)}</div>
+            <div className="cmp-start">
+              <ol className="cmp-steps" aria-label="How it works">
+                <li className={syms.length >= 2 ? 'done' : 'now'}><b>Pick two to four</b><span>{syms.length === 1 ? `${syms[0]} is in. Add one more to start the table.` : 'Type a symbol or a name above, or open a set below.'}</span></li>
+                <li><b>Read one table</b><span>Every number side by side; the highest or lowest is tagged where higher or lower is clearly better.</span></li>
+                <li><b>Check the shapes</b><span>Each company&apos;s score profile on the same 0 to 100 scale.</span></li>
+              </ol>
+              <div className="eyebrow" style={{ margin: '20px 0 10px' }}>Ready-made sets</div>
+              <div className="cmp-sets">
+                {EXAMPLES.map(([l, q]) => (
+                  <button key={l} className="cmp-set" onClick={() => set(q.split(','))}>
+                    <b>{l}</b>
+                    <span className="cmp-tk">{q.split(',').map((t) => <span key={t} className="tag">{t}</span>)}</span>
+                    <span className="cmp-go">Compare these four <span aria-hidden>→</span></span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="grid g-7-5" style={{ alignItems: 'start' }}>
