@@ -73,6 +73,7 @@ def _track(entry: dict, df: pd.DataFrame) -> None:
         entry["status"] = "open"
         entry["r_open"] = round((w["pnl"] + w["remaining"] * (last_close - w["entry"])) / risk, 2)   # realised plus marked to the last close
         entry["last_close"] = round(last_close, 2)
+        entry["last_close_date"] = str(df.index[-1].date())   # this stock's own newest bar; can trail data_through when a bar is late (19 Oct 2026)
 
 
 def update(reg: dict, candidates: list[dict], bars: dict, today: str) -> dict:

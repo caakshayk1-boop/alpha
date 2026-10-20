@@ -52,6 +52,7 @@ R.update(reg2, [], {"Y": df2}, "2025-01-03")
 e = list(reg2["signals"].values())[0]
 check("the next bar's open makes it open at that price", e["status"] == "open" and e["entry"] == 100.0, e)
 check("an open trade carries a mark-to-market R", "r_open" in e)
+check("an open trade says which day its mark is from", e.get("last_close_date") == str(df2.index[-1].date()), e)
 
 # 5. void when the open gaps past the first target
 df3 = pd.DataFrame([(100, 100, 100, 100, 1e6), (107, 108, 106, 107, 1e6)], columns=["Open", "High", "Low", "Close", "Volume"], index=idx[:2])
