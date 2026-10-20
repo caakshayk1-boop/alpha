@@ -38,3 +38,12 @@ Each item has a pass/fail check.
 ## Batch 3: later
 - [ ] 9. Richer news feed. Needs a change in `trading-dashboard` (the data repo). That's a separate repo, so it gets its own confirmation.
 - [~] 10. WebKit pass done (item 15). Real device still open.
+
+## Batch 5 (20 Oct): everything live, signals, design
+- [ ] 16. Live barometer: port barometer.py compute() exactly (tested on published inputs); Nifty, VIX, 52-week range,
+      breadth and 200-day share all live; the hero date follows the latest session; a "before the open" state.
+      Check: at any time the hero date = the newest session any feed describes; the barometer card says live or its date.
+- [ ] 17. Conflicts statement (neutral, true without the owner's answer); signal./gems. 301 to alpha after checking the Worker's
+      routes and every dependent hostname; company LCP (the trend line).
+- [ ] 18. Agent: signal engines, fewer and better signals, validated on the holdout only.
+- [ ] 19. Agent: live P&L and rule-based status on every open signal. Agent: Analyze section + neon + colour control + motion.
