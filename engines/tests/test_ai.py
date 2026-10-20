@@ -114,5 +114,23 @@ for key, e in res.items():
     check(f"{key}: 'all targets' equals 'reached T3'", abs(ex["all_targets"] / n * 100 - e["trades"]["all"]["hit_t3"]) <= 0.1, (ex["all_targets"] / n * 100, e["trades"]["all"]["hit_t3"]))
     check(f"{key}: alertable matches alert_verdict", e["alertable"] == FIN.alert_verdict(e["ranking_status"], e["trading_status"])[0])
 
+# ── conviction tier (docs/agents/signals.md) ─────────────────────────────────
+import conviction as CV
+check("conviction: breadth at the 60% bar is high", CV.tier(0.60)[0] == "high")
+check("conviction: breadth just under the bar is standard", CV.tier(0.5999)[0] == "standard")
+check("conviction: unknown breadth is standard, never high", CV.tier(None)[0] == "standard" and CV.tier(float("nan"))[0] == "standard")
+check("conviction: every tier carries a reason", all(CV.tier(x)[1] for x in (0.1, 0.7, None)))
+h = CV.RULE["holdout"]
+check("conviction rule: its published holdout clears the pass bar (n >= 30, t >= 2, beats all signals)",
+      h["high"]["trades"] >= 30 and h["high"]["t_clustered"] >= 2 and h["high"]["expectancy_r"] > h["all_signals"]["expectancy_r"])
+check("conviction rule: holdout starts where development ends", CV.RULE["periods"]["holdout"][0] == str(W.DEV_END.date()))
+# the input it reads is causal: breadth on date t does not move when every price after t is rewritten
+pb = F.build_panel(bars, ctx, log=lambda *_: None)
+pb2 = F.build_panel(alt, ctx2, log=lambda *_: None)
+cut_d = bars["S1"].index[t]
+b1 = pb["breadth_50"].groupby(level="date").first().loc[:cut_d]
+b2 = pb2["breadth_50"].groupby(level="date").first().loc[:cut_d]
+check("conviction input (breadth_50) up to t ignores everything after t", np.allclose(b1.values, b2.values, equal_nan=True))
+
 print(f"\n{ok} passed · {fail} failed")
 sys.exit(1 if fail else 0)
