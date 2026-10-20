@@ -161,3 +161,59 @@ Score bars at q 0.67: barrier 0.3692, compounder 0.5999, rank 0.5734, relative 0
 Development already rejects liquidity floors, risk caps, sector caps, same-day rank and cross-engine agreement: each one lowers
 expectancy on development, and tighter versions lower it further (liquidity >= Rs 50 cr: +0.037R; agreement at the 99th pct with
 3 engines: +0.025R).
+
+## 3. The holdout, read once (2026-10-21)
+
+`frozen.json` hash at read time: `a0226b4c...3b337524` (unchanged from section 2). Holdout signals 2025-04-01 to 2026-10-15,
+last exit 2026-10-19. Expectancy is net of the 0.25% round-trip cost. "Random" = random liquid stocks on the same dates with the
+same plan geometry (`ai_trades.random_baseline`). Paired t = month-by-month (filtered minus unfiltered) average R.
+
+| Rule (from development) | Holdout n | Exp R | Clustered t (months) | Win % | Random exp R | Paired t | Pass |
+|---|---|---|---|---|---|---|---|
+| **Unfiltered, all five engines** | 5435 | +0.088 | 0.87 (19) | 52.1 | -0.052 | - | - |
+| Score bar, top third per engine | 662 | +0.128 | 1.60 (19) | 55.6 | -0.083 | +1.39 | no (t < 2) |
+| Same-day rank top 2 | 647 | +0.026 | 0.39 (19) | 54.7 | -0.111 | -0.72 | no |
+| Agreement, 1+ other engine >= 95th pct | 2972 | +0.118 | 1.04 (19) | 54.1 | -0.068 | +0.65 | no (t < 2) |
+| **Breadth >= 60% on signal date** | **1969** | **+0.231** | **2.05 (10)** | **56.7** | **+0.052** | **-1.32** | **yes, narrowly** |
+| Liquidity >= Rs 2 cr | 4869 | +0.063 | 0.59 (19) | 51.6 | -0.087 | -3.73 | no |
+| Risk <= 8% of price | 3413 | -0.026 | -0.43 (19) | 50.8 | -0.083 | -2.76 | no |
+| Sector cap 5 open | 1182 | +0.031 | 0.70 (19) | 51.9 | -0.089 | -0.48 | no |
+| One open trade per stock | 3186 | +0.045 | 0.50 (19) | 50.2 | -0.033 | -1.50 | no |
+
+### What the one pass is, and why it is weak
+* It passes the rule set in advance: 1969 trades (36% of the holdout), +0.231R against +0.088R unfiltered, clustered t 2.05.
+* **It is market timing, not better stock picking.** It switches on for whole days: 135 of 384 holdout sessions, in 10 months
+  (2025-04 to 07, 2025-09, 2026-04 to 08). Random picks on the same days also improved, from -0.052R to +0.052R. The engines'
+  lead over random grew only from +0.140R to +0.179R. The paired t is negative in both periods (-2.49 dev, -1.32 holdout): in the
+  months it trades, the gated trades did no better than the ungated trades of the same months.
+* Fragile threshold: on development, breadth >= 0.5 gave t 0.80 and >= 0.4 gave t 1.41; only 0.6 cleared 2.
+* Eight families were read, so at t >= 2 about one chance pass is expected. **Likely:** part of this pass is luck, given t 2.05 on
+  10 clusters.
+* By engine, under the gate: Relative +0.358R (t 2.62), Compounder +0.527R (t 2.61), Rank +0.324R (t 1.49), Barrier +0.074R
+  (t 0.41), Snapback -0.097R (t -0.90). These are reported, not used: dropping engines now would be fitting to the holdout.
+* Second best was the per-engine score bar (+0.128R, t 1.60, 662 trades). It is the only rule that selects stocks rather than
+  days, and the only one with a positive paired t (+1.39 holdout, +3.01 dev), but it misses the bar. Rank and Compounder alone
+  cleared t 2 under it (+0.313R t 2.46; +0.727R t 2.93); not acted on, for the same reason as above.
+* Liquidity floors, risk caps, sector caps and one-per-name made results WORSE on both periods. The live registry already applies
+  one-per-name (section 1); on this evidence that costs expectancy (+0.045R vs +0.088R holdout) rather than adding it.
+
+### Implemented (commit `3b6958d`)
+* `engines/conviction.py`: the rule, `tier(breadth) -> ('high' | 'standard', why)`, and `RULE` (wording, threshold, dates,
+  development and holdout stats, four caveats).
+* `engines/ai_run_daily.py`: each new candidate gets `conviction` and `conviction_why` at issue (stored in the registry like the
+  plan). Registry entries issued earlier get the same rule from their signal-date breadth. `engines.json` gains top-level
+  `conviction_rule`. No existing field changes meaning; no signal is dropped. End-to-end run on fresh data into scratch: top level
+  adds only `conviction_rule`; signals add only `conviction`, `conviction_why` (plus `closed_date`/`exit_reason`/`r_net` from
+  trades the existing tracker closed); registry 37 -> 46, none dropped.
+* **Today every signal is 'standard'**: breadth was 21-33% from 2026-10-13 to 2026-10-19. The site must handle an empty high
+  tier.
+* `src/lib/types.ts` (`EnginesFeed`) does not yet declare the three new fields; the site agent owns that.
+* Tests (`engines/tests/test_ai.py`, run by `.github/workflows/engines.yml`): boundary at 60%, unknown breadth never high, every
+  tier has a reason, published stats clear the pass bar, holdout starts at `DEV_END`, and breadth up to t is unchanged when
+  prices after t are rewritten.
+
+### Recommendations, not implemented
+1. Alerts: `alert_verdict` buzzes phones for POSITIVE, NOT SIGNIFICANT engines (clustered t 0.91-1.42). Requiring t >= 2 would
+   switch every engine off today. That is the honest state.
+2. Commit the walk-forward runner (`build.py` here) so `ai_results.json` can be reproduced from the repo.
+3. Re-test the per-engine score bar once 12 more months of live data exist; it is the only stock-level filter that held its sign.
