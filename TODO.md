@@ -22,7 +22,7 @@ Each item has a pass/fail check.
 ## Batch 3
 - [x] 9. Funds and Compare relook. Funds: three cards per category with holdings and calendar years (fixed: years showed the OLDEST four, hiding 2025; volatility was described as daily, it is monthly). Compare: small multiples, no gain/loss colours as identity, visible best tags, rows from shards.
 - [x] 10. Audit F4: limits line inside every plan-level block (survivorship, cost, no slippage).
-- [ ] 10b. Audit F5: conflicts statement. NEEDS AKSHAY: does he hold positions in names on the site?
+- [~] 10b. Audit F5: neutral statement live; a stronger one NEEDS AKSHAY: does he hold positions in names on the site?
 - [x] 11. Audit F7 + F10: CSP in public/_headers (sweep: no violations); NSE session chip read from the Nifty's last trade (holiday-proof).
 - [x] 12. Polish pass: Screen examples were full-width (".wrap" class collided with the page container); 8 Markets sector cards
       had blank charts (Yahoo has one bar for those indices: now said plainly); Reads/About headers aligned; engine glow removed.
@@ -40,10 +40,16 @@ Each item has a pass/fail check.
 - [~] 10. WebKit pass done (item 15). Real device still open.
 
 ## Batch 5 (20 Oct): everything live, signals, design
-- [ ] 16. Live barometer: port barometer.py compute() exactly (tested on published inputs); Nifty, VIX, 52-week range,
+- [x] 16. (shipped c090277, live) Live barometer: port barometer.py compute() exactly (tested on published inputs); Nifty, VIX, 52-week range,
       breadth and 200-day share all live; the hero date follows the latest session; a "before the open" state.
       Check: at any time the hero date = the newest session any feed describes; the barometer card says live or its date.
-- [ ] 17. Conflicts statement (neutral, true without the owner's answer); signal./gems. 301 to alpha after checking the Worker's
+- [~] 17. (statement + redirects live; company LCP NOT fixed: live median 5.6 s, blocked on JS before the price line, a pre-rendered line would show a stale price) Conflicts statement (neutral, true without the owner's answer); signal./gems. 301 to alpha after checking the Worker's
       routes and every dependent hostname; company LCP (the trend line).
-- [ ] 18. Agent: signal engines, fewer and better signals, validated on the holdout only.
-- [ ] 19. Agent: live P&L and rule-based status on every open signal. Agent: Analyze section + neon + colour control + motion.
+- [x] 18. (shipped: only breadth>=60% passed the holdout, t 2.05, so it is a 'conviction' label; no signals cut) Agent: signal engines, fewer and better signals, validated on the holdout only.
+- [x] 19. (shipped: paper book + per-signal P&L and rule action; Tools/Compare/accent control; other 12 pages got shared CSS only) Agent: live P&L and rule-based status on every open signal. Agent: Analyze section + neon + colour control + motion.
+
+## Batch 6 (next)
+- [ ] 20. Engines: `last_close` lags `data_through` when a stock's bar is late (19 Oct: 26/31 open signals on the 16 Oct close). `last_close_date` now recorded; the 18:00 IST run should wait for, or re-mark on, the late bars.
+- [ ] 21. Alerts only from engines with holdout clustered t >= 2 (switches all off today). NEEDS AKSHAY.
+- [ ] 22. Company LCP: an honest pre-rendered price line (needs a build-time close that is the latest session).
+- [ ] 23. Page-by-page design pass on the 12 pages that only got shared CSS (markets, news, ipo, reads, funds, rotation, calendar, watchlist, journal, about, map, screen).
