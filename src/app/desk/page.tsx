@@ -15,6 +15,8 @@ import { useCards } from '@/lib/library';
 import { priceView } from '@/lib/price';
 import { SCREEN_DEFAULT, toQuery } from '@/lib/screenUrl';
 import { useStoredList } from '@/lib/store';
+import { check, parseCondition } from '@/lib/conditions';
+import type { Row } from '@/lib/types';
 
 interface SavedScreen { name: string; conds: { f: string; op: '>=' | '<='; v: string }[]; flags: string[]; sector: string; tier: string; nl?: { text: string; off: string[] } }
 
@@ -85,6 +87,7 @@ export default function Desk() {
               {cards.length ? <ul className="desk-list">{cards.slice(0, 6).map((c) => <li key={c.id}><Link href="/watchlist/#cards"><b>{c.question ?? 'Untitled research'}</b></Link><span className="dim">{c.companies.map((x) => x.sym).slice(0, 4).join(', ')} · {c.createdAt.slice(0, 10)}{c.decision?.thesis ? ' · thesis written' : ''}</span></li>)}</ul>
                 : <p className="muted" style={{ margin: '6px 0 0' }}>None yet. &ldquo;Save research card&rdquo; on a company page keeps the question, the evidence for and against, and the data dates.</p>}
             </div>
+            <DeskConditions rows={s.data?.rows ?? []} watch={watch} asOf={s.data?.rows?.[0]?.last_date ?? null} />
             <div className="panel">
               <div className="eyebrow">Journal · {num(journal.length)} {journal.length === 1 ? 'decision' : 'decisions'}</div>
               {journal.length ? <ul className="desk-list">{[...journal].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6).map((e) => <li key={e.id}><TickerLink sym={e.sym}><b data-ticker>{e.sym}</b></TickerLink><span className="dim">{e.action === 'took' ? 'Took it' : e.action === 'skipped' ? 'Skipped' : 'Watching'} · {dateLabel(e.date)}</span><span className="dim desk-why">{e.why}</span></li>)}</ul>
@@ -94,5 +97,33 @@ export default function Desk() {
         </section>
       )}
     </>
+  );
+}
+
+/** Conditions (Pro §28 P3): the reader's own data conditions, checked against the latest screen when this page opens. */
+function DeskConditions({ rows, watch, asOf }: { rows: Row[]; watch: string[]; asOf: string | null }) {
+  const [list, add, remove, , error] = useStoredList('alpha-conditions');
+  const [text, setText] = useState('');
+  const parsed = text.trim() ? parseCondition(text) : null;
+  const err = parsed && 'message' in parsed ? parsed.message : null;
+  const conds = useMemo(() => list.map((raw) => { const c = parseCondition(raw); return 'message' in c ? null : { c, res: check(c, rows, watch) }; }).filter((x): x is NonNullable<typeof x> => !!x), [list, rows, watch]);
+  const met = conds.reduce((n, x) => n + x.res.filter((y) => y.met).length, 0);
+  return (
+    <div className="panel">
+      <div className="eyebrow">Conditions · {met ? `${num(met)} met` : 'none met'}</div>
+      <p className="dim" style={{ fontSize: 13.5, margin: '6px 0 8px' }}>Your own conditions in the Screen&apos;s query language, checked against the {asOf ? `${dateLabel(asOf)} ` : ''}screen when this page opens. &ldquo;TCS: rsi &lt; 30&rdquo; for one company, &ldquo;roce &lt; 15&rdquo; for every name you watch. No price targets, and nothing is sent anywhere: there is no account to send from.</p>
+      <form onSubmit={(e) => { e.preventDefault(); if (parsed && !('message' in parsed) && add(parsed.raw)) setText(''); }} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <label className="sr" htmlFor="cond-in">New condition</label>
+        <input id="cond-in" className="field" style={{ flex: '1 1 180px', minWidth: 0 }} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. TCS: rsi < 30" aria-invalid={!!err} aria-describedby={err ? 'cond-err' : undefined} />
+        <button className="chip" type="submit" disabled={!parsed || !!err}>Add</button>
+      </form>
+      {err && <p id="cond-err" className="warn" style={{ fontSize: 13.5, margin: '6px 0 0' }}>{err}</p>}
+      {error && <p className="warn" role="status" style={{ fontSize: 13.5 }}>{error}</p>}
+      {conds.length > 0 && <ul className="desk-list" style={{ marginTop: 10 }}>{conds.map(({ c, res }) => (
+        <li key={c.raw} style={{ display: 'block' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><code>{c.raw}</code><button type="button" className="chip" onClick={() => remove(c.raw)} aria-label={`Remove condition ${c.raw}`}>Remove</button></div>
+          <div className="dim" style={{ fontSize: 13.5 }}>{res.length === 0 ? (c.sym ? '' : 'Your watchlist is empty, so this covers no company.') : res.map((x) => `${x.sym} ${x.met === null ? `(${x.why})` : x.met ? 'met' : 'not met'}`).join(' · ')}</div>
+        </li>))}</ul>}
+    </div>
   );
 }

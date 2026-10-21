@@ -1548,3 +1548,13 @@ html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view
   .chip { padding-inline: 14px; }
 }
 .tbl th > button, .tbl td > a, .tbl td > button { min-height: 24px; display: inline-flex; align-items: center; }
+
+.q-caret { margin: 6px 0 0; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; overflow-x: auto; color: var(--alpha-warn); }
+
+/* What changed in 30 days (Pro §28 P2) */
+.changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.changes li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid var(--alpha-border); font-size: 14.5px; line-height: 1.45; }
+.changes li:first-child { border-top: 0; }
+.changes a { color: var(--alpha-accent-text); }
+.presets { margin: 0 0 12px; }
+.tbl.sens { min-width: 0; } .tbl.sens th, .tbl.sens td { white-space: nowrap; }

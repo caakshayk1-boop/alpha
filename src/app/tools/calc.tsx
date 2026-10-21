@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Rv } from '@/components/ui';
+import { Rv, StatusChip } from '@/components/ui';
 import { num, pct, ratio, signed } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, streakProb } from './math';
@@ -46,6 +46,40 @@ export function Stepper({ label, value, set, step = 1, min, max, prefix, suffix,
 }
 
 /** The working: one line per step, "what = how = result". */
+/** Scenario presets (Pro §22.6): one tap sets the assumption fields, which stay editable; labelled as assumptions. */
+function Presets({ label, options, note }: { label: string; options: [string, () => void, boolean][]; note: string }) {
+  return (
+    <div className="presets" role="group" aria-label={label}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <StatusChip kind="assumption">Your assumption</StatusChip>
+        {options.map(([n, f, on]) => <button key={n} type="button" className="chip" aria-pressed={on} onClick={f}>{n}</button>)}
+      </div>
+      <p className="dim" style={{ fontSize: 12.5, margin: '4px 0 0' }}>{note}</p>
+    </div>
+  );
+}
+
+/** A 3×3 sensitivity strip (Pro §22.6): the output at the chosen inputs in the centre, a step either side around it. */
+function Sensitivity({ title, rowLabel, colLabel, rows, cols, cell, rowFmt, colFmt }: { title: string; rowLabel: string; colLabel: string; rows: number[]; cols: number[]; cell: (r: number, c: number) => string; rowFmt: (r: number) => string; colFmt: (c: number) => string }) {
+  return (
+    <div className="tbl-wrap" style={{ margin: '12px 0' }} tabIndex={0} role="region" aria-label={title}>
+      <table className="tbl sens">
+        <caption className="eyebrow" style={{ textAlign: 'left', paddingBottom: 6 }}>{title}</caption>
+        <thead><tr><th scope="col">{rowLabel} ↓ · {colLabel} →</th>{cols.map((c) => <th key={c} scope="col" className="num">{colFmt(c)}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={r} style={{ cursor: 'default' }}><th scope="row" className="num">{rowFmt(r)}</th>{cols.map((c, j) => <td key={c} className="num" style={i === 1 && j === 1 ? { fontWeight: 700, background: 'var(--accent-soft)' } : undefined}>{cell(r, c)}</td>)}</tr>)}</tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Final value of a stepped-up monthly SIP: the same arithmetic as the chart. */
+const sipFinal = (m0: number, stepPct: number, ratePct: number, years: number) => {
+  const r = Math.pow(1 + ratePct / 100, 1 / 12) - 1;
+  let value = 0, m = m0;
+  for (let k = 1; k <= years; k++) { for (let j = 0; j < 12; j++) value = (value + m) * (1 + r); m *= 1 + stepPct / 100; }
+  return value;
+};
+
 export function Working({ lines, note }: { lines: [string, string, string][]; note?: ReactNode }) {
   return (
     <details className="working" open>
@@ -95,6 +129,7 @@ export function Position() {
       <div className="tool-grid">
         <div className="tool-in">
           <Stepper label="Capital" value={capital} set={setCapital} step={50000} min={0} prefix="₹" error={err.cap} />
+          <Presets label="Risk scenario" options={[['Conservative', () => setRiskPct('0.5'), riskPct === '0.5'], ['Base', () => setRiskPct('1'), riskPct === '1'], ['Aggressive', () => setRiskPct('2'), riskPct === '2']]} note="Risk per trade is your assumption; capital, entry and stop are your plan." />
           <Stepper label="Risk per trade" value={riskPct} set={setRiskPct} step={0.25} min={0} max={100} suffix="%" error={err.rp} hint={!err.rp && rp > 2 ? `Above the 1–2% many rule sets use: ten stops in a row would cost about ${pct((100 - 100 * (1 - rp / 100) ** 10), 0, false)} of capital.` : 'Share of capital you accept losing on this trade.'} />
           <Stepper label="Entry price" value={entry} set={setEntry} step={1} min={0} prefix="₹" error={err.e} />
           <Stepper label="Stop price" value={stop} set={setStop} step={1} min={0} prefix="₹" error={err.s} hint={!err.s && ok(e) && e > 0 ? `${pct(((risk / e) * 100), 1, false)} below the entry.` : undefined} />
@@ -343,6 +378,7 @@ export function Sip() {
       <Head n="07" q="What could a monthly SIP become?" a="Contributions growing at a return you choose, with a band 3 points either side. An illustration, not a forecast." />
       <div className="tool-grid">
         <div className="tool-in">
+          <Presets label="SIP scenario" options={[['Conservative', () => { setRet('8'); setStep('5'); }, ret === '8' && step === '5'], ['Base', () => { setRet('12'); setStep('10'); }, ret === '12' && step === '10'], ['Optimistic', () => { setRet('14'); setStep('10'); }, ret === '14' && step === '10']]} note="Return and step-up are your assumptions; the amount and years are your plan." />
           <Stepper label="Monthly amount" value={monthly} set={setMonthly} step={1000} min={0} prefix="₹" error={err.m} />
           <Stepper label="Yearly step-up" value={step} set={setStep} step={1} min={0} max={50} suffix="%" error={err.s} hint="How much the monthly amount rises each year." />
           <Stepper label="Return a year" value={ret} set={setRet} step={0.5} min={-20} max={40} suffix="%" error={err.r} hint="An assumption you type, not a forecast." />
@@ -362,13 +398,14 @@ export function Sip() {
                 <path d={line(data.base.map((q) => ({ y: q.y, value: q.invested })))} fill="none" stroke="var(--dim)" strokeWidth="1.6" strokeDasharray="5 4" />
                 <path ref={path} d={line(data.base)} fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" />
               </svg>
+              <Sensitivity title="Sensitivity: what it grows to" rowLabel="Return a year" colLabel="Years" rows={[rt - 2, rt, rt + 2]} cols={[Math.max(1, data.Y - 5), data.Y, data.Y + 5]} cell={(r, y) => lakh(sipFinal(m0, st, r, y))} rowFmt={(r) => `${num(r, 1)}%`} colFmt={(y) => `${y} yrs`} />
               <p className="sipkey"><span><i className="k-line" />at {rt}% a year</span><span><i className="k-band" />{rt - 3}% to {rt + 3}%</span><span><i className="k-dash" />what you put in</span></p>
               <Working lines={[
                 ['Monthly rate', `(1 + ${rt}%) ^ (1 ÷ 12) − 1`, `${pct((data.r * 100), 3, false)}`],
                 ['Each month', 'add the instalment, then grow by the monthly rate', ''],
                 ['Each year', `instalment × (1 + ${st}%)`, `year ${data.Y}: ${money(m0 * (1 + st / 100) ** (data.Y - 1))}`],
                 ['Total put in', `${data.Y * 12} instalments`, lakh(last.invested)],
-              ]} note="No tax, costs or inflation are modelled, and real returns arrive unevenly: the same average with a bad last few years ends far lower." />
+              ]} note="This is arithmetic on your assumptions, not a forecast. No tax, costs or inflation are modelled, and real returns arrive unevenly: the same average with a bad last few years ends far lower." />
             </>
           )}
         </div>

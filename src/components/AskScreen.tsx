@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { parse } from '@/lib/nl';
+import { FIELDS, looksLikeQuery, parseQuery } from '@/lib/query';
 import { TEMPLATES } from '@/lib/templates';
 import type { Row } from '@/lib/types';
 import { num } from '@/lib/format';
 import { plural } from '@/lib/status';
 
-const EXAMPLES = ['large cap IT roce above 25 low debt', 'oversold pharma profitable', 'magic formula debt below 0.5 pe under 20'];
+const EXAMPLES = ['large cap IT roce above 25 low debt', 'oversold pharma profitable', 'magic formula debt below 0.5 pe under 20', 'roe > 14 and debt_to_equity < 0.5'];
 
 export interface NlState { text: string; off: string[] }   // `off`: clauses the person has switched off; nothing is ever switched off for them
 
@@ -20,7 +21,10 @@ export default function AskScreen({ rows, tableRows, value, onValue, onTests }: 
   const setOff = (f: (o: string[]) => string[]) => onValue({ text: q, off: f(off) });
   const { add, ok } = useCards();
   const [saved, setSaved] = useState(false);
-  const p = useMemo(() => parse(q), [q]);
+  // the query language (`roe > 14 and debt_to_equity < 0.5`) when the text looks like it; plain English otherwise
+  const qr = useMemo(() => (looksLikeQuery(q) ? parseQuery(q) : null), [q]);
+  const qErr = qr && 'message' in qr ? qr : null;
+  const p = useMemo(() => (qr ? ('message' in qr ? { filters: [], unknown: [] } : { filters: qr.filters, unknown: [] }) : parse(q)), [q, qr]);
   const active = useMemo(() => p.filters.filter((f) => !off.includes(f.label)), [p, off]);
   const hits = useMemo(() => {
     if (!active.length) return [];
@@ -70,7 +74,9 @@ export default function AskScreen({ rows, tableRows, value, onValue, onTests }: 
             </div>
             {p.filters.filter((f) => f.note && !off.includes(f.label)).map((f) => <p key={`n-${f.label}`} className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}><b style={{ color: 'var(--text)' }}>{f.label}:</b> {f.note}</p>)}
             {p.unknown.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0', alignItems: 'center' }}><span className="eyebrow" style={{ color: 'var(--warn)' }}>Ignored</span>{p.unknown.map((w) => <span key={w} className="tag warn">{w}</span>)}<span className="dim" style={{ fontSize: 13.5 }}>These words were not turned into a filter, so they did not change the results.</span></div>}
-            {active.length === 0 && p.filters.length === 0 && <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised. This understands a fixed set of phrases: a sector (IT, pharma, banks), a size (large, mid, small cap), a ratio with a number (ROCE above 20, P/E under 25, debt below 0.5) or a state (uptrend, oversold, cheap, near 52 week high). Pick an example above, or use the lenses and filters below.</p>}
+            {qErr && <div className="notice warn" role="alert" style={{ margin: '8px 0 0' }}><b>The query could not be read.</b> {qErr.message}<pre className="q-caret" aria-hidden>{q}{'\n'}{' '.repeat(Math.max(0, qErr.at))}^</pre></div>}
+            {qr && !qErr && <p className="dim" style={{ fontSize: 13, margin: '4px 0 0' }}>Read as a query. Fields: {Object.keys(FIELDS).join(', ')}. Combine with and, or, not and brackets. A company with no value for a field never matches a clause on it.</p>}
+            {!qErr && active.length === 0 && p.filters.length === 0 && <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised. This understands a fixed set of phrases: a sector (IT, pharma, banks), a size (large, mid, small cap), a ratio with a number (ROCE above 20, P/E under 25, debt below 0.5) or a state (uptrend, oversold, cheap, near 52 week high). Pick an example above, or use the lenses and filters below.</p>}
             {active.length === 0 && p.filters.length > 0 && <p className="dim" style={{ margin: '8px 0 0' }}>Every clause is switched off, so nothing is being filtered.</p>}
             {active.length > 0 && <p className="muted" style={{ margin: '8px 0 10px' }}><b className="num" style={{ color: 'var(--text)' }}>{num(hits.length)}</b> of {num(rows.length)} companies match {active.length === 1 ? 'the clause' : active.length === 2 ? 'both clauses' : `all ${active.length} clauses`} on their own. The table below also applies the sector, size and manual filters and shows <b className="num" style={{ color: 'var(--text)' }}>{num(tableRows.length)}</b>.</p>}
           </div>

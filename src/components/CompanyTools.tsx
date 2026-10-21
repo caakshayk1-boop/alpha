@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { chartFeed, useFeed } from '@/lib/data';
+import { chartFeed, useFeed, useUniverseWhen } from '@/lib/data';
+import { whatChanged } from '@/lib/changes';
+import { makeMatcher } from '@/lib/newsdesk';
 import { cone, type Bars } from '@/lib/ta';
 import { Rv, Segmented, Switch } from '@/components/ui';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
@@ -10,8 +12,8 @@ import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { decide, lookalikes, screenClass, type Point } from '@/lib/decision';
 import { GLOSSARY, metricId } from '@/lib/glossary';
-import type { Row, Sig } from '@/lib/types';
-import { dash, dateLabel, num, pct, ratio } from '@/lib/format';
+import type { ChartFeed, Row, Sig } from '@/lib/types';
+import { dash, dateLabel, num, pct, plainText, ratio } from '@/lib/format';
 import { companyHref } from '@/lib/slug';
 
 /** The glossary entry a point is about, read from its own words, so its [?] opens the right definition. */
@@ -101,6 +103,39 @@ export function ShareImageButton({ r, sigs, years }: { r: Row; sigs: Sig[]; year
     } catch { setMsg(null); }
   };
   return <><button type="button" className="chip" onClick={make} title="A 1200 × 630 image of this company's figures and its case and countercase, dated, drawn in this browser.">Image</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</>;
+}
+
+/** "What changed in 30 days" (Pro §28 P2, lib/changes.ts): dated facts from feeds the site already holds, each with its
+ *  source. Loads the news feed and the symbol list only when it scrolls into view. */
+export function WhatChanged({ r, sigs }: { r: Row; sigs: Sig[] }) {
+  const news = useFeed('news');
+  const uni = useUniverseWhen(true);
+  const [chart, setChart] = useState<ChartFeed | null>(null);
+  const [chartErr, setChartErr] = useState(false);
+  useEffect(() => { let live = true; chartFeed(r.sym, '1y').then((c) => { if (live) setChart(c); }, () => { if (live) setChartErr(true); }); return () => { live = false; }; }, [r.sym]);
+  const match = useMemo(() => {
+    const cos = (uni.data?.rows ?? []).map(([sym, , name]) => ({ sym, name, mcap: sym === r.sym ? r.mcap_cr ?? undefined : undefined }));
+    return cos.length ? makeMatcher(cos) : null;
+  }, [uni.data, r.sym, r.mcap_cr]);
+  const out = useMemo(() => {
+    if (!chart && !chartErr) return null;
+    const stories = (news.data ?? []).map((s) => ({ ...s, mentions: match ? match(`${plainText(s.title)}. ${plainText(s.summary)}`).map((m) => m.sym) : [] }));
+    return whatChanged({ row: r, chart, news: stories, sigs, now: Date.now() });
+  }, [chart, chartErr, news.data, match, r, sigs]);
+  return (
+    <section className="wrap section" aria-labelledby="changed-h">
+      <h2 id="changed-h" className="disp" style={{ fontSize: 26, margin: '0 0 6px' }}>What changed in 30 days</h2>
+      {!out ? <p className="dim">Loading the last 30 days…</p> : (
+        <Rv className="panel">
+          <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>{dateLabel(out.window[0])} to {dateLabel(out.window[1])}. Facts only, each with its source; nothing here says why it happened.</p>
+          {out.items.length === 0 ? <p className="muted">Nothing on file changed for {r.sym} in this window.</p> : (
+            <ol className="changes">{out.items.map((x, i) => <li key={`${x.date}-${i}`}><span className="num dim">{dateLabel(x.date)}</span><span>{x.href ? <a href={x.href} target="_blank" rel="noopener noreferrer">{x.text} ↗</a> : x.text}<span className="dim"> · {x.source}</span></span></li>)}</ol>
+          )}
+          {out.notes.map((n) => <p key={n} className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>{n}</p>)}
+        </Rv>
+      )}
+    </section>
+  );
 }
 
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */

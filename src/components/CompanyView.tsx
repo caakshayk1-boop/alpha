@@ -3,13 +3,14 @@
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
+import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Segmented, Skel, TabRow } from '@/components/ui';
+import { useStoredPreset } from '@/lib/layout';
 import { DataStamp } from '@/components/DataStamp';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
-import { CaseBlock, ShareButton, ShareImageButton, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { CaseBlock, ShareButton, ShareImageButton, WhatChanged, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { BackToContext } from '@/components/TickerLink';
 import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
@@ -207,6 +208,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
   type Tab = (typeof TABS)[number];
   const [tab, setTab] = useState<Tab>('overview');
+  const [layout, setLayout] = useStoredPreset('alpha-company-layout');
   const [metric, setMetric] = useState<{ k: string; v: string } | null>(null);
   useEffect(() => { setMetric(null); }, [sym]);
   useEffect(() => { const h = window.location.hash.slice(1) as Tab; if ((TABS as readonly string[]).includes(h)) setTab(h); }, [sym]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -261,11 +263,20 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         <h2 className="sr">Price chart</h2>
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
+      <section className="wrap" style={{ paddingTop: 4, paddingBottom: 0 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Segmented label="Page layout" role="group" value={layout} onChange={setLayout} options={[['quick', 'Quick look'], ['deep', 'Deep dive']] as const} />
+          <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare with peers →</Link>
+          <span className="dim" style={{ fontSize: 13.5 }}>{layout === 'quick' ? 'The case, the chart and the scorecard. Everything else is one tap away.' : 'Every section.'}</span>
+        </div>
+      </section>
+      {layout === 'deep' && <LazyMount minHeight={180}><WhatChanged r={r} sigs={mySignals} /></LazyMount>}
       <section className="wrap section">
         <SectionHead eyebrow={`Scorecard · screen close ${closeOn}`} title="Where it ranks" />
         <Scorecard of={s.count} items={[{ label: 'Quality', value: r.q, tone: 'lav', note: 'ROCE, ROE, margins, debt and interest cover' }, { label: 'Growth', value: r.g, tone: 'mint', note: 'Revenue, EBITDA and EPS growth' }, { label: 'Value', value: r.v, tone: 'lime', note: 'P/E and P/B against its own history; higher is cheaper' }, { label: 'Technical', value: r.tech, tone: 'peach', note: 'Trend, momentum, breakouts and volume' }]} />
         <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions. 50 is the median company, which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
       </section>
+      {layout === 'deep' && (<>
       <section className="wrap" style={{ paddingTop: 0 }}>
         <TabRow label="Company views" value={view} onChange={pick} options={tabOptions} />
       </section>
@@ -335,6 +346,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       </>)}
       {view === 'seasonality' && (<>
       <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
+      </>)}
       </>)}
     </>
   );
