@@ -7,7 +7,7 @@ import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, Section
 import { useStoredPreset } from '@/lib/layout';
 import { DataStamp } from '@/components/DataStamp';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
-import { AskCompany, MetricPanel } from '@/components/Explain';
+import { AskAI, AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
 import { CaseBlock, ShareButton, ShareImageButton, WhatChanged, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
@@ -252,6 +252,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
           </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div><PriceContext r={r} price={pv.price ?? r.price} /></div>
       </header>
       <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
+      <section className="wrap" style={{ paddingTop: 8, paddingBottom: 0 }}><AskAI subject="move" sym={r.sym} title={`Why did ${r.sym} move?`} compact /></section>
       {(() => {
         const live = pv.source === 'close' ? null : pv.price;
         if (!has(live) || !has(r.price) || r.price <= 0 || Math.abs(live / r.price - 1) <= 0.08) return null;
@@ -311,6 +312,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       </>)}
       {view === 'financials' && (<>
       <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
+      <section className="wrap section"><SectionHead title="Latest exchange announcements" /><AskAI subject="filing" sym={r.sym} title={`Summarise ${r.sym}'s latest filings`} compact /><p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>Read from the text of the company&apos;s own NSE announcements when you ask; nothing is recalled from memory. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(r.sym)}`} target="_blank" rel="noopener noreferrer">The filings on NSE ↗</a></p></section>
       <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
       </>)}
       {view === 'valuation' && (<>

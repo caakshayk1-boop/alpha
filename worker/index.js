@@ -7,6 +7,7 @@
 
 import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsForMarket, factsForSignal, parseClaims, validateClaims, validateQuestion } from './explain.js';
 import { Rum, validateBeacon } from './rum.js';
+import { PROMPTS, cleanThesis, factsForCompare, factsForFiling, factsForMove, factsForWatchlist, noIdentifiedCause, parseSuggestions, validateEntities, validateFiling, validateThesis } from './askalpha.js';
 
 export { Rum };
 
@@ -613,7 +614,6 @@ async function explain(request, env, url) {
   // EXPLAIN_OFF=1 is the kill switch: set it as a Worker variable and the explainer is off everywhere within a minute.
   if (request.method === 'GET') return json({ ok: true, configured: !switchedOff(env) && (await modelReady(env)) }, 200, 'public, max-age=60');
   if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
-  if (switchedOff(env)) return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
   if (!sameSiteOnly(request, url)) return json({ ok: false, error: 'not allowed from this origin' }, 403);
   if (!(request.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) return json({ ok: false, error: 'send application/json' }, 415);   // also forces a CORS preflight, which is refused
   const text = await readCapped(request, MAX_BODY);
@@ -622,10 +622,22 @@ async function explain(request, env, url) {
   try { body = JSON.parse(text); } catch { return json({ ok: false, error: 'invalid JSON' }, 400); }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid JSON' }, 400);
   // subject: 'company' (sym), 'market' (the day), or 'signal' (id). The browser names the subject; the Worker builds the facts.
-  const subject = ['company', 'market', 'signal'].includes(body.subject) ? body.subject : 'company';
+  // Pro §27.2: company (1), screen (2), move (3), compare (4), watchlist (5), filing (6), thesis (7); market and signal
+  const SUBJECTS = ['company', 'market', 'signal', 'screen', 'move', 'compare', 'watchlist', 'filing', 'thesis'];
+  const subject = SUBJECTS.includes(body.subject) ? body.subject : 'company';
   const sym = String(body.sym || '').toUpperCase().trim();
   const sid = String(body.id || '').trim();
-  if (subject === 'company' && !/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  const SYM_RE = /^[A-Z0-9&-]{1,20}$/;
+  const syms = Array.isArray(body.syms) ? [...new Set(body.syms.map((x) => String(x).toUpperCase().trim()))] : [];
+  if (['company', 'move', 'filing', 'thesis'].includes(subject) && !SYM_RE.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  if (subject === 'compare' && (syms.length < 2 || syms.length > 4 || !syms.every((x) => SYM_RE.test(x)))) return json({ ok: false, error: 'compare needs two to four symbols' }, 400);
+  if (subject === 'watchlist' && (syms.length < 1 || syms.length > 12 || !syms.every((x) => SYM_RE.test(x)))) return json({ ok: false, error: 'a brief covers one to twelve symbols' }, 400);
+  // the kill switch and a missing key stop every model call; the one answer that needs no model ("no identified cause"
+  // for a move no story explains) is still given
+  const off = switchedOff(env);
+  if (off && subject !== 'move') return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
+  const thesis = subject === 'thesis' ? cleanThesis(body.thesis) : null;
+  if (subject === 'thesis' && !thesis) return json({ ok: false, error: 'a thesis of ten to six hundred characters is needed' }, 400);
   if (subject === 'signal' && !/^swing:[A-Z0-9&-]{1,20}:\d{4}-\d{2}-\d{2}$/.test(sid)) return json({ ok: false, error: 'bad signal id' }, 400);
   const q = validateQuestion(body.question);
   if (!q.ok) return json({ ok: false, error: q.error }, 400);
@@ -644,13 +656,46 @@ async function explain(request, env, url) {
     const barometer = barText ? parseLoose(barText) : null;
     facts = factsForMarket({ summary, barometer, gate: sig?.gate });
     asOf = summary?.as_of ?? barometer?.today?.nifty_date ?? null;
+  } else if (subject === 'move') {
+    const res = await shard(sym, env);
+    const data = res ? await res.json().catch(() => null) : null;
+    const stories = await feedText('news').then(parseLoose).catch(() => []);
+    const m = factsForMove(data?.row, Array.isArray(stories) ? stories : [], Date.now());
+    if (!data?.row) return json({ ok: false, error: 'not enough figures on file to answer' }, 404);
+    // "No identified cause" is a valid answer (§27.2): when no story names the company, say so without a model call
+    if (m.named === 0) return json({ ok: true, ...noIdentifiedCause(data.row), facts: m.facts, model: null, deterministic: true, as_of: data.row.last_date ?? null });
+    // AI off: the dated stories that name the company are still facts the reader can read, with no model in between
+    if (off) return json({ ok: false, reason: 'not_configured', error: 'The AI summary is switched off; the dated stories that name the company are listed below as published.', facts: m.facts, deterministic: true, as_of: data.row.last_date ?? null }, 200);
+    facts = m.facts;
+    asOf = data.row.last_date ?? null;
+  } else if (subject === 'compare' || subject === 'watchlist') {
+    const datas = await Promise.all(syms.map(async (x) => { const res = await shard(x, env); return res ? res.json().catch(() => null) : null; }));
+    facts = subject === 'compare' ? factsForCompare(datas) : factsForWatchlist(datas.map((d) => d?.row));
+    asOf = datas.find((d) => d?.row?.last_date)?.row.last_date ?? null;
+  } else if (subject === 'filing') {
+    let ann = [];
+    try {
+      const r = await fetch(`https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=${encodeURIComponent(sym)}`, { headers: NSE_HEADERS, signal: AbortSignal.timeout(9000) });
+      ann = r.ok ? await r.json() : [];
+    } catch { ann = []; }
+    facts = factsForFiling(sym, ann);
+    // the source text must be retrieved, never recalled (§27.2): no text, no summary
+    if (!facts.length) return json({ ok: false, error: 'The exchange announcements for this company could not be retrieved just now, so nothing is summarised. The filings are on nseindia.com.' }, 200);
+    asOf = String(ann?.[0]?.an_dt ?? '').slice(0, 11) || null;
+  } else if (subject === 'thesis') {
+    const res = await shard(sym, env);
+    const data = res ? await res.json().catch(() => null) : null;
+    facts = factsFor(data);
+    asOf = data?.row?.last_date ?? null;
+  } else if (subject === 'screen') {
+    facts = [];
   } else {
     const sig = await signalsFeed();
     const one = (sig?.signals || []).find((x) => x.id === sid);
     facts = factsForSignal(one, sig?.gate);
     asOf = one?.last_close_date ?? sig?.data_through ?? null;
   }
-  if (facts.length < 5) return json({ ok: false, error: 'not enough figures on file to answer' }, 404);
+  if (subject !== 'screen' && facts.length < (subject === 'filing' ? 2 : 5)) return json({ ok: false, error: 'not enough figures on file to answer' }, 404);
   if (await overDailyCeiling(env)) return json({ ok: false, error: 'the explainer has reached its limit for today' }, 429);   // counted only for requests that would really call the model
   // The upstream is fixed. Only a local mock (used in tests) may replace it, so the key can never be sent to another host.
   const base = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(env.ANTHROPIC_BASE || '') ? env.ANTHROPIC_BASE : 'https://api.anthropic.com';
@@ -658,13 +703,16 @@ async function explain(request, env, url) {
     const r = await fetch(`${base}/v1/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 700, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: buildUserMessage(facts, q.value) }] }),
+      body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 700, system: subject === 'screen' ? PROMPTS.screen : `${SYSTEM_PROMPT}${PROMPTS[subject] ? ` ${PROMPTS[subject]}` : ''}`, messages: [{ role: 'user', content: subject === 'screen' ? `<screen>\n${String(body.text || '').replace(/[<>]/g, ' ').slice(0, 300)}\n</screen>\n<not_understood>\n${(Array.isArray(body.words) ? body.words : []).map((w) => String(w).replace(/[^a-z0-9 -]/gi, '')).slice(0, 12).join(', ')}\n</not_understood>` : buildUserMessage(facts, subject === 'thesis' ? `My thesis: ${thesis}. ${q.value}` : q.value) }] }),
       signal: AbortSignal.timeout(20_000),
     });
     if (!r.ok) return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
-    const raw = parseClaims(answerText(await r.json()));
+    const answer = answerText(await r.json());
+    // 2: suggestions only, in the query language; the browser parses each again and the reader must accept it
+    if (subject === 'screen') { const suggestions = parseSuggestions(answer); return json({ ok: true, suggestions, model: env.EXPLAIN_MODEL || EXPLAIN_MODEL }); }
+    const raw = parseClaims(answer);
     if (!raw) return json({ ok: false, error: 'The explainer did not return an answer that could be checked, so nothing is shown. Try again.' }, 200);
-    const { claims, withheld, unknowns } = validateClaims(raw, facts);
+    const { claims, withheld, unknowns } = (subject === 'thesis' ? validateThesis : subject === 'filing' ? validateFiling : subject === 'compare' || subject === 'watchlist' ? validateEntities : validateClaims)(raw, facts);
     if (!claims.length) return json({ ok: false, error: withheld.length ? 'Every statement in the answer was withheld because it could not be checked against Alpha\'s figures.' : 'Alpha\'s data does not cover this.', withheld: withheld.map((w) => w.reason), unknowns }, 200);
     // Question text is never logged or stored (Pro §27.5).
     return json({ ok: true, claims, withheld: withheld.map((w) => w.reason), unknowns, facts, model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: asOf });
