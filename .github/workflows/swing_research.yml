@@ -1,0 +1,37 @@
+name: swing-research
+# The one backtest of Swing v2's rules (engines/swing.py), run on demand. Writes engines/research/swing_results.json, which
+# the nightly run publishes beside the signals and which decides whether alerts may be on (holdout month-clustered t >= 2).
+on:
+  workflow_dispatch:
+concurrency:
+  group: engines
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: engines/requirements.txt
+      - run: pip install -r engines/requirements.txt
+      - name: Tests
+        working-directory: engines
+        run: python tests/test_swing.py
+      - name: Backtest
+        working-directory: engines
+        run: python swing_backtest.py
+      - name: Commit results
+        run: |
+          git config user.name  "caakshayk1-boop"
+          git config user.email "caakshayk1-boop@users.noreply.github.com"
+          git add engines/research/swing_results.json
+          git diff --staged --quiet && echo "unchanged" && exit 0
+          git commit -m "research: swing v2 backtest $(date -u +%Y-%m-%d) [skip ci]"
+          for i in 1 2 3; do git push && exit 0; git pull --rebase --autostash && sleep 3; done
+          exit 1
