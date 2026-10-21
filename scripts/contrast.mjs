@@ -28,8 +28,12 @@ for (const mode of MODES) {
     Object.assign(h.dataset, mode);
     const cs = getComputedStyle(h);
     // resolve any CSS colour to [r,g,b,a] through a probe element
+    // any CSS colour (hex, rgb, color-mix, oklch) to sRGB: paint it on a 1x1 canvas and read the pixel back. A computed
+    // style string cannot be parsed for this: Chromium reports oklch colours as oklch(), not rgb().
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+    const g2 = cv.getContext('2d', { willReadFrequently: true });
     const probe = document.body.appendChild(document.createElement('i'));
-    const rgba = (v) => { probe.style.color = ''; probe.style.color = v; const m = getComputedStyle(probe).color.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0]; return [m[0], m[1], m[2], m[3] ?? 1]; };
+    const rgba = (v) => { probe.style.color = ''; probe.style.color = v; g2.clearRect(0, 0, 1, 1); g2.fillStyle = getComputedStyle(probe).color; g2.fillRect(0, 0, 1, 1); const [r, g, b, a] = g2.getImageData(0, 0, 1, 1).data; return [r, g, b, a / 255]; };
     const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const over = (fg, bg) => [0, 1, 2].map((i) => fg[i] * fg[3] + bg[i] * (1 - fg[3]));
     const ratio = (fgv, bgv) => { const bg = rgba(bgv); const fg = over(rgba(fgv), bg); const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); };

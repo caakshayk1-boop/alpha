@@ -9,7 +9,7 @@ function useExplainerOn(): boolean | null {
   const [on, setOn] = useState<boolean | null>(null);
   useEffect(() => {
     let live = true;
-    status ??= fetch('/api/explain').then((r) => r.json() as Promise<{ configured?: boolean }>).then((j) => j.configured === true, () => false);
+    status ??= fetch('/api/explain', { cache: 'no-cache' }).then((r) => r.json() as Promise<{ configured?: boolean }>).then((j) => j.configured === true, () => false);
     status.then((v) => { if (live) setOn(v); });
     return () => { live = false; };
   }, []);

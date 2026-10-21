@@ -2,7 +2,7 @@
 
 import { Async, Bar, Chg, Notice, PageHead, Rv, SectionHead } from '@/components/ui';
 import { useFeed, useIpoLive } from '@/lib/data';
-import { ago, dash, dateLabel, nseDate, num, rupeeBand, ratio } from '@/lib/format';
+import { ago, dash, dateLabel, nseDate, num, rupeeBand, ratio, pct } from '@/lib/format';
 import type { IpoLiveIssue, IpoUpcoming } from '@/lib/types';
 
 /** The mirror's generated_at has no timezone. It is written by ipo_radar.py with datetime.now() on a GitHub runner, which runs
@@ -38,7 +38,7 @@ function LiveBook({ i }: { i: IpoLiveIssue }) {
       {noBids ? (
         <div className="muted" style={{ fontSize: 16, lineHeight: 1.5 }}>No bids reported yet. NSE publishes the book during the day, so this fills in as bidding starts.</div>
       ) : (
-        <div className="disp" style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>{i.total_x != null ? `${i.total_x.toFixed(2)}×` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
+        <div className="disp" style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>{i.total_x != null ? `${ratio(i.total_x, 2)}` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
       )}
       {!noBids && cats.length > 0 && (
         <div className="meter" style={{ marginTop: 18 }}>
@@ -46,7 +46,7 @@ function LiveBook({ i }: { i: IpoLiveIssue }) {
             <div className="meter-row" key={c.cat}>
               <span className="lab">{c.cat}</span>
               <Bar pct={(c.x / max) * 100} kind={c.x >= 1 ? 'up' : 'down'} />
-              <span className="num">{c.x.toFixed(2)}×</span>
+              <span className="num">{ratio(c.x, 2)}</span>
             </div>
           ))}
         </div>
@@ -68,7 +68,7 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
         <div><div className="k">Grey market (unofficial)</div><div className="v" style={{ fontSize: 15 }}>{u.gmp_text ?? dash}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>Source and time are not stated in the feed; not scored.</div></div>
         <div><div className="k">Revenue · profit</div><div className="v" style={{ fontSize: 15 }}>{u.revenue_cr ? `₹${num(u.revenue_cr, 0)} · ₹${num(u.pat_cr, 0)} cr` : dash}</div></div>
         <div><div className="k">Listing date</div><div className="v" style={{ fontSize: 15 }}>{u.listing_date ? dateLabel(u.listing_date) : 'Not announced yet'}</div></div>
-        <div><div className="k">P/E post issue vs peers</div><div className="v" style={{ fontSize: 15 }}>{u.pe_post_issue ? `${u.pe_post_issue.toFixed(1)}× vs ${u.peer_pe?.toFixed(1) ?? dash}×` : dash}</div></div>
+        <div><div className="k">P/E post issue vs peers</div><div className="v" style={{ fontSize: 15 }}>{u.pe_post_issue ? `${ratio(u.pe_post_issue, 1)} vs ${num(u.peer_pe, 1) ?? dash}×` : dash}</div></div>
       </div>
       {u.score && (
         <div style={{ marginTop: 16 }}>
@@ -76,7 +76,7 @@ function Upcoming({ u }: { u: IpoUpcoming }) {
           <div className="meter">{parts.map(([k, v]) => { const [a, b] = v.split('/').map(Number); return <div className="meter-row" key={k}><span className="lab">{k}</span><Bar pct={(a / b) * 100} /><span className="num">{v}</span></div>; })}</div>
           <ul className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
             {'Size' in (u.score.parts ?? {}) && <li><b>Size</b>: the issue size, ₹{num(u.issue_size_cr)} cr; this attribute scores a bigger issue higher; size alone says nothing about quality.</li>}
-            {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({(((u.price_high - u.price_low) / u.price_low) * 100).toFixed(1)}% wide here); this attribute scores a narrower band higher. It does not measure valuation and does not establish the underwriter&apos;s intent.</li> : null}
+            {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({pct((((u.price_high - u.price_low) / u.price_low) * 100), 1, false)} wide here); this attribute scores a narrower band higher. It does not measure valuation and does not establish the underwriter&apos;s intent.</li> : null}
             <li>The P/E post issue and peer P/E shown above are <b>not part of this score</b>: valuation multiples are not measured by it, which is why they appear in the not-measured list.</li>
             <li>Not measured at all: {u.score.not_measured.join(', ')}. The grey-market premium is shown and deliberately not scored.</li>
           </ul>
@@ -119,7 +119,7 @@ export default function Ipo() {
               <div style={{ height: 20 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
-                {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${a.pe_post_issue.toFixed(1)}×` : dash}</td><td className="num">{a.peer_pe ? `${a.peer_pe.toFixed(1)}×` : dash}</td></tr>)}
+                {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${ratio(a.pe_post_issue, 1)}` : dash}</td><td className="num">{a.peer_pe ? `${ratio(a.peer_pe, 1)}` : dash}</td></tr>)}
                 {d.awaiting_listing.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>None awaiting listing.</td></tr>}
               </tbody></table></div>
 

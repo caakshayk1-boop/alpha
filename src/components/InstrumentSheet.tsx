@@ -18,7 +18,7 @@ const memo = new Map<string, { at: number; p: Promise<Bars | null> }>();
 const fetchBars = (id: string, fresh = false) => {
   const hit = memo.get(id);
   if (hit && !fresh && Date.now() - hit.at < 15 * 60_000) return hit.p;
-  const p = fetch(`${BASE}/api/instrument?id=${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(15_000) }).then((r) => r.json()).then((j) => (j?.ok ? (j as Bars) : null), () => null);
+  const p = fetch(`${BASE}/api/instrument?id=${encodeURIComponent(id)}`, { cache: 'no-cache', signal: AbortSignal.timeout(15_000) }).then((r) => r.json()).then((j) => (j?.ok ? (j as Bars) : null), () => null);
   memo.set(id, { at: Date.now(), p });
   void p.then((b) => { if (!b && memo.get(id)?.p === p) memo.delete(id); });
   return p;
@@ -85,8 +85,8 @@ export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void 
             <div className="kv isheet-kv">
               <div><div className="k">Typical day</div><div className="v">{lv.rangePct === null ? '—' : `${pct(lv.rangePct, 1, false)}`}</div></div>
               <div><div className="k">Volatility (20d, yearly)</div><div className="v">{lv.vol20 === null ? '—' : `${pct(lv.vol20, 0, false)}`}</div></div>
-              <div><div className="k">Best day, 1 year</div><div className="v up">{lv.best ? `+${lv.best.pct.toFixed(1)}%` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.best ? dateOf(lv.best.t) : ''}</div></div>
-              <div><div className="k">Worst day, 1 year</div><div className="v down">{lv.worst ? `${lv.worst.pct.toFixed(1)}%` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.worst ? dateOf(lv.worst.t) : ''}</div></div>
+              <div><div className="k">Best day, 1 year</div><div className="v up">{lv.best ? `+${pct(lv.best.pct, 1, false)}` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.best ? dateOf(lv.best.t) : ''}</div></div>
+              <div><div className="k">Worst day, 1 year</div><div className="v down">{lv.worst ? `${pct(lv.worst.pct, 1, false)}` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.worst ? dateOf(lv.worst.t) : ''}</div></div>
             </div>
             <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Pivots from the {lv.pivots ? dateOf(lv.pivots.from) : 'last'} session. 52-week high {lv.hi52 ? dateOf(lv.hi52.t) : '—'}, low {lv.lo52 ? dateOf(lv.lo52.t) : '—'}. Levels are standard formulas, not forecasts. <a href="/about/#markets" style={{ textDecoration: 'underline' }}>Method</a></p>
           </>

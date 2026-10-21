@@ -2,7 +2,8 @@
  *  script in app/layout.tsx), so nothing flashes. None of them changes any data.
  *    theme      light | dark
  *    accent     violet (no attribute) | cyan | lime | coral: the highlight only
- *    motion     system (follow the device) | reduced (no movement, every state still shown in text)
+ *    motion     system (follow the device) | reduced (no movement, every state still shown in text) | off (no animation or
+ *               transition of any kind, colour fades and page transitions included)
  *    market     standard (green/red) | cb (blue/orange, for colour-blind readers); direction is always also a sign and arrow
  *    density    comfortable | compact (tighter rows and padding)
  *    contrast   system (follow the device's "more contrast" setting) | high (stronger text, lines and focus rings)
@@ -10,7 +11,7 @@
 export const PREFS = {
   theme: { key: 'alpha-theme', attr: 'theme', values: ['light', 'dark'], base: 'light' },
   accent: { key: 'alpha-accent', attr: 'accent', values: ['violet', 'cyan', 'lime', 'coral'], base: 'violet' },
-  motion: { key: 'alpha-motion', attr: 'motion', values: ['system', 'reduced'], base: 'system' },
+  motion: { key: 'alpha-motion', attr: 'motion', values: ['system', 'reduced', 'off'], base: 'system' },
   market: { key: 'alpha-market', attr: 'market', values: ['standard', 'cb'], base: 'standard' },
   density: { key: 'alpha-density', attr: 'density', values: ['comfortable', 'compact'], base: 'comfortable' },
   contrast: { key: 'alpha-contrast', attr: 'contrast', values: ['system', 'high'], base: 'system' },

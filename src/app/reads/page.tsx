@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Prose, { headingsOf, slug } from '@/components/Prose';
-import { Async, PageHead, Rv } from '@/components/ui';
+import { Async, PageHead, Rv, StatusChip } from '@/components/ui';
 import { useFeed, useLive, useShard } from '@/lib/data';
 import { priceLabel, priceView } from '@/lib/price';
 import { crore, dateLabel, num, pct } from '@/lib/format';
@@ -41,6 +41,7 @@ export default function Reads() {
   const written = ed?.written_at ? new Date(ed.written_at) : null;
   return (
     <>
+      <div className="read-progress" aria-hidden />
       <PageHead method="reads" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
@@ -67,7 +68,7 @@ export default function Reads() {
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end, and not reviewed by a person. {s.review?.status === 'machine_checked' ? `Passed Alpha's interpretation checks on ${dateLabel(s.review.checked_at)}. ` : ''}Not investment advice.</p>
                 {s.review?.status === 'under_review' && (
                   <div className="notice warn" role="note" style={{ margin: '0 0 20px' }}>
-                    <b>Under review since {dateLabel(s.review.checked_at)}.</b> Alpha&apos;s checks found {s.review.problems.length === 1 ? 'a problem' : `${s.review.problems.length} problems`} in this study:
+                    <StatusChip kind="review">Under review</StatusChip> <b>Since {dateLabel(s.review.checked_at)}.</b> Alpha&apos;s checks found {s.review.problems.length === 1 ? 'a problem' : `${s.review.problems.length} problems`} in this study:
                     <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.review.problems.map((p) => <li key={p}>{p}</li>)}</ul>
                     <div style={{ marginTop: 6 }}>The text below is kept exactly as published. A corrected study will be published as a new version; until then, do not rely on the sentences named above.</div>
                   </div>

@@ -48,7 +48,7 @@ function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: st
               <div className="secbar" key={c.year} style={{ gridTemplateColumns: '48px minmax(0, 1fr) 64px' }}>
                 <span className="num">{c.year}</span>
                 <span className="track" aria-hidden><i style={c.ret >= 0 ? { left: '50%', width: `${(Math.abs(c.ret) / calMax) * 50}%`, background: 'var(--up)' } : { right: '50%', width: `${(Math.abs(c.ret) / calMax) * 50}%`, background: 'var(--down)' }} /></span>
-                <span className={`v num ${c.ret >= 0 ? 'up' : 'down'}`}>{c.ret >= 0 ? '+' : ''}{c.ret.toFixed(1)}%</span>
+                <span className={`v num ${c.ret >= 0 ? 'up' : 'down'}`}>{c.ret >= 0 ? '+' : ''}{pct(c.ret, 1, false)}</span>
               </div>
             ))}
           </div>
@@ -57,10 +57,10 @@ function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: st
       {p && (
         <div>
           <div className="eyebrow" style={{ marginBottom: 8 }}>What it holds · as on {p.as_on}</div>
-          <p className="muted" style={{ margin: '0 0 8px', fontSize: 14 }}>{num(p.holdings_count)} holdings{fin(p.equity_pct) ? `, ${p.equity_pct.toFixed(0)}% in equity` : ''}.</p>
-          {p.top_sectors.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{p.top_sectors.slice(0, 3).map((s) => <span key={s.name} className="tag">{s.name} {s.pct.toFixed(0)}%</span>)}</div>}
+          <p className="muted" style={{ margin: '0 0 8px', fontSize: 14 }}>{num(p.holdings_count)} holdings{fin(p.equity_pct) ? `, ${pct(p.equity_pct, 0, false)} in equity` : ''}.</p>
+          {p.top_sectors.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{p.top_sectors.slice(0, 3).map((s) => <span key={s.name} className="tag">{s.name} {pct(s.pct, 0, false)}</span>)}</div>}
           <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4, fontSize: 14 }}>
-            {p.top_stocks.slice(0, 5).map((s) => <li key={s.name}><span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{s.name}</span><span className="num dim">{s.pct.toFixed(1)}%</span></span></li>)}
+            {p.top_stocks.slice(0, 5).map((s) => <li key={s.name}><span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{s.name}</span><span className="num dim">{pct(s.pct, 1, false)}</span></span></li>)}
           </ol>
           {p.source_url && <a className="dim" href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 3 }}>Holdings source: ETMoney ↗</a>}
         </div>

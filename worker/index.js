@@ -41,6 +41,9 @@ const SECURITY_HEADERS = {
 function withHeaders(res, extra = {}) {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries({ ...SECURITY_HEADERS, ...extra })) out.headers.set(k, v);
+  // Data responses get the tightest policy: nothing in a JSON body may load or frame anything. HTML keeps the page
+  // policy it already carries from public/_headers (found missing on /api/* by scripts/headers.mjs).
+  if (!out.headers.has('content-security-policy') && !/text\/html/.test(out.headers.get('content-type') || '')) out.headers.set('content-security-policy', "default-src 'none'; frame-ancestors 'none'");
   return out;
 }
 

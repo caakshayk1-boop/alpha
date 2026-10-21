@@ -24,7 +24,7 @@ const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinit
 
 const FIELDS: Field[] = [
   { id: 'price', label: 'Price', get: (r) => r.price, fmt: (v) => `₹${num(v, 2)}` },
-  { id: 'mcap_cr', label: 'Market cap (₹ cr)', get: (r) => r.mcap_cr, fmt: (v) => (v >= 1e5 ? `${(v / 1e5).toFixed(2)}L cr` : `${num(v, 0)} cr`) },
+  { id: 'mcap_cr', label: 'Market cap (₹ cr)', get: (r) => r.mcap_cr, fmt: (v) => (v >= 1e5 ? `${num((v / 1e5), 2)}L cr` : `${num(v, 0)} cr`) },
   { id: 'pe', label: 'P/E', get: (r) => r.pe, fmt: (v) => num(v, 1) },
   { id: 'pb', label: 'P/B', get: (r) => r.pb, fmt: (v) => num(v, 2) },
   { id: 'roce', label: 'ROCE %', get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}` },
@@ -199,7 +199,7 @@ export default function Screen() {
     <>
       <PageHead method="screen" eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
-      <section className="wrap">
+      <section className="wrap wide">
         <AskScreen rows={base} tableRows={rows} value={nl} onValue={(v) => { setNl(v); setLimit(PAGE); }} onTests={setNlTests} />
         <div className="filters">
           <input className="field" placeholder="Search name or symbol" aria-label="Search companies" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} />

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Chg, Rv, Skel } from '@/components/ui';
 import { useFeed, useRotation } from '@/lib/data';
-import { num } from '@/lib/format';
+import { num, pct } from '@/lib/format';
 import { rotationShift } from '@/lib/rotationShift';
 import { companyHref } from '@/lib/slug';
 import { useBarometer } from '@/lib/useBarometer';
@@ -64,7 +64,7 @@ export function QuickSizer() {
         <label>Entry ₹<input className="field" inputMode="decimal" value={entry} placeholder="e.g. 173.7" onChange={(e) => setEntry(clean(e.target.value))} /></label>
         <label>Stop ₹<input className="field" inputMode="decimal" value={stop} placeholder="e.g. 165" onChange={(e) => setStop(clean(e.target.value))} /></label>
       </div>
-      <p className="qs-out num" aria-live="polite">{qty > 0 ? <><b>{num(qty)}</b> shares ≈ ₹{num(qty * E, 0)} ({((qty * E) / C * 100).toFixed(0)}% of capital) · a stop-out costs ₹{num(qty * per, 0)}</> : per <= 0 && E && S ? 'The stop must be below the entry.' : 'Enter an entry and a stop.'}</p>
+      <p className="qs-out num" aria-live="polite">{qty > 0 ? <><b>{num(qty)}</b> shares ≈ ₹{num(qty * E, 0)} ({pct(((qty * E) / C * 100), 0, false)} of capital) · a stop-out costs ₹{num(qty * per, 0)}</> : per <= 0 && E && S ? 'The stop must be below the entry.' : 'Enter an entry and a stop.'}</p>
     </Rv>
   );
 }

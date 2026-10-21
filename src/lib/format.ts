@@ -29,6 +29,8 @@ export function changeParts(v: number, dp = 2, suffix = '%'): { dir: 'up' | 'dow
   const dir = r > 0 ? 'up' : r < 0 ? 'down' : 'flat';
   return { dir, text: `${dir === 'up' ? '▲ +' : dir === 'down' ? `▼ ${MINUS}` : ''}${mag}${suffix}`, label: `${dir === 'flat' ? 'unchanged' : dir} ${mag}${suffix === '%' ? ' percent' : suffix.trim() === 'bp' ? ' basis points' : suffix}` };
 }
+/** A signed figure with any unit: "+1.24R", "\u22120.50%", "0.00R" (never "\u22120.00"); a dash when there is no number. */
+export const signed = (n: number | null | undefined, dp = 2, unit = '') => (isNum(n) ? `${signedNum(n, dp, true)}${unit}` : dash);
 /** A change in a percentage is in percentage points: "+1.2 pp" (never "%"). */
 export const pp = (n: number | null | undefined, dp = 1) => (isNum(n) ? `${signedNum(n, dp, true)} pp` : dash);
 /** A change in a yield, in whole basis points: "+7 bp". */
@@ -43,6 +45,13 @@ export const crore = (n: number | null | undefined) => {
   if (!isNum(n)) return dash;
   if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(2)} L cr`;
   return `₹${num(n, 0)} cr`;
+};
+
+/** How a crore figure is SAID (Pro §30): "₹1.23 L cr" reads as letters, so screen readers get "1.23 lakh crore rupees". */
+export const sayCrore = (n: number | null | undefined) => {
+  if (!isNum(n)) return 'not available';
+  if (Math.abs(n) >= 1e5) return `${(n / 1e5).toLocaleString('en-IN', { maximumFractionDigits: 2 })} lakh crore rupees`;
+  return `${Math.round(n).toLocaleString('en-IN')} crore rupees`;
 };
 
 export const tone = (n: number | null | undefined): 'up' | 'down' | 'flat' =>

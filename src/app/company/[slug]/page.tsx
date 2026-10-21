@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { CompanyView } from '@/components/CompanyView';
 import type { Shard } from '@/lib/data';
 import { slugToSym, symToSlug } from '@/lib/slug';
+import { num } from '@/lib/format';
 
 export const dynamicParams = false;
 const DIR = join(process.cwd(), 'public', 'c');
@@ -21,7 +22,7 @@ export function generateStaticParams(): { slug: string }[] {
   return files.map((f) => ({ slug: symToSlug(f.slice(0, -'.json'.length)) }));
 }
 
-const fmt = (v: number | null | undefined, dp = 1, unit = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(dp)}${unit}` : null);
+const fmt = (v: number | null | undefined, dp = 1, unit = '') => (typeof v === 'number' && Number.isFinite(v) ? `${num(v, dp)}${unit}` : null);
 
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const sym = slugToSym(params.slug);

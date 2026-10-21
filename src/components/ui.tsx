@@ -160,6 +160,18 @@ export function Skel({ h = 16, w = '100%', style }: { h?: number; w?: number | s
   return <div className="skel" style={{ height: h, width: w, ...style }} aria-hidden />;
 }
 
+/** A figure shown one way and spoken another (Pro §30): the visible text is hidden from assistive technology and a plain
+ *  spoken form is read instead. aria-label on a span is not used: it is not announced reliably. */
+export function Said({ say, children }: { say: string; children: ReactNode }) {
+  return <><span aria-hidden>{children}</span><span className="sr">{say}</span></>;
+}
+
+/** The state of a figure, in the one visual language of Pro §24.4. The label is always words; colour never carries it alone. */
+export type Status = 'live' | 'close' | 'stale' | 'experimental' | 'assumption' | 'observed' | 'review' | 'unknown';
+export function StatusChip({ kind, children, title }: { kind: Status; children: ReactNode; title?: string }) {
+  return <span className={`st st-${kind}`} title={title}>{kind === 'stale' && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>}{children}</span>;
+}
+
 export function Notice({ children }: { children: ReactNode }) {
   return <div className="notice" role="status">{children}</div>;
 }

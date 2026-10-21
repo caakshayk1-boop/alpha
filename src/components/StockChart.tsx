@@ -205,10 +205,10 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span className={`tag ${state.up ? 'up' : 'down'}`} style={{ fontSize: 14, padding: '5px 12px' }}>{state.up ? '▲ UPTREND' : '▼ DOWNTREND'}</span>
-                <span className="muted" style={{ fontSize: 15 }}>{state.days} {state.days === 1 ? unit.replace(/s$/, '') : unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{state.move.toFixed(1)}%</b></span>
+                <span className="muted" style={{ fontSize: 15 }}>{state.days} {state.days === 1 ? unit.replace(/s$/, '') : unit} since {state.since}, <b className={state.move >= 0 ? 'up' : 'down'}>{state.move >= 0 ? '+' : ''}{pct(state.move, 1, false)}</b></span>
               </div>
               <div className="dim num" style={{ fontSize: 13.5, marginTop: 6 }}>
-                Key line ₹{px(state.klNow)} · price is {Math.abs(state.dist).toFixed(1)}% {state.up ? 'above' : 'below'} it · a close {state.up ? 'below' : 'above'} flips the trend
+                Key line ₹{px(state.klNow)} · price is {pct(Math.abs(state.dist), 1, false)} {state.up ? 'above' : 'below'} it · a close {state.up ? 'below' : 'above'} flips the trend
               </div>
             </>
           ) : <span className="dim">{err ? 'Price history unavailable' : bars ? 'Not enough history for a trend read' : 'Loading prices…'}</span>}
@@ -227,7 +227,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         </div>
       </div>
       <div className="num" style={{ fontSize: 13.5, minHeight: 20, marginBottom: 4, color: 'var(--muted)' }}>
-        {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · {kl.dir[i] === 1 ? 'uptrend' : 'downtrend'}</span>}</>}
+        {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{pct(chg, 2, false)}</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · {kl.dir[i] === 1 ? 'uptrend' : 'downtrend'}</span>}</>}
       </div>
       <div ref={wrap} style={{ position: 'relative', minHeight: 300 }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <canvas ref={cv} role="img" aria-label={bars ? `Price chart for ${sym}. ${chartSummary(bars.t, bars.c, bars.h, bars.l)}` : `Price chart for ${sym}`} style={{ display: 'block', touchAction: 'pan-y' }} />
@@ -235,7 +235,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         {data && !data.ok && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>{data.error ?? 'No price history for this symbol.'}</p>}
       </div>
       <p className="dim" style={{ fontSize: 13, margin: '8px 0 0', minHeight: '3.2em' }}>
-        {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
+        {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{pct(overall, 1, false)}</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{pct(nOverall, 1, false)}. </>}
         {bars && <>{chartSummary(bars.t, bars.c, bars.h, bars.l)} </>}
         The key line is a 3-ATR trailing line: it trails price and flips on a close through it. It reads the trend; it does not predict it. Yahoo prices, cached up to 15 minutes.
       </p>

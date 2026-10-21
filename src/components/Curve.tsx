@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { canAnimate, gsap } from '@/lib/motion';
+import { num } from '@/lib/format';
 
 /** Cumulative R by month for the rule book against random picks. Both are drawn on one scale. */
 export default function Curve({ a, b, label = 'rules' }: { a: [string, number][]; b: [string, number][]; label?: string }) {
@@ -24,7 +25,7 @@ export default function Curve({ a, b, label = 'rules' }: { a: [string, number][]
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 760, height: 'auto', display: 'block', margin: '0 auto' }} role="img" aria-label={`Cumulative R by month, ${label} against random picks`}>
       <line x1={pad} x2={W - pad} y1={Y(0)} y2={Y(0)} stroke="var(--line-2)" strokeDasharray="3 4" />
-      {[lo, (lo + hi) / 2, hi].map((v) => <text key={v} x={4} y={Y(v) + 4} fontSize="10" fontFamily="var(--f-mono)" fill="var(--dim)">{v.toFixed(0)}R</text>)}
+      {[lo, (lo + hi) / 2, hi].map((v) => <text key={v} x={4} y={Y(v) + 4} fontSize="10" fontFamily="var(--f-mono)" fill="var(--dim)">{num(v, 0)}R</text>)}
       {ticks.map((m) => <text key={m} x={X(m)} y={H - 10} fontSize="10" fontFamily="var(--f-mono)" fill="var(--dim)" textAnchor="middle">{m.slice(2)}</text>)}
       <path d={path(b)} fill="none" stroke="var(--dim)" strokeWidth="1.6" strokeDasharray="5 4" />
       <path ref={pa} d={path(a)} fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" />

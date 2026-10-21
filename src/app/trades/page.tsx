@@ -7,15 +7,15 @@ import { canAnimate, gsap } from '@/lib/motion';
 import { GatePanel } from '@/components/Gate';
 import { useIntraday } from '@/lib/data';
 import { useBook } from '@/lib/useBook';
-import { dash, num, tone } from '@/lib/format';
+import { dash, num, signed, tone } from '@/lib/format';
 import { istDate, nseClock } from '@/lib/live';
 import { istTime, sessionLabel } from '@/lib/price';
 import { DECISION_TEXT, STATE_TEXT, STATE_TONE, STOP_TEXT, bookCurve, markSource, type CurvePoint } from '@/lib/plan';
 import { companyHref } from '@/lib/slug';
 
-const sR = (v: number | null | undefined, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}R` : dash);
+const sR = (v: number | null | undefined, d = 2) => signed(v, d, 'R');
 const sRs = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}₹${num(Math.abs(v), 0)}` : dash);
-const sP = (v: number | null | undefined, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}%` : dash);
+const sP = (v: number | null | undefined, d = 2) => signed(v, d, '%');
 const r2 = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
 const RISK_KEY = 'alpha:trades:risk';
 const DTONE: Record<string, string> = { exit: 'down', modify: 'warn', enter: 'acc', hold: '', closed: '', void: 'warn' };
