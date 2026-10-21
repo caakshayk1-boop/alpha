@@ -3,10 +3,11 @@ import { LENDER_NA, isLender } from '@/lib/sector';
 
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { DataStamp } from '@/components/DataStamp';
 import SymbolPicker from '@/components/SymbolPicker';
-import { Async, Chg, Flash, Notice, PageHead, Rv } from '@/components/ui';
+import { Async, Chg, Flash, Notice, PageHead, Rv, Segmented } from '@/components/ui';
+import { useStoredPreset } from '@/lib/layout';
 import { useFeedWhen, useLive, useShard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { crore, dash, num, pct, ratio } from '@/lib/format';
@@ -19,26 +20,26 @@ const PERIOD_DEPENDENT = new Set(['Revenue CAGR', 'EPS CAGR']);
 /** `material`: the smallest difference between the best and the next value that is worth marking (Pro §22.5): in the
  *  measure's own units for levels (5 points of a margin, 0.3 of debt/equity), or as a share for multiples (`rel`). Below it
  *  the row stays neutral: a 0.4-point gap in ROCE is noise, not a winner. */
-type Spec = { label: string; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null; material?: number; rel?: boolean };
+type Spec = { label: string; quick?: boolean; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null; material?: number; rel?: boolean };
 const SPECS: Spec[] = [
   { label: 'Market cap', get: (r) => r.mcap_cr, fmt: (v) => crore(v), better: null },
-  { label: 'Composite score', material: 10, get: (r) => r.comp, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Quality', material: 10, get: (r) => r.q, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Growth', material: 10, get: (r) => r.g, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Value', material: 10, get: (r) => r.v, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Technical', material: 10, get: (r) => r.tech, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'P/E', material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${ratio(v, 1)}`, better: 'low' },
+  { label: 'Composite score', quick: true, material: 10, get: (r) => r.comp, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Quality', quick: true, material: 10, get: (r) => r.q, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Growth', quick: true, material: 10, get: (r) => r.g, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Value', quick: true, material: 10, get: (r) => r.v, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Technical', quick: true, material: 10, get: (r) => r.tech, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'P/E', quick: true, material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${ratio(v, 1)}`, better: 'low' },
   { label: 'P/B', material: 0.2, rel: true, get: (r) => r.pb, fmt: (v) => `${ratio(v, 2)}`, better: 'low' },
-  { label: 'ROCE', material: 5, get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'ROCE', quick: true, material: 5, get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
   { label: 'ROE', material: 5, get: (r) => r.roe, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
   { label: 'EBIT margin', material: 5, get: (r) => r.ebit_margin, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'Debt / equity', material: 0.3, get: (r) => r.de, fmt: (v) => num(v, 2), better: 'low' },
+  { label: 'Debt / equity', quick: true, material: 0.3, get: (r) => r.de, fmt: (v) => num(v, 2), better: 'low' },
   { label: 'Revenue CAGR', material: 5, get: (r) => r.rev_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
   { label: 'EPS CAGR', material: 5, get: (r) => r.eps_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
   { label: 'Cash conversion', material: 0.2, get: (r) => r.cfo_pat, fmt: (v) => `${ratio(v, 2)}`, better: 'high' },
   { label: 'Dividend yield', material: 1, get: (r) => r.div_yield, fmt: (v) => `${pct(v, 2, false)}`, better: 'high' },
   { label: 'Piotroski F', material: 2, get: (r) => r.piotroski, fmt: (v) => `${num(v, 0)}/9`, better: 'high' },
-  { label: '1 year', material: 10, get: (r) => r.r1y, fmt: (v) => `${pct(v, 1)}`, better: 'high' },
+  { label: '1 year', quick: true, material: 10, get: (r) => r.r1y, fmt: (v) => `${pct(v, 1)}`, better: 'high' },
   { label: 'From 52-week high', material: 10, get: (r) => r.from_high, fmt: (v) => `${pct(v, 0, false)}`, better: 'high' },
 ];
 
@@ -79,6 +80,11 @@ function Compare() {
   const rows = useMemo(() => syms.map((x, i) => shardRows[i] ?? s.data?.rows.find((r) => r.sym.toUpperCase() === x)).filter((r): r is Row => !!r), [s.data, syms.join(','), ...shardRows]); // eslint-disable-line react-hooks/exhaustive-deps
   const loading = syms.some((x, i) => !!x && sh[i].loading) || (needFull && s.loading);
   const lv = useLive();
+  // layout preset (Pro §28 P2): Quick look keeps the scores, P/E, ROCE, leverage and the year's return; Deep dive shows all
+  const [preset, setPreset] = useStoredPreset('alpha-compare-layout');
+  // linked views: pointing at or focusing any part of one company (its column, a cell, its score shape) highlights all of it
+  const [focusCol, setFocusCol] = useState<number | null>(null);
+  const linkOn = (e: React.SyntheticEvent) => { const c = (e.target as HTMLElement).closest<HTMLElement>('[data-col]')?.dataset.col; setFocusCol(c === undefined ? null : Number(c)); };
   const set = (next: string[]) => router.replace(next.length ? `/compare/?s=${next.join(',')}` : '/compare/');
   return (
     <>
@@ -119,15 +125,21 @@ function Compare() {
               </div>
             </div>
           ) : (
-            <div className="grid g-7-5" style={{ alignItems: 'start' }}>
+            <>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '0 0 12px' }}>
+              <Segmented label="Layout" role="group" value={preset} onChange={setPreset} options={[['quick', 'Quick look'], ['deep', 'Deep dive']] as const} />
+              <span className="dim" style={{ fontSize: 13.5 }}>{preset === 'quick' ? 'Scores, P/E, ROCE, leverage and the one-year return.' : 'Every measure on file.'} Point at a company to follow it across the table and its score shape.</span>
+            </div>
+            {focusCol !== null && <style>{`.cmp-linked [data-col="${focusCol}"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }`}</style>}
+            <div className="grid g-7-5 cmp-linked" style={{ alignItems: 'start' }} onPointerOver={linkOn} onFocus={linkOn} onPointerLeave={() => setFocusCol(null)} onBlur={() => setFocusCol(null)}>
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
                 <table className="tbl" style={{ minWidth: 560 }}>
-                  <thead><tr><th>Measure</th>{rows.map((r) => <th key={r.sym}><Link href={companyHref(r.sym)}>{r.sym}</Link></th>)}</tr></thead>
+                  <thead><tr><th>Measure</th>{rows.map((r, ci) => <th key={r.sym} data-col={ci}><Link href={companyHref(r.sym)}>{r.sym}</Link></th>)}</tr></thead>
                   <tbody>
-                    <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} className="num"><Flash value={pv.price}>₹{num(pv.price, 2)}</Flash><div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{priceLabel(pv).text}</div></td>; })}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Day move</td>{rows.map((r) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td>; })}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r) => <td key={r.sym} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 12 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
-                    {SPECS.map((sp2) => {
+                    <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci} className="num"><Flash value={pv.price}>₹{num(pv.price, 2)}</Flash><div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{priceLabel(pv).text}</div></td>; })}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Day move</td>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td>; })}</tr>
+                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r, ci) => <td key={r.sym} data-col={ci} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 12 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
+                    {SPECS.filter((x) => preset === 'deep' || x.quick).map((sp2) => {
                       const vals = rows.map((r) => sp2.get(r));
                       const nums = vals.filter(has);
                       const spans = rows.map((r) => spanOf(r.sym));
@@ -138,14 +150,15 @@ function Compare() {
                       const sorted = [...cmp].sort((a, b) => (sp2.better === 'low' ? a - b : b - a));
                       const gap = sorted.length > 1 ? (sp2.rel ? Math.abs(sorted[0] / sorted[1] - 1) : Math.abs(sorted[0] - sorted[1])) : 0;
                       const best = sp2.better && periodsAgree && sorted.length > 1 && gap >= (sp2.material ?? 0) ? sorted[0] : null;
-                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best && !na[i] ? { fontWeight: 700 } : undefined}>{na[i] ? <span className="dim" title="The screen reads this measure differently for a bank, NBFC or insurer: debt is the raw material" style={{ fontSize: 12.5 }}>not comparable</span> : has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>}{best !== null && v === best && !na[i] ? <span className="tag acc" style={{ marginLeft: 6, fontSize: 11.5 }}>{sp2.better === 'high' ? 'highest' : 'lowest'}</span> : null}</td>)}</tr>;
+                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} data-col={i} className="num" style={best !== null && v === best && !na[i] ? { fontWeight: 700 } : undefined}>{na[i] ? <span className="dim" title="The screen reads this measure differently for a bank, NBFC or insurer: debt is the raw material" style={{ fontSize: 12.5 }}>not comparable</span> : has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>}{best !== null && v === best && !na[i] ? <span className="tag acc" style={{ marginLeft: 6, fontSize: 11.5 }}>{sp2.better === 'high' ? 'highest' : 'lowest'}</span> : null}</td>)}</tr>;
                     })}
                   </tbody>
                 </table>
               </div>
-              <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r) => <Radar key={r.sym} r={r} />)}</div>
+              <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r, ci) => <div key={r.sym} data-col={ci} className="cmp-radar"><Radar r={r} /></div>)}</div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, and only when the gap to the next company is material (5 points of a margin or return, 0.3 of debt/equity, 20% of a P/E); a smaller gap is left unmarked, because it is not a difference worth acting on. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown unmarked. For banks, NBFCs and insurers, ROCE, margins, debt/equity and cash conversion read &ldquo;not comparable&rdquo;: debt is their raw material. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
+            </>
           )}
         </Async>
       </section>

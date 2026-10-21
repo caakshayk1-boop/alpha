@@ -9,7 +9,7 @@ import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useSignals, useFeed } from '@/lib/data';
-import { dash, num, pct, ratio } from '@/lib/format';
+import { dash, num, pct, ratio, dateLabel } from '@/lib/format';
 import { canAnimate } from '@/lib/motion';
 import { Flip } from '@/lib/flip';
 import { useStoredList } from '@/lib/store';
@@ -231,7 +231,7 @@ export default function Screen() {
         </div>
 
         <div className="filters" style={{ justifyContent: 'space-between' }}>
-          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span key={rows.length} className="num count-tint">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}{s.data ? ` of ${num(s.data.rows.length)}` : ''}.</span>
+          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span key={rows.length} className="num count-tint">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}{s.data ? ` of ${num(s.data.rows.length)}` : ''}. <details className="universe-note" style={{ display: 'inline' }}><summary className="dim" style={{ display: 'inline', cursor: 'pointer' }}>Which companies?</summary> <span className="dim">The universe is the {s.data ? num(s.data.rows.length) : ''} NSE-listed companies in the screen as built on {s.data?.built_on ? dateLabel(s.data.built_on) : 'its last build'}: today&apos;s listed names only, so companies that were delisted, merged or suspended are not in it and results describe survivors. A company with no value for a measure cannot pass a filter on it and is not counted as failing.</span></details></span>
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {picked.length >= 2 && <Link className="chip on" href={`/compare/?s=${picked.join(',')}`}>Compare {picked.length}</Link>}
             {picked.length > 0 && <button className="chip" onClick={() => { const n = picked.length; if (addWatchAll(picked)) { setWatchedNote(`${n} added to your watchlist, saved in this browser`); setPicked([]); } }}>Watch {picked.length}</button>}

@@ -81,6 +81,8 @@ export const signalsFeed = (): Promise<SignalsFeed> => load<SignalsFeed>(`${BASE
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const summaryFeed = (): Promise<Summary> => load<Summary>(`${BASE}/api/summary`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
+/** Every screened symbol with its sector and name (scripts/shard.mjs), small enough to load anywhere. */
+export const universeFeed = (): Promise<Universe> => load<Universe>(`${BASE}/universe.json`);
 
 /** stale: the data shown is the last good answer and the newest refresh failed (its error is in `error`). */
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean; stale?: boolean }
@@ -126,6 +128,7 @@ export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'sig
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation', true, `${BASE}/rotation.json`);
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive', true, `${BASE}/api/ipo-live`);
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes', true, `${BASE}/api/quotes`);
+export const useUniverseWhen = (enabled: boolean): Loaded<Universe> => useLoaded(universeFeed, 'universe', enabled, `${BASE}/universe.json`);
 /** The day's breadth, 200-day share and sector medians in under 2 KB, so a headline never waits on the 490 KB screen. */
 export const useSummary = (): Loaded<Summary> => useLoaded(summaryFeed, 'summary', true, `${BASE}/api/summary`);
 
