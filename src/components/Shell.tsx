@@ -252,6 +252,8 @@ export default function Shell({ children }: { children: ReactNode }) {
     initMotion();
     const stopLight = initPointerLight();
     startRum();      // sampled, anonymous field speed of this page load (lib/rum.ts)
+    // the offline shell (public/sw.js): pages network-first with the last good copy kept, data never cached by it
+    if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     let pending = '', pendingAt = 0;
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => !o); return; }

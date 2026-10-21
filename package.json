@@ -13,7 +13,8 @@
     "test": "node --experimental-strip-types --test tests/lib.test.ts tests/tools.test.ts tests/explain.test.mjs tests/evals.test.mjs tests/summary.test.mjs tests/rum.test.mjs",
     "lint:design": "node scripts/design-lint.mjs",
     "budget": "node scripts/budget.mjs",
-    "a11y": "node scripts/a11y.mjs"
+    "a11y": "node scripts/a11y.mjs",
+    "contrast": "node scripts/contrast.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",
