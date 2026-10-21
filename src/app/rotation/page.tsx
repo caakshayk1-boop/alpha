@@ -7,7 +7,7 @@ import { sessionLabel } from '@/lib/price';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
 import { useSignals, useFeed, useRotation } from '@/lib/data';
 import { weekThrough } from '@/lib/status';
-import { dash, num } from '@/lib/format';
+import { dash, num, pct } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 
@@ -193,7 +193,7 @@ export default function RotationPage() {
                         const l = labels.get(x.s.name);
                         return (
                           <g key={x.s.name} className={`rrg-dot${hot ? ' hot' : ''}`} opacity={active ? 1 : 0.25} style={{ cursor: 'pointer', transform: `translate(${X(x.r)}px, ${Y(x.m)}px)` }} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>
-                            <title>{`${short(x.s.name)}: ${x.q}, RS-Ratio ${x.r.toFixed(1)}, momentum ${x.m.toFixed(1)}`}</title>
+                            <title>{`${short(x.s.name)}: ${x.q}, RS-Ratio ${num(x.r, 1)}, momentum ${num(x.m, 1)}`}</title>
                             {show && pts.length > 1 && <g style={{ transform: `translate(${-X(x.r)}px, ${-Y(x.m)}px)` }}><path key={`${x.s.name}${hot}${tail}`} className="rrg-tail" pathLength={1} d={pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('')} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity=".8" />{pts.slice(0, -1).map((q, i) => <circle key={i} cx={q[0]} cy={q[1]} r={1.6 + (i / pts.length) * 2.4} fill={c} opacity={0.25 + (i / pts.length) * 0.6} />)}</g>}
                             {(x.q === 'Leading' || hot) && <circle className="pulse" r={hot ? 15 : 12} fill="none" stroke={c} strokeWidth="1.5" />}
                             <circle r={hot ? 9 : 7} fill={c} stroke="var(--bg)" strokeWidth="2" style={{ filter: `drop-shadow(0 0 ${hot ? 9 : 5}px ${c})` }} />
@@ -239,7 +239,7 @@ export default function RotationPage() {
                       <div className="kv" style={{ gridTemplateColumns: '1fr 1fr', margin: '12px 0' }}>
                         <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.ret4t} dp={1} /></div></div>
                         <div><div className="k">13-week vs Nifty</div><div className="v"><Chg v={cur.ret13t} dp={1} /></div></div>
-                        <div><div className="k">Above 200-day{past ? ` (${screenOn})` : ''}</div><div className="v">{cur.breadth !== null ? `${cur.breadth.toFixed(0)}%` : dash}</div></div>
+                        <div><div className="k">Above 200-day{past ? ` (${screenOn})` : ''}</div><div className="v">{cur.breadth !== null ? `${pct(cur.breadth, 0, false)}` : dash}</div></div>
                         <div><div className="k">Stocks</div><div className="v">{cur.mem.length}</div></div>
                       </div>
                       <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? `, as of the ${screenOn} close` : ''})</div>

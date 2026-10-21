@@ -8,7 +8,7 @@ import { Async, Bar, Chg, Rv } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
-import { crore, dash, dateLabel, num } from '@/lib/format';
+import { crore, dash, dateLabel, num, pct, ratio } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 import { useBarometer } from '@/lib/useBarometer';
@@ -69,7 +69,7 @@ export function PortfolioXray() {
     const topSector = [...sector.entries()].sort((a, b) => b[1] - a[1])[0];
     if (topSector[1] / total > 0.4 && sector.size > 1) notes.push(`${(topSector[1] / total * 100).toFixed(0)}% sits in ${topSector[0]}: a sector-wide fall is a portfolio-wide fall.`);
     if (hs.length < 8) notes.push(`${hs.length} holdings: risk depends on weights, sector overlap and how the stocks move together, not on the count alone.`);
-    if (lowTrend > 50) notes.push(`${lowTrend.toFixed(0)}% of the value is in stocks below their 200-day average: the weight of the portfolio is in downtrends.`);
+    if (lowTrend > 50) notes.push(`${pct(lowTrend, 0, false)} of the value is in stocks below their 200-day average: the weight of the portfolio is in downtrends.`);
     const highRisk = hs.filter((h) => h.row.risk?.level === 'HIGH');
     if (highRisk.length) notes.push(`${highRisk.map((h) => h.sym).join(', ')} carry HIGH risk flags on the screen.`);
     const thin = hs.filter((h) => has(h.row.turnover_cr) && h.row.turnover_cr < 5);
@@ -113,8 +113,8 @@ export function PortfolioXray() {
             <div className="kv" style={{ margin: '14px 0' }}>
               <div><div className="k">Value</div><div className="v">₹{num(X.total, 0)}</div></div>
               {X.cost !== null && <div><div className="k">P/L vs cost</div><div className="v"><Chg v={(X.total / X.cost - 1) * 100} dp={1} /></div></div>}
-              <div><div className="k">Weighted P/E</div><div className="v">{X.pe ? `${X.pe.toFixed(1)}×` : dash}</div></div>
-              <div><div className="k">Weighted ROCE</div><div className="v">{X.roce !== null ? `${X.roce.toFixed(0)}%` : dash}</div></div>
+              <div><div className="k">Weighted P/E</div><div className="v">{X.pe ? `${ratio(X.pe, 1)}` : dash}</div></div>
+              <div><div className="k">Weighted ROCE</div><div className="v">{X.roce !== null ? `${pct(X.roce, 0, false)}` : dash}</div></div>
               <div><div className="k">Avg quality</div><div className="v">{X.q !== null ? Math.round(X.q) : dash}</div></div>
               <div><div className="k">Effective holdings</div><div className="v">{X.eff.toFixed(1)}</div></div>
               <div><div className="k">Loss if every name hit its 52w low</div><div className="v down">−₹{num(X.toLow, 0)}</div></div>
@@ -257,12 +257,12 @@ export function MarketStance() {
           <div className="eyebrow">Market stance · last completed session, {dateLabel(bd.as_of)}</div>
           {(() => {
             const conds: [string, boolean, string][] = [
-              ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],
-              ['More than half above their 50-day', bd.above50 > 50, `${bd.above50.toFixed(0)}% are`],
+              ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${pct(b2.pct, 0, false)})` : 'not available'],
+              ['More than half above their 50-day', bd.above50 > 50, `${pct(bd.above50, 0, false)} are`],
               ['More stocks up than down over the past week', bd.advancing > bd.declining, `${bd.advancing} up, ${bd.declining} down over 5 sessions`],
-              ['Typical stock is up over the month', bd.median_1m > 0, `median ${bd.median_1m.toFixed(1)}%`],
+              ['Typical stock is up over the month', bd.median_1m > 0, `median ${pct(bd.median_1m, 1, false)}`],
               ['New 52-week highs are broad (over 3% of names)', bd.at_52w_high / bd.counted > 0.03, `${bd.at_52w_high} of ${bd.counted}`],
-              ['Nifty positive over the year', bd.nifty_1y > 0, `${bd.nifty_1y.toFixed(1)}%`],
+              ['Nifty positive over the year', bd.nifty_1y > 0, `${pct(bd.nifty_1y, 1, false)}`],
             ];
             const n = conds.filter((c) => c[1]).length;
             const stance = n >= 5 ? 'Broad strength' : n >= 3 ? 'Mixed' : n >= 1 ? 'Weak' : 'Broad weakness';

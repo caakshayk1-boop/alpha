@@ -8,7 +8,7 @@ import { Chg } from '@/components/ui';
 import { decide } from '@/lib/decision';
 import { useSignals, useFeed, useLive } from '@/lib/data';
 import { priceLabel, priceView } from '@/lib/price';
-import { crore, num } from '@/lib/format';
+import { crore, num, pct } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -46,7 +46,7 @@ export function RangeBar({ row }: { row: Row }) {
   return (
     <div className="rangebar">
       <div className="rangebar-ends num"><span>₹{num(low52, 2)}</span><span>₹{num(high52, 2)}</span></div>
-      <div className="rangebar-track" role="img" aria-label={`Price is ${p.toFixed(0)}% of the way from the 52-week low to the high${above200 === null ? '' : `, ${above200 ? 'above' : 'below'} its 200-day average`}`}>
+      <div className="rangebar-track" role="img" aria-label={`Price is ${pct(p, 0, false)} of the way from the 52-week low to the high${above200 === null ? '' : `, ${above200 ? 'above' : 'below'} its 200-day average`}`}>
         {fin(sma200) && <span className="mark m200" style={{ left: `${at(sma200)}%` }} />}
         {fin(sma50) && <span className="mark m50" style={{ left: `${at(sma50)}%` }} />}
         <span className="dot" style={{ left: `${p}%` }} />

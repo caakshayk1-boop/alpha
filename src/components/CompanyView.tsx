@@ -15,7 +15,7 @@ import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
-import { crore, dash, heat, num, pct } from '@/lib/format';
+import { crore, dash, heat, num, pct, ratio } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row, Year } from '@/lib/types';
 
@@ -142,11 +142,11 @@ function Ownership({ sym, pre }: { sym: string; pre?: Shard['inst'] }) {
       {!i || i.quality === 'unavailable' ? <Notice>Shareholding data is not available for this company.</Notice> : (
         <>
           <div className="kv">
-            <Kv k="Promoter" v={has(i.promoter) ? `${i.promoter.toFixed(1)}%` : dash} />
-            <Kv k="FII" v={has(i.fii) ? `${i.fii.toFixed(1)}%` : dash} />
-            <Kv k="DII" v={has(i.dii) ? `${i.dii.toFixed(1)}%` : dash} />
-            <Kv k="Mutual funds" v={has(i.mf) ? `${i.mf.toFixed(1)}%` : dash} />
-            <Kv k="Public" v={has(i.publicHold) ? `${i.publicHold.toFixed(1)}%` : dash} />
+            <Kv k="Promoter" v={has(i.promoter) ? `${pct(i.promoter, 1, false)}` : dash} />
+            <Kv k="FII" v={has(i.fii) ? `${pct(i.fii, 1, false)}` : dash} />
+            <Kv k="DII" v={has(i.dii) ? `${pct(i.dii, 1, false)}` : dash} />
+            <Kv k="Mutual funds" v={has(i.mf) ? `${pct(i.mf, 1, false)}` : dash} />
+            <Kv k="Public" v={has(i.publicHold) ? `${pct(i.publicHold, 1, false)}` : dash} />
           </div>
           <p className="dim" style={{ fontSize: 13.5, marginTop: 10 }}>As of {i.period}. Quarter change: FII {pct(i.fii_pp, 2).replace('%', ' pp')} · DII {pct(i.dii_pp, 2).replace('%', ' pp')}. Source: NSE shareholding patterns.</p>
         </>
@@ -286,10 +286,10 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         <SectionHead title="Key numbers" />
         <p className="dim" style={{ fontSize: 13.5, margin: '-6px 2px 12px' }}>From the screen: price-based ratios use the {closeOn} close; the rest come from the latest filed statements.</p>
         <Rv className="kv">
-          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${r.pe.toFixed(1)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${r.pb.toFixed(2)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
-          <Kv k="ROCE" v={has(r.roce) ? `${r.roce.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROCE'} /><Kv k="ROE" v={has(r.roe) ? `${r.roe.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROE'} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${r.ebit_margin.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EBIT margin'} />
-          <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Debt / equity'} /><Kv k="Interest cover" v={has(r.icover) ? `${r.icover.toFixed(1)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Interest cover'} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${r.div_yield.toFixed(2)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Dividend yield'} />
-          <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Revenue CAGR'} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EPS CAGR'} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${r.cfo_pat.toFixed(2)}×` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Cash / profit'} />
+          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${ratio(r.pe, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${ratio(r.pb, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
+          <Kv k="ROCE" v={has(r.roce) ? `${pct(r.roce, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROCE'} /><Kv k="ROE" v={has(r.roe) ? `${pct(r.roe, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROE'} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${pct(r.ebit_margin, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EBIT margin'} />
+          <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Debt / equity'} /><Kv k="Interest cover" v={has(r.icover) ? `${ratio(r.icover, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Interest cover'} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${pct(r.div_yield, 2, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Dividend yield'} />
+          <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Revenue CAGR'} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EPS CAGR'} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${ratio(r.cfo_pat, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Cash / profit'} />
           <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Piotroski F'} /><Kv k="RSI (14)" v={has(r.rsi) ? r.rsi.toFixed(0) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'RSI (14)'} />
           {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Magic Formula'} />}
           <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E vs own history'} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Daily turnover'} />

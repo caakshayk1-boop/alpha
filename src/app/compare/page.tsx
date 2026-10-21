@@ -9,7 +9,7 @@ import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Chg, Flash, Notice, PageHead, Rv } from '@/components/ui';
 import { useFeedWhen, useLive, useShard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
-import { crore, dash, num } from '@/lib/format';
+import { crore, dash, num, pct, ratio } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 
@@ -22,24 +22,24 @@ const PERIOD_DEPENDENT = new Set(['Revenue CAGR', 'EPS CAGR']);
 type Spec = { label: string; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null; material?: number; rel?: boolean };
 const SPECS: Spec[] = [
   { label: 'Market cap', get: (r) => r.mcap_cr, fmt: (v) => crore(v), better: null },
-  { label: 'Composite score', material: 10, get: (r) => r.comp, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Quality', material: 10, get: (r) => r.q, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Growth', material: 10, get: (r) => r.g, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Value', material: 10, get: (r) => r.v, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Technical', material: 10, get: (r) => r.tech, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'P/E', material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${v.toFixed(1)}×`, better: 'low' },
-  { label: 'P/B', material: 0.2, rel: true, get: (r) => r.pb, fmt: (v) => `${v.toFixed(2)}×`, better: 'low' },
-  { label: 'ROCE', material: 5, get: (r) => r.roce, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'ROE', material: 5, get: (r) => r.roe, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'EBIT margin', material: 5, get: (r) => r.ebit_margin, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'Debt / equity', material: 0.3, get: (r) => r.de, fmt: (v) => v.toFixed(2), better: 'low' },
-  { label: 'Revenue CAGR', material: 5, get: (r) => r.rev_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'EPS CAGR', material: 5, get: (r) => r.eps_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'Cash conversion', material: 0.2, get: (r) => r.cfo_pat, fmt: (v) => `${v.toFixed(2)}×`, better: 'high' },
-  { label: 'Dividend yield', material: 1, get: (r) => r.div_yield, fmt: (v) => `${v.toFixed(2)}%`, better: 'high' },
-  { label: 'Piotroski F', material: 2, get: (r) => r.piotroski, fmt: (v) => `${v.toFixed(0)}/9`, better: 'high' },
-  { label: '1 year', material: 10, get: (r) => r.r1y, fmt: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, better: 'high' },
-  { label: 'From 52-week high', material: 10, get: (r) => r.from_high, fmt: (v) => `${v.toFixed(0)}%`, better: 'high' },
+  { label: 'Composite score', material: 10, get: (r) => r.comp, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Quality', material: 10, get: (r) => r.q, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Growth', material: 10, get: (r) => r.g, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Value', material: 10, get: (r) => r.v, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'Technical', material: 10, get: (r) => r.tech, fmt: (v) => num(v, 0), better: 'high' },
+  { label: 'P/E', material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${ratio(v, 1)}`, better: 'low' },
+  { label: 'P/B', material: 0.2, rel: true, get: (r) => r.pb, fmt: (v) => `${ratio(v, 2)}`, better: 'low' },
+  { label: 'ROCE', material: 5, get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'ROE', material: 5, get: (r) => r.roe, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'EBIT margin', material: 5, get: (r) => r.ebit_margin, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'Debt / equity', material: 0.3, get: (r) => r.de, fmt: (v) => num(v, 2), better: 'low' },
+  { label: 'Revenue CAGR', material: 5, get: (r) => r.rev_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'EPS CAGR', material: 5, get: (r) => r.eps_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
+  { label: 'Cash conversion', material: 0.2, get: (r) => r.cfo_pat, fmt: (v) => `${ratio(v, 2)}`, better: 'high' },
+  { label: 'Dividend yield', material: 1, get: (r) => r.div_yield, fmt: (v) => `${pct(v, 2, false)}`, better: 'high' },
+  { label: 'Piotroski F', material: 2, get: (r) => r.piotroski, fmt: (v) => `${num(v, 0)}/9`, better: 'high' },
+  { label: '1 year', material: 10, get: (r) => r.r1y, fmt: (v) => `${pct(v, 1)}`, better: 'high' },
+  { label: 'From 52-week high', material: 10, get: (r) => r.from_high, fmt: (v) => `${pct(v, 0, false)}`, better: 'high' },
 ];
 
 /** One small score profile per company, titled with its name (small multiples). Identity comes from the label, not a colour:

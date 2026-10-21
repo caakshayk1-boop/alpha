@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { chartFeed } from '@/lib/data';
 import { keyLine, levels, rsi, sma, type Bars } from '@/lib/ta';
 import type { ChartFeed } from '@/lib/types';
-import { num } from '@/lib/format';
+import { num, pct } from '@/lib/format';
 import { Segmented, Switch } from '@/components/ui';
 
 export interface Plan { sl: number; entry: number; targets: number[]; label: string; odds?: { t: (number | undefined)[]; stopped?: number } }
@@ -139,7 +139,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
     }
 
     if (on.plan && !rel) for (const p of plans) {
-      const o = (v?: number) => (typeof v === 'number' ? ` · ${v.toFixed(0)}% reached` : '');
+      const o = (v?: number) => (typeof v === 'number' ? ` · ${pct(v, 0, false)} reached` : '');
       const marks: [number, string, string][] = [[p.sl, down, `Stop${o(p.odds?.stopped).replace('reached', 'stopped')}`], [p.entry, text, 'Entry'], ...p.targets.map((t, i): [number, string, string] => [t, up, `T${i + 1}${o(p.odds?.t[i])}`])];
       for (const [v, col, lab] of marks) {
         g.setLineDash([5, 4]); g.strokeStyle = col; g.globalAlpha = 0.85; g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(W - padR, Y(v)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
