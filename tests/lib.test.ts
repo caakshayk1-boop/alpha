@@ -854,3 +854,18 @@ test('trades: decisions follow the plan state and what the evening run booked on
   assert.equal(decide({ ...closed, closed_date: '2026-10-16' }, position(closed, null, null), '2026-10-19'), null, 'an older close is not today\'s news');
   assert.deepEqual(groupDecisions([at(105), at(89), null, at(111)]).map((g) => g.kind), ['exit', 'modify', 'hold']);
 });
+
+import { sessionGaps } from '../src/lib/status.ts';
+test('status: a weekday the NSE did not trade (20 Oct 2026, Diwali) is not a session the data should hold', () => {
+  const sessions = ['2026-10-15', '2026-10-16', '2026-10-19', '2026-10-21'];
+  assert.deepEqual(sessionGaps(sessions), ['2026-10-20']);
+  assert.deepEqual(sessionGaps(['2026-10-16', '2026-10-19']), [], 'a weekend is not a gap');
+  assert.deepEqual(sessionGaps(null), []);
+  const skip = new Set(sessionGaps(sessions));
+  const wedMorning = new Date('2026-10-21T04:00:00Z');                                            // Wed 09:30 IST
+  assert.equal(expectedSession(wedMorning), '2026-10-20', 'without the market record, Tuesday is expected');
+  assert.equal(expectedSession(wedMorning, skip), '2026-10-19', 'with it, the holiday is skipped');
+  const d = (id: string, asOf: string) => ({ id, label: id, source: 'x', asOf, refreshedAt: null });
+  assert.deepEqual(reconcile([d('screen', '2026-10-19')], expectedSession(wedMorning, skip), skip).map((x) => x.state), ['current']);
+  assert.equal(sessionsBetween('2026-10-16', '2026-10-21', skip), 2, 'Mon and Wed; Tue had no trading');
+});

@@ -66,4 +66,4 @@ Each item has a pass/fail check.
 - [x] 27. Spacing one step tighter site-wide (tokens, table cells, page gutters).
 - [x] 21. (owner, 21 Oct) Alerts only from engines with holdout month-clustered t >= 2: all five off today (best +1.42).
 - [x] 10b. (owner, 21 Oct) Footer: the author holds no position in any company shown here.
-- [ ] 22 still open (needs a build-time close).
+- [x] 22. (21 Oct) Company LCP: the late element was the "Data check" banner (3.4-4.7 s), not the price; the name and dated price were already pre-rendered. Banner is one line now; LCP is the pre-rendered h1 at ~1.0 s (412 px, 4x CPU, 1.6 Mbps, local). The banner also skips weekdays the NSE did not trade (gaps in the Nifty bars, or no trade in the live snapshot), so 20 Oct (Diwali) no longer reads as "1 session behind".

@@ -85,6 +85,8 @@ export interface Summary {
   day: { up: number; down: number; flat: number; counted: number };
   above200: { above: number; withHistory: number };
   sectors: { name: string; n: number; median: number }[];
+  /** IST dates of the Nifty's recent daily bars (the NSE's own sessions); absent or empty when unknown */
+  sessions?: string[];
 }
 
 export interface Screen {

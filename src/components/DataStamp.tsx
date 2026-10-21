@@ -6,7 +6,8 @@ import { useBarometer } from '@/lib/useBarometer';
 import { priceLabel } from '@/lib/price';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
-import { describe, expectedSession, reconcile, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
+import { describe, expectedSession, reconcile, sessionGaps, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
+import { noSessionDays } from '@/lib/positions';
 
 const TONE: Record<DataStatus['state'], string> = { current: 'up', delayed: 'warn', stale: 'down', partial: 'warn', missing: 'down', unavailable: 'down', error: 'down' };
 const ICON: Record<DataStatus['state'], string> = { current: '●', delayed: '◐', stale: '○', partial: '◐', missing: '○', unavailable: '○', error: '✕' };
@@ -26,8 +27,11 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
   const baro = useBarometer();
   const eng = useEngines();
   const rot = useRotation();
-  // Judged against the calendar (the session Alpha should already hold), not against its own newest dataset.
-  const expected = useMemo(() => expectedSession(new Date()), []);
+  // Judged against the calendar (the session Alpha should already hold), not against its own newest dataset. Weekdays the market
+  // itself shows had no trading (a gap in the Nifty's bars, or no trade at all in the live snapshot) are not sessions.
+  const lv = useLive();
+  const skip = useMemo(() => new Set([...sessionGaps(scr.data?.sessions), ...noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null)]), [scr.data?.sessions, lv.snap]);
+  const expected = useMemo(() => expectedSession(new Date(), skip), [skip]);
   const items = useMemo<DataStatus[]>(() => {
     const list: DatasetInput[] = [];
     const lastWeek = rot.data?.dates[rot.data.dates.length - 1];
@@ -36,8 +40,8 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
     list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: baro.view?.source === 'live' ? 'Computed live in Alpha from the Nifty, India VIX and every screened stock (same formula as the published reading)' : 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: baro.view?.session ?? bar.data.today.nifty_date ?? null, refreshedAt: baro.view?.source === 'live' && baro.view.at ? new Date(baro.view.at * 1000).toISOString() : bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
     list.push(eng.data ? { id: 'engines', label: 'Engines', source: 'Alpha engines: models retrained on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Engines', source: 'Alpha engines', asOf: null, refreshedAt: null, error: !!eng.error });
     list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined, cadence: 'weekly' } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
-    return reconcile(list, expected);
-  }, [expected, scr.data, scr.error, bar.data, bar.error, baro.view, eng.data, eng.error, rot.data, rot.error]);
+    return reconcile(list, expected, skip);
+  }, [expected, skip, scr.data, scr.error, bar.data, bar.error, baro.view, eng.data, eng.error, rot.data, rot.error]);
   return { items, loading: scr.loading || bar.loading || eng.loading || rot.loading };
 }
 
@@ -128,10 +132,8 @@ export function FreshnessBanner() {
   return (
     <div className={`fresh ${serious ? 'down' : 'warn'}`} role="status">
       <div className="wrap">
-        <b>{serious ? 'Some data is out of date. ' : 'Data check. '}</b>
-        {parts.join('; ')}.
-        {!serious && ' This can be an exchange holiday or a late update.'}{' '}
-        <Link href="/about/#data-dates">See every data date</Link>
+        <span className="fresh-t" title={`${parts.join('; ')}.`}><b>{serious ? 'Some data is out of date. ' : 'Data check. '}</b>{parts.join('; ')}.</span>
+        <Link href="/about/#data-dates">Data dates</Link>
       </div>
     </div>
   );

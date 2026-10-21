@@ -156,13 +156,28 @@ export function summarise(text) {
   const sectors = [...bySector.entries()].map(([name, a]) => ({ name, n: a.length, median: median(a) })).sort((a, b) => b.median - a.median);
   return { as_of: asOf, built_on: builtOn, count, day: { up, down, flat, counted: up + down + flat }, above200: { above, withHistory }, sectors };
 }
+// The NSE's own sessions: the IST dates of the Nifty's last month of daily bars. A weekday between two of them that has no bar
+// was not a session (20 Oct 2026, Diwali), so a page can stop calling data "a session behind" across a holiday. Alpha holds
+// no holiday calendar; this reads the market's record instead. Empty when Yahoo does not answer, never guessed.
+async function niftySessions() {
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?range=1mo&interval=1d', { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return [];
+    const res = (await r.json())?.chart?.result?.[0];
+    const cl = res?.indicators?.quote?.[0]?.close || [];
+    const ist = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+    return [...new Set((res?.timestamp || []).filter((_, i) => cl[i] > 0).map((t) => ist.format(new Date(t * 1000))))].sort();
+  } catch { return []; }
+}
+
 async function summary(ctx) {
   const cache = caches.default;
-  const key = new Request('https://alpha.askakshay.com/__summary_v3');
+  const key = new Request('https://alpha.askakshay.com/__summary_v4');
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   try {
-    const body = summarise(await feedText('screen'));
+    const [text, sessions] = await Promise.all([feedText('screen'), niftySessions()]);
+    const body = { ...summarise(text), sessions };
     if (body.count < 500) return json({ ok: false, error: 'screen looks empty' }, 502);
     const res = new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300, s-maxage=600' } });
     ctx.waitUntil(cache.put(key, res.clone()));

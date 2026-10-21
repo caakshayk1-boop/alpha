@@ -41,17 +41,29 @@ export interface DataStatus extends DatasetInput {
 const DAY = 86400000;
 const ymd = (s: string) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
 
-/** Whole weekdays from `from` (exclusive) to `to` (inclusive); 0 when `to` is not later. */
-export function sessionsBetween(from: string, to: string): number {
+/** Whole weekdays from `from` (exclusive) to `to` (inclusive), less any day in `skip` known to have had no trading; 0 when `to` is not later. */
+export function sessionsBetween(from: string, to: string, skip?: ReadonlySet<string>): number {
   let a = ymd(from);
   const b = ymd(to);
   let n = 0;
   while (a < b) {
     a += DAY;
     const d = new Date(a).getUTCDay();
-    if (d !== 0 && d !== 6) n++;
+    if (d !== 0 && d !== 6 && !skip?.has(new Date(a).toISOString().slice(0, 10))) n++;
   }
   return n;
+}
+
+/** Weekdays proven to have had no trading: a weekday strictly between two of the NSE's own session dates that is not one of
+ *  them (20 Oct 2026, Diwali, between the 19 and 21 Oct bars). Days after the newest session prove nothing (a bar can be late). */
+export function sessionGaps(sessions: readonly string[] | null | undefined): string[] {
+  const s = [...new Set(sessions ?? [])].filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+  const have = new Set(s);
+  const out: string[] = [];
+  for (let i = 1; i < s.length; i++) {
+    for (let d = addDays(s[i - 1], 1); d < s[i]; d = addDays(d, 1)) if (weekday(d) !== 0 && weekday(d) !== 6 && !have.has(d)) out.push(d);
+  }
+  return out;
 }
 
 const addDays = (s: string, n: number) => new Date(ymd(s) + n * DAY).toISOString().slice(0, 10);
@@ -60,14 +72,14 @@ const lastFridayOnOrBefore = (s: string) => { let d = s; while (weekday(d) !== 5
 
 /** The session whose data Alpha should already hold at `now`: the last weekday strictly before the India (UTC+5:30) date of `now`
  *  minus 7 hours, so the 05:10 IST morning screen build is on time until 07:00 IST. Exchange holidays are not known. */
-export function expectedSession(now: Date): string {
+export function expectedSession(now: Date, skip?: ReadonlySet<string>): string {
   let d = new Date(now.getTime() - 1.5 * 3600000).toISOString().slice(0, 10);   // UTC+5:30 minus 7h grace = UTC minus 1.5h
-  do { d = addDays(d, -1); } while (weekday(d) === 0 || weekday(d) === 6);
+  do { d = addDays(d, -1); } while (weekday(d) === 0 || weekday(d) === 6 || skip?.has(d));
   return d;
 }
 
 /** Decide every dataset's state. With `expected` (see expectedSession) each is judged against the calendar; without it, against the newest dataset. Pure: no clock, no network. */
-export function reconcile(items: DatasetInput[], expected?: string | null): DataStatus[] {
+export function reconcile(items: DatasetInput[], expected?: string | null, skip?: ReadonlySet<string>): DataStatus[] {
   const dailyDates = items.filter((i) => i.asOf && !i.error && i.cadence !== 'weekly').map((i) => i.asOf as string);
   const newest = dailyDates.length ? dailyDates.reduce((a, b) => (a > b ? a : b)) : null;
   const basis: 'calendar' | 'newest' = expected ? 'calendar' : 'newest';
@@ -80,7 +92,7 @@ export function reconcile(items: DatasetInput[], expected?: string | null): Data
     if (i.error) state = 'error';
     else if (!i.asOf) state = i.refreshedAt ? 'partial' : 'unavailable';
     else {
-      if (target && i.asOf < target) lag = weekly ? Math.round((ymd(target) - ymd(i.asOf)) / (7 * DAY)) : sessionsBetween(i.asOf, target);
+      if (target && i.asOf < target) lag = weekly ? Math.round((ymd(target) - ymd(i.asOf)) / (7 * DAY)) : sessionsBetween(i.asOf, target, skip);
       state = lag === 0 ? 'current' : lag >= (weekly ? 2 : STALE_AFTER_SESSIONS) ? 'stale' : 'delayed';
       if (i.partial && state === 'current') state = 'partial';
     }
