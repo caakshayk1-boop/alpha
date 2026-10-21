@@ -120,12 +120,12 @@ export const useFeedWhen = <K extends FeedName>(name: K, enabled: boolean): Load
 
 /** One company's slice of every company feed, built before each deploy (scripts/shard.mjs). An error means no shard: use the full feeds. */
 export interface Shard { sym: string; built_on: string; count: number; row: import('./types').Row; years: import('./types').Year[] | null; swot: import('./types').Swot | null; inst: import('./types').InstRow | null; season: { m: [number, number, number][]; y: number } | null }
-export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym);
+export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym, `${BASE}/c/${encodeURIComponent(sym)}.json`);
 /** The Swing v2 book: the market gate, the rules, the backtest and every signal (public/signals.json, written nightly). */
 export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'signals', true, `${BASE}/signals.json`);
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation', true, `${BASE}/rotation.json`);
-export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
-export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');
+export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive', true, `${BASE}/api/ipo-live`);
+export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes', true, `${BASE}/api/quotes`);
 /** The day's breadth, 200-day share and sector medians in under 2 KB, so a headline never waits on the 490 KB screen. */
 export const useSummary = (): Loaded<Summary> => useLoaded(summaryFeed, 'summary', true, `${BASE}/api/summary`);
 

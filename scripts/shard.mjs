@@ -9,6 +9,7 @@
 //     network, SHARD_OPTIONAL=1 lets the build carry on without company pages.
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIG = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -72,8 +73,10 @@ async function main() {
  *  reads it from production. No secrets: a commit id, dates, counts and content hashes. */
 function identity(snap) {
   const hash = (p) => (existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex').slice(0, 16) : null);
-  let commit = process.env.GITHUB_SHA || null;
-  if (!commit) { try { commit = readFileSync('.git/HEAD', 'utf8').startsWith('ref:') ? readFileSync(`.git/${readFileSync('.git/HEAD', 'utf8').slice(5).trim()}`, 'utf8').trim() : readFileSync('.git/HEAD', 'utf8').trim(); } catch { commit = null; } }
+  // the commit actually checked out, never GITHUB_SHA: on a workflow_run deploy that is the newest main commit, not the
+  // CI head this job checked out, and the rollback guard reads this value
+  let commit = null;
+  try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() || null; } catch { commit = process.env.GITHUB_SHA || null; }
   const id = { commit, built_at: new Date().toISOString(), run: process.env.GITHUB_RUN_ID ?? null, screen_built_on: snap?.built_on ?? null, companies: snap?.count ?? 0, data: { universe: hash('public/universe.json'), signals: hash('public/signals.json'), engines: hash('public/engines.json'), rotation: hash('public/rotation.json') } };
   writeFileSync('public/build.json', JSON.stringify(id, null, 1));
   console.log(`identity: ${id.commit?.slice(0, 7) ?? 'unknown commit'}, ${id.companies} companies`);
