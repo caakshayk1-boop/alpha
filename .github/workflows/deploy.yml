@@ -5,6 +5,15 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit to deploy (default: tip of main). Must be green on CI or differ from one only in engine data.'
+        required: false
+        default: ''
+      allow_rollback:
+        description: 'Deliberate rollback to an older commit (see docs/operations/rollback-runbook.md)'
+        type: boolean
+        default: false
   # The data repo builds the screen at about 02:40 IST, after the 18:50 IST deploy that follows the engines job, so company
   # pages (pre-rendered from public/c/*.json) would show the previous session until the next deploy. Redeploy after it:
   # 02:00 UTC = 07:30 IST, and a 04:00 UTC (09:30 IST) catch-up because GitHub silently drops scheduled runs. Mon-Sat: the
@@ -35,31 +44,50 @@ jobs:
             echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set as repository secrets. Nothing was deployed."
             exit 1
           fi
-      # A scheduled run deploys the tip of main, which can hold a commit CI rejected. Data commits from the engines job carry
-      # [skip ci] and are already deployed by that job's own dispatch, so the rule is: the newest finished CI run on main must
-      # be green. If it is not, fail loudly rather than ship what CI refused.
-      - name: Require green CI on main (scheduled runs)
-        if: ${{ github.event_name == 'schedule' }}
+      # A10 (21 Oct 2026). Every path deploys an exact, validated artifact:
+      #   workflow_run   the commit that CI passed (head_sha).
+      #   schedule / dispatch   the tip of main, but ONLY when it differs from the newest commit with green CI in engine
+      #                  data files alone (the engines job's [skip ci] commits). Any code change must have its own green CI.
+      # And no path may roll production back: if the live build is a descendant of what would ship, the deploy stops.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref || github.sha }}
+          fetch-depth: 0
+      - name: Tested code only (schedule and dispatch)
+        if: ${{ github.event_name != 'workflow_run' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          last=$(gh run list --repo "${{ github.repository }}" --workflow ci.yml --branch main --status completed --limit 1 --json conclusion --jq '.[0].conclusion // "none"')
-          echo "newest finished CI run on main: $last"
-          if [ "$last" != "success" ]; then
-            echo "::error::The newest finished CI run on main is '$last', not green. Scheduled deploy refused."
-            exit 1
+          # the newest green CI commit that this commit contains (for a rollback, that is the old commit itself)
+          tested=""
+          for sha in $(gh run list --repo "${{ github.repository }}" --workflow ci.yml --branch main --status success --limit 60 --json headSha --jq '.[].headSha'); do
+            if git cat-file -e "$sha^{commit}" 2>/dev/null && git merge-base --is-ancestor "$sha" HEAD; then tested=$sha; break; fi
+          done
+          test -n "$tested" || { echo "::error::No green CI commit is contained in $(git rev-parse --short HEAD). Nothing was deployed."; exit 1; }
+          changed=$(git diff --name-only "$tested" HEAD | grep -vE '^(public/(signals|engines|rotation)\.json|engines/state/|engines/research/[^/]+\.json)$' || true)
+          if [ -n "$changed" ]; then
+            echo "::error::Code changed since the newest green CI commit $tested and has not passed CI:"; echo "$changed"; exit 1
           fi
-      # workflow_run: the commit CI passed. schedule and workflow_dispatch: github.sha, the tip of main (a schedule only ever
-      # runs on the default branch).
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          echo "deploying $(git rev-parse --short HEAD): code from green CI $tested plus data commits only"
+      - name: Never roll production back
+        if: ${{ !inputs.allow_rollback }}
+        run: |
+          live=$(curl -fsS --max-time 20 https://alpha.askakshay.com/build.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" || true)
+          echo "live build: ${live:-unknown}"
+          if [ -n "$live" ] && git cat-file -e "$live^{commit}" 2>/dev/null && [ "$live" != "$(git rev-parse HEAD)" ] && git merge-base --is-ancestor HEAD "$live"; then
+            echo "::error::Production already runs $live, which is newer than this commit. Use workflow_dispatch with allow_rollback for a deliberate rollback."; exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The same audit CI runs, on the artifact that ships: links, feeds, endpoints, and the company-universe parity check.
+      - name: Audit the artifact
+        run: node scripts/audit.mjs
+      - name: Release identity
+        run: cat out/build.json
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

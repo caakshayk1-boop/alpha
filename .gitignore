@@ -13,3 +13,5 @@ public/c/
 public/sitemap-companies.xml
 public/universe.json
 .claude/
+public/build.json
+public/c.next/

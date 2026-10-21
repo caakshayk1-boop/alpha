@@ -425,6 +425,24 @@ test('company matching never names a bank inside a longer name, or a generic wor
   assert.deepEqual(m('Ircon to monetise assets'), []);                                         // small company, 5 letters: precision over recall
 });
 
+test('A05: an institution never resolves to a listed company; the company itself still does', () => {
+  const cos = [
+    { sym: 'FEDERALBNK', name: 'The Federal Bank Ltd.', mcap: 45000 }, { sym: 'FEDBANK', name: 'Fedbank Financial Services Ltd.', mcap: 4000 },
+    { sym: 'BANKINDIA', name: 'Bank of India Ltd.', mcap: 55000 }, { sym: 'UNIONBANK', name: 'Union Bank of India', mcap: 90000 },
+    { sym: 'INFY', name: 'Infosys Ltd.', mcap: 600000 }, { sym: 'FEDX', name: 'Federal Mogul Goetze Ltd.', mcap: 25000 }, { sym: 'BAJFIN', name: 'Bajajfin Services Ltd.', mcap: 500000 },
+  ];
+  const m = (t: string) => mentionsIn(t, cos).map((x) => x.sym);
+  assert.deepEqual(m('Gold climbs as the Federal Reserve signals a pause'), []);
+  assert.deepEqual(m('Federal Reserve minutes weigh on Asian markets; gold firm'), []);
+  assert.deepEqual(m('Reserve Bank of India holds the repo rate'), []);
+  assert.deepEqual(m('Union Budget to raise capex'), []);
+  assert.deepEqual(m('The Federal Bank reports a rise in profit'), ['FEDERALBNK'], 'its full name still matches');
+  assert.deepEqual(m('Shares of Union Bank of India rose'), ['UNIONBANK']);
+  assert.deepEqual(m('Infosys wins a deal'), ['INFY']);
+  assert.deepEqual(m('Bajajfin Housing raises funds'), [], 'a brand word followed by a different capitalised word is another name');
+  assert.deepEqual(m('Bajajfin shares rise'), ['BAJFIN']);
+});
+
 import { fromQuery, SCREEN_DEFAULT, toQuery } from '../src/lib/screenUrl.ts';
 const allow = { fields: new Set(['roce', 'de', 'pe', 'comp']), flags: new Set(['vetted', 'uptrend']), lenses: new Set(['quality']), tiers: new Set(['large', 'mid', 'small']) };
 

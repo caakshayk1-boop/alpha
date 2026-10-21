@@ -37,7 +37,11 @@ export interface Mention { sym: string; basis: string }
 
 export interface NewsCo extends Co { mcap?: number | null }
 /** First words that are ordinary words or places, never a company's brand on their own. */
-const GENERIC = new Set(['general', 'national', 'international', 'global', 'central', 'united', 'indian', 'digital', 'natural', 'industrial', 'financial', 'capital', 'energy', 'madhya', 'karnataka', 'andhra', 'gujarat', 'maharashtra', 'universal', 'advanced', 'integrated', 'consolidated', 'imperial', 'eastern', 'western', 'northern', 'southern']);
+const GENERIC = new Set(['general', 'national', 'international', 'global', 'central', 'united', 'indian', 'digital', 'natural', 'industrial', 'financial', 'capital', 'energy', 'madhya', 'karnataka', 'andhra', 'gujarat', 'maharashtra', 'universal', 'advanced', 'integrated', 'consolidated', 'imperial', 'eastern', 'western', 'northern', 'southern',
+  // institutions and ordinary words that also open a company's name (A05: a Federal Reserve story was filed under FEDERALBNK)
+  'federal', 'reserve', 'union', 'state', 'power', 'steel', 'coal', 'life', 'home', 'prime', 'premier', 'supreme', 'great', 'first', 'royal', 'metro', 'standard', 'new']);
+/** Phrases that name an institution, never a listed company, wherever they appear. A match inside one is discarded. */
+const INSTITUTIONS = /\b(federal reserve|federal government|federal bureau|reserve bank of india|us fed|state bank of pakistan|bank of england|bank of japan|european central bank|people'?s bank of china|world bank|union budget|union government|state government)\b/gi;
 const BRAND_MIN_MCAP_CR = 20_000;
 
 /** Builds the matcher once for a company list. A company is named in a story when:
@@ -64,18 +68,31 @@ export function makeMatcher(cos: NewsCo[]): (text: string) => Mention[] {
     }
     return false;
   };
+  // a brand word followed by another capitalised word that is not the company's own next word is a different name
+  const brandAlone = (re: RegExp, text: string, next: string) => {
+    re.lastIndex = 0;
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      const end = m.index + m[0].length;
+      const after = /^\s+([A-Z][A-Za-z&.]*)/.exec(text.slice(end))?.[1];
+      if (after && after.toLowerCase() !== next.toLowerCase()) continue;
+      const at = m.index + m[1].length;
+      if (!/(^|[\s(])[A-Z][A-Za-z&.]*\s+$/.test(text.slice(Math.max(0, at - 24), at)) || at === 0) return true;
+    }
+    return false;
+  };
   const compiled = rules.map(({ c, nm, w }) => ({
     sym: c.sym,
     tick: c.sym.length >= 3 ? word(c.sym) : null,
     full: nm.length >= 5 ? { re: word(nm), nm } : null,
-    brand: (c.mcap ?? 0) >= BRAND_MIN_MCAP_CR && w.length >= 6 && /^[A-Z]/.test(w) && !GENERIC.has(w.toLowerCase()) && first.get(w.toLowerCase()) === 1 ? { re: word(w), w } : null,
+    brand: (c.mcap ?? 0) >= BRAND_MIN_MCAP_CR && w.length >= 6 && /^[A-Z]/.test(w) && !GENERIC.has(w.toLowerCase()) && first.get(w.toLowerCase()) === 1 ? { re: word(w), w, next: nm.split(' ')[1] ?? '' } : null,
   }));
-  return (text) => {
+  return (raw) => {
+    const text = raw.replace(INSTITUTIONS, (m) => ' '.repeat(m.length));      // an institution's name is never a company mention
     const out: Mention[] = [];
     for (const r of compiled) {
       if (r.tick && standalone(r.tick, text)) out.push({ sym: r.sym, basis: `ticker ${r.sym}` });
       else if (r.full && standalone(r.full.re, text)) out.push({ sym: r.sym, basis: `“${r.full.nm}”` });
-      else if (r.brand && standalone(r.brand.re, text)) out.push({ sym: r.sym, basis: `“${r.brand.w}” (a large company, and no other starts with it)` });
+      else if (r.brand && brandAlone(r.brand.re, text, r.brand.next)) out.push({ sym: r.sym, basis: `“${r.brand.w}” (a large company, and no other starts with it)` });
     }
     return out;
   };

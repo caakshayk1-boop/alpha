@@ -16,7 +16,7 @@ import { useBook, type BookRow } from '@/lib/useBook';
 
 const sR = (v: number | null | undefined, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}R` : dash);
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
-const EXIT: Record<string, string> = { stop: 'Stopped out', lock: 'Profit lock after T1', trail: 'Trailing stop after T1', t2: 'T2 reached', time: 'Time limit' };
+const EXIT: Record<string, string> = { stop: 'Stopped out', lock: 'Raised stop after T1', trail: 'Trailing stop after T1', t2: 'T2 reached', time: 'Time limit' };
 
 /** One active signal: what fired, the plan as written, and the plan at the latest price. */
 function SignalCard({ row }: { row: BookRow }) {

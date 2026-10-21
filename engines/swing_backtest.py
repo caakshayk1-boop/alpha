@@ -107,7 +107,7 @@ def main(argv) -> None:
     sessions = gate.dropna(subset=["sma200"])
     on_by_year = {str(y): round(float(g["on"].mean() * 100), 1) for y, g in sessions.groupby(sessions.index.year)}
     out = {
-        "version": SW.VERSION, "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "version": SW.VERSION, "fingerprint": SW.fingerprint(), "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "data_through": str(max(df.index[-1] for df in bars.values()).date()), "universe": len(bars),
         "periods": {"development": [str(sessions.index[0].date()), "2024-12-31"], "holdout": ["2025-01-01", str(sessions.index[-1].date())]},
         "cost_round_trip_pct": 0.25, "params": SW.P,

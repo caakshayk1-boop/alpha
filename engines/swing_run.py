@@ -27,7 +27,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 STATE = HERE / "state" / "swing_registry.json"
 RESULTS = HERE / "research" / "swing_results.json"
 PUBLIC = HERE.parent / "public"
-ALERT_MIN_T = 2.0
+ALERT_MIN_T = SW.ALERT_MIN_T
 KEEP_CLOSED_DAYS = 30
 
 
@@ -136,11 +136,7 @@ def build(bars, uni, bench, indices, vix, reg, log=print) -> tuple[dict, dict]:
 
     results = json.loads(RESULTS.read_text()) if RESULTS.exists() else None
     hold = (results or {}).get("rules", {}).get("holdout", {})
-    ht = hold.get("clustered_t_clustered")
-    alertable = isinstance(ht, (int, float)) and ht >= ALERT_MIN_T
-    alert_why = (f"Alerts on: the holdout month-clustered t is {ht:+.2f}." if alertable else
-                 f"Alerts off: the holdout month-clustered t is {ht:+.2f}, needs {ALERT_MIN_T:+.1f}." if isinstance(ht, (int, float)) else
-                 "Alerts off: the rules have not been tested yet.")
+    alertable, alert_why = SW.eligibility(results)      # A15: bound to this version and these exact parameters
     cutoff = today - pd.Timedelta(days=KEEP_CLOSED_DAYS)
     view = [e for e in sigs.values() if e["status"] in ("pending", "open") or pd.Timestamp(e.get("closed_date") or e["date"]) >= cutoff]
     order = {"open": 0, "pending": 1, "closed": 2, "void": 3}

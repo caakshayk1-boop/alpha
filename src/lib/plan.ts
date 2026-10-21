@@ -4,7 +4,7 @@
  *  books every entry, target and stop from the day's full high and low; this file only applies the same rules to the latest
  *  price between runs, so a reader sees during the session what the evening run will most likely book.
  *    entry  next session's open; skipped if more than 2% above the signal close or at/below the stop
- *    T1     entry + 2R: half is sold; the stop on the other half moves to entry + 0.5R (a locked profit, never break-even)
+ *    T1     entry + 2R: half is sold; the stop on the other half moves to entry + 0.5R (raised above entry, never break-even; a gap through it can still cost more)
  *    trail  after T1 the stop rises to the lowest low of the last 10 sessions when that is higher (nightly; never falls)
  *    T2     entry + 4R: the rest is sold
  *    time   whatever is left exits at the close of session 30 (entry session = 1)
@@ -60,7 +60,7 @@ export type PlanState = 'awaiting-entry' | 'hold' | 'stop-hit' | 't1-hit' | 't2-
 export const STATE_TEXT: Record<PlanState, string> = { 'awaiting-entry': 'Waiting for entry', hold: 'Hold', 'stop-hit': 'Stop reached', 't1-hit': 'T1 reached', 't2-hit': 'T2 reached', 'time-due': 'Time limit today', closed: 'Closed', void: 'Skipped' };
 export const STATE_TONE: Record<PlanState, string> = { 'awaiting-entry': '', hold: 'acc', 'stop-hit': 'down', 't1-hit': 'up', 't2-hit': 'up', 'time-due': 'warn', closed: '', void: 'warn' };
 export type StopKind = 'stop' | 'lock' | 'trail';
-export const STOP_TEXT: Record<StopKind, string> = { stop: 'Stop', lock: 'Profit lock', trail: 'Trailing stop' };
+export const STOP_TEXT: Record<StopKind, string> = { stop: 'Stop', lock: 'Raised stop', trail: 'Trailing stop' };
 
 export interface Mark {
   phase: Sig['status'];
@@ -187,7 +187,7 @@ export type DecisionKind = 'exit' | 'modify' | 'enter' | 'hold' | 'closed' | 'vo
 export interface Decision { kind: DecisionKind; id: string; sym: string; headline: string; detail: string }
 export const DECISION_ORDER: DecisionKind[] = ['exit', 'modify', 'enter', 'hold', 'closed', 'void'];
 export const DECISION_TEXT: Record<DecisionKind, string> = { exit: 'Exit', modify: 'Modify', enter: 'Enter', hold: 'Hold', closed: 'Closed', void: 'Skipped' };
-const EXIT_TEXT: Record<string, string> = { stop: 'stopped out', lock: 'stopped at the profit lock after T1', trail: 'trailing stop after T1', t2: 'T2 reached', time: 'time limit' };
+const EXIT_TEXT: Record<string, string> = { stop: 'stopped out', lock: 'stopped at the raised stop after T1', trail: 'trailing stop after T1', t2: 'T2 reached', time: 'time limit' };
 
 /** What the plan needs at the next session, from the state at the latest price and what the evening run booked on `session`
  *  (the engines' newest close). */
@@ -213,10 +213,10 @@ export function decide(s: Sig, m: Mark, session: string | null): Decision | null
     case 'time-due':
       return { ...base, kind: 'exit', headline: `Sell ${what} at the close: time limit`, detail: m.timeDue ? `Session 30 is ${sessionLabel(m.timeDue)}.` : 'Session 30 has arrived.' };
     case 't1-hit':
-      return { ...base, kind: 'modify', headline: `Sell half at T1 ${money(m.t1)}; move the stop to ${money(m.entry + LOCK_R * m.risk)}`, detail: `A locked profit of +0.5R on the rest, not break-even. Next: T2 ${money(m.t2)}.` };
+      return { ...base, kind: 'modify', headline: `Sell half at T1 ${money(m.t1)}; move the stop to ${money(m.entry + LOCK_R * m.risk)}`, detail: `The stop on the rest sits at +0.5R, above entry. A gap through it fills at the open, so the result can be lower. Next: T2 ${money(m.t2)}.` };
     default: {
       if (session && s.events.some((e) => e.kind === 't1' && e.date === session)) {
-        return { ...base, kind: 'modify', headline: `Move the stop to ${money(m.stop)} (profit lock)`, detail: `Half was sold at T1 on ${sessionLabel(session)}. Next: T2 ${money(m.t2)}.` };
+        return { ...base, kind: 'modify', headline: `Move the stop to ${money(m.stop)} (raised stop)`, detail: `Half was sold at T1 on ${sessionLabel(session)}. Next: T2 ${money(m.t2)}.` };
       }
       if (session && s.stop_raised_on === session) {
         return { ...base, kind: 'modify', headline: `Raise the trailing stop to ${money(m.stop)}`, detail: `From ${ok(s.stop_before) ? money(s.stop_before!) : 'the previous level'}: the lowest low of the last 10 sessions rose. Next: T2 ${money(m.t2)}.` };
