@@ -67,3 +67,13 @@ Each item has a pass/fail check.
 - [x] 21. (owner, 21 Oct) Alerts only from engines with holdout month-clustered t >= 2: all five off today (best +1.42).
 - [x] 10b. (owner, 21 Oct) Footer: the author holds no position in any company shown here.
 - [x] 22. (21 Oct) Company LCP: the late element was the "Data check" banner (3.4-4.7 s), not the price; the name and dated price were already pre-rendered. Banner is one line now; LCP is the pre-rendered h1 at ~1.0 s (412 px, 4x CPU, 1.6 Mbps, local). The banner also skips weekdays the NSE did not trade (gaps in the Nifty bars, or no trade in the live snapshot), so 20 Oct (Diwali) no longer reads as "1 session behind".
+
+## Batch 8 (21 Oct 2026): signals rebuilt from today
+- [x] 28. Swing v2 replaces the five ML engines (engines/swing.py): market gate (4 checks), stock gate, two setups (pullback,
+      breakout), plan = half at 2R, profit lock at +0.5R, 10-session-low trail, rest at 4R, 30 sessions. Rules fixed before
+      the one backtest: development +0.24R/trade (t 1.73), holdout -0.06R (t -0.91) vs no gate -0.26R and random -0.30R.
+      Alerts off (owner's t >= 2 rule). Gate off on 21 Oct (1 of 4): no new trades. ML signals archived (engines/archive/).
+- [x] 29. Site on the new feed (signals.json); engines.json kept in the old shape for Telegram/brief (trading-dashboard #54).
+- [x] 30. AI asks for the market and each signal, beside the company one. OFF until ANTHROPIC_API_KEY is set on the Worker.
+- [x] 31. Motion refinements; audit of 21 routes x phone/desktop x light/dark: clean.
+- [ ] 32. Owner: add ANTHROPIC_API_KEY (Cloudflare Worker secret) and a spend limit on its Anthropic workspace to switch AI on.
