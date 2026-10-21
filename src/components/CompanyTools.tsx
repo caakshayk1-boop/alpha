@@ -9,7 +9,7 @@ import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { decide, lookalikes, screenClass } from '@/lib/decision';
-import type { EngineSignal, Row } from '@/lib/types';
+import type { Row, Sig } from '@/lib/types';
 import { dash, dateLabel, num } from '@/lib/format';
 import { companyHref } from '@/lib/slug';
 
@@ -38,7 +38,7 @@ function Kv({ k, v }: { k: string; v: string }) {
 
 const tone = (s: number | null) => (s === null ? 'var(--dim)' : s >= 1 ? 'var(--up)' : s <= -1 ? 'var(--down)' : 'var(--accent-2)');
 
-export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[]; years?: number | null }) {
+export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: number | null }) {
   const d = useMemo(() => decide(r, sigs, years), [r, sigs, years]);
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });   // the India date, not UTC (UTC is a day behind until 05:30 IST)
   const sc = screenClass(r.vd);
@@ -48,7 +48,7 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
       <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: '10px 0 8px' }}>{d.headline}</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
         <span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span>
-        {sigs.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => <span key={x.id} className="tag acc" title={`${x.engine_name} engine output, ranking ${x.engine_status}. A research signal, not a recommendation.`}>Engine output · {x.engine_name}</span>)}
+        {sigs.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => <span key={x.id} className="tag acc" title="Passed every Swing v2 rule. A research signal, not a recommendation.">Swing signal · {x.setup}</span>)}
         {r.mf?.rank && r.mf.of ? <span className="tag" title="Greenblatt-inspired ranking of eligible companies">Magic Formula #{r.mf.rank} of {r.mf.of}</span> : null}
       </div>
       <DataStamp ids={['screen']} />
@@ -181,7 +181,7 @@ export function LookalikesLazy({ r }: { r: Row }) {
 }
 
 /** Saves this company, its evidence and the data dates as a portable card in this browser. */
-export function SaveCardButton({ r, sigs, years }: { r: Row; sigs: EngineSignal[]; years?: number | null }) {
+export function SaveCardButton({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: number | null }) {
   const { add, ok } = useCards();
   const { items } = useDatasetStatus();
   const [state, setState] = useState<'idle' | 'saved' | 'failed'>('idle');
@@ -192,7 +192,7 @@ export function SaveCardButton({ r, sigs, years }: { r: Row; sigs: EngineSignal[
       question: `Why ${r.sym}?`,
       companies: [{ sym: r.sym, name: r.name, price: typeof r.price === 'number' ? r.price : null, priceAsOf: r.last_date ?? null }],
       evidence: d.evidence,
-      engines: act.length ? { [r.sym]: act.map((x) => ({ engine: x.engine_name, rankingStatus: x.engine_status, tradingStatus: null, signalClose: x.ref_price, stop: x.sl, targets: x.targets })) } : null,
+      engines: act.length ? { [r.sym]: act.map((x) => ({ engine: `Swing ${x.setup}`, rankingStatus: null, tradingStatus: null, signalClose: x.ref_price, stop: x.stop_now ?? x.sl, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan] })) } : null,
       nextResults: { [r.sym]: r.next_earnings ?? null },
       dataStatus: items.map((i) => ({ id: i.id, asOf: i.asOf, refreshedAt: i.refreshedAt, state: i.state })),
     });

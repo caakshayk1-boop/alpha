@@ -5,15 +5,12 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
-import PlanOdds from '@/components/PlanOdds';
-import { PaperBlock } from '@/components/PaperPosition';
-import { markSignal, noSessionDays } from '@/lib/positions';
-import { EngineVerdict } from '@/components/EvidenceTags';
+import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
 import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
-import { useEngines, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
+import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
 import { crore, dash, heat, num, pct } from '@/lib/format';
@@ -167,7 +164,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const full = useFeedWhen('screen', !!sym && !!sh.error);      // the full screen only when there is no per-company shard
   const s = { loading: sh.loading || (!!sh.error && full.loading), error: sh.error ? full.error : null, count: sh.data?.count ?? full.data?.count };
   const pre = sh.data;
-  const eng = useEngines();
+  const eng = useSignals();
   const px = usePx(sym ? [sym] : []);
   const lv = useLive();
   const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
@@ -189,7 +186,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const pv = priceView(r.sym, r, lv.snap, px.quotes[sym]);
   const pl = priceLabel(pv);
   const closeOn = sessionLabel(r.last_date);
-  const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Engines (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
+  const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Signals (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
   const view: Tab = tabOptions.some(([k]) => k === tab) ? tab : 'overview';      // a link to #engines on a company with no signal falls back to Overview
   return (
     <>
@@ -221,7 +218,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
 
       <section className="wrap" style={{ paddingTop: 8 }}>
         <h2 className="sr">Price chart</h2>
-        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: x.targets, label: x.engine_name, odds: (() => { const a = eng.data?.engines[x.engine]?.trades.all; return a ? { t: [a.hit_t1, a.hit_t2, a.hit_t3], stopped: a.stopped } : undefined; })() }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
+        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
       </section>
       <section className="wrap section">
         <SectionHead eyebrow={`Scorecard · screen close ${closeOn}`} title="Where it ranks" />
@@ -265,26 +262,29 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
       </>)}
       {view === 'valuation' && (<>
-      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: x.targets } : undefined; })()} /></Rv></LazyMount></section>
+      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan] } : undefined; })()} /></Rv></LazyMount></section>
       <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
       </>)}
       {view === 'engines' && (<>
       {mySignals.length > 0 && (
         <section className="wrap section">
-          <SectionHead eyebrow="Engines" title="Selected by an engine" href="/engines/" cta="How they are tested" />
+          <SectionHead eyebrow="Signals · Swing v2" title="This stock's plans" href="/engines/" cta="The rule book" />
           <div className="grid g2">{mySignals.map((x) => {
-            // the same price rule and paper mark as the Engines page: the engines' close unless a live session is newer
-            const through = eng.data?.data_through ?? null;
-            const { pos: xpos } = markSignal(x, through, lv.snap, px.quotes[sym], noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null));
+            // the same price rule and mark as the Trades page: the engines' close unless a live session is newer
+            const m = mark(x, priceFor(x, lv.snap, px.quotes[sym]), noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null));
             return (
-            <Rv key={`${x.engine}${x.date}`} className="panel spot">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14 }}>
-                <div><div className="eyebrow">{x.engine_name} · {x.setup} · {x.horizon}</div>{x.conviction === 'high' && <span className="tag acc" style={{ marginTop: 8 }} title={x.conviction_why}>High conviction</span>}
-                  <div className="kv" style={{ marginTop: 12 }}><div><div className="k">Signal close</div><div className="v" style={{ fontSize: 15 }}>₹{num(x.ref_price, 2)}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>entry in tests: next open</div></div><div><div className="k">Stop</div><div className="v down" style={{ fontSize: 15 }}>₹{num(x.sl, 2)}</div></div><div><div className="k">T1 · T2 · T3</div><div className="v up" style={{ fontSize: 14 }}>{x.targets.map((t) => num(t, 0)).join(' · ')}</div></div><div><div className="k">Time limit</div><div className="v" style={{ fontSize: 15 }}>{x.max_hold_days} sessions</div></div></div>
-                  <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>This engine&apos;s record: {eng.data?.engines[x.engine] ? <EngineVerdict e={eng.data.engines[x.engine]} /> : <span className="tag">{x.engine_status}</span>}</p></div>
-                <PlanOdds cost={eng.data?.backtest.cost_round_trip_pct} sl={x.stop_now ?? x.sl} entry={x.entry ?? x.ref_price} targets={x.targets} rMultiples={x.r_multiples} odds={{ t1: eng.data?.engines[x.engine]?.trades.all.hit_t1, t2: eng.data?.engines[x.engine]?.trades.all.hit_t2, t3: eng.data?.engines[x.engine]?.trades.all.hit_t3, stopped: eng.data?.engines[x.engine]?.trades.all.stopped }} n={eng.data?.engines[x.engine]?.trades.all.n} last={xpos.price ?? x.last_close ?? undefined} />
+            <Rv key={x.id} className="panel spot">
+              <div className="sig2-head">
+                <div><div className="eyebrow">{x.setup} · signal {sessionLabel(x.date)}</div><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></div>
+                <div className="sig2-now">{m.r !== null && <div className={`v num ${m.r >= 0 ? 'up' : 'down'}`}>{m.r > 0 ? '+' : m.r < 0 ? '−' : ''}{Math.abs(m.r).toFixed(2)}R</div>}<div className="dim num" style={{ fontSize: 12 }}>{x.status === 'closed' ? `closed ${sessionLabel(x.closed_date)}` : m.price !== null ? markSource(m) : ''}</div></div>
               </div>
-              {(x.status === 'open' || x.status === 'pending') && <PaperBlock s={x} p={xpos} />}
+              <div className="kv sig2-plan">
+                <div><div className="k">{x.entry ? 'Entry' : 'Signal close'}</div><div className="v">{money(x.entry ?? x.ref_price)}</div></div>
+                <div><div className="k">{STOP_TEXT[m.stopKind]}</div><div className="v">{money(m.stop)}</div></div>
+                <div><div className="k">T1 · sell half</div><div className="v">{money(m.t1)}</div></div>
+                <div><div className="k">T2 · the rest</div><div className="v">{money(m.t2)}</div></div>
+              </div>
+              <ul className="sig2-why">{x.why.map((w) => <li key={w}>{w}</li>)}</ul>
             </Rv>); })}</div>
         </section>
       )}

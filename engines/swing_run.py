@@ -53,6 +53,9 @@ def track(e: dict, df: pd.DataFrame) -> None:
         e.update(status="void", void_reason=w["reason"], entry=round(w["entry"], 2), entry_date=str(df.index[w["entry_i"]].date()), closed_date=str(df.index[w["entry_i"]].date()))
         return
     risk = w["risk"]
+    old_stop = e.get("stop_now")
+    if old_stop is not None and round(w["stop"], 2) > old_stop:
+        e["stop_raised_on"], e["stop_before"] = last_date, old_stop     # the Trades page names the order to move
     e.update(entry=round(w["entry"], 2), entry_date=str(df.index[w["entry_i"]].date()), t1=round(w["t1"], 2), t2=round(w["t2"], 2),
              risk=round(risk, 2), half=bool(w["half"]), stop_now=round(w["stop"], 2),
              events=[{"date": str(df.index[i].date()), "kind": k, "price": round(p, 2), "fraction": round(fr, 3)} for i, k, p, fr in w["events"]])

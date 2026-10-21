@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataStamp } from '@/components/DataStamp';
 import { sessionLabel } from '@/lib/price';
 import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
-import { useEngines, useFeed, useRotation } from '@/lib/data';
+import { useSignals, useFeed, useRotation } from '@/lib/data';
 import { weekThrough } from '@/lib/status';
 import { dash, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
@@ -23,7 +23,7 @@ interface Series { name: string; ratio: (number | null)[]; mom: (number | null)[
 
 export default function RotationPage() {
   const rot = useRotation();
-  const eng = useEngines();
+  const eng = useSignals();
   const scr = useFeed('screen');
   const [end, setEnd] = useState<number | null>(null);
   const [sel, setSel] = useState<string | null>(null);

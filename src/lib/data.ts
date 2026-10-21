@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { dayFromLive, mergeLive, pickDay, type DayFigures, type LivePart, type LiveSnap, type Universe } from './live';
-import type { RotationFeed, ChartFeed, Barometer, DataHealth, EnginesFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed, Summary } from './types';
+import type { RotationFeed, ChartFeed, Barometer, DataHealth, SignalsFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed, Summary } from './types';
 
 /** feed name -> payload type */
 export interface FeedMap {
@@ -51,7 +51,7 @@ function load<T>(url: string): Promise<T> {
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
 export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => load<ChartFeed>(`${BASE}/api/chart?s=${encodeURIComponent(sym)}&r=${range}`);
 export const rotationFeed = (): Promise<RotationFeed> => load<RotationFeed>(`${BASE}/rotation.json`);
-export const enginesFeed = (): Promise<EnginesFeed> => load<EnginesFeed>(`${BASE}/engines.json`);
+export const signalsFeed = (): Promise<SignalsFeed> => load<SignalsFeed>(`${BASE}/signals.json`);
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const summaryFeed = (): Promise<Summary> => load<Summary>(`${BASE}/api/summary`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
@@ -83,7 +83,8 @@ export const useFeedWhen = <K extends FeedName>(name: K, enabled: boolean): Load
 /** One company's slice of every company feed, built before each deploy (scripts/shard.mjs). An error means no shard: use the full feeds. */
 export interface Shard { sym: string; built_on: string; count: number; row: import('./types').Row; years: import('./types').Year[] | null; swot: import('./types').Swot | null; inst: import('./types').InstRow | null; season: { m: [number, number, number][]; y: number } | null }
 export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym);
-export const useEngines = (): Loaded<EnginesFeed> => useLoaded(enginesFeed, 'engines');
+/** The Swing v2 book: the market gate, the rules, the backtest and every signal (public/signals.json, written nightly). */
+export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'signals');
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation');
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');

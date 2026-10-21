@@ -6,7 +6,7 @@ import SymbolPicker from '@/components/SymbolPicker';
 import CardPanel from '@/components/CardPanel';
 import { Async, Chg, Flash, PageHead } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
-import { useEngines, useFeed, useLive, usePx } from '@/lib/data';
+import { useSignals, useFeed, useLive, usePx } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { dash, dateLabel, num } from '@/lib/format';
 import { useStoredList } from '@/lib/store';
@@ -15,16 +15,16 @@ import { companyHref } from '@/lib/slug';
 
 export default function Watchlist() {
   const s = useFeed('screen');
-  const eng = useEngines();
+  const eng = useSignals();
   const [list, add, remove, addAll] = useStoredList('alpha-watchlist');
   const px = usePx(list);
   const lv = useLive();
   const closeOn = sessionLabel(s.data?.breadth.as_of);
   const rows = useMemo(() => list.map((x) => s.data?.rows.find((r) => r.sym === x)).filter((r): r is NonNullable<typeof r> => !!r), [list, s.data]);
-  const sigs = useMemo(() => new Map((eng.data?.signals ?? []).map((x) => [x.sym, x])), [eng.data]);
+  const sigs = useMemo(() => new Map((eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending').map((x) => [x.sym, x])), [eng.data]);
   const current = useMemo(() => {
     const m: Record<string, CurrentCompany> = {};
-    for (const r of s.data?.rows ?? []) m[r.sym] = { price: typeof r.price === 'number' ? r.price : null, asOf: r.last_date ?? null, nextResults: r.next_earnings ?? null, engines: (eng.data?.signals ?? []).filter((x) => x.sym === r.sym && (x.status === 'open' || x.status === 'pending')).map((x) => ({ engine: x.engine_name, rankingStatus: eng.data?.engines[x.engine]?.ranking_status ?? null, tradingStatus: eng.data?.engines[x.engine]?.trading_status ?? null })) };
+    for (const r of s.data?.rows ?? []) m[r.sym] = { price: typeof r.price === 'number' ? r.price : null, asOf: r.last_date ?? null, nextResults: r.next_earnings ?? null, engines: (eng.data?.signals ?? []).filter((x) => x.sym === r.sym && (x.status === 'open' || x.status === 'pending')).map((x) => ({ engine: `Swing ${x.setup}`, rankingStatus: null, tradingStatus: null })) };
     return m;
   }, [s.data, eng.data]);
   const csv = () => {
@@ -49,7 +49,7 @@ export default function Watchlist() {
                   <td><Link href={companyHref(r.sym)} className="co"><b>{r.sym}</b><span>{r.name}</span></Link></td>
                   <td className="num"><Flash value={pv.price}>₹{num(pv.price, 2)}</Flash><div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{pl.text}</div></td><td><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td><td><Chg v={r.r1m} dp={1} /></td><td><Chg v={r.r1y} dp={1} /></td>
                   <td className="num">{typeof r.comp === 'number' ? Math.round(r.comp) : dash}</td>
-                  <td style={{ textAlign: 'left' }}>{r.next_earnings && <span className="tag">Results {dateLabel(r.next_earnings)}</span>} {sigs.get(r.sym) && <Link href="/engines/" className="tag acc">{sigs.get(r.sym)?.engine_name} signal</Link>}</td>
+                  <td style={{ textAlign: 'left' }}>{r.next_earnings && <span className="tag">Results {dateLabel(r.next_earnings)}</span>} {sigs.get(r.sym) && <Link href="/engines/" className="tag acc">Swing {sigs.get(r.sym)?.setup.toLowerCase()} signal</Link>}</td>
                   <td><button className="chip" onClick={() => remove(r.sym)} aria-label={`Remove ${r.sym}`}>✕</button></td>
                 </tr>); })}</tbody>
             </table></div>

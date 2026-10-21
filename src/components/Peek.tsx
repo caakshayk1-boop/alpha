@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef } from 'react';
 import { Chg } from '@/components/ui';
 import { decide } from '@/lib/decision';
-import { useEngines, useFeed, useLive } from '@/lib/data';
+import { useSignals, useFeed, useLive } from '@/lib/data';
 import { priceLabel, priceView } from '@/lib/price';
 import { crore, num } from '@/lib/format';
 import { ordinal } from '@/lib/status';
@@ -63,7 +63,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [ta
 /** Slide-over for one company. Opens over the current page so filters, scroll position and unfinished work stay where they were. */
 export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () => void }) {
   const scr = useFeed('screen');
-  const eng = useEngines();
+  const eng = useSignals();
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;           // the effect below must not restart (and re-focus) every time the page re-renders
@@ -139,7 +139,7 @@ export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () 
             <h3 className="peek-h">Where the price is <span>within its 52-week range</span></h3>
             <RangeBar row={row} />
 
-            {mine.length > 0 && <p className="peek-sig">{mine.map((s) => <span key={s.id} className="tag acc">{s.engine_name} engine signal</span>)}</p>}
+            {mine.length > 0 && <p className="peek-sig">{mine.map((s) => <span key={s.id} className="tag acc">Swing {s.setup.toLowerCase()} signal</span>)}</p>}
 
             {read && (
               <div className="peek-cols">

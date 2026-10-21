@@ -218,47 +218,36 @@ export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; tot
 
 export interface DataHealth { generated_at: string; datasets: { dataset: string; source: string; last_successful_update: string; freshness_age: string; status: string }[] }
 
-export interface TradeBlock {
-  n?: number; win_rate?: number; expectancy_r?: number; median_r?: number; avg_win_r?: number; avg_loss_r?: number; profit_factor?: number | null; t_stat?: number | null; max_dd_r?: number;
-  avg_bars?: number; hit_t1?: number; hit_t2?: number; hit_t3?: number; stopped?: number;
+/** Swing v2 (engines/swing.py, swing_run.py): one rule book, a market gate, two setups, half at 2R + profit lock + trail. */
+export interface SigEvent { date: string; kind: 'entry' | 't1' | 't2' | 'stop' | 'lock' | 'trail' | 'time'; price: number; fraction: number }
+export interface Sig {
+  id: string; engine: 'swing'; sym: string; name: string; sector: string | null; setup: 'Pullback' | 'Breakout'; date: string;
+  ref_price: number; sl: number; risk_pct: number; t1_plan: number; t2_plan: number; max_hold: number; why: string[]; first_seen: string;
+  status: 'pending' | 'open' | 'closed' | 'void'; events: SigEvent[]; half: boolean;
+  entry?: number; entry_date?: string; t1?: number; t2?: number; risk?: number; stop_now?: number; remaining?: number;
+  r_open?: number; r_net?: number; exit_reason?: 'stop' | 'lock' | 'trail' | 't2' | 'time'; closed_date?: string; void_reason?: string;
+  last_close?: number; last_close_date?: string; stop_raised_on?: string; stop_before?: number;
 }
-export interface RankBlock {
-  dates: number; ic_mean: number | null; ic_t: number | null; ic_pos_pct: number | null; top_excess_pct: number | null; top_t_month: number | null; top_hit_pct: number | null; decile_excess_pct: number[];
+export interface GateCheck { rule: string; ok: boolean; value: string | null }
+export interface BtStats {
+  n: number; win_rate?: number; expectancy_r?: number; median_r?: number; avg_win_r?: number | null; avg_loss_r?: number | null; profit_factor?: number | null;
+  t_stat?: number | null; max_dd_r?: number; avg_bars?: number; hit_t1?: number; hit_t2?: number; stopped?: number;
+  clustered_months?: number; clustered_t_clustered?: number; clustered_positive_months_pct?: number;
+  by_setup?: Record<string, BtStats>; exits?: Record<string, number>;
 }
-export type EngineStatus = 'EDGE SHOWN' | 'LEANING POSITIVE' | 'NO EDGE SHOWN' | 'WORSE THAN RANDOM' | 'NOT ENOUGH TRADES';
 export type Period = 'development' | 'holdout';
-export interface EngineStats {
-  id: number; key: string; name: string; tagline: string; style: string; how: string[]; kind: 'reg' | 'clf'; horizon_sessions: number;
-  status: EngineStatus; status_why: string; ranking_status: string; ranking_why: string; trading_status: string; trading_why: string; alert_why: string; exits_n: number;
-  signal_count: number; alertable: boolean; train_rows: number;
-  plan: { stop_atr: number; targets_r: number[]; max_hold: number; picks_per_day: number; cooldown: number };
-  metrics: Record<Period, RankBlock>;
-  robustness: { top300: Record<Period, RankBlock> };
-  trades: Record<Period | 'all', TradeBlock>;
-  baseline: Record<Period | 'all', TradeBlock>;
-  clustered: Record<Period, { months: number; t_clustered: number | null; positive_months_pct: number | null }>;
-  importance: { feature: string; label: string; share_pct: number }[];
-  timeline: { median_days_to_t1: number | null; median_days_held: number | null; p90_days_held: number | null };
-  equity_curve: [string, number][]; baseline_curve: [string, number][];
-  exits: Record<string, number>;
+export interface Backtest {
+  version: string; generated: string; periods: Record<Period, [string, string]>; universe: number; gate_on_pct_by_year: Record<string, number>;
+  rules: Record<Period | 'all', BtStats>; no_gate: Record<Period | 'all', BtStats>; random: Record<Period | 'all', BtStats>;
+  curve: { rules: { m: string; r: number }[]; random: { m: string; r: number }[] }; notes: string[];
 }
-export interface EngineEvent { date: string; kind: string; price: number; fraction: number }
-export interface EngineBenchmark { name: string; members: number | null; uptrend: boolean; leads_nifty: boolean; stock_3m_pct: number | null; benchmark_3m_pct: number | null; stock_vs_benchmark_pct: number | null }
-export interface EngineSignal {
-  id: string; engine: string; engine_name: string; sym: string; name: string; sector: string | null; date: string; issued: string; setup: string; horizon: string;
-  status: 'pending' | 'open' | 'closed' | 'void'; ref_price: number; entry_zone: [number, number]; sl: number; risk_pct: number; targets: number[]; r_multiples: number[];
-  max_hold: number; max_hold_days: number; reasons: string[]; typical_days_to_t1: number | null; engine_status: string; score: number; score_percentile: number | null; turnover_cr: number;
-  entry?: number; entry_date?: string; events: EngineEvent[]; hit: number; stop_now?: number; r_open?: number; r_net?: number; exit_reason?: string; closed_date?: string; last_close?: number; void_reason?: string;
-  benchmark: EngineBenchmark | null; also_names: string[];
-  /** optional, added by the engines when present: shown as a small tag, never inferred here */
-  conviction?: 'high' | 'standard'; conviction_why?: string;
-}
-export interface BenchmarkRow { name: string; members: number | null; r1m: number; r3m: number; vs_nifty_3m: number; uptrend: boolean; leads_nifty: boolean; real_index: boolean }
-export interface EnginesFeed {
-  generated: string; data_through: string;
-  backtest: { generated: string; data_through: string; universe: number; cost_round_trip_pct: number; periods: Record<Period, [string, string]>; features: number; notes?: string[] };
-  launched: string | null; live_record: Record<string, { closed: number; win_rate: number; avg_r: number; total_r: number }>; benchmarks: BenchmarkRow[];
-  exit_plan: string[]; engines: Record<string, EngineStats>; signals: EngineSignal[];
+export interface SignalsFeed {
+  schema: string; version: string; generated: string; data_through: string; launched: string;
+  gate: { date: string; on: boolean; checks: GateCheck[]; passed: number }; gate_history: { d: string; on: boolean }[];
+  rules: { gate: string[]; stock: string[]; setups: Record<string, string>; plan: string[]; book: string[] };
+  params: Record<string, number>; cost_round_trip_pct: number; alertable: boolean; alert_why: string;
+  record: { closed: number; wins: number; total_r: number; avg_r: number | null };
+  backtest: Backtest | null; signals: Sig[];
 }
 
 export interface PxQuote { price: number; prev: number; pct: number; state: string | null; at: number | null }

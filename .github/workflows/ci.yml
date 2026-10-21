@@ -34,11 +34,12 @@ jobs:
       - name: Engine tests (no-lookahead features and labels, embargo, trade layer, registry)
         working-directory: engines
         run: |
+          python tests/test_swing.py
           python tests/test_ai.py
           python tests/test_registry.py
       - name: Static export has every page
         run: |
-          for p in index brief/index markets/index screen/index company/index map/index rotation/index engines/index reads/index ipo/index funds/index news/index about/index tools/index compare/index calendar/index watchlist/index; do
+          for p in index brief/index markets/index screen/index company/index map/index rotation/index engines/index trades/index reads/index ipo/index funds/index news/index about/index tools/index compare/index calendar/index watchlist/index; do
             test -f "out/$p.html" || { echo "::error::out/$p.html missing"; exit 1; }
           done
           test -f out/_headers

@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useEngines, useFeed, useLive, useRotation, useSummary } from '@/lib/data';
+import { useSignals, useFeed, useLive, useRotation, useSummary } from '@/lib/data';
 import { useBarometer } from '@/lib/useBarometer';
 import { priceLabel } from '@/lib/price';
 import { dateLabel } from '@/lib/format';
 import Link from 'next/link';
 import { describe, expectedSession, reconcile, sessionGaps, weekThrough, type DataStatus, type DatasetInput } from '@/lib/status';
-import { noSessionDays } from '@/lib/positions';
+import { noSessionDays } from '@/lib/plan';
 
 const TONE: Record<DataStatus['state'], string> = { current: 'up', delayed: 'warn', stale: 'down', partial: 'warn', missing: 'down', unavailable: 'down', error: 'down' };
 const ICON: Record<DataStatus['state'], string> = { current: '●', delayed: '◐', stale: '○', partial: '◐', missing: '○', unavailable: '○', error: '✕' };
@@ -25,7 +25,7 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
   const scr = useSummary();
   const bar = useFeed('barometer');
   const baro = useBarometer();
-  const eng = useEngines();
+  const eng = useSignals();
   const rot = useRotation();
   // Judged against the calendar (the session Alpha should already hold), not against its own newest dataset. Weekdays the market
   // itself shows had no trading (a gap in the Nifty's bars, or no trade at all in the live snapshot) are not sessions.
@@ -38,7 +38,7 @@ export function useDatasetStatus(): { items: DataStatus[]; loading: boolean } {
     const rotThrough = rot.data && lastWeek ? weekThrough(lastWeek, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
     list.push(scr.data ? { id: 'screen', label: 'Screen', source: 'Alpha screen: company filings and Yahoo Finance prices', asOf: scr.data.as_of, refreshedAt: scr.data.built_on ?? null } : { id: 'screen', label: 'Screen', source: 'Alpha screen', asOf: null, refreshedAt: null, error: !!scr.error });
     list.push(bar.data ? { id: 'barometer', label: 'Barometer', source: baro.view?.source === 'live' ? 'Computed live in Alpha from the Nifty, India VIX and every screened stock (same formula as the published reading)' : 'Alpha market barometer: Nifty, India VIX and the screen universe', asOf: baro.view?.session ?? bar.data.today.nifty_date ?? null, refreshedAt: baro.view?.source === 'live' && baro.view.at ? new Date(baro.view.at * 1000).toISOString() : bar.data.generated_at ?? null } : { id: 'barometer', label: 'Barometer', source: 'Alpha market barometer', asOf: null, refreshedAt: null, error: !!bar.error });
-    list.push(eng.data ? { id: 'engines', label: 'Engines', source: 'Alpha engines: models retrained on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Engines', source: 'Alpha engines', asOf: null, refreshedAt: null, error: !!eng.error });
+    list.push(eng.data ? { id: 'engines', label: 'Signals', source: 'Alpha Swing v2: rule book on Yahoo Finance daily prices', asOf: eng.data.data_through, refreshedAt: eng.data.generated ?? null } : { id: 'engines', label: 'Signals', source: 'Alpha Swing v2', asOf: null, refreshedAt: null, error: !!eng.error });
     list.push(rot.data ? { id: 'rotation', label: 'Rotation', source: 'Alpha group indices built from screened stocks, plus the NSE Nifty IT, Pharma and Bank indices', asOf: rotThrough?.through ?? null, refreshedAt: rot.data.generated ?? null, note: rotThrough?.inProgress ? 'The latest weekly point is the week in progress.' : undefined, cadence: 'weekly' } : { id: 'rotation', label: 'Rotation', source: 'Alpha group indices', asOf: null, refreshedAt: null, error: !!rot.error });
     return reconcile(list, expected, skip);
   }, [expected, skip, scr.data, scr.error, bar.data, bar.error, baro.view, eng.data, eng.error, rot.data, rot.error]);

@@ -6,9 +6,8 @@ import { Async, Chg, PageHead, Rv, SectionHead, Skel, Spark } from '@/components
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
 import { MarketSession } from '@/components/MarketSession';
-import { EngineVerdict } from '@/components/EvidenceTags';
 import { useBarometer } from '@/lib/useBarometer';
-import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
+import { useFeed, useQuotes, useSummary } from '@/lib/data';
 import { dateLabel, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
 import type { Row } from '@/lib/types';

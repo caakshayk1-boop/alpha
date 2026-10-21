@@ -1,4 +1,4 @@
-import type { EngineSignal, Row } from './types';
+import type { Row, Sig } from './types';
 import { ordinal } from './status.ts';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -12,7 +12,7 @@ export interface Decision {
 }
 
 /** Deterministic read of one company from the screen's own numbers. Every sentence is built from a figure on the page; nothing is generated or predicted. */
-export function decide(r: Row, sigs: EngineSignal[], years?: number | null): Decision {
+export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   const bull: Point[] = [], bear: Point[] = [];
   const lender = /financial|bank|insurance/i.test(`${r.sector} ${r.ind}`);
   const add = (cond: boolean, side: 'bull' | 'bear', text: string, weight: number) => { if (cond) (side === 'bull' ? bull : bear).push({ text, weight }); };
@@ -46,8 +46,8 @@ export function decide(r: Row, sigs: EngineSignal[], years?: number | null): Dec
   add(has(r.turnover_cr) && r.turnover_cr < 2, 'bear', `Only ₹${r.turnover_cr?.toFixed(1)} crore traded a day: hard to exit in size`, 2);
   add(has(r.insiders) && r.insiders >= 50, 'bull', `Promoters hold ${r.insiders?.toFixed(0)}%: owners have a lot at stake`, 1);
   if (r.mf?.rank && r.mf.of) add(r.mf.rank <= r.mf.of * 0.1, 'bull', `Magic Formula rank #${r.mf.rank} of ${r.mf.of}: cheap and high-return together`, 3);
-  const good = sigs.filter((s) => s.engine_status === 'EDGE SHOWN' || s.engine_status === 'LEANING POSITIVE');
-  if (good.length) add(true, 'bull', `Selected by ${good.map((s) => s.engine_name).join(' and ')}, whose models beat random picks on data they had not seen`, 2);
+  const live = sigs.filter((s) => s.status === 'open' || s.status === 'pending');
+  if (live.length) add(true, 'bull', `Passed every Swing v2 rule (${live[0].setup.toLowerCase()}) at the ${live[0].date} close, with the market gate on`, 2);
 
   const sort = (a: Point, b: Point) => b.weight - a.weight;
   bull.sort(sort); bear.sort(sort);
@@ -58,7 +58,7 @@ export function decide(r: Row, sigs: EngineSignal[], years?: number | null): Dec
     { name: 'Growth', score: dimScore(r.g), note: has(r.g) ? `${ordinal(r.g)} percentile` : 'not scored' },
     { name: 'Value', score: dimScore(r.v), note: has(r.v) ? `${ordinal(r.v)} percentile (higher is cheaper)` : 'not scored' },
     { name: 'Trend', score: dimScore(r.tech), note: has(r.tech) ? `${ordinal(r.tech)} percentile` : 'not scored' },
-    { name: 'Engines', score: sigs.length ? (good.length ? 2 : 0) : null, note: sigs.length ? `${sigs.length} active plan${sigs.length > 1 ? 's' : ''}` : 'no active plan' },
+    { name: 'Engines', score: live.length ? 2 : null, note: live.length ? 'an active Swing plan' : 'no active plan' },
   ];
 
   const checks: Check[] = [
@@ -83,20 +83,20 @@ export function decide(r: Row, sigs: EngineSignal[], years?: number | null): Dec
   const triggers: string[] = [];
   if (has(r.sma200) && has(r.price)) triggers.push(r.price > r.sma200 ? `A close below the 200-day average (₹${r.sma200.toFixed(0)}) would end the long-term uptrend` : `A close above the 200-day average (₹${r.sma200.toFixed(0)}) would repair the long-term trend`);
   if (r.next_earnings) triggers.push(r.next_earnings >= new Date().toISOString().slice(0, 10) ? `Results are due ${r.next_earnings}: the numbers above will update` : `Results were due ${r.next_earnings}: the fundamentals above may lag them until the screen refreshes`);
-  for (const s of sigs.filter((x) => x.status === 'open' || x.status === 'pending')) triggers.push(`${s.engine_name} plan: stop ₹${(s.stop_now ?? s.sl).toFixed(2)}, first target ₹${s.targets[0].toFixed(2)}`);
+  for (const s of sigs.filter((x) => x.status === 'open' || x.status === 'pending')) triggers.push(`Swing plan: stop ₹${(s.stop_now ?? s.sl).toFixed(2)}, ${s.half ? 'T2' : 'T1'} ₹${(s.half ? s.t2 ?? s.t2_plan : s.t1 ?? s.t1_plan).toFixed(2)}`);
   if (has(r.high52)) triggers.push(`A close above the 52-week high (₹${r.high52.toFixed(0)}) is a new high; a base below it is still a range`);
 
-  const srcOf = (t: string) => (t.startsWith('Selected by') ? 'engines' : r.last_date ? `screen, ${r.last_date}` : 'screen');
+  const srcOf = (t: string) => (t.startsWith('Passed every Swing') ? 'signals' : r.last_date ? `screen, ${r.last_date}` : 'screen');
   const evidence: Evidence[] = [...bull.map((p) => ({ ...p, side: 'for' as const })), ...bear.map((p) => ({ ...p, side: 'against' as const }))]
     .sort((x, y) => y.weight - x.weight).slice(0, 5).map((p) => ({ text: p.text, side: p.side, source: srcOf(p.text) }));
   const score = (name: string) => dims.find((d) => d.name === name)?.score ?? null;
   const conflicts: string[] = [];
   const belowLong = has(r.price) && has(r.sma200) && r.price < r.sma200;
-  if (good.length && belowLong) conflicts.push(`${good.map((x) => x.engine_name).join(' and ')} selected it, yet the price is below its 200-day average.`);
+  if (live.length && belowLong) conflicts.push('A Swing signal is active, yet the price is now below its 200-day average.');
   if ((score('Quality') ?? 0) >= 1 && (score('Trend') ?? 0) <= -1) conflicts.push('Quality scores high but the price trend scores low: a good business the market is not currently rewarding.');
   if ((score('Value') ?? 0) >= 1 && (score('Growth') ?? 0) <= -1) conflicts.push('It screens cheap, but growth scores low: cheapness may be the price of slow growth.');
   if (r.vd?.c === 'BUY' && r.risk?.level === 'HIGH') conflicts.push('The screen has a case on file, yet its risk flags are HIGH.');
-  if (good.length && r.vd?.c === 'AVOID') conflicts.push('An engine selected it while the screen excludes it.');
+  if (live.length && r.vd?.c === 'AVOID') conflicts.push('A Swing signal is active while the screen excludes it.');
   const pos = dims.filter((d) => (d.score ?? 0) >= 1 && d.name !== 'Engines').map((d) => d.name.toLowerCase());
   const neg = dims.filter((d) => d.score !== null && d.score <= -1 && d.name !== 'Engines').map((d) => d.name.toLowerCase());
   const agree: string[] = [];

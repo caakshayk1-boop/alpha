@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CompanyPeek } from '@/components/Peek';
 import { Async, Chg, PageHead, Rv } from '@/components/ui';
-import { useEngines, useFeed, useLive } from '@/lib/data';
+import { useSignals, useFeed, useLive } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { screenClass } from '@/lib/decision';
 import { plainText } from '@/lib/format';
@@ -30,7 +30,7 @@ const clock = (iso?: string | null) => {
 export default function News() {
   const feed = useFeed('news');
   const scr = useFeed('screen');
-  const eng = useEngines();
+  const eng = useSignals();
   const lv = useLive();
 
   // state kept in the address, so a filtered view can be shared or returned to

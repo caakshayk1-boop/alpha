@@ -40,7 +40,7 @@ for (const [f, t] of src) {
   for (const m of t.matchAll(/feed\('([a-z0-9_-]+)'\)|useFeed\('([a-z0-9_-]+)'\)/g)) { const n = m[1] || m[2]; if (!feeds.has(n)) problems.push(`${f}: feed('${n}') is not in the Worker's allow-list`); }
 }
 // 4. the static files the site loads exist
-for (const need of ['engines.json', '_headers', 'robots.txt', 'sitemap.xml']) if (!existsSync(join(OUT, need))) problems.push(`out/${need} is missing`);
+for (const need of ['engines.json', 'signals.json', '_headers', 'robots.txt', 'sitemap.xml']) if (!existsSync(join(OUT, need))) problems.push(`out/${need} is missing`);
 // 5. the sitemap lists real pages
 for (const m of readFileSync(join(OUT, 'sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/alpha\.askakshay\.com(\/[^<]*)<\/loc>/g)) if (!known(m[1])) problems.push(`sitemap lists ${m[1]}, which has no page`);
 

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
-import { useEngines, useFeed } from '@/lib/data';
+import { useSignals, useFeed } from '@/lib/data';
 import { dash, num } from '@/lib/format';
 import { canAnimate, Flip } from '@/lib/motion';
 import { useStoredList } from '@/lib/store';
@@ -77,7 +77,7 @@ interface Saved { name: string; conds: Cond[]; flags: Flag[]; sector: string; ti
 
 export default function Screen() {
   const s = useFeed('screen');
-  const eng = useEngines();
+  const eng = useSignals();
   const [peek, setPeek] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [nlTests, setNlTests] = useState<((r: Row) => boolean)[]>([]);

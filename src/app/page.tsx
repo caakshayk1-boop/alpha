@@ -11,7 +11,7 @@ import { dayLabel, TodayProvider, useToday } from '@/components/widgets/DayConte
 import { IndexStrip } from '@/components/widgets/IndexStrip';
 import { LiveMovers } from '@/components/widgets/LiveMovers';
 import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
-import { useEngines, useFeed, useSummary } from '@/lib/data';
+import { useSignals, useFeed, useSummary } from '@/lib/data';
 import { useBook } from '@/lib/useBook';
 import { dateLabel, num } from '@/lib/format';
 import { useBarometer } from '@/lib/useBarometer';
@@ -113,7 +113,7 @@ function TodayHero() {
 /** The four things people come here to do. Pastel is brand colour only: it never means up or down. */
 function JobTiles() {
   const sum = useSummary();
-  const eng = useEngines();
+  const eng = useSignals();
   const [watch] = useStoredList('alpha-watchlist');
   const open = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending').length;
   return (
@@ -122,7 +122,7 @@ function JobTiles() {
       <div className="jobs2">
         <Link className="job2 t-lav" href="/screen/"><span className="big">{sum.data ? num(sum.data.count) : '—'}</span><span><span className="t">Find stocks</span><span className="l">companies screened on quality, growth, value and trend</span></span></Link>
         <button type="button" className="job2 t-mint" onClick={() => window.dispatchEvent(new Event('alpha:search'))}><span className="big"><kbd>/</kbd></span><span><span className="t">Look up a company</span><span className="l">by name or symbol, from any page</span></span></button>
-        <Link className="job2 t-lime" href="/engines/"><span className="big">{eng.data ? num(open) : '—'}</span><span><span className="t">See the signals</span><span className="l">waiting or open across the five engines</span></span></Link>
+        <Link className="job2 t-lime" href="/engines/"><span className="big">{eng.data ? num(open) : '—'}</span><span><span className="t">See the signals</span><span className="l">waiting or open in the Swing book</span></span></Link>
         <Link className="job2 t-peach" href="/watchlist/"><span className="big">{num(watch.length)}</span><span><span className="t">Keep track</span><span className="l">{watch.length === 1 ? 'name' : 'names'} on your watchlist, kept in this browser</span></span></Link>
       </div>
     </section>
@@ -133,14 +133,14 @@ function JobTiles() {
 function SinceVisit() {
   const bar = useFeed('barometer');
   const pulse = useFeed('pulse');
-  const eng = useEngines();
+  const eng = useSignals();
   const [diff, setDiff] = useState<VisitDiff | null>(null);
   const done = useRef(false);
   useEffect(() => {
     const t = bar.data?.today, br = pulse.data?.breadth;
     if (done.current || !t || !br || !eng.data || !t.nifty_date) return;
     done.current = true;
-    const cur: Snapshot = { asOf: t.nifty_date, score: typeof t.score === 'number' ? t.score : null, up: br.up, down: br.down, signals: eng.data.signals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => `${x.sym}·${x.engine_name}`) };
+    const cur: Snapshot = { asOf: t.nifty_date, score: typeof t.score === 'number' ? t.score : null, up: br.up, down: br.down, signals: eng.data.signals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => `${x.sym}·${x.setup}`) };
     let prev: Snapshot | null = null;
     try { prev = parseSnapshot(localStorage.getItem('alpha-last-visit')); } catch { /* blocked: behave as a first visit */ }
     setDiff(diffSnapshots(prev, cur));
@@ -157,19 +157,20 @@ function SinceVisit() {
   );
 }
 
-/** The engines' book in one line: today's R, the open count and what the rules say to do next. The detail is on /trades/. */
+/** The book in one line: the market gate, today's R, the open count and what the rules say to do next. Detail on /trades/. */
 function TradesCard() {
-  const { feed, book, todayR, todayN, pending, groups } = useBook();
+  const { feed, totalR, marked, todayR, todayN, open, pending, groups } = useBook();
   const n = (k: string) => groups.find((g) => g.kind === k)?.items.length ?? 0;
   const sR = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
   return (
     <Link href="/trades/" className="panel spot tcard">
-      <span className="eyebrow">Trades · paper book</span>
+      <span className="eyebrow">Signals · Swing v2</span>
       {feed ? (
         <span className="tcard-row num">
+          <span><b className={feed.gate.on ? 'up' : 'down'}>{feed.gate.on ? 'Gate on' : 'Gate off'}</b> {feed.gate.passed} of 4 market checks</span>
           <span><b className={todayR > 0 ? 'up' : todayR < 0 ? 'down' : ''}>{todayN ? sR(todayR) : '—'}</b> today</span>
-          <span><b className={book.totalR > 0 ? 'up' : book.totalR < 0 ? 'down' : ''}>{sR(book.marked ? book.totalR : null)}</b> open, marked</span>
-          <span><b>{book.open}</b> open · {pending.length} to enter</span>
+          <span><b className={totalR > 0 ? 'up' : totalR < 0 ? 'down' : ''}>{sR(marked ? totalR : null)}</b> open, marked</span>
+          <span><b>{open.length}</b> open · {pending.length} to enter</span>
           <span><b>{n('exit')}</b> exit · <b>{n('modify')}</b> modify</span>
         </span>
       ) : <Skel h={28} w="70%" />}

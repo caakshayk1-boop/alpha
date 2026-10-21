@@ -49,29 +49,31 @@ try {
   check('quotes live', false, e.message);
 }
 
-// the engines file: the one the Engines page, the brief and the Telegram alerts all read
+// the Swing v2 feed: the Signals, Trades and company pages read signals.json; Telegram and the brief read engines.json
 try {
-  const { r, text } = await get('/engines.json');
+  const { r, text } = await get('/signals.json');
   const j = JSON.parse(text);
-  const eng = Object.keys(j.engines ?? {});
-  check('engines.json has the five AI engines', r.status === 200 && eng.length === 5, eng.join(','));
+  check('signals.json answers with the Swing v2 schema', r.status === 200 && j.schema === 'alpha-signals/2', j.schema);
   const ageDays = (Date.now() - new Date(j.data_through).getTime()) / 864e5;
-  check('engines.json is built on recent prices', ageDays < 6, `data through ${j.data_through}`);
-  const bad = (j.signals ?? []).filter((s) => !(s.sl < s.ref_price && s.ref_price < s.targets[0] && s.targets[0] <= s.targets[1] && s.targets[1] <= s.targets[2]));
-  check('every plan has stop < price < T1 <= T2 <= T3', bad.length === 0, bad.map((x) => x.id).join(','));
+  check('signals.json is built on recent prices', ageDays < 6, `data through ${j.data_through}`);
+  check('the market gate states all four checks', j.gate?.checks?.length === 4 && typeof j.gate.on === 'boolean');
+  const bad = (j.signals ?? []).filter((s) => !(s.sl < s.ref_price && s.ref_price < s.t1_plan && s.t1_plan < s.t2_plan));
+  check('every plan has stop < signal close < T1 < T2', bad.length === 0, bad.map((x) => x.id).join(','));
   const active = (j.signals ?? []).filter((s) => s.status === 'pending' || s.status === 'open');
   const dup = active.map((s) => s.sym).filter((x, i, a) => a.indexOf(x) !== i);
   check('no stock has two active trades', dup.length === 0, dup.join(','));
-  check('every engine states its record', eng.every((k) => j.engines[k].status && j.engines[k].metrics && j.engines[k].trades?.holdout && j.engines[k].importance?.length));
-  check('every engine separates ranking, trading and alert verdicts', eng.every((k) => j.engines[k].ranking_status && j.engines[k].trading_status && typeof j.engines[k].alertable === 'boolean' && j.engines[k].alert_why));
-  check('exit outcomes reconcile to the trade count', eng.every((k) => { const e = j.engines[k]; return Object.values(e.exits).reduce((a, b) => a + b, 0) === e.exits_n; }));
+  check('the book limits hold (at most 10 open)', active.length <= 10, String(active.length));
+  const lockBug = active.filter((s) => s.half && s.stop_now !== undefined && s.entry !== undefined && s.stop_now <= s.entry);
+  check('after T1 the stop is above the entry (profit lock), never equal to it', lockBug.length === 0, lockBug.map((x) => x.id).join(','));
+  const compat = JSON.parse((await get('/engines.json')).text);
+  check('engines.json keeps the shape the alerts read', !!compat.engines?.swing && typeof compat.engines.swing.alertable === 'boolean' && Array.isArray(compat.signals));
   const syms = active.slice(0, 5).map((s) => s.sym);
   if (syms.length) {
     const px = JSON.parse((await get(`/api/px?s=${syms.join(',')}`)).text);
     check('live prices answer for the active signals', px.ok && Object.keys(px.quotes).length >= Math.ceil(syms.length / 2), `${Object.keys(px.quotes ?? {}).length}/${syms.length}`);
   }
 } catch (e) {
-  check('engines.json', false, e.message);
+  check('signals.json', false, e.message);
 }
 try {
   const { r, text } = await get('/c/TCS.json');

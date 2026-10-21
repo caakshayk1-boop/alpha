@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Bar, Chg, Rv } from '@/components/ui';
-import { useEngines, useFeed, usePx } from '@/lib/data';
+import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
 import { crore, dash, num } from '@/lib/format';
@@ -45,7 +45,7 @@ export function PortfolioXray() {
   const setCell = (i: number, k: 'sym' | 'q' | 'a', v: string) => save(lines.map((l, j) => { const n = j === i ? { ...l, [k]: v.replace(/\s/g, '') } : l; return [n.sym, n.q, n.a].filter((x, idx) => idx < 2 || x !== '').join(' '); }).join('\n'));
   const isSample = text.trim() === SAMPLE;
   const px = usePx(parsed.ok.map((h) => h.sym));
-  const eng = useEngines();
+  const eng = useSignals();
   const X = useMemo(() => {
     if (!parsed.ok.length) return null;
     const hs = parsed.ok.map((h) => {
@@ -188,18 +188,18 @@ export function ReverseDcf() {
 // ── Confluence board ──────────────────────────────────────────────────
 export function Confluence({ limit = 8 }: { limit?: number }) {
   const s = useFeed('screen');
-  const eng = useEngines();
+  const eng = useSignals();
   const MIN_CHECKS = 6;                      // a name needs at least six of the nine checks to apply before it can be ranked at all
   const { rows, skipped } = useMemo(() => {
     if (!s.data) return { rows: [], skipped: 0 };
     const sigs = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending');
-    const ok = new Set((eng.data ? Object.values(eng.data.engines).filter((e) => e.alertable).map((e) => e.key) : []));
+    const full = !!eng.data?.alertable;      // full weight only once the rule book's holdout clears the alert bar
     let skipped = 0;
     const out = s.data.rows.filter((r) => has(r.turnover_cr) && r.turnover_cr >= 5).map((r) => {
       const mine = sigs.filter((x) => x.sym === r.sym);
       const d = decide(r, mine);
       const passed = d.checks.filter((c) => c.pass === true).length, known = d.checks.filter((c) => c.pass !== null).length;
-      const engines = mine.filter((x) => ok.has(x.engine)).length + mine.filter((x) => !ok.has(x.engine)).length * 0.5;
+      const engines = mine.length * (full ? 1 : 0.5);
       const score = (known ? passed / known : 0) * 6 + engines * 2 + (r.mf?.rank && r.mf.rank <= 100 ? 1 : 0) + (r.vd?.c === 'BUY' ? 1 : 0) - (r.risk?.level === 'HIGH' ? 3 : 0);
       return { r, mine, d, passed, known, total: d.checks.length, score };
     }).filter((x) => { if (x.known < MIN_CHECKS) { skipped++; return false; } return true; });
@@ -220,7 +220,7 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
                 <span className="pick-chg"><Chg v={r.r1y} dp={0} /><span>1 year</span></span>
                 <span className="pick-tags">
                   <span className={`tag ${sc.tone}`} title={sc.title}>{sc.text}</span>
-                  {mine.map((m) => <span key={m.id} className="tag acc">{m.engine_name} signal</span>)}
+                  {mine.map((m) => <span key={m.id} className="tag acc">Swing {m.setup.toLowerCase()} signal</span>)}
                 </span>
                 <span className="pick-fac"><FactorStrip row={r} /></span>
                 <span className="pick-why">{d.bull[0]?.text ?? d.headline}</span>

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { DataStatusTable } from '@/components/DataStamp';
 import MetricGlossary from '@/components/MetricGlossary';
-import { useEngines, useFeed } from '@/lib/data';
+import { useSignals, useFeed } from '@/lib/data';
 import { ago, dateLabel } from '@/lib/format';
 
 const SOURCES: [string, string, string][] = [
@@ -14,12 +14,28 @@ const SOURCES: [string, string, string][] = [
   ['IPOs', 'NSE and public issue data', 'Daily'],
   ['Funds', 'AMFI official NAV via mfapi.in', 'Daily; direct plans only'],
   ['News', 'Publisher RSS feeds', 'Several times a day'],
-  ['Engines', 'Daily prices from Yahoo Finance for the screened stocks: dividend-adjusted to train the models, traded prices for every plan and mark', 'Signals refresh after each close'],
+  ['Signals', 'Daily traded prices from Yahoo Finance for the screened stocks, the Nifty and India VIX', 'Rebuilt after each close'],
   ['Weekly reads', 'Screen figures, written up by a language model and labelled as such', 'Saturdays'],
 ];
 
 // Only the datasets this site actually reads; the health feed also tracks other products.
 const SHOWN = new Set(['Stock screen', 'Markets', 'Market Intelligence', 'Fund screen', 'New listings', 'World news']);
+
+/** The rule book as the engine publishes it (public/signals.json `rules`), so this page and the engine cannot disagree. */
+function RuleList() {
+  const f = useSignals();
+  const r = f.data?.rules;
+  if (!r) return <p className="dim">Loading the rules…</p>;
+  return (
+    <div className="mrules">
+      <div><b>1. Market gate</b> (all four, at the signal close)<ul>{r.gate.map((x) => <li key={x}>{x}</li>)}</ul></div>
+      <div><b>2. Stock</b> (all of)<ul>{r.stock.map((x) => <li key={x}>{x}</li>)}</ul></div>
+      <div><b>3. Setup</b> (one of)<ul>{Object.entries(r.setups).map(([k, v]) => <li key={k}><i>{k}</i>: {v}</li>)}</ul></div>
+      <div><b>4. Plan</b><ul>{r.plan.map((x) => <li key={x}>{x}</li>)}</ul></div>
+      <div><b>5. Book</b><ul>{r.book.map((x) => <li key={x}>{x}</li>)}</ul></div>
+    </div>
+  );
+}
 
 /** Every explanation the site needs lives here, one anchored section per page, so the pages themselves carry only data.
  *  Each page's header links to its section (PageHead `method`). Text states rules and limits; it never repeats a figure. */
@@ -30,14 +46,16 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     <p>Labels: <i>live HH:MM IST</i> only inside NSE hours with a trade in the last 15 minutes; <i>last trade</i> for a quieter same-day trade; otherwise the session&apos;s <i>close</i>. A stock with no trade in the current session shows its last trade date and no day move. A one-day move beyond NSE&apos;s 20% band is flagged: it usually means a corporate action or a wrong previous close in the source.</p>
   </> },
   { id: 'trades', title: 'Trades: how the paper book is marked', body: <>
-    <p>Alpha places no order. Each engine signal is a plan written once at issue: entry at the next session&apos;s open, a stop, three targets and a time limit. The evening run (18:00, 20:00 and 22:30 IST) walks every plan through the day&apos;s full high and low and books what happened. The Trades page applies the same rules to the latest price between runs.</p>
-    <p><b>Marked R</b> = (thirds already sold at their booked prices + the rest at the latest price − entry) ÷ the risk at entry. <b>Today</b> is the marked R minus the R at the previous close; a trade entered at today&apos;s open counts from its entry. Rupee figures are R × the risk per trade you enter (kept in this browser). The day curve redraws the same sum on every five-minute bar of the session. Marks are before costs.</p>
-    <p><b>Decisions for the next session:</b> <i>Enter</i>: a new signal, bought at the next open unless that open is past T1 or at/below the stop. <i>Exit</i>: the stop, T3 or the time limit is reached. <i>Modify</i>: a target is reached (sell a third, move the stop up) or the evening run booked one today (move the stop). <i>Hold</i>: no level reached. During market hours they are provisional; after the 15:30 close they are final until the evening run books them.</p>
+    <p>Alpha places no order. Each signal is a plan written once at issue (the rules are under Signals below). The evening run (18:00, 20:00 and 22:30 IST) walks every plan through the day&apos;s full high and low and books what happened. Between runs the Trades page applies the same rules to the latest price, so the state you see during the session is what the evening run will most likely book.</p>
+    <p><b>Marked R</b> = (the half sold at T1, at its booked price + the rest at the latest price − entry) ÷ the risk at entry. <b>Today</b> is the marked R minus the R at the previous close; a trade entered at today&apos;s open counts from its entry. Rupee figures are R × the risk per trade you enter (kept in this browser). The day curve redraws the same sum on every five-minute bar. Marks are before costs; closed trades are after 0.25%.</p>
+    <p><b>The stop has three names.</b> <i>Stop</i>: the original, below the structure. <i>Profit lock</i>: after T1 the stop on the remaining half moves to entry + 0.5R, so a winner that reaches T1 can no longer turn into a loss and the stop is never the same price as the entry. <i>Trailing stop</i>: after that it rises with the lowest low of the last 10 sessions, and never falls.</p>
+    <p><b>Decisions for the next session:</b> <i>Enter</i>: buy at the open within the 2% gap limit. <i>Exit</i>: a stop, T2 or the time limit is reached. <i>Modify</i>: sell half at T1 and set the profit lock, raise the trailing stop, or place the stop on a trade entered today. <i>Hold</i>: no change. Provisional during market hours, final after the 15:30 close.</p>
   </> },
-  { id: 'engines', title: 'Engines: how they are tested', body: <>
-    <p>Five machine-learning models rank every screened stock each evening from 58 measures; the top ranks become signals. Each model is judged twice. <b>Ranking skill</b> (information coefficient): the daily correlation between the ranking and each stock&apos;s return beyond the market median over the model&apos;s horizon; 0 is a coin flip, a few hundredths sustained is meaningful. <b>Net trading result</b>: every trade enters at the next open, follows the exit plan and pays the round-trip cost, compared with random liquid stocks on the same days with the same stop-and-target geometry. Phone alerts need both.</p>
-    <p>Every prediction comes from a model trained only on data fully known at the time (walk-forward, refit quarterly, with a gap equal to the horizon). The design and pass marks were fixed before the holdout was read, and it was read once. R is the amount risked: +1R made what the stop would have lost. The month-clustered t treats each month as one observation because trades overlap; between −2 and +2 is indistinguishable from luck. Feature influence is the skill lost when an input is scrambled: influence, not cause. Each stock is also read against its own group benchmark: in an uptrend when above a rising 50-day average, leading when ahead of the Nifty over three months.</p>
-    <p><b>Limits.</b> Survivorship: the universe is today&apos;s listed companies, which flatters small or beaten-down picks (the most-traded-300 rows are the check). One holdout look is one sample, not proof. Thin stocks fill worse than the assumed cost. Overlapping trades are not independent. A forward record began at launch and is the only number that cannot have been fitted to the past.</p>
+  { id: 'engines', title: 'Signals: the Swing v2 rule book', body: <>
+    <p>One book, launched 21 Oct 2026, replacing five machine-learning engines that ranked every stock every evening and always produced picks; none cleared a significant holdout. Swing v2 trades only when the market itself allows, only leaders, only on two textbook setups, with a plan written before entry. On most days it issues nothing; that is the design. The rules, word for word as the engine runs them:</p>
+    <RuleList />
+    <p><b>How it was tested.</b> The rules were fixed in code before any test, with round textbook numbers, not tuned. One backtest on about six years of daily prices: development to 31 Dec 2024, holdout from 1 Jan 2025, read once. It is compared with the same book without the market gate (what the gate is worth) and with random liquid stocks on the same days under the same plan (what stock selection is worth). The month-clustered t treats each month as one observation because trades overlap; between −2 and +2 is indistinguishable from luck. Phone alerts switch on only when the holdout t is at least 2.</p>
+    <p><b>Limits.</b> Survivorship: the universe is today&apos;s listed companies, which flatters any long book. One holdout is one sample. Fills are at the open with 0.25% round-trip cost and no other slippage. The forward record since launch is the only number that cannot have been fitted to the past.</p>
   </> },
   { id: 'today', title: 'Today and the Barometer', body: <>
     <p>The day&apos;s figures (breadth, sector medians, movers) come from whichever source describes the newer session: the live snapshot of ~990 stocks, or the evening screen; on a tie the screen. Stocks with no trade this session are left out and counted. The Barometer (0 to 100) combines index trend, the share above the 200-day average, the day&apos;s participation, the VIX and new highs; it is recomputed live from the same inputs as the published reading. The 200-day share is a close figure.</p>
@@ -62,8 +80,8 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
 
 export default function About() {
   const h = useFeed('data-health');
-  const eng = useEngines();
-  const closed = eng.data ? Object.values(eng.data.live_record).reduce((a, r) => a + r.closed, 0) : null;
+  const eng = useSignals();
+  const closed = eng.data ? eng.data.record.closed : null;
   return (
     <>
       <PageHead eyebrow="Method and sources" title="How every number" em="is made." />
@@ -76,7 +94,7 @@ export default function About() {
           <div className="eyebrow">What this is not</div>
           <ul className="muted mlist">
             <li>Research tools, not advice, and not a recommendation to buy or sell anything. Alpha places no order.</li>
-            <li>Every engine is shown with how it tested on data it never saw, against random stocks, including when it did not beat them. A forward record began on {eng.data?.launched ? dateLabel(eng.data.launched) : 'launch day'}{closed === null ? '' : closed === 0 ? '; none of its trades has closed yet' : `; ${closed} trades have closed, too few to conclude anything`}.</li>
+            <li>The rule book is shown with how it tested on data it never saw, against random stocks and without its market gate, whatever the answer. A forward record began on {eng.data?.launched ? dateLabel(eng.data.launched) : 'launch day'}{closed === null ? '' : closed === 0 ? '; none of its trades has closed yet' : `; ${closed} trades have closed, too few to conclude anything`}.</li>
             <li>Where a figure cannot be computed it shows a dash, never an estimate.</li>
           </ul>
         </Rv>
@@ -86,7 +104,6 @@ export default function About() {
           <article key={x.id} id={x.id} className="panel tight msec">
             <h2>{x.title}</h2>
             {x.body}
-            {x.id === 'trades' && eng.data && <ol className="muted mlist">{eng.data.exit_plan.map((l) => <li key={l}>{l}</li>)}</ol>}
           </article>
         ))}
       </section>
