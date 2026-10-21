@@ -1450,3 +1450,15 @@ html.anim .fin-explore { animation: gateIn var(--dur-base) var(--ease-standard) 
 .tbl-text th, .tbl-text td { white-space: normal; }
 .tbl.stress { min-width: 0; margin-top: 12px; } .tbl.stress caption { text-align: left; font-size: 12.5px; padding-bottom: 6px; }
 .co-context { margin: 8px 0 0; font-size: 13px; max-width: 34ch; margin-left: auto; } @media (max-width: 760px) { .co-context { margin-left: 0; } }
+
+/* High contrast (Pro §30): the site setting, or the device's "more contrast" when the setting is left as the device.
+   Secondary text moves to the body colour's strength, hairlines become visible lines, focus rings thicken. */
+html[data-contrast='high']:not([data-theme='dark']) { --muted: #1f2338; --dim: #2b3047; --line: rgba(18, 21, 40, 0.32); --line-2: rgba(18, 21, 40, 0.55); --control-line: #3a3f55; --warn: #5c3a00; }
+html[data-contrast='high'][data-theme='dark'] { --muted: #e1e4f5; --dim: #d2d6ec; --line: rgba(236, 238, 250, 0.34); --line-2: rgba(236, 238, 250, 0.58); --control-line: #c3c7de; }
+@media (prefers-contrast: more) {
+  html:not([data-contrast]):not([data-theme='dark']) { --muted: #1f2338; --dim: #2b3047; --line: rgba(18, 21, 40, 0.32); --line-2: rgba(18, 21, 40, 0.55); --control-line: #3a3f55; --warn: #5c3a00; }
+  html:not([data-contrast])[data-theme='dark'] { --muted: #e1e4f5; --dim: #d2d6ec; --line: rgba(236, 238, 250, 0.34); --line-2: rgba(236, 238, 250, 0.58); --control-line: #c3c7de; }
+  html:not([data-contrast]) :focus-visible { outline-width: 3px !important; outline-offset: 2px; }
+}
+html[data-contrast='high'] :focus-visible { outline-width: 3px !important; outline-offset: 2px; }
+html[data-contrast='high'] .panel, html[data-contrast='high'] .chip, html[data-contrast='high'] .tag { border-color: var(--line-2); }

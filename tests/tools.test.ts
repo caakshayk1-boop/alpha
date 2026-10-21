@@ -53,3 +53,15 @@ test('§22.6: a gap below the stop and costs make the planned loss larger, never
   assert.ok(stressLoss(100, 500, 470, 3, 0.25) > stressLoss(100, 500, 470, 0, 0.25));
   assert.equal(stressLoss(100, 500, 470, 0, 0.25), 3000 + 125);
 });
+
+test('share card: dated, says research not advice, missing scores are a dash and no composite is "unranked"', async () => {
+  const { cardLines } = await import('../src/lib/sharecard.ts');
+  const r = { sym: 'TCS', name: 'Tata Consultancy Services', sector: 'Technology', price: 3012.5, r1d: -1.234, q: 82, g: null, v: 40, tech: 55, comp: null } as never;
+  const L = cardLines({ r, bull: [{ text: 'a', weight: 1 }, { text: 'b', weight: 1 }, { text: 'c', weight: 1 }], bear: [], asOf: '20 Oct 2026' });
+  assert.equal(L.comp, 'Composite: unranked');
+  assert.match(L.scores, /Growth —/);
+  assert.match(L.foot, /20 Oct 2026.*Research, not advice/);
+  assert.equal(L.forPts.length, 2);
+  assert.match(L.move, /^−1\.23%/);
+  assert.equal(L.price, '₹3,012.50');
+});

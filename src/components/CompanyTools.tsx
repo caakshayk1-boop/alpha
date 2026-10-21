@@ -80,6 +80,29 @@ export function ShareButton({ r }: { r: Row }) {
   return <><button type="button" className="chip" onClick={share} title={`Shares: “${text}” and the link. Nothing private is included.`}>Share</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</>;
 }
 
+/** The share image (lib/sharecard.ts): drawn in this browser from the page's own figures, then shared as a file where the
+ *  device can, else downloaded. Nothing is uploaded. */
+export function ShareImageButton({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: number }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const make = async () => {
+    setMsg('Drawing…');
+    try {
+      const { drawCard } = await import('@/lib/sharecard');
+      const d = decide(r, sigs, years);
+      const blob = await drawCard({ r, bull: d.bull, bear: d.bear, asOf: r.last_date ? dateLabel(r.last_date) : 'the last session' });
+      if (!blob) { setMsg('This browser cannot draw the image.'); return; }
+      const file = new File([blob], `${r.sym}-alpha.png`, { type: 'image/png' });
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean; share?: (d: { files: File[]; title: string }) => Promise<void> };
+      if (nav.canShare?.({ files: [file] }) && nav.share) { await nav.share({ files: [file], title: `${r.sym} on alpha` }); setMsg('Shared.'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      setMsg('Image saved.');
+    } catch { setMsg(null); }
+  };
+  return <><button type="button" className="chip" onClick={make} title="A 1200 × 630 image of this company's figures and its case and countercase, dated, drawn in this browser.">Image</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</>;
+}
+
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
 export function ExternalLinks({ sym }: { sym: string }) {
   const e = encodeURIComponent(sym);
