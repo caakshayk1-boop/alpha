@@ -9,7 +9,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +35,17 @@ jobs:
         run: node scripts/a11y.mjs
       - name: Colour contrast (every text token on every surface, 12 theme and mode combinations, 4.5:1)
         run: node scripts/contrast.mjs
+      - name: Visual regression (5 routes × 360/768/1440 × light/dark, frozen data and clock)
+        run: node scripts/visual.mjs
+      - name: Numeric integrity, motion and the decision-ladder walkthroughs
+        run: node scripts/integrity.mjs
+      - name: Upload screenshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs
+          path: tests/visual/diff/
+          if-no-files-found: ignore
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

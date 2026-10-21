@@ -16,3 +16,5 @@ public/universe.json
 !.claude/commands/
 public/build.json
 public/c.next/
+
+tests/visual/diff/

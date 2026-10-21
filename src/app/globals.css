@@ -1438,7 +1438,7 @@ html[data-motion='reduced'] { --dur-instant: 0ms; --dur-fast: 0ms; --dur-base: 0
 .watch-btn .star { display: inline-block; }
 html.anim .watch-btn.on .star { animation: starPop 200ms var(--ease-standard); }
 @keyframes starPop { 50% { transform: scale(1.12); } }
-.watch-btn.on { color: var(--text); border-color: var(--line-2); }
+.watch-btn.on { background: var(--accent-soft); color: var(--accent-2); border-color: var(--accent); }      /* not the dark selected fill: its text was the same colour as the fill (found by the visual gate) */
 html.anim .count-tint { animation: countTint var(--dur-flash) var(--ease-standard); }
 @keyframes countTint { from { background: var(--accent-soft); } to { background: transparent; } }
 /* Financial explorer (Pro §28 P1): a line's history and source on click */
