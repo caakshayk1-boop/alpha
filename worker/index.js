@@ -308,6 +308,9 @@ async function quote([id, name, group, symbol, prefix, dp]) {
       // 52-week range (Yahoo's own, equal to the max high / min low of the daily bars): the live Barometer's trend input
       hi52: Number(meta?.fiftyTwoWeekHigh) > 0 ? Number(meta.fiftyTwoWeekHigh) : null,
       lo52: Number(meta?.fiftyTwoWeekLow) > 0 ? Number(meta.fiftyTwoWeekLow) : null,
+      // the session's own range, for the Markets detail sheet; null when Yahoo does not say
+      dayHi: Number(meta?.regularMarketDayHigh) > 0 ? Number(meta.regularMarketDayHigh) : null,
+      dayLo: Number(meta?.regularMarketDayLow) > 0 ? Number(meta.regularMarketDayLow) : null,
     };
   } catch (e) {
     // Omitted by the client, never drawn as 0%: a flat market and a dead feed must not look alike.
@@ -315,9 +318,35 @@ async function quote([id, name, group, symbol, prefix, dp]) {
   }
 }
 
+// ── one instrument, a year of daily bars ─────────────────────────────────
+// /api/instrument?id=nifty  →  { ok, id, name, t:[epoch s], o,h,l,c:[...] }   The Markets detail sheet computes its levels
+// (averages, 52-week range, pivots, typical range) from these. Only ids in INSTRUMENTS, so no other symbol can be fetched.
+// Cached 15 minutes. A bar missing any of open/high/low/close is dropped, never filled.
+async function instrument(url, ctx) {
+  const id = String(url.searchParams.get('id') || '').toLowerCase();
+  const inst = INSTRUMENTS.find((x) => x[0] === id);
+  if (!inst) return json({ ok: false, error: 'unknown instrument' }, 404);
+  const cache = caches.default;
+  const key = new Request(`https://alpha.askakshay.com/__inst_v1/${id}`);
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  const bars = await yahooBars(inst[3], '1y', '1d').catch(() => null);
+  if (!bars) return json({ ok: false, error: 'no history for this instrument' }, 502);
+  const out = { ok: true, id, name: inst[1], t: [], o: [], h: [], l: [], c: [] };
+  const rr = (x) => Math.round(x * 10000) / 10000;
+  bars.t.forEach((t, i) => {
+    if (!(bars.o[i] > 0 && bars.h[i] > 0 && bars.l[i] > 0 && bars.c[i] > 0)) return;
+    out.t.push(t); out.o.push(rr(bars.o[i])); out.h.push(rr(bars.h[i])); out.l.push(rr(bars.l[i])); out.c.push(rr(bars.c[i]));
+  });
+  if (out.t.length < 20) return json({ ok: false, error: 'too little history' }, 502);
+  const res = json(out, 200, 'public, max-age=300, s-maxage=900');
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 async function quotes(ctx) {
   const cache = caches.default;
-  const key = new Request('https://alpha.askakshay.com/__quotes_v3');
+  const key = new Request('https://alpha.askakshay.com/__quotes_v4');
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const list = await Promise.all(INSTRUMENTS.map(quote));
@@ -641,6 +670,9 @@ export default {
     }
     if (url.pathname === '/api/summary' || url.pathname === '/api/summary/') {
       return summary(ctx);
+    }
+    if (url.pathname === '/api/instrument' || url.pathname === '/api/instrument/') {
+      return instrument(url, ctx);
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);

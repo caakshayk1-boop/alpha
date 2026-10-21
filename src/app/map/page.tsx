@@ -7,7 +7,7 @@ import { Async, Chg, PageHead } from '@/components/ui';
 import { useFeed } from '@/lib/data';
 import { crore, num, pct } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
-import { squarify } from '@/lib/treemap';
+import { labelFor, squarify } from '@/lib/treemap';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 import { useToday } from '@/lib/useToday';
@@ -57,14 +57,6 @@ const median = (xs: number[]) => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
-
-/** Label that is always legible: the font is derived from the tile, and a tile too small for a 10px label goes unlabeled. */
-function labelFor(w: number, h: number, sym: string) {
-  const byWidth = (w - 6) / (Math.max(sym.length, 3) * 0.7);
-  const byHeight = (h - 4) * 0.55;
-  const font = Math.min(15, byWidth, byHeight);
-  return font >= 10 ? font : 0;   // below 10px a label is noise; the list under the map carries every name
-}
 
 export default function MapPage() {
   const s = useFeed('screen');
@@ -217,8 +209,8 @@ export default function MapPage() {
                   {layout.tiles.map((t) => {
                     const r = t.data;
                     const v = valueOf(r);
-                    const font = labelFor(t.w, t.h, r.sym);
-                    const showV = font >= 9 && t.h > font * 2.4 && t.w > 38;
+                    const { font, text } = labelFor(t.w, t.h, r.sym);
+                    const showV = font >= 8.5 && t.h > font * 2.4 && t.w > 34;
                     // A tile under 24px is too small to aim at by touch or reach usefully by keyboard; the text version below lists every
                     // stock as a link, so tiny tiles stay mouse-clickable but leave the tab order and the accessibility tree.
                     const tiny = t.w < 24 || t.h < 24;
@@ -229,7 +221,7 @@ export default function MapPage() {
                         onMouseMove={(e) => { const b = box.current?.getBoundingClientRect(); if (b) setTip({ r, x: e.clientX - b.left, y: e.clientY - b.top }); }}
                         onFocus={() => setSel(r)}
                         onClick={() => setSel(r)} onKeyDown={(e) => { if (e.key === 'Enter') setSel(r); }}>
-                        {font > 0 && <b style={{ fontSize: font, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'clip', maxWidth: '100%' }}>{r.sym}</b>}
+                        {font > 0 && <b style={{ fontSize: font, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'clip', maxWidth: '100%', whiteSpace: 'nowrap', letterSpacing: font < 9 ? '-0.01em' : undefined }} title={text !== r.sym ? r.sym : undefined}>{text}</b>}
                         {showV && <>{' '}<span style={{ fontSize: Math.max(8, font * 0.78) }}>{fmtV(v)}</span></>}
                       </div>
                     );

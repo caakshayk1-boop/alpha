@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
+import { CountUp, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
@@ -14,6 +14,7 @@ import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
 import { useSignals, useFeed, useSummary } from '@/lib/data';
 import { useBook } from '@/lib/useBook';
 import { AskAI } from '@/components/Explain';
+import { BriefDigest, QuickSizer, RotationWidget } from '@/components/widgets/TodayExtras';
 import { dateLabel, num } from '@/lib/format';
 import { useBarometer } from '@/lib/useBarometer';
 import { sessionHead } from '@/lib/session';
@@ -22,7 +23,8 @@ import { takeaway, vixWord } from '@/lib/takeaway';
 import { useStoredList } from '@/lib/store';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
-const GAUGE_LEN = Math.PI * 52;   // the semicircle path below: radius 52
+const GAUGE_LEN = Math.PI * 52;
+const fmtInt = (v: number) => num(Math.round(v));   // the semicircle path below: radius 52
 
 /** Today's read: the headline sentence, then one ink card for the Barometer and one card for the day's breadth.
  *  Every word is built from the data (lib/takeaway.ts, /api/summary, and for breadth the one "today" rule in lib/live.ts);
@@ -99,7 +101,7 @@ function TodayHero() {
           <div className="eyebrow">{day && dayStamp ? `${dayStamp} · ${num(day.counted)} stocks` : 'Breadth'}</div>
           {day && day.counted ? (
             <>
-              <div className="row"><div className="n up">{num(day.up)}<small>rose</small></div><div className="n down">{num(day.down)}<small>fell</small></div></div>
+              <div className="row"><div className="n up"><CountUp value={day.up} format={fmtInt} /><small>rose</small></div><div className="n down"><CountUp value={day.down} format={fmtInt} /><small>fell</small></div></div>
               <div className="split" aria-hidden><i className="u" style={{ width: `${share(day.up)}%` }} /><i className="f" style={{ width: `${share(day.flat)}%` }} /><i className="d" style={{ width: `${share(day.down)}%` }} /></div>
               <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
               {b200 && <div className="foot">At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of {num(b200.withHistory)} with a 200-day history sat above their 200-day average.</div>}
@@ -193,6 +195,7 @@ export default function Home() {
         <div className="grid g2"><LiveMovers /><LiveWatchlist /></div>
       </section>
       <section className="wrap section"><TradesCard /><AskAI subject="market" title="Ask about today's market" compact /></section>
+      <section className="wrap section" aria-label="Rotation, the week and a position sizer"><LazyMount minHeight={260}><div className="grid g3"><RotationWidget /><BriefDigest /><QuickSizer /></div></LazyMount></section>
       <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
     </TodayProvider>
   );

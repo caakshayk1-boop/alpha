@@ -713,3 +713,39 @@ test('plan: decisions name the order: sell half and lock, raise the trail, enter
   assert.match(decide2(pend, mark(pend, null), '2026-10-19')!.detail, /above ₹102\.00/);
   assert.deepEqual(group2([d(base2, 103), d(base2, 94), d(base2, 111)]).map((g) => g.kind), ['exit', 'modify', 'hold']);
 });
+
+import { labelFor } from '../src/lib/treemap.ts';
+test('map labels: big tiles get the whole symbol, small ones its first letters, slivers stay blank', () => {
+  assert.deepEqual(labelFor(120, 60, 'HDFCBANK').text, 'HDFCBANK');
+  const mid = labelFor(40, 30, 'EICHERMOT');
+  assert.ok(mid.font >= 6.5 && mid.text.length >= 3 && 'EICHERMOT'.startsWith(mid.text), JSON.stringify(mid));
+  assert.equal(labelFor(36, 26, 'TCS').text, 'TCS');
+  assert.deepEqual(labelFor(12, 30, 'TCS'), { font: 0, text: '' });
+  assert.deepEqual(labelFor(40, 8, 'TCS'), { font: 0, text: '' });
+});
+
+import { highlights, levels } from '../src/lib/levels.ts';
+test('levels: averages, pivots from the last complete session, 52-week range and streak', () => {
+  const n = 260, t = Array.from({ length: n }, (_, i) => 1735700000 + i * 86400);
+  const c = Array.from({ length: n }, (_, i) => 100 + i * 0.5);
+  const b = { t, o: c, h: c.map((x) => x + 1), l: c.map((x) => x - 1), c };
+  const lv = levels(b, null)!;
+  assert.equal(lv.last, c[n - 1]);
+  assert.equal(Math.round(lv.sma20! * 100) / 100, Math.round((c.slice(-20).reduce((a, x) => a + x, 0) / 20) * 100) / 100);
+  const H = c[n - 1] + 1, L = c[n - 1] - 1, C = c[n - 1], P = (H + L + C) / 3;
+  assert.ok(Math.abs(lv.pivots!.p - P) < 1e-9 && Math.abs(lv.pivots!.r1 - (2 * P - L)) < 1e-9);
+  assert.equal(lv.hi52!.v, c[n - 1] + 1);
+  assert.ok(lv.streak >= 250, 'every close higher');
+  const open = levels(b, 230, true)!;
+  assert.ok(Math.abs(open.pivots!.p - (c[n - 2] + 1 + c[n - 2] - 1 + c[n - 2]) / 3) < 1e-9, 'session open: pivots from the bar before');
+  assert.ok(highlights(lv).includes('Within 1% of its 52-week high'));
+  assert.equal(levels({ t: [1], o: [1], h: [1], l: [1], c: [1] }, 1), null);
+});
+
+import { rotationShift } from '../src/lib/rotationShift.ts';
+test('rotation shift: strength against the Nifty over four weekly points, strongest first', () => {
+  const feed = { nifty: [100, 100, 100, 100, 110], groups: { A: { close: [100, 0, 0, 0, 121], members: ['x'], real_index: false }, B: { close: [100, 0, 0, 0, 99], members: [], real_index: true }, C: { close: [null, 1, 1, 1, 5], members: [], real_index: false } } };
+  const s = rotationShift(feed, 4);
+  assert.deepEqual(s.map((x) => [x.name, x.shift]), [['A', 10], ['B', -10]]);
+  assert.deepEqual(rotationShift({ nifty: [1], groups: {} }, 4), []);
+});

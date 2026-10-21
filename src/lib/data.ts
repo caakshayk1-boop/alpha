@@ -22,7 +22,7 @@ export interface FeedMap {
 }
 export type FeedName = keyof FeedMap;
 
-const BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? '';
+export const BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? '';
 const memo = new Map<string, Promise<unknown>>();
 
 /** Requests started by the inline script in app/layout.tsx before this bundle ran (Today only). Each is used once. */

@@ -212,7 +212,7 @@ export interface SeasonFeed { years: number; months: string[]; caveats: string[]
 
 export interface Quote {
   id: string; name: string; group: string; symbol: string; prefix: string; dp: number;
-  price: number | null; prev?: number; pct?: number; series?: number[]; state?: string | null; at?: number | null; hi52?: number | null; lo52?: number | null;
+  price: number | null; prev?: number; pct?: number; series?: number[]; state?: string | null; at?: number | null; hi52?: number | null; lo52?: number | null; dayHi?: number | null; dayLo?: number | null;
 }
 export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; total: number; quotes: Quote[] }
 
