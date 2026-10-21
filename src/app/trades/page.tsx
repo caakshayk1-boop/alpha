@@ -79,7 +79,7 @@ export default function TradesPage() {
 
   return (
     <>
-      <PageHead method="trades" eyebrow="Trades · Swing v2" title="Every executed signal," em="marked live." />
+      <PageHead method="trades" eyebrow="Paper book · Swing v2 · experimental research" title="Every paper trade," em="marked to the price." />
       <section className="wrap">
         <Async loading={q.loading} error={q.error} rows={4}>
           {feed && (

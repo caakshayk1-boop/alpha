@@ -5,7 +5,7 @@
 //   everything else    the static export in ./out
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
-import { SYSTEM_PROMPT, advisoryWording, answerText, limitKey, buildUserMessage, checkAnswer, factsFor, factsForMarket, factsForSignal, validateQuestion } from './explain.js';
+import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsForMarket, factsForSignal, parseClaims, validateClaims, validateQuestion } from './explain.js';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -531,11 +531,55 @@ function tooMany(key) {
   if (seen.size > 5000) for (const k of seen.keys()) { seen.delete(k); if (seen.size <= 4000) break; }   // drop the oldest, never everyone
   return false;
 }
-function overDailyCeiling() {
+const DAILY_CEILING = 800;
+/** The day's model calls, counted ONCE for the whole deployment by the Quota Durable Object (A13): an isolate-local counter
+ *  resets per isolate, so it never capped the day. Falls back to the per-isolate count only when the binding is missing. */
+async function overDailyCeiling(env) {
   const d = new Date().toISOString().slice(0, 10);
+  if (env.QUOTA) {
+    try {
+      const stub = env.QUOTA.get(env.QUOTA.idFromName('explain'));
+      const r = await stub.fetch(`https://quota/take?day=${d}&max=${Number(env.EXPLAIN_DAILY_MAX) || DAILY_CEILING}`);
+      return !(await r.json()).ok;
+    } catch { return true; }      // the quota cannot be read: fail closed, never spend blind
+  }
   if (day.d !== d) day = { d, n: 0 };
-  return ++day.n > 800;
+  return ++day.n > DAILY_CEILING;
 }
+
+/** One atomic counter per day. A Durable Object runs one request at a time, so take() cannot be raced past the ceiling. */
+export class Quota {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    const u = new URL(request.url);
+    const d = u.searchParams.get('day') || '';
+    const max = Number(u.searchParams.get('max')) || DAILY_CEILING;
+    const n = (await this.state.storage.get(d)) || 0;
+    if (u.pathname === '/peek') return new Response(JSON.stringify({ ok: n < max, used: n, max }));
+    if (n >= max) return new Response(JSON.stringify({ ok: false, used: n, max }));
+    await this.state.storage.put(d, n + 1);
+    const keys = await this.state.storage.list({ limit: 20 });
+    for (const k of keys.keys()) if (k < d) await this.state.storage.delete(k);      // keep only today
+    return new Response(JSON.stringify({ ok: true, used: n + 1, max }));
+  }
+}
+
+/** Whether the configured model really answers, checked against the provider's model list (a key alone is not health).
+ *  Cached for 10 minutes per location. */
+async function modelReady(env) {
+  const model = env.EXPLAIN_MODEL || EXPLAIN_MODEL;
+  const key = new Request(`https://alpha.askakshay.com/__model_v1/${encodeURIComponent(model)}`);
+  const hit = await caches.default.match(key);
+  if (hit) return (await hit.json()).ready === true;
+  let ready = false;
+  try {
+    const r = await fetch(`https://api.anthropic.com/v1/models/${encodeURIComponent(model)}`, { headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(5000) });
+    ready = r.ok;
+  } catch { ready = false; }
+  await caches.default.put(key, new Response(JSON.stringify({ ready }), { headers: { 'cache-control': 'max-age=600' } }));
+  return ready;
+}
+const switchedOff = (env) => !env.ANTHROPIC_API_KEY || env.EXPLAIN_OFF === '1';
 /** Body as text, stopping at `max` bytes even when the request is chunked and has no Content-Length. null = too large. */
 async function readCapped(request, max) {
   const reader = request.body?.getReader();
@@ -560,9 +604,10 @@ function sameSiteOnly(request, url) {
   return true;
 }
 async function explain(request, env, url) {
-  if (request.method === 'GET') return json({ ok: true, configured: Boolean(env.ANTHROPIC_API_KEY) });
+  // EXPLAIN_OFF=1 is the kill switch: set it as a Worker variable and the explainer is off everywhere within a minute.
+  if (request.method === 'GET') return json({ ok: true, configured: !switchedOff(env) && (await modelReady(env)) }, 200, 'public, max-age=60');
   if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
-  if (!env.ANTHROPIC_API_KEY) return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
+  if (switchedOff(env)) return json({ ok: false, reason: 'not_configured', error: 'the explainer is switched off' }, 503);
   if (!sameSiteOnly(request, url)) return json({ ok: false, error: 'not allowed from this origin' }, 403);
   if (!(request.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) return json({ ok: false, error: 'send application/json' }, 415);   // also forces a CORS preflight, which is refused
   const text = await readCapped(request, MAX_BODY);
@@ -600,21 +645,23 @@ async function explain(request, env, url) {
     asOf = one?.last_close_date ?? sig?.data_through ?? null;
   }
   if (facts.length < 5) return json({ ok: false, error: 'not enough figures on file to answer' }, 404);
-  if (overDailyCeiling()) return json({ ok: false, error: 'the explainer has reached its limit for today' }, 429);   // counted only for requests that would really call the model
+  if (await overDailyCeiling(env)) return json({ ok: false, error: 'the explainer has reached its limit for today' }, 429);   // counted only for requests that would really call the model
   // The upstream is fixed. Only a local mock (used in tests) may replace it, so the key can never be sent to another host.
   const base = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(env.ANTHROPIC_BASE || '') ? env.ANTHROPIC_BASE : 'https://api.anthropic.com';
   try {
     const r = await fetch(`${base}/v1/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 400, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: buildUserMessage(facts, q.value) }] }),
+      body: JSON.stringify({ model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, max_tokens: 700, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: buildUserMessage(facts, q.value) }] }),
       signal: AbortSignal.timeout(20_000),
     });
     if (!r.ok) return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
-    const answer = answerText(await r.json());
-    if (!answer) return json({ ok: false, error: 'the explainer returned nothing' }, 502);
-    if (advisoryWording(answer)) return json({ ok: false, error: 'The answer was withheld because it used advisory wording. Alpha gives information, not buy or sell views. Try rephrasing the question.' }, 200);
-    return json({ ok: true, answer, facts, unverifiedNumbers: checkAnswer(answer, facts), model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: asOf });
+    const raw = parseClaims(answerText(await r.json()));
+    if (!raw) return json({ ok: false, error: 'The explainer did not return an answer that could be checked, so nothing is shown. Try again.' }, 200);
+    const { claims, withheld, unknowns } = validateClaims(raw, facts);
+    if (!claims.length) return json({ ok: false, error: withheld.length ? 'Every statement in the answer was withheld because it could not be checked against Alpha\'s figures.' : 'Alpha\'s data does not cover this.', withheld: withheld.map((w) => w.reason), unknowns }, 200);
+    // Question text is never logged or stored (Pro §27.5).
+    return json({ ok: true, claims, withheld: withheld.map((w) => w.reason), unknowns, facts, model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: asOf });
   } catch {
     return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
   }

@@ -106,6 +106,19 @@ test('screen parser: unsupported words are listed as ignored, never silently dro
   assert.ok(q.filters.map((f) => f.label).includes('Oversold (RSI under 30)'));    // "oversold" must survive the currency clean-up of "rs"
   assert.deepEqual(q.unknown, ['zzzz']);
 });
+test('A04: "banks" means banks, never exchanges, asset managers or brokers; a broader search says it is broader', () => {
+  const fin = (sym: string, name: string) => R({ sym, name, sector: 'Financial Services', roe: 18, pe: 10 });
+  const rows = [fin('HDFCBANK', 'HDFC Bank Ltd.'), fin('SBIN', 'State Bank of India'), fin('BSE', 'BSE Ltd.'), fin('NAM-INDIA', 'Nippon Life India Asset Management Ltd.'),
+    fin('ANANDRATHI', 'Anand Rathi Wealth Ltd.'), fin('GROWW', 'Billionbrains Garage Ventures Ltd.'), fin('BAJFINANCE', 'Bajaj Finance Ltd.'), fin('SBILIFE', 'SBI Life Insurance Company Ltd.')];
+  const hits = (q: string) => { const p = parse(q); return rows.filter((r) => p.filters.every((f) => f.test(r))).map((r) => (r as unknown as { sym: string }).sym); };
+  assert.deepEqual(hits('cheap banks roe above 14'.replace('cheap ', '')), ['HDFCBANK', 'SBIN']);
+  assert.deepEqual(hits('insurance'), ['SBILIFE']);
+  assert.equal(hits('financial services').length, rows.length);
+  const p = parse('nbfc roe above 15');
+  assert.match(p.filters.find((f) => f.label.startsWith('Financial Services'))?.note ?? '', /does not separate/);
+  assert.match(parse('banks').filters[0].note ?? '', /registered name/);
+  assert.equal(parse('it stocks').filters[0].note, undefined, 'an exact sector rule carries no note');
+});
 test('screen parser: a company with no value for a measure never matches a clause on it', () => {
   const f = parse('roce above 20').filters[0];
   assert.equal(f.test(R({ roce: null })), false);
@@ -423,6 +436,24 @@ test('company matching never names a bank inside a longer name, or a generic wor
   assert.deepEqual(m('Reliance to expand'), []);                                               // two companies share the word: no guess
   assert.deepEqual(m('General Motors recalls cars'), []);                                      // "General" is an ordinary word even for a large company
   assert.deepEqual(m('Ircon to monetise assets'), []);                                         // small company, 5 letters: precision over recall
+});
+
+test('A05: an institution never resolves to a listed company; the company itself still does', () => {
+  const cos = [
+    { sym: 'FEDERALBNK', name: 'The Federal Bank Ltd.', mcap: 45000 }, { sym: 'FEDBANK', name: 'Fedbank Financial Services Ltd.', mcap: 4000 },
+    { sym: 'BANKINDIA', name: 'Bank of India Ltd.', mcap: 55000 }, { sym: 'UNIONBANK', name: 'Union Bank of India', mcap: 90000 },
+    { sym: 'INFY', name: 'Infosys Ltd.', mcap: 600000 }, { sym: 'FEDX', name: 'Federal Mogul Goetze Ltd.', mcap: 25000 }, { sym: 'BAJFIN', name: 'Bajajfin Services Ltd.', mcap: 500000 },
+  ];
+  const m = (t: string) => mentionsIn(t, cos).map((x) => x.sym);
+  assert.deepEqual(m('Gold climbs as the Federal Reserve signals a pause'), []);
+  assert.deepEqual(m('Federal Reserve minutes weigh on Asian markets; gold firm'), []);
+  assert.deepEqual(m('Reserve Bank of India holds the repo rate'), []);
+  assert.deepEqual(m('Union Budget to raise capex'), []);
+  assert.deepEqual(m('The Federal Bank reports a rise in profit'), ['FEDERALBNK'], 'its full name still matches');
+  assert.deepEqual(m('Shares of Union Bank of India rose'), ['UNIONBANK']);
+  assert.deepEqual(m('Infosys wins a deal'), ['INFY']);
+  assert.deepEqual(m('Bajajfin Housing raises funds'), [], 'a brand word followed by a different capitalised word is another name');
+  assert.deepEqual(m('Bajajfin shares rise'), ['BAJFIN']);
 });
 
 import { fromQuery, SCREEN_DEFAULT, toQuery } from '../src/lib/screenUrl.ts';
@@ -748,4 +779,110 @@ test('rotation shift: strength against the Nifty over four weekly points, strong
   const s = rotationShift(feed, 4);
   assert.deepEqual(s.map((x) => [x.name, x.shift]), [['A', 10], ['B', -10]]);
   assert.deepEqual(rotationShift({ nifty: [1], groups: {} }, 4), []);
+});
+
+import { listOps } from '../src/lib/store.ts';
+test('A09: list operations never lose or duplicate names, so a bulk add keeps all of them', () => {
+  let l: string[] = ['TCS'];
+  for (const s of ['INFY', 'HDFCBANK', 'INFY', 'TCS']) l = listOps.add(l, s);
+  assert.deepEqual(l, ['TCS', 'INFY', 'HDFCBANK']);
+  assert.deepEqual(listOps.addAll(['A'], ['B', 'C', 'B', 'A']), ['A', 'B', 'C']);
+  assert.deepEqual(listOps.remove(['A', 'B', 'C'], 'B'), ['A', 'C'], 'removing one keeps the unrelated names');
+});
+
+import { ttlFor } from '../src/lib/cache.ts';
+test('A12: every endpoint has a lifetime, live prices the shortest', () => {
+  assert.equal(ttlFor('/api/quotes'), 120_000);
+  assert.equal(ttlFor('/api/px?s=TCS'), 120_000);
+  assert.equal(ttlFor('/api/chart?s=TCS&r=1y'), 900_000);
+  assert.equal(ttlFor('/c/TCS.json'), 1_800_000);
+  assert.equal(ttlFor('/data/screen.json'), 600_000);
+  assert.ok(['/signals.json', '/rotation.json', '/universe.json'].every((u) => ttlFor(u) === 600_000));
+});
+
+import { reviewDue } from '../src/lib/card.ts';
+test('§22.3: a card is due for review only on its own triggers or an observed change, never on price alone', () => {
+  const base = buildCard({ question: 'q', companies: [{ sym: 'TCS', name: 'TCS', price: 100, priceAsOf: '2026-10-01' }], nextResults: { TCS: '2026-10-15' } }, new Date('2026-10-02T00:00:00Z'));
+  assert.deepEqual(reviewDue(base, '2026-10-21', { TCS: { price: 120, asOf: '2026-10-20', nextResults: '2026-10-15', engines: [] } }), [], 'a price move alone is not a review trigger');
+  const dated = { ...base, decision: { thesis: 'x', against: null, unknowns: null, reviewOn: '2026-10-20', reviewWhen: null } };
+  assert.match(reviewDue(dated, '2026-10-21')[0], /review date/);
+  assert.deepEqual(reviewDue(dated, '2026-10-19'), []);
+  const results = { ...base, decision: { thesis: null, against: null, unknowns: null, reviewOn: null, reviewWhen: 'results' as const } };
+  assert.match(reviewDue(results, '2026-10-21').join(), /results date 2026-10-15 has passed/);
+  assert.deepEqual(reviewDue(results, '2026-10-10'), []);
+  const moved = reviewDue(base, '2026-10-21', { TCS: { price: 100, asOf: '2026-10-20', nextResults: '2026-11-02', engines: [] } });
+  assert.match(moved.join(), /changed/);
+});
+test('§22.3: decision fields survive export and import; a version 1 card still reads', () => {
+  const c = buildCard({ question: 'q', companies: [{ sym: 'TCS', name: null, price: null, priceAsOf: null }], decision: { thesis: 'Cash-rich', against: 'Margins fall below 20%', unknowns: 'Deal pipeline', reviewOn: '2026-12-01', reviewWhen: 'results' } });
+  const back = normaliseCard(JSON.parse(serializeCard(c)));
+  assert.ok(back.ok && back.value.decision?.against === 'Margins fall below 20%' && back.value.decision.reviewWhen === 'results');
+  const v1 = normaliseCard({ schema: 'alpha.research-card', version: 1, question: 'old', companies: [{ sym: 'TCS' }] });
+  assert.ok(v1.ok && v1.value.decision === null);
+});
+
+import { AREAS, PAGES, SHORTCUTS, areaFor, pagesIn } from '../src/lib/routes.ts';
+test('§17: the route manifest is complete, every page has one area, and shortcuts are unique', () => {
+  const hrefs = PAGES.map((p) => p.href);
+  assert.equal(new Set(hrefs).size, hrefs.length);
+  for (const need of ['/', '/brief/', '/markets/', '/screen/', '/map/', '/rotation/', '/engines/', '/trades/', '/reads/', '/ipo/', '/funds/', '/tools/', '/news/', '/compare/', '/calendar/', '/watchlist/', '/journal/', '/about/', '/research/', '/desk/', '/privacy/']) assert.ok(hrefs.includes(need), need);
+  for (const a of AREAS) assert.ok(pagesIn(a.id).some((p) => p.href === a.home), `${a.label} lists its own home`);
+  assert.equal(new Set(SHORTCUTS.map((s) => s.keys)).size, SHORTCUTS.length);
+  assert.equal(areaFor('/company/TCS/'), 'research');
+  assert.equal(areaFor('/screen/?q=x'), 'discover');
+  assert.equal(areaFor('/'), 'today');
+});
+
+import { csvCell } from '../src/lib/csv.ts';
+test('§10: CSV cells cannot run as spreadsheet formulas', () => {
+  assert.equal(csvCell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`);
+  assert.equal(csvCell('+91 Ltd'), `"'+91 Ltd"`);
+  assert.equal(csvCell('-x'), `"'-x"`);
+  assert.equal(csvCell('@SUM(A1)'), `"'@SUM(A1)"`);
+  assert.equal(csvCell('Tata "Motors"'), '"Tata ""Motors"""');
+  assert.equal(csvCell(-3.2), '-3.2', 'a negative number is a number, not a formula');
+  assert.equal(csvCell(NaN), '');
+  assert.equal(csvCell(null), '');
+});
+
+import { readFileSync as rf, readdirSync as rd, statSync as st } from 'node:fs';
+test('§11: the Privacy page lists every key this site writes to browser storage', () => {
+  const walk = (d: string): string[] => rd(d).flatMap((f) => (st(`${d}/${f}`).isDirectory() ? walk(`${d}/${f}`) : [`${d}/${f}`]));
+  const src = walk('src').filter((f) => /\.tsx?$/.test(f)).map((f) => rf(f, 'utf8')).join('\n');
+  const events = new Set(['alpha-store', 'alpha-refreshed', 'alpha-refresh-failed', 'alpha-prefs', 'alpha-cards-changed']);
+  const keys = new Set([...src.matchAll(/['`](alpha-[a-z0-9-]+)['`]/g)].map((m) => m[1]).filter((k) => !events.has(k)));
+  const page = rf('src/app/privacy/page.tsx', 'utf8');
+  const missing = [...keys].filter((k) => !new RegExp(`\\b${k}\\b(?!-)`).test(page));
+  assert.deepEqual(missing, []);
+});
+
+import { chartRows, chartSummary } from '../src/lib/chartText.ts';
+test('§30: a chart says in words what it shows', () => {
+  const t = [1767225600, 1767312000, 1767398400, 1767484800];   // 1-4 Jan 2026 (IST dates)
+  const txt = chartSummary(t, [100, 90, 130, 118], [101, 92, 131, 119], [99, 88, 120, 115]);
+  assert.match(txt, /^Up 18\.0% from 1 Jan 2026 to 4 Jan 2026; low ₹88 on 2 Jan 2026; high ₹131 on 3 Jan 2026; last ₹118\.$/);
+  assert.equal(chartSummary([1], [5]), 'Not enough prices to describe.');
+  const rows = chartRows(Array.from({ length: 250 }, (_, i) => 1767225600 + i * 86400), Array.from({ length: 250 }, (_, i) => i));
+  assert.ok(rows.length <= 26 && rows[0].close === 0 && rows[rows.length - 1].close === 249);
+});
+
+import { TEMPLATES } from '../src/lib/templates.ts';
+test('§28: every screen template parses completely: each word becomes a clause, none is ignored', () => {
+  for (const t of TEMPLATES) {
+    const p = parse(t.q);
+    assert.deepEqual(p.unknown, [], `${t.name}: ${p.unknown.join(', ')}`);
+    assert.ok(p.filters.length >= 2, `${t.name} applies ${p.filters.length} clause(s)`);
+  }
+});
+
+import { changeParts, pct, pp, bp, ratio, MINUS } from '../src/lib/format.ts';
+test('§23.3: changes carry a true minus, the rounded value decides the arrow, and points are not percent', () => {
+  assert.equal(pct(-3.14), `${MINUS}3.1%`);
+  assert.equal(pct(2.0), '+2.0%');
+  assert.equal(pct(-0.04), '0.0%', 'a rounded zero has no sign');
+  assert.equal(pp(1.23), '+1.2 pp');
+  assert.equal(bp(-7.4), `${MINUS}7 bp`);
+  assert.equal(ratio(24.62), '24.6×');
+  assert.deepEqual(changeParts(-0.004, 2), { dir: 'flat', text: '0.00%', label: 'unchanged 0.00 percent' });
+  assert.deepEqual(changeParts(-1.2, 1), { dir: 'down', text: `▼ ${MINUS}1.2%`, label: 'down 1.2 percent' });
 });

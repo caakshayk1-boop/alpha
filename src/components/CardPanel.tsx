@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { Rv } from '@/components/ui';
-import { cardDelta, parseImport, serializeCard, serializeLibrary, summarise, type CurrentCompany, type ResearchCard } from '@/lib/card';
+import { cardDelta, parseImport, reviewDue, serializeCard, serializeLibrary, summarise, type CardDecision, type CurrentCompany, type ResearchCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { companyHref } from '@/lib/slug';
 
@@ -13,11 +13,12 @@ const download = (name: string, text: string) => {
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
+  try { localStorage.setItem('alpha-last-export', new Date().toISOString()); } catch { /* not recorded */ }      // shown on My Desk
 };
 
 /** The local research library: cards saved in this browser, export and import without an account. */
 export default function CardPanel({ watchlist, onImportWatchlist, current }: { watchlist: string[]; onImportWatchlist: (syms: string[]) => void; current?: Record<string, CurrentCompany | undefined> }) {
-  const { cards, ok, addMany, remove, setNote } = useCards();
+  const { cards, ok, addMany, remove, setNote, setDecision } = useCards();
   const [paste, setPaste] = useState('');
   const [preview, setPreview] = useState<{ cards: ResearchCard[]; watchlist: string[]; warnings: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export default function CardPanel({ watchlist, onImportWatchlist, current }: { w
                     <div className="eyebrow">Changed since saved ({new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })})</div>
                     {ch.length ? <ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 13.5, lineHeight: 1.6 }}>{ch.map((x) => <li key={`${x.sym}-${x.what}`}><b>{x.sym}</b> · {x.what}: {x.before} → {x.after}</li>)}</ul> : <p className="dim" style={{ fontSize: 13.5, margin: '4px 0 0' }}>No change in the saved figures on a newer data date.</p>}
                   </div>); })()}
+                <DecisionEditor card={c} onSave={(d) => setDecision(c.id, d)} due={reviewDue(c, new Date().toISOString().slice(0, 10), current ?? {})} />
                 <label className="sr" htmlFor={`note-${c.id}`}>Note</label>
                 <input id={`note-${c.id}`} className="field" style={{ width: '100%', marginTop: 8, height: 36, fontSize: 14 }} placeholder="Add a private note" defaultValue={c.note ?? ''} onBlur={(e) => setNote(c.id, e.target.value)} />
               </div>
@@ -90,5 +92,36 @@ export default function CardPanel({ watchlist, onImportWatchlist, current }: { w
         </div>
       )}
     </Rv>
+  );
+}
+
+/** "What would change my mind" (Pro §22.3): four fields in the reader's own words. Saving a thesis with no disconfirming
+ *  point asks for one (skippable): the countercase is first-class here too. */
+function DecisionEditor({ card, onSave, due }: { card: ResearchCard; onSave: (d: CardDecision | null) => boolean; due: string[] }) {
+  const d = card.decision;
+  const [f, setF] = useState({ thesis: d?.thesis ?? '', against: d?.against ?? '', unknowns: d?.unknowns ?? '', reviewOn: d?.reviewOn?.slice(0, 10) ?? '', results: d?.reviewWhen === 'results' });
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = () => {
+    const next: CardDecision = { thesis: f.thesis.trim() || null, against: f.against.trim() || null, unknowns: f.unknowns.trim() || null, reviewOn: f.reviewOn || null, reviewWhen: f.results ? 'results' : null };
+    const empty = !next.thesis && !next.against && !next.unknowns && !next.reviewOn && !next.reviewWhen;
+    setMsg(onSave(empty ? null : next) ? 'Saved in this browser.' : 'Could not save: this browser is blocking storage.');
+  };
+  const id = (k: string) => `dec-${k}-${card.id}`;
+  return (
+    <details className="decision" open={!!d || due.length > 0}>
+      <summary className="eyebrow">What would change my mind{due.length > 0 && <span className="tag warn" style={{ marginLeft: 8 }}>Needs review</span>}</summary>
+      {due.length > 0 && <p className="dim" style={{ margin: '6px 0', fontSize: 13.5 }}>Due because: {due.join('; ')}.</p>}
+      <div className="dec-grid">
+        <label htmlFor={id('t')}>Thesis<textarea id={id('t')} className="field" rows={2} value={f.thesis} onChange={(e) => setF({ ...f, thesis: e.target.value })} placeholder="What I think, in one or two sentences" /></label>
+        <label htmlFor={id('a')}>Disconfirming evidence I would watch<textarea id={id('a')} className="field" rows={2} value={f.against} onChange={(e) => setF({ ...f, against: e.target.value })} placeholder="What would show this is wrong" /></label>
+        <label htmlFor={id('u')}>Unknowns<textarea id={id('u')} className="field" rows={2} value={f.unknowns} onChange={(e) => setF({ ...f, unknowns: e.target.value })} placeholder="What the data here does not tell me" /></label>
+        <div className="dec-when">
+          <label htmlFor={id('d')}>Review on <input id={id('d')} type="date" className="field" value={f.reviewOn} onChange={(e) => setF({ ...f, reviewOn: e.target.value })} /></label>
+          <label className="keys-toggle" style={{ margin: 0 }}><input type="checkbox" checked={f.results} onChange={(e) => setF({ ...f, results: e.target.checked })} /> and when the next results are out</label>
+        </div>
+      </div>
+      {f.thesis.trim() && !f.against.trim() && <p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Add one point that would prove this wrong. Optional, but a thesis with no counterpoint is easy to keep for the wrong reasons.</p>}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}><button type="button" className="chip" onClick={save}>Save</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</div>
+    </details>
   );
 }

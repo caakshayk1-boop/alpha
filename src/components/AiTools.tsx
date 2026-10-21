@@ -8,9 +8,10 @@ import { Async, Bar, Chg, Rv } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
-import { crore, dash, num } from '@/lib/format';
+import { crore, dash, dateLabel, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { useBarometer } from '@/lib/useBarometer';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 const SAMPLE = 'TCS 20 3400\nHDFCBANK 30 1650\nRELIANCE 15 2400\nDIXON 3 11000';
@@ -158,12 +159,18 @@ export function ReverseDcf() {
     <Rv className="panel spot">
       <div className="eyebrow">Reverse DCF · an earnings-based teaching model</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Instead of guessing the future and getting a value, start from today&apos;s price and solve for the earnings growth it needs.</p>
+      {/* Pro §22.6: presets the reader can edit; every input is labelled as the reader's assumption, the price and EPS as observed */}
+      <div className="filters" role="group" aria-label="Scenario">
+        <span className="eyebrow">Scenario</span>
+        {([['Conservative', '14', '8', '4'], ['Base', '12', '10', '5'], ['Optimistic', '11', '12', '6']] as const).map(([n, a, b, c]) => <button key={n} type="button" className="chip" aria-pressed={rate === a && yrs === b && tg === c} onClick={() => { setRate(a); setYrs(b); setTg(c); }}>{n}</button>)}
+        <span className="chip-assume">Your assumption</span><span className="dim" style={{ fontSize: 13 }}>return, years and terminal growth</span>
+      </div>
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
         {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 14 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
       {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
         <>
         <div className="grid g3" style={{ marginTop: 12 }}>
-          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} (screen close)</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
+          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} <span className="chip-observed">Observed · screen close {r.last_date ? dateLabel(r.last_date) : ''}</span></div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
           <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
           <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
             {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
@@ -179,6 +186,7 @@ export function ReverseDcf() {
             </table>
           </div>
         )}
+        <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>This is arithmetic on your assumptions, not a forecast. EPS is the screen&apos;s price divided by its P/E (trailing twelve months).</p>
         </>
       )}
     </Rv>
@@ -237,14 +245,16 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
 // ── Market stance ─────────────────────────────────────────────────────
 export function MarketStance() {
   const s = useFeed('screen');
-  const b = useFeed('barometer');
-  const bd = s.data?.breadth, t = b.data?.today;
+  // A06: the Barometer number here is the SAME reading Today and Brief show (one rule, lib/useBarometer.ts), and it carries
+  // its own session; the six breadth tests below are the last completed session's and say so in their heading.
+  const { view, loading: bl } = useBarometer();
+  const bd = s.data?.breadth;
   const b2 = useMemo(() => (s.data ? breadth200(s.data.rows) : null), [s.data]);
   return (
-    <Async loading={s.loading || b.loading} error={s.error} rows={1}>
+    <Async loading={s.loading || bl} error={s.error} rows={1}>
       {bd && (
         <Rv className="panel spot">
-          <div className="eyebrow">Market stance · calculated from the barometer</div>
+          <div className="eyebrow">Market stance · last completed session, {dateLabel(bd.as_of)}</div>
           {(() => {
             const conds: [string, boolean, string][] = [
               ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],
@@ -259,7 +269,8 @@ export function MarketStance() {
             const advice = n >= 5 ? 'Most stocks are above their averages. In past data, breakouts have tended to follow such conditions; that is not a forecast.' : n >= 3 ? 'The market is split: about half the tests pass, so stock-level differences are larger than the market-wide direction.' : 'Most stocks are in downtrends. Historically such conditions have carried higher risk for new long positions; this describes the market, not what to do.';
             return (
               <>
-                <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold{t ? `, barometer ${Math.round(t.score)} (${t.band.t.toLowerCase()})` : ''}.</p>
+                <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold.</p>
+                {view && <p className="dim" style={{ margin: '0 0 8px', fontSize: 14 }}>Barometer {view.reading.score} ({view.reading.band.t.toLowerCase()}), {view.source === 'live' ? 'live' : 'published'} for the {dateLabel(view.session)} session{view.session !== bd.as_of ? `, a different session from the breadth tests below (${dateLabel(bd.as_of)})` : ''}.</p>}
                 <p className="muted" style={{ margin: '0 0 14px' }}>{advice}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 8 }}>
                   {conds.map(([l, ok, d]) => (

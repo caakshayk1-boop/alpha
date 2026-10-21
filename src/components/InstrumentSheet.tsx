@@ -9,12 +9,19 @@ import { BASE } from '@/lib/data';
 import { num, quoteState } from '@/lib/format';
 import { highlights, levels, type Bars } from '@/lib/levels';
 import { istDate } from '@/lib/live';
+import { useModal } from '@/lib/useModal';
+import { chartSummary } from '@/lib/chartText';
 import type { Quote } from '@/lib/types';
 
-const memo = new Map<string, Promise<Bars | null>>();
-const fetchBars = (id: string) => {
-  if (!memo.has(id)) memo.set(id, fetch(`${BASE}/api/instrument?id=${encodeURIComponent(id)}`).then((r) => r.json()).then((j) => (j?.ok ? (j as Bars) : null), () => null));
-  return memo.get(id)!;
+// A12: a year of bars is kept for 15 minutes (the Worker's own cache); a failed request is evicted at once, so Retry retries
+const memo = new Map<string, { at: number; p: Promise<Bars | null> }>();
+const fetchBars = (id: string, fresh = false) => {
+  const hit = memo.get(id);
+  if (hit && !fresh && Date.now() - hit.at < 15 * 60_000) return hit.p;
+  const p = fetch(`${BASE}/api/instrument?id=${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(15_000) }).then((r) => r.json()).then((j) => (j?.ok ? (j as Bars) : null), () => null);
+  memo.set(id, { at: Date.now(), p });
+  void p.then((b) => { if (!b && memo.get(id)?.p === p) memo.delete(id); });
+  return p;
 };
 const dateOf = (t: number) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
@@ -33,15 +40,9 @@ function RangeRail({ lo, hi, at, label }: { lo: number; hi: number; at: number; 
 export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void }) {
   const [bars, setBars] = useState<Bars | null | undefined>(undefined);
   const panel = useRef<HTMLDivElement>(null);
-  useEffect(() => { let live = true; setBars(undefined); void fetchBars(q.id).then((b) => { if (live) setBars(b); }); return () => { live = false; }; }, [q.id]);
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
-    panel.current?.querySelector<HTMLElement>('[data-close]')?.focus();
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', k);
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; prev?.focus?.(); };
-  }, [onClose]);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => { let live = true; setBars(undefined); void fetchBars(q.id, attempt > 0).then((b) => { if (live) setBars(b); }); return () => { live = false; }; }, [q.id, attempt]);
+  useModal(panel, true, onClose);
   const sessionOpen = !!q.at && !!bars && bars.t.length > 0 && istDate(bars.t[bars.t.length - 1]) === istDate(q.at);
   const lv = useMemo(() => (bars ? levels(bars, q.price, sessionOpen) : null), [bars, q.price, sessionOpen]);
   const dp = q.dp;
@@ -54,17 +55,17 @@ export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void 
       <div ref={panel} className="peek isheet" role="dialog" aria-modal="true" aria-label={`${q.name} in detail`} onMouseDown={(e) => e.stopPropagation()}>
         <div className="peek-top"><span className="eyebrow">{q.group} · {quoteState(q.at).label}</span><button type="button" className="chip" data-close onClick={onClose} aria-label="Close">Close ✕</button></div>
         <h2 className="disp isheet-h">{q.name}</h2>
-        <div className="isheet-px"><span className="num">{f(q.price)}{q.group === 'Rates' ? '%' : ''}</span> <Chg v={q.pct} />{typeof q.prev === 'number' && <span className="dim num"> · previous close {f(q.prev)}</span>}</div>
+        <div className="isheet-px"><span className="num">{f(q.price)}{q.group === 'Rates' ? '%' : ''}</span> {q.group === 'Rates' && typeof q.prev === 'number' && typeof q.price === 'number' ? <Chg v={(q.price - q.prev) * 100} dp={0} suffix=" bp" /> : <Chg v={q.pct} />}{typeof q.prev === 'number' && <span className="dim num"> · previous close {f(q.prev)}</span>}</div>
 
         {typeof q.dayLo === 'number' && typeof q.dayHi === 'number' && typeof q.price === 'number' && <RangeRail lo={q.dayLo} hi={q.dayHi} at={q.price} label="Today's range" />}
         {lv?.lo52 && lv.hi52 && <RangeRail lo={lv.lo52.v} hi={lv.hi52.v} at={lv.last} label="52-week range" />}
 
         {bars === undefined && <><Skel h={120} /><Skel h={160} /></>}
-        {bars === null && <p className="dim" style={{ margin: '8px 0 0' }}>The year of history did not load, so levels are not shown. Nothing is estimated in their place.</p>}
+        {bars === null && <p className="dim" style={{ margin: '8px 0 0' }}>The year of history did not load, so levels are not shown. Nothing is estimated in their place. <button type="button" className="chip" onClick={() => setAttempt((n) => n + 1)}>Retry</button></p>}
         {lv && (
           <>
             {facts.length > 0 && <ul className="isheet-facts">{facts.map((x) => <li key={x}>{x}</li>)}</ul>}
-            <div className="isheet-chart"><Spark series={yearSeries} up={(lv.ret.y1 ?? 0) >= 0} height={88} /><div className="dim num isheet-cap"><span>{bars ? dateOf(bars.t[0]) : ''}</span><span>one year, daily closes</span></div></div>
+            <div className="isheet-chart" role="img" aria-label={bars ? chartSummary(bars.t, bars.c, bars.h, bars.l, (v) => `${q.prefix}${num(v, dp)}`) : undefined}><Spark series={yearSeries} up={(lv.ret.y1 ?? 0) >= 0} height={88} /><div className="dim num isheet-cap"><span>{bars ? dateOf(bars.t[0]) : ''}</span><span>one year, daily closes</span></div></div>
             <div className="isheet-rets">{([['1W', lv.ret.w1], ['1M', lv.ret.m1], ['3M', lv.ret.m3], ['YTD', lv.ret.ytd], ['1Y', lv.ret.y1]] as const).map(([k, v]) => <div key={k}><span className="k">{k}</span><Chg v={v} dp={1} /></div>)}</div>
             <h3 className="peek-h">Levels <span>high to low, with the price where it sits</span></h3>
             <ol className="lvl-ladder">

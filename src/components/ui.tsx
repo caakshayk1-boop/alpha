@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { canAnimate, gsap, observeReveal } from '@/lib/motion';
-import { dash, tone } from '@/lib/format';
+import { changeParts, dash } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 
 /** Fades/rises its children in when scrolled into view (see motion.ts for the safety rules). */
@@ -22,13 +22,11 @@ export function Rv({ as, className, style, children }: { as?: ElementType; class
 
 /** Signed change with colour that is never the only signal: the sign and arrow are text too. */
 export function Chg({ v, dp = 2, suffix = '%' }: { v: number | null | undefined; dp?: number; suffix?: string }) {
-  const t = tone(v);
-  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat">{dash}</span>;
+  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>;
+  const c = changeParts(v, dp, suffix);
   return (
-    <span className={`num ${t}`}>
-      {v > 0 ? '▲ +' : v < 0 ? '▼ ' : ''}
-      {v.toFixed(dp)}
-      {suffix}
+    <span className={`num ${c.dir}`}>
+      <span aria-hidden>{c.text}</span><span className="sr">{c.label}</span>
     </span>
   );
 }
@@ -285,19 +283,3 @@ export function ChangeRing({ value, children }: { value: string | number | null 
   return <span className={`ring${on ? ' ring-on' : ''}`}>{children}</span>;
 }
 
-/** A number that counts up once when it first appears (0 to its value over 0.7s), then simply follows the value. Off for
- *  reduced motion and in a hidden tab, where it renders the value as is. Screen readers get the final value. */
-export function CountUp({ value, format }: { value: number; format: (v: number) => string }) {
-  const el = useRef<HTMLSpanElement>(null);
-  const done = useRef(false);
-  useEffect(() => {
-    const e = el.current;
-    if (!e || done.current) return;
-    done.current = true;
-    if (!canAnimate()) return;
-    const o = { v: 0 };
-    const tw = gsap.to(o, { v: value, duration: 0.7, ease: 'power2.out', onUpdate: () => { e.textContent = format(o.v); }, onComplete: () => { e.textContent = format(value); } });
-    return () => { tw.kill(); e.textContent = format(value); };
-  }, [value, format]);
-  return <span ref={el} aria-label={format(value)}>{format(value)}</span>;
-}

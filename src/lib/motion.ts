@@ -6,8 +6,10 @@ import { Flip } from 'gsap/Flip';
 
 let ready = false;
 
+/** The device setting, or the reader's own choice on this site (Settings → Motion: reduced). Read at call time, so a change
+ *  mid-session takes effect on the next animation. */
 export const prefersReduced = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  typeof window !== 'undefined' && (document.documentElement.dataset.motion === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 /**
  * Motion is an enhancement: content is visible by default, and `html.anim` (which hides
@@ -35,6 +37,13 @@ export function initMotion() {
 }
 
 export { gsap, ScrollTrigger, Flip };
+
+/** The motion tokens of globals.css / DESIGN.md §6, for GSAP timelines, so CSS and JS cannot drift (seconds). */
+export const motionTokens = {
+  instant: 0.08, fast: 0.14, base: 0.2, sheet: 0.28, flash: 0.5,
+  standard: 'cubic-bezier(0.2, 0, 0, 1)', enter: 'cubic-bezier(0, 0, 0.2, 1)', exit: 'cubic-bezier(0.4, 0, 1, 1)',
+  distanceS: 6, distanceM: 12,
+} as const;
 
 /** Cards that catch the pointer light. One delegated listener for the whole site; nothing per component. */
 const LIT = '.panel, .fact, .qcard, .job2, .scard, .story, .pick, .ecard, .sky, .read-ink, .breadth2, .stamp-item, .kv > div';

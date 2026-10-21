@@ -114,8 +114,8 @@ export function Position() {
                 ['Risk per share', `${money(e, 2)} − ${money(s, 2)}`, money(risk, 2)],
                 ['Shares', `⌊${num(budget, 0)} ÷ ${num(risk, 2)}⌋`, num(qty)],
                 ['Position value', `${num(qty)} × ${money(e, 2)}`, money(value)],
-                ['Loss at the stop', `${num(qty)} × ${money(risk, 2)}`, money(loss)],
-              ]} note={<>Rounded down to whole shares, so the loss at the stop is at or under the budget. Not modelled: brokerage, taxes, and a gap that fills you below the stop.</>} />
+                ['Planned loss if filled at the stop', `${num(qty)} × ${money(risk, 2)}`, money(loss)],
+              ]} note={<>Rounded down to whole shares, so the planned loss if filled at the stop is at or under the budget. Not modelled: brokerage, taxes, and a gap that fills you below the stop.</>} />
               {qty === 0 && <p className="tool-warn">The budget ({money(budget)}) is smaller than the risk on one share ({money(risk, 2)}), so the size rounds to zero.</p>}
               {value > cap && <p className="tool-warn">This size needs {lakh(value)}, more than the capital of {lakh(cap)}: a wider stop or a smaller risk brings it inside.</p>}
             </>

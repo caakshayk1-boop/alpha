@@ -31,7 +31,7 @@ export default function Markets() {
               <Rv key={x.id} className="qcard spot qbtn">
                 <button type="button" className="qhit" onClick={() => setOpen(x)} aria-label={`${x.name}: open levels, ranges and returns`} />
                 <div className="qrow"><span className="nm">{x.name}</span><span className="tag">{x.group}</span></div>
-                <div className="qrow"><Flash value={x.price}><span className="px">{x.prefix}{num(x.price, x.dp)}{x.group === 'Rates' ? '%' : ''}</span></Flash>{x.group === 'Rates' && typeof x.prev === 'number' && typeof x.price === 'number' ? <span className={`chg num ${x.price - x.prev >= 0 ? 'up' : 'down'}`}>{x.price - x.prev >= 0 ? '+' : '−'}{Math.abs((x.price - x.prev) * 100).toFixed(1)} bp</span> : <Flash value={x.pct} dir={null}><Chg v={x.pct} /></Flash>}</div>
+                <div className="qrow"><Flash value={x.price}><span className="px">{x.prefix}{num(x.price, x.dp)}{x.group === 'Rates' ? '%' : ''}</span></Flash>{x.group === 'Rates' && typeof x.prev === 'number' && typeof x.price === 'number' ? <Flash value={x.price} dir={null}><Chg v={(x.price - x.prev) * 100} dp={0} suffix=" bp" /></Flash> : <Flash value={x.pct} dir={null}><Chg v={x.pct} /></Flash>}</div>
                 <Spark series={x.series} up={(x.pct ?? 0) >= 0} height={46} />
                 <div className="dim" style={{ fontSize: 13, fontFamily: 'var(--f-mono)' }}>{quoteState(x.at).label}</div>
               </Rv>

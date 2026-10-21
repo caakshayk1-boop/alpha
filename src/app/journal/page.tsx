@@ -82,6 +82,7 @@ export default function Journal() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([serializeJournal(list)], { type: 'application/json' }));
     a.download = 'alpha-journal.json';
+    try { localStorage.setItem('alpha-last-export', new Date().toISOString()); } catch { /* not recorded */ }
     a.click();
   };
   const importPaste = () => {

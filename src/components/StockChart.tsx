@@ -1,4 +1,5 @@
 'use client';
+import { chartRows, chartSummary } from '@/lib/chartText';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { chartFeed } from '@/lib/data';
@@ -229,14 +230,21 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · {kl.dir[i] === 1 ? 'uptrend' : 'downtrend'}</span>}</>}
       </div>
       <div ref={wrap} style={{ position: 'relative', minHeight: 300 }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
-        <canvas ref={cv} role="img" aria-label={`Price chart for ${sym}`} style={{ display: 'block', touchAction: 'pan-y' }} />
+        <canvas ref={cv} role="img" aria-label={bars ? `Price chart for ${sym}. ${chartSummary(bars.t, bars.c, bars.h, bars.l)}` : `Price chart for ${sym}`} style={{ display: 'block', touchAction: 'pan-y' }} />
         {err && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>Could not load {sym} history ({err}).</p>}
         {data && !data.ok && <p className="dim" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', margin: 0 }}>{data.error ?? 'No price history for this symbol.'}</p>}
       </div>
       <p className="dim" style={{ fontSize: 13, margin: '8px 0 0', minHeight: '3.2em' }}>
         {overall !== null && nOverall !== null && <><b className={overall >= 0 ? 'up' : 'down'}>{overall >= 0 ? '+' : ''}{overall.toFixed(1)}%</b> {spanLabel} against the Nifty&apos;s {nOverall >= 0 ? '+' : ''}{nOverall.toFixed(1)}%. </>}
+        {bars && <>{chartSummary(bars.t, bars.c, bars.h, bars.l)} </>}
         The key line is a 3-ATR trailing line: it trails price and flips on a close through it. It reads the trend; it does not predict it. Yahoo prices, cached up to 15 minutes.
       </p>
+      {bars && (
+        <details className="chart-table">
+          <summary className="eyebrow">Show these prices as a table</summary>
+          <table className="tbl"><thead><tr><th scope="col">Date</th><th scope="col">Close</th></tr></thead><tbody>{chartRows(bars.t, bars.c).map((x) => <tr key={x.date}><td>{x.date}</td><td className="num">₹{px(x.close)}</td></tr>)}</tbody></table>
+        </details>
+      )}
     </div>
   );
 }

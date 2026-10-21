@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { CompanyPeek } from '@/components/Peek';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { TickerLink } from '@/components/TickerLink';
+import { csvProvenance, csvRow } from '@/lib/csv';
 import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
@@ -94,7 +96,8 @@ export default function Screen() {
   const [showCols, setShowCols] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [saved, setSaved] = useState<Saved[]>([]);
-  const [, addWatch] = useStoredList('alpha-watchlist');
+  const [, , , addWatchAll, watchError] = useStoredList('alpha-watchlist');
+  const [watchedNote, setWatchedNote] = useState('');
   const body = useRef<HTMLTableSectionElement>(null);
   const flipState = useRef<ReturnType<typeof Flip.getState> | null>(null);
 
@@ -184,8 +187,8 @@ export default function Screen() {
   const csv = () => {
     // the displayed values, plus where they came from: live price and move carry their time, everything else the screen's date
     const stamp = tv.live ? `price and today: ${tv.asOf}; other columns: close ${asOf ?? 'unknown'}` : `close ${asOf ?? 'unknown'}`;
-    const head = ['symbol', 'name', 'sector', ...cols.map((c) => `"${(F.get(c)?.label ?? c) + (liveCol(c) ? ` (${tv.tag} IST)` : '')}"`), 'as_of'];
-    const lines = [head.join(','), ...rows.map((r) => [r.sym, `"${r.name.replace(/"/g, '""')}"`, `"${r.sector}"`, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : ''; }), `"${stamp}"`].join(','))];
+    const head = ['symbol', 'name', 'sector', ...cols.map((c) => (F.get(c)?.label ?? c) + (liveCol(c) ? ` (${tv.tag} IST)` : '')), 'as_of'];
+    const lines = [...csvProvenance('alpha.askakshay.com screen (company filings via Yahoo Finance; prices from NSE via Yahoo)', stamp), csvRow(head), ...rows.map((r) => csvRow([r.sym, r.name, r.sector, ...cols.map((c) => { const v = F.get(c)?.get(r); return has(v) ? v : null; }), stamp]))];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'alpha-screen.csv'; a.click();
   };
   const tierNoCap = useMemo(() => (s.data?.rows ?? []).filter((r) => r.tier && !has(r.mcap_cr)).length, [s.data]);
@@ -227,10 +230,11 @@ export default function Screen() {
         </div>
 
         <div className="filters" style={{ justifyContent: 'space-between' }}>
-          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span className="num">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}.</span>
+          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span key={rows.length} className="num count-tint">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}{s.data ? ` of ${num(s.data.rows.length)}` : ''}.</span>
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {picked.length >= 2 && <Link className="chip on" href={`/compare/?s=${picked.join(',')}`}>Compare {picked.length}</Link>}
-            {picked.length > 0 && <button className="chip" onClick={() => { picked.forEach(addWatch); setPicked([]); }}>Watch {picked.length}</button>}
+            {picked.length > 0 && <button className="chip" onClick={() => { const n = picked.length; if (addWatchAll(picked)) { setWatchedNote(`${n} added to your watchlist, saved in this browser`); setPicked([]); } }}>Watch {picked.length}</button>}
+            {(watchError || watchedNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13.5 }}>{watchError ?? watchedNote}</span>}
             <button className="chip" aria-expanded={showCols} onClick={() => setShowCols((v) => !v)}>Columns</button>
             <button className="chip" onClick={csv}>Download CSV</button>
           </span>
@@ -238,12 +242,14 @@ export default function Screen() {
         {showCols && <div className="panel tight" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>{FIELDS.map((f) => <button key={f.id} className="chip" aria-pressed={cols.includes(f.id)} onClick={() => toggleCol(f.id)}>{f.label}</button>)}</div>}
 
         <Async loading={s.loading} error={s.error} rows={6}>
+          <span className="sr" aria-live="polite">{sort ? `Sorted by ${(F.get(sort)?.label ?? sort).replace(' %', '').replace(' (₹ cr)', '')}, ${dir === 1 ? 'ascending' : 'descending'}` : ''}</span>
           <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)">
             <table className="tbl">
               <thead>
                 <tr>
                   <th scope="col" style={{ minWidth: 250 }}>Company</th>
-                  {cols.map((c) => { const f = F.get(c)!; return <th key={c} scope="col" aria-sort={sort === c ? (dir === 1 ? 'ascending' : 'descending') : undefined} onClick={() => setSortKey(c)}>{f.label.replace(' %', '').replace(' (₹ cr)', '')}{liveCol(c) && <span className="lv-tag"> ({tv.tag})</span>}{sort === c ? (dir === 1 ? ' ↑' : ' ↓') : ''}</th>; })}
+                  {/* A08: each sortable heading holds a real button, so sorting works by keyboard; focus stays on it after the sort */}
+                  {cols.map((c) => { const f = F.get(c)!; const label = f.label.replace(' %', '').replace(' (₹ cr)', ''); return <th key={c} scope="col" aria-sort={sort === c ? (dir === 1 ? 'ascending' : 'descending') : 'none'}><button type="button" className="th-sort" onClick={() => setSortKey(c)} aria-label={`Sort by ${label}${sort === c ? (dir === 1 ? ', now ascending' : ', now descending') : ''}`}>{label}{liveCol(c) && <span className="lv-tag"> ({tv.tag})</span>}<span aria-hidden className="th-dir">{sort === c ? (dir === 1 ? ' ↑' : ' ↓') : ' ↕'}</span></button></th>; })}
                 </tr>
               </thead>
               <tbody ref={body}>
@@ -252,7 +258,7 @@ export default function Screen() {
                     <td>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input type="checkbox" aria-label={`Select ${r.sym} to compare`} checked={picked.includes(r.sym)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.sym)} />
-                        <div className="co"><b><Link href={companyHref(r.sym)} onClick={(e) => e.stopPropagation()} title="Open the full page">{r.sym}</Link> {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
+                        <div className="co"><b><TickerLink sym={r.sym} title="Open the full page" /> {sigSyms.has(r.sym) && <span className="tag acc" style={{ marginLeft: 4 }}>signal</span>}</b><span>{r.name}</span></div>
                       </div>
                     </td>
                     {cols.map((c) => { const f = F.get(c)!; const v = f.get(r); return <td key={c}>{!has(v) ? <span className="dim">{dash}</span> : f.kind === 'chg' ? <Chg v={v} dp={1} /> : c === 'comp' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ width: 44, height: 5, borderRadius: 9, background: 'var(--panel-3)', overflow: 'hidden', display: 'inline-block' }}><i style={{ display: 'block', height: '100%', width: `${Math.max(0, Math.min(100, v))}%`, background: 'var(--accent)' }} /></span><b className="num">{f.fmt(v)}</b></span> : <span className="num">{f.fmt(v)}</span>}</td>; })}

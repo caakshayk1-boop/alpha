@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { GLOSSARY, metricId } from '@/lib/glossary';
+import { GLOSSARY, definitionFor, metricId } from '@/lib/glossary';
 
 /** Whether the server-side explainer is switched on. null while unknown. Failure means "not available", never an error shown to the reader. */
 let status: Promise<boolean> | null = null;
@@ -17,7 +17,8 @@ function useExplainerOn(): boolean | null {
 }
 
 interface Fact { id: string; label: string; value: string; unit: string }
-interface Answer { ok: boolean; answer?: string; facts?: Fact[]; unverifiedNumbers?: string[]; as_of?: string | null; error?: string }
+interface Claim { text: string; facts: string[]; status: 'cited' | 'unverified' }
+interface Answer { ok: boolean; claims?: Claim[]; withheld?: string[]; unknowns?: string[]; facts?: Fact[]; as_of?: string | null; model?: string; error?: string; glossary?: string }
 
 /** Definition of one measure, in plain language, with this company's own value. Fixed text: it needs no AI and always works. */
 export function MetricPanel({ metric, value, sym, onClose }: { metric: string; value: string; sym: string; onClose: () => void }) {
@@ -50,8 +51,9 @@ const PRESETS_FOR: Record<Subject['subject'], string[]> = {
   signal: ['Explain this plan in plain words', 'Why did this stock qualify?', 'What happens at T1?', 'What would end this trade?'],
 };
 
-/** Ask one question about a company, the day's market, or one signal. The Worker answers from the facts it builds for that
- *  subject only, cites them, flags any figure it cannot trace, and withholds advisory wording. Hidden while switched off. */
+/** Ask one question about a company, the day's market, or one signal. A definition question is answered from the glossary
+ *  with no model call. Anything else goes to the Worker, which answers only in checked claims: every figure is rendered from
+ *  its own facts and a claim it cannot check is withheld, not shown with a warning. Hidden while switched off. */
 export function AskAI({ title, compact = false, ...who }: Subject & { title: string; compact?: boolean }) {
   const on = useExplainerOn();
   const key = who.subject === 'company' ? who.sym : who.subject === 'signal' ? who.id : 'market';
@@ -63,6 +65,8 @@ export function AskAI({ title, compact = false, ...who }: Subject & { title: str
   const ask = async (question: string) => {
     const text = question.trim();
     if (text.length < 3 || busy) return;
+    const def = definitionFor(text);
+    if (def) { setRes({ ok: true, glossary: def }); return; }
     setBusy(true); setRes(null);
     try {
       const r = await fetch('/api/explain', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...who, question: text }) });
@@ -83,15 +87,32 @@ export function AskAI({ title, compact = false, ...who }: Subject & { title: str
       <div role="status" aria-live="polite">
         {busy && <div className="ask-think" aria-hidden><i /><i /><i /></div>}
         {res && !res.ok && <p className="notice" style={{ marginTop: 10 }}>{res.error ?? 'No answer.'}</p>}
-        {res?.ok && res.answer && (
+        {res && !res.ok && res.unknowns && res.unknowns.length > 0 && <ul className="muted" style={{ margin: '6px 0 0' }}>{res.unknowns.map((u) => <li key={u}>{u}</li>)}</ul>}
+        {res?.ok && res.glossary && GLOSSARY[res.glossary] && (
           <div className="ask-answer">
-            <p style={{ margin: 0, lineHeight: 1.6 }}>{res.answer}</p>
-            {res.unverifiedNumbers && res.unverifiedNumbers.length > 0 && <p className="notice" style={{ marginTop: 8 }}><b>Check these figures:</b> {res.unverifiedNumbers.join(', ')} could not be matched to the figures it was given.</p>}
+            <p style={{ margin: 0, lineHeight: 1.6 }}><b>{GLOSSARY[res.glossary].name}.</b> {GLOSSARY[res.glossary].what} {GLOSSARY[res.glossary].how}</p>
+            <p className="muted" style={{ margin: '6px 0 0' }}>{GLOSSARY[res.glossary].read} {GLOSSARY[res.glossary].caveat}</p>
+            <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Alpha&apos;s glossary, a fixed definition; no AI was used. <a href={`/about/#${metricId(res.glossary)}`} style={{ textDecoration: 'underline' }}>Method</a></p>
+          </div>
+        )}
+        {res?.ok && res.claims && (
+          <div className="ask-answer">
+            <ul className="ask-claims">
+              {res.claims.map((c, i) => (
+                <li key={i} className={c.status}>
+                  {c.text}{' '}
+                  {c.facts.map((id) => { const f = (res.facts ?? []).find((x) => x.id === id); return f ? <span key={id} className="cite" title={`${f.label} = ${f.value}${f.unit ? ` ${f.unit}` : ''}`}>{f.label}</span> : null; })}
+                  {c.status === 'unverified' && <span className="cite cite-u">explanation, not tied to a figure</span>}
+                </li>
+              ))}
+            </ul>
+            {res.unknowns && res.unknowns.length > 0 && <div className="ask-unknown"><b>Not in Alpha&apos;s data:</b> {res.unknowns.join(' · ')}</div>}
+            {res.withheld && res.withheld.length > 0 && <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>{res.withheld.length} statement{res.withheld.length > 1 ? 's were' : ' was'} withheld because {res.withheld.length > 1 ? 'they' : 'it'} could not be checked ({res.withheld.join('; ')}).</p>}
             <details style={{ marginTop: 8 }}>
               <summary className="eyebrow" style={{ cursor: 'pointer' }}>The figures it was given{res.as_of ? ` (data as of ${res.as_of})` : ''}</summary>
               <ul className="muted num ask-facts">{(res.facts ?? []).map((f) => <li key={f.id}>{f.id}: {f.label} = {f.value}{f.unit ? ` ${f.unit}` : ''}</li>)}</ul>
             </details>
-            <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>AI-written, not reviewed by a person. Information only, not advice.</p>
+            <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Model-written wording; every figure is taken from Alpha&apos;s data{res.as_of ? ` as of ${res.as_of}` : ''}, not from the model. Not investment advice, a research aid.</p>
           </div>
         )}
       </div>

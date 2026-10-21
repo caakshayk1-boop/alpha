@@ -92,5 +92,33 @@ check("VIX unknown: gate off (never assumed)", not bool(g["on"].iloc[-1]))
 down = pd.Series(np.linspace(200, 100, n), index=d)
 check("falling market: gate off", not bool(SW.market_gate(down, pd.Series(14.0, index=d), stock)["on"].iloc[-1]))
 
+# 12. A16: execution policy on one daily bar. Orders are those of an end-of-day book: the stop and BOTH targets rest from
+#     entry, so T1 and T2 can fill on one bar; the stop raised after T1 is placed once the T1 fill is known, so it works
+#     from the NEXT session. A bar that crosses T1 and then trades below the new stop is not stopped that day.
+w = SW.walk(bars([(100, 101, 99, 100), (100, 111, 101, 108), (108, 109, 102, 103)]), T, REF, SL)
+ev = [(e[1], e[0] - w["entry_i"]) for e in w["events"]]
+check("A16: the raised stop is not applied on the T1 bar itself", ("t1", 1) in ev and ("lock", 1) not in ev, ev)
+check("A16: it works from the next session, at its own price", w["exit_reason"] == "lock" and ("lock", 2) in ev and abs(w["events"][-1][2] - 102.5) < 1e-9, w["events"])
+w = SW.walk(bars([(100, 101, 99, 100), (125, 126, 124, 125)]), T, REF, SL)
+check("A16: a gap through both targets fills both at the open", [e[1] for e in w["events"]] == ["entry", "t1", "t2"] and all(abs(e[2] - 125) < 1e-9 for e in w["events"][1:]), w["events"])
+w = SW.walk(bars([(100, 121, 99.5, 120)]), T, REF, SL)
+check("A16: T1 and T2 inside one bar both fill (both rest from entry)", w["exit_reason"] == "t2" and len({e[0] for e in w["events"]}) == 1, w["events"])
+w = SW.walk(bars([(100, 101, 99, 100), (100, 111, 104, 108), (90, 91, 89, 90)]), T, REF, SL)
+check("A16: after T1, a gap below the raised stop fills at the open, below it", w["exit_reason"] == "lock" and abs(w["events"][-1][2] - 90) < 1e-9 and w["pnl"] < 0.5 * 10 + 0.5 * 0, w["events"])
+
+# 13. A15: eligibility is bound to the running rules
+good = {"version": SW.VERSION, "params": dict(SW.P), "rules": {"holdout": {"clustered_t_clustered": 2.4}}}
+check("A15: matching version, parameters and t >= 2 is eligible", SW.eligibility(good)[0] is True, SW.eligibility(good))
+check("A15: a different version is not", SW.eligibility({**good, "version": "swing-1.9.0"})[0] is False)
+check("A15: different parameters are not", SW.eligibility({**good, "params": {**SW.P, "max_hold": 40}})[0] is False)
+check("A15: a stale fingerprint is not", SW.eligibility({**good, "fingerprint": "0" * 16})[0] is False)
+for bad in (float("nan"), float("inf"), None, True, "2.4"):
+    check(f"A15: a non-finite or non-numeric statistic ({bad!r}) is not", SW.eligibility({**good, "rules": {"holdout": {"clustered_t_clustered": bad}}})[0] is False)
+check("A15: t below 2 is not", SW.eligibility({**good, "rules": {"holdout": {"clustered_t_clustered": 1.99}}})[0] is False)
+check("A15: no research is not", SW.eligibility(None)[0] is False)
+import json as _json
+_live = _json.loads((pathlib.Path(__file__).resolve().parent.parent / "research" / "swing_results.json").read_text())
+check("A15: the published research is bound to the running rules (and alerts stay off on its t)", SW.eligibility(_live) == (False, f"Alerts off: the holdout month-clustered t is {_live['rules']['holdout']['clustered_t_clustered']:+.2f}, needs +2.0."), SW.eligibility(_live))
+
 print(f"\n{ok} passed · {fail} failed")
 sys.exit(1 if fail else 0)

@@ -1,0 +1,57 @@
+# Alpha Pro: audit implementation log
+
+Brief: `docs/alpha/ALPHA_PRO_HANDOFF.md` (Pro Edition v2.0, 21 Oct 2026) and `docs/alpha/DESIGN.md`.
+Baseline: commit `6024d45` (production on 21 Oct 2026). Work branch: `alpha-pro`. Upstream fixes: caakshayk1-boop/trading-dashboard#55.
+
+Status words: **PASS** (done and verified by the test or check named), **PARTIAL** (done in part; the rest is stated),
+**BLOCKED** (needs something this session cannot do; the smallest action to unblock is named), **NOT DONE** (deliberately
+left, with the reason). "Verified" means an automated test or a scripted browser check on the Worker-served build
+(`wrangler dev --local`), not a physical device and not production, unless it says so.
+
+## Part B findings
+
+| ID | Finding | Status | What changed | Evidence |
+|---|---|---|---|---|
+| A01 | Animated breadth counts could stay wrong | PASS | `CountUp` removed; counts render exactly, with `Flash` on a change. `tally()` already reconciles up + down + flat = counted | Source: the effect's cleanup wrote the previous value over React's text. `tests/lib.test.ts` breadth tests; screenshots show 152/819/17 of 988 |
+| A02 | Weekly research with wrong arithmetic and percentile/average confusion | PARTIAL | Upstream `claim_problems` now catches paise that do not restate the percentage, percentile vs average or wrong side of the median, margin changes in % instead of points, signed figures after direction words; business-model statements for asset managers and exchanges need primary review. 8 published studies marked `under_review` with reasons and a corrections log; Reads shows the status and the log. Three older false-positive rules fixed | trading-dashboard#55: `test_reads_claims.py` all pass, `test_engine_alerts.py` 19/19. **Not done:** corrected versions of the 8 studies; that is editorial work against primary filings |
+| A03 | AI number check did not establish correctness | PASS | Constrained claims: the model writes digit-free templates with `{F#}` placeholders; the Worker renders every number from its facts and withholds claims that cite a missing id, write their own number (including number words), pair a metric word with another metric, reverse a sign, write percent as points, call a percentile an average, present an old year as the latest, name another company, or use advisory wording. Definition questions answered from the glossary with no model call | `tests/explain.test.mjs` (the three repros withheld), `evals/ask-alpha/cases.json` 76 cases in `npm test`. The eval set is below the brief's 150-case target |
+| A04 | "banks" meant all Financial Services | PASS | Banks = Financial Services companies named "… Bank" (34, all banks); insurers likewise; NBFC and lender searches say they cover all of Financial Services. Each clause shows how it was read | `tests/lib.test.ts` A04 test; screenshot of the Screen clause note |
+| A05 | Federal Reserve filed under FEDERALBNK | PASS | Institution phrases never resolve to a company; ordinary words added to the never-a-brand list; a brand word followed by a different capitalised word is another name | `tests/lib.test.ts` A05 test (Federal Reserve, RBI, Union Budget negatives; Federal Bank, Union Bank positives) |
+| A06 | Barometer 27 vs 35 on different pages | PASS | The Markets stance shows the same reading as Today and Brief (`useBarometer`), with its session, and dates its breadth tests as the last completed session | Source change in `AiTools.tsx`; one rule, `lib/useBarometer.ts` |
+| A07 | Focus escaped the instrument dialog | PASS | `lib/useModal.ts`: focus in and back, Tab containment, `inert` background, Escape closes only the top dialog, counted scroll lock. Used by the instrument sheet, quick look, palette, shortcuts, settings, More sheet; all in portals | Scripted check: Shift+Tab twice from the palette input stays inside (phone and desktop) |
+| A08 | Screen sorting was mouse-only | PASS | Each sortable heading is a button; `aria-sort` on every heading; the new sort is announced | Source; axe run (see QA matrix) |
+| A09 | Multi-select Watch could lose names | PASS | The store reads the stored list on every change, writes it back, syncs components and tabs, and reports a failed save; Screen uses the bulk add | `tests/lib.test.ts` A09 test (list operations) |
+| A10 | Scheduled deploy not tied to the tested commit | PASS (source) | Schedule and dispatch deploy only when the tip differs from a green-CI commit in engine data files alone; a deploy never rolls production back except by `allow_rollback`; the audit runs on the shipped artifact; `/build.json` records commit, run, screen date and data hashes | `.github/workflows/deploy.yml`. **Not yet exercised in production**: it runs on the first deploy after merge |
+| A11 | Degraded sharding could erase company routes | PASS | Shards built in `public/c.next`, validated (500+ rows, symbols, duplicates, under 5% of live symbols removed), then swapped; CI stops on failure; the audit checks shard, page and sitemap parity | Local build: 988 shards, 988 pages, sitemap 988; `scripts/audit.mjs` |
+| A12 | Caches with no lifecycle | PASS | Per-endpoint TTLs, timeouts, stale-while-revalidate, refresh on tab return, failed refresh flagged, newer response always wins; instrument requests evicted on failure with Retry | `tests/lib.test.ts` A12 test (TTLs); source |
+| A13 | AI daily ceiling per isolate | PASS (source) | One atomic Durable Object counter per day, failing closed; `EXPLAIN_OFF=1` kill switch; the status check asks the provider whether the configured model exists | `wrangler.jsonc` binding and migration. **Not yet exercised**: the explainer stays off until `ANTHROPIC_API_KEY` is set |
+| A14 | "Profit lock" overpromised | PASS | "Raised stop", with the gap risk stated, on Method, Trades, Signals and in the published rules; "planned loss if filled at the stop" in Tools; Telegram alerts state the overall result computed from the fills | Engine test: a gap below the raised stop is a loss; trading-dashboard `test_engine_alerts.py`; design lint forbids the phrase |
+| A15 | Alert eligibility not bound to the engine | PASS | Alerts need research for this version and these exact parameters (fingerprint) and a finite holdout t of 2 or more | `engines/tests/test_swing.py` A15 checks (33 pass); live eligibility unchanged: alerts off at t = −0.91 |
+| A16 | Same-bar stop policy undeclared | PASS | End-of-day order-book policy declared in the engine, the published rules and Method; actual-entry risk up to about 9.8% stated. **The rules were not changed** (that would be tuning after seeing the holdout) | `engines/tests/test_swing.py` A16 checks |
+
+## Part A (Pro) items
+
+| Section | Item | Status | Notes |
+|---|---|---|---|
+| §17 | Route manifest, four areas, hubs | PASS | `lib/routes.ts`; `/research/`, `/desk/`, `/privacy/`; every old URL kept; manifest test |
+| §17 | Back restores context | PARTIAL | Company back link returns to the list it came from with filters; browser Back used when possible (scroll). Not tested across every list page |
+| §22.1 | Decision Ladder on Today, Company, Screen, Compare | PARTIAL | Glance and Understand on Company (Case/Countercase above the fold), Verify (S and ? chips, financial explorer, source links), Record (cards with decision fields). Today and Screen have parts; no walkthrough with users was run |
+| §22.2 | Case / Countercase | PASS | Company page; equal columns, never collapsed, thin-countercase sentence, no verdict |
+| §22.3 | What would change my mind | PASS | Card schema v2; Desk "Needs review" from triggers and observed changes only; tests |
+| §22.4 | Bias guards | PARTIAL | 1Y default chart range; countercase first-class; prompt for a disconfirming point; base rate "x of 988" on Screen; no social proof. Not added: own-history percentile beside every price |
+| §22.5 | Comparison | PASS | Material-difference thresholds; "not comparable" for lenders |
+| §22.6 | Scenario tools | PARTIAL | Reverse DCF presets, assumption/observed chips, existing sensitivity grid. Position and SIP tools unchanged |
+| §23 | Typography and numbers | PARTIAL | `format.ts`: true minus, pp, bp, ratio, spoken change labels; lang en-IN. 180 ad-hoc `toFixed` remain under a ratchet. Fonts unchanged (already self-hosted via next/font) |
+| §24 | Colour tokens | PARTIAL | Existing semantic tokens kept and mapped in DESIGN.md (calibration); colour-blind market mode added; raw colours under a ratchet (9). No OKLCH migration and no automated contrast check in CI |
+| §25 | Layout and density | PARTIAL | Compact density mode; hubs on the existing grid. No 12-column grid rewrite |
+| §26 | Motion v2 | PARTIAL | Tokens in CSS and for GSAP; reduced motion from device or setting; View Transitions with shared ticker; press, star, count, menu and palette motion. Scroll-driven CSS animations not adopted |
+| §27 | Ask Alpha | PARTIAL | Feature 1 (explain) under the new pipeline, kill switch, quota, model check, eval set. Features 2–7 not built. Still off: needs the key |
+| §28 P1 | ⌘K palette, shortcuts, source links, Case/Countercase, templates, financial explorer | PASS | Source links are to the company's results filings, not per figure (the feed has no filing ids) |
+| §28 P2/P3 | Linked views, 30-day change, ownership panel, text query, share cards, PWA, digest, alerts, API | NOT DONE | Share is a link and one line, not an image card. Each needs its own build gate |
+| §29 | Microcopy and forbidden words | PASS | Design lint in CI; empty states rewritten on Today, Desk, Research |
+| §30 | Inclusive access | PARTIAL | Chart sentences and tables; colour-blind mode; spoken change labels; reduced motion setting. High-contrast mode not added |
+| §31 | Performance budgets | NOT DONE | No field RUM; no bundle budget in CI. Needs a measured baseline first |
+| §32 | Quality gates | PARTIAL | Design lint, AI evals, route/universe parity in CI. Visual regression and CI axe not added (axe runs in the scratch audit) |
+| §20 | Signup, sync, account | BLOCKED | See `docs/operations/launch.md`: needs an identity provider, a database and an email sender chosen and created by the owner |
+| §15 | Physical devices | BLOCKED | No device here. Owner checklist in `docs/qa/mobile-matrix.md` |
+| §16 | Production verification | PARTIAL | See `docs/qa/production-verification.md` |

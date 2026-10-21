@@ -5,7 +5,7 @@
  *  recognise (and says so), and refuses a file from a newer version instead of half-reading it. */
 export const CARD_SCHEMA = 'alpha.research-card';
 export const LIBRARY_SCHEMA = 'alpha.research-library';
-export const CARD_VERSION = 1;
+export const CARD_VERSION = 2;      // 2 (21 Oct 2026): `decision`. Version 1 cards read as before, with no decision.
 
 export interface CardCompany { sym: string; name: string | null; price: number | null; priceAsOf: string | null }
 export interface CardEvidence { text: string; side: 'for' | 'against'; source: string }
@@ -25,7 +25,11 @@ export interface ResearchCard {
   nextResults: Record<string, string | null> | null;
   dataStatus: CardStatus[];
   note: string | null;
+  /** "What would change my mind" (Pro §22.3): the reader's own words, never generated. reviewOn is a date; reviewWhen a data
+   *  condition Alpha can observe ('results': the next results date on file has passed). */
+  decision?: CardDecision | null;
 }
+export interface CardDecision { thesis: string | null; against: string | null; unknowns: string | null; reviewOn: string | null; reviewWhen: 'results' | null }
 export interface Library { schema: typeof LIBRARY_SCHEMA; version: number; exportedAt: string; watchlist: string[]; cards: ResearchCard[] }
 
 const SYM = /^[A-Za-z0-9&-]{1,20}$/;
@@ -43,7 +47,7 @@ export function buildCard(p: Partial<ResearchCard> & { companies: CardCompany[] 
   return {
     schema: CARD_SCHEMA, version: CARD_VERSION, id: p.id ?? newId(now.getTime()), createdAt: p.createdAt ?? now.toISOString(),
     question: p.question ?? null, query: p.query ?? null, companies: p.companies, comparison: p.comparison ?? null, evidence: p.evidence ?? null,
-    engines: p.engines ?? null, nextResults: p.nextResults ?? null, dataStatus: p.dataStatus ?? [], note: p.note ?? null,
+    engines: p.engines ?? null, nextResults: p.nextResults ?? null, dataStatus: p.dataStatus ?? [], note: p.note ?? null, decision: p.decision ?? null,
   };
 }
 
@@ -62,7 +66,7 @@ export function normaliseCard(raw: unknown): Parsed<ResearchCard> {
   const version = num(o.version);
   if (version === null || version < 1) return { ok: false, error: 'The card has no valid version number, so it cannot be read safely.' };
   if (version > CARD_VERSION) return { ok: false, error: `This card was made by a newer version of Alpha (version ${version}; this one reads up to ${CARD_VERSION}). Update Alpha, or export it again from the version that made it.` };
-  const known = new Set(['schema', 'version', 'id', 'createdAt', 'question', 'query', 'companies', 'comparison', 'evidence', 'engines', 'nextResults', 'dataStatus', 'note']);
+  const known = new Set(['schema', 'version', 'id', 'createdAt', 'question', 'query', 'companies', 'comparison', 'evidence', 'engines', 'nextResults', 'dataStatus', 'note', 'decision']);
   for (const k of Object.keys(o)) if (!known.has(k)) warnings.push(`Ignored an unrecognised field: ${k}.`);
 
   const companies: CardCompany[] = [];
@@ -90,9 +94,35 @@ export function normaliseCard(raw: unknown): Parsed<ResearchCard> {
     value: {
       schema: CARD_SCHEMA, version, id: str(o.id, 60) ?? newId(), createdAt: iso(o.createdAt) ?? new Date(0).toISOString(), question: str(o.question, 300),
       query: q ? { text: str(q.text, 300), applied: strs(q.applied), ignored: strs(q.ignored), matches: num(q.matches) } : null,
-      companies, comparison, evidence, engines, nextResults, dataStatus, note: str(o.note, 4000),
+      companies, comparison, evidence, engines, nextResults, dataStatus, note: str(o.note, 4000), decision: decisionOf(o.decision),
     },
   };
+}
+
+function decisionOf(v: unknown): CardDecision | null {
+  if (!v || typeof v !== 'object') return null;
+  const r = v as Record<string, unknown>;
+  const d: CardDecision = { thesis: str(r.thesis, 1000), against: str(r.against, 1000), unknowns: str(r.unknowns, 1000), reviewOn: iso(r.reviewOn), reviewWhen: r.reviewWhen === 'results' ? 'results' : null };
+  return d.thesis || d.against || d.unknowns || d.reviewOn || d.reviewWhen ? d : null;
+}
+
+/** Why a card needs review today, from the reader's own triggers and from observed data only (Pro §18 "Needs review"):
+ *  its review date has come, the results date it waits for has passed, or a saved figure changed on a newer data date.
+ *  Empty means nothing is due. Nothing is invented to create urgency. */
+export function reviewDue(card: ResearchCard, today: string, now: Record<string, CurrentCompany | undefined> = {}): string[] {
+  const out: string[] = [];
+  const d = card.decision;
+  if (d?.reviewOn && d.reviewOn.slice(0, 10) <= today) out.push(`your review date, ${d.reviewOn.slice(0, 10)}`);
+  if (d?.reviewWhen === 'results') {
+    for (const c of card.companies) {
+      const due = now[c.sym]?.nextResults ?? card.nextResults?.[c.sym] ?? null;
+      const saved = card.createdAt.slice(0, 10);
+      if (due && due > saved && due <= today) { out.push(`${c.sym} results date ${due} has passed`); break; }
+    }
+  }
+  const ch = cardDelta(card, now).filter((x) => !x.what.startsWith('Price'));
+  if (ch.length) out.push(`${ch.length} saved figure${ch.length > 1 ? 's' : ''} changed (${ch.map((x) => `${x.sym} ${x.what}`).slice(0, 2).join('; ')})`);
+  return out;
 }
 
 /** Read a card or a whole library from file text. Malformed JSON, the wrong schema and newer versions fail with a plain next step. */

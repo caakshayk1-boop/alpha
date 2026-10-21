@@ -12,4 +12,7 @@ public/c/
 .dev.vars*
 public/sitemap-companies.xml
 public/universe.json
-.claude/
+.claude/*
+!.claude/commands/
+public/build.json
+public/c.next/

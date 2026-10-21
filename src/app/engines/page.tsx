@@ -16,7 +16,7 @@ import { useBook, type BookRow } from '@/lib/useBook';
 
 const sR = (v: number | null | undefined, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}R` : dash);
 const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
-const EXIT: Record<string, string> = { stop: 'Stopped out', lock: 'Profit lock after T1', trail: 'Trailing stop after T1', t2: 'T2 reached', time: 'Time limit' };
+const EXIT: Record<string, string> = { stop: 'Stopped out', lock: 'Raised stop after T1', trail: 'Trailing stop after T1', t2: 'T2 reached', time: 'Time limit' };
 
 /** One active signal: what fired, the plan as written, and the plan at the latest price. */
 function SignalCard({ row }: { row: BookRow }) {
@@ -109,11 +109,13 @@ export default function SignalsPage() {
   const done = (feed?.signals ?? []).filter((s: Sig) => s.status === 'closed' || s.status === 'void');
   return (
     <>
-      <PageHead method="engines" eyebrow="Signals · Swing v2" title="One rule book," em="only when the market allows." />
+      <PageHead method="engines" eyebrow="Signals · Swing v2 · experimental research" title="One rule book," em="only when the market allows." />
       <section className="wrap">
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
+              {/* Pro §5: lead with what this is; the alert status and its reason come before any figure */}
+              <p className="exp-banner" role="note"><span className="tag exp">Experimental research</span> {feed.alertable ? 'Alerts are on for these exact rules.' : `Alerts are off. ${feed.alert_why.replace(/^Alerts off:\s*/, '')}`} Not a recommendation; every result below is on paper, after costs, and the development, holdout and forward records are kept apart.</p>
               <GatePanel feed={feed} />
               <div className="eng-link"><span className="dim num">Prices through {sessionLabel(feed.data_through)} · launched {sessionLabel(feed.launched)} · {feed.alertable ? 'alerts on' : 'alerts off'}</span><Link href="/trades/" className="chip">Live P&amp;L and today&apos;s decisions →</Link></div>
 

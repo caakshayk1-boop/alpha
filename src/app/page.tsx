@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CountUp, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
+import { Flash, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
@@ -24,7 +24,7 @@ import { useStoredList } from '@/lib/store';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
 const GAUGE_LEN = Math.PI * 52;
-const fmtInt = (v: number) => num(Math.round(v));   // the semicircle path below: radius 52
+// the semicircle path below: radius 52
 
 /** Today's read: the headline sentence, then one ink card for the Barometer and one card for the day's breadth.
  *  Every word is built from the data (lib/takeaway.ts, /api/summary, and for breadth the one "today" rule in lib/live.ts);
@@ -101,7 +101,7 @@ function TodayHero() {
           <div className="eyebrow">{day && dayStamp ? `${dayStamp} · ${num(day.counted)} stocks` : 'Breadth'}</div>
           {day && day.counted ? (
             <>
-              <div className="row"><div className="n up"><CountUp value={day.up} format={fmtInt} /><small>rose</small></div><div className="n down"><CountUp value={day.down} format={fmtInt} /><small>fell</small></div></div>
+              <div className="row"><div className="n up"><Flash value={day.up}>{num(day.up)}</Flash><small>rose</small></div><div className="n down"><Flash value={day.down}>{num(day.down)}</Flash><small>fell</small></div></div>
               <div className="split" aria-hidden><i className="u" style={{ width: `${share(day.up)}%` }} /><i className="f" style={{ width: `${share(day.flat)}%` }} /><i className="d" style={{ width: `${share(day.down)}%` }} /></div>
               <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
               {b200 && <div className="foot">At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of {num(b200.withHistory)} with a 200-day history sat above their 200-day average.</div>}
@@ -125,8 +125,9 @@ function JobTiles() {
       <div className="jobs2">
         <Link className="job2 t-lav" href="/screen/"><span className="big">{sum.data ? num(sum.data.count) : '—'}</span><span><span className="t">Find stocks</span><span className="l">companies screened on quality, growth, value and trend</span></span></Link>
         <button type="button" className="job2 t-mint" onClick={() => window.dispatchEvent(new Event('alpha:search'))}><span className="big"><kbd>/</kbd></span><span><span className="t">Look up a company</span><span className="l">by name or symbol, from any page</span></span></button>
-        <Link className="job2 t-lime" href="/engines/"><span className="big">{eng.data ? num(open) : '—'}</span><span><span className="t">See the signals</span><span className="l">waiting or open in the Swing book</span></span></Link>
-        <Link className="job2 t-peach" href="/watchlist/"><span className="big">{num(watch.length)}</span><span><span className="t">Keep track</span><span className="l">{watch.length === 1 ? 'name' : 'names'} on your watchlist, kept in this browser</span></span></Link>
+        {/* a bare 0 reads as an empty product: with no plan open, the card says why (Pro §29) */}
+        <Link className="job2 t-lime" href="/engines/"><span className="big">{!eng.data ? '—' : open ? num(open) : <span className="big-word">{eng.data.gate.on ? 'None' : 'Gate off'}</span>}</span><span><span className="t">{open ? 'See the signals' : 'Why no signals'}</span><span className="l">{!eng.data ? 'experimental research' : open ? 'waiting or open in the Swing book · experimental research' : eng.data.gate.on ? 'no stock passed every rule at the last close' : `alerts off; the market passes ${eng.data.gate.passed} of 4 gate checks. See the checks`}</span></span></Link>
+        <Link className="job2 t-peach" href={watch.length ? '/desk/' : '/watchlist/'}><span className="big">{watch.length ? num(watch.length) : <span className="big-word">Start</span>}</span><span><span className="t">{watch.length ? 'My Desk' : 'Build your watchlist'}</span><span className="l">{watch.length ? `${watch.length === 1 ? 'name' : 'names'} tracked, what needs review; kept in this browser` : 'add three companies you already follow to see what changes'}</span></span></Link>
       </div>
     </section>
   );

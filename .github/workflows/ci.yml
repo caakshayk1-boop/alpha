@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
+      - name: Design lint (forbidden words; raw colours and ad-hoc toFixed may only fall)
+        run: npm run lint:design
       - name: Unit tests (data status, breadth, Research Card, screen parser)
         run: npm test
       # next/font downloads the faces at build time, so this step needs the network.
@@ -39,7 +41,7 @@ jobs:
           python tests/test_registry.py
       - name: Static export has every page
         run: |
-          for p in index brief/index markets/index screen/index company/index map/index rotation/index engines/index trades/index reads/index ipo/index funds/index news/index about/index tools/index compare/index calendar/index watchlist/index; do
+          for p in index brief/index markets/index screen/index company/index map/index rotation/index engines/index trades/index reads/index ipo/index funds/index news/index about/index tools/index compare/index calendar/index watchlist/index journal/index research/index desk/index privacy/index; do
             test -f "out/$p.html" || { echo "::error::out/$p.html missing"; exit 1; }
           done
           test -f out/_headers

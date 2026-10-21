@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { ttlFor } from './cache';
 import { dayFromLive, mergeLive, pickDay, type DayFigures, type LivePart, type LiveSnap, type Universe } from './live';
 import type { RotationFeed, ChartFeed, Barometer, DataHealth, SignalsFeed, PxFeed, IpoLive, DetailFeed, Funds, InstFeed, Ipo, NewsItem, Pulse, QuotesFeed, Reads, Regime, Screen, SeasonFeed, SwotFeed, Summary } from './types';
 
@@ -23,7 +24,12 @@ export interface FeedMap {
 export type FeedName = keyof FeedMap;
 
 export const BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? '';
-const memo = new Map<string, Promise<unknown>>();
+interface Entry { p: Promise<unknown>; at: number; value?: unknown; gen: number }
+const memo = new Map<string, Entry>();
+let gen = 0;
+const TIMEOUT = 20_000;
+const REFRESHED = 'alpha-refreshed';
+const REFRESH_FAILED = 'alpha-refresh-failed';
 
 /** Requests started by the inline script in app/layout.tsx before this bundle ran (Today only). Each is used once. */
 function early<T>(url: string): Promise<T> | undefined {
@@ -34,19 +40,39 @@ function early<T>(url: string): Promise<T> | undefined {
   return hit;
 }
 
-function load<T>(url: string): Promise<T> {
-  let p = memo.get(url) as Promise<T> | undefined;
-  if (!p) {
-    p = early<T>(url) ?? fetch(url).then(async (r) => {
-      if (!r.ok) throw new Error(`${url} answered ${r.status}`);
-      return (await r.json()) as T;
-    });
-    // a failed load must be retryable, not cached forever
-    p.catch(() => memo.delete(url));
-    memo.set(url, p);
-  }
-  return p;
+function fetchJson<T>(url: string): Promise<T> {
+  return fetch(url, { signal: AbortSignal.timeout(TIMEOUT) }).then(async (r) => {
+    if (!r.ok) throw new Error(`${url} answered ${r.status}`);
+    return (await r.json()) as T;
+  });
 }
+
+/** A cached load with a lifetime. Within its TTL the same promise is shared. After it, the LAST GOOD value is returned at
+ *  once and a refresh runs behind it; when the refresh lands, mounted hooks for that URL are told. A failed request is
+ *  evicted (so Retry retries) but never replaces a good value; an older response can never overwrite a newer one. */
+function load<T>(url: string): Promise<T> {
+  const hit = memo.get(url);
+  const now = Date.now();
+  if (hit && now - hit.at < ttlFor(url)) return hit.p as Promise<T>;
+  const g = ++gen;
+  const p = (!hit ? early<T>(url) : undefined) ?? fetchJson<T>(url);
+  const entry: Entry = { p, at: now, value: hit?.value, gen: g };
+  memo.set(url, entry);
+  p.then((v) => {
+    const cur = memo.get(url);
+    if (!cur || cur.gen > g) return;                    // a newer request owns this URL now
+    cur.value = v;
+    if (hit) window.dispatchEvent(new CustomEvent(REFRESHED, { detail: url }));
+  }, () => {
+    const cur = memo.get(url);
+    if (cur && cur.gen === g) { if (hit?.value !== undefined) memo.set(url, { p: Promise.resolve(hit.value), at: 0, value: hit.value, gen: g }); else memo.delete(url); }
+    if (hit?.value !== undefined) window.dispatchEvent(new CustomEvent(REFRESH_FAILED, { detail: url }));
+  });
+  // stale-while-revalidate: with a good value on hand, answer with it now; the refresh above updates the page when it lands
+  return (hit?.value !== undefined ? Promise.resolve(hit.value) : p) as Promise<T>;
+}
+/** The current value for a URL, if one has been loaded (for hooks reacting to a refresh). */
+const valueOf = <T,>(url: string): T | undefined => memo.get(url)?.value as T | undefined;
 
 export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<FeedMap[K]>(`${BASE}/data/${name}.json`);
 export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => load<ChartFeed>(`${BASE}/api/chart?s=${encodeURIComponent(sym)}&r=${range}`);
@@ -56,40 +82,52 @@ export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ip
 export const summaryFeed = (): Promise<Summary> => load<Summary>(`${BASE}/api/summary`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
 
-export interface Loaded<T> { data: T | null; error: string | null; loading: boolean }
+/** stale: the data shown is the last good answer and the newest refresh failed (its error is in `error`). */
+export interface Loaded<T> { data: T | null; error: string | null; loading: boolean; stale?: boolean }
 
-function useLoaded<T>(get: () => Promise<T>, key: string, enabled = true): Loaded<T> {
+function useLoaded<T>(get: () => Promise<T>, key: string, enabled = true, url?: string): Loaded<T> {
   const [state, set] = useState<Loaded<T>>({ data: null, error: null, loading: true });
   useEffect(() => {
     if (!enabled) return undefined;
     let live = true;
     set({ data: null, error: null, loading: true });
-    get().then(
+    const run = () => get().then(
       (data) => live && set({ data, error: null, loading: false }),
-      (e: unknown) => live && set({ data: null, error: e instanceof Error ? e.message : 'failed', loading: false }),
+      // a failed refresh keeps what is on screen, marked stale; only a first failure shows the error state
+      (e: unknown) => live && set((s) => (s.data !== null ? { ...s, stale: true, error: e instanceof Error ? e.message : 'failed', loading: false } : { data: null, error: e instanceof Error ? e.message : 'failed', loading: false })),
     );
+    void run();
+    const onShow = () => { if (document.visibilityState === 'visible') void run(); };      // a returning tab reconciles first
+    const onFresh = (e: Event) => { if (url && (e as CustomEvent<string>).detail === url) { const v = valueOf<T>(url); if (live && v !== undefined) set({ data: v, error: null, loading: false }); } };
+    const onFail = (e: Event) => { if (live && url && (e as CustomEvent<string>).detail === url) set((s) => ({ ...s, stale: true, error: 'the latest refresh failed; showing the last good data' })); };
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener(REFRESHED, onFresh);
+    window.addEventListener(REFRESH_FAILED, onFail);
     return () => {
       live = false;
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener(REFRESHED, onFresh);
+      window.removeEventListener(REFRESH_FAILED, onFail);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
   return state;
 }
 
-export const useFeed = <K extends FeedName>(name: K): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name);
+export const useFeed = <K extends FeedName>(name: K): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name, true, `${BASE}/data/${name}.json`);
 /** Like useFeed, but does nothing until `enabled`: lets a page skip a big feed when a small one already answered. */
-export const useFeedWhen = <K extends FeedName>(name: K, enabled: boolean): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name, enabled);
+export const useFeedWhen = <K extends FeedName>(name: K, enabled: boolean): Loaded<FeedMap[K]> => useLoaded(() => feed(name), name, enabled, `${BASE}/data/${name}.json`);
 
 /** One company's slice of every company feed, built before each deploy (scripts/shard.mjs). An error means no shard: use the full feeds. */
 export interface Shard { sym: string; built_on: string; count: number; row: import('./types').Row; years: import('./types').Year[] | null; swot: import('./types').Swot | null; inst: import('./types').InstRow | null; season: { m: [number, number, number][]; y: number } | null }
-export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym);
+export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym, `${BASE}/c/${encodeURIComponent(sym)}.json`);
 /** The Swing v2 book: the market gate, the rules, the backtest and every signal (public/signals.json, written nightly). */
-export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'signals');
-export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation');
-export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive');
-export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes');
+export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'signals', true, `${BASE}/signals.json`);
+export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation', true, `${BASE}/rotation.json`);
+export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive', true, `${BASE}/api/ipo-live`);
+export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes', true, `${BASE}/api/quotes`);
 /** The day's breadth, 200-day share and sector medians in under 2 KB, so a headline never waits on the 490 KB screen. */
-export const useSummary = (): Loaded<Summary> => useLoaded(summaryFeed, 'summary');
+export const useSummary = (): Loaded<Summary> => useLoaded(summaryFeed, 'summary', true, `${BASE}/api/summary`);
 
 /** Live prices for a set of symbols, refreshed every 60 seconds while the tab is visible. Empty until the first answer. */
 export function usePx(symbols: string[]): { quotes: Record<string, import('./types').PxQuote>; at: string | null } {
@@ -97,15 +135,18 @@ export function usePx(symbols: string[]): { quotes: Record<string, import('./typ
   const [state, setState] = useState<{ quotes: Record<string, import('./types').PxQuote>; at: string | null }>({ quotes: {}, at: null });
   useEffect(() => {
     if (!key) return;
-    let live = true;
+    let live = true, seq = 0;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
       // bypass the in-memory memo: this one is meant to be fresh
-      fetch(`${BASE}/api/px?s=${encodeURIComponent(key)}`).then((r) => r.json() as Promise<import('./types').PxFeed>).then((j) => { if (live && j.ok) setState({ quotes: j.quotes, at: j.fetched_at ?? null }); }, () => undefined);
+      const n = ++seq;
+      fetch(`${BASE}/api/px?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json() as Promise<import('./types').PxFeed>).then((j) => { if (live && j.ok && n === seq) setState({ quotes: j.quotes, at: j.fetched_at ?? null }); }, () => undefined);
     };
     pull();
     const t = window.setInterval(pull, 60_000);
-    return () => { live = false; window.clearInterval(t); };
+    const onShow = () => { if (document.visibilityState === 'visible') pull(); };
+    document.addEventListener('visibilitychange', onShow);
+    return () => { live = false; window.clearInterval(t); document.removeEventListener('visibilitychange', onShow); };
   }, [key]);
   return state;
 }
@@ -119,7 +160,7 @@ export function useIntraday(symbols: string[]): { quotes: Record<string, { prev:
     let live = true;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
-      fetch(`${BASE}/api/intraday?s=${encodeURIComponent(key)}`).then((r) => r.json()).then((j) => { if (live) setState(j?.ok ? { quotes: j.quotes, at: j.fetched_at ?? null, loading: false } : (x) => ({ ...x, loading: false })); }, () => { if (live) setState((x) => ({ ...x, loading: false })); });
+      fetch(`${BASE}/api/intraday?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json()).then((j) => { if (live) setState(j?.ok ? { quotes: j.quotes, at: j.fetched_at ?? null, loading: false } : (x) => ({ ...x, loading: false })); }, () => { if (live) setState((x) => ({ ...x, loading: false })); });
     };
     pull();
     const t = window.setInterval(pull, 300_000);
@@ -135,7 +176,7 @@ export function useIntraday(symbols: string[]): { quotes: Record<string, { prev:
 type LiveState = { snap: LiveSnap | null; universe: Universe | null; loading: boolean; error: string | null };
 const liveHub = { state: { snap: null, universe: null, loading: true, error: null } as LiveState, subs: new Set<(s: LiveState) => void>(), timer: 0, running: false, gen: 0 };
 async function liveTick(gen: number) {
-  const getJson = async <T,>(u: string): Promise<T | null> => { try { const r = await fetch(u, { cache: 'no-store' }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; } };
+  const getJson = async <T,>(u: string): Promise<T | null> => { try { const r = await fetch(u, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; } };
   const [uni, a, b] = await Promise.all([load<Universe>(`${BASE}/universe.json`).catch(() => null), getJson<LivePart>(`${BASE}/api/live?part=0`), getJson<LivePart>(`${BASE}/api/live?part=1`)]);
   if (!liveHub.running || gen !== liveHub.gen) return;   // a stopped or restarted loop exits instead of running twice
   const snap = mergeLive([a, b], uni?.count ?? 0);
@@ -179,7 +220,7 @@ export function useLiveQuotes(): Loaded<QuotesFeed> {
     let alive = true, timer = 0;
     const tick = async () => {
       try {
-        const r = await fetch(`${BASE}/api/quotes`, { cache: 'no-store' });
+        const r = await fetch(`${BASE}/api/quotes`, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) });
         if (!r.ok) throw new Error(`quotes answered ${r.status}`);
         const data = (await r.json()) as QuotesFeed;
         if (alive) set({ data, error: null, loading: false });

@@ -9,7 +9,9 @@ import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDa
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
-import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { CaseBlock, ShareButton, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { BackToContext } from '@/components/TickerLink';
+import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
@@ -45,8 +47,12 @@ function Returns({ r }: { r: Row }) {
   );
 }
 
+/** Every line of the yearly table; a click opens its history and source (the financial explorer, Pro §28 P1). */
+const LINES = [['Revenue', 'rev_cr', false], ['EBITDA', 'ebitda_cr', false], ['Net profit', 'pat_cr', false], ['Operating cash flow', 'cfo_cr', false], ['Free cash flow', 'fcf_cr', false], ['ROCE %', 'roce', true], ['ROE %', 'roe', true], ['EBIT margin %', 'ebit_margin', true]] as const;
+
 function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
   const d = useFeedWhen('screen-detail', pre === undefined);
+  const [open, setOpen] = useState<(typeof LINES)[number][1] | null>(null);
   const years: Year[] = [...(pre !== undefined ? pre ?? [] : d.data?.detail[sym]?.years ?? [])].reverse();
   const bars = (key: 'rev_cr' | 'pat_cr', title: string) => {
     const vals = years.map((y) => y[key]);
@@ -78,11 +84,27 @@ function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
             <table className="tbl" style={{ minWidth: 560 }}>
               <thead><tr><th>₹ crore</th>{years.map((y) => <th key={y.fy}>{y.fy}</th>)}</tr></thead>
               <tbody>
-                {([['Revenue', 'rev_cr'], ['EBITDA', 'ebitda_cr'], ['Net profit', 'pat_cr'], ['Operating cash flow', 'cfo_cr'], ['Free cash flow', 'fcf_cr']] as const).map(([l, k]) => <tr key={k} style={{ cursor: 'default' }}><td>{l}</td>{years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? num(y[k]) : dash}</td>)}</tr>)}
-                {([['ROCE %', 'roce'], ['ROE %', 'roe'], ['EBIT margin %', 'ebit_margin']] as const).map(([l, k]) => <tr key={k} style={{ cursor: 'default' }}><td>{l}</td>{years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? y[k]!.toFixed(1) : dash}</td>)}</tr>)}
+                {LINES.map(([l, k, pctLine]) => (
+                  <tr key={k} style={{ cursor: 'default' }}>
+                    <td><button type="button" className="fin-line" aria-expanded={open === k} onClick={() => setOpen((o) => (o === k ? null : k))} title="Show this line's history and source">{l}</button></td>
+                    {years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? num(y[k], pctLine ? 1 : 0) : dash}</td>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          {open && (() => {
+            const [label, key, pctLine] = LINES.find((x) => x[1] === open)!;
+            const vals = years.map((y) => y[key]);
+            const max = Math.max(1e-9, ...vals.map((v) => Math.abs(v ?? 0)));
+            return (
+              <div className="panel tight fin-explore" role="region" aria-label={`${label}, year by year`}>
+                <div className="eyebrow">{label} · year by year</div>
+                <div className="fin-bars" style={{ marginTop: 10 }}>{years.map((y) => { const v = y[key]; return <div className="fin-bar" key={y.fy}><i className={has(v) && v < 0 ? 'neg' : ''} style={{ height: `${has(v) ? Math.max(3, (Math.abs(v) / max) * 100) : 0}%` }} /><span className="num" style={{ fontSize: 13 }}>{has(v) ? num(v, pctLine ? 1 : 0) : dash}</span><span className="dim" style={{ fontSize: 12 }}>{y.fy}{y.end ? ` · to ${y.end.slice(0, 7)}` : ''}</span></div>; })}</div>
+                <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Each bar is one fiscal year, labelled with its period end. Source: the company&apos;s annual statements as published by Yahoo Finance, in Alpha&apos;s screen. A restated year shows the restated figure; the feed does not mark restatements. Check a figure against the company&apos;s own results filing: <a href={`https://www.nseindia.com/companies-listing/corporate-filings-financial-results?symbol=${encodeURIComponent(sym)}`} target="_blank" rel="noopener noreferrer">NSE results filings ↗</a> · <a href={`https://www.bseindia.com/stock-share-price/x/x/${encodeURIComponent(sym)}/financials-results/`} target="_blank" rel="noopener noreferrer">BSE ↗</a></p>
+              </div>
+            );
+          })()}
         </>
       )}
     </Async>
@@ -167,7 +189,8 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const eng = useSignals();
   const px = usePx(sym ? [sym] : []);
   const lv = useLive();
-  const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
+  const [watch, addWatch, removeWatch, , watchError] = useStoredList('alpha-watchlist');
+  const [watchNote, setWatchNote] = useState('');
   const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
   type Tab = (typeof TABS)[number];
   const [tab, setTab] = useState<Tab>('overview');
@@ -180,7 +203,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 14 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
-  const lender = /financial|bank|insurance|real estate/i.test(`${r.sector} ${r.ind}`);
+  const lender = isLender(r) || /real estate/i.test(`${r.sector} ${r.ind}`);      // the scorecard note also covers real estate
   // Price and day move follow the site's one rule: the live snapshot when it is a newer session than the screen, then this
   // symbol's own quote, then the screen close. Everything below the header is the screen close, and says which day that is.
   const pv = priceView(r.sym, r, lv.snap, px.quotes[sym]);
@@ -192,21 +215,24 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
     <>
       <header className="wrap co-head">
         <div>
-          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
+          <div className="eyebrow"><BackToContext /> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
           <h1 className="disp">{r.name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className="tag acc">{r.sym}</span>
+            <span className="tag acc" style={{ viewTransitionName: 'ticker' }}>{r.sym}</span>
             {r.tier && <span className="tag">{r.tier} cap</span>}
             {r.ahimsa && <span className="tag up">Ahimsa 500</span>}
-            {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? 'up' : 'warn'}`}>{r.vet.s === 'cleared' ? `Vetted ${r.vet.p}/${r.vet.n}` : `Not vetted · ${r.vet.w}`}</span>}
+            {/* the screen's DATA gate, named for what it is: it is not Alpha's research checks below and not an editorial review */}
+            {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? '' : 'warn'}`} title={`The screen's data checks (statements on file and fresh, price fresh, size, liquidity, leverage, interest cover, cash conversion, run rate): ${r.vet.p} of ${r.vet.n} pass. A gate on the data, not a view on the company, and not a review by a person.`}>{r.vet.s === 'cleared' ? `Data checks ${r.vet.p}/${r.vet.n}` : `Data checks: held · ${r.vet.w}`}</span>}
             {r.risk && r.risk.level !== 'LOW' && <span className="tag warn">Risk {r.risk.level.toLowerCase()}</span>}
           </div>
         </div>
         <div className="co-price">
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
-            <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
+            <button className={`chip watch-btn${watch.includes(r.sym) ? ' on' : ''}`} aria-pressed={watch.includes(r.sym)} onClick={() => { const on = watch.includes(r.sym); if (on ? removeWatch(r.sym) : addWatch(r.sym)) setWatchNote(on ? 'Removed from your watchlist' : 'Saved to your watchlist, in this browser'); }}><span className="star" aria-hidden>{watch.includes(r.sym) ? '★' : '☆'}</span> {watch.includes(r.sym) ? 'Watching' : 'Watch'}</button>
+            {(watchError || watchNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13 }}>{watchError ?? watchNote}</span>}
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
+            <ShareButton r={r} />
           </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div></div>
       </header>
       <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
@@ -216,6 +242,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
+      <CaseBlock r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
       <section className="wrap" style={{ paddingTop: 8 }}>
         <h2 className="sr">Price chart</h2>
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>

@@ -33,11 +33,17 @@ THE RULES (fixed in code on 21 Oct 2026, before any test of them was run; round,
        stop    the lowest low of the last 10 sessions, less 0.2 ATR (below the structure, not a round percentage).
                If that risks more than 8% or less than 2% of the signal close, there is no trade (never widen or squeeze
                a stop to make a trade fit).
-       T1      entry + 2R: sell half. The stop on the other half moves to entry + 0.5R (a locked profit, never break-even).
+       T1      entry + 2R: sell half. The stop on the other half moves to entry + 0.5R (raised above entry, never break-even;
+               a gap through it fills at the open, so the overall result can still be lower or negative).
        trail   after T1 the stop rises to the lowest low of the last 10 sessions whenever that is higher. It never falls.
        T2      entry + 4R: sell the rest.
        time    whatever is left exits at the close of session 30.
        A gap through the stop exits at the open. A session that spans the stop and a target counts the stop first.
+     Execution policy on daily bars (A16, stated 21 Oct 2026; the behaviour is unchanged since launch): the plan is an
+       end-of-day order book. The stop and both targets rest from entry, so T1 and T2 can fill in one session. The stop
+       raised after T1 is placed once the T1 fill is known and works from the NEXT session; a session that crosses T1 and
+       then trades below the new level is not stopped that day. The 2-8% risk gate is read at the signal close; an entry
+       inside the 2% gap limit can therefore carry up to about 9.8% risk, and the actual risk is reported with the trade.
   5. Book limits: at most 3 new trades a session (ranked by 6-month relative strength), at most 10 open, at most 2 open in
      one sector, one trade per stock, and 20 sessions before the same stock can be traded again.
   6. Costs of 0.25% of entry per round trip are charged on every tested and every live closed trade.
@@ -56,6 +62,7 @@ from indicators import atr, ema, rsi, sma
 
 VERSION = "swing-2.0.0"
 LAUNCHED = "2026-10-21"
+ALERT_MIN_T = 2.0          # the owner's rule (21 Oct 2026): alerts only when the holdout month-clustered t is at least 2
 
 P = {
     "gate_vix_max": 20.0, "gate_breadth_min": 0.50,
@@ -90,10 +97,11 @@ RULES = {
     "plan": [
         "Enter at the next session's open; skip it if the open is more than 2% above the signal close or at or below the stop. T1 and T2 are set from the actual entry.",
         "Stop: the lowest low of the last 10 sessions, less 0.2 ATR. No trade if that risks more than 8% or less than 2%.",
-        "T1 at +2R: sell half. The stop on the rest moves to entry + 0.5R, a locked profit.",
+        "T1 at +2R: sell half. The stop on the rest is raised to entry + 0.5R. A gap through it fills at the open, and with costs that can reduce or reverse the trade's result.",
         "After T1 the stop trails up to the lowest low of the last 10 sessions. It never moves down.",
         "T2 at +4R: sell the rest. Whatever is left exits at the close of session 30.",
         "A gap through the stop exits at the open; a session that spans the stop and a target counts the stop first.",
+        "Orders are those of an end-of-day book: the stop and both targets rest from entry; the stop raised after T1 works from the next session. The 2-8% risk limit is read at the signal close, so an entry within the gap limit can carry up to about 9.8% risk.",
     ],
     "book": [
         "At most 3 new trades a session, ranked by 6-month relative strength.",
@@ -314,3 +322,32 @@ def run_book(cands: list[Cand], bars: dict, sector_of: dict, limits: bool = True
                 last_exit[x.sym] = end
             new += 1
     return taken
+
+
+# ── A15: alert eligibility is bound to the rules that produced the evidence ───────────────────────────────────────────
+def fingerprint(params: dict | None = None) -> str:
+    """A hash of the rule book: version plus every parameter. Any change to the rules gives a new fingerprint, so research
+    produced under old rules can never make new rules eligible for alerts."""
+    import hashlib
+    import json
+    body = json.dumps({"version": VERSION, "params": params if params is not None else P}, sort_keys=True, default=str)
+    return hashlib.sha256(body.encode()).hexdigest()[:16]
+
+
+def eligibility(results: dict | None) -> tuple[bool, str]:
+    """(alertable, why) from the research file. Alerts need ALL of: results for this version, produced with these exact
+    parameters (fingerprint), a holdout statistic that is a finite number, and that statistic at or above ALERT_MIN_T."""
+    import math
+    if not results:
+        return False, "Alerts off: the rules have not been tested yet."
+    if results.get("version") != VERSION:
+        return False, f"Alerts off: the research was produced for {results.get('version')}, not the running {VERSION}."
+    fp = results.get("fingerprint") or fingerprint(results.get("params") or {})
+    if fp != fingerprint():
+        return False, "Alerts off: the research was produced with different parameters from the running rules; it must be re-run."
+    ht = (results.get("rules") or {}).get("holdout", {}).get("clustered_t_clustered")
+    if not isinstance(ht, (int, float)) or isinstance(ht, bool) or not math.isfinite(ht):
+        return False, "Alerts off: the holdout statistic is missing or not a finite number."
+    if ht < ALERT_MIN_T:
+        return False, f"Alerts off: the holdout month-clustered t is {ht:+.2f}, needs {ALERT_MIN_T:+.1f}."
+    return True, f"Alerts on: the holdout month-clustered t is {ht:+.2f} for these exact rules."

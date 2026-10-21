@@ -193,8 +193,12 @@ export interface Fund {
 }
 export interface Funds { generated_at: string; basis: string; categories: { key: string; label: string; blurb: string; funds: Fund[] }[] }
 
-export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string; model?: string; corrections?: { date: string; fix: string }[] }
-export interface Reads { generated_at: string; editions: { week: string; written_at: string; studies: Study[] }[] }
+/** review: written by trading-dashboard's weekly_reads.py (A02). under_review means today's checks found a problem; the
+ *  text is kept as published and a correction is a new study. reviewed_by_person is false for every machine-written study. */
+export interface StudyReview { status: 'machine_checked' | 'under_review' | 'corrected'; problems: string[]; checked_at: string; reviewed_by_person: boolean }
+export interface Study { sym: string; name: string; sector: string; industry: string; mcap_cr: number; price: number; read_minutes: number; facts: string[]; study: string; model?: string; corrections?: { date: string; fix: string }[]; review?: StudyReview }
+export interface ReadsCorrection { date: string; week: string; sym: string; status: string; issue: string; action: string }
+export interface Reads { generated_at: string; editions: { week: string; written_at: string; studies: Study[] }[]; corrections?: ReadsCorrection[] }
 
 export interface Swot { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] }
 export interface SwotFeed { built_on: string; swot: Record<string, Swot> }
@@ -218,7 +222,7 @@ export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; tot
 
 export interface DataHealth { generated_at: string; datasets: { dataset: string; source: string; last_successful_update: string; freshness_age: string; status: string }[] }
 
-/** Swing v2 (engines/swing.py, swing_run.py): one rule book, a market gate, two setups, half at 2R + profit lock + trail. */
+/** Swing v2 (engines/swing.py, swing_run.py): one rule book, a market gate, two setups, half at 2R, stop raised above entry, then a trail. */
 export interface SigEvent { date: string; kind: 'entry' | 't1' | 't2' | 'stop' | 'lock' | 'trail' | 'time'; price: number; fraction: number }
 export interface Sig {
   id: string; engine: 'swing'; sym: string; name: string; sector: string | null; setup: 'Pullback' | 'Breakout'; date: string;

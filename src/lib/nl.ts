@@ -1,13 +1,23 @@
 import type { Row } from './types';
 
-export interface Filter { label: string; test: (r: Row) => boolean }
+/** note: shown beside the clause when it is broader or narrower than the words asked for, so nothing is changed silently. */
+export interface Filter { label: string; test: (r: Row) => boolean; note?: string }
 export interface Parsed { filters: Filter[]; unknown: string[] }
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 
+const isFin = (r: Row) => r.sector === 'Financial Services' || r.ind === 'Financial Services';
+/** A bank, read from the registered name. "Bank" as a word, so "Bankers" or "Banking Solutions" (a software firm) is not one. */
+export const isBank = (r: Row) => isFin(r) && /\bbank\b(?!ing)/i.test(r.name ?? '') && !/\b(bankers?|banking (solutions|services|software))\b/i.test(r.name ?? '');
 const GROUPS: [RegExp, string, (r: Row) => boolean][] = [
   [/\b(it|tech|technology|software|it services)\b/, 'IT and technology', (r) => r.ind === 'Information Technology' || r.sector === 'Technology'],
   [/\b(pharma|pharmaceutical|healthcare|health|hospital)s?\b/, 'Healthcare', (r) => r.sector === 'Healthcare' || r.ind === 'Healthcare'],
-  [/\b(bank|banks|banking|nbfc|financials?|lenders?|insurance)\b/, 'Financials', (r) => r.sector === 'Financial Services' || r.ind === 'Financial Services'],
+  // A04 (21 Oct 2026): "banks" used to mean the whole Financial Services sector, so a bank screen listed exchanges, asset
+  // managers and brokers. The feed has no bank industry; every listed Indian bank carries the word "Bank" in its registered
+  // name, so that is the rule, and the clause says so. Lenders and NBFCs cannot be told apart from other financial firms
+  // in this feed: those words search Financial Services and say that they are broader.
+  [/\b(bank|banks|banking)\b/, 'Banks (Financial Services, named "… Bank")', isBank],
+  [/\b(insurers?|insurance)\b/, 'Insurers (Financial Services, named "Insurance" or "Assurance")', (r) => isFin(r) && /\b(insurance|assurance)\b/i.test(r.name ?? '')],
+  [/\b(nbfcs?|lenders?|financials?|financial services)\b/, 'Financial Services (all)', isFin],
   [/\b(auto|autos|automobile|automotive)\b/, 'Autos', (r) => r.ind === 'Automobile and Auto Components'],
   [/\b(fmcg|consumer staples|staples|consumer defensive)\b/, 'FMCG and staples', (r) => r.ind === 'Fast Moving Consumer Goods' || r.sector === 'Consumer Defensive'],
   [/\b(metals?|mining|steel)\b/, 'Metals and mining', (r) => r.ind === 'Metals & Mining'],
@@ -82,8 +92,12 @@ export function parse(q: string): Parsed {
   }
   for (const [re, label, f] of PHRASES) if (re.test(s)) { filters.push({ label, test: f }); s = s.replace(new RegExp(re.source, 'g'), ' '); }
   const grp: [string, (r: Row) => boolean][] = [];
+  const asked = s;
   for (const [re, label, f] of GROUPS) if (re.test(s)) { grp.push([label, f]); s = s.replace(new RegExp(re.source, 'g'), ' '); }
-  if (grp.length) filters.push({ label: grp.map((g) => g[0]).join(' or '), test: (r) => grp.some((g) => g[1](r)) });
+  if (grp.length) {
+    const broad = /\b(nbfcs?|lenders?)\b/.test(asked);
+    filters.push({ label: grp.map((g) => g[0]).join(' or '), test: (r) => grp.some((g) => g[1](r)), note: broad ? 'The feed does not separate NBFCs and lenders from other financial firms (exchanges, asset managers, brokers), so this searches all of Financial Services.' : grp.some((g) => g[0].startsWith('Banks')) ? 'Banks are read from the registered name ("… Bank"), because the feed has no bank industry. Exchanges, asset managers, brokers and NBFCs are not included; ask for "financial services" to include them.' : undefined });
+  }
   const stop = new Set(['stocks', 'stock', 'companies', 'company', 'shares', 'with', 'and', 'in', 'the', 'a', 'an', 'that', 'are', 'is', 'show', 'me', 'find', 'give', 'high', 'low', 'good', 'best', 'top', 'of', 'for', 'to', 'cap', 'caps', 'sector', 'or', 'which', 'have', 'has', 'all', 'only', 'name', 'names', 'big', 'small', 'large', 'mid', 'micro', 'now', 'today', 'than', 'greater', 'less', 'at', 'least', 'most']);
   const unknown = s.split(' ').filter((w) => w && !stop.has(w) && !/^[-\d.%<>=]+$/.test(w));
   return { filters, unknown };

@@ -1,5 +1,6 @@
 import type { Row, Sig } from './types';
 import { ordinal } from './status.ts';
+import { isLender } from './sector.ts';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 export interface Point { text: string; weight: number }
@@ -14,7 +15,7 @@ export interface Decision {
 /** Deterministic read of one company from the screen's own numbers. Every sentence is built from a figure on the page; nothing is generated or predicted. */
 export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   const bull: Point[] = [], bear: Point[] = [];
-  const lender = /financial|bank|insurance/i.test(`${r.sector} ${r.ind}`);
+  const lender = isLender(r);
   const add = (cond: boolean, side: 'bull' | 'bear', text: string, weight: number) => { if (cond) (side === 'bull' ? bull : bear).push({ text, weight }); };
 
   add(has(r.roce) && r.roce >= 18 && !lender, 'bull', `ROCE of ${r.roce?.toFixed(0)}% means each rupee of capital earns well above a typical cost of capital`, 3);
@@ -78,7 +79,7 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   const strong = dims.filter((d) => (d.score ?? 0) >= 1).map((d) => d.name.toLowerCase());
   const weak = dims.filter((d) => d.score !== null && d.score <= -1).map((d) => d.name.toLowerCase());
   const unavailable = checks.length - known.length;
-  const headline = `${passed} of ${known.length} applicable checks pass${unavailable ? ` (${unavailable} of ${checks.length} not applicable or unavailable)` : ''}. ${strong.length ? `Strong on ${strong.join(' and ')}. ` : ''}${weak.length ? `Weak on ${weak.join(' and ')}.` : strong.length ? '' : 'Nothing stands out either way.'}`.trim();
+  const headline = `${passed} of ${known.length} of Alpha's research checks pass${unavailable ? ` (${unavailable} of ${checks.length} not applicable or unavailable)` : ''}. ${strong.length ? `Strong on ${strong.join(' and ')}. ` : ''}${weak.length ? `Weak on ${weak.join(' and ')}.` : strong.length ? '' : 'Nothing stands out either way.'}`.trim();
 
   const triggers: string[] = [];
   if (has(r.sma200) && has(r.price)) triggers.push(r.price > r.sma200 ? `A close below the 200-day average (₹${r.sma200.toFixed(0)}) would end the long-term uptrend` : `A close above the 200-day average (₹${r.sma200.toFixed(0)}) would repair the long-term trend`);
