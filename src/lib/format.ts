@@ -27,7 +27,7 @@ export function changeParts(v: number, dp = 2, suffix = '%'): { dir: 'up' | 'dow
   const r = Number(v.toFixed(dp));
   const mag = Math.abs(r).toFixed(dp);
   const dir = r > 0 ? 'up' : r < 0 ? 'down' : 'flat';
-  return { dir, text: `${dir === 'up' ? '▲ +' : dir === 'down' ? `▼ ${MINUS}` : ''}${mag}${suffix}`, label: `${dir === 'flat' ? 'unchanged' : dir} ${mag}${suffix === '%' ? ' percent' : suffix}` };
+  return { dir, text: `${dir === 'up' ? '▲ +' : dir === 'down' ? `▼ ${MINUS}` : ''}${mag}${suffix}`, label: `${dir === 'flat' ? 'unchanged' : dir} ${mag}${suffix === '%' ? ' percent' : suffix.trim() === 'bp' ? ' basis points' : suffix}` };
 }
 /** A change in a percentage is in percentage points: "+1.2 pp" (never "%"). */
 export const pp = (n: number | null | undefined, dp = 1) => (isNum(n) ? `${signedNum(n, dp, true)} pp` : dash);

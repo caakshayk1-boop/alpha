@@ -55,7 +55,7 @@ export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void 
       <div ref={panel} className="peek isheet" role="dialog" aria-modal="true" aria-label={`${q.name} in detail`} onMouseDown={(e) => e.stopPropagation()}>
         <div className="peek-top"><span className="eyebrow">{q.group} · {quoteState(q.at).label}</span><button type="button" className="chip" data-close onClick={onClose} aria-label="Close">Close ✕</button></div>
         <h2 className="disp isheet-h">{q.name}</h2>
-        <div className="isheet-px"><span className="num">{f(q.price)}{q.group === 'Rates' ? '%' : ''}</span> <Chg v={q.pct} />{typeof q.prev === 'number' && <span className="dim num"> · previous close {f(q.prev)}</span>}</div>
+        <div className="isheet-px"><span className="num">{f(q.price)}{q.group === 'Rates' ? '%' : ''}</span> {q.group === 'Rates' && typeof q.prev === 'number' && typeof q.price === 'number' ? <Chg v={(q.price - q.prev) * 100} dp={0} suffix=" bp" /> : <Chg v={q.pct} />}{typeof q.prev === 'number' && <span className="dim num"> · previous close {f(q.prev)}</span>}</div>
 
         {typeof q.dayLo === 'number' && typeof q.dayHi === 'number' && typeof q.price === 'number' && <RangeRail lo={q.dayLo} hi={q.dayHi} at={q.price} label="Today's range" />}
         {lv?.lo52 && lv.hi52 && <RangeRail lo={lv.lo52.v} hi={lv.hi52.v} at={lv.last} label="52-week range" />}

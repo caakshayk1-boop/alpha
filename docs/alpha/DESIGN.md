@@ -147,3 +147,32 @@ Animate only transform/opacity/clip-path/colour. Max two simultaneous motions in
 | One primary action per view | Three filled buttons side by side |
 | Hairlines and whitespace for structure | Boxes around every sentence |
 | Text summaries for charts | Hover-only tooltips |
+
+---
+
+## 8. As implemented: calibration of 21 Oct 2026
+
+§2 above was a starting proposal. The site already had a semantic token layer, so the proposal is mapped onto it rather than
+duplicated: components consume these names, defined once in `src/app/globals.css` for both themes, with every text pair
+checked at 4.5:1 or more on its surfaces (see the comments beside the tokens).
+
+| DESIGN.md token | Site token | Light | Dark |
+|---|---|---|---|
+| `--alpha-canvas` | `--bg` | warm off-white | `#0d0f1a` |
+| `--alpha-surface-1/2/3` | `--panel`, `--panel-2`, `--panel-3` | panels | `#151829`, `#1b1f33`, `#24283f` |
+| `--alpha-text`, `--alpha-text-muted` | `--text`, `--muted` (and `--dim` for meta) | | `#eceefa`, `#a6abc6` |
+| `--alpha-border` | `--line`, `--line-2` | hairlines | `rgba(236,238,250,.09/.18)` |
+| `--alpha-accent` | `--accent`, `--accent-2` (text step), `--accent-soft` | violet | `#a49aff` |
+| `--alpha-up`, `--alpha-down` | `--up`, `--down` (+ `-soft`, `-fill`) | `#08744a`, `#b4233a` | `#3ddc97`, `#ff7a88` |
+| colour-blind market mode | `html[data-market='cb']` | `#1c5bb8`, `#a14700` | `#7fb0ff`, `#ffa45c` |
+| `--alpha-warn` | `--warn` | `#7a4d00` | `#f5b84a` |
+| `--alpha-experimental` | `.tag.exp` (dashed accent) | | |
+| `--alpha-assumption` | `.chip-assume` (accent outline, italic) | | |
+
+Motion tokens (§6) are implemented under their own names (`--dur-instant`, `--dur-fast`, `--dur-base`, `--dur-sheet`,
+`--dur-flash`, `--ease-standard/enter/exit`, `--distance-s/m`) and mirrored for GSAP as `motionTokens` in
+`src/lib/motion.ts`. Reduced motion, from the device or the site's own setting, zeroes them.
+
+Space and radius keep the site's existing scale (`--s-1..9`, `--r-1..4`), which is one step tighter than §4 by design
+(21 Oct 2026). Raw colour literals and ad-hoc `toFixed()` in components are held by a ratchet in
+`scripts/design-lint.mjs`: the counts may only fall.
