@@ -159,12 +159,18 @@ export function ReverseDcf() {
     <Rv className="panel spot">
       <div className="eyebrow">Reverse DCF · an earnings-based teaching model</div>
       <p className="muted" style={{ margin: '8px 0 12px' }}>Instead of guessing the future and getting a value, start from today&apos;s price and solve for the earnings growth it needs.</p>
+      {/* Pro §22.6: presets the reader can edit; every input is labelled as the reader's assumption, the price and EPS as observed */}
+      <div className="filters" role="group" aria-label="Scenario">
+        <span className="eyebrow">Scenario</span>
+        {([['Conservative', '14', '8', '4'], ['Base', '12', '10', '5'], ['Optimistic', '11', '12', '6']] as const).map(([n, a, b, c]) => <button key={n} type="button" className="chip" aria-pressed={rate === a && yrs === b && tg === c} onClick={() => { setRate(a); setYrs(b); setTg(c); }}>{n}</button>)}
+        <span className="chip-assume">Your assumption</span><span className="dim" style={{ fontSize: 13 }}>return, years and terminal growth</span>
+      </div>
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
         {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 14 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
       {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
         <>
         <div className="grid g3" style={{ marginTop: 12 }}>
-          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} (screen close)</div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
+          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} <span className="chip-observed">Observed · screen close {r.last_date ? dateLabel(r.last_date) : ''}</span></div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
           <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
           <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
             {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
@@ -180,6 +186,7 @@ export function ReverseDcf() {
             </table>
           </div>
         )}
+        <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>This is arithmetic on your assumptions, not a forecast. EPS is the screen&apos;s price divided by its P/E (trailing twelve months).</p>
         </>
       )}
     </Rv>

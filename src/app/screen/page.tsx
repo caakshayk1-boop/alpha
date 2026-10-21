@@ -230,7 +230,7 @@ export default function Screen() {
         </div>
 
         <div className="filters" style={{ justifyContent: 'space-between' }}>
-          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span className="num">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}.</span>
+          <span className="muted" aria-live="polite">{activeLens && <><b style={{ color: 'var(--text)' }}>{activeLens.label}:</b> {activeLens.hint}. </>}<span key={rows.length} className="num count-tint">{num(rows.length)}</span> match{rows.length === 1 ? '' : 'es'}{s.data ? ` of ${num(s.data.rows.length)}` : ''}.</span>
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {picked.length >= 2 && <Link className="chip on" href={`/compare/?s=${picked.join(',')}`}>Compare {picked.length}</Link>}
             {picked.length > 0 && <button className="chip" onClick={() => { const n = picked.length; if (addWatchAll(picked)) { setWatchedNote(`${n} added to your watchlist, saved in this browser`); setPicked([]); } }}>Watch {picked.length}</button>}

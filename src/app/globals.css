@@ -15,6 +15,10 @@
   --ease: cubic-bezier(.22, 1, .36, 1);
   /* motion tokens: feedback, state changes, larger transitions. Animate transform and opacity only; reduced-motion zeroes all of them below. */
   --dur-fast: 140ms; --dur-base: 220ms; --dur-slow: 380ms;
+  /* Motion tokens (docs/alpha/DESIGN.md §6, Pro §26.1). lib/motion.ts mirrors them as motionTokens for GSAP. */
+  --dur-instant: 80ms; --dur-sheet: 280ms; --dur-flash: 500ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); --ease-enter: cubic-bezier(0, 0, 0.2, 1); --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --distance-s: 6px; --distance-m: 12px;
   --nav-h: 64px;
 }
 
@@ -1420,3 +1424,20 @@ html.anim .setpop { animation: cmdkIn 160ms var(--ease) both; }
 .tpl code { font: 500 12px var(--f-mono, ui-monospace); color: var(--accent-2); }
 .job2 .big .big-word { font-size: 0.62em; line-height: 1.1; display: inline-block; }
 .exp-banner { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 10px; font-size: 14px; color: var(--muted); }
+/* Assumption vs observed (Pro §22.6, §24.4) */
+.chip-assume { display: inline-flex; align-items: center; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 6px; font: italic 500 12.5px var(--f-ui); color: var(--accent-2); }
+.chip-observed { display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 7px; border-radius: 6px; background: var(--panel-2); font: 500 11.5px var(--f-ui); color: var(--muted); letter-spacing: 0; text-transform: none; }
+
+/* Reduced motion zeroes the motion tokens (DESIGN.md §6): anything built on them stops moving. */
+@media (prefers-reduced-motion: reduce) { :root { --dur-instant: 0ms; --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-sheet: 0ms; --distance-s: 0px; --distance-m: 0px; } }
+html[data-motion='reduced'] { --dur-instant: 0ms; --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-sheet: 0ms; --distance-s: 0px; --distance-m: 0px; }
+
+/* Micro-interactions (Pro §26.4): press feedback, the Watch star, the result count tint. Only transform, opacity, colour. */
+.btn, .chip, .iconbtn, .job2, .tpl, .hub-tile { transition: transform var(--dur-instant) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); }
+.btn:active, .chip:active, .iconbtn:active { transform: scale(0.98); }
+.watch-btn .star { display: inline-block; }
+html.anim .watch-btn.on .star { animation: starPop 200ms var(--ease-standard); }
+@keyframes starPop { 50% { transform: scale(1.12); } }
+.watch-btn.on { color: var(--text); border-color: var(--line-2); }
+html.anim .count-tint { animation: countTint var(--dur-flash) var(--ease-standard); }
+@keyframes countTint { from { background: var(--accent-soft); } to { background: transparent; } }

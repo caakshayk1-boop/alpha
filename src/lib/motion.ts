@@ -38,6 +38,13 @@ export function initMotion() {
 
 export { gsap, ScrollTrigger, Flip };
 
+/** The motion tokens of globals.css / DESIGN.md §6, for GSAP timelines, so CSS and JS cannot drift (seconds). */
+export const motionTokens = {
+  instant: 0.08, fast: 0.14, base: 0.2, sheet: 0.28, flash: 0.5,
+  standard: 'cubic-bezier(0.2, 0, 0, 1)', enter: 'cubic-bezier(0, 0, 0.2, 1)', exit: 'cubic-bezier(0.4, 0, 1, 1)',
+  distanceS: 6, distanceM: 12,
+} as const;
+
 /** Cards that catch the pointer light. One delegated listener for the whole site; nothing per component. */
 const LIT = '.panel, .fact, .qcard, .job2, .scard, .story, .pick, .ecard, .sky, .read-ink, .breadth2, .stamp-item, .kv > div';
 
