@@ -49,7 +49,19 @@ Each item has a pass/fail check.
 - [x] 19. (shipped: paper book + per-signal P&L and rule action; Tools/Compare/accent control; other 12 pages got shared CSS only) Agent: live P&L and rule-based status on every open signal. Agent: Analyze section + neon + colour control + motion.
 
 ## Batch 6 (next)
-- [ ] 20. Engines: `last_close` lags `data_through` when a stock's bar is late (19 Oct: 26/31 open signals on the 16 Oct close). `last_close_date` now recorded; the 18:00 IST run should wait for, or re-mark on, the late bars.
+- [x] 20. (21 Oct: late stocks re-fetched twice before publishing, a 22:30 IST re-mark run, and a loud warning naming any still late) Engines: `last_close` lags `data_through` when a stock's bar is late (19 Oct: 26/31 open signals on the 16 Oct close). `last_close_date` now recorded; the 18:00 IST run should wait for, or re-mark on, the late bars.
 - [ ] 21. Alerts only from engines with holdout clustered t >= 2 (switches all off today). NEEDS AKSHAY.
 - [ ] 22. Company LCP: an honest pre-rendered price line (needs a build-time close that is the latest session).
 - [ ] 23. Page-by-page design pass on the 12 pages that only got shared CSS (markets, news, ipo, reads, funds, rotation, calendar, watchlist, journal, about, map, screen).
+
+## Batch 7 (21 Oct 2026, owner's points)
+- [x] 24. Price parity (MRPL 170 vs TradingView 173): the screen close is dividend-adjusted (170.72 vs 173.72 traded, ₹3 dividend). Every price now
+      takes the exchange's traded price on a session tie; engines price and track plans on traded (split-only) bars, train on adjusted.
+      Still open upstream (trading-dashboard repo, needs its own OK): screen's sma/52w/levels are computed on adjusted closes.
+- [x] 25. /trades/: open trades marked live, today's R and ₹ (risk per trade input), the book across the day on 5-minute bars (/api/intraday),
+      next-session decisions (exit / modify / enter / hold / closed / skipped), provisional in hours, final after the close.
+- [x] 26. Explanations moved to Method (/about/#<page>); every page header links its section. Duplicates removed: Today (engine teaser, single
+      quote, weekly movers, wire, IPO/read cards), Brief (quotes, sectors, today's movers, calendar, IPO, engines, wire), Engines (paper book,
+      per-card paper block, exit-plan tab, live-record panel, limits panel).
+- [x] 27. Spacing one step tighter site-wide (tokens, table cells, page gutters).
+- [ ] 21, 22, 10b still open (need the owner / a build-time close).

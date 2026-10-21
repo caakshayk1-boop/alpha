@@ -16,8 +16,8 @@ export default function Markets() {
   const missing = q.data ? q.data.total - q.data.live : 0;
   return (
     <>
-      <PageHead eyebrow="Indices, commodities, currencies, rates" title="Markets" em="at a glance." lede="India, its sectors, the world, commodities, currencies and rates, each with a month of closes. Quotes come from Yahoo Finance, refreshed every minute while this page is open (the source caches up to five minutes), and each shows when it last traded." />
-      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['prices', 'barometer', 'screen']} /><p className="dim" style={{ fontSize: 13.5, margin: '8px 0 0' }}>Each quote below shows its own last-trade time, because markets keep different hours. Prices is the time of the stock prices used across Alpha; the stance, barometer and breadth are from the sessions stamped beside it.</p></section>
+      <PageHead method="markets" eyebrow="Indices, commodities, currencies, rates" title="Markets" em="at a glance." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['prices', 'barometer', 'screen']} /></section>
       <section className="wrap">
         <div className="filters" role="group" aria-label="Instrument group">
           {GROUPS.map((x) => <button key={x} className="chip" aria-pressed={g === x} onClick={() => setG(x)}>{x}</button>)}
@@ -33,7 +33,7 @@ export default function Markets() {
               </Rv>
             ))}
           </div>
-          <div style={{ height: 24 }} /><MarketStance />
+          <div style={{ height: 14 }} /><MarketStance />
           {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 16 }}>Fetched {ago(q.data.fetched_at)} from Yahoo Finance{q.error ? ` (the last refresh failed: ${q.error}; these are the previous quotes)` : ''}.{missing > 0 ? ` ${missing} instrument${missing > 1 ? 's' : ''} did not answer and ${missing > 1 ? 'are' : 'is'} omitted rather than shown as 0%.` : ''} Gold, silver, oil and gas are futures contracts, so they differ slightly from spot prices.</p>}
         </Async>
       </section>

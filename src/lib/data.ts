@@ -109,6 +109,24 @@ export function usePx(symbols: string[]): { quotes: Record<string, import('./typ
   return state;
 }
 
+/** Five-minute closes of the latest session for up to 40 symbols (/api/intraday), refreshed every 5 minutes while visible. */
+export function useIntraday(symbols: string[]): { quotes: Record<string, { prev: number; t: number[]; c: number[] }>; at: string | null; loading: boolean } {
+  const key = Array.from(new Set(symbols)).sort().slice(0, 40).join(',');
+  const [state, setState] = useState<{ quotes: Record<string, { prev: number; t: number[]; c: number[] }>; at: string | null; loading: boolean }>({ quotes: {}, at: null, loading: true });
+  useEffect(() => {
+    if (!key) { setState((x) => ({ ...x, loading: false })); return; }
+    let live = true;
+    const pull = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetch(`${BASE}/api/intraday?s=${encodeURIComponent(key)}`).then((r) => r.json()).then((j) => { if (live) setState(j?.ok ? { quotes: j.quotes, at: j.fetched_at ?? null, loading: false } : (x) => ({ ...x, loading: false })); }, () => { if (live) setState((x) => ({ ...x, loading: false })); });
+    };
+    pull();
+    const t = window.setInterval(pull, 300_000);
+    return () => { live = false; window.clearInterval(t); };
+  }, [key]);
+  return state;
+}
+
 /** The whole screened market, live (/api/live, two halves) with the universe's sectors. ONE fetch loop per page, shared by
  *  every component that asks (the header clock, the hero, the widgets): it starts with the first subscriber and stops with the
  *  last. Refreshes every 60 s while trades are fresh and the tab is visible, every 10 minutes otherwise; a timer, not an

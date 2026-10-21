@@ -15,12 +15,11 @@ export default function Scoreboard({ feed }: { feed: EnginesFeed }) {
   const closedAll = rows.reduce((n, r) => n + r.closed, 0);
   const issuedAll = rows.reduce((n, r) => n + r.issued, 0);
   return (
-    <Rv className="panel" style={{ marginTop: 28 }}>
+    <Rv className="panel" style={{ marginTop: 18 }}>
       <div className="eyebrow">Backtest against live</div>
-      <h3 className="disp" style={{ fontSize: 26, margin: '8px 0 6px' }}>What the models showed, and what has happened since.</h3>
-      <p className="muted" style={{ margin: '0 0 14px', maxWidth: '80ch' }}>
+      <p className="muted" style={{ margin: '6px 0 10px', maxWidth: '80ch' }}>
         {closedAll === 0
-          ? `Nothing has closed since launch${feed.launched ? ` on ${dateLabel(feed.launched)}` : ''}: ${issuedAll} ${issuedAll === 1 ? 'signal has' : 'signals have'} been issued and none has resolved yet, so there is no live result to show. That is the honest position, and it will fill in as trades close.`
+          ? `Nothing has closed since launch${feed.launched ? ` on ${dateLabel(feed.launched)}` : ''}; ${issuedAll} ${issuedAll === 1 ? 'signal' : 'signals'} issued.`
           : `${closedAll} trades have closed since launch. A live average is set beside the backtest only after ${MIN_LIVE_CLOSED} closed trades for that engine.`}
       </p>
       <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
@@ -39,9 +38,6 @@ export default function Scoreboard({ feed }: { feed: EnginesFeed }) {
           </tbody>
         </table>
       </div>
-      <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '85ch' }}>
-        Both sides are average R per trade, after the same {feed.backtest.cost_round_trip_pct}% round-trip cost. The backtest is trades on data the model had not seen, which can still overstate what comes next; the live record is the only number that cannot have been fitted to the past. Even at {MIN_LIVE_CLOSED} closed trades a live average carries a wide error, so the gap is a description, not a verdict.
-      </p>
     </Rv>
   );
 }

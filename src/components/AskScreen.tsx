@@ -84,7 +84,6 @@ export default function AskScreen({ rows, tableRows, value, onValue, onTests }: 
           {onTests && active.length > 0 && hits.length > 0 && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 6px' }}>These clauses filter the table below together with the sector, size and manual filters. One table, one count.</p>}
         </>
       )}
-      <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>Understood by fixed language rules, not a chatbot: every clause it turned into a filter is a chip you can switch off, every word it ignored is listed, and nothing is ever loosened or dropped for you. A company with no value for a measure cannot match a clause on it. Results are screens, not recommendations.</p>
     </div>
   );
 }

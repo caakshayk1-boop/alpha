@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef } from 'react';
 import { Chg } from '@/components/ui';
 import { decide } from '@/lib/decision';
-import { useEngines, useFeed } from '@/lib/data';
-import { crore, dateLabel, num } from '@/lib/format';
+import { useEngines, useFeed, useLive } from '@/lib/data';
+import { priceLabel, priceView } from '@/lib/price';
+import { crore, num } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -67,6 +68,8 @@ export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () 
   const closeRef = useRef(onClose);
   closeRef.current = onClose;           // the effect below must not restart (and re-focus) every time the page re-renders
   const row = useMemo(() => (sym ? scr.data?.rows.find((r) => r.sym === sym) ?? null : null), [sym, scr.data]);
+  const lv = useLive();
+  const pv = row ? priceView(row.sym, row, lv.snap) : null;
   const mine = useMemo(() => (eng.data?.signals ?? []).filter((s) => s.sym === sym && (s.status === 'open' || s.status === 'pending')), [eng.data, sym]);
   const read = useMemo(() => (row ? decide(row, mine) : null), [row, mine]);
 
@@ -113,9 +116,9 @@ export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () 
                 <p className="dim">{[row.sector, row.tier ? `${row.tier} cap` : null, fin(row.mcap_cr) ? crore(row.mcap_cr) : null].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="peek-px">
-                <div className="num">{fin(row.price) ? `₹${num(row.price, 2)}` : '—'}</div>
-                <Chg v={row.r1d} dp={1} />
-                <div className="dim">{row.last_date ? `screen close ${dateLabel(row.last_date)}` : ''}</div>
+                <div className="num">{fin(pv?.price) ? `₹${num(pv!.price, 2)}` : '—'}</div>
+                <Chg v={pv?.pct ?? null} dp={1} />
+                <div className="dim">{pv ? priceLabel(pv).text : ''}</div>
               </div>
             </div>
 

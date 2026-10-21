@@ -6,6 +6,7 @@ on:
   schedule:
     - cron: '30 12 * * 1-5'      # 18:00 IST, after Yahoo has settled the day
     - cron: '30 14 * * 1-5'      # 20:00 IST, retry if the first slot was dropped; the registry makes it idempotent
+    - cron: '0 17 * * 1-5'       # 22:30 IST, re-marks every trade once Yahoo has the late bars (19 Oct 2026: most arrived after 18:00)
   workflow_dispatch:
 concurrency:
   group: engines

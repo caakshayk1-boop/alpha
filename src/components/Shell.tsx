@@ -19,6 +19,7 @@ export const PAGES = [
   { href: '/map/', label: 'Map', desc: 'Every stock as a tile, coloured by the measure you pick', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
   { href: '/rotation/', label: 'Rotation', desc: 'Which sector groups are gaining or losing relative strength', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
   { href: '/engines/', label: 'Engines', desc: 'Five models’ signals, judged on data they never saw', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
+  { href: '/trades/', label: 'Trades', desc: 'Executed signals marked live, the day’s P&L and the next session’s decisions', icon: 'M3 17l6-6 4 4 8-8M15 7h6v6' },
   { href: '/reads/', label: 'Reads', desc: 'Seven companies from one sector, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
   { href: '/ipo/', label: 'IPO', desc: 'Books open now, issues ahead and recent listings', icon: 'M12 3v18M5 10l7-7 7 7' },
   { href: '/funds/', label: 'Funds', desc: 'Direct-plan funds by category: return against risk', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
@@ -35,7 +36,7 @@ export const PAGES = [
 export const GROUPS: { label: string; hint: string; hrefs: string[] }[] = [
   { label: 'Today', hint: 'What is happening now', hrefs: ['/', '/brief/', '/markets/'] },
   { label: 'Discover', hint: 'Find companies and patterns', hrefs: ['/screen/', '/map/', '/rotation/', '/ipo/', '/funds/', '/news/', '/reads/'] },
-  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/engines/', '/compare/', '/tools/'] },
+  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/trades/', '/engines/', '/compare/', '/tools/'] },
   { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/journal/', '/calendar/'] },
   { label: 'Methods', hint: 'How every number is made', hrefs: ['/about/'] },
 ];

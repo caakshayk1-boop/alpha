@@ -131,7 +131,6 @@ export function PortfolioXray() {
           </>
         )}
       </Async>
-      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>Live prices where Yahoo answers, otherwise the last close. Ratios are value-weighted from the screen. This describes concentration and quality, not what to buy or sell, and ignores tax and costs.</p>
     </Rv>
   );
 }
@@ -182,7 +181,6 @@ export function ReverseDcf() {
         )}
         </>
       )}
-      <p className="dim" style={{ fontSize: 13, margin: '12px 0 0' }}>EPS is price ÷ P/E from the screen (trailing). One-stage growth then a terminal rate, discounted at the required return, with no change in share count or margins. A teaching model built on earnings (EPS), not cash flow: it ignores capex, working capital, dilution and changing margins, and a P/E from a depressed or one-off year distorts it badly. Its value is the question it asks, not the number.</p>
     </Rv>
   );
 }
@@ -231,7 +229,7 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
           );
         })}
       </ul>
-      <details className="sig-why"><summary>How this list is ranked</summary><p className="dim">Ranks liquid names (₹5 crore a day or more) by the share of applicable checks they pass, out of nine fundamental and trend checks, plus picks from engines that cleared the alert bar (half weight for the rest), a Magic Formula top-100 place and a screen class with a case, minus a penalty for HIGH risk flags. A name needs at least {MIN_CHECKS} applicable checks to be ranked at all{skipped ? `; ${num(skipped)} liquid names were left out for having fewer` : ''}, so missing data cannot flatter it: &ldquo;4 of 4&rdquo; is never shown beside &ldquo;9 of 9&rdquo;. Agreement between independent lenses, not a forecast or a recommendation.</p></details>
+      {skipped > 0 && <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>{num(skipped)} liquid names left out for having fewer than {MIN_CHECKS} applicable checks. <Link href="/about/#confluence" style={{ textDecoration: 'underline' }}>How it is ranked</Link>.</p>}
     </Async>
   );
 }

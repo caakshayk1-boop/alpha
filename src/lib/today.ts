@@ -1,6 +1,7 @@
 /** One-day values per stock under the rule in lib/live.ts (pickDay): when the day's source is live, a stock's "today" move
  *  and price are the live snapshot's, and a stock the snapshot does not cover shows nothing (never the older close, which
- *  would mix two sessions in one column). When the source is the close, they are the screen's own r1d and price.
+ *  would mix two sessions in one column). When the source is the close, they are the screen's own r1d and price, unless the
+ *  snapshot describes that same session: then its traded price (not dividend-adjusted) is used.
  *  Pure functions only (plus live.ts's inSession, so the stale-quote rule lives in one place): tested in tests/lib.test.ts. */
 import { inSession, type DayFigures, type LiveSnap } from './live.ts';
 
@@ -50,8 +51,10 @@ export function todayView(day: DayFigures | null, snap: LiveSnap | null, screenA
   }
   return {
     live: false, session: screenAsOf, at: null, tag: `${sessionDate(screenAsOf)} close`, asOf: `close ${screenAsOf ?? 'unknown'}`,
-    pct: (_sym, close) => fin(close),
-    price: (_sym, close) => fin(close),
+    // the screen close is dividend-adjusted: when the snapshot describes the same session, its traded price is the one a broker
+    // shows (MRPL 19 Oct 2026: 173.72 traded, 170.72 in the screen)
+    pct: (sym, close) => (snap && screenAsOf && snap.session === screenAsOf && inSession(snap, sym) ? fin(snap.pct[sym]) : fin(close)),
+    price: (sym, close) => (snap && screenAsOf && snap.session === screenAsOf && inSession(snap, sym) ? fin(snap.price[sym]) : fin(close)),
   };
 }
 

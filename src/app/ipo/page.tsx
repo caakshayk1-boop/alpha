@@ -94,13 +94,13 @@ export default function Ipo() {
   const liveIssues = live.data?.ok ? live.data.issues : [];
   return (
     <>
-      <PageHead eyebrow="IPO" title="Books open now," em="and what is coming." lede="The live NSE subscription book where an issue is open, the issues about to open with what the numbers do and do not support, then how recent listings have actually traded since." />
+      <PageHead method="ipo" eyebrow="IPO" title="Books open now," em="and what is coming." />
       <section className="wrap">
         <Async loading={f.loading} error={f.error}>
           {d && (
             <>
-              {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 13.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 36 }} /></>}
-              {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (built {istStamp(d.generated_at)}, {ago(utc(d.generated_at))}).</Notice><div style={{ height: 24 }} /></>}
+              {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 13.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 20 }} /></>}
+              {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (built {istStamp(d.generated_at)}, {ago(utc(d.generated_at))}).</Notice><div style={{ height: 14 }} /></>}
 
               <ol className="filters" aria-label="Issue lifecycle" style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
                 {([['Upcoming', d.upcoming.length, 'upcoming'], ['Open', liveIssues.length || d.open.length, 'open'], ['Closed, awaiting listing', d.awaiting_listing.length, 'closed'], ['Listed (measured)', d.recent_listed.filter((r) => r.measured).length, 'listed']] as const).map(([l, n, id], i) => <li key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{i > 0 && <span aria-hidden className="dim step-arrow">→</span>}{n > 0 ? <a className="chip" href={`#${id}`}>{l} · {n}</a> : <span className="chip" aria-disabled="true" style={{ opacity: 0.55 }}>{l} · none</span>}</li>)}
@@ -110,20 +110,20 @@ export default function Ipo() {
               {d.upcoming.length === 0 ? <p className="muted">No mainboard issue is scheduled to open yet.</p> : <div className="grid g2">{d.upcoming.map((u) => <Upcoming key={u.symbol} u={u} />)}</div>}
 
               {liveIssues.length === 0 && d.open.length > 0 && <>
-                <div style={{ height: 36 }} /><div id="open" /><SectionHead title="Open (daily mirror)" />
+                <div style={{ height: 20 }} /><div id="open" /><SectionHead title="Open (daily mirror)" />
                 <div className="grid g2">{d.open.map((o) => (
                   <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{leftLabel(o)}</div>
                     <div className="disp" style={{ fontSize: 30, margin: '12px 0' }}>{o.company}</div>
                     <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed as of ${istStamp(d.generated_at)}` : 'subscription pending'}</div></Rv>))}</div></>}
 
-              <div style={{ height: 36 }} />
+              <div style={{ height: 20 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
                 {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${a.pe_post_issue.toFixed(1)}×` : dash}</td><td className="num">{a.peer_pe ? `${a.peer_pe.toFixed(1)}×` : dash}</td></tr>)}
                 {d.awaiting_listing.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>None awaiting listing.</td></tr>}
               </tbody></table></div>
 
-              <div style={{ height: 36 }} />
+              <div style={{ height: 20 }} />
               <div id="listed" /><SectionHead eyebrow="Track record" title="How recent listings traded" />
               <div className="panel">
                 <div className="meter">

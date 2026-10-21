@@ -145,10 +145,11 @@ export function SectionHead({ title, href, cta, eyebrow }: { title: string; href
 }
 
 /** `compact` (the default) puts the working surface inside the first screen; `editorial` keeps the large hero for reading pages. */
-export function PageHead({ eyebrow, title, em, lede, variant = 'compact' }: { eyebrow: string; title: string; em?: string; lede?: string; variant?: 'compact' | 'editorial' }) {
+/** `method` is the anchor of this page's section on the Method page (/about/#method): explanations live there, not here. */
+export function PageHead({ eyebrow, title, em, lede, method, variant = 'compact' }: { eyebrow: string; title: string; em?: string; lede?: string; method?: string; variant?: 'compact' | 'editorial' }) {
   return (
     <header className={`page-head wrap${variant === 'compact' ? ' compact' : ''}`}>
-      <div className="eyebrow"><b>●</b> {eyebrow}</div>
+      <div className="ph-top"><div className="eyebrow"><b>●</b> {eyebrow}</div>{method && <Link className="ph-method" href={`/about/#${method}`} prefetch={false}>How this works</Link>}</div>
       <h1 className="disp">
         {title} {em && <em>{em}</em>}
       </h1>

@@ -81,7 +81,7 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: EngineSignal[];
         </div>
       </details>
       {d.triggers.length > 0 && <details style={{ marginTop: 10 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>What would change the picture</summary><ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.6, margin: '10px 0 0' }}>{d.triggers.map((t) => <li key={t}>{t}</li>)}</ul></details>}
-      <p className="dim" style={{ fontSize: 13, margin: '16px 0 0' }}>Fixed rules applied to the figures shown on this page; nothing is generated or forecast. Screen classes and engine outputs are research classifications, not recommendations to buy or sell. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>How this is made</Link>.</p>
+      <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}><Link href="/about/#company" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>How these checks work</Link></p>
     </Rv>
   );
 }
@@ -102,7 +102,7 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
           </tbody>
         </table>
       </div>
-      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Nearest neighbours across the whole screen (any sector) on quality, growth, value, trend, 3-month strength, ROCE, net margin and leverage, each standardised so no single measure dominates. Similar profile is not similar future: use it to find comparables to read next ({num(rows.length)} companies searched).</p>
+      <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>Nearest profiles across {num(rows.length)} companies (any sector).</p>
     </>
   );
 }

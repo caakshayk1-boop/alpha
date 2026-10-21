@@ -22,7 +22,7 @@ const NAV: [string, string][] = [['risk', 'Risk'], ['portfolio', 'Portfolio'], [
 export default function Tools() {
   return (
     <>
-      <PageHead eyebrow="Tools" title="Think a decision through," em="with the working shown." lede="Each tool answers one question with arithmetic you can check line by line. Change an input and every step updates. Everything runs in this browser, and nothing here is a recommendation." />
+      <PageHead method="tools" eyebrow="Tools" title="Think a decision through," em="with the working shown." />
       <section className="wrap">
         <ol className="board" aria-label="What each tool answers">
           {BOARD.map((b) => (

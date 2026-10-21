@@ -90,7 +90,7 @@ function FundsPage() {
   const navDates = funds.map((x) => x.nav_date).sort();
   return (
     <>
-      <PageHead eyebrow="Funds" title="Direct-plan funds," em="return against risk." lede="For each category, the three direct-plan funds with the highest 3-year return in the screen, shown with the worst fall they took, how much they swing, and what they actually hold. Lump-sum returns from AMFI's official NAV history, not SIP returns." />
+      <PageHead method="funds" eyebrow="Funds" title="Direct-plan funds," em="return against risk." />
       <section className="wrap">
         <Async loading={f.loading} error={f.error} rows={3}>
           {cats.length > 0 && <TabRow label="Fund categories" value={active?.key ?? ''} onChange={(k) => go(k, sort)} options={cats.map((c) => [c.key, c.label] as const)} />}

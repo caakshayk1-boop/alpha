@@ -600,6 +600,17 @@ test('todayView: close day (or no day yet) reads the screen row, dated by the sc
   }
 });
 
+test('todayView: on a close day, a snapshot of the same session supplies the traded (unadjusted) price (MRPL 19 Oct 2026)', () => {
+  const t = Date.parse('2026-10-19T10:00:00Z') / 1000;
+  const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 1, quotes: { MRPL: [173.72, 172.71, t] } }], 1)!;
+  const day = { source: 'close' as const, session: '2026-10-19', up: 1, down: 0, flat: 0, counted: 1, sectors: [] };
+  const v = todayView(day, snap, '2026-10-19');
+  assert.equal(v.price('MRPL', 170.72), 173.72);
+  assert.equal(v.pct('MRPL', 0.6), 0.58);
+  assert.equal(v.price('OTHER', 50), 50, 'a stock the snapshot lacks keeps its close');
+  assert.equal(todayView(day, snap, '2026-10-16').price('MRPL', 170), 170, 'a different session never mixes in');
+});
+
 test('tally and movers: zero is unchanged, missing is uncounted, ties break on the symbol', () => {
   assert.deepEqual(tally([1, -1, 0, null, undefined, Number.NaN, 2]), { up: 2, down: 1, flat: 1, counted: 4 });
   const m = movers([{ sym: 'B', v: 2 }, { sym: 'A', v: 2 }, { sym: 'C', v: -3 }, { sym: 'D', v: 0 }, { sym: 'E', v: null }], 5);
@@ -613,7 +624,7 @@ test('istHM and sessionDay: IST clock and a calendar date that no time zone can 
 });
 
 import { priceLabel, priceView, sessionLabel } from '../src/lib/price.ts';
-test('price: per-symbol live rule follows pickDay (newer session wins, a tie keeps the close) and labels say which', () => {
+test('price: per-symbol live rule follows pickDay (newer session wins, a tie takes the traded price) and labels say which', () => {
   const t = Date.parse('2026-10-15T04:50:00Z') / 1000;                       // Thu 10:20 IST
   const snap = mergeLive([{ ok: true, part: 0, parts: 1, fetched_at: 'a', count: 1, quotes: { INFY: [1115.65, 1088, t] } }], 1)!;
   const row = { price: 1088, r1d: 2.1, last_date: '2026-10-14' };
@@ -623,8 +634,8 @@ test('price: per-symbol live rule follows pickDay (newer session wins, a tie kee
   assert.equal(priceLabel(live, (t + 40 * 60) * 1000).text, 'last trade 10:20 IST', 'quiet inside hours: not called live');
   assert.equal(priceLabel(live, Date.parse('2026-10-15T12:00:00Z')).text, '15 Oct 2026 close', 'after the bell it is the day close');
   const tie = priceView('INFY', { ...row, last_date: '2026-10-15', price: 1110 }, snap, null);
-  assert.deepEqual([tie.source, tie.price], ['close', 1110], 'same session: the vetted close wins');
-  assert.equal(priceLabel(tie).text, '15 Oct 2026 close');
+  assert.deepEqual([tie.source, tie.price], ['live', 1115.65], 'same session: the traded price wins over the dividend-adjusted close');
+  assert.equal(priceLabel(tie, Date.parse('2026-10-15T12:00:00Z')).text, '15 Oct 2026 close');
   const q = priceView('TCS', row, snap, { price: 3000, pct: 1, at: t });
   assert.equal(q.source, 'quote', 'a symbol missing from the snapshot falls back to its own quote');
   const old = priceView('TCS', row, snap, { price: 3000, pct: 1, at: Date.parse('2026-10-14T10:00:00Z') / 1000 });
@@ -806,4 +817,40 @@ test('positions: on the real engines feed every open signal marks to its own r_o
   }
   const book = summariseBook(open.map((s) => position(s, null, feed.data_through)));
   assert.deepEqual([book.open, book.live], [open.length, 0]);
+});
+
+import { bookCurve, dayR, decide, groupDecisions, rAtPrevClose } from '../src/lib/trades.ts';
+
+test('trades: day R is the mark now minus the mark at the previous close, booked thirds included', () => {
+  const s = { id: 'a', sym: 'A', status: 'open' as const, date: '2026-10-14', ref_price: 100, sl: 90, targets: [115, 130, 150], entry: 100, entry_date: '2026-10-15',
+    events: [{ date: '2026-10-15', kind: 'entry', price: 100, fraction: 1 }, { date: '2026-10-16', kind: 't1', price: 115, fraction: 1 / 3 }] };
+  // at the 16 Oct close (held into 19 Oct): realised 5, two thirds at 118 = 12 -> 17/10 = 1.7R
+  assert.equal(Math.round(rAtPrevClose(s, '2026-10-19', 118)! * 1000) / 1000, 1.7);
+  assert.equal(Math.round(dayR(s, { r: 2.3, session: '2026-10-19' }, 118)! * 1000) / 1000, 0.6);
+  assert.equal(rAtPrevClose(s, '2026-10-15', 99), 0, 'entered at this session\'s open: it held nothing at the previous close');
+  assert.equal(dayR(s, { r: null, session: '2026-10-19' }, 118), null);
+});
+
+test('trades: the book curve carries each stock forward and starts a same-day entry from its entry', () => {
+  const held = { id: 'a', sym: 'A', status: 'open' as const, date: '2026-10-14', ref_price: 100, sl: 90, targets: [115, 130, 150], entry: 100, entry_date: '2026-10-15', events: [] };
+  const fresh = { id: 'b', sym: 'B', status: 'open' as const, date: '2026-10-16', ref_price: 50, sl: 45, targets: [60, 70, 80], entry: 52, entry_date: '2026-10-19', events: [] };
+  const c = bookCurve([{ s: held, session: '2026-10-19' }, { s: fresh, session: '2026-10-19' }], { A: { prev: 104, t: [1, 3], c: [105, 103] }, B: { prev: 51, t: [2], c: [53] } });
+  assert.deepEqual(c.map((p) => [p.t, p.r, p.n]), [[1, 0.1, 1], [2, 0.243, 2], [3, 0.043, 2]]);
+});
+
+test('trades: decisions follow the plan state and what the evening run booked on the session', () => {
+  const sig = { id: 'x', sym: 'X', status: 'open' as const, date: '2026-10-14', ref_price: 100, sl: 90, targets: [110, 120, 130], entry: 100, entry_date: '2026-10-15', hit: 0, max_hold_days: 20, last_close: 100, events: [{ date: '2026-10-15', kind: 'entry', price: 100, fraction: 1 }] };
+  const at = (price: number, extra = {}) => { const s2 = { ...sig, last_close: price, ...extra }; return decide(s2, position(s2, { price, source: 'close', session: '2026-10-19', at: null }, '2026-10-19'), '2026-10-19'); };
+  assert.equal(at(89)!.kind, 'exit');
+  assert.equal(at(111)!.kind, 'modify');
+  assert.match(at(111)!.headline, /move the stop to ₹100\.00/);
+  assert.equal(at(105)!.kind, 'hold');
+  const booked = at(112, { hit: 1, stop_now: 100, events: [...sig.events, { date: '2026-10-19', kind: 't1', price: 110, fraction: 1 / 3 }] })!;
+  assert.deepEqual([booked.kind, booked.headline], ['modify', 'Move the stop to ₹100.00']);
+  const pend = { ...sig, status: 'pending' as const, entry: undefined, entry_date: undefined, events: [] };
+  assert.equal(decide(pend, position(pend, null, null), '2026-10-19')!.kind, 'enter');
+  const closed = { ...sig, status: 'closed' as const, closed_date: '2026-10-19', exit_reason: 'stop', r_net: -1.03 };
+  assert.match(decide(closed, position(closed, null, null), '2026-10-19')!.detail, /−1\.03R/);
+  assert.equal(decide({ ...closed, closed_date: '2026-10-16' }, position(closed, null, null), '2026-10-19'), null, 'an older close is not today\'s news');
+  assert.deepEqual(groupDecisions([at(105), at(89), null, at(111)]).map((g) => g.kind), ['exit', 'modify', 'hold']);
 });

@@ -78,7 +78,7 @@ function Compare() {
   const set = (next: string[]) => router.replace(next.length ? `/compare/?s=${next.join(',')}` : '/compare/');
   return (
     <>
-      <PageHead eyebrow="Compare" title="Side by side," em="up to four." lede="Pick companies, see every number in one table, with the highest or lowest marked where that is meaningful, and each one's score profile drawn on the same scale." />
+      <PageHead method="compare" eyebrow="Compare" title="Side by side," em="up to four." />
       <section className="wrap">
         <div className="cmp-bar">
           <ol className="cmp-slots" aria-label={`Companies chosen: ${syms.length} of 4`}>

@@ -141,8 +141,8 @@ export default function RotationPage() {
   const weekLabel = wt?.inProgress ? `${date} (week in progress, data through ${wt.through})` : date;
   return (
     <>
-      <PageHead eyebrow="Rotation" title="How sector strength" em="is changing." lede="How strong each benchmark group is against the Nifty, and whether that strength is rising or fading. It measures relative prices, not money flows, and groups do not pass through the phases in a fixed order. Drag the time machine back to see past weeks." />
-      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['rotation', 'screen']} /><div className="notice" style={{ marginTop: 10 }}><b>Index identity:</b> only Nifty IT, Pharma and Bank are NSE indices; every other group is an Alpha equal-weighted index. <details style={{ display: 'inline' }}><summary style={{ display: 'inline', cursor: 'pointer', color: 'var(--accent-2)' }}>Why</summary> Yahoo holds no history for the other NSE sector indices, so Alpha builds each group from its own screened stocks. Each is labelled &ldquo;NSE index&rdquo; or &ldquo;Alpha group index&rdquo; below.</details></div></section>
+      <PageHead method="rotation" eyebrow="Rotation" title="How sector strength" em="is changing." />
+      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['rotation', 'screen']} /></section>
       <section className="wrap">
         <Async loading={rot.loading || scr.loading} error={rot.error ?? scr.error} rows={3}>
           {read && rot.data && (
@@ -247,7 +247,7 @@ export default function RotationPage() {
                         <Link key={x.sym} href={companyHref(x.sym)} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
                     </>
-                  ) : <p className="muted" style={{ marginTop: 10 }}>Select any dot, phase chip or table row to see its tail, its strength line against the Nifty, its breadth and its strongest stocks. The current week is shown unless you move the time machine.</p>}
+                  ) : <p className="muted" style={{ marginTop: 10 }}>Select a dot, phase or row for its detail.</p>}
                 </Rv>
               </div>
 
@@ -264,9 +264,6 @@ export default function RotationPage() {
                     <td className="num">{num(x.mem.length)}</td>
                   </tr>))}</tbody>
               </table></div>
-              <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>
-                Method: each group&apos;s weekly index level is divided by the Nifty to get relative strength. RS-Ratio is that strength against its own 13-week average (100 = in line); RS-Momentum is 100 plus the 4-week change in a 3-week average of RS-Ratio. Nifty IT, Nifty Pharma and Nifty Bank are the real NSE indices; every other group is an equal-weighted index of its industry (or sector) built from the screened stocks, because Yahoo holds no history for the other NSE sector indices. A close cousin of the RRG popularised by Julius de Kempenaer, not the licensed JdK formula. Rotation describes what has happened; a group can stay in a quadrant for months, and the tails turn late. It describes how prices moved relative to the Nifty, not where money went.
-              </p>
             </>
           )}
         </Async>

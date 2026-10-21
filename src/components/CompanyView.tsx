@@ -181,7 +181,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => sh.data?.row ?? full.data?.rows.find((x) => x.sym.toUpperCase() === sym), [sh.data, full.data, sym]);
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
-  if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 24 }} /><Skel h={220} /></div>;
+  if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 14 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
   const lender = /financial|bank|insurance|real estate/i.test(`${r.sector} ${r.ind}`);
   // Price and day move follow the site's one rule: the live snapshot when it is a newer session than the screen, then this
@@ -236,7 +236,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
       <section className="wrap section">
         <div className="grid g-7-5">
-          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 22 }} /><Returns r={r} /></Rv>
+          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 14 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
             {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{r.vd.o}.</p> : <p className="muted">Nothing notable.</p>}
             {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}

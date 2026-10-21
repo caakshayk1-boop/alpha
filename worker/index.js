@@ -1,6 +1,7 @@
 // alpha.askakshay.com — one Worker:
 //   /data/<feed>.json  cached read-through to the same feeds the old Signal, Vision and Gems read
 //   /api/quotes        live prices from Yahoo, cached 5 minutes
+//   /api/intraday      five-minute closes of the latest session for up to 40 stocks (the Trades page's day curve)
 //   everything else    the static export in ./out
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
@@ -397,6 +398,37 @@ async function px(url, ctx) {
   return res;
 }
 
+// ── one session, five-minute closes, for the stocks the engines hold ────
+// /api/intraday?s=TCS,INFY  →  { ok, fetched_at, quotes: { TCS: { session_t0, prev, t:[epoch s], c:[close] } } }
+// The latest session only (range=1d, interval=5m), up to 40 symbols, cached 5 minutes. `prev` is the previous session's close,
+// so a page can draw a trade's P&L through the whole day, not only from the moment it was opened. A missing bar is dropped,
+// never filled; a symbol that does not answer is absent.
+async function intraday(url, ctx) {
+  const syms = Array.from(new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter((x) => /^[A-Z0-9&-]{1,20}$/.test(x)))).slice(0, 40).sort();
+  if (!syms.length) return json({ ok: false, error: 'no valid symbols', quotes: {} }, 400);
+  const cache = caches.default;
+  const key = new Request(`https://alpha.askakshay.com/__intraday_v1/${syms.join(',')}`);
+  const hit = await cache.match(key);
+  if (hit) return withHeaders(hit);
+  const quotes = {};
+  await Promise.all(syms.map(async (sym) => {
+    try {
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym + '.NS')}?range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return;
+      const res = (await r.json())?.chart?.result?.[0];
+      const prev = Number(res?.meta?.chartPreviousClose ?? res?.meta?.previousClose);
+      const cl = res?.indicators?.quote?.[0]?.close || [];
+      const t = [], c = [];
+      (res?.timestamp || []).forEach((x, i) => { if (cl[i] > 0) { t.push(x); c.push(Math.round(cl[i] * 100) / 100); } });
+      if (!(prev > 0) || !t.length) return;
+      quotes[sym] = { prev, t, c };
+    } catch { /* absent, not zero */ }
+  }));
+  const res = json({ ok: Object.keys(quotes).length > 0, fetched_at: new Date().toISOString(), requested: syms.length, count: Object.keys(quotes).length, quotes }, 200, 'public, max-age=120, s-maxage=300');
+  if (Object.keys(quotes).length) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 // ── daily candles for one stock, and the Nifty beside it ───────────────
 // /api/chart?s=TCS&r=1y  →  { sym, range, interval, t:[epoch s], o,h,l,c,v:[…], nifty:[close aligned to t] }
 // Ranges 3mo 6mo 1y 2y 5y (weekly bars for 5y). Cached 15 minutes. A bar missing any of open/high/low/close is dropped,
@@ -556,6 +588,9 @@ export default {
     }
     if (url.pathname === '/api/px' || url.pathname === '/api/px/') {
       return px(url, ctx);
+    }
+    if (url.pathname === '/api/intraday' || url.pathname === '/api/intraday/') {
+      return intraday(url, ctx);
     }
     if (url.pathname === '/api/chart' || url.pathname === '/api/chart/') {
       return chart(url, ctx);

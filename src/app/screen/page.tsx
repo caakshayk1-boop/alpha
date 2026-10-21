@@ -193,7 +193,7 @@ export default function Screen() {
 
   return (
     <>
-      <PageHead eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." lede="Start from a lens or build your own filters on any of 26 measures, choose the columns you care about, save the screen, tick up to four companies to compare, or take the result away as a spreadsheet." />
+      <PageHead method="screen" eyebrow={`Screen · ${s.data ? num(s.data.count) : 'Indian'} companies`} title="Find companies" em="that match your criteria." />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen']} /></section>
       <section className="wrap">
         <AskScreen rows={base} tableRows={rows} value={nl} onValue={(v) => { setNl(v); setLimit(PAGE); }} onTests={setNlTests} />
@@ -263,7 +263,7 @@ export default function Screen() {
             </table>
           </div>
           {limit < rows.length && <div style={{ textAlign: 'center', marginTop: 20 }}><button className="btn ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>Show more ({num(rows.length - limit)} left)</button></div>}
-          <p className="dim" style={{ fontSize: 13.5, marginTop: 14 }}>Scores run 0 to 100 within this universe; composite weights quality 35%, growth 25%, technical 25%, valuation 15%. A missing figure never passes a filter and sorts last. Size classes (large, mid, small) come from the screen&apos;s own list, not from the market cap shown here{tierNoCap ? `; ${tierNoCap} companies carry a class but no market cap figure` : ''}.{tv.live ? ` Price and Today % are live, as of ${tv.at} IST on ${tv.session}; a stock with no trade in this session shows a dash${day?.stale ? ` (${day.stale} today)` : ''} and never passes a filter on those two. Every other column is the ${asOf ?? 'latest'} close.` : ''} A screen describes data, not a recommendation. <Link href="/about/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Method →</Link></p>
+          <p className="dim" style={{ fontSize: 13, marginTop: 10 }}>{tv.live ? `Price and Today % live ${tv.at} IST${day?.stale ? ` (${day.stale} with no trade today show a dash)` : ''}; other columns the ${asOf ?? 'latest'} close.` : `All columns the ${asOf ?? 'latest'} close.`}{tierNoCap ? ` ${tierNoCap} companies carry a size class but no market cap.` : ''}</p>
         </Async>
       </section>
       <CompanyPeek sym={peek} onClose={() => setPeek(null)} />

@@ -94,7 +94,7 @@ export default function Journal() {
 
   return (
     <>
-      <PageHead eyebrow="Journal" title="Why you decided," em="and what happened next." lede="Write one honest sentence each time you take, skip or watch a stock. Later, see where the price is against that moment. Nothing is uploaded: it lives in this browser, so export a copy to keep it." />
+      <PageHead method="journal" eyebrow="Journal" title="Why you decided," em="and what happened next." />
       <section className="wrap">
         <div className="panel">
           <div className="eyebrow">New entry</div>
@@ -129,7 +129,6 @@ export default function Journal() {
             </div>
           ))}
         </div>
-        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Average move since the day you decided, to the price now (live while NSE trades, otherwise the latest close). Skipped and watched names show what happened without you. This is a record of your habits, not evidence about any stock, and a handful of entries says little.</p>
       </section>
 
       <section className="wrap section">
@@ -158,13 +157,12 @@ export default function Journal() {
             </table></div>
           )}
         </Async>
-        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', maxWidth: '75ch' }}>Move and R compare the price now (dated under each figure) with the price you wrote down, for a long idea. Only the price now is checked, so a stop or target touched in between is not seen. R needs a stop.</p>
       </section>
 
       <section className="wrap section">
         <div className="panel">
           <div className="eyebrow">Keep a copy</div>
-          <p className="muted" style={{ margin: '8px 0 12px' }}>The journal is stored in this browser only. Clearing site data erases it, so download a copy now and then. Importing the same file twice adds nothing twice.</p>
+          <p className="muted" style={{ margin: '8px 0 12px' }}>Stored in this browser only: clearing site data erases it, so download a copy.</p>
           <div className="filters"><button className="chip" disabled={list.length === 0} onClick={download}>Download JSON</button></div>
           <textarea className="field" style={{ width: '100%', minHeight: 70, padding: 10, fontFamily: 'var(--f-mono)', fontSize: 13.5, marginTop: 10 }} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="Paste the contents of an alpha-journal.json file here" aria-label="Paste a journal file to import" />
           <div style={{ marginTop: 10 }}><button className="chip" disabled={!paste.trim()} onClick={importPaste}>Import pasted file</button></div>

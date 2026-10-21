@@ -163,7 +163,7 @@ export default function MapPage() {
 
   return (
     <>
-      <PageHead eyebrow="Heat lab" title="Every name," em="read three ways." lede="Colour by almost any measure, size by value or trading, group by sector or industry, then zoom in. Switch on outlier mode to see which stocks are doing something their own sector is not." />
+      <PageHead method="map" eyebrow="Heat lab" title="Every name," em="read three ways." />
       <section className="wrap">
         <Async loading={s.loading} error={s.error} rows={3}>
           {(

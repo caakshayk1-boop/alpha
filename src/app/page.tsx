@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Async, Chg, LazyMount, Rv, SectionHead, Skel, Spark } from '@/components/ui';
+import { LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
@@ -11,29 +11,15 @@ import { dayLabel, TodayProvider, useToday } from '@/components/widgets/DayConte
 import { IndexStrip } from '@/components/widgets/IndexStrip';
 import { LiveMovers } from '@/components/widgets/LiveMovers';
 import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
-import { EngineVerdict } from '@/components/EvidenceTags';
-import { useEngines, useFeed, useQuotes, useSummary } from '@/lib/data';
-import { crore, dateLabel, num, pct, quoteState, rupeeBand } from '@/lib/format';
+import { useEngines, useFeed, useSummary } from '@/lib/data';
+import { useBook } from '@/lib/useBook';
+import { dateLabel, num } from '@/lib/format';
 import { useBarometer } from '@/lib/useBarometer';
 import { sessionHead } from '@/lib/session';
 import { istHM } from '@/lib/today';
 import { takeaway, vixWord } from '@/lib/takeaway';
 import { useStoredList } from '@/lib/store';
-import type { Quote } from '@/lib/types';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
-import { companyHref } from '@/lib/slug';
-
-function QuoteCard({ q }: { q: Quote }) {
-  const up = (q.pct ?? 0) >= 0;
-  return (
-    <Rv className="qcard spot">
-      <div className="qrow"><span className="nm">{q.name}</span><Chg v={q.pct} /></div>
-      <div className="px">{q.prefix}{num(q.price, q.dp)}</div>
-      <Spark series={q.series} up={up} />
-      <div className="qtime">{quoteState(q.at).label}</div>
-    </Rv>
-  );
-}
 
 const GAUGE_LEN = Math.PI * 52;   // the semicircle path below: radius 52
 
@@ -171,132 +157,24 @@ function SinceVisit() {
   );
 }
 
-function Teasers() {
-  const eng = useEngines();
-  const list = Object.values(eng.data?.engines ?? {}).sort((a, b) => a.id - b.id);
-  const total = list.reduce((n, e) => n + e.signal_count, 0);
+/** The engines' book in one line: today's R, the open count and what the rules say to do next. The detail is on /trades/. */
+function TradesCard() {
+  const { feed, book, todayR, todayN, pending, groups } = useBook();
+  const n = (k: string) => groups.find((g) => g.kind === k)?.items.length ?? 0;
+  const sR = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
   return (
-    <section className="wrap section">
-      <SectionHead eyebrow="Signals" title="Where the five models stand" href="/engines/" cta={eng.data ? `${total} signal${total === 1 ? '' : 's'} now` : 'All engines'} />
-      <Rv className="panel">
-        <ul className="erows">
-          {list.map((e) => (
-            <li key={e.key}>
-              <Link href="/engines/" className="erow">
-                <span className="erow-id"><b>{e.id}. {e.name}</b><span>{e.signal_count} signal{e.signal_count === 1 ? '' : 's'} now</span></span>
-                <EngineVerdict e={e} compact />
-              </Link>
-            </li>
-          ))}
-          {!eng.data && Array.from({ length: 5 }, (_, i) => <li key={i}><Skel h={52} style={{ margin: '6px 0' }} /></li>)}
-        </ul>
-        <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Ranking skill and trading result are different claims, so each engine shows both. Open an engine for its plan levels and track record.</p>
-      </Rv>
-    </section>
-  );
-}
-
-function Board() {
-  const q = useQuotes();
-  // Nifty 50, Sensex, Nifty Bank, India VIX, USD/INR, gold and Brent sit in the index strip near the top; nothing shows twice.
-  const want = ['spx'];
-  // Markets keep different hours (Sensex shut while the S&P trades), so each card states its own last-trade time; no group label claims "live".
-  const boardLabel = 'Quotes';
-  return (
-    <section className="wrap section">
-      <SectionHead eyebrow={boardLabel} title="Other markets" href="/markets/" cta={`All ${q.data?.total ?? 33} instruments`} />
-      <Async loading={q.loading} error={q.error} rows={2}>
-        <div className="qgrid">
-          {want.map((id) => q.data?.quotes.find((x) => x.id === id && x.price !== null)).filter((x): x is Quote => !!x).map((x) => <QuoteCard key={x.id} q={x} />)}
-        </div>
-        {q.data && <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>Quotes from Yahoo Finance, cached up to 5 minutes{q.data.live < q.data.total ? ` · ${q.data.total - q.data.live} unavailable and omitted` : ''}.</p>}
-      </Async>
-    </section>
-  );
-}
-
-function Movers() {
-  const p = useFeed('pulse');
-  const [tab, setTab] = useState<'up' | 'dn' | 'vol'>('up');
-  const list = tab === 'up' ? p.data?.movers_up : tab === 'dn' ? p.data?.movers_dn : p.data?.volume;
-  return (
-    <Rv className="panel">
-      <div className="sec-h" style={{ marginBottom: 8, paddingBottom: 12 }}>
-        <h2 style={{ fontSize: 26 }}>Movers</h2>
-        <div style={{ display: 'flex', gap: 6 }} role="tablist" aria-label="Mover lists">
-          {([['up', 'Gainers'], ['dn', 'Losers'], ['vol', 'Unusual volume']] as const).map(([k, l]) => (
-            <button key={k} className="chip" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
-          ))}
-        </div>
-      </div>
-      <div className="list">
-        {!list && Array.from({ length: 6 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
-        {list?.slice(0, 8).map((m) => (
-          <Link key={m.sym} href={companyHref(m.sym)} className="li">
-            <div><div className="t">{m.sym}</div><div className="s">{m.name} · {m.sector}</div></div>
-            <div style={{ textAlign: 'right' }}>
-              {tab === 'vol' ? <span className="num">{m.vol_spike?.toFixed(1)}× volume</span> : <Chg v={m.r1w} dp={1} />}
-              <div className="s num">{tab === 'vol' ? `${crore(m.turnover_cr)} traded` : `₹${num(m.price, 2)} · week`}</div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </Rv>
-  );
-}
-
-function News() {
-  const n = useFeed('news');
-  return (
-    <Rv className="panel">
-      <div className="sec-h" style={{ marginBottom: 8, paddingBottom: 12 }}><h2 style={{ fontSize: 26 }}>The wire</h2><Link className="more" href="/news/">All stories →</Link></div>
-      <div className="list">
-        {!n.data && Array.from({ length: 5 }, (_, i) => <Skel key={i} h={44} style={{ margin: '8px 0' }} />)}
-        {n.data?.slice(0, 6).map((s) => (
-          <a key={s.link} href={s.link} target="_blank" rel="noopener noreferrer" className="li">
-            <div><div className="t">{s.title}</div><div className="s">{s.source}</div></div>
-            <span aria-hidden className="dim">↗</span>
-          </a>
-        ))}
-      </div>
-    </Rv>
-  );
-}
-
-function IpoCard() {
-  const i = useFeed('ipo');
-  const open = i.data?.open ?? [];
-  return (
-    <Rv className="panel spot">
-      <div className="eyebrow">IPOs · open now</div>
-      {!i.data && <Skel h={90} style={{ marginTop: 14 }} />}
-      {i.data && open.length === 0 && <p className="muted" style={{ marginTop: 14 }}>No mainboard issue is open. {i.data.awaiting_listing.length} closed and awaiting listing.</p>}
-      {open.slice(0, 2).map((o) => (
-        <div key={o.symbol} style={{ marginTop: 14 }}>
-          <div className="disp" style={{ fontSize: 26 }}>{o.company}</div>
-          <div className="dim num" style={{ fontSize: 14, marginTop: 6 }}>{rupeeBand(o.price_band)} · closes {dateLabel(o.close_date)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed` : 'subscription pending'}</div>
-        </div>
-      ))}
-      <Link className="more" href="/ipo/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 14 }}>Open and recent listings →</Link>
-    </Rv>
-  );
-}
-
-function ReadCard() {
-  const r = useFeed('weekly_reads');
-  const s = r.data?.editions[0]?.studies[0];
-  return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Weekly read · {r.data?.editions[0]?.week ?? '—'}</div>
-      {!s && <Skel h={90} style={{ marginTop: 14 }} />}
-      {s && (
-        <>
-          <div className="disp" style={{ fontSize: 30, margin: '14px 0 6px' }}>{s.name}</div>
-          <div className="dim" style={{ fontSize: 14 }}>{s.sector} · {s.read_minutes} min read</div>
-          <Link className="more" href="/reads/" style={{ display: 'inline-block', marginTop: 16, color: 'var(--accent-2)', fontSize: 14 }}>Read this week’s seven →</Link>
-        </>
-      )}
-    </Rv>
+    <Link href="/trades/" className="panel spot tcard">
+      <span className="eyebrow">Trades · paper book</span>
+      {feed ? (
+        <span className="tcard-row num">
+          <span><b className={todayR > 0 ? 'up' : todayR < 0 ? 'down' : ''}>{todayN ? sR(todayR) : '—'}</b> today</span>
+          <span><b className={book.totalR > 0 ? 'up' : book.totalR < 0 ? 'down' : ''}>{sR(book.marked ? book.totalR : null)}</b> open, marked</span>
+          <span><b>{book.open}</b> open · {pending.length} to enter</span>
+          <span><b>{n('exit')}</b> exit · <b>{n('modify')}</b> modify</span>
+        </span>
+      ) : <Skel h={28} w="70%" />}
+      <span className="more">Live P&amp;L and next-session decisions →</span>
+    </Link>
   );
 }
 
@@ -312,18 +190,8 @@ export default function Home() {
       <section className="wrap section" aria-label="Today's movers and your watchlist">
         <div className="grid g2"><LiveMovers /><LiveWatchlist /></div>
       </section>
+      <section className="wrap section"><TradesCard /></section>
       <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
-      <Teasers />
-      <Board />
-      {/* Below the fold: these feeds (pulse 34 KB, news, IPO, weekly reads 103 KB) load only when the reader gets near them. */}
-      <section className="wrap section">
-        <SectionHead eyebrow="This week" title="What moved, and what was said" />
-        <LazyMount minHeight={520}><div className="grid g2"><Movers /><News /></div></LazyMount>
-      </section>
-      <section className="wrap section">
-        <SectionHead eyebrow="Research" title="From the desk" href="/screen/" cta="Open the full screen" />
-        <LazyMount minHeight={260}><div className="grid g2"><IpoCard /><ReadCard /></div></LazyMount>
-      </section>
     </TodayProvider>
   );
 }

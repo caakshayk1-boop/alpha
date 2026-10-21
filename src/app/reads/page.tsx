@@ -41,7 +41,7 @@ export default function Reads() {
   const written = ed?.written_at ? new Date(ed.written_at) : null;
   return (
     <>
-      <PageHead eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." lede="One sector a week, every Saturday: what they sell, how the money works, and what would break it. Figures come from the screen. The prose is written by a language model from those figures and checked automatically for arithmetic. Business descriptions are the model's general knowledge unless a source is cited. It is not analyst research, and corrections are listed on each study." />
+      <PageHead method="reads" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
           <div className="filters" role="group" aria-label="Edition">
@@ -67,7 +67,6 @@ export default function Reads() {
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
                 {s.corrections && s.corrections.some((c) => c.fix?.trim()) && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.filter((c) => c.fix?.trim()).map((c) => <li key={c.fix}>{dateLabel(c.date)}: {c.fix}</li>)}</ul></div>}
                 <LatestFigures key={s.sym} sym={s.sym} price={s.price} mcap={s.mcap_cr} writtenAt={ed?.written_at ?? null} />
-                <p className="dim" style={{ fontSize: 13.5, margin: '0 0 14px' }}>Review: automatic arithmetic and name checks only. Figures are as at publication; for today&apos;s figures open the company page.</p>
                 {headingsOf(s.study).length > 1 && <nav aria-label="In this study" className="filters" style={{ margin: '0 0 18px' }}><span className="eyebrow">In this study</span>{headingsOf(s.study).map((h) => <a key={h} className="chip" href={`#${slug(h)}`}>{h}</a>)}</nav>}
                 <Prose md={s.study} />
                 <details style={{ marginTop: 28 }}><summary className="eyebrow" style={{ cursor: 'pointer' }}>The figures this was written from</summary>

@@ -1,8 +1,9 @@
 /** One stock's price and day move under the site's one "today" rule (lib/live.ts pickDay), per symbol.
  *
  *  Three sources can price a stock: the live snapshot of the whole screen (/api/live), a per-symbol quote (/api/px), and the
- *  end-of-day screen row (price, r1d, last_date). The newer session wins; on a tie the screen close wins, because it is the
- *  vetted close. Every view says which one it shows: "live 10:26 IST", "last trade 10:05 IST" or "14 Oct 2026 close".
+ *  end-of-day screen row (price, r1d, last_date). The newer session wins. On a tie the exchange's own print wins: the screen
+ *  close is dividend-adjusted (MRPL, 19 Oct 2026: screen 170.72 against 173.72 traded, a ₹3 dividend), so it would not match a
+ *  broker or TradingView on any stock with a dividend ahead. Every view says which one it shows: "live 10:26 IST", "last trade 10:05 IST" or "14 Oct 2026 close".
  *  Pure functions only: tested in tests/lib.test.ts. */
 import { istDate, nseClock, type LiveSnap } from './live.ts';
 
@@ -32,12 +33,12 @@ export function priceView(sym: string, row: CloseRow | null | undefined, snap: L
     if (ownDay < snap.session) {
       // did not trade in the live session: never a "today" move. Show the last trade only if it is newer than the close.
       if (!close || ownDay > close) return { price: lp, pct: null, source: 'stale', session: ownDay, at: own };
-    } else if (!close || snap.session > close) return { price: lp, pct: ok(snap.pct[sym]) ? snap.pct[sym] : null, source: 'live', session: snap.session, at: own };
+    } else if (!close || snap.session >= close) return { price: lp, pct: ok(snap.pct[sym]) ? snap.pct[sym] : null, source: 'live', session: snap.session, at: own };
   }
   if (quote && quote.at && ok(quote.price) && quote.price > 0) {
     const s = istDate(quote.at);
     const stale = !!snap && s < snap.session;
-    if (!close || s > close) return { price: quote.price, pct: stale ? null : ok(quote.pct) ? quote.pct : null, source: stale ? 'stale' : 'quote', session: s, at: quote.at };
+    if (!close || s > close || (s === close && !stale)) return { price: quote.price, pct: stale ? null : ok(quote.pct) ? quote.pct : null, source: stale ? 'stale' : 'quote', session: s, at: quote.at };
   }
   return { price: ok(row?.price) ? row!.price! : null, pct: ok(row?.r1d) ? row!.r1d! : null, source: 'close', session: close, at: null };
 }

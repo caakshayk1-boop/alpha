@@ -70,5 +70,23 @@ check("a stock whose trade has closed can be selected again", len(reg4["signals"
 # 7. the forward record counts only closed trades
 rec = R.forward_record(reg)
 check("forward record counts the closed trade", rec.get("snapback", {}).get("closed") == 1, rec)
+# 8. exchange prices vs dividend-adjusted (MRPL 19 Oct 2026: traded 173.72, adjusted 170.72)
+import data as D
+raw = pd.DataFrame({"Open": [174.5, 173.41], "High": [176.9, 177.34], "Low": [170.5, 172.5], "Close": [172.71, 173.72],
+                    "Adj Close": [169.73, 170.72], "Volume": [1e6, 1e6]}, index=idx[:2])
+adj, ex = D._split(raw)
+check("exchange bars keep the traded close", float(ex["Close"].iloc[-1]) == 173.72)
+check("adjusted bars carry the dividend factor on every price", abs(float(adj["Close"].iloc[-1]) - 170.72) < 1e-9 and abs(float(adj["Open"].iloc[-1]) - 173.41 * 170.72 / 173.72) < 1e-9)
+check("neither view carries Adj Close", "Adj Close" not in adj and "Adj Close" not in ex)
+calls = []
+orig = D.download
+D.download = lambda syms, **k: (calls.append(list(syms)), ({"L": frame([(100, 101, 99, 100, 1e6)] * 3)}, {"L": frame([(100, 101, 99, 100, 1e6)] * 3)}))[1]
+a = {"N": frame([(100, 101, 99, 100, 1e6)] * 3), "L": frame([(100, 101, 99, 100, 1e6)] * 2)}
+r_ = dict(a)
+still = D.refetch_late(a, r_, "6y", waits=(0,), log=lambda *_: None)
+D.download = orig
+check("a stock missing the newest bar is fetched again, and only it", calls == [["L"]], calls)
+check("the late bar that arrived replaces the old frame in both views", len(a["L"]) == 4 and len(r_["L"]) == 4 and still == [], (len(a["L"]), still))
+
 print(f"\n{ok} passed · {fail} failed")
 sys.exit(1 if fail else 0)

@@ -123,7 +123,10 @@ def sector_board(ctx: Ctx) -> list[dict]:
     return sorted(out, key=lambda x: -x["vs_nifty_3m"])
 
 
-def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
+def build(bars, uni, bench, indices, results, reg, log=print, exchange=None) -> dict:
+    """`bars` are dividend-adjusted (models); `exchange` are the same dates in traded prices (plans and tracking). Without
+    `exchange` (an old pickle) the adjusted bars do both jobs."""
+    ex = exchange or bars
     ctx = Ctx(bars, bench, uni, indices)
     info = {u["sym"]: u for u in uni}
     try:
@@ -136,7 +139,7 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     lab = L.build_labels(bars, panel, log=lambda *_: None)
     lab = L.add_group_relative(lab, panel, ctx.group_of, 21)
     log(f"panel {panel.shape} and labels in {time.time() - t0:.0f}s")
-    atrs = T.atr_table(bars)
+    atrs = T.atr_table(ex)
     dates = panel.index.get_level_values("date").unique().sort_values()
     today = str(dates[-1].date())
     last = reg.get("last_scan")            # sessions the scanner has not looked at yet: just the latest one, or those a dropped run missed (at most five)
@@ -147,9 +150,9 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
     for key, eng in ENGINES.items():
         scores, model, nrows = train_and_score(panel, lab, eng, log)
         imp = importance(model, panel, lab, eng, "clf" if eng.kind == "clf" else "reg")
-        sigs = T.signals_from_scores(eng, scores, bars, atrs, lo, pd.Timestamp("2100-01-01"))
+        sigs = T.signals_from_scores(eng, scores, ex, atrs, lo, pd.Timestamp("2100-01-01"))
         for s in sigs:
-            df = bars[s.sym]
+            df = ex[s.sym]
             risk = s.ref_price - s.sl
             day_scores = scores.xs(s.date, level="date")
             rk = float(day_scores.rank(pct=True)[s.sym]) if s.sym in day_scores.index else None
@@ -164,7 +167,7 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
                 **dict(zip(("conviction", "conviction_why"), conviction.tier(_breadth_on(breadth, s.date)))),     # fixed at issue, like the plan
             })
         eng_out[key] = {"importance": imp, "train_rows": nrows}
-    registry.update(reg, candidates, bars, today)
+    registry.update(reg, candidates, ex, today)
     reg["last_scan"] = today
     view = registry.active_view(reg, 14, today)
     engines = {}
@@ -202,16 +205,23 @@ def build(bars, uni, bench, indices, results, reg, log=print) -> dict:
 if __name__ == "__main__":
     import data
     results = json.loads(pathlib.Path("research/ai_results.json").read_text())
+    exchange = None
     if len(sys.argv) > 1:
         d = pd.read_pickle(sys.argv[1])
         bars, uni, bench, indices = d["bars"], d["universe"], d["bench"], d.get("indices")
+        exchange = d.get("exchange")
     else:
         import yfinance as yf
         uni = data.universe()
-        bars = data.download([u["sym"] for u in uni], period="6y")
+        bars, exchange = data.download([u["sym"] for u in uni], period="6y", with_exchange=True)
         ist = pd.Timestamp.now(tz="Asia/Kolkata")
         if ist.hour * 60 + ist.minute < 16 * 60 + 30:      # a bar dated today is still forming before the close: never score on it
-            bars = {k: (df[df.index < ist.tz_localize(None).normalize()] if len(df) and df.index[-1] >= ist.tz_localize(None).normalize() else df) for k, df in bars.items()}
+            cut = lambda m: {k: (df[df.index < ist.tz_localize(None).normalize()] if len(df) and df.index[-1] >= ist.tz_localize(None).normalize() else df) for k, df in m.items()}
+            bars, exchange = cut(bars), cut(exchange)
+        late = data.refetch_late(bars, exchange, "6y")
+        if late:
+            print(f"WARNING {len(late)} stocks still have no bar for the newest session; their trades are marked on their own last close "
+                  f"(last_close_date says which): {', '.join(late[:20])}{' …' if len(late) > 20 else ''}", file=sys.stderr)
         if len(bars) < 0.85 * len(uni):
             raise SystemExit(f"only {len(bars)} of {len(uni)} symbols downloaded: refusing to publish")
         if (pd.Timestamp.now().normalize() - max(df.index[-1] for df in bars.values())).days > 5:
@@ -222,7 +232,7 @@ if __name__ == "__main__":
         bench.index = pd.to_datetime(bench.index).tz_localize(None)
         indices = data.indices("6y")
     reg = registry.load()
-    out = build(bars, uni, bench, indices, results, reg)
+    out = build(bars, uni, bench, indices, results, reg, exchange=exchange)
     registry.save(reg)
     dest = pathlib.Path("../public/engines.json")
     dest.write_text(json.dumps(out, separators=(",", ":")))

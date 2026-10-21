@@ -111,7 +111,7 @@ export default function News() {
 
   return (
     <>
-      <PageHead eyebrow="News desk" title="The day's stories," em="read against the market." lede="Each story is tied to the companies it names, with their last move and any open signal. Themes and company links come from the words in the story, and the basis is always shown." />
+      <PageHead method="news" eyebrow="News desk" title="The day's stories," em="read against the market." />
       <section className="wrap">
         <Async loading={feed.loading} error={feed.error}>
           {feed.data && (
@@ -242,7 +242,6 @@ export default function News() {
                   )}
                   <Rv className="panel">
                     <div className="eyebrow">How to read this page</div>
-                    <p className="muted" style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.55 }}>Stories are fetched from the publishers&apos; own feeds and the summaries are theirs. Themes are matched on words, and a company is linked only when its ticker or full name is written in the story. Nothing here is scored, ranked or advice. Read, saved and last-visit are kept in this browser only.</p>
                   </Rv>
                 </aside>
               </div>

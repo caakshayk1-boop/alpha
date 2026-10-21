@@ -35,7 +35,7 @@ export default function Calendar() {
   const total = days.reduce((t, [, l]) => t + l.length, 0);
   return (
     <>
-      <PageHead eyebrow="Calendar" title="Results season," em="by the day." lede="The next results date on file for each screened company, largest first. The feed does not say whether a date is confirmed or estimated, so treat each as provisional until the exchange's board-meeting announcement." />
+      <PageHead method="calendar" eyebrow="Calendar" title="Results season," em="by the day." />
       <section className="wrap">
         <div className="filters">
           {[7, 14, 30, 60].map((n) => <button key={n} className="chip" aria-pressed={window === n} onClick={() => setWindow(n)}>Next {n} days</button>)}
