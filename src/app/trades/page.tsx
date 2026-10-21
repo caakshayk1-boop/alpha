@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { Async, Flash, PageHead } from '@/components/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Async, ChangeRing, Flash, PageHead } from '@/components/ui';
+import { canAnimate, gsap } from '@/lib/motion';
 import { GatePanel } from '@/components/Gate';
 import { useIntraday } from '@/lib/data';
 import { useBook } from '@/lib/useBook';
@@ -21,6 +22,16 @@ const DTONE: Record<string, string> = { exit: 'down', modify: 'warn', enter: 'ac
 
 /** The book's R made today, bar by bar, with the zero line. One series; the last point is labelled in text beside it. */
 function DayCurve({ pts }: { pts: CurvePoint[] }) {
+  const path = useRef<SVGPathElement>(null);
+  const drawn = useRef(false);
+  useEffect(() => {          // draws in once, on the first real curve; later points just extend it
+    const p = path.current;
+    if (!p || drawn.current || pts.length < 2) return;
+    drawn.current = true;
+    if (!canAnimate()) return;
+    const len = p.getTotalLength();
+    gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.9, ease: 'power2.out', clearProps: 'strokeDasharray,strokeDashoffset' });
+  }, [pts.length]);
   if (pts.length < 2) return <p className="dim tr-empty">The day curve appears once the session has five-minute bars.</p>;
   const W = 640, H = 120, P = 6;
   const lo = Math.min(0, ...pts.map((p) => p.r)), hi = Math.max(0, ...pts.map((p) => p.r));
@@ -34,7 +45,7 @@ function DayCurve({ pts }: { pts: CurvePoint[] }) {
     <figure className="tr-curve">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
         <line x1={P} x2={W - P} y1={y(0)} y2={y(0)} className="zero" />
-        <path d={d} className={last.r >= 0 ? 'up' : 'down'} vectorEffect="non-scaling-stroke" />
+        <path ref={path} d={d} className={last.r >= 0 ? 'up' : 'down'} vectorEffect="non-scaling-stroke" />
       </svg>
       <figcaption className="dim num"><span>{istTime(pts[0].t)}</span><span>high {sR(hi)} · low {sR(lo)}</span><span>{istTime(last.t)} IST</span></figcaption>
     </figure>
@@ -81,8 +92,8 @@ export default function TradesPage() {
               </div>
 
               <div className="tr-kpis">
-                <div><span className="k">Today</span><span className={`v num ${tone(r2(todayR))}`}><Flash value={r2(todayR)}>{sR(todayR)}</Flash></span><span className="n num">{sRs(todayR * riskRs)} · {todayN} of {open.length}</span></div>
-                <div><span className="k">Open, marked</span><span className={`v num ${tone(r2(totalR))}`}><Flash value={r2(totalR)}>{sR(totalR)}</Flash></span><span className="n num">{sRs(totalR * riskRs)} · avg {sR(avgR)}</span></div>
+                <div><span className="k">Today</span><span className={`v num ${tone(r2(todayR))}`}><Flash value={r2(todayR)}>{todayN ? sR(todayR) : dash}</Flash></span><span className="n num">{todayN ? `${sRs(todayR * riskRs)} · ${todayN} of ${open.length}` : 'no open trade'}</span></div>
+                <div><span className="k">Open, marked</span><span className={`v num ${tone(r2(totalR))}`}><Flash value={r2(totalR)}>{open.length ? sR(totalR) : dash}</Flash></span><span className="n num">{open.length ? `${sRs(totalR * riskRs)} · avg ${sR(avgR)}` : 'nothing held'}</span></div>
                 <div><span className="k">Open</span><span className="v num">{open.length}</span><span className="n">{pending.length} waiting for entry</span></div>
                 <div><span className="k">Closed since launch</span><span className={`v num ${tone(feed.record.total_r)}`}>{feed.record.closed ? sR(feed.record.total_r) : '—'}</span><span className="n num">{feed.record.closed} closed · {nearStop} near a stop, {nearTarget} near a target</span></div>
               </div>
@@ -107,7 +118,7 @@ export default function TradesPage() {
                           <td className={`num ${tone(r2(m.r))}`}><Flash value={r2(m.r)}>{sR(m.r)}</Flash><div className="dim tr-sub">{sRs(m.r === null ? null : m.r * riskRs)}</div></td>
                           <td className="num">₹{num(m.stop, 2)}<div className="dim tr-sub">{STOP_TEXT[m.stopKind]}{m.toStop ? ` ${sP(m.toStop.pct, 1)}` : ''}</div></td>
                           <td className="num">{m.toNext && m.state !== 'stop-hit' ? <>₹{num(m.toNext.price, 2)}<div className="dim tr-sub">{m.toNext.label} {sP(m.toNext.pct, 1)}</div></> : dash}</td>
-                          <td><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></td>
+                          <td><ChangeRing value={m.state}><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></ChangeRing></td>
                         </tr>
                       ))}
                       {!sorted.length && <tr><td colSpan={8} className="dim">{feed.gate.on ? 'No open trade.' : 'No open trade. The market gate is off, so the book opens nothing new until all four checks pass.'}</td></tr>}

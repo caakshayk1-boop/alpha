@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import Curve from '@/components/Curve';
 import { GatePanel } from '@/components/Gate';
+import { AskAI } from '@/components/Explain';
 import { Async, Flash, PageHead, Rv } from '@/components/ui';
 import { dash, num, tone } from '@/lib/format';
 import { journalHref } from '@/lib/journal';
@@ -56,6 +57,7 @@ function SignalCard({ row }: { row: BookRow }) {
         <p className="num" style={{ margin: 0, fontSize: 14 }}>{qty > 0 ? <>{num(qty)} shares ≈ ₹{num(qty * entry, 0)} · a stop-out costs about ₹{num(qty * risk, 0)}</> : 'Risk per share is zero or capital is empty.'}</p>
       </details>
       <div style={{ marginTop: 10 }}><Link className="chip" href={journalHref(s.sym, entry, m.stop, m.t1)}>Journal this signal</Link></div>
+      <AskAI subject="signal" id={s.id} title={`Ask about this ${s.setup.toLowerCase()}`} compact />
     </Rv>
   );
 }

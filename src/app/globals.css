@@ -1262,3 +1262,18 @@ table.mini tr.on td { background: var(--accent-soft); font-weight: 600; }
 .sig2-plan { margin-top: 10px; } .sig2-risk { font-size: 12.5px; margin: 8px 0 0; }
 .sig2-why { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* AI ask (21 Oct 2026) */
+.ask-compact { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line-2); }
+.ai-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--neon, var(--accent)); box-shadow: 0 0 0 3px var(--neon-faint, transparent); vertical-align: 1px; }
+.ask-think { display: flex; gap: 5px; margin-top: 10px; } .ask-think i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: askdot 1s var(--ease) infinite; } .ask-think i:nth-child(2) { animation-delay: .15s; } .ask-think i:nth-child(3) { animation-delay: .3s; }
+@keyframes askdot { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .ask-think i { animation: none; opacity: .6; } }
+.ask-answer { margin-top: 12px; animation: askin var(--dur-base) var(--ease) both; } @keyframes askin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ask-answer { animation: none; } }
+.ask-facts { columns: 2; padding-left: 18px; font-size: 13px; } @media (max-width: 600px) { .ask-facts { columns: 1; } }
+/* motion (21 Oct 2026): a ring when a live state changes; the gate's checks arrive in order */
+.ring { display: inline-block; border-radius: 8px; } .ring-on { animation: ringOut 1.2s var(--ease) both; }
+@keyframes ringOut { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+html.anim .gate-checks li { animation: gateIn var(--dur-slow) var(--ease) both; } html.anim .gate-checks li:nth-child(2) { animation-delay: 60ms; } html.anim .gate-checks li:nth-child(3) { animation-delay: 120ms; } html.anim .gate-checks li:nth-child(4) { animation-delay: 180ms; }
+@keyframes gateIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ring-on, html.anim .gate-checks li { animation: none; } }

@@ -43,48 +43,63 @@ export function MetricPanel({ metric, value, sym, onClose }: { metric: string; v
 
 const PRESETS = ['What stands out about this company?', 'Is the profit backed by cash?', 'How heavy is the debt?', 'What do the four scores say?'];
 
-/** Ask one question about one company. The server answers from that company's own figures only, cites them, and the figures it used are shown. */
-export function AskCompany({ sym }: { sym: string }) {
+type Subject = { subject: 'company'; sym: string } | { subject: 'market' } | { subject: 'signal'; id: string };
+const PRESETS_FOR: Record<Subject['subject'], string[]> = {
+  company: PRESETS,
+  market: ['What is the market doing today?', 'Why is the market gate on or off?', 'Which sectors are strongest and weakest?', 'How broad is the move?'],
+  signal: ['Explain this plan in plain words', 'Why did this stock qualify?', 'What happens at T1?', 'What would end this trade?'],
+};
+
+/** Ask one question about a company, the day's market, or one signal. The Worker answers from the facts it builds for that
+ *  subject only, cites them, flags any figure it cannot trace, and withholds advisory wording. Hidden while switched off. */
+export function AskAI({ title, compact = false, ...who }: Subject & { title: string; compact?: boolean }) {
   const on = useExplainerOn();
+  const key = who.subject === 'company' ? who.sym : who.subject === 'signal' ? who.id : 'market';
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<Answer | null>(null);
-  useEffect(() => { setRes(null); setQ(''); }, [sym]);
+  useEffect(() => { setRes(null); setQ(''); }, [key]);
   if (!on) return null;      // switched off (or unknown): nothing is shown rather than a dead control
   const ask = async (question: string) => {
     const text = question.trim();
     if (text.length < 3 || busy) return;
     setBusy(true); setRes(null);
     try {
-      const r = await fetch('/api/explain', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sym, question: text }) });
+      const r = await fetch('/api/explain', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...who, question: text }) });
       setRes((await r.json()) as Answer);
     } catch { setRes({ ok: false, error: 'Could not reach the explainer. Try again.' }); }
     setBusy(false);
   };
+  const fid = `ask-${key.replace(/[^A-Za-z0-9]/g, '')}`;
   return (
-    <section className="panel spot" aria-label="Ask about this company">
-      <div className="eyebrow">Ask about {sym} · AI-written from the figures on this page</div>
-      <p className="muted" style={{ margin: '8px 0 12px', fontSize: 15 }}>The answer is written by a language model from this company&apos;s own figures only. Your question and the symbol are sent; nothing else from your browser is. It does not give buy or sell advice.</p>
-      <div className="filters">{PRESETS.map((p) => <button key={p} className="chip" disabled={busy} onClick={() => { setQ(p); void ask(p); }}>{p}</button>)}</div>
+    <section className={`ask${compact ? ' ask-compact' : ' panel spot'}`} aria-label={title}>
+      <div className="eyebrow"><span className="ai-dot" aria-hidden /> {title} · AI, from Alpha&apos;s own figures</div>
+      <div className="filters" style={{ marginTop: 8 }}>{PRESETS_FOR[who.subject].map((p) => <button key={p} className="chip" disabled={busy} onClick={() => { setQ(p); void ask(p); }}>{p}</button>)}</div>
       <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <label className="sr" htmlFor="ask-q">Your question about {sym}</label>
-        <input id="ask-q" className="field" style={{ flex: '1 1 260px', height: 44 }} value={q} maxLength={300} onChange={(e) => setQ(e.target.value)} placeholder="e.g. Why is its ROCE so high?" />
+        <label className="sr" htmlFor={fid}>Your question</label>
+        <input id={fid} className="field" style={{ flex: '1 1 240px', height: 40 }} value={q} maxLength={300} onChange={(e) => setQ(e.target.value)} placeholder="Ask in your own words" />
         <button className="btn" type="submit" disabled={busy || q.trim().length < 3}>{busy ? 'Reading the figures…' : 'Ask'}</button>
       </form>
       <div role="status" aria-live="polite">
-        {res && !res.ok && <p className="notice" style={{ marginTop: 12 }}>{res.error ?? 'No answer.'}</p>}
+        {busy && <div className="ask-think" aria-hidden><i /><i /><i /></div>}
+        {res && !res.ok && <p className="notice" style={{ marginTop: 10 }}>{res.error ?? 'No answer.'}</p>}
         {res?.ok && res.answer && (
-          <div style={{ marginTop: 14 }}>
-            <p style={{ margin: 0, lineHeight: 1.65 }}>{res.answer}</p>
-            {res.unverifiedNumbers && res.unverifiedNumbers.length > 0 && <p className="notice" style={{ marginTop: 10 }}><b>Check these figures:</b> {res.unverifiedNumbers.join(', ')} could not be matched to the figures below, so treat them as unverified.</p>}
-            <details style={{ marginTop: 10 }}>
+          <div className="ask-answer">
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{res.answer}</p>
+            {res.unverifiedNumbers && res.unverifiedNumbers.length > 0 && <p className="notice" style={{ marginTop: 8 }}><b>Check these figures:</b> {res.unverifiedNumbers.join(', ')} could not be matched to the figures it was given.</p>}
+            <details style={{ marginTop: 8 }}>
               <summary className="eyebrow" style={{ cursor: 'pointer' }}>The figures it was given{res.as_of ? ` (data as of ${res.as_of})` : ''}</summary>
-              <ul className="muted num" style={{ columns: 2, paddingLeft: 18, fontSize: 14 }}>{(res.facts ?? []).map((f) => <li key={f.id}>{f.id}: {f.label} = {f.value}{f.unit ? ` ${f.unit}` : ''}</li>)}</ul>
+              <ul className="muted num ask-facts">{(res.facts ?? []).map((f) => <li key={f.id}>{f.id}: {f.label} = {f.value}{f.unit ? ` ${f.unit}` : ''}</li>)}</ul>
             </details>
-            <p className="dim" style={{ fontSize: 13.5, margin: '10px 0 0' }}>AI-written, not reviewed by a person. Information only, not investment advice. The bracketed ids point to the figures above; whether each id is attached to the right figure is not checked by a machine.</p>
+            <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>AI-written, not reviewed by a person. Information only, not advice.</p>
           </div>
         )}
       </div>
     </section>
   );
+}
+
+/** The company page's question box (kept as a name: CompanyView imports it). */
+export function AskCompany({ sym }: { sym: string }) {
+  return <AskAI subject="company" sym={sym} title={`Ask about ${sym}`} />;
 }

@@ -63,3 +63,25 @@ test('advisoryWording: recommendation language is caught; ordinary analysis is n
   assert.equal(advisoryWording('ROCE of 62.2% [F8] is high; the company holds little debt and pays a dividend.'), false);
   assert.equal(advisoryWording('A buyback is a way of returning cash to shareholders.'), false);
 });
+
+import { factsForMarket, factsForSignal } from '../worker/explain.js';
+test('market facts: breadth, barometer and the market gate, missing parts left out', () => {
+  const f = factsForMarket({
+    summary: { as_of: '2026-10-19', day: { up: 152, down: 819, flat: 17, counted: 988 }, above200: { above: 450, withHistory: 920 }, sectors: [{ name: 'Energy', median: -0.8 }, { name: 'Technology', median: -2.15 }] },
+    barometer: { today: { score: 35, band: { t: 'Weak' }, stage: { t: 'Slightly cheaper' }, nifty: 22889, drawdown_pct: 13.2, vix: 14.8, nifty_date: '2026-10-19', parts: [] } },
+    gate: { on: false, passed: 1, checks: [{ rule: 'India VIX at or below 20', ok: true, value: 'VIX 14.8' }] },
+  });
+  const by = Object.fromEntries(f.map((x) => [x.label, x.value]));
+  assert.equal(by['Stocks that fell'], '819');
+  assert.equal(by['Share above their 200-day average'], '49');
+  assert.equal(by['Swing v2 market gate'], 'off (no new trades)');
+  assert.equal(by['Gate check: India VIX at or below 20'], 'passes (VIX 14.8)');
+  assert.deepEqual(factsForMarket({}), []);
+});
+test('signal facts: the plan as written and where it stands', () => {
+  const f = factsForSignal({ sym: 'X', name: 'X Ltd', sector: 'Tech', setup: 'Pullback', date: '2026-10-21', status: 'pending', ref_price: 100, sl: 95, risk_pct: 5, t1_plan: 110, t2_plan: 120, half: false, max_hold: 30, why: ['Market gate on'] }, { on: true, passed: 4 });
+  const by = Object.fromEntries(f.map((x) => [x.label, x.value]));
+  assert.equal(by['T1 (sell half)'], '110'); assert.equal(by['Stop at issue'], '95'); assert.equal(by['Market gate now'], 'on, 4 of 4 checks');
+  assert.equal(by['Entry'], undefined, 'a pending plan has no entry yet, so none is stated');
+  assert.deepEqual(factsForSignal(null), []);
+});

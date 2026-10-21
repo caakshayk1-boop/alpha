@@ -5,7 +5,7 @@
 // when a figure could not be traced. Facts and the question are data, never instructions.
 
 export const SYSTEM_PROMPT = [
-  'You explain figures from a screen of Indian listed companies, for a reader who is not an analyst.',
+  'You explain figures from Alpha, a research site on Indian listed companies, for a reader who is not an analyst.',
   'Use ONLY the facts inside <facts>. Cite every figure you state with its fact id in square brackets, like [F3].',
   'If the question needs something the facts do not contain, say plainly that Alpha\'s data does not include it. Never fill the gap from memory.',
   'Do not recommend buying, selling or holding, do not give a price target, and do not predict prices or returns.',
@@ -53,6 +53,73 @@ export function factsFor(shard) {
     if (num(y.rev_cr) !== null) add(`Revenue ${y.fy}`, r(y.rev_cr, 0), 'INR crore');
     if (num(y.pat_cr) !== null) add(`Net profit ${y.fy}`, r(y.pat_cr, 0), 'INR crore');
   }
+  return out;
+}
+
+function builder() {
+  const out = [];
+  const add = (label, value, unit = '') => { if (value !== null && value !== undefined && value !== '') out.push({ id: `F${out.length + 1}`, label, value: String(value), unit }); };
+  return { out, add };
+}
+
+/** Facts about the day's market: the screen's breadth and sector medians (/api/summary), the Barometer, and Swing v2's market
+ *  gate with its four checks. A missing figure is left out. */
+export function factsForMarket({ summary, barometer, gate } = {}) {
+  const { out, add } = builder();
+  const t = barometer?.today;
+  if (t) {
+    add('Barometer date', t.nifty_date);
+    add('Barometer score', r(t.score, 0), 'of 100');
+    add('Barometer reading', t.band?.t);
+    add('Valuation stage', t.stage?.t);
+    add('Nifty 50 close', r(t.nifty, 0));
+    add('Nifty distance below its high', r(t.drawdown_pct, 1), '%');
+    add('India VIX', r(t.vix, 1));
+    for (const part of (t.parts || []).slice(0, 6)) add(`Barometer part: ${part.label}`, r(part.score, 0), 'of 100');
+  }
+  if (summary?.day) {
+    add('Screen session', summary.as_of);
+    add('Stocks that rose', summary.day.up);
+    add('Stocks that fell', summary.day.down);
+    add('Stocks counted', summary.day.counted);
+    if (summary.above200?.withHistory) add('Share above their 200-day average', r((summary.above200.above / summary.above200.withHistory) * 100, 0), '%');
+    const secs = Array.isArray(summary.sectors) ? summary.sectors : [];
+    for (const x of secs.slice(0, 3)) add(`Strongest sector: ${x.name}`, r(x.median, 2), '% median move');
+    for (const x of secs.slice(-3)) add(`Weakest sector: ${x.name}`, r(x.median, 2), '% median move');
+  }
+  if (gate) {
+    add('Swing v2 market gate', gate.on ? 'on (new trades allowed)' : 'off (no new trades)');
+    add('Market gate checks passing', `${gate.passed} of 4`);
+    for (const c of gate.checks || []) add(`Gate check: ${c.rule}`, `${c.ok ? 'passes' : 'fails'}${c.value ? ` (${c.value})` : ''}`);
+  }
+  return out;
+}
+
+/** Facts about one Swing v2 signal: its plan as written, where it stands, and the gate it was issued under. */
+export function factsForSignal(sig, gate) {
+  const { out, add } = builder();
+  if (!sig) return out;
+  add('Company', `${sig.name} (${sig.sym})`);
+  add('Sector', sig.sector);
+  add('Setup', sig.setup);
+  add('Signal date', sig.date);
+  add('Status', sig.status);
+  add('Signal close', r(sig.ref_price, 2), 'INR');
+  add('Stop at issue', r(sig.sl, 2), 'INR');
+  add('Risk to the stop', r(sig.risk_pct, 1), '% of the signal close');
+  add('Entry', r(sig.entry, 2), 'INR');
+  add('Entry date', sig.entry_date);
+  add('T1 (sell half)', r(sig.t1 ?? sig.t1_plan, 2), 'INR');
+  add('T2 (sell the rest)', r(sig.t2 ?? sig.t2_plan, 2), 'INR');
+  add('Half already sold at T1', sig.half ? 'yes' : 'no');
+  add('Current stop', r(sig.stop_now, 2), 'INR');
+  add('Last close', r(sig.last_close, 2), 'INR');
+  add('Last close date', sig.last_close_date);
+  add('Marked result', r(sig.r_open, 2), 'R');
+  add('Closed result after costs', r(sig.r_net, 2), 'R');
+  add('Time limit', sig.max_hold, 'sessions');
+  for (const w of (sig.why || []).slice(0, 6)) add('Why it qualified', w);
+  if (gate) add('Market gate now', `${gate.on ? 'on' : 'off'}, ${gate.passed} of 4 checks`);
   return out;
 }
 

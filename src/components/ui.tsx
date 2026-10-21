@@ -266,3 +266,21 @@ export function Flash({ value, dir, children }: { value: number | string | null 
   }, [value, dir]);
   return <span className={`flash${on ? ` flash-${on}` : ''}`}>{children}</span>;
 }
+
+/** A brief ring when `value` changes after the first render: a plan state that moves live (Hold to Stop reached) must not be
+ *  missed. Nothing on first paint; reduced motion shows no ring (the new text says it). */
+export function ChangeRing({ value, children }: { value: string | number | null | undefined; children: ReactNode }) {
+  const prev = useRef(value);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (prev.current !== value && prev.current !== undefined && prev.current !== null) {
+      setOn(true);
+      const t = window.setTimeout(() => setOn(false), 1200);
+      prev.current = value;
+      return () => window.clearTimeout(t);
+    }
+    prev.current = value;
+    return undefined;
+  }, [value]);
+  return <span className={`ring${on ? ' ring-on' : ''}`}>{children}</span>;
+}

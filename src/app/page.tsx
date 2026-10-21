@@ -13,6 +13,7 @@ import { LiveMovers } from '@/components/widgets/LiveMovers';
 import { LiveWatchlist } from '@/components/widgets/LiveWatchlist';
 import { useSignals, useFeed, useSummary } from '@/lib/data';
 import { useBook } from '@/lib/useBook';
+import { AskAI } from '@/components/Explain';
 import { dateLabel, num } from '@/lib/format';
 import { useBarometer } from '@/lib/useBarometer';
 import { sessionHead } from '@/lib/session';
@@ -191,7 +192,7 @@ export default function Home() {
       <section className="wrap section" aria-label="Today's movers and your watchlist">
         <div className="grid g2"><LiveMovers /><LiveWatchlist /></div>
       </section>
-      <section className="wrap section"><TradesCard /></section>
+      <section className="wrap section"><TradesCard /><AskAI subject="market" title="Ask about today's market" compact /></section>
       <section className="wrap section"><SectionHead eyebrow="Worth a closer look" title="Where several checks agree" href="/tools/" cta="Portfolio X-ray and more" /><LazyMount minHeight={420}><Confluence limit={6} /></LazyMount></section>
     </TodayProvider>
   );

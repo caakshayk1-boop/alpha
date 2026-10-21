@@ -85,12 +85,12 @@ function flush() {
   if (!batch.length) return;
   // Fade and rise once, staggered, starting from the moment the element is in view: content is never hidden ahead of time,
   // so if this never runs (hidden tab, observer stall) the page is simply static, never blank.
-  gsap.fromTo(batch, { opacity: 0, y: 18 }, {
+  gsap.fromTo(batch, { opacity: 0, y: 10 }, {
     opacity: 1,
     y: 0,
-    duration: 0.38,
+    duration: 0.32,
     ease: 'power2.out',
-    stagger: 0.06,
+    stagger: 0.04,
     overwrite: 'auto',
     onComplete: () => batch.forEach((b) => { b.dataset.rv = 'done'; gsap.set(b, { clearProps: 'opacity,transform' }); }),
   });
@@ -105,7 +105,7 @@ export function observeReveal(el: HTMLElement): () => void {
   // Already on screen: show it as it is (no blink, no delay to the first paint). Below the fold: hide it now, while nobody can
   // see it, and fade it in when it scrolls into view.
   if (el.getBoundingClientRect().top < window.innerHeight) { el.dataset.rv = 'done'; return () => undefined; }
-  gsap.set(el, { opacity: 0, y: 18 });
+  gsap.set(el, { opacity: 0, y: 10 });
   if (!io) {
     io = new IntersectionObserver(
       (entries) => {

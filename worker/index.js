@@ -5,7 +5,7 @@
 //   everything else    the static export in ./out
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
-import { SYSTEM_PROMPT, advisoryWording, answerText, limitKey, buildUserMessage, checkAnswer, factsFor, validateQuestion } from './explain.js';
+import { SYSTEM_PROMPT, advisoryWording, answerText, limitKey, buildUserMessage, checkAnswer, factsFor, factsForMarket, factsForSignal, validateQuestion } from './explain.js';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -541,16 +541,36 @@ async function explain(request, env, url) {
   let body;
   try { body = JSON.parse(text); } catch { return json({ ok: false, error: 'invalid JSON' }, 400); }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid JSON' }, 400);
+  // subject: 'company' (sym), 'market' (the day), or 'signal' (id). The browser names the subject; the Worker builds the facts.
+  const subject = ['company', 'market', 'signal'].includes(body.subject) ? body.subject : 'company';
   const sym = String(body.sym || '').toUpperCase().trim();
-  if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  const sid = String(body.id || '').trim();
+  if (subject === 'company' && !/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  if (subject === 'signal' && !/^swing:[A-Z0-9&-]{1,20}:\d{4}-\d{2}-\d{2}$/.test(sid)) return json({ ok: false, error: 'bad signal id' }, 400);
   const q = validateQuestion(body.question);
   if (!q.ok) return json({ ok: false, error: q.error }, 400);
   const key = limitKey(request.headers.get('cf-connecting-ip'));
   if (env.EXPLAIN_LIMIT ? !(await env.EXPLAIN_LIMIT.limit({ key })).success : tooMany(key)) return json({ ok: false, error: 'too many requests, try again in a minute' }, 429);
-  const res = await shard(sym, env);
-  const data = res ? await res.json().catch(() => null) : null;
-  const facts = factsFor(data);
-  if (facts.length < 5) return json({ ok: false, error: 'no figures on file for this symbol' }, 404);
+  let facts = [], asOf = null;
+  const signalsFeed = async () => { try { const a = await env.ASSETS.fetch(new Request('https://alpha.askakshay.com/signals.json')); return a.ok ? await a.json() : null; } catch { return null; } };
+  if (subject === 'company') {
+    const res = await shard(sym, env);
+    const data = res ? await res.json().catch(() => null) : null;
+    facts = factsFor(data);
+    asOf = data?.row?.last_date ?? null;
+  } else if (subject === 'market') {
+    const [text, barText, sig] = await Promise.all([feedText('screen').catch(() => null), feedText('barometer').catch(() => null), signalsFeed()]);
+    const summary = text ? summarise(text) : null;
+    const barometer = barText ? parseLoose(barText) : null;
+    facts = factsForMarket({ summary, barometer, gate: sig?.gate });
+    asOf = summary?.as_of ?? barometer?.today?.nifty_date ?? null;
+  } else {
+    const sig = await signalsFeed();
+    const one = (sig?.signals || []).find((x) => x.id === sid);
+    facts = factsForSignal(one, sig?.gate);
+    asOf = one?.last_close_date ?? sig?.data_through ?? null;
+  }
+  if (facts.length < 5) return json({ ok: false, error: 'not enough figures on file to answer' }, 404);
   if (overDailyCeiling()) return json({ ok: false, error: 'the explainer has reached its limit for today' }, 429);   // counted only for requests that would really call the model
   // The upstream is fixed. Only a local mock (used in tests) may replace it, so the key can never be sent to another host.
   const base = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(env.ANTHROPIC_BASE || '') ? env.ANTHROPIC_BASE : 'https://api.anthropic.com';
@@ -565,7 +585,7 @@ async function explain(request, env, url) {
     const answer = answerText(await r.json());
     if (!answer) return json({ ok: false, error: 'the explainer returned nothing' }, 502);
     if (advisoryWording(answer)) return json({ ok: false, error: 'The answer was withheld because it used advisory wording. Alpha gives information, not buy or sell views. Try rephrasing the question.' }, 200);
-    return json({ ok: true, answer, facts, unverifiedNumbers: checkAnswer(answer, facts), model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: data?.row?.last_date ?? null });
+    return json({ ok: true, answer, facts, unverifiedNumbers: checkAnswer(answer, facts), model: env.EXPLAIN_MODEL || EXPLAIN_MODEL, as_of: asOf });
   } catch {
     return json({ ok: false, error: 'the explainer could not answer right now' }, 502);
   }
