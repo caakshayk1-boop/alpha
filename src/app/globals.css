@@ -1462,3 +1462,89 @@ html[data-contrast='high'][data-theme='dark'] { --muted: #e1e4f5; --dim: #d2d6ec
 }
 html[data-contrast='high'] :focus-visible { outline-width: 3px !important; outline-offset: 2px; }
 html[data-contrast='high'] .panel, html[data-contrast='high'] .chip, html[data-contrast='high'] .tag { border-color: var(--line-2); }
+
+/* ── Semantic token layer (Pro §24.2) ───────────────────────────────────────────────────────────────────────────
+   The names DESIGN.md §2.2 uses, mapped onto the tokens the components already consume, so both resolve to the same
+   colour in every theme and mode. New component code uses --alpha-*. */
+:root {
+  --alpha-canvas: var(--bg); --alpha-surface-1: var(--panel); --alpha-surface-2: var(--panel-2); --alpha-surface-3: var(--panel-3);
+  --alpha-text: var(--text); --alpha-text-muted: var(--muted); --alpha-text-dim: var(--dim);
+  --alpha-border: var(--line); --alpha-border-strong: var(--line-2);
+  --alpha-accent: var(--accent); --alpha-accent-text: var(--accent-2); --alpha-accent-contrast: var(--accent-ink);
+  --alpha-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --alpha-up: var(--up); --alpha-down: var(--down); --alpha-flat: var(--dim); --alpha-warn: var(--warn); --alpha-info: var(--muted);
+  --alpha-experimental: var(--accent); --alpha-assumption: var(--accent);
+  /* component tokens */
+  --card-bg: var(--alpha-surface-1); --chip-bg-active: var(--accent-soft); --table-row-hover: var(--alpha-surface-2); --sheet-scrim: rgba(2, 4, 8, 0.55);
+}
+
+/* ── Status chips (Pro §24.4): one visual language for the state of a figure ────────────────────────────────── */
+.st { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; font: 600 12px/1.4 var(--f-ui); letter-spacing: 0.01em; border: 1px solid transparent; white-space: nowrap; vertical-align: 1px; }
+.st-live { color: var(--alpha-up); background: var(--up-soft); }
+.st-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-close { color: var(--alpha-text-muted); border-color: var(--alpha-border-strong); }
+.st-stale { color: var(--alpha-warn); border-color: var(--alpha-warn); }
+.st-experimental { color: var(--alpha-accent-text); border: 1px dashed var(--alpha-experimental); }
+.st-assumption { color: var(--alpha-accent-text); border-color: var(--alpha-assumption); font-style: italic; font-weight: 500; }
+.st-observed { color: var(--alpha-text-muted); background: var(--alpha-surface-2); font-weight: 500; }
+.st-review { color: var(--alpha-warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.st-unknown { color: var(--alpha-text-dim); border-color: var(--alpha-border-strong); font-weight: 500; }
+.st svg { width: 12px; height: 12px; flex: none; }
+
+/* ── Reduced transparency (Pro §24.3): blur and glass only where the device has not asked for less ──────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .topbar, .tabbar, .cmdk-back, .sheet-back, .totop::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .topbar { background: var(--bg) !important; }
+  .tabbar { background: var(--panel) !important; }
+}
+
+/* ── Forced colours (Windows High Contrast, Pro §30): keep borders and state visible when the system paints ─── */
+@media (forced-colors: active) {
+  .st, .tag, .chip, .panel, .tbl th, .tbl td { border: 1px solid CanvasText; forced-color-adjust: auto; }
+  .up, .down, .st-live, .st-stale, .st-review { forced-color-adjust: auto; }
+  :focus-visible { outline: 3px solid Highlight !important; }
+  .bar > i, .meter-row i { background: CanvasText !important; forced-color-adjust: none; }
+}
+
+/* ── Grid and containers (Pro §25.1) ─────────────────────────────────────────────────────────────────────────────
+   12 columns at ≥1024px, 8 at 768–1023, 4 below; gutters 24 / 16 / 16. Spans collapse to the full row where the
+   column count cannot hold them. Containers by task: reading 68ch, standard (.wrap, 1280px), data workspace 1440px.
+   Deliberate deviation: the spacing scale stays one step tighter than §25.1 proposes (owner request, 21 Oct 2026). */
+:root { --container-reading: 68ch; --container-wide: 1440px; --cols: 4; --gutter: 16px; }
+@media (min-width: 768px) { :root { --cols: 8; } }
+@media (min-width: 1024px) { :root { --cols: 12; --gutter: 24px; } }
+.grid12 { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--gutter); }
+.grid12 > * { grid-column: 1 / -1; min-width: 0; }
+@media (min-width: 768px) { .grid12 > .span-md-4 { grid-column: span 4; } .grid12 > .span-md-8 { grid-column: span 8; } }
+@media (min-width: 1024px) {
+  .grid12 > .span-3 { grid-column: span 3; } .grid12 > .span-4 { grid-column: span 4; } .grid12 > .span-5 { grid-column: span 5; }
+  .grid12 > .span-6 { grid-column: span 6; } .grid12 > .span-7 { grid-column: span 7; } .grid12 > .span-8 { grid-column: span 8; }
+  .grid12 > .span-9 { grid-column: span 9; } .grid12 > .span-12 { grid-column: 1 / -1; }
+}
+.wrap-reading { width: min(100% - 32px, var(--container-reading)); margin-inline: auto; }
+.wrap.wide { width: min(100% - 32px, var(--container-wide)); }
+/* the 7/5 and 8/4 splits are 12-column spans */
+@media (min-width: 1024px) { .g-7-5 { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gutter); } .g-7-5 > :nth-child(odd) { grid-column: span 7; } .g-7-5 > :nth-child(even) { grid-column: span 5; }
+  .g-8-4 { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gutter); } .g-8-4 > :nth-child(odd) { grid-column: span 8; } .g-8-4 > :nth-child(even) { grid-column: span 4; } }
+
+/* ── Scroll-driven motion (Pro §26.3), where supported; content is fully visible without it ───────────────────── */
+@supports (animation-timeline: view()) {
+  html.anim [data-rv='sd'] { animation: rv-in linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
+  @keyframes rv-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+  /* the reading-progress hairline on a Weekly Read */
+  .read-progress { position: fixed; inset: 0 0 auto 0; height: 2px; z-index: 60; background: var(--alpha-accent); transform-origin: 0 50%; animation: read-progress linear both; animation-timeline: scroll(root); pointer-events: none; }
+  @keyframes read-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+}
+@supports not (animation-timeline: view()) { .read-progress { display: none; } }
+html[data-motion='reduced'] .read-progress { display: none; }
+/* Motion: Off — nothing animates or transitions, page transitions included */
+html[data-motion='off'] *, html[data-motion='off'] *::before, html[data-motion='off'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html[data-motion='off'] { --dur-instant: 0ms; --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-sheet: 0ms; --distance-s: 0px; --distance-m: 0px; }
+html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view-transition-old(*), html[data-motion='off']::view-transition-new(*) { animation: none !important; }
+
+/* ── Target sizes (Pro §30): primary actions 44px on touch; dense table controls keep a 24px hit area ──────────── */
+@media (pointer: coarse) {
+  .chip, .btn, .iconbtn, .seg button, .tabbar a, button.primary { min-height: 44px; }
+  .chip { padding-inline: 14px; }
+}
+.tbl th > button, .tbl td > a, .tbl td > button { min-height: 24px; display: inline-flex; align-items: center; }

@@ -9,7 +9,7 @@ let ready = false;
 /** The device setting, or the reader's own choice on this site (Settings → Motion: reduced). Read at call time, so a change
  *  mid-session takes effect on the next animation. */
 export const prefersReduced = () =>
-  typeof window !== 'undefined' && (document.documentElement.dataset.motion === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  typeof window !== 'undefined' && (document.documentElement.dataset.motion === 'reduced' || document.documentElement.dataset.motion === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 /**
  * Motion is an enhancement: content is visible by default, and `html.anim` (which hides
@@ -83,6 +83,7 @@ export function fadeTheme() {
 }
 
 let io: IntersectionObserver | null = null;
+const scrollDriven = () => typeof CSS !== 'undefined' && CSS.supports?.('animation-timeline: view()') === true;
 let queue: HTMLElement[] = [];
 let timer = 0;
 
@@ -113,6 +114,9 @@ export function observeReveal(el: HTMLElement): () => void {
   // Already on screen: show it as it is (no blink, no delay to the first paint). Below the fold: hide it now, while nobody can
   // see it, and fade it in when it scrolls into view.
   if (el.getBoundingClientRect().top < window.innerHeight) { el.dataset.rv = 'done'; return () => undefined; }
+  // Where the browser can drive the fade from scroll position itself (CSS animation-timeline: view()), it does: no script
+  // runs per frame, and an element is never left hidden if the observer stalls. GSAP and the observer remain the fallback.
+  if (scrollDriven()) { el.dataset.rv = 'sd'; return () => undefined; }
   gsap.set(el, { opacity: 0, y: 10 });
   if (!io) {
     io = new IntersectionObserver(

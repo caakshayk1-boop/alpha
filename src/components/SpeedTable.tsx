@@ -24,7 +24,7 @@ export default function SpeedTable() {
   const [r, setR] = useState<Report | null | 'error'>(null);
   useEffect(() => {
     let live = true;
-    fetch('/api/rum').then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status))))).then((j: Report) => { if (live) setR(j); }, () => { if (live) setR('error'); });
+    fetch('/api/rum', { cache: 'no-cache' }).then((x) => (x.ok ? x.json() : Promise.reject(new Error(String(x.status))))).then((j: Report) => { if (live) setR(j); }, () => { if (live) setR('error'); });
     return () => { live = false; };
   }, []);
   if (r === null) return <p className="dim">Loading the speed readings…</p>;

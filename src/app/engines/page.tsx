@@ -5,8 +5,8 @@ import { useState } from 'react';
 import Curve from '@/components/Curve';
 import { GatePanel } from '@/components/Gate';
 import { AskAI } from '@/components/Explain';
-import { Async, Flash, PageHead, Rv } from '@/components/ui';
-import { dash, num, tone } from '@/lib/format';
+import { Async, Flash, PageHead, Rv, StatusChip } from '@/components/ui';
+import { dash, num, signed, tone } from '@/lib/format';
 import { journalHref } from '@/lib/journal';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, markSource, money } from '@/lib/plan';
 import { sessionLabel } from '@/lib/price';
@@ -14,8 +14,8 @@ import { companyHref } from '@/lib/slug';
 import type { BtStats, Sig, SignalsFeed } from '@/lib/types';
 import { useBook, type BookRow } from '@/lib/useBook';
 
-const sR = (v: number | null | undefined, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}R` : dash);
-const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(d)}${suf}` : dash);
+const sR = (v: number | null | undefined, d = 2) => signed(v, d, 'R');
+const f = (v: number | null | undefined, d = 1, suf = '') => (typeof v === 'number' && Number.isFinite(v) ? `${num(v, d)}${suf}` : dash);
 const EXIT: Record<string, string> = { stop: 'Stopped out', lock: 'Raised stop after T1', trail: 'Trailing stop after T1', t2: 'T2 reached', time: 'Time limit' };
 
 /** One active signal: what fired, the plan as written, and the plan at the latest price. */
@@ -115,7 +115,7 @@ export default function SignalsPage() {
           {feed && (
             <>
               {/* Pro §5: lead with what this is; the alert status and its reason come before any figure */}
-              <p className="exp-banner" role="note"><span className="tag exp">Experimental research</span> {feed.alertable ? 'Alerts are on for these exact rules.' : `Alerts are off. ${feed.alert_why.replace(/^Alerts off:\s*/, '')}`} Not a recommendation; every result below is on paper, after costs, and the development, holdout and forward records are kept apart.</p>
+              <p className="exp-banner" role="note"><StatusChip kind="experimental">Experimental research</StatusChip> {feed.alertable ? 'Alerts are on for these exact rules.' : `Alerts are off. ${feed.alert_why.replace(/^Alerts off:\s*/, '')}`} Not a recommendation; every result below is on paper, after costs, and the development, holdout and forward records are kept apart.</p>
               <GatePanel feed={feed} />
               <div className="eng-link"><span className="dim num">Prices through {sessionLabel(feed.data_through)} · launched {sessionLabel(feed.launched)} · {feed.alertable ? 'alerts on' : 'alerts off'}</span><Link href="/trades/" className="chip">Live P&amp;L and today&apos;s decisions →</Link></div>
 

@@ -156,7 +156,7 @@ const SETTINGS: { name: PrefName; label: string; opts: [string, string][]; note?
   { name: 'theme', label: 'Theme', opts: [['light', 'Light'], ['dark', 'Dark']] },
   { name: 'accent', label: 'Accent', opts: ACCENTS.map(([k, l]) => [k, l]), note: 'Only the highlight changes.' },
   { name: 'market', label: 'Market colours', opts: [['standard', 'Green / red'], ['cb', 'Blue / orange']], note: 'Up and down always also carry a sign and an arrow.' },
-  { name: 'motion', label: 'Motion', opts: [['system', 'As the device'], ['reduced', 'Reduced']] },
+  { name: 'motion', label: 'Motion', opts: [['system', 'As the device'], ['reduced', 'Reduced'], ['off', 'Off']], note: 'Reduced keeps quick colour changes; Off removes every animation and transition.' },
   { name: 'density', label: 'Density', opts: [['comfortable', 'Comfortable'], ['compact', 'Compact']] },
   { name: 'contrast', label: 'Contrast', opts: [['system', 'As the device'], ['high', 'High']], note: 'Stronger text, lines and focus rings. No colour carries meaning alone.' },
 ];

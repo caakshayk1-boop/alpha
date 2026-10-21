@@ -3,6 +3,7 @@ import { Inter_Tight, Instrument_Serif } from 'next/font/google';
 import Shell from '@/components/Shell';
 import { PREFS_SCRIPT } from '@/lib/prefs';
 import './globals.css';
+import './tokens-oklch.css';      // the same tokens authored in OKLCH (scripts/oklch.mjs), where supported
 
 const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
@@ -23,7 +24,7 @@ export const viewport: Viewport = { themeColor: '#f5f3ee', width: 'device-width'
 // Start the first data a page waits on while its JavaScript is still downloading, and let lib/data.ts pick up the same
 // requests (window.__alphaPre) instead of fetching again. Today: the summary and the Barometer. A company page: its live slice
 // and the default 1-year chart, under the exact URLs the page itself requests ("_" in the address is "&" in the symbol).
-const prefetchScript = `try{var L=location.pathname,u=[];if(L==='/')u=['/api/summary','/data/barometer.json'];else{var m=/^\\/company\\/([A-Za-z0-9_-]{1,20})\\/$/.exec(L);if(m){var s=encodeURIComponent(m[1].toUpperCase().replace(/_/g,'&'));u=['/c/'+s+'.json','/api/chart?s='+s+'&r=1y']}}if(u.length){var p=window.__alphaPre={};u.forEach(function(x){p[x]=fetch(x).then(function(r){if(!r.ok)throw new Error(x+' answered '+r.status);return r.json()});p[x].catch(function(){})})}}catch(e){}`;
+const prefetchScript = `try{var L=location.pathname,u=[];if(L==='/')u=['/api/summary','/data/barometer.json'];else{var m=/^\\/company\\/([A-Za-z0-9_-]{1,20})\\/$/.exec(L);if(m){var s=encodeURIComponent(m[1].toUpperCase().replace(/_/g,'&'));u=['/c/'+s+'.json','/api/chart?s='+s+'&r=1y']}}if(u.length){var p=window.__alphaPre={};u.forEach(function(x){p[x]=fetch(x,{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error(x+' answered '+r.status);return r.json()});p[x].catch(function(){})})}}catch(e){}`;
 
 // Runs before first paint so there is no flash of the wrong theme, accent, motion, market colours or density (lib/prefs.ts).
 

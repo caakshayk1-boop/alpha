@@ -3,7 +3,7 @@
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
+import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Skel, TabRow } from '@/components/ui';
 import { DataStamp } from '@/components/DataStamp';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
 import { AskCompany, MetricPanel } from '@/components/Explain';
@@ -15,16 +15,16 @@ import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
-import { crore, dash, heat, num, pct, ratio } from '@/lib/format';
+import { crore, dash, heat, num, pct, ratio, sayCrore } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row, Year } from '@/lib/types';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function Kv({ k, v, onPick, on }: { k: string; v: string; onPick?: (k: string, v: string) => void; on?: boolean }) {
+function Kv({ k, v, onPick, on, say }: { k: string; v: string; onPick?: (k: string, v: string) => void; on?: boolean; say?: string }) {
   const known = !!onPick && k in GLOSSARY;
-  return <div><div className="k">{known ? <button type="button" className="kq" aria-expanded={on} onClick={() => onPick(k, v)} title={`Explain ${k}`}>{k} <span aria-hidden>ⓘ</span></button> : k}</div><div className="v">{v}</div></div>;
+  return <div><div className="k">{known ? <button type="button" className="kq" aria-expanded={on} onClick={() => onPick(k, v)} title={`Explain ${k}`}>{k} <span aria-hidden>ⓘ</span></button> : k}</div><div className="v">{say ? <Said say={say}>{v}</Said> : v}</div></div>;
 }
 
 function Range({ r }: { r: Row }) {
@@ -253,7 +253,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       {(() => {
         const live = pv.source === 'close' ? null : pv.price;
         if (!has(live) || !has(r.price) || r.price <= 0 || Math.abs(live / r.price - 1) <= 0.08) return null;
-        return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
+        return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {pct(Math.abs((live / r.price - 1) * 100), 1, false)}. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
       <CaseBlock r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
@@ -286,13 +286,13 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         <SectionHead title="Key numbers" />
         <p className="dim" style={{ fontSize: 13.5, margin: '-6px 2px 12px' }}>From the screen: price-based ratios use the {closeOn} close; the rest come from the latest filed statements.</p>
         <Rv className="kv">
-          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${ratio(r.pe, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${ratio(r.pb, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
+          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} say={has(r.mcap_cr) && r.mcap_cr > 0 ? sayCrore(r.mcap_cr) : undefined} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${ratio(r.pe, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${ratio(r.pb, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
           <Kv k="ROCE" v={has(r.roce) ? `${pct(r.roce, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROCE'} /><Kv k="ROE" v={has(r.roe) ? `${pct(r.roe, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROE'} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${pct(r.ebit_margin, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EBIT margin'} />
-          <Kv k="Debt / equity" v={has(r.de) ? r.de.toFixed(2) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Debt / equity'} /><Kv k="Interest cover" v={has(r.icover) ? `${ratio(r.icover, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Interest cover'} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${pct(r.div_yield, 2, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Dividend yield'} />
+          <Kv k="Debt / equity" v={has(r.de) ? num(r.de, 2) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Debt / equity'} /><Kv k="Interest cover" v={has(r.icover) ? `${ratio(r.icover, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Interest cover'} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${pct(r.div_yield, 2, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Dividend yield'} />
           <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Revenue CAGR'} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EPS CAGR'} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${ratio(r.cfo_pat, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Cash / profit'} />
-          <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Piotroski F'} /><Kv k="RSI (14)" v={has(r.rsi) ? r.rsi.toFixed(0) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'RSI (14)'} />
+          <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Piotroski F'} /><Kv k="RSI (14)" v={has(r.rsi) ? num(r.rsi, 0) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'RSI (14)'} />
           {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Magic Formula'} />}
-          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E vs own history'} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Daily turnover'} />
+          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E vs own history'} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} say={sayCrore(r.turnover_cr)} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Daily turnover'} />
         </Rv>
         {metric && <MetricPanel metric={metric.k} value={metric.v} sym={r.sym} onClose={() => setMetric(null)} />}
         <div style={{ height: 16 }} /><AskCompany sym={r.sym} />
@@ -317,7 +317,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             <Rv key={x.id} className="panel spot">
               <div className="sig2-head">
                 <div><div className="eyebrow">{x.setup} · signal {sessionLabel(x.date)}</div><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></div>
-                <div className="sig2-now">{m.r !== null && <div className={`v num ${m.r >= 0 ? 'up' : 'down'}`}>{m.r > 0 ? '+' : m.r < 0 ? '−' : ''}{Math.abs(m.r).toFixed(2)}R</div>}<div className="dim num" style={{ fontSize: 12 }}>{x.status === 'closed' ? `closed ${sessionLabel(x.closed_date)}` : m.price !== null ? markSource(m) : ''}</div></div>
+                <div className="sig2-now">{m.r !== null && <div className={`v num ${m.r >= 0 ? 'up' : 'down'}`}>{m.r > 0 ? '+' : m.r < 0 ? '−' : ''}{num(Math.abs(m.r), 2)}R</div>}<div className="dim num" style={{ fontSize: 12 }}>{x.status === 'closed' ? `closed ${sessionLabel(x.closed_date)}` : m.price !== null ? markSource(m) : ''}</div></div>
               </div>
               <div className="kv sig2-plan">
                 <div><div className="k">{x.entry ? 'Entry' : 'Signal close'}</div><div className="v">{money(x.entry ?? x.ref_price)}</div></div>

@@ -83,7 +83,7 @@ function Compare() {
   return (
     <>
       <PageHead method="compare" eyebrow="Compare" title="Side by side," em="up to four." />
-      <section className="wrap">
+      <section className="wrap wide">
         <div className="cmp-bar">
           <ol className="cmp-slots" aria-label={`Companies chosen: ${syms.length} of 4`}>
             {[0, 1, 2, 3].map((i) => {

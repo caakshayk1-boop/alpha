@@ -41,7 +41,7 @@ function early<T>(url: string): Promise<T> | undefined {
 }
 
 function fetchJson<T>(url: string): Promise<T> {
-  return fetch(url, { signal: AbortSignal.timeout(TIMEOUT) }).then(async (r) => {
+  return fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(TIMEOUT) }).then(async (r) => {
     if (!r.ok) throw new Error(`${url} answered ${r.status}`);
     return (await r.json()) as T;
   });
@@ -140,7 +140,7 @@ export function usePx(symbols: string[]): { quotes: Record<string, import('./typ
       if (document.visibilityState !== 'visible') return;
       // bypass the in-memory memo: this one is meant to be fresh
       const n = ++seq;
-      fetch(`${BASE}/api/px?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json() as Promise<import('./types').PxFeed>).then((j) => { if (live && j.ok && n === seq) setState({ quotes: j.quotes, at: j.fetched_at ?? null }); }, () => undefined);
+      fetch(`${BASE}/api/px?s=${encodeURIComponent(key)}`, { cache: 'no-cache', signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json() as Promise<import('./types').PxFeed>).then((j) => { if (live && j.ok && n === seq) setState({ quotes: j.quotes, at: j.fetched_at ?? null }); }, () => undefined);
     };
     pull();
     const t = window.setInterval(pull, 60_000);
@@ -160,7 +160,7 @@ export function useIntraday(symbols: string[]): { quotes: Record<string, { prev:
     let live = true;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
-      fetch(`${BASE}/api/intraday?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json()).then((j) => { if (live) setState(j?.ok ? { quotes: j.quotes, at: j.fetched_at ?? null, loading: false } : (x) => ({ ...x, loading: false })); }, () => { if (live) setState((x) => ({ ...x, loading: false })); });
+      fetch(`${BASE}/api/intraday?s=${encodeURIComponent(key)}`, { cache: 'no-cache', signal: AbortSignal.timeout(TIMEOUT) }).then((r) => r.json()).then((j) => { if (live) setState(j?.ok ? { quotes: j.quotes, at: j.fetched_at ?? null, loading: false } : (x) => ({ ...x, loading: false })); }, () => { if (live) setState((x) => ({ ...x, loading: false })); });
     };
     pull();
     const t = window.setInterval(pull, 300_000);

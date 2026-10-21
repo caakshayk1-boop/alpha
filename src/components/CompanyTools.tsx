@@ -180,7 +180,7 @@ export function Lookalikes({ r, rows }: { r: Row; rows: Row[] }) {
         <table className="tbl" style={{ minWidth: 640 }}>
           <thead><tr><th>Company</th><th>Match</th><th>Quality</th><th>Growth</th><th>Value</th><th>Trend</th><th>P/E</th><th>1Y</th></tr></thead>
           <tbody>
-            <tr style={{ cursor: 'default', background: 'var(--accent-soft)' }}><td><b>{r.sym}</b> <span className="dim">(this)</span></td><td className="num">—</td><td className="num">{r.q ?? dash}</td><td className="num">{r.g ?? dash}</td><td className="num">{r.v ?? dash}</td><td className="num">{r.tech ?? dash}</td><td className="num">{r.pe ? `${r.pe.toFixed(1)}×` : dash}</td><td className="num">{r.r1y != null ? `${r.r1y.toFixed(0)}%` : dash}</td></tr>
+            <tr style={{ cursor: 'default', background: 'var(--accent-soft)' }}><td><b>{r.sym}</b> <span className="dim">(this)</span></td><td className="num">—</td><td className="num">{r.q ?? dash}</td><td className="num">{r.g ?? dash}</td><td className="num">{r.v ?? dash}</td><td className="num">{r.tech ?? dash}</td><td className="num">{r.pe ? `${ratio(r.pe, 1)}` : dash}</td><td className="num">{r.r1y != null ? `${pct(r.r1y, 0, false)}` : dash}</td></tr>
             {sims.map(({ row, sim }) => (
               <tr key={row.sym}><td><Link href={companyHref(row.sym)}><b>{row.sym}</b> <span className="dim">{row.name}</span></Link></td><td className="num">{sim}%</td><td className="num">{row.q != null ? Math.round(row.q) : dash}</td><td className="num">{row.g != null ? Math.round(row.g) : dash}</td><td className="num">{row.v != null ? Math.round(row.v) : dash}</td><td className="num">{row.tech != null ? Math.round(row.tech) : dash}</td><td className="num">{row.pe ? `${ratio(row.pe, 1)}` : dash}</td><td className="num">{row.r1y != null ? `${pct(row.r1y, 0, false)}` : dash}</td></tr>
             ))}
@@ -229,13 +229,13 @@ export function RiskCone({ sym, plan }: { sym: string; plan?: { sl: number; targ
       <div className="panel tight" style={{ background: 'var(--panel-2)' }}>
         <div className="eyebrow" style={{ marginBottom: 10 }}>Risk profile · 1 year</div>
         <div className="kv" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Kv k="Annual volatility" v={`${(c.vol * 100).toFixed(0)}%`} />
-          <Kv k="Worst day" v={`${(c.worst * 100).toFixed(1)}%`} />
-          <Kv k="1-day 5% VaR" v={`${(c.var95 * 100).toFixed(1)}%`} />
-          <Kv k="Max drawdown" v={`${(c.mdd * 100).toFixed(0)}%`} />
-          <Kv k="Below its peak now" v={`${(c.fromHigh * 100).toFixed(0)}%`} />
-          <Kv k={`Touch +10% in ${days}d`} v={`${(c.up10 * 100).toFixed(0)}%`} />
-          <Kv k={`Touch −10% in ${days}d`} v={`${(c.dn10 * 100).toFixed(0)}%`} />
+          <Kv k="Annual volatility" v={`${pct((c.vol * 100), 0, false)}`} />
+          <Kv k="Worst day" v={`${pct((c.worst * 100), 1, false)}`} />
+          <Kv k="1-day 5% VaR" v={`${pct((c.var95 * 100), 1, false)}`} />
+          <Kv k="Max drawdown" v={`${pct((c.mdd * 100), 0, false)}`} />
+          <Kv k="Below its peak now" v={`${pct((c.fromHigh * 100), 0, false)}`} />
+          <Kv k={`Touch +10% in ${days}d`} v={`${pct((c.up10 * 100), 0, false)}`} />
+          <Kv k={`Touch −10% in ${days}d`} v={`${pct((c.dn10 * 100), 0, false)}`} />
         </div>
         <p className="muted" style={{ fontSize: 14, margin: '12px 0 0' }}>In {days} sessions, half of simulated paths end between ₹{num(end[1], 0)} and ₹{num(end[3], 0)}; nine in ten between ₹{num(end[0], 0)} and ₹{num(end[4], 0)}.</p>
       </div>

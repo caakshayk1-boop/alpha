@@ -156,7 +156,7 @@ export default function MapPage() {
   return (
     <>
       <PageHead method="map" eyebrow="Heat lab" title="Every name," em="read three ways." />
-      <section className="wrap">
+      <section className="wrap wide">
         <Async loading={s.loading} error={s.error} rows={3}>
           {(
             <>
@@ -262,9 +262,9 @@ export default function MapPage() {
                         <div><div className="k">Market cap</div><div className="v" style={{ fontSize: 15 }}>{crore(sel.mcap_cr)}</div></div>
                         <div><div className="k">Today · {tv.tag}</div><div className="v" style={{ fontSize: 15 }}><Chg v={tv.pct(sel.sym, sel.r1d)} dp={2} /></div></div>
                         <div><div className="k">1M · 1Y · {sessionDate(asOf)}</div><div className="v" style={{ fontSize: 15 }}><Chg v={sel.r1m} dp={0} /> <Chg v={sel.r1y} dp={0} /></div></div>
-                        <div><div className="k">P/E · ROCE</div><div className="v" style={{ fontSize: 15 }}>{n(sel.pe) !== null ? (sel.pe as number).toFixed(1) : '—'} · {n(sel.roce) !== null ? `${(sel.roce as number).toFixed(1)}%` : '—'}</div></div>
+                        <div><div className="k">P/E · ROCE</div><div className="v" style={{ fontSize: 15 }}>{n(sel.pe) !== null ? num((sel.pe as number), 1) : '—'} · {n(sel.roce) !== null ? `${pct((sel.roce as number), 1, false)}` : '—'}</div></div>
                         <div><div className="k">Composite</div><div className="v">{n(sel.comp) !== null ? Math.round(sel.comp as number) : '—'}</div></div>
-                        <div><div className="k">From 52w high</div><div className="v">{n(sel.from_high) !== null ? `${(sel.from_high as number).toFixed(0)}%` : '—'}</div></div>
+                        <div><div className="k">From 52w high</div><div className="v">{n(sel.from_high) !== null ? `${pct((sel.from_high as number), 0, false)}` : '—'}</div></div>
                       </div>
                       <Link className="btn" href={companyHref(sel.sym)} style={{ marginTop: 14 }}>Open {sel.sym} <span aria-hidden>→</span></Link>
                     </>

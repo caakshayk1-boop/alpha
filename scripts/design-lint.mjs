@@ -26,7 +26,11 @@ for (const f of copy) {
 const BASE = 'scripts/design-baseline.json';
 const comps = walk('src').filter((f) => f.endsWith('.tsx'));
 const count = (re) => Object.fromEntries(comps.map((f) => [f, (readFileSync(f, 'utf8').match(re) || []).length]).filter(([, n]) => n > 0));
-const now = { colours: count(/['"`]#[0-9a-fA-F]{3,8}\b/g), toFixed: count(/\.toFixed\(/g) };
+// toFixed is allowed where the output is geometry or machine input, never read as a figure: SVG path data, canvas axis labels
+// and a form field's own value. Everything a reader sees goes through src/lib/format.ts.
+const GEOMETRY = /'M'\}|\? 'L' : 'M'|`L\$\{|fillText|\bset\(\w+\.toFixed|translate\(/;
+const countFixed = () => Object.fromEntries(comps.map((f) => [f, readFileSync(f, 'utf8').split('\n').filter((l) => !GEOMETRY.test(l)).reduce((a, l) => a + (l.match(/\.toFixed\(/g) || []).length, 0)]).filter(([, n]) => n > 0));
+const now = { colours: count(/['"`]#[0-9a-fA-F]{3,8}\b/g), toFixed: countFixed() };
 if (process.argv.includes('--update')) {
   writeFileSync(BASE, `${JSON.stringify(now, null, 1)}\n`);
   console.log(`baseline written: ${Object.values(now.colours).reduce((a, b) => a + b, 0)} raw colours, ${Object.values(now.toFixed).reduce((a, b) => a + b, 0)} toFixed`);

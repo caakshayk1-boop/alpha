@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Rv } from '@/components/ui';
-import { num, pct, ratio } from '@/lib/format';
+import { num, pct, ratio, signed } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, streakProb } from './math';
 
@@ -12,8 +12,7 @@ import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, strea
 export const toNum = (s: string) => { const n = Number(s.replace(/,/g, '')); return s.trim() === '' || !Number.isFinite(n) ? NaN : n; };
 const ok = (n: number) => Number.isFinite(n);
 export const money = (v: number, dp = 0) => `${v < 0 ? '−' : ''}₹${num(Math.abs(v), dp)}`;
-export const lakh = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e7 ? `${s}₹${(a / 1e7).toFixed(2)} cr` : a >= 1e5 ? `${s}₹${(a / 1e5).toFixed(2)} L` : `${s}₹${num(a, 0)}`; };
-const signed = (v: number, dp = 2, unit = '') => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(dp)}${unit}`;
+export const lakh = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e7 ? `${s}₹${num((a / 1e7), 2)} cr` : a >= 1e5 ? `${s}₹${num((a / 1e5), 2)} L` : `${s}₹${num(a, 0)}`; };
 
 /** A number field with − / + buttons, its unit inside the box and its message right under it (error or hint). */
 export function Stepper({ label, value, set, step = 1, min, max, prefix, suffix, hint, error }: {
@@ -96,17 +95,17 @@ export function Position() {
       <div className="tool-grid">
         <div className="tool-in">
           <Stepper label="Capital" value={capital} set={setCapital} step={50000} min={0} prefix="₹" error={err.cap} />
-          <Stepper label="Risk per trade" value={riskPct} set={setRiskPct} step={0.25} min={0} max={100} suffix="%" error={err.rp} hint={!err.rp && rp > 2 ? `Above the 1–2% many rule sets use: ten stops in a row would cost about ${(100 - 100 * (1 - rp / 100) ** 10).toFixed(0)}% of capital.` : 'Share of capital you accept losing on this trade.'} />
+          <Stepper label="Risk per trade" value={riskPct} set={setRiskPct} step={0.25} min={0} max={100} suffix="%" error={err.rp} hint={!err.rp && rp > 2 ? `Above the 1–2% many rule sets use: ten stops in a row would cost about ${pct((100 - 100 * (1 - rp / 100) ** 10), 0, false)} of capital.` : 'Share of capital you accept losing on this trade.'} />
           <Stepper label="Entry price" value={entry} set={setEntry} step={1} min={0} prefix="₹" error={err.e} />
-          <Stepper label="Stop price" value={stop} set={setStop} step={1} min={0} prefix="₹" error={err.s} hint={!err.s && ok(e) && e > 0 ? `${((risk / e) * 100).toFixed(1)}% below the entry.` : undefined} />
+          <Stepper label="Stop price" value={stop} set={setStop} step={1} min={0} prefix="₹" error={err.s} hint={!err.s && ok(e) && e > 0 ? `${pct(((risk / e) * 100), 1, false)} below the entry.` : undefined} />
         </div>
         <div className="tool-out" aria-live="polite">
           {!valid ? <Empty>Fill the four fields; the size appears here with every step of the sum.</Empty> : (
             <>
               <div className="res">
                 <div className="res-main"><span className="k">Shares</span><span className="v num">{num(qty)}</span></div>
-                <div><span className="k">Position value</span><span className="v2 num">{lakh(value)}</span><span className="s num">{((value / cap) * 100).toFixed(1)}% of capital</span></div>
-                <div><span className="k">Loss if the stop fills</span><span className="v2 num down">{money(-loss)}</span><span className="s num">{((loss / cap) * 100).toFixed(2)}% of capital</span></div>
+                <div><span className="k">Position value</span><span className="v2 num">{lakh(value)}</span><span className="s num">{pct(((value / cap) * 100), 1, false)} of capital</span></div>
+                <div><span className="k">Loss if the stop fills</span><span className="v2 num down">{money(-loss)}</span><span className="s num">{pct(((loss / cap) * 100), 2, false)} of capital</span></div>
               </div>
               <Ladder entry={e} stop={s} />
               <Working lines={[
@@ -192,17 +191,17 @@ export function ExpectedValue() {
             <>
               <div className="res">
                 <div className="res-main"><span className="k">Expected per trade</span><span className={`v num ${out.ev > 0 ? 'up' : out.ev < 0 ? 'down' : ''}`}>{out.ev > 0 ? '▲ ' : out.ev < 0 ? '▼ ' : ''}{signed(out.ev, 2, 'R')}</span><span className="s num">{out.ev > 0 ? "+" : ""}{money(out.ev * R)} a trade, at {money(R)} for each R</span></div>
-                <div><span className="k">Break-even win rate</span><span className="v2 num">{(out.be * 100).toFixed(1)}%</span><span className="s">you entered {(p * 100).toFixed(0)}%</span></div>
+                <div><span className="k">Break-even win rate</span><span className="v2 num">{pct((out.be * 100), 1, false)}</span><span className="s">you entered {pct((p * 100), 0, false)}</span></div>
                 <div><span className="k">{N} trades, middle 95%</span><span className="v2 num">{signed(out.band.lo, 1, 'R')} to {signed(out.band.hi, 1, 'R')}</span><span className="s num">{money(out.band.lo * R)} to {money(out.band.hi * R)}</span></div>
               </div>
               <EvBar p={p} be={out.be} />
               <Working lines={[
-                ['Wins add', `${(p * 100).toFixed(1)}% × ${W}R`, signed(p * W, 3, 'R')],
-                ['Losses take', `${((1 - p) * 100).toFixed(1)}% × ${L}R`, signed(-(1 - p) * L, 3, 'R')],
+                ['Wins add', `${pct((p * 100), 1, false)} × ${W}R`, signed(p * W, 3, 'R')],
+                ['Losses take', `${pct(((1 - p) * 100), 1, false)} × ${L}R`, signed(-(1 - p) * L, 3, 'R')],
                 ['Costs take', `${c}R every trade`, signed(-c, 3, 'R')],
                 ['Expected per trade', 'sum of the three', signed(out.ev, 3, 'R')],
-                ['Break-even win rate', `(${L} + ${c}) ÷ (${W} + ${L})`, `${(out.be * 100).toFixed(1)}%`],
-                [`${out.streak}+ losses in a row`, `at some point in ${N} trades`, `${(out.pStreak * 100).toFixed(0)}% chance`],
+                ['Break-even win rate', `(${L} + ${c}) ÷ (${W} + ${L})`, `${pct((out.be * 100), 1, false)}`],
+                [`${out.streak}+ losses in a row`, `at some point in ${N} trades`, `${pct((out.pStreak * 100), 0, false)} chance`],
               ]} note={<>The range and the streak odds are exact for independent trades with exactly these inputs. Real trades are not independent and a win rate measured on a few dozen trades is itself uncertain, so the spread is wider in practice. A positive number here is arithmetic on your inputs, not evidence that the plan works.</>} />
             </>
           )}
@@ -216,9 +215,9 @@ export function ExpectedValue() {
 function EvBar({ p, be }: { p: number; be: number }) {
   const ahead = p > be;
   return (
-    <div className="evbar" role="img" aria-label={`Win rate ${(p * 100).toFixed(0)}% against a break-even of ${(be * 100).toFixed(1)}%: ${ahead ? 'above' : p < be ? 'below' : 'equal'}`}>
+    <div className="evbar" role="img" aria-label={`Win rate ${pct((p * 100), 0, false)} against a break-even of ${pct((be * 100), 1, false)}: ${ahead ? 'above' : p < be ? 'below' : 'equal'}`}>
       <div className="evbar-track"><i style={{ width: `${Math.min(100, p * 100)}%` }} className={ahead ? 'up' : 'down'} /><u style={{ left: `${Math.min(100, be * 100)}%` }} /></div>
-      <div className="evbar-key"><span>0%</span><span>break-even {(be * 100).toFixed(1)}% (line)</span><span>100%</span></div>
+      <div className="evbar-key"><span>0%</span><span>break-even {pct((be * 100), 1, false)} (line)</span><span>100%</span></div>
     </div>
   );
 }
@@ -248,10 +247,10 @@ export function Cagr() {
         <div className="tool-out" aria-live="polite">
           {c === null ? <Empty>Fix the highlighted field to see the rate.</Empty> : (
             <>
-              <div className="res"><div className="res-main"><span className="k">A year, compounded</span><span className={`v num ${c > 0 ? 'up' : c < 0 ? 'down' : ''}`}>{c > 0 ? '▲ ' : c < 0 ? '▼ ' : ''}{signed(c, 1, '%')}</span>{c > 0 && <span className="s">at that rate money doubles in about {(Math.log(2) / Math.log(1 + c / 100)).toFixed(1)} years</span>}</div></div>
+              <div className="res"><div className="res-main"><span className="k">A year, compounded</span><span className={`v num ${c > 0 ? 'up' : c < 0 ? 'down' : ''}`}>{c > 0 ? '▲ ' : c < 0 ? '▼ ' : ''}{signed(c, 1, '%')}</span>{c > 0 && <span className="s">at that rate money doubles in about {num((Math.log(2) / Math.log(1 + c / 100)), 1)} years</span>}</div></div>
               <Working lines={[
-                ['Growth multiple', `${money(t)} ÷ ${money(f)}`, `${(t / f).toFixed(3)}×`],
-                ['Per year', `${(t / f).toFixed(3)} ^ (1 ÷ ${y})`, `${ratio(Math.pow(t / f, 1 / y), 4)}`],
+                ['Growth multiple', `${money(t)} ÷ ${money(f)}`, `${ratio((t / f), 3)}`],
+                ['Per year', `${num((t / f), 3)} ^ (1 ÷ ${y})`, `${ratio(Math.pow(t / f, 1 / y), 4)}`],
                 ['Rate', `${num(Math.pow(t / f, 1 / y), 4)} − 1`, signed(c, 2, '%')],
               ]} note="A steady rate that ends in the same place: the real path went up and down. Money added or taken out along the way needs an XIRR instead." />
             </>
@@ -277,16 +276,16 @@ export function Recovery() {
           <table className="mini">
             <caption>The same sum for common falls</caption>
             <thead><tr><th scope="col">Fall</th><th scope="col">Gain to recover</th></tr></thead>
-            <tbody>{[10, 20, 33, 50, 75, 90].map((x) => <tr key={x} className={ok(l) && Math.abs(l - x) < 0.5 ? 'on' : undefined}><td className="num">−{x}%</td><td className="num">+{recoveryGain(x).toFixed(0)}%</td></tr>)}</tbody>
+            <tbody>{[10, 20, 33, 50, 75, 90].map((x) => <tr key={x} className={ok(l) && Math.abs(l - x) < 0.5 ? 'on' : undefined}><td className="num">−{x}%</td><td className="num">+{pct(recoveryGain(x), 0, false)}</td></tr>)}</tbody>
           </table>
         </div>
         <div className="tool-out" aria-live="polite">
           {need === null ? <Empty>Enter a fall between 0 and 100%.</Empty> : (
             <>
-              <div className="res"><div className="res-main"><span className="k">Gain needed to get back to even</span><span className="v num warn">+{need.toFixed(1)}%</span></div></div>
+              <div className="res"><div className="res-main"><span className="k">Gain needed to get back to even</span><span className="v num warn">+{pct(need, 1, false)}</span></div></div>
               <Working lines={[
-                ['Left after the fall', `100 − ${l}`, `${(100 - l).toFixed(1)} of every 100`],
-                ['Gain needed', `${l} ÷ ${(100 - l).toFixed(1)}`, `+${pct(need, 1, false)}`],
+                ['Left after the fall', `100 − ${l}`, `${num((100 - l), 1)} of every 100`],
+                ['Gain needed', `${l} ÷ ${num((100 - l), 1)}`, `+${pct(need, 1, false)}`],
               ]} note="This is why every plan on this site starts from the stop: a small loss is cheap to recover, a large one is not." />
             </>
           )}
@@ -355,7 +354,7 @@ export function Sip() {
               <div className="res">
                 <div className="res-main"><span className="k">It grows to</span><span className="v num">{lakh(last.value)}</span><span className="s num">{lakh(data.low[data.low.length - 1].value)} to {lakh(data.high[data.high.length - 1].value)} at {rt - 3}% to {rt + 3}%</span></div>
                 <div><span className="k">You put in</span><span className="v2 num">{lakh(last.invested)}</span></div>
-                <div><span className="k">Multiple of money in</span><span className="v2 num">{(last.value / last.invested).toFixed(2)}×</span></div>
+                <div><span className="k">Multiple of money in</span><span className="v2 num">{ratio((last.value / last.invested), 2)}</span></div>
               </div>
               <svg viewBox={`0 0 ${W} ${H}`} className="sipchart" role="img" aria-label={`SIP value over ${data.Y} years: ${lakh(last.value)} at ${rt}%, against ${lakh(last.invested)} put in`}>
                 <path d={`${line(data.high)} L${X(data.Y)},${Yv(0)} L${X(0)},${Yv(0)} Z`} fill="var(--accent-soft)" />
@@ -365,7 +364,7 @@ export function Sip() {
               </svg>
               <p className="sipkey"><span><i className="k-line" />at {rt}% a year</span><span><i className="k-band" />{rt - 3}% to {rt + 3}%</span><span><i className="k-dash" />what you put in</span></p>
               <Working lines={[
-                ['Monthly rate', `(1 + ${rt}%) ^ (1 ÷ 12) − 1`, `${(data.r * 100).toFixed(3)}%`],
+                ['Monthly rate', `(1 + ${rt}%) ^ (1 ÷ 12) − 1`, `${pct((data.r * 100), 3, false)}`],
                 ['Each month', 'add the instalment, then grow by the monthly rate', ''],
                 ['Each year', `instalment × (1 + ${st}%)`, `year ${data.Y}: ${money(m0 * (1 + st / 100) ** (data.Y - 1))}`],
                 ['Total put in', `${data.Y * 12} instalments`, lakh(last.invested)],

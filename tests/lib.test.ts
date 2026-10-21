@@ -886,3 +886,18 @@ test('§23.3: changes carry a true minus, the rounded value decides the arrow, a
   assert.deepEqual(changeParts(-0.004, 2), { dir: 'flat', text: '0.00%', label: 'unchanged 0.00 percent' });
   assert.deepEqual(changeParts(-1.2, 1), { dir: 'down', text: `▼ ${MINUS}1.2%`, label: 'down 1.2 percent' });
 });
+
+test('signed: true minus, explicit plus, no "−0.00", any unit, a dash for nothing', async () => {
+  const { signed } = await import('../src/lib/format.ts');
+  assert.equal(signed(1.236, 2, 'R'), '+1.24R');
+  assert.equal(signed(-0.5, 2, '%'), '−0.50%');
+  assert.equal(signed(-0.001, 2, 'R'), '0.00R');
+  assert.equal(signed(null), '—');
+});
+
+test('sayCrore: crore figures are spoken in words, never as "L cr"', async () => {
+  const { sayCrore } = await import('../src/lib/format.ts');
+  assert.equal(sayCrore(123456), '1.23 lakh crore rupees');
+  assert.equal(sayCrore(950.4), '950 crore rupees');
+  assert.equal(sayCrore(null), 'not available');
+});

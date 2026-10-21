@@ -4,7 +4,7 @@ import { FactorStrip } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
-import { Async, Bar, Chg, Rv } from '@/components/ui';
+import { Async, Bar, Chg, Rv, StatusChip } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
@@ -65,9 +65,9 @@ export function PortfolioXray() {
     const toLow = hs.reduce((a, h) => a + (has(h.row.low52) ? Math.max(0, h.price - h.row.low52) * h.qty : 0), 0);
     const cost = hs.every((h) => h.cost !== null) ? hs.reduce((a, h) => a + (h.cost ?? 0), 0) : null;
     const notes: string[] = [];
-    if (sorted[0].val / total > 0.3) notes.push(`${sorted[0].sym} is ${(sorted[0].val / total * 100).toFixed(0)}% of the portfolio: one bad result moves the whole book.`);
+    if (sorted[0].val / total > 0.3) notes.push(`${sorted[0].sym} is ${pct((sorted[0].val / total * 100), 0, false)} of the portfolio: one bad result moves the whole book.`);
     const topSector = [...sector.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (topSector[1] / total > 0.4 && sector.size > 1) notes.push(`${(topSector[1] / total * 100).toFixed(0)}% sits in ${topSector[0]}: a sector-wide fall is a portfolio-wide fall.`);
+    if (topSector[1] / total > 0.4 && sector.size > 1) notes.push(`${pct((topSector[1] / total * 100), 0, false)} sits in ${topSector[0]}: a sector-wide fall is a portfolio-wide fall.`);
     if (hs.length < 8) notes.push(`${hs.length} holdings: risk depends on weights, sector overlap and how the stocks move together, not on the count alone.`);
     if (lowTrend > 50) notes.push(`${pct(lowTrend, 0, false)} of the value is in stocks below their 200-day average: the weight of the portfolio is in downtrends.`);
     const highRisk = hs.filter((h) => h.row.risk?.level === 'HIGH');
@@ -116,7 +116,7 @@ export function PortfolioXray() {
               <div><div className="k">Weighted P/E</div><div className="v">{X.pe ? `${ratio(X.pe, 1)}` : dash}</div></div>
               <div><div className="k">Weighted ROCE</div><div className="v">{X.roce !== null ? `${pct(X.roce, 0, false)}` : dash}</div></div>
               <div><div className="k">Avg quality</div><div className="v">{X.q !== null ? Math.round(X.q) : dash}</div></div>
-              <div><div className="k">Effective holdings</div><div className="v">{X.eff.toFixed(1)}</div></div>
+              <div><div className="k">Effective holdings</div><div className="v">{num(X.eff, 1)}</div></div>
               <div><div className="k">Loss if every name hit its 52w low</div><div className="v down">−₹{num(X.toLow, 0)}</div></div>
             </div>
             {X.notes.length > 0 && <div className="panel tight" style={{ background: 'var(--panel-2)', marginBottom: 14 }}><div className="eyebrow" style={{ marginBottom: 6 }}>What stands out</div><ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{X.notes.map((n) => <li key={n}>{n}</li>)}</ul></div>}
@@ -124,10 +124,10 @@ export function PortfolioXray() {
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 520 }}>
                 <thead><tr><th>Holding</th><th>Weight</th><th>Value</th><th>P/L</th><th>Desk read</th></tr></thead>
                 <tbody>{X.hs.map((h) => (
-                  <tr key={h.sym}><td><Link href={companyHref(h.sym)}><b>{h.sym}</b></Link></td><td className="num">{(h.val / X.total * 100).toFixed(1)}%</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
+                  <tr key={h.sym}><td><Link href={companyHref(h.sym)}><b>{h.sym}</b></Link></td><td className="num">{pct((h.val / X.total * 100), 1, false)}</td><td className="num">₹{num(h.val, 0)}</td><td>{h.avg ? <Chg v={(h.price / h.avg - 1) * 100} dp={1} /> : dash}</td><td className="dim" style={{ fontSize: 13.5, whiteSpace: 'normal' }}>{h.d.headline}</td></tr>
                 ))}</tbody>
               </table></div>
-              <div><div className="eyebrow" style={{ marginBottom: 10 }}>By sector</div><div className="meter">{X.sector.map(([n, v]) => <div className="meter-row" key={n}><span className="lab" style={{ minWidth: 130 }}>{n}</span><Bar pct={v / X.total * 100} kind="up" /><span className="num">{(v / X.total * 100).toFixed(0)}%</span></div>)}</div></div>
+              <div><div className="eyebrow" style={{ marginBottom: 10 }}>By sector</div><div className="meter">{X.sector.map(([n, v]) => <div className="meter-row" key={n}><span className="lab" style={{ minWidth: 130 }}>{n}</span><Bar pct={v / X.total * 100} kind="up" /><span className="num">{pct((v / X.total * 100), 0, false)}</span></div>)}</div></div>
             </div>
           </>
         )}
@@ -163,17 +163,17 @@ export function ReverseDcf() {
       <div className="filters" role="group" aria-label="Scenario">
         <span className="eyebrow">Scenario</span>
         {([['Conservative', '14', '8', '4'], ['Base', '12', '10', '5'], ['Optimistic', '11', '12', '6']] as const).map(([n, a, b, c]) => <button key={n} type="button" className="chip" aria-pressed={rate === a && yrs === b && tg === c} onClick={() => { setRate(a); setYrs(b); setTg(c); }}>{n}</button>)}
-        <span className="chip-assume">Your assumption</span><span className="dim" style={{ fontSize: 13 }}>return, years and terminal growth</span>
+        <StatusChip kind="assumption">Your assumption</StatusChip><span className="dim" style={{ fontSize: 13 }}>return, years and terminal growth</span>
       </div>
       <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
         {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 14 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
       {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
         <>
         <div className="grid g3" style={{ marginTop: 12 }}>
-          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} <span className="chip-observed">Observed · screen close {r.last_date ? dateLabel(r.last_date) : ''}</span></div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{eps.toFixed(2)} · P/E {r.pe?.toFixed(1)}×</p></div>
-          <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${(g * 100).toFixed(1)}% a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
-          <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${r.eps_cagr.toFixed(1)}%` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${r.rev_cagr.toFixed(1)}%` : dash}</p>
-            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${(g * 100 - r.eps_cagr).toFixed(1)} points more growth than EPS has delivered historically.`}</p>}</div>
+          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} <StatusChip kind="observed">Observed · screen close {r.last_date ? dateLabel(r.last_date) : ''}</StatusChip></div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{num(eps, 2)} · P/E {ratio(r.pe, 1)}</p></div>
+          <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${pct((g * 100), 1, false)} a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
+          <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash}</p>
+            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${num((g * 100 - r.eps_cagr), 1)} points more growth than EPS has delivered historically.`}</p>}</div>
         </div>
         {eps !== null && r.price && (
           <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none', marginTop: 14 }}>
@@ -181,7 +181,7 @@ export function ReverseDcf() {
               <caption className="dim" style={{ textAlign: 'left', fontSize: 13.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
               <thead><tr><th scope="col">Required return ↓ · terminal growth →</th>{[3, 5, 7].map((t) => <th key={t} scope="col" className="num">{t}%</th>)}</tr></thead>
               <tbody>{[10, 12, 14, 16].map((rr) => (
-                <tr key={rr} style={{ cursor: 'default', background: rr === rateN ? 'var(--panel-2)' : undefined }}><th scope="row">{rr}%</th>{[3, 5, 7].map((t) => { const x = rr > t ? impliedGrowth(r.price as number, eps, rr / 100, Math.max(1, Math.min(30, yrsN || 10)), t / 100) : null; return <td key={t} className="num">{x === null ? dash : `${(x * 100).toFixed(1)}%`}</td>; })}</tr>
+                <tr key={rr} style={{ cursor: 'default', background: rr === rateN ? 'var(--panel-2)' : undefined }}><th scope="row">{rr}%</th>{[3, 5, 7].map((t) => { const x = rr > t ? impliedGrowth(r.price as number, eps, rr / 100, Math.max(1, Math.min(30, yrsN || 10)), t / 100) : null; return <td key={t} className="num">{x === null ? dash : `${pct((x * 100), 1, false)}`}</td>; })}</tr>
               ))}</tbody>
             </table>
           </div>
