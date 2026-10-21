@@ -112,6 +112,7 @@ export function WhatChanged({ r, sigs }: { r: Row; sigs: Sig[] }) {
   const uni = useUniverseWhen(true);
   const [chart, setChart] = useState<ChartFeed | null>(null);
   const [chartErr, setChartErr] = useState(false);
+  const [now] = useState(() => Date.now());      // the window is fixed when the panel opens, not re-read on every render
   useEffect(() => { let live = true; chartFeed(r.sym, '1y').then((c) => { if (live) setChart(c); }, () => { if (live) setChartErr(true); }); return () => { live = false; }; }, [r.sym]);
   const match = useMemo(() => {
     const cos = (uni.data?.rows ?? []).map(([sym, , name]) => ({ sym, name, mcap: sym === r.sym ? r.mcap_cr ?? undefined : undefined }));
@@ -120,8 +121,8 @@ export function WhatChanged({ r, sigs }: { r: Row; sigs: Sig[] }) {
   const out = useMemo(() => {
     if (!chart && !chartErr) return null;
     const stories = (news.data ?? []).map((s) => ({ ...s, mentions: match ? match(`${plainText(s.title)}. ${plainText(s.summary)}`).map((m) => m.sym) : [] }));
-    return whatChanged({ row: r, chart, news: stories, sigs, now: Date.now() });
-  }, [chart, chartErr, news.data, match, r, sigs]);
+    return whatChanged({ row: r, chart, news: stories, sigs, now });
+  }, [chart, chartErr, news.data, match, r, sigs, now]);
   return (
     <section className="wrap section" aria-labelledby="changed-h">
       <h2 id="changed-h" className="disp" style={{ fontSize: 26, margin: '0 0 6px' }}>What changed in 30 days</h2>

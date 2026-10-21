@@ -24,8 +24,9 @@ export function generateStaticParams(): { slug: string }[] {
 
 const fmt = (v: number | null | undefined, dp = 1, unit = '') => (typeof v === 'number' && Number.isFinite(v) ? `${num(v, dp)}${unit}` : null);
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const sym = slugToSym(params.slug);
+// Next 15+: route params arrive as a Promise
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const sym = slugToSym((await params).slug);
   const r = shardOf(sym)?.row;
   const name = r?.name ?? sym;
   const facts = [fmt(r?.pe, 1, '× P/E'), fmt(r?.roce, 1, '% ROCE'), fmt(r?.de, 2, ' debt/equity'), typeof r?.q === 'number' ? `quality score ${Math.round(r.q)}/100` : null].filter(Boolean).join(', ');
@@ -34,7 +35,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   return { title: { absolute: `${title} · alpha` }, description, alternates: { canonical: `/company/${symToSlug(sym)}/` }, openGraph: { title: `${title} · alpha`, description, url: `/company/${symToSlug(sym)}/`, type: 'website' } };
 }
 
-export default function Page({ params }: { params: { slug: string } }) {
-  const sym = slugToSym(params.slug);
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const sym = slugToSym((await params).slug);
   return <CompanyView sym={sym} initial={shardOf(sym)} />;
 }
