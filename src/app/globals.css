@@ -1399,3 +1399,24 @@ html.anim .setpop { animation: cmdkIn 160ms var(--ease) both; }
 .prose-col { max-width: 72ch; } .prose-col h2 { font: 600 20px/1.3 var(--f-ui); margin: 28px 0 8px; } .prose-col p, .prose-col li { font-size: 16px; line-height: 1.65; color: var(--muted); } .prose-col li { margin-bottom: 6px; } .prose-col b { color: var(--text); }
 .navgroup:has(> a[aria-current='page']) .navcaret { color: var(--sel-fg); } .navgroup:has(> a[aria-current='page']) .navcaret:hover { background: transparent; }
 .navgroup > a { padding-right: 12px; }
+/* The case and the countercase (Pro §22.2): two equal columns, equal weight, never collapsed */
+.case-wrap { padding-top: 6px; padding-bottom: 6px; }
+.case-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.case-col { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.case-col.for { border-top: 3px solid var(--up); } .case-col.against { border-top: 3px solid var(--down); }
+.case-col ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.case-col li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; font-size: 14.5px; line-height: 1.5; }
+.cite { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 2px; padding: 0 5px; border: 1px solid var(--line-2); border-radius: 6px; font: 600 11.5px var(--f-ui); color: var(--muted); vertical-align: 1px; }
+.cite[aria-expanded='true'] { color: var(--accent-2); border-color: var(--accent); }
+.cite-pop { display: block; margin-top: 6px; padding: 8px 10px; border-left: 2px solid var(--accent); background: var(--panel-2); border-radius: 0 8px 8px 0; font-size: 13.5px; color: var(--muted); }
+.case-foot { font-size: 13px; margin: 8px 2px 0; }
+@media (max-width: 700px) { .case-grid { grid-template-columns: 1fr; } }
+.chart-table { margin-top: 8px; } .chart-table summary { cursor: pointer; } .chart-table .tbl { margin-top: 8px; max-width: 360px; }
+/* Screen templates (Pro §28 P1) */
+.templates { margin: 6px 0 4px; } .templates summary { cursor: pointer; }
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 8px; margin-top: 8px; }
+.tpl { display: grid; gap: 4px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 14px; }
+.tpl:hover { border-color: var(--line-2); } .tpl:active { transform: scale(0.99); }
+.tpl code { font: 500 12px var(--f-mono, ui-monospace); color: var(--accent-2); }
+.job2 .big .big-word { font-size: 0.62em; line-height: 1.1; display: inline-block; }
+.exp-banner { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 10px; font-size: 14px; color: var(--muted); }

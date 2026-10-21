@@ -14,6 +14,7 @@ const KEPT: [string, string][] = [
   ['Holdings you enter in the X-ray tool', 'alpha-xray'],
   ['News: saved stories, read stories, last visit', 'alpha-news-saved, alpha-news-seen, alpha-news-visit'],
   ['When you last exported', 'alpha-last-export'],
+  ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
 ];
 
 export default function Privacy() {

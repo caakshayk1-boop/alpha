@@ -855,3 +855,22 @@ test('§11: the Privacy page lists every key this site writes to browser storage
   const missing = [...keys].filter((k) => !new RegExp(`\\b${k}\\b(?!-)`).test(page));
   assert.deepEqual(missing, []);
 });
+
+import { chartRows, chartSummary } from '../src/lib/chartText.ts';
+test('§30: a chart says in words what it shows', () => {
+  const t = [1767225600, 1767312000, 1767398400, 1767484800];   // 1-4 Jan 2026 (IST dates)
+  const txt = chartSummary(t, [100, 90, 130, 118], [101, 92, 131, 119], [99, 88, 120, 115]);
+  assert.match(txt, /^Up 18\.0% from 1 Jan 2026 to 4 Jan 2026; low ₹88 on 2 Jan 2026; high ₹131 on 3 Jan 2026; last ₹118\.$/);
+  assert.equal(chartSummary([1], [5]), 'Not enough prices to describe.');
+  const rows = chartRows(Array.from({ length: 250 }, (_, i) => 1767225600 + i * 86400), Array.from({ length: 250 }, (_, i) => i));
+  assert.ok(rows.length <= 26 && rows[0].close === 0 && rows[rows.length - 1].close === 249);
+});
+
+import { TEMPLATES } from '../src/lib/templates.ts';
+test('§28: every screen template parses completely: each word becomes a clause, none is ignored', () => {
+  for (const t of TEMPLATES) {
+    const p = parse(t.q);
+    assert.deepEqual(p.unknown, [], `${t.name}: ${p.unknown.join(', ')}`);
+    assert.ok(p.filters.length >= 2, `${t.name} applies ${p.filters.length} clause(s)`);
+  }
+});

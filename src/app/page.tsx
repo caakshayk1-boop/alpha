@@ -125,8 +125,9 @@ function JobTiles() {
       <div className="jobs2">
         <Link className="job2 t-lav" href="/screen/"><span className="big">{sum.data ? num(sum.data.count) : '—'}</span><span><span className="t">Find stocks</span><span className="l">companies screened on quality, growth, value and trend</span></span></Link>
         <button type="button" className="job2 t-mint" onClick={() => window.dispatchEvent(new Event('alpha:search'))}><span className="big"><kbd>/</kbd></span><span><span className="t">Look up a company</span><span className="l">by name or symbol, from any page</span></span></button>
-        <Link className="job2 t-lime" href="/engines/"><span className="big">{eng.data ? num(open) : '—'}</span><span><span className="t">See the signals</span><span className="l">waiting or open in the Swing book</span></span></Link>
-        <Link className="job2 t-peach" href="/watchlist/"><span className="big">{num(watch.length)}</span><span><span className="t">Keep track</span><span className="l">{watch.length === 1 ? 'name' : 'names'} on your watchlist, kept in this browser</span></span></Link>
+        {/* a bare 0 reads as an empty product: with no plan open, the card says why (Pro §29) */}
+        <Link className="job2 t-lime" href="/engines/"><span className="big">{!eng.data ? '—' : open ? num(open) : <span className="big-word">{eng.data.gate.on ? 'None' : 'Gate off'}</span>}</span><span><span className="t">{open ? 'See the signals' : 'Why no signals'}</span><span className="l">{!eng.data ? 'experimental research' : open ? 'waiting or open in the Swing book · experimental research' : eng.data.gate.on ? 'no stock passed every rule at the last close' : `alerts off; the market passes ${eng.data.gate.passed} of 4 gate checks. See the checks`}</span></span></Link>
+        <Link className="job2 t-peach" href={watch.length ? '/desk/' : '/watchlist/'}><span className="big">{watch.length ? num(watch.length) : <span className="big-word">Start</span>}</span><span><span className="t">{watch.length ? 'My Desk' : 'Build your watchlist'}</span><span className="l">{watch.length ? `${watch.length === 1 ? 'name' : 'names'} tracked, what needs review; kept in this browser` : 'add three companies you already follow to see what changes'}</span></span></Link>
       </div>
     </section>
   );

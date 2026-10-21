@@ -8,10 +8,60 @@ import { Rv, Segmented, Switch } from '@/components/ui';
 import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { buildCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
-import { decide, lookalikes, screenClass } from '@/lib/decision';
+import { decide, lookalikes, screenClass, type Point } from '@/lib/decision';
+import { GLOSSARY, metricId } from '@/lib/glossary';
 import type { Row, Sig } from '@/lib/types';
 import { dash, dateLabel, num } from '@/lib/format';
 import { companyHref } from '@/lib/slug';
+
+/** The glossary entry a point is about, read from its own words, so its [?] opens the right definition. */
+const POINT_METRIC: [RegExp, string][] = [[/\bROCE\b/, 'ROCE'], [/\bROE\b/, 'ROE'], [/Debt\/equity/, 'Debt / equity'], [/Interest cover/, 'Interest cover'], [/^Revenue/, 'Revenue CAGR'], [/^EPS/, 'EPS CAGR'], [/Cash profit|Operating cash/, 'Cash / profit'], [/Piotroski/, 'Piotroski F'], [/P\/E sits/, 'P/E vs own history'], [/^P\/E of/, 'P/E'], [/\bRSI\b/, 'RSI (14)'], [/Magic Formula/, 'Magic Formula'], [/traded a day/, 'Daily turnover']];
+
+function CasePoint({ p, side, source }: { p: Point; side: 'for' | 'against'; source: string }) {
+  const [open, setOpen] = useState<'s' | 'q' | null>(null);
+  const metric = POINT_METRIC.find(([re]) => re.test(p.text))?.[1];
+  const g = metric ? GLOSSARY[metric] : undefined;
+  return (
+    <li>
+      <span className={side === 'for' ? 'up' : 'down'} aria-hidden>{side === 'for' ? '▲' : '▼'}</span>
+      <span>
+        {p.text}{' '}
+        <button type="button" className="cite" aria-expanded={open === 's'} onClick={() => setOpen((o) => (o === 's' ? null : 's'))} aria-label="Source and date">S</button>
+        {g && <button type="button" className="cite" aria-expanded={open === 'q'} onClick={() => setOpen((o) => (o === 'q' ? null : 'q'))} aria-label={`What ${g.name} means`}>?</button>}
+        {open === 's' && <span className="cite-pop" role="note">{source}</span>}
+        {open === 'q' && g && <span className="cite-pop" role="note"><b>{g.name}.</b> {g.what} {g.how} <a href={`/about/#${metricId(metric!)}`}>Method</a></span>}
+      </span>
+    </li>
+  );
+}
+
+/** The Case and the Countercase (Pro §22.2): two equal columns of deterministic rules over the screen's own figures, each
+ *  point with its source and date. Neither is collapsed, there is no verdict, and a thin countercase is said to be thin
+ *  rather than presented as reassurance. Shown above the fold, before the chart. */
+export function CaseBlock({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: number | null }) {
+  const d = useMemo(() => decide(r, sigs, years), [r, sigs, years]);
+  const bull = d.bull.slice(0, 3), bear = d.bear.slice(0, 3);
+  const src = (t: string) => (t.startsWith('Passed every Swing')
+    ? 'Swing v2 signal book (experimental research), at the signal close.'
+    : `Alpha screen${r.last_date ? `, close of ${dateLabel(r.last_date)}` : ''}${r.fy ? `; statements to ${r.fy}` : ''}. Computed from the company's filings as published by Yahoo Finance; the rule is on the Method page.`);
+  const unknown = d.checks.filter((c) => c.pass === null).length;
+  return (
+    <section className="wrap case-wrap" aria-label="The case and the countercase">
+      <div className="case-grid">
+        <div className="case-col for">
+          <div className="eyebrow">The case <span className="dim">({bull.length})</span></div>
+          {bull.length ? <ul>{bull.map((p) => <CasePoint key={p.text} p={p} side="for" source={src(p.text)} />)}</ul> : <p className="muted">No point in favour clears Alpha&apos;s rules on these figures.</p>}
+        </div>
+        <div className="case-col against">
+          <div className="eyebrow">The countercase <span className="dim">({bear.length})</span></div>
+          {bear.length ? <ul>{bear.map((p) => <CasePoint key={p.text} p={p} side="against" source={src(p.text)} />)}</ul> : null}
+          {bear.length < 2 && <p className="muted" style={{ marginTop: bear.length ? 8 : 0 }}>No strong counterpoint found by Alpha&apos;s rules. This is not evidence that none exists.</p>}
+        </div>
+      </div>
+      <p className="dim case-foot">Evidence: {bull.length + bear.length} sourced {bull.length + bear.length === 1 ? 'point' : 'points'} · {unknown} of {d.checks.length} checks not applicable or not available · last data {r.last_date ? dateLabel(r.last_date) : 'unknown'}. Rules, not a verdict: nothing here rates the stock.</p>
+    </section>
+  );
+}
 
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
 export function ExternalLinks({ sym }: { sym: string }) {
@@ -53,11 +103,6 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: 
       </div>
       <DataStamp ids={['screen']} />
 
-      <div className="eyebrow" style={{ margin: '18px 0 8px' }}>The evidence ({d.evidence.length || 'none'})</div>
-      {d.evidence.length ? (
-        <ul className="evid">{d.evidence.map((e) => <li key={e.text}><span className={e.side === 'for' ? 'up' : 'down'} aria-label={e.side === 'for' ? 'in favour' : 'against'}>{e.side === 'for' ? '▲' : '▼'}</span><span>{e.text}<small className="dim"> · {e.source}</small></span></li>)}</ul>
-      ) : <p className="muted">No figure on file stands out either way.</p>}
-
       <div className="grid g2" style={{ marginTop: 16 }}>
         <div><div className="eyebrow" style={{ marginBottom: 8 }}>Where available checks agree</div>{d.agree.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.agree.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No two available checks clearly agree.</p>}</div>
         <div><div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warn)' }}>Where they conflict</div>{d.conflicts.length ? <ul className="muted" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>{d.conflicts.map((t) => <li key={t}>{t}</li>)}</ul> : <p className="dim" style={{ margin: 0 }}>No conflict detected among the available checks{d.missing.length ? `; ${d.missing.length} could not be applied, so absence of conflict is not agreement` : ''}.</p>}</div>
@@ -70,7 +115,7 @@ export function DecisionDesk({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: 
       <p className="muted" style={{ margin: 0 }}>{d.nextResults ? (d.nextResults >= today ? `Results due ${dateLabel(d.nextResults)} (date from the screen feed, not confirmed by the company here).` : `Results were expected ${dateLabel(d.nextResults)}: the fundamentals above may not include them yet.`) : 'No date available.'}</p>
 
       <details style={{ marginTop: 16 }}>
-        <summary className="eyebrow" style={{ cursor: 'pointer' }}>All nine checks, with the number behind each</summary>
+        <summary className="eyebrow" style={{ cursor: 'pointer' }}>Alpha&apos;s nine research checks, with the number behind each</summary>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 8, marginTop: 10 }}>
           {d.checks.map((c) => (
             <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14.5 }}>

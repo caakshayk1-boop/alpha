@@ -9,7 +9,9 @@ import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDa
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
-import { DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { CaseBlock, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { BackToContext } from '@/components/TickerLink';
+import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
@@ -181,7 +183,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 14 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
-  const lender = /financial|bank|insurance|real estate/i.test(`${r.sector} ${r.ind}`);
+  const lender = isLender(r) || /real estate/i.test(`${r.sector} ${r.ind}`);      // the scorecard note also covers real estate
   // Price and day move follow the site's one rule: the live snapshot when it is a newer session than the screen, then this
   // symbol's own quote, then the screen close. Everything below the header is the screen close, and says which day that is.
   const pv = priceView(r.sym, r, lv.snap, px.quotes[sym]);
@@ -193,13 +195,14 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
     <>
       <header className="wrap co-head">
         <div>
-          <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
+          <div className="eyebrow"><BackToContext /> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
           <h1 className="disp">{r.name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span className="tag acc" style={{ viewTransitionName: 'ticker' }}>{r.sym}</span>
             {r.tier && <span className="tag">{r.tier} cap</span>}
             {r.ahimsa && <span className="tag up">Ahimsa 500</span>}
-            {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? 'up' : 'warn'}`}>{r.vet.s === 'cleared' ? `Vetted ${r.vet.p}/${r.vet.n}` : `Not vetted · ${r.vet.w}`}</span>}
+            {/* the screen's DATA gate, named for what it is: it is not Alpha's research checks below and not an editorial review */}
+            {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? '' : 'warn'}`} title={`The screen's data checks (statements on file and fresh, price fresh, size, liquidity, leverage, interest cover, cash conversion, run rate): ${r.vet.p} of ${r.vet.n} pass. A gate on the data, not a view on the company, and not a review by a person.`}>{r.vet.s === 'cleared' ? `Data checks ${r.vet.p}/${r.vet.n}` : `Data checks: held · ${r.vet.w}`}</span>}
             {r.risk && r.risk.level !== 'LOW' && <span className="tag warn">Risk {r.risk.level.toLowerCase()}</span>}
           </div>
         </div>
@@ -218,6 +221,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {Math.abs((live / r.price - 1) * 100).toFixed(1)}%. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
+      <CaseBlock r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
       <section className="wrap" style={{ paddingTop: 8 }}>
         <h2 className="sr">Price chart</h2>
         <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>

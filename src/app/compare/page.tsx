@@ -1,4 +1,5 @@
 'use client';
+import { LENDER_NA, isLender } from '@/lib/sector';
 
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -15,27 +16,30 @@ import { companyHref } from '@/lib/slug';
 const has = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 const PERIOD_DEPENDENT = new Set(['Revenue CAGR', 'EPS CAGR']);
-type Spec = { label: string; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null };
+/** `material`: the smallest difference between the best and the next value that is worth marking (Pro §22.5): in the
+ *  measure's own units for levels (5 points of a margin, 0.3 of debt/equity), or as a share for multiples (`rel`). Below it
+ *  the row stays neutral: a 0.4-point gap in ROCE is noise, not a winner. */
+type Spec = { label: string; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null; material?: number; rel?: boolean };
 const SPECS: Spec[] = [
   { label: 'Market cap', get: (r) => r.mcap_cr, fmt: (v) => crore(v), better: null },
-  { label: 'Composite score', get: (r) => r.comp, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Quality', get: (r) => r.q, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Growth', get: (r) => r.g, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Value', get: (r) => r.v, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'Technical', get: (r) => r.tech, fmt: (v) => v.toFixed(0), better: 'high' },
-  { label: 'P/E', get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${v.toFixed(1)}×`, better: 'low' },
-  { label: 'P/B', get: (r) => r.pb, fmt: (v) => `${v.toFixed(2)}×`, better: 'low' },
-  { label: 'ROCE', get: (r) => r.roce, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'ROE', get: (r) => r.roe, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'EBIT margin', get: (r) => r.ebit_margin, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'Debt / equity', get: (r) => r.de, fmt: (v) => v.toFixed(2), better: 'low' },
-  { label: 'Revenue CAGR', get: (r) => r.rev_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'EPS CAGR', get: (r) => r.eps_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
-  { label: 'Cash conversion', get: (r) => r.cfo_pat, fmt: (v) => `${v.toFixed(2)}×`, better: 'high' },
-  { label: 'Dividend yield', get: (r) => r.div_yield, fmt: (v) => `${v.toFixed(2)}%`, better: 'high' },
-  { label: 'Piotroski F', get: (r) => r.piotroski, fmt: (v) => `${v.toFixed(0)}/9`, better: 'high' },
-  { label: '1 year', get: (r) => r.r1y, fmt: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, better: 'high' },
-  { label: 'From 52-week high', get: (r) => r.from_high, fmt: (v) => `${v.toFixed(0)}%`, better: 'high' },
+  { label: 'Composite score', material: 10, get: (r) => r.comp, fmt: (v) => v.toFixed(0), better: 'high' },
+  { label: 'Quality', material: 10, get: (r) => r.q, fmt: (v) => v.toFixed(0), better: 'high' },
+  { label: 'Growth', material: 10, get: (r) => r.g, fmt: (v) => v.toFixed(0), better: 'high' },
+  { label: 'Value', material: 10, get: (r) => r.v, fmt: (v) => v.toFixed(0), better: 'high' },
+  { label: 'Technical', material: 10, get: (r) => r.tech, fmt: (v) => v.toFixed(0), better: 'high' },
+  { label: 'P/E', material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${v.toFixed(1)}×`, better: 'low' },
+  { label: 'P/B', material: 0.2, rel: true, get: (r) => r.pb, fmt: (v) => `${v.toFixed(2)}×`, better: 'low' },
+  { label: 'ROCE', material: 5, get: (r) => r.roce, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
+  { label: 'ROE', material: 5, get: (r) => r.roe, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
+  { label: 'EBIT margin', material: 5, get: (r) => r.ebit_margin, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
+  { label: 'Debt / equity', material: 0.3, get: (r) => r.de, fmt: (v) => v.toFixed(2), better: 'low' },
+  { label: 'Revenue CAGR', material: 5, get: (r) => r.rev_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
+  { label: 'EPS CAGR', material: 5, get: (r) => r.eps_cagr, fmt: (v) => `${v.toFixed(1)}%`, better: 'high' },
+  { label: 'Cash conversion', material: 0.2, get: (r) => r.cfo_pat, fmt: (v) => `${v.toFixed(2)}×`, better: 'high' },
+  { label: 'Dividend yield', material: 1, get: (r) => r.div_yield, fmt: (v) => `${v.toFixed(2)}%`, better: 'high' },
+  { label: 'Piotroski F', material: 2, get: (r) => r.piotroski, fmt: (v) => `${v.toFixed(0)}/9`, better: 'high' },
+  { label: '1 year', material: 10, get: (r) => r.r1y, fmt: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, better: 'high' },
+  { label: 'From 52-week high', material: 10, get: (r) => r.from_high, fmt: (v) => `${v.toFixed(0)}%`, better: 'high' },
 ];
 
 /** One small score profile per company, titled with its name (small multiples). Identity comes from the label, not a colour:
@@ -128,14 +132,19 @@ function Compare() {
                       const nums = vals.filter(has);
                       const spans = rows.map((r) => spanOf(r.sym));
                       const periodsAgree = !PERIOD_DEPENDENT.has(sp2.label) || (spans.every((y) => y !== null) && new Set(spans).size === 1);
-                      const best = sp2.better && periodsAgree && nums.length > 1 ? (sp2.better === 'high' ? Math.max(...nums) : Math.min(...nums)) : null;
-                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best ? { fontWeight: 700 } : undefined}>{has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best ? <span className="tag acc" style={{ marginLeft: 6, fontSize: 11.5 }}>{sp2.better === 'high' ? 'highest' : 'lowest'}</span> : null}</td>)}</tr>;
+                      // a lender's ROCE, margins, leverage and cash conversion are not comparable with an operating company's
+                      const na = rows.map((r) => LENDER_NA.has(sp2.label) && isLender(r));
+                      const cmp = vals.filter((v, i) => has(v) && !na[i]) as number[];
+                      const sorted = [...cmp].sort((a, b) => (sp2.better === 'low' ? a - b : b - a));
+                      const gap = sorted.length > 1 ? (sp2.rel ? Math.abs(sorted[0] / sorted[1] - 1) : Math.abs(sorted[0] - sorted[1])) : 0;
+                      const best = sp2.better && periodsAgree && sorted.length > 1 && gap >= (sp2.material ?? 0) ? sorted[0] : null;
+                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} className="num" style={best !== null && v === best && !na[i] ? { fontWeight: 700 } : undefined}>{na[i] ? <span className="dim" title="The screen reads this measure differently for a bank, NBFC or insurer: debt is the raw material" style={{ fontSize: 12.5 }}>not comparable</span> : has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company" aria-label="Not available">{dash}</span>}{best !== null && v === best && !na[i] ? <span className="tag acc" style={{ marginLeft: 6, fontSize: 11.5 }}>{sp2.better === 'high' ? 'highest' : 'lowest'}</span> : null}</td>)}</tr>;
                     })}
                   </tbody>
                 </table>
               </div>
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r) => <Radar key={r.sym} r={r} />)}</div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, among the companies shown. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown without a winner, and banks and lenders have no ROCE or cash-conversion figure. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
+                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, and only when the gap to the next company is material (5 points of a margin or return, 0.3 of debt/equity, 20% of a P/E); a smaller gap is left unmarked, because it is not a difference worth acting on. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown unmarked. For banks, NBFCs and insurers, ROCE, margins, debt/equity and cash conversion read &ldquo;not comparable&rdquo;: debt is their raw material. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
           )}
         </Async>

@@ -109,11 +109,13 @@ export default function SignalsPage() {
   const done = (feed?.signals ?? []).filter((s: Sig) => s.status === 'closed' || s.status === 'void');
   return (
     <>
-      <PageHead method="engines" eyebrow="Signals · Swing v2" title="One rule book," em="only when the market allows." />
+      <PageHead method="engines" eyebrow="Signals · Swing v2 · experimental research" title="One rule book," em="only when the market allows." />
       <section className="wrap">
         <Async loading={q.loading} error={q.error} rows={3}>
           {feed && (
             <>
+              {/* Pro §5: lead with what this is; the alert status and its reason come before any figure */}
+              <p className="exp-banner" role="note"><span className="tag exp">Experimental research</span> {feed.alertable ? 'Alerts are on for these exact rules.' : `Alerts are off. ${feed.alert_why.replace(/^Alerts off:\s*/, '')}`} Not a recommendation; every result below is on paper, after costs, and the development, holdout and forward records are kept apart.</p>
               <GatePanel feed={feed} />
               <div className="eng-link"><span className="dim num">Prices through {sessionLabel(feed.data_through)} · launched {sessionLabel(feed.launched)} · {feed.alertable ? 'alerts on' : 'alerts off'}</span><Link href="/trades/" className="chip">Live P&amp;L and today&apos;s decisions →</Link></div>
 

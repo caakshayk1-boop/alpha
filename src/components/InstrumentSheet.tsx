@@ -10,6 +10,7 @@ import { num, quoteState } from '@/lib/format';
 import { highlights, levels, type Bars } from '@/lib/levels';
 import { istDate } from '@/lib/live';
 import { useModal } from '@/lib/useModal';
+import { chartSummary } from '@/lib/chartText';
 import type { Quote } from '@/lib/types';
 
 // A12: a year of bars is kept for 15 minutes (the Worker's own cache); a failed request is evicted at once, so Retry retries
@@ -64,7 +65,7 @@ export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void 
         {lv && (
           <>
             {facts.length > 0 && <ul className="isheet-facts">{facts.map((x) => <li key={x}>{x}</li>)}</ul>}
-            <div className="isheet-chart"><Spark series={yearSeries} up={(lv.ret.y1 ?? 0) >= 0} height={88} /><div className="dim num isheet-cap"><span>{bars ? dateOf(bars.t[0]) : ''}</span><span>one year, daily closes</span></div></div>
+            <div className="isheet-chart" role="img" aria-label={bars ? chartSummary(bars.t, bars.c, bars.h, bars.l, (v) => `${q.prefix}${num(v, dp)}`) : undefined}><Spark series={yearSeries} up={(lv.ret.y1 ?? 0) >= 0} height={88} /><div className="dim num isheet-cap"><span>{bars ? dateOf(bars.t[0]) : ''}</span><span>one year, daily closes</span></div></div>
             <div className="isheet-rets">{([['1W', lv.ret.w1], ['1M', lv.ret.m1], ['3M', lv.ret.m3], ['YTD', lv.ret.ytd], ['1Y', lv.ret.y1]] as const).map(([k, v]) => <div key={k}><span className="k">{k}</span><Chg v={v} dp={1} /></div>)}</div>
             <h3 className="peek-h">Levels <span>high to low, with the price where it sits</span></h3>
             <ol className="lvl-ladder">
