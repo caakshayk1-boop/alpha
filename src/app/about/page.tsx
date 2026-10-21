@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { DataStatusTable } from '@/components/DataStamp';
 import MetricGlossary from '@/components/MetricGlossary';
+import SpeedTable from '@/components/SpeedTable';
 import { useSignals, useFeed } from '@/lib/data';
 import { ago, dateLabel } from '@/lib/format';
 
@@ -119,6 +120,13 @@ export default function About() {
           <div className="eyebrow" id="data-dates">Data dates: which session each dataset describes</div>
           <p className="muted" style={{ fontSize: 14, margin: '6px 0 10px' }}>&ldquo;Describes&rdquo; is the session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated. A daily dataset is judged against the last weekday before today in India, with a few hours of grace. Weekends never count as late; just after an exchange holiday a dataset can read one session behind.</p>
           <DataStatusTable />
+        </Rv>
+      </section>
+      <section className="wrap section" id="speed">
+        <Rv className="panel tight">
+          <div className="eyebrow">How fast the site is for its readers</div>
+          <p className="muted" style={{ fontSize: 14, margin: '6px 0 10px' }}>Measured in readers&rsquo; browsers, not in a lab: about one page load in four sends one anonymous reading (see <a href="/privacy/" style={{ color: 'var(--accent-2)' }}>Privacy</a>). Each figure is the 75th percentile over the last 7 days, as the top of its range. Under each is Google&rsquo;s rating for it: good, needs improvement or poor.</p>
+          <SpeedTable />
         </Rv>
       </section>
       <section className="wrap section" id="measures">

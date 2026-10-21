@@ -14,9 +14,10 @@
   // Per-address limit for /api/explain, enforced by Cloudflare (the in-memory limiter in the Worker is only the fallback).
   // Keyed in worker/index.js by IPv4 address or IPv6 /64. Counts are per Cloudflare location and approximate, so the real
   // cap on spend is still the monthly limit on the Anthropic workspace that holds the key.
-  "ratelimits": [{ "name": "EXPLAIN_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
+  "ratelimits": [{ "name": "EXPLAIN_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }, { "name": "RUM_LIMIT", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } }],
   // One atomic counter for the explainer's daily budget across every isolate and location (A13). SQLite-backed, free plan.
-  "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
-  "migrations": [{ "tag": "v1-quota", "new_sqlite_classes": ["Quota"] }],
+  // Rum: the field speed histograms (worker/rum.js). No identifiers are stored.
+  "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }, { "name": "RUM", "class_name": "Rum" }] },
+  "migrations": [{ "tag": "v1-quota", "new_sqlite_classes": ["Quota"] }, { "tag": "v2-rum", "new_sqlite_classes": ["Rum"] }],
   "observability": { "enabled": true }
 }

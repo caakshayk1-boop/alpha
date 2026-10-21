@@ -5,6 +5,7 @@
  *    motion     system (follow the device) | reduced (no movement, every state still shown in text)
  *    market     standard (green/red) | cb (blue/orange, for colour-blind readers); direction is always also a sign and arrow
  *    density    comfortable | compact (tighter rows and padding)
+ *    contrast   system (follow the device's "more contrast" setting) | high (stronger text, lines and focus rings)
  *    shortcuts  on | off (single-key shortcuts; never active while typing) */
 export const PREFS = {
   theme: { key: 'alpha-theme', attr: 'theme', values: ['light', 'dark'], base: 'light' },
@@ -12,6 +13,7 @@ export const PREFS = {
   motion: { key: 'alpha-motion', attr: 'motion', values: ['system', 'reduced'], base: 'system' },
   market: { key: 'alpha-market', attr: 'market', values: ['standard', 'cb'], base: 'standard' },
   density: { key: 'alpha-density', attr: 'density', values: ['comfortable', 'compact'], base: 'comfortable' },
+  contrast: { key: 'alpha-contrast', attr: 'contrast', values: ['system', 'high'], base: 'system' },
   shortcuts: { key: 'alpha-shortcuts', attr: 'shortcuts', values: ['on', 'off'], base: 'on' },
 } as const;
 export type PrefName = keyof typeof PREFS;

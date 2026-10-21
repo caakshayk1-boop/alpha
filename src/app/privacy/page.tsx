@@ -9,7 +9,7 @@ const KEPT: [string, string][] = [
   ['Journal', 'alpha-journal'],
   ['Saved screens and screen columns', 'alpha-screen-saved, alpha-screen-cols'],
   ['Results you opened from search (not what you typed)', 'alpha-recent'],
-  ['Settings (theme, accent, motion, market colours, density, shortcuts)', 'alpha-theme, alpha-accent, alpha-motion, alpha-market, alpha-density, alpha-shortcuts'],
+  ['Settings (theme, accent, motion, market colours, density, contrast, shortcuts)', 'alpha-theme, alpha-accent, alpha-motion, alpha-market, alpha-density, alpha-contrast, alpha-shortcuts'],
   ['Since-your-last-visit snapshot', 'alpha-last-visit'],
   ['Holdings you enter in the X-ray tool', 'alpha-xray'],
   ['News: saved stories, read stories, last visit', 'alpha-news-saved, alpha-news-seen, alpha-news-visit'],
@@ -35,6 +35,7 @@ export default function Privacy() {
           <li><b>Live prices.</b> When a page shows live prices, alpha&rsquo;s server asks Yahoo Finance for the ticker symbols on that page. Yahoo receives the symbols from alpha&rsquo;s server, not your browser, and nothing about you.</li>
           <li><b>Ask (AI), when it is switched on.</b> The question you type and the facts alpha built for it are sent to Anthropic&rsquo;s API to write an answer. alpha does not store or log the question. Requests are rate-limited per address; the address is used for that count only.</li>
           <li><b>Search box.</b> What you type in search (<kbd className="kbd">/</kbd> or <kbd className="kbd">⌘K</kbd>) never leaves your browser.</li>
+          <li><b>Page speed, sampled.</b> About one page load in four sends a single speed reading when you leave the page: which kind of page it was (for example &ldquo;a company page&rdquo;, never which company), phone or desktop, and four load and responsiveness timings. No address, cookie, identifier or browser details are stored, only running totals, kept for eight days and published on the <Link href="/about/#speed">About page</Link>. It is not sent when your browser asks sites not to track you (Do Not Track or Global Privacy Control).</li>
           <li><b>Visit counts.</b> If Cloudflare Web Analytics is enabled for the domain, it counts page views without cookies. No research, watchlist, journal or question text is ever included in analytics.</li>
         </ul>
 

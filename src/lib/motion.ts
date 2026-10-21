@@ -1,8 +1,8 @@
 'use client';
 
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Flip } from 'gsap/Flip';
+// GSAP's plugins are not imported here: this module is on every route. Flip is used only by the Screen (lib/flip.ts);
+// ScrollTrigger was registered but never used, and is gone.
 
 let ready = false;
 
@@ -22,7 +22,6 @@ export const canAnimate = () =>
 export function initMotion() {
   if (ready || typeof window === 'undefined') return;
   ready = true;
-  gsap.registerPlugin(ScrollTrigger, Flip);
   gsap.defaults({ ease: 'power3.out', duration: 0.7 });
   if (canAnimate()) {
     document.documentElement.classList.add('anim');
@@ -36,7 +35,7 @@ export function initMotion() {
   }
 }
 
-export { gsap, ScrollTrigger, Flip };
+export { gsap };
 
 /** The motion tokens of globals.css / DESIGN.md §6, for GSAP timelines, so CSS and JS cannot drift (seconds). */
 export const motionTokens = {

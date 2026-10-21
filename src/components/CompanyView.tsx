@@ -9,7 +9,7 @@ import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDa
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
-import { CaseBlock, ShareButton, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { CaseBlock, ShareButton, ShareImageButton, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { BackToContext } from '@/components/TickerLink';
 import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
@@ -246,6 +246,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
             <ShareButton r={r} />
+            <ShareImageButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
           </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div><PriceContext r={r} price={pv.price ?? r.price} /></div>
       </header>
       <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>

@@ -6,6 +6,9 @@
 //   signal. / vision. / gems.  permanent redirect to alpha.
 
 import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsForMarket, factsForSignal, parseClaims, validateClaims, validateQuestion } from './explain.js';
+import { Rum, validateBeacon } from './rum.js';
+
+export { Rum };
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -667,6 +670,32 @@ async function explain(request, env, url) {
   }
 }
 
+// /api/rum: POST one sampled speed beacon (see rum.js; no identifiers), GET the 7-day 75th percentiles per route.
+async function rum(request, env, url, ctx) {
+  if (!env.RUM) return json({ ok: false, error: 'speed measurements are not configured' }, 503);
+  const stub = env.RUM.get(env.RUM.idFromName('rum'));
+  if (request.method === 'GET') {
+    const key = new Request('https://alpha.askakshay.com/__rum_v1');
+    const hit = await caches.default.match(key);
+    if (hit) return withHeaders(hit);
+    const body = await (await stub.fetch('https://rum/report')).text();
+    const res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+    ctx.waitUntil(caches.default.put(key, res.clone()));
+    return withHeaders(res);
+  }
+  if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
+  if (!sameSiteOnly(request, url)) return json({ ok: false, error: 'not allowed from this origin' }, 403);
+  // per-address ceiling; the address is the rate limiter's key only and is never stored
+  if (env.RUM_LIMIT && !(await env.RUM_LIMIT.limit({ key: limitKey(request.headers.get('cf-connecting-ip')) })).success) return new Response(null, { status: 204 });
+  const text = await readCapped(request, 1024);
+  if (text === null) return json({ ok: false, error: 'request too large' }, 413);
+  let beacon = null;
+  try { beacon = validateBeacon(JSON.parse(text)); } catch { beacon = null; }
+  if (!beacon) return json({ ok: false, error: 'not a speed beacon' }, 400);
+  ctx.waitUntil(stub.fetch('https://rum/add', { method: 'POST', body: JSON.stringify(beacon) }).catch(() => undefined));
+  return new Response(null, { status: 204 });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -720,6 +749,9 @@ export default {
     }
     if (url.pathname === '/api/instrument' || url.pathname === '/api/instrument/') {
       return instrument(url, ctx);
+    }
+    if (url.pathname === '/api/rum' || url.pathname === '/api/rum/') {
+      return rum(request, env, url, ctx);
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);
