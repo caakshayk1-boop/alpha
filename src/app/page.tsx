@@ -165,7 +165,7 @@ function SinceVisit() {
 function TradesCard() {
   const { feed, totalR, marked, todayR, todayN, open, pending, groups } = useBook();
   const n = (k: string) => groups.find((g) => g.kind === k)?.items.length ?? 0;
-  const sR = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
+  const sR = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(Math.abs(v), 2)}R`);
   return (
     <Link href="/trades/" className="panel spot tcard">
       <span className="eyebrow">Signals · Swing v2</span>

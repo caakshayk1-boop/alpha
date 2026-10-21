@@ -2,7 +2,7 @@
 
 import { Async, Bar, Chg, Notice, PageHead, Rv, SectionHead } from '@/components/ui';
 import { useFeed, useIpoLive } from '@/lib/data';
-import { ago, dash, dateLabel, nseDate, num, rupeeBand } from '@/lib/format';
+import { ago, dash, dateLabel, nseDate, num, rupeeBand, ratio } from '@/lib/format';
 import type { IpoLiveIssue, IpoUpcoming } from '@/lib/types';
 
 /** The mirror's generated_at has no timezone. It is written by ipo_radar.py with datetime.now() on a GitHub runner, which runs
@@ -114,7 +114,7 @@ export default function Ipo() {
                 <div className="grid g2">{d.open.map((o) => (
                   <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{leftLabel(o)}</div>
                     <div className="disp" style={{ fontSize: 30, margin: '12px 0' }}>{o.company}</div>
-                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${o.subscription_x.toFixed(2)}× subscribed as of ${istStamp(d.generated_at)}` : 'subscription pending'}</div></Rv>))}</div></>}
+                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${ratio(o.subscription_x, 2)} subscribed as of ${istStamp(d.generated_at)}` : 'subscription pending'}</div></Rv>))}</div></>}
 
               <div style={{ height: 20 }} />
               <div id="closed" /><SectionHead title="Closed, awaiting listing" />

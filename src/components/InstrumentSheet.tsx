@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Chg, Skel, Spark } from '@/components/ui';
 import { BASE } from '@/lib/data';
-import { num, quoteState } from '@/lib/format';
+import { num, quoteState, pct } from '@/lib/format';
 import { highlights, levels, type Bars } from '@/lib/levels';
 import { istDate } from '@/lib/live';
 import { useModal } from '@/lib/useModal';
@@ -77,14 +77,14 @@ export function InstrumentSheet({ q, onClose }: { q: Quote; onClose: () => void 
                   <li key={x.label} className={`k-${x.kind}${x.here ? ' here' : ''}`}>
                     <span>{x.label}</span>
                     <b className="num">{f(x.value)}</b>
-                    <span className="dim num">{x.here ? '' : (() => { const d = (x.value / lv.last - 1) * 100; return Math.abs(d) < 0.05 ? '0.0%' : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}%`; })()}</span>
+                    <span className="dim num">{x.here ? '' : (() => { const d = (x.value / lv.last - 1) * 100; return Math.abs(d) < 0.05 ? '0.0%' : `${d > 0 ? '+' : '−'}${pct(Math.abs(d), 1, false)}`; })()}</span>
                   </li>
                 ));
               })()}
             </ol>
             <div className="kv isheet-kv">
-              <div><div className="k">Typical day</div><div className="v">{lv.rangePct === null ? '—' : `${lv.rangePct.toFixed(1)}%`}</div></div>
-              <div><div className="k">Volatility (20d, yearly)</div><div className="v">{lv.vol20 === null ? '—' : `${lv.vol20.toFixed(0)}%`}</div></div>
+              <div><div className="k">Typical day</div><div className="v">{lv.rangePct === null ? '—' : `${pct(lv.rangePct, 1, false)}`}</div></div>
+              <div><div className="k">Volatility (20d, yearly)</div><div className="v">{lv.vol20 === null ? '—' : `${pct(lv.vol20, 0, false)}`}</div></div>
               <div><div className="k">Best day, 1 year</div><div className="v up">{lv.best ? `+${lv.best.pct.toFixed(1)}%` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.best ? dateOf(lv.best.t) : ''}</div></div>
               <div><div className="k">Worst day, 1 year</div><div className="v down">{lv.worst ? `${lv.worst.pct.toFixed(1)}%` : '—'}</div><div className="dim" style={{ fontSize: 12 }}>{lv.worst ? dateOf(lv.worst.t) : ''}</div></div>
             </div>

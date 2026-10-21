@@ -149,7 +149,7 @@ export default function MapPage() {
 
   const q = query.trim().toLowerCase();
   const dimmed = (r: Row) => !!q && !(r.sym.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
-  const fmtV = (v: number | null) => (v === null ? '—' : m.unit === '%' ? pct(v, 1) : `${v > 0 ? '+' : ''}${v.toFixed(1)}`);
+  const fmtV = (v: number | null) => (v === null ? '—' : m.unit === '%' ? pct(v, 1) : `${v > 0 ? '+' : ''}${num(v, 1)}`);
   const toggleTier = (t: string) => setTiers((p) => { const x = new Set(p); if (x.has(t)) x.delete(t); else x.add(t); return x; });
   const metricGroups = Array.from(new Set(METRICS.map((x) => x.group)));
 

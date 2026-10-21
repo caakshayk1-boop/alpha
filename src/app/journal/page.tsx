@@ -150,7 +150,7 @@ export default function Journal() {
                     <td className="num">{e.price !== null ? `₹${num(e.price, 2)}` : dash}</td>
                     <td className="num">{q?.price != null ? <>₹{num(q.price, 2)}<div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{q.label}</div></> : dash}</td>
                     <td>{o.movePct !== null ? <Chg v={o.movePct} dp={1} /> : dash}{o.state === 'below-stop' && <span className="tag down" style={{ marginLeft: 6 }} title="The price now is at or below your stop. It may have gone below earlier and come back, or the reverse: only the price now is checked.">at/below stop</span>}{o.state === 'above-target' && <span className="tag up" style={{ marginLeft: 6 }} title="The price now is at or above your target.">at/above target</span>}</td>
-                    <td className="num">{o.r !== null ? `${o.r >= 0 ? '+' : '−'}${Math.abs(o.r).toFixed(1)}R` : dash}</td>
+                    <td className="num">{o.r !== null ? `${o.r >= 0 ? '+' : '−'}${num(Math.abs(o.r), 1)}R` : dash}</td>
                     <td><button className="chip" onClick={() => save(list.filter((x) => x.id !== e.id))} aria-label={`Delete the ${e.sym} entry from ${dateLabel(e.date)}`}>✕</button></td>
                   </tr>
                 );

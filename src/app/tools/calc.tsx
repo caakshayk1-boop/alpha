@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Rv } from '@/components/ui';
-import { num, pct } from '@/lib/format';
+import { num, pct, ratio } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
 import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, streakProb } from './math';
 
@@ -251,8 +251,8 @@ export function Cagr() {
               <div className="res"><div className="res-main"><span className="k">A year, compounded</span><span className={`v num ${c > 0 ? 'up' : c < 0 ? 'down' : ''}`}>{c > 0 ? '▲ ' : c < 0 ? '▼ ' : ''}{signed(c, 1, '%')}</span>{c > 0 && <span className="s">at that rate money doubles in about {(Math.log(2) / Math.log(1 + c / 100)).toFixed(1)} years</span>}</div></div>
               <Working lines={[
                 ['Growth multiple', `${money(t)} ÷ ${money(f)}`, `${(t / f).toFixed(3)}×`],
-                ['Per year', `${(t / f).toFixed(3)} ^ (1 ÷ ${y})`, `${Math.pow(t / f, 1 / y).toFixed(4)}×`],
-                ['Rate', `${Math.pow(t / f, 1 / y).toFixed(4)} − 1`, signed(c, 2, '%')],
+                ['Per year', `${(t / f).toFixed(3)} ^ (1 ÷ ${y})`, `${ratio(Math.pow(t / f, 1 / y), 4)}`],
+                ['Rate', `${num(Math.pow(t / f, 1 / y), 4)} − 1`, signed(c, 2, '%')],
               ]} note="A steady rate that ends in the same place: the real path went up and down. Money added or taken out along the way needs an XIRR instead." />
             </>
           )}
@@ -286,7 +286,7 @@ export function Recovery() {
               <div className="res"><div className="res-main"><span className="k">Gain needed to get back to even</span><span className="v num warn">+{need.toFixed(1)}%</span></div></div>
               <Working lines={[
                 ['Left after the fall', `100 − ${l}`, `${(100 - l).toFixed(1)} of every 100`],
-                ['Gain needed', `${l} ÷ ${(100 - l).toFixed(1)}`, `+${need.toFixed(1)}%`],
+                ['Gain needed', `${l} ÷ ${(100 - l).toFixed(1)}`, `+${pct(need, 1, false)}`],
               ]} note="This is why every plan on this site starts from the stop: a small loss is cheap to recover, a large one is not." />
             </>
           )}

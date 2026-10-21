@@ -9,7 +9,7 @@ import AskScreen, { type NlState } from '@/components/AskScreen';
 import { DataStamp } from '@/components/DataStamp';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useSignals, useFeed } from '@/lib/data';
-import { dash, num } from '@/lib/format';
+import { dash, num, pct, ratio } from '@/lib/format';
 import { canAnimate } from '@/lib/motion';
 import { Flip } from '@/lib/flip';
 import { useStoredList } from '@/lib/store';
@@ -25,15 +25,15 @@ const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinit
 const FIELDS: Field[] = [
   { id: 'price', label: 'Price', get: (r) => r.price, fmt: (v) => `₹${num(v, 2)}` },
   { id: 'mcap_cr', label: 'Market cap (₹ cr)', get: (r) => r.mcap_cr, fmt: (v) => (v >= 1e5 ? `${(v / 1e5).toFixed(2)}L cr` : `${num(v, 0)} cr`) },
-  { id: 'pe', label: 'P/E', get: (r) => r.pe, fmt: (v) => v.toFixed(1) },
-  { id: 'pb', label: 'P/B', get: (r) => r.pb, fmt: (v) => v.toFixed(2) },
-  { id: 'roce', label: 'ROCE %', get: (r) => r.roce, fmt: (v) => `${v.toFixed(1)}%` },
-  { id: 'roe', label: 'ROE %', get: (r) => r.roe, fmt: (v) => `${v.toFixed(1)}%` },
-  { id: 'de', label: 'Debt / equity', get: (r) => r.de, fmt: (v) => v.toFixed(2) },
-  { id: 'div_yield', label: 'Dividend yield %', get: (r) => r.div_yield, fmt: (v) => `${v.toFixed(2)}%` },
-  { id: 'rev_cagr', label: 'Revenue CAGR %', get: (r) => r.rev_cagr, fmt: (v) => `${v.toFixed(1)}%` },
-  { id: 'eps_cagr', label: 'EPS CAGR %', get: (r) => r.eps_cagr, fmt: (v) => `${v.toFixed(1)}%` },
-  { id: 'cfo_pat', label: 'Cash / profit', get: (r) => r.cfo_pat, fmt: (v) => `${v.toFixed(2)}×` },
+  { id: 'pe', label: 'P/E', get: (r) => r.pe, fmt: (v) => num(v, 1) },
+  { id: 'pb', label: 'P/B', get: (r) => r.pb, fmt: (v) => num(v, 2) },
+  { id: 'roce', label: 'ROCE %', get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}` },
+  { id: 'roe', label: 'ROE %', get: (r) => r.roe, fmt: (v) => `${pct(v, 1, false)}` },
+  { id: 'de', label: 'Debt / equity', get: (r) => r.de, fmt: (v) => num(v, 2) },
+  { id: 'div_yield', label: 'Dividend yield %', get: (r) => r.div_yield, fmt: (v) => `${pct(v, 2, false)}` },
+  { id: 'rev_cagr', label: 'Revenue CAGR %', get: (r) => r.rev_cagr, fmt: (v) => `${pct(v, 1, false)}` },
+  { id: 'eps_cagr', label: 'EPS CAGR %', get: (r) => r.eps_cagr, fmt: (v) => `${pct(v, 1, false)}` },
+  { id: 'cfo_pat', label: 'Cash / profit', get: (r) => r.cfo_pat, fmt: (v) => `${ratio(v, 2)}` },
   { id: 'piotroski', label: 'Piotroski F (of 9)', get: (r) => r.piotroski, fmt: (v) => String(v) },
   { id: 'q', label: 'Quality score', get: (r) => r.q, fmt: (v) => String(Math.round(v)) },
   { id: 'g', label: 'Growth score', get: (r) => r.g, fmt: (v) => String(Math.round(v)) },
@@ -46,8 +46,8 @@ const FIELDS: Field[] = [
   { id: 'r3m', label: '3 months %', get: (r) => r.r3m, fmt: (v) => String(v), kind: 'chg' },
   { id: 'r1y', label: 'Year %', get: (r) => r.r1y, fmt: (v) => String(v), kind: 'chg' },
   { id: 'rs3m', label: 'Vs index, 3 months %', get: (r) => r.rs3m, fmt: (v) => String(v), kind: 'chg' },
-  { id: 'from_high', label: 'From 52-week high %', get: (r) => r.from_high, fmt: (v) => `${v.toFixed(0)}%` },
-  { id: 'rsi', label: 'RSI (14)', get: (r) => r.rsi, fmt: (v) => v.toFixed(0) },
+  { id: 'from_high', label: 'From 52-week high %', get: (r) => r.from_high, fmt: (v) => `${pct(v, 0, false)}` },
+  { id: 'rsi', label: 'RSI (14)', get: (r) => r.rsi, fmt: (v) => num(v, 0) },
   { id: 'pe_pctile', label: 'P/E percentile in own history', get: (r) => r.pe_pctile, fmt: (v) => `${Math.round(v)}` },
   { id: 'turnover_cr', label: 'Daily turnover (₹ cr)', get: (r) => r.turnover_cr, fmt: (v) => `${num(v, 1)} cr` },
 ];

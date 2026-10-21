@@ -7,7 +7,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Async, Chg, PageHead, Rv, TabRow } from '@/components/ui';
 import { useFeed } from '@/lib/data';
-import { dash, dateLabel, num } from '@/lib/format';
+import { dash, dateLabel, num, pct } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Fund } from '@/lib/types';
 
@@ -37,8 +37,8 @@ function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: st
       <div className="kv" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <div><div className="k">1 year</div><div className="v">{fin(f.r1) ? <Chg v={f.r1} dp={1} /> : dash}</div></div>
         <div><div className="k">5 years, a year</div><div className="v">{fin(f.r5) ? <Chg v={f.r5} dp={1} /> : <span className="dim" style={{ fontSize: 14 }}>{f.history_years < 5 ? 'under 5 yrs old' : dash}</span>}</div></div>
-        <div><div className="k">Worst fall, 3 yrs</div><div className="v down">{fin(f.dd3) ? `${f.dd3.toFixed(1)}%` : dash}</div></div>
-        <div><div className="k">Volatility</div><div className="v">{fin(f.volatility) ? `${f.volatility.toFixed(1)}%` : dash}</div></div>
+        <div><div className="k">Worst fall, 3 yrs</div><div className="v down">{fin(f.dd3) ? `${pct(f.dd3, 1, false)}` : dash}</div></div>
+        <div><div className="k">Volatility</div><div className="v">{fin(f.volatility) ? `${pct(f.volatility, 1, false)}` : dash}</div></div>
       </div>
       {cal.length > 0 && (
         <div>
