@@ -24,9 +24,9 @@ export default function Privacy() {
       <section className="wrap prose-col">
         <h2>There is no account</h2>
         <p>alpha has no sign-in and no user database. Everything personal you do here is kept in <b>this browser only</b>, in its local storage, and never uploaded. Clearing this site&rsquo;s data in your browser deletes it. Export a copy from <Link href="/watchlist/#cards">Watchlist</Link> or <Link href="/journal/">Journal</Link> to keep it.</p>
-        <table className="tbl" style={{ margin: '12px 0 20px' }}>
+        <table className="tbl tbl-text" style={{ margin: '12px 0 20px', tableLayout: 'fixed', width: '100%', minWidth: 0 }}>
           <thead><tr><th scope="col">What</th><th scope="col">Where in this browser</th></tr></thead>
-          <tbody>{KEPT.map(([w, k]) => <tr key={k}><td>{w}</td><td className="dim" style={{ fontFamily: 'var(--f-mono)', fontSize: 13 }}>{k}</td></tr>)}</tbody>
+          <tbody>{KEPT.map(([w, k]) => <tr key={k}><td>{w}</td><td className="dim" style={{ fontFamily: 'var(--f-mono)', fontSize: 13, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{k}</td></tr>)}</tbody>
         </table>
 
         <h2>What is sent, and to whom</h2>

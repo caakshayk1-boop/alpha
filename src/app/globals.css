@@ -1415,7 +1415,7 @@ html.anim .setpop { animation: cmdkIn 160ms var(--ease) both; }
 .cite-pop { display: block; margin-top: 6px; padding: 8px 10px; border-left: 2px solid var(--accent); background: var(--panel-2); border-radius: 0 8px 8px 0; font-size: 13.5px; color: var(--muted); }
 .case-foot { font-size: 13px; margin: 8px 2px 0; }
 @media (max-width: 700px) { .case-grid { grid-template-columns: 1fr; } }
-.chart-table { margin-top: 8px; } .chart-table summary { cursor: pointer; } .chart-table .tbl { margin-top: 8px; max-width: 360px; }
+.chart-table { margin-top: 8px; } .chart-table summary { cursor: pointer; } .chart-table .tbl { margin-top: 8px; max-width: 360px; min-width: 0; }
 /* Screen templates (Pro §28 P1) */
 .templates { margin: 6px 0 4px; } .templates summary { cursor: pointer; }
 .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 8px; margin-top: 8px; }
@@ -1447,3 +1447,4 @@ html.anim .count-tint { animation: countTint var(--dur-flash) var(--ease-standar
 .fin-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .fin-explore { margin-top: 12px; }
 html.anim .fin-explore { animation: gateIn var(--dur-base) var(--ease-standard) both; }
+.tbl-text th, .tbl-text td { white-space: normal; }
