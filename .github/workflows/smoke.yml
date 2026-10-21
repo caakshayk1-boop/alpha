@@ -14,3 +14,6 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/smoke.mjs https://alpha.askakshay.com
+      - name: Production headers, caching and redirects (Pro §16)
+        if: always()
+        run: node scripts/headers.mjs https://alpha.askakshay.com
