@@ -63,6 +63,23 @@ export function CaseBlock({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: num
   );
 }
 
+/** Share a company page (Pro §11): the dated link and one line of context, never anything private. Native share where the
+ *  browser has it, otherwise the link is copied. The preview is the exact text that will be shared. */
+export function ShareButton({ r }: { r: Row }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const url = `https://alpha.askakshay.com${companyHref(r.sym)}`;
+  const text = `${r.name} (${r.sym}): the case and the countercase from the figures, data as of ${r.last_date ? dateLabel(r.last_date) : 'the last close'}.`;
+  const share = async () => {
+    const nav = navigator as Navigator & { share?: (d: { title: string; text: string; url: string }) => Promise<void> };
+    try {
+      if (nav.share) { await nav.share({ title: `${r.sym} on alpha`, text, url }); setMsg('Shared.'); return; }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setMsg('Link and line copied.');
+    } catch { setMsg(null); }
+  };
+  return <><button type="button" className="chip" onClick={share} title={`Shares: “${text}” and the link. Nothing private is included.`}>Share</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</>;
+}
+
 /** One thin row of one-click research on the sites analysts already use. Opens in a new tab; nothing about the visitor is sent. */
 export function ExternalLinks({ sym }: { sym: string }) {
   const e = encodeURIComponent(sym);

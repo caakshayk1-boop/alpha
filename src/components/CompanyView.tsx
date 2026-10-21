@@ -9,7 +9,7 @@ import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDa
 import { AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
-import { CaseBlock, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
+import { CaseBlock, ShareButton, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { BackToContext } from '@/components/TickerLink';
 import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
@@ -47,8 +47,12 @@ function Returns({ r }: { r: Row }) {
   );
 }
 
+/** Every line of the yearly table; a click opens its history and source (the financial explorer, Pro §28 P1). */
+const LINES = [['Revenue', 'rev_cr', false], ['EBITDA', 'ebitda_cr', false], ['Net profit', 'pat_cr', false], ['Operating cash flow', 'cfo_cr', false], ['Free cash flow', 'fcf_cr', false], ['ROCE %', 'roce', true], ['ROE %', 'roe', true], ['EBIT margin %', 'ebit_margin', true]] as const;
+
 function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
   const d = useFeedWhen('screen-detail', pre === undefined);
+  const [open, setOpen] = useState<(typeof LINES)[number][1] | null>(null);
   const years: Year[] = [...(pre !== undefined ? pre ?? [] : d.data?.detail[sym]?.years ?? [])].reverse();
   const bars = (key: 'rev_cr' | 'pat_cr', title: string) => {
     const vals = years.map((y) => y[key]);
@@ -80,11 +84,27 @@ function Financials({ sym, pre }: { sym: string; pre?: Shard['years'] }) {
             <table className="tbl" style={{ minWidth: 560 }}>
               <thead><tr><th>₹ crore</th>{years.map((y) => <th key={y.fy}>{y.fy}</th>)}</tr></thead>
               <tbody>
-                {([['Revenue', 'rev_cr'], ['EBITDA', 'ebitda_cr'], ['Net profit', 'pat_cr'], ['Operating cash flow', 'cfo_cr'], ['Free cash flow', 'fcf_cr']] as const).map(([l, k]) => <tr key={k} style={{ cursor: 'default' }}><td>{l}</td>{years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? num(y[k]) : dash}</td>)}</tr>)}
-                {([['ROCE %', 'roce'], ['ROE %', 'roe'], ['EBIT margin %', 'ebit_margin']] as const).map(([l, k]) => <tr key={k} style={{ cursor: 'default' }}><td>{l}</td>{years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? y[k]!.toFixed(1) : dash}</td>)}</tr>)}
+                {LINES.map(([l, k, pctLine]) => (
+                  <tr key={k} style={{ cursor: 'default' }}>
+                    <td><button type="button" className="fin-line" aria-expanded={open === k} onClick={() => setOpen((o) => (o === k ? null : k))} title="Show this line's history and source">{l}</button></td>
+                    {years.map((y) => <td key={y.fy} className="num">{has(y[k]) ? num(y[k], pctLine ? 1 : 0) : dash}</td>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          {open && (() => {
+            const [label, key, pctLine] = LINES.find((x) => x[1] === open)!;
+            const vals = years.map((y) => y[key]);
+            const max = Math.max(1e-9, ...vals.map((v) => Math.abs(v ?? 0)));
+            return (
+              <div className="panel tight fin-explore" role="region" aria-label={`${label}, year by year`}>
+                <div className="eyebrow">{label} · year by year</div>
+                <div className="fin-bars" style={{ marginTop: 10 }}>{years.map((y) => { const v = y[key]; return <div className="fin-bar" key={y.fy}><i className={has(v) && v < 0 ? 'neg' : ''} style={{ height: `${has(v) ? Math.max(3, (Math.abs(v) / max) * 100) : 0}%` }} /><span className="num" style={{ fontSize: 13 }}>{has(v) ? num(v, pctLine ? 1 : 0) : dash}</span><span className="dim" style={{ fontSize: 12 }}>{y.fy}{y.end ? ` · to ${y.end.slice(0, 7)}` : ''}</span></div>; })}</div>
+                <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Each bar is one fiscal year, labelled with its period end. Source: the company&apos;s annual statements as published by Yahoo Finance, in Alpha&apos;s screen. A restated year shows the restated figure; the feed does not mark restatements. Check a figure against the company&apos;s own results filing: <a href={`https://www.nseindia.com/companies-listing/corporate-filings-financial-results?symbol=${encodeURIComponent(sym)}`} target="_blank" rel="noopener noreferrer">NSE results filings ↗</a> · <a href={`https://www.bseindia.com/stock-share-price/x/x/${encodeURIComponent(sym)}/financials-results/`} target="_blank" rel="noopener noreferrer">BSE ↗</a></p>
+              </div>
+            );
+          })()}
         </>
       )}
     </Async>
@@ -212,6 +232,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             {(watchError || watchNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13 }}>{watchError ?? watchNote}</span>}
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
+            <ShareButton r={r} />
           </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div></div>
       </header>
       <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>

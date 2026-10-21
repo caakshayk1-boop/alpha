@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
+      - name: Design lint (forbidden words; raw colours and ad-hoc toFixed may only fall)
+        run: npm run lint:design
       - name: Unit tests (data status, breadth, Research Card, screen parser)
         run: npm test
       # next/font downloads the faces at build time, so this step needs the network.

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { canAnimate, gsap, observeReveal } from '@/lib/motion';
-import { dash, tone } from '@/lib/format';
+import { changeParts, dash } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 
 /** Fades/rises its children in when scrolled into view (see motion.ts for the safety rules). */
@@ -22,13 +22,11 @@ export function Rv({ as, className, style, children }: { as?: ElementType; class
 
 /** Signed change with colour that is never the only signal: the sign and arrow are text too. */
 export function Chg({ v, dp = 2, suffix = '%' }: { v: number | null | undefined; dp?: number; suffix?: string }) {
-  const t = tone(v);
-  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat">{dash}</span>;
+  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat" aria-label="not available">{dash}</span>;
+  const c = changeParts(v, dp, suffix);
   return (
-    <span className={`num ${t}`}>
-      {v > 0 ? '▲ +' : v < 0 ? '▼ ' : ''}
-      {v.toFixed(dp)}
-      {suffix}
+    <span className={`num ${c.dir}`} aria-label={c.label}>
+      <span aria-hidden>{c.text}</span>
     </span>
   );
 }

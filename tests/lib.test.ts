@@ -874,3 +874,15 @@ test('§28: every screen template parses completely: each word becomes a clause,
     assert.ok(p.filters.length >= 2, `${t.name} applies ${p.filters.length} clause(s)`);
   }
 });
+
+import { changeParts, pct, pp, bp, ratio, MINUS } from '../src/lib/format.ts';
+test('§23.3: changes carry a true minus, the rounded value decides the arrow, and points are not percent', () => {
+  assert.equal(pct(-3.14), `${MINUS}3.1%`);
+  assert.equal(pct(2.0), '+2.0%');
+  assert.equal(pct(-0.04), '0.0%', 'a rounded zero has no sign');
+  assert.equal(pp(1.23), '+1.2 pp');
+  assert.equal(bp(-7.4), `${MINUS}7 bp`);
+  assert.equal(ratio(24.62), '24.6×');
+  assert.deepEqual(changeParts(-0.004, 2), { dir: 'flat', text: '0.00%', label: 'unchanged 0.00 percent' });
+  assert.deepEqual(changeParts(-1.2, 1), { dir: 'down', text: `▼ ${MINUS}1.2%`, label: 'down 1.2 percent' });
+});

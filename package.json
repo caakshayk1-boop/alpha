@@ -10,7 +10,8 @@
     "worker:dev": "wrangler dev --local --port 8799",
     "deploy": "npm run build && wrangler deploy",
     "prebuild": "node scripts/shard.mjs",
-    "test": "node --experimental-strip-types --test tests/lib.test.ts tests/tools.test.ts tests/explain.test.mjs tests/evals.test.mjs tests/summary.test.mjs"
+    "test": "node --experimental-strip-types --test tests/lib.test.ts tests/tools.test.ts tests/explain.test.mjs tests/evals.test.mjs tests/summary.test.mjs",
+    "lint:design": "node scripts/design-lint.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",

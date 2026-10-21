@@ -12,8 +12,29 @@ const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFin
 export const num = (n: number | null | undefined, dp = 0) =>
   isNum(n) ? n.toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : dash;
 
+/** The minus a reader sees (U+2212), never the hyphen-minus: Pro §23.3. */
+export const MINUS = '\u2212';
+const signedNum = (n: number, dp: number, sign: boolean) => {
+  const v = n.toFixed(dp);
+  if (Number(v) === 0) return (0).toFixed(dp);                                    // never "−0.0"
+  return n < 0 ? `${MINUS}${v.slice(1)}` : `${sign ? '+' : ''}${v}`;
+};
 export const pct = (n: number | null | undefined, dp = 1, sign = true) =>
-  isNum(n) ? `${sign && n > 0 ? '+' : ''}${n.toFixed(dp)}%` : dash;
+  isNum(n) ? `${signedNum(n, dp, sign)}%` : dash;
+/** A change as the reader sees it and hears it: the arrow, sign and direction come from the ROUNDED value, so a
+ *  rounded 0.00 is never "down"; the true minus is used; the label is spoken, not read digit by digit. */
+export function changeParts(v: number, dp = 2, suffix = '%'): { dir: 'up' | 'down' | 'flat'; text: string; label: string } {
+  const r = Number(v.toFixed(dp));
+  const mag = Math.abs(r).toFixed(dp);
+  const dir = r > 0 ? 'up' : r < 0 ? 'down' : 'flat';
+  return { dir, text: `${dir === 'up' ? '▲ +' : dir === 'down' ? `▼ ${MINUS}` : ''}${mag}${suffix}`, label: `${dir === 'flat' ? 'unchanged' : dir} ${mag}${suffix === '%' ? ' percent' : suffix}` };
+}
+/** A change in a percentage is in percentage points: "+1.2 pp" (never "%"). */
+export const pp = (n: number | null | undefined, dp = 1) => (isNum(n) ? `${signedNum(n, dp, true)} pp` : dash);
+/** A change in a yield, in whole basis points: "+7 bp". */
+export const bp = (n: number | null | undefined) => (isNum(n) ? `${signedNum(n, 0, true)} bp` : dash);
+/** A multiple: "24.6×". */
+export const ratio = (n: number | null | undefined, dp = 1) => (isNum(n) ? `${n.toFixed(dp)}×` : dash);
 
 export const rupees = (n: number | null | undefined, dp = 2) => (isNum(n) ? `₹${num(n, dp)}` : dash);
 
@@ -50,7 +71,8 @@ export const ago = (iso: string | null | undefined) => {
   const h = (Date.now() - t) / 36e5;
   if (h < 1) return `${Math.max(1, Math.round(h * 60))}m ago`;
   if (h < 48) return `${Math.round(h)}h ago`;
-  return `${Math.round(h / 24)}d ago`;
+  if (h < 7 * 24) return `${Math.round(h / 24)}d ago`;
+  return dateLabel(iso);                                                          // after a week, the date itself
 };
 
 /** Clamp a number into [lo, hi] */
