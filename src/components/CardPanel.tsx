@@ -6,6 +6,7 @@ import { Rv } from '@/components/ui';
 import { cardDelta, parseImport, reviewDue, serializeCard, serializeLibrary, summarise, type CardDecision, type CurrentCompany, type ResearchCard } from '@/lib/card';
 import { useCards } from '@/lib/library';
 import { companyHref } from '@/lib/slug';
+import { AskAI } from '@/components/Explain';
 
 const download = (name: string, text: string) => {
   const a = document.createElement('a');
@@ -121,6 +122,7 @@ function DecisionEditor({ card, onSave, due }: { card: ResearchCard; onSave: (d:
         </div>
       </div>
       {f.thesis.trim() && !f.against.trim() && <p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Add one point that would prove this wrong. Optional, but a thesis with no counterpoint is easy to keep for the wrong reasons.</p>}
+      {f.thesis.trim().length >= 10 && card.companies.length === 1 && <div style={{ marginTop: 10 }}><AskAI subject="thesis" sym={card.companies[0].sym} thesis={f.thesis.trim()} title="Challenge my thesis" compact /><p className="dim" style={{ fontSize: 12.5, margin: '4px 0 0' }}>Returns questions that would test it, and the data Alpha lacks; never a verdict. Asking sends the thesis text and the symbol, nothing else.</p></div>}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}><button type="button" className="chip" onClick={save}>Save</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</div>
     </details>
   );

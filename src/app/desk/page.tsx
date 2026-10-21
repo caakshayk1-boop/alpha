@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Chg, PageHead } from '@/components/ui';
+import { AskAI } from '@/components/Explain';
 import { TickerLink } from '@/components/TickerLink';
 import { reviewDue, type CurrentCompany } from '@/lib/card';
 import { useFeed, useLive, useSignals } from '@/lib/data';
@@ -88,6 +89,7 @@ export default function Desk() {
                 : <p className="muted" style={{ margin: '6px 0 0' }}>None yet. &ldquo;Save research card&rdquo; on a company page keeps the question, the evidence for and against, and the data dates.</p>}
             </div>
             <DeskConditions rows={s.data?.rows ?? []} watch={watch} asOf={s.data?.rows?.[0]?.last_date ?? null} />
+            {watch.length > 0 && <div className="panel"><AskAI subject="watchlist" syms={watch.slice(0, 12)} title="Brief me on my names" compact /><p className="dim" style={{ fontSize: 12.5, margin: '6px 0 0' }}>Asking sends the symbols on your watchlist (up to twelve, never your notes or cards) to Alpha&apos;s server, which builds the figures and asks the model. Nothing is sent until you press a button, and nothing is stored. A daily emailed brief needs an account, which Alpha does not have yet.</p></div>}
             <div className="panel">
               <div className="eyebrow">Journal · {num(journal.length)} {journal.length === 1 ? 'decision' : 'decisions'}</div>
               {journal.length ? <ul className="desk-list">{[...journal].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6).map((e) => <li key={e.id}><TickerLink sym={e.sym}><b data-ticker>{e.sym}</b></TickerLink><span className="dim">{e.action === 'took' ? 'Took it' : e.action === 'skipped' ? 'Skipped' : 'Watching'} · {dateLabel(e.date)}</span><span className="dim desk-why">{e.why}</span></li>)}</ul>

@@ -8,6 +8,7 @@ import { DataStamp } from '@/components/DataStamp';
 import SymbolPicker from '@/components/SymbolPicker';
 import { Async, Chg, Flash, Notice, PageHead, Rv, Segmented } from '@/components/ui';
 import { useStoredPreset } from '@/lib/layout';
+import { AskAI } from '@/components/Explain';
 import { useFeedWhen, useLive, useShard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { crore, dash, num, pct, ratio } from '@/lib/format';
@@ -158,6 +159,7 @@ function Compare() {
               <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r, ci) => <div key={r.sym} data-col={ci} className="cmp-radar"><Radar r={r} /></div>)}</div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, and only when the gap to the next company is material (5 points of a margin or return, 0.3 of debt/equity, 20% of a P/E); a smaller gap is left unmarked, because it is not a difference worth acting on. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown unmarked. For banks, NBFCs and insurers, ROCE, margins, debt/equity and cash conversion read &ldquo;not comparable&rdquo;: debt is their raw material. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
+            <div style={{ marginTop: 16 }}><AskAI subject="compare" syms={rows.map((r) => r.sym)} title="Ask how these compare" compact /></div>
             </>
           )}
         </Async>

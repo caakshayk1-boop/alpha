@@ -193,7 +193,9 @@ const NUMBER_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven
 // "five of nine", "three out of four": a count stated in words; "by a fifth", "doubled", "half of": a fraction in words
 const NUM_W = '(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred)';
 const COUNT_WORDS = new RegExp(`\\b${NUM_W}\\s+(of|out of|in)\\s+${NUM_W}\\b`, 'i');
-const FRACTION_WORDS = /\b(by (a|one) (half|third|quarter|fifth|tenth)|(a|one|two|three) (thirds?|quarters?|fifths?|tenths?) of|doubled|tripled|halved|twice as|three times)\b/i;
+const FRACTION_WORDS = /\b(by (a|one) (half|third|quarter|fifth|tenth)|(a|one|two|three) (thirds?|quarters?|fifths?|tenths?) of|doubled|tripled|halved|twice|thrice|double|triple|three times)\b/i;
+// a date written in words ("September thirty") is a figure too
+const DATE_WORDS = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?) (first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|\w+teenth|twenty\w*|thirty\w*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
 // "buy" or "sell" as an instruction: at the start of a sentence or clause, or "says / rated buy". "Sell half at T1" in a
 // plan explanation is the plan's own wording, so a plan verb followed by half / the rest is allowed.
 const IMPERATIVE = /(^|[.;:!]\s*|\b(says|rated|rating|call is)\s+)(buy|sell|hold)\b(?!\s+(half|the rest|at t1|at t2))/i;
@@ -232,7 +234,7 @@ export function validateClaims(raw, facts) {
     const years = new Set(ids.flatMap((id) => (byId.get(id)?.label.match(/\bFY\d{2,4}\b/g) || [])));
     const bare = text.replace(/\{F\d+\}/g, ' ').replace(/\bFY\d{2,4}\b/g, (y) => (years.has(y) ? ' ' : y))
       .replace(/\b(52-week|(14|20|50|200)-day|RSI \(14\)|T[12])\b/gi, ' ');      // the names of standard windows and plan targets, not figures
-    if (/\d/.test(bare) || NUMBER_WORDS.test(bare) || COUNT_WORDS.test(bare) || FRACTION_WORDS.test(bare)) { no('states a number that is not taken from the figures'); continue; }
+    if (/\d/.test(bare) || NUMBER_WORDS.test(bare) || COUNT_WORDS.test(bare) || FRACTION_WORDS.test(bare) || DATE_WORDS.test(bare)) { no('states a number that is not taken from the figures'); continue; }
     if (IMPERATIVE.test(bare)) { no('uses advisory wording'); continue; }
     if (advisoryWording(bare)) { no('uses advisory wording'); continue; }
     const stranger = (bare.match(/\b[A-Z][A-Z&-]{2,}\b/g) || []).find((w) => !ACRONYMS.has(w) && !known.has(w))
@@ -268,7 +270,7 @@ export function validateClaims(raw, facts) {
 
 /** A reply that reads as a recommendation. The model is told not to give one; this is the backstop when a question talks it into it. */
 export function advisoryWording(answer) {
-  return /\b(strong buy|buy rating|a buy|should buy|should sell|should hold|worth buying|accumulate|price target|target price|sell it|buy it|buy the stock|sell the stock)\b/i.test(String(answer));
+  return /\b(strong buy|buy rating|a buy|should buy|should sell|should hold|worth buying|accumulate|price target|target price|sell it|buy it|buy the stock|sell the stock|(stock|share|one|name|company) to (buy|own|sell|avoid)|better (buy|stock|investment|pick|bet)|best (buy|stock|investment|pick|bet))\b/i.test(String(answer));
 }
 
 /** The address a limit is keyed on: an IPv6 user holds a whole /64, so the key is that prefix, not the full address. */

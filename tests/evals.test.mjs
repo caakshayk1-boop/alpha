@@ -4,6 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderFact, validateClaims } from '../worker/explain.js';
+import { validateEntities, validateFiling, validateThesis } from '../worker/askalpha.js';
+
+const VALIDATORS = { entities: validateEntities, thesis: validateThesis, filing: validateFiling };
 
 const golden = JSON.parse(readFileSync(new URL('../evals/ask-alpha/cases.json', import.meta.url), 'utf8'));
 
@@ -12,7 +15,7 @@ test(`ask-alpha golden set: ${golden.cases.length} cases`, () => {
   let rendered = 0, cited = 0, citedValid = 0;
   for (const k of golden.cases) {
     const facts = golden.sets[k.facts];
-    const r = validateClaims(k.model, facts);
+    const r = (VALIDATORS[k.validator] ?? validateClaims)(k.model, facts);
     const ids = new Set(facts.map((f) => f.id));
     rendered += r.claims.length;
     for (const c of r.claims) { cited += c.facts.length; citedValid += c.facts.filter((id) => ids.has(id)).length; }
