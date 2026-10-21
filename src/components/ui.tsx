@@ -22,11 +22,11 @@ export function Rv({ as, className, style, children }: { as?: ElementType; class
 
 /** Signed change with colour that is never the only signal: the sign and arrow are text too. */
 export function Chg({ v, dp = 2, suffix = '%' }: { v: number | null | undefined; dp?: number; suffix?: string }) {
-  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat" aria-label="not available">{dash}</span>;
+  if (typeof v !== 'number' || !Number.isFinite(v)) return <span className="num flat"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>;
   const c = changeParts(v, dp, suffix);
   return (
-    <span className={`num ${c.dir}`} aria-label={c.label}>
-      <span aria-hidden>{c.text}</span>
+    <span className={`num ${c.dir}`}>
+      <span aria-hidden>{c.text}</span><span className="sr">{c.label}</span>
     </span>
   );
 }
