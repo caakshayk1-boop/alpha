@@ -1312,3 +1312,9 @@ html.anim .rw-bar i { animation: railGrow var(--dur-slow) var(--ease) both; tran
 .qs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .qs label { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); } .qs .field { height: 34px; min-width: 0; width: 100%; }
 .qs-out { margin: 10px 0 0; font-size: 14px; } .qs-out b { font-size: 18px; color: var(--accent-2); }
 @media (prefers-reduced-motion: reduce) { html.anim .rw-bar i { animation: none; } }
+/* Ask: checked claims (A03, 21 Oct 2026) */
+.ask-claims { margin: 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.6; }
+.ask-claims .cite { display: inline-block; margin-left: 4px; padding: 0 6px; border: 1px solid var(--line-2); border-radius: 6px; font-size: 11.5px; color: var(--muted); vertical-align: 1px; }
+.ask-claims .cite-u { border-style: dashed; }
+.ask-claims li.unverified { color: var(--muted); }
+.ask-unknown { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--line-2); font-size: 14px; color: var(--muted); }

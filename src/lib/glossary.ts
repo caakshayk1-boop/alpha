@@ -30,3 +30,13 @@ export function searchGlossary(q: string): [string, Entry][] {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   return Object.entries(GLOSSARY).filter(([k, e]) => { const hay = `${k} ${e.name} ${e.what} ${e.how} ${e.read} ${e.caveat}`.toLowerCase(); return words.every((w) => hay.includes(w)); });
 }
+
+/** The intent router's first step (Pro §27.1): a question that only asks what a measure means is answered from this glossary,
+ *  with no model call. Returns the glossary key, or null when the question asks anything else. */
+export function definitionFor(question: string): string | null {
+  const q = question.trim().toLowerCase().replace(/[?.!]+$/, '');
+  if (!/^(what('s| is| are| does)|define|meaning of|explain( the term)?|how is .* (worked out|calculated))\b/.test(q)) return null;
+  if (/\b(this|its|the company|today|now|why|stock)\b/.test(q.replace(/^what('s| is| are| does)\s+/, '')) && !/\bmean\b/.test(q)) return null;
+  const hits = Object.entries(GLOSSARY).filter(([k, e]) => new RegExp(`(^|[^a-z])(${[k, e.name].map((x) => x.toLowerCase().replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('|')})([^a-z]|$)`).test(q));
+  return hits.length === 1 ? hits[0][0] : null;
+}

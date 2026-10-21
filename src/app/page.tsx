@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CountUp, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
+import { Flash, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
 import { SectorBars } from '@/components/SectorBars';
@@ -24,7 +24,7 @@ import { useStoredList } from '@/lib/store';
 import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
 const GAUGE_LEN = Math.PI * 52;
-const fmtInt = (v: number) => num(Math.round(v));   // the semicircle path below: radius 52
+// the semicircle path below: radius 52
 
 /** Today's read: the headline sentence, then one ink card for the Barometer and one card for the day's breadth.
  *  Every word is built from the data (lib/takeaway.ts, /api/summary, and for breadth the one "today" rule in lib/live.ts);
@@ -101,7 +101,7 @@ function TodayHero() {
           <div className="eyebrow">{day && dayStamp ? `${dayStamp} · ${num(day.counted)} stocks` : 'Breadth'}</div>
           {day && day.counted ? (
             <>
-              <div className="row"><div className="n up"><CountUp value={day.up} format={fmtInt} /><small>rose</small></div><div className="n down"><CountUp value={day.down} format={fmtInt} /><small>fell</small></div></div>
+              <div className="row"><div className="n up"><Flash value={day.up}>{num(day.up)}</Flash><small>rose</small></div><div className="n down"><Flash value={day.down}>{num(day.down)}</Flash><small>fell</small></div></div>
               <div className="split" aria-hidden><i className="u" style={{ width: `${share(day.up)}%` }} /><i className="f" style={{ width: `${share(day.flat)}%` }} /><i className="d" style={{ width: `${share(day.down)}%` }} /></div>
               <div className="split-key"><span className="up">▲ {Math.round(share(day.up))}% rose</span><span>{num(day.flat)} unchanged</span><span className="down">▼ {Math.round(share(day.down))}% fell</span></div>
               {b200 && <div className="foot">At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of {num(b200.withHistory)} with a 200-day history sat above their 200-day average.</div>}

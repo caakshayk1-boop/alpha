@@ -1,7 +1,7 @@
 // Run with: node --test tests/   (pure logic of the grounded explainer; no network)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advisoryWording, answerText, buildUserMessage, checkAnswer, factsFor, limitKey, validateQuestion } from '../worker/explain.js';
+import { advisoryWording, answerText, buildUserMessage, factsFor, limitKey, parseClaims, renderFact, validateClaims, validateQuestion } from '../worker/explain.js';
 
 const shard = { row: { name: 'Tata Consultancy Services Ltd.', sector: 'Technology', price: 2125, last_date: '2026-10-12', roce: 62.17, de: 0.09, pe: null, rev_cagr: 5.8, q: 96, piotroski: 7 }, years: [{ fy: 'FY26', rev_cr: 250000.4, pat_cr: 48000 }] };
 
@@ -29,25 +29,62 @@ test('validateQuestion: bounds and type', () => {
   assert.deepEqual(validateQuestion('  what is ROCE  '), { ok: true, value: 'what is ROCE' });
 });
 
-test('checkAnswer: figures that match a fact pass; an invented figure is flagged', () => {
-  const f = factsFor(shard);
-  assert.deepEqual(checkAnswer('ROCE is 62.2% [F9] and debt/equity is 0.09 [F10], with 3 of 9 checks passing.', f), []);
-  assert.deepEqual(checkAnswer('The company grew 5.8% a year [F12].', f), []);
-  assert.deepEqual(checkAnswer('Revenue was 250,000 crore [F20].', f), []);
-  assert.deepEqual(checkAnswer('Its ROCE is 81.4% and it will reach 3400 rupees.', f).sort(), ['3400', '81.4']);
+// The brief's three repros (A03): with ROE = 20% and growth = -25%, each of these must be withheld, not shown with a warning.
+const A03 = [{ id: 'F1', label: 'ROE', value: '20', unit: '%' }, { id: 'F2', label: 'Revenue CAGR', value: '-25', unit: '% a year' }, { id: 'F3', label: 'Company', value: 'Acme Ltd', unit: '' }, { id: 'F4', label: 'Symbol', value: 'ACME', unit: '' }];
+test('validateClaims: the three A03 repros are withheld', () => {
+  for (const text of ['ROE is 9% [F1].', 'Growth is 25% [F2].', 'Revenue grew 20% [F1].']) {
+    const r = validateClaims({ claims: [{ text, facts: ['F1'] }] }, A03);
+    assert.equal(r.claims.length, 0, text);
+    assert.equal(r.withheld.length, 1, text);
+  }
+});
+test('validateClaims: numbers are rendered from the facts, never from the model', () => {
+  const r = validateClaims({ claims: [{ text: 'ROE is {F1}.', facts: ['F1'] }, { text: 'Revenue fell {F2} over the period.', facts: ['F2'] }] }, A03);
+  assert.deepEqual(r.claims.map((c) => c.text), ['ROE is 20%.', 'Revenue fell 25% a year over the period.']);
+  assert.ok(r.claims.every((c) => c.status === 'cited'));
+});
+test('validateClaims: an unknown fact id, a metric swap and a sign reversal are withheld', () => {
+  const r = validateClaims({ claims: [
+    { text: 'Debt is low {F9}.', facts: ['F9'] },
+    { text: 'Revenue grew {F1}.', facts: ['F1'] },
+    { text: 'Revenue grew {F2} a year.', facts: ['F2'] },
+    { text: 'It looks fine.', facts: ['F7'] },
+  ] }, A03);
+  assert.equal(r.claims.length, 0);
+  assert.match(r.withheld[0].reason, /F9/);
+  assert.match(r.withheld[1].reason, /pairs/);
+  assert.match(r.withheld[2].reason, /direction/);
+  assert.match(r.withheld[3].reason, /F7/);
+});
+test('validateClaims: number words, another company and advisory wording are withheld; plain prose is marked unverified', () => {
+  const r = validateClaims({ claims: [
+    { text: 'Margins are about twenty percent.', facts: [] },
+    { text: 'ROE is higher than at INFY.', facts: [] },
+    { text: 'You should buy it.', facts: [] },
+    { text: 'ACME earns a high return on equity.', facts: [] },
+  ], unknowns: ['Promoter pledging', 'The 2030 outlook'] }, A03);
+  assert.equal(r.withheld.length, 3);
+  assert.equal(r.claims.length, 1);
+  assert.equal(r.claims[0].status, 'unverified');
+  assert.deepEqual(r.unknowns, ['Promoter pledging'], 'an unknown that carries a number is dropped');
+});
+test('parseClaims: the JSON block only; anything else is no answer', () => {
+  assert.deepEqual(parseClaims('Here you go: {"claims":[{"text":"x","facts":[]}]} thanks'), { claims: [{ text: 'x', facts: [] }] });
+  assert.equal(parseClaims('ROE is 20%.'), null);
+  assert.equal(parseClaims('{"answer":"x"}'), null);
+  assert.equal(parseClaims(null), null);
+});
+test('renderFact: units are written the way the site writes them, with a true minus', () => {
+  assert.equal(renderFact({ value: '2125', unit: 'INR' }), '\u20b92125');
+  assert.equal(renderFact({ value: '-0.4', unit: '%' }), '\u22120.4%');
+  assert.equal(renderFact({ value: '24.6', unit: 'x' }), '24.6\u00d7');
+  assert.equal(renderFact({ value: '7 of 9', unit: '' }), '7 of 9');
 });
 
 test('answerText: takes text blocks only, trims, and refuses an empty reply', () => {
   assert.equal(answerText({ content: [{ type: 'text', text: ' Hello ' }, { type: 'tool_use' }] }), 'Hello');
   assert.equal(answerText({ content: [] }), null);
   assert.equal(answerText(null), null);
-});
-
-test('checkAnswer: a number is not accepted just because it is a fact times 100', () => {
-  const f = [{ id: 'F1', label: 'Distance from 52-week high', value: '-34', unit: '%' }];
-  assert.deepEqual(checkAnswer('It could reach 3400.', f), ['3400']);
-  assert.deepEqual(checkAnswer('It is 34% below the high [F1].', f), []);
-  assert.deepEqual(checkAnswer('That is a fraction of 0.34 [F1].', f), []);
 });
 
 test('limitKey: IPv4 as is; IPv6 collapses to its /64 so rotating the low bits does not give fresh buckets', () => {
