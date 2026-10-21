@@ -89,18 +89,30 @@ def trading_verdict(res: dict) -> tuple[str, str]:
     return "LOSES AFTER COSTS", f"Holdout trades averaged {r:+.2f}R after costs{tail}."
 
 
-def alert_verdict(rank: str, trade: str) -> tuple[bool, str]:
-    """A phone is only buzzed when BOTH hold: it ranks better than chance AND its holdout trades made money after costs."""
+ALERT_MIN_T = 2.0   # owner's rule, 21 Oct 2026: a phone is buzzed only by an engine whose holdout trades are significant
+
+
+def alert_verdict(rank: str, trade: str, holdout_t: float | None = None) -> tuple[bool, str]:
+    """A phone is only buzzed when ALL hold: it ranks better than chance, its holdout trades made money after costs, and that
+    holdout result is significant (month-clustered t >= ALERT_MIN_T)."""
     ok_rank = rank in ("EDGE SHOWN", "LEANING POSITIVE")
     ok_trade = trade in ("PROFITABLE AFTER COSTS", "POSITIVE, NOT SIGNIFICANT")
-    if ok_rank and ok_trade:
-        return True, "Alerts on: it ranks better than chance and its holdout trades made money after costs."
+    ok_t = isinstance(holdout_t, (int, float)) and holdout_t >= ALERT_MIN_T
+    if ok_rank and ok_trade and ok_t:
+        return True, f"Alerts on: it ranks better than chance and its holdout trades made money after costs (month-clustered t {holdout_t:+.2f})."
     why = []
     if not ok_rank:
         why.append("it has not shown ranking skill")
     if not ok_trade:
         why.append("its holdout trades did not make money after costs")
-    return False, "Alerts off: " + " and ".join(why) + ". Its signals are shown on the site, never pushed."
+    if not ok_t:
+        why.append(f"its holdout result is not significant (month-clustered t {holdout_t:+.2f}, needs {ALERT_MIN_T:+.1f})" if isinstance(holdout_t, (int, float)) else "its holdout significance is not known")
+    return False, "Alerts off: " + "; ".join(why) + ". Its signals are shown on the site, never pushed."
+
+
+def alert_of(res: dict) -> tuple[bool, str]:
+    """The alert verdict from one engine's stored results."""
+    return alert_verdict(res["ranking_status"], res["trading_status"], (res.get("clustered", {}).get("holdout") or {}).get("t_clustered"))
 
 
 if __name__ == "__main__":
@@ -146,7 +158,7 @@ if __name__ == "__main__":
                            "p90_days_held": float(np.percentile([t.bars for t in allt], 90)) if allt else None}
         status, why = ranking_verdict(res)
         trading, trading_why = trading_verdict(res)
-        alertable, alert_why = alert_verdict(status, trading)
+        alertable, alert_why = alert_verdict(status, trading, res["clustered"]["holdout"].get("t_clustered"))
         res["status"], res["status_why"] = status, why                 # kept as the RANKING verdict: older readers still find it here
         res["ranking_status"], res["ranking_why"] = status, why
         res["trading_status"], res["trading_why"] = trading, trading_why

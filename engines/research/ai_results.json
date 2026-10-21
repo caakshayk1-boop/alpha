@@ -609,8 +609,8 @@
    "ranking_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
    "trading_status": "POSITIVE, NOT SIGNIFICANT",
    "trading_why": "Holdout trades averaged +0.17R after costs (month-clustered t +1.42): positive, but too noisy to rule out luck. Random picks with the same exits made -0.06R.",
-   "alertable": true,
-   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
+   "alertable": false,
+   "alert_why": "Alerts off: its holdout result is not significant (month-clustered t +1.42, needs +2.0). Its signals are shown on the site, never pushed."
   },
   "barrier": {
    "metrics": {
@@ -1207,7 +1207,7 @@
    "trading_status": "BREAK-EVEN AFTER COSTS",
    "trading_why": "Holdout trades averaged -0.04R after costs (month-clustered t -1.00): indistinguishable from zero. It beat random picks by +0.05R, but that is not a profit.",
    "alertable": false,
-   "alert_why": "Alerts off: its holdout trades did not make money after costs. Its signals are shown on the site, never pushed."
+   "alert_why": "Alerts off: its holdout trades did not make money after costs; its holdout result is not significant (month-clustered t -1.00, needs +2.0). Its signals are shown on the site, never pushed."
   },
   "relative": {
    "metrics": {
@@ -1803,8 +1803,8 @@
    "ranking_why": "Its scores ranked stocks better than chance in both periods, but the skill is not statistically clear among the 300 most-traded stocks.",
    "trading_status": "POSITIVE, NOT SIGNIFICANT",
    "trading_why": "Holdout trades averaged +0.18R after costs (month-clustered t +0.91): positive, but too noisy to rule out luck. Random picks with the same exits made -0.06R.",
-   "alertable": true,
-   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
+   "alertable": false,
+   "alert_why": "Alerts off: its holdout result is not significant (month-clustered t +0.91, needs +2.0). Its signals are shown on the site, never pushed."
   },
   "snapback": {
    "metrics": {
@@ -2401,7 +2401,7 @@
    "trading_status": "BREAK-EVEN AFTER COSTS",
    "trading_why": "Holdout trades averaged +0.02R after costs (month-clustered t -0.05): indistinguishable from zero. It beat random picks by +0.08R, but that is not a profit.",
    "alertable": false,
-   "alert_why": "Alerts off: its holdout trades did not make money after costs. Its signals are shown on the site, never pushed."
+   "alert_why": "Alerts off: its holdout trades did not make money after costs; its holdout result is not significant (month-clustered t -0.05, needs +2.0). Its signals are shown on the site, never pushed."
   },
   "compounder": {
    "metrics": {
@@ -2997,8 +2997,8 @@
    "ranking_why": "Its scores ranked stocks better than chance in both periods, but the holdout result is too short or noisy to rule out luck and the skill is not statistically clear among the 300 most-traded stocks.",
    "trading_status": "POSITIVE, NOT SIGNIFICANT",
    "trading_why": "Holdout trades averaged +0.25R after costs (month-clustered t +1.41): positive, but too noisy to rule out luck. Random picks with the same exits made -0.11R.",
-   "alertable": true,
-   "alert_why": "Alerts on: it ranks better than chance and its holdout trades made money after costs."
+   "alertable": false,
+   "alert_why": "Alerts off: its holdout result is not significant (month-clustered t +1.41, needs +2.0). Its signals are shown on the site, never pushed."
   }
  }
 }

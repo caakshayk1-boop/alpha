@@ -385,7 +385,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div><h2 className="fh">Desk</h2><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
           </div>
           <p className="footer-legal">
-            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. The author may hold positions in companies shown here; rankings and signals come from the published rules and models on this site, applied the same way to every company.
+            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules and models on this site, applied the same way to every company.
           </p>
         </div>
       </footer>

@@ -64,4 +64,6 @@ Each item has a pass/fail check.
       quote, weekly movers, wire, IPO/read cards), Brief (quotes, sectors, today's movers, calendar, IPO, engines, wire), Engines (paper book,
       per-card paper block, exit-plan tab, live-record panel, limits panel).
 - [x] 27. Spacing one step tighter site-wide (tokens, table cells, page gutters).
-- [ ] 21, 22, 10b still open (need the owner / a build-time close).
+- [x] 21. (owner, 21 Oct) Alerts only from engines with holdout month-clustered t >= 2: all five off today (best +1.42).
+- [x] 10b. (owner, 21 Oct) Footer: the author holds no position in any company shown here.
+- [ ] 22 still open (needs a build-time close).

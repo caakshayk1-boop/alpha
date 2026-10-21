@@ -112,7 +112,9 @@ for key, e in res.items():
     check(f"{key}: exit categories sum to the trade count", sum(ex.values()) == n, (sum(ex.values()), n))
     check(f"{key}: n matches the metrics sample", n == e["trades"]["all"]["n"], (n, e["trades"]["all"]["n"]))
     check(f"{key}: 'all targets' equals 'reached T3'", abs(ex["all_targets"] / n * 100 - e["trades"]["all"]["hit_t3"]) <= 0.1, (ex["all_targets"] / n * 100, e["trades"]["all"]["hit_t3"]))
-    check(f"{key}: alertable matches alert_verdict", e["alertable"] == FIN.alert_verdict(e["ranking_status"], e["trading_status"])[0])
+    check(f"{key}: alertable matches alert_verdict", e["alertable"] == FIN.alert_of(e)[0])
+check("alerts need holdout month-clustered t >= 2", FIN.alert_verdict("EDGE SHOWN", "PROFITABLE AFTER COSTS", 1.99)[0] is False and FIN.alert_verdict("EDGE SHOWN", "PROFITABLE AFTER COSTS", 2.0)[0] is True)
+check("alerts stay off when the holdout t is unknown", FIN.alert_verdict("EDGE SHOWN", "PROFITABLE AFTER COSTS", None)[0] is False)
 
 # ── conviction tier (docs/agents/signals.md) ─────────────────────────────────
 import conviction as CV

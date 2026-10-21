@@ -21,7 +21,7 @@ import labels as L
 import registry
 import walkfwd as W
 from ai_engines import ENGINES
-from ai_finalize import LABELS
+from ai_finalize import LABELS, alert_of
 from common import Ctx
 
 EXIT_PLAN = [
@@ -180,7 +180,8 @@ def build(bars, uni, bench, indices, results, reg, log=print, exchange=None) -> 
             "status": r["ranking_status"], "status_why": r["ranking_why"],
             "ranking_status": r["ranking_status"], "ranking_why": r["ranking_why"],
             "trading_status": r["trading_status"], "trading_why": r["trading_why"],
-            "alertable": bool(r["alertable"]), "alert_why": r["alert_why"],
+            # recomputed every run, so a change to the rule applies without re-running the research
+            **dict(zip(("alertable", "alert_why"), alert_of(r))),
             "signal_count": len(act),
             "plan": {"stop_atr": eng.stop_atr, "targets_r": list(eng.targets_r), "max_hold": eng.max_hold, "picks_per_day": eng.picks_per_day, "cooldown": eng.cooldown},
             **{k: r[k] for k in ("metrics", "robustness", "trades", "baseline", "clustered", "equity_curve", "baseline_curve", "exits", "exits_n", "timeline")},
