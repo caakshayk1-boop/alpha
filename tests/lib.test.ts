@@ -799,3 +799,59 @@ test('A12: every endpoint has a lifetime, live prices the shortest', () => {
   assert.equal(ttlFor('/data/screen.json'), 600_000);
   assert.ok(['/signals.json', '/rotation.json', '/universe.json'].every((u) => ttlFor(u) === 600_000));
 });
+
+import { reviewDue } from '../src/lib/card.ts';
+test('§22.3: a card is due for review only on its own triggers or an observed change, never on price alone', () => {
+  const base = buildCard({ question: 'q', companies: [{ sym: 'TCS', name: 'TCS', price: 100, priceAsOf: '2026-10-01' }], nextResults: { TCS: '2026-10-15' } }, new Date('2026-10-02T00:00:00Z'));
+  assert.deepEqual(reviewDue(base, '2026-10-21', { TCS: { price: 120, asOf: '2026-10-20', nextResults: '2026-10-15', engines: [] } }), [], 'a price move alone is not a review trigger');
+  const dated = { ...base, decision: { thesis: 'x', against: null, unknowns: null, reviewOn: '2026-10-20', reviewWhen: null } };
+  assert.match(reviewDue(dated, '2026-10-21')[0], /review date/);
+  assert.deepEqual(reviewDue(dated, '2026-10-19'), []);
+  const results = { ...base, decision: { thesis: null, against: null, unknowns: null, reviewOn: null, reviewWhen: 'results' as const } };
+  assert.match(reviewDue(results, '2026-10-21').join(), /results date 2026-10-15 has passed/);
+  assert.deepEqual(reviewDue(results, '2026-10-10'), []);
+  const moved = reviewDue(base, '2026-10-21', { TCS: { price: 100, asOf: '2026-10-20', nextResults: '2026-11-02', engines: [] } });
+  assert.match(moved.join(), /changed/);
+});
+test('§22.3: decision fields survive export and import; a version 1 card still reads', () => {
+  const c = buildCard({ question: 'q', companies: [{ sym: 'TCS', name: null, price: null, priceAsOf: null }], decision: { thesis: 'Cash-rich', against: 'Margins fall below 20%', unknowns: 'Deal pipeline', reviewOn: '2026-12-01', reviewWhen: 'results' } });
+  const back = normaliseCard(JSON.parse(serializeCard(c)));
+  assert.ok(back.ok && back.value.decision?.against === 'Margins fall below 20%' && back.value.decision.reviewWhen === 'results');
+  const v1 = normaliseCard({ schema: 'alpha.research-card', version: 1, question: 'old', companies: [{ sym: 'TCS' }] });
+  assert.ok(v1.ok && v1.value.decision === null);
+});
+
+import { AREAS, PAGES, SHORTCUTS, areaFor, pagesIn } from '../src/lib/routes.ts';
+test('§17: the route manifest is complete, every page has one area, and shortcuts are unique', () => {
+  const hrefs = PAGES.map((p) => p.href);
+  assert.equal(new Set(hrefs).size, hrefs.length);
+  for (const need of ['/', '/brief/', '/markets/', '/screen/', '/map/', '/rotation/', '/engines/', '/trades/', '/reads/', '/ipo/', '/funds/', '/tools/', '/news/', '/compare/', '/calendar/', '/watchlist/', '/journal/', '/about/', '/research/', '/desk/', '/privacy/']) assert.ok(hrefs.includes(need), need);
+  for (const a of AREAS) assert.ok(pagesIn(a.id).some((p) => p.href === a.home), `${a.label} lists its own home`);
+  assert.equal(new Set(SHORTCUTS.map((s) => s.keys)).size, SHORTCUTS.length);
+  assert.equal(areaFor('/company/TCS/'), 'research');
+  assert.equal(areaFor('/screen/?q=x'), 'discover');
+  assert.equal(areaFor('/'), 'today');
+});
+
+import { csvCell } from '../src/lib/csv.ts';
+test('§10: CSV cells cannot run as spreadsheet formulas', () => {
+  assert.equal(csvCell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`);
+  assert.equal(csvCell('+91 Ltd'), `"'+91 Ltd"`);
+  assert.equal(csvCell('-x'), `"'-x"`);
+  assert.equal(csvCell('@SUM(A1)'), `"'@SUM(A1)"`);
+  assert.equal(csvCell('Tata "Motors"'), '"Tata ""Motors"""');
+  assert.equal(csvCell(-3.2), '-3.2', 'a negative number is a number, not a formula');
+  assert.equal(csvCell(NaN), '');
+  assert.equal(csvCell(null), '');
+});
+
+import { readFileSync as rf, readdirSync as rd, statSync as st } from 'node:fs';
+test('§11: the Privacy page lists every key this site writes to browser storage', () => {
+  const walk = (d: string): string[] => rd(d).flatMap((f) => (st(`${d}/${f}`).isDirectory() ? walk(`${d}/${f}`) : [`${d}/${f}`]));
+  const src = walk('src').filter((f) => /\.tsx?$/.test(f)).map((f) => rf(f, 'utf8')).join('\n');
+  const events = new Set(['alpha-store', 'alpha-refreshed', 'alpha-refresh-failed', 'alpha-prefs', 'alpha-cards-changed']);
+  const keys = new Set([...src.matchAll(/['`](alpha-[a-z0-9-]+)['`]/g)].map((m) => m[1]).filter((k) => !events.has(k)));
+  const page = rf('src/app/privacy/page.tsx', 'utf8');
+  const missing = [...keys].filter((k) => !new RegExp(`\\b${k}\\b(?!-)`).test(page));
+  assert.deepEqual(missing, []);
+});

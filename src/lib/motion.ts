@@ -6,8 +6,10 @@ import { Flip } from 'gsap/Flip';
 
 let ready = false;
 
+/** The device setting, or the reader's own choice on this site (Settings → Motion: reduced). Read at call time, so a change
+ *  mid-session takes effect on the next animation. */
 export const prefersReduced = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  typeof window !== 'undefined' && (document.documentElement.dataset.motion === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 /**
  * Motion is an enhancement: content is visible by default, and `html.anim` (which hides

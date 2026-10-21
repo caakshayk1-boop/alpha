@@ -196,7 +196,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
           <div className="eyebrow"><Link href="/screen/" style={{ color: 'var(--accent-2)', textDecoration: 'underline', textUnderlineOffset: 3 }}>← Screen</Link> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
           <h1 className="disp">{r.name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className="tag acc">{r.sym}</span>
+            <span className="tag acc" style={{ viewTransitionName: 'ticker' }}>{r.sym}</span>
             {r.tier && <span className="tag">{r.tier} cap</span>}
             {r.ahimsa && <span className="tag up">Ahimsa 500</span>}
             {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? 'up' : 'warn'}`}>{r.vet.s === 'cleared' ? `Vetted ${r.vet.p}/${r.vet.n}` : `Not vetted · ${r.vet.w}`}</span>}

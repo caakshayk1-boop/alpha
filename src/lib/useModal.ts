@@ -13,6 +13,8 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 const stack: symbol[] = [];
 let locks = 0;
 let prevOverflow = '';
+/** True while any dialog using this contract is open (global shortcuts stand down). */
+export const anyModalOpen = () => stack.length > 0;
 
 export function useModal(panel: RefObject<HTMLElement | null>, open: boolean, onClose: () => void, initial = '[data-close]') {
   const close = useRef(onClose);

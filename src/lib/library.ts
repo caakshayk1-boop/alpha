@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { normaliseCard, type ResearchCard } from './card';
+import { normaliseCard, type CardDecision, type ResearchCard } from './card';
 
 const KEY = 'alpha-cards-v1';
 const EVT = 'alpha-cards-changed';
@@ -42,5 +42,6 @@ export function useCards() {
   const addMany = useCallback((cards: ResearchCard[]) => { const cur = read(); const ids = new Set(cards.map((c) => c.id)); return write([...cards, ...cur.cards.filter((c) => !ids.has(c.id))]); }, []);
   const remove = useCallback((id: string) => { write(read().cards.filter((c) => c.id !== id)); }, []);
   const setNote = useCallback((id: string, note: string) => { write(read().cards.map((c) => (c.id === id ? { ...c, note: note.trim() ? note.slice(0, 4000) : null } : c))); }, []);
-  return { ...state, add, addMany, remove, setNote };
+  const setDecision = useCallback((id: string, d: CardDecision | null) => write(read().cards.map((c) => (c.id === id ? { ...c, decision: d } : c))), []);
+  return { ...state, add, addMany, remove, setNote, setDecision };
 }

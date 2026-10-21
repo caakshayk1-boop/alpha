@@ -1,202 +1,211 @@
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { FreshnessBanner } from '@/components/DataStamp';
 import { MarketClock } from '@/components/MarketClock';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { feed } from '@/lib/data';
 import { fadeTheme, initMotion, initPointerLight, prefersReduced } from '@/lib/motion';
+import { PREFS, readPref, setPref, type PrefName } from '@/lib/prefs';
+import { AREAS, PAGES, SHORTCUTS, areaFor, isActive, pageOf, pagesIn } from '@/lib/routes';
+import { SCREEN_DEFAULT, toQuery } from '@/lib/screenUrl';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { anyModalOpen, useModal } from '@/lib/useModal';
+import { navigate } from '@/lib/nav';
 
-/** `desc` is the one line a menu shows under each page: what that page answers, never what to do with it. */
-export const PAGES = [
-  { href: '/', label: 'Today', desc: 'The takeaway, breadth and the four jobs for this session', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
-  { href: '/brief/', label: 'Brief', desc: 'The day’s market read, section by section', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5' },
-  { href: '/markets/', label: 'Markets', desc: 'Indices, sectors, commodities, currencies and rates', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
-  { href: '/screen/', label: 'Screen', desc: 'Nearly 1,000 companies filtered on quality, growth and value', icon: 'M4 6h16M7 12h10M10 18h4' },
-  { href: '/map/', label: 'Map', desc: 'Every stock as a tile, coloured by the measure you pick', icon: 'M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z' },
-  { href: '/rotation/', label: 'Rotation', desc: 'Which sector groups are gaining or losing relative strength', icon: 'M20 12a8 8 0 11-3-6.2M20 4v5h-5' },
-  { href: '/engines/', label: 'Signals', desc: 'One rule book that trades only when the market gate is on', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
-  { href: '/trades/', label: 'Trades', desc: 'Open trades marked live, the day’s P&L and the next session’s decisions', icon: 'M3 17l6-6 4 4 8-8M15 7h6v6' },
-  { href: '/reads/', label: 'Reads', desc: 'Seven companies from one sector, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
-  { href: '/ipo/', label: 'IPO', desc: 'Books open now, issues ahead and recent listings', icon: 'M12 3v18M5 10l7-7 7 7' },
-  { href: '/funds/', label: 'Funds', desc: 'Direct-plan funds by category: return against risk', icon: 'M12 3a9 9 0 109 9h-9zM15 3.5A9 9 0 0120.5 9H15z' },
-  { href: '/tools/', label: 'Tools', desc: 'Size a position, test a plan’s arithmetic, X-ray holdings', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
-  { href: '/news/', label: 'News', desc: 'Stories tied to the companies they name', icon: 'M4 5h13v14H6a2 2 0 01-2-2zM17 9h3v8a2 2 0 01-2 2M8 9h5M8 13h5' },
-  { href: '/compare/', label: 'Compare', desc: 'Two to four companies, every number in one table', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
-  { href: '/calendar/', label: 'Calendar', desc: 'Results dates on file, largest companies first', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
-  { href: '/watchlist/', label: 'Watchlist', desc: 'Your names, kept privately in this browser', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
-  { href: '/journal/', label: 'Journal', desc: 'Why you decided, and where the price went after', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
-  { href: '/about/', label: 'Method', desc: 'Where each number comes from and how fresh it is', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
-] as const;
+export { PAGES } from '@/lib/routes';
 
-/** The five jobs people come to do. Every page stays one step away; the header shows five groups instead of seventeen links. */
-export const GROUPS: { label: string; hint: string; hrefs: string[] }[] = [
-  { label: 'Today', hint: 'What is happening now', hrefs: ['/', '/brief/', '/markets/'] },
-  { label: 'Discover', hint: 'Find companies and patterns', hrefs: ['/screen/', '/map/', '/rotation/', '/ipo/', '/funds/', '/news/', '/reads/'] },
-  { label: 'Analyze', hint: 'Inspect and compare evidence', hrefs: ['/trades/', '/engines/', '/compare/', '/tools/'] },
-  { label: 'Track', hint: 'Keep a few names in view', hrefs: ['/watchlist/', '/journal/', '/calendar/'] },
-  { label: 'Methods', hint: 'How every number is made', hrefs: ['/about/'] },
-];
-const pageOf = (h: string) => PAGES.find((p) => p.href === h)!;
-
-const Icon = ({ d }: { d: string }) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+const Icon = ({ d, size = 20 }: { d: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d={d} />
   </svg>
 );
 
-const norm = (p: string) => (p.endsWith('/') ? p : `${p}/`);
-const isActive = (path: string, href: string) => (href === '/' ? path === '/' : norm(path).startsWith(href));
+const typing = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLElement && t.isContentEditable);
+const readJson = <T,>(k: string, d: T): T => { try { const v = JSON.parse(localStorage.getItem(k) ?? 'null'); return v ?? d; } catch { return d; } };
 
-type Hit = { kind: 'page' | 'company'; label: string; sub: string; href: string };
+// ── The command palette (Pro §28 P1) ───────────────────────────────────────────────────────────────────────────────
+type Hit = { kind: 'company' | 'page' | 'screen' | 'action'; label: string; sub: string; href?: string; run?: () => void; id: string };
+const KIND: Record<Hit['kind'], string> = { company: 'Companies', page: 'Pages', screen: 'Saved screens', action: 'Actions' };
+interface SavedScreen { name: string; conds: { f: string; op: '>=' | '<='; v: string }[]; flags: string[]; sector: string; tier: string; nl?: { text: string; off: string[] } }
 
-function Palette({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Palette({ open, onClose, onShortcuts, onSettings }: { open: boolean; onClose: () => void; onShortcuts: () => void; onSettings: () => void }) {
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
   const [i, setI] = useState(0);
   const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useModal(panel, open, onClose, 'input');
+  const [recent, setRecent] = useState<Hit[]>([]);
+  const [saved, setSaved] = useState<SavedScreen[]>([]);
 
   useEffect(() => {
     if (!open) return;
-    setQ('');
-    setI(0);
-    window.setTimeout(() => input.current?.focus(), 10);
+    setQ(''); setI(0);
+    setRecent(readJson<Hit[]>('alpha-recent', []).filter((h) => h.href).slice(0, 6));
+    setSaved(readJson<SavedScreen[]>('alpha-screen-saved', []).filter((s) => s && typeof s.name === 'string'));
     feed('screen').then((s) => setRows(s.rows), () => undefined);
   }, [open]);
 
   const hits = useMemo<Hit[]>(() => {
     const term = q.trim().toLowerCase();
-    const pages: Hit[] = PAGES.filter((p) => !term || p.label.toLowerCase().includes(term)).map((p) => ({ kind: 'page', label: p.label, sub: 'Go to', href: p.href }));
-    if (!term) return pages;
+    const flip = () => { const next = readPref('theme') === 'dark' ? 'light' : 'dark'; fadeTheme(); setPref('theme', next); };
+    const actions: Hit[] = [
+      { kind: 'action', id: 'a-theme', label: 'Switch light / dark theme', sub: 'Settings', run: flip },
+      { kind: 'action', id: 'a-settings', label: 'Open settings', sub: 'Theme, accent, motion, market colours, density', run: onSettings },
+      { kind: 'action', id: 'a-keys', label: 'Keyboard shortcuts', sub: 'Press ? anywhere', run: onShortcuts },
+    ];
+    const bySym = new Map(rows.map((r) => [r.sym.toLowerCase(), r]));
+    // "compare tcs infy" and "watch tcs": typed actions, resolved against the real company list
+    const words = term.split(/[\s,]+/).filter(Boolean);
+    if (words[0] === 'compare' && words.length >= 3) {
+      const syms = words.slice(1).map((w) => bySym.get(w)?.sym).filter((x): x is string => !!x).slice(0, 4);
+      if (syms.length >= 2) actions.unshift({ kind: 'action', id: `a-cmp-${syms.join()}`, label: `Compare ${syms.join(', ')}`, sub: 'Open in Compare', href: `/compare/?s=${syms.map(encodeURIComponent).join(',')}` });
+    }
+    const pages: Hit[] = PAGES.filter((p) => !term || p.label.toLowerCase().includes(term) || p.desc.toLowerCase().includes(term)).map((p) => ({ kind: 'page', id: `p-${p.href}`, label: p.label, sub: p.desc, href: p.href }));
+    const screens: Hit[] = saved.filter((s) => !term || s.name.toLowerCase().includes(term)).map((s) => ({ kind: 'screen', id: `s-${s.name}`, label: s.name, sub: 'Saved screen', href: `/screen/${toQuery({ ...SCREEN_DEFAULT, conds: s.conds ?? [], flags: s.flags ?? [], sector: s.sector ?? '', tier: s.tier ?? '', ask: s.nl?.text ?? '', off: s.nl?.off ?? [] })}` }));
+    const acts = actions.filter((a) => !term || a.label.toLowerCase().includes(term) || a.id.startsWith('a-cmp'));
+    if (!term) return [...recent.map((h) => ({ ...h, id: `r-${h.id}`, sub: `Recent · ${h.sub}` })), ...pages.slice(0, 8), ...screens.slice(0, 4), ...acts];
     const scored: [number, Row][] = [];
     for (const r of rows) {
-      const s = r.sym.toLowerCase();
-      const n = r.name.toLowerCase();
-      const sc = s === term ? 0 : s.startsWith(term) ? 1 : n.startsWith(term) ? 2 : n.includes(term) ? 3 : s.includes(term) ? 4 : 9;
+      const s = r.sym.toLowerCase(), n = r.name.toLowerCase();
+      const sc = s === term ? 0 : s.startsWith(term) ? 1 : n.startsWith(term) ? 2 : n.split(/\s+/).some((w) => w.startsWith(term)) ? 3 : n.includes(term) ? 4 : s.includes(term) ? 5 : 9;
       if (sc < 9) scored.push([sc, r]);
     }
-    scored.sort((a, b) => a[0] - b[0] || a[1].sym.length - b[1].sym.length);
-    const cos: Hit[] = scored.slice(0, 10).map(([, r]) => ({ kind: 'company', label: r.sym, sub: `${r.name} · ${r.sector}`, href: companyHref(r.sym) }));
-    return [...cos, ...pages];
-  }, [q, rows]);
+    scored.sort((a, b) => a[0] - b[0] || (b[1].mcap_cr ?? 0) - (a[1].mcap_cr ?? 0));
+    const cos: Hit[] = scored.slice(0, 8).map(([, r]) => ({ kind: 'company', id: `c-${r.sym}`, label: r.sym, sub: `${r.name} · ${r.sector}`, href: companyHref(r.sym) }));
+    return [...acts.filter((a) => a.id.startsWith('a-cmp')), ...cos, ...pages, ...screens, ...acts.filter((a) => !a.id.startsWith('a-cmp'))];
+  }, [q, rows, recent, saved, onSettings, onShortcuts]);
 
-  const go = useCallback(
-    (h: Hit | undefined) => {
-      if (!h) return;
-      onClose();
-      router.push(h.href);
-    },
-    [onClose, router],
-  );
+  const go = useCallback((h: Hit | undefined) => {
+    if (!h) return;
+    onClose();
+    if (h.run) { window.setTimeout(h.run, 0); return; }
+    if (!h.href) return;
+    try { const prev = readJson<Hit[]>('alpha-recent', []); localStorage.setItem('alpha-recent', JSON.stringify([{ ...h, id: h.id.replace(/^r-/, ''), sub: h.sub.replace(/^Recent · /, '') }, ...prev.filter((x) => x.href !== h.href)].slice(0, 8))); } catch { /* not kept */ }
+    navigate(router, h.href);
+  }, [onClose, router]);
 
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowDown') { e.preventDefault(); setI((n) => Math.min(hits.length - 1, n + 1)); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
-      else if (e.key === 'Enter') go(hits[i]);
-    };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [open, hits, i, go, onClose]);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setI((n) => Math.min(hits.length - 1, n + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
+    else if (e.key === 'Home') { e.preventDefault(); setI(0); }
+    else if (e.key === 'End') { e.preventDefault(); setI(hits.length - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); go(hits[i]); }
+  };
+  useEffect(() => { document.getElementById(`cmdk-${i}`)?.scrollIntoView({ block: 'nearest' }); }, [i]);
 
-  if (!open) return null;
-  return (
+  if (!open || typeof document === 'undefined') return null;
+  let last = '';
+  return createPortal(
     <div className="cmdk-back" onMouseDown={onClose} role="presentation">
-      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search" onMouseDown={(e) => e.stopPropagation()}>
-        <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setI(0); }} placeholder="Search companies or jump to a page" aria-label="Search" spellCheck={false} />
-        <ul role="listbox">
-          {hits.length === 0 && <li className="grp">{rows.length ? 'No match' : 'Loading companies…'}</li>}
-          {hits.map((h, n) => (
-            <li key={`${h.kind}-${h.href}`} role="option" aria-selected={n === i}>
-              <button onMouseEnter={() => setI(n)} onClick={() => go(h)}>
+      <div ref={panel} className="cmdk" role="dialog" aria-modal="true" aria-label="Search and commands" onMouseDown={(e) => e.stopPropagation()}>
+        <input value={q} onChange={(e) => { setQ(e.target.value); setI(0); }} onKeyDown={onKey} placeholder="Company, page, saved screen, or “compare tcs infy”" spellCheck={false}
+          role="combobox" aria-expanded aria-controls="cmdk-list" aria-autocomplete="list" aria-activedescendant={hits[i] ? `cmdk-${i}` : undefined} aria-label="Search companies, pages and commands" />
+        <ul id="cmdk-list" role="listbox" aria-label="Results">
+          {hits.length === 0 && <li className="grp" role="presentation">{rows.length || !q.trim() ? 'No match. Try a ticker or a company name.' : 'Loading companies…'}</li>}
+          {hits.map((h, n) => {
+            const grp = h.id.startsWith('r-') ? 'Recent' : KIND[h.kind];
+            const head = grp !== last ? <li key={`g-${grp}`} className="grp" role="presentation">{grp}</li> : null;
+            last = grp;
+            return [head, (
+              <li key={h.id} id={`cmdk-${n}`} role="option" aria-selected={n === i} onMouseEnter={() => setI(n)} onMouseDown={(e) => { e.preventDefault(); go(h); }}>
                 <span><b>{h.label}</b> <span className="dim" style={{ fontSize: 13.5 }}>{h.sub}</span></span>
-                <span className="tag">{h.kind === 'page' ? 'Page' : 'Company'}</span>
-              </button>
-            </li>
-          ))}
+                <span className="tag">{KIND[h.kind].replace(/s$/, '').replace('Companie', 'Company')}</span>
+              </li>
+            )];
+          })}
         </ul>
+        <div className="cmdk-foot dim"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span><span>Nothing you type here leaves this browser.</span></div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
-/** The reader's accent. Violet is the default and carries no attribute; the others set `data-accent` on <html>, which swaps the
- *  accent tokens in globals.css (every text step checked at 4.5:1 on every surface, both themes: docs/agents/design.md). The
- *  inline head script in app/layout.tsx applies the saved choice before first paint, so there is no flash. */
-export const ACCENTS = [['violet', 'Violet'], ['cyan', 'Electric cyan'], ['lime', 'Lime'], ['coral', 'Coral']] as const;
-export type Accent = (typeof ACCENTS)[number][0];
-const readAccent = (): Accent => { const a = document.documentElement.dataset.accent; return ACCENTS.some(([k]) => k === a) ? (a as Accent) : 'violet'; };
-function applyAccent(a: Accent) {
-  fadeTheme();
-  if (a === 'violet') delete document.documentElement.dataset.accent; else document.documentElement.dataset.accent = a;
-  try { localStorage.setItem('alpha-accent', a); } catch { /* private mode: the choice lasts for this page only */ }
+// ── Keyboard shortcuts (Pro §28 P1) ────────────────────────────────────────────────────────────────────────────────
+function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useModal(panel, open, onClose);
+  const [on, setOn] = useState(true);
+  useEffect(() => { if (open) setOn(readPref('shortcuts') === 'on'); }, [open]);
+  if (!open || typeof document === 'undefined') return null;
+  return createPortal(
+    <div className="cmdk-back" onMouseDown={onClose} role="presentation">
+      <div ref={panel} className="cmdk keys" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="peek-top"><h2 className="peek-h" style={{ margin: 0 }}>Keyboard shortcuts</h2><button type="button" className="chip" data-close onClick={onClose}>Close ✕</button></div>
+        <dl className="keys-list">
+          <div><dt><kbd>⌘</kbd><kbd>K</kbd> or <kbd>/</kbd></dt><dd>Search companies, pages and commands</dd></div>
+          {SHORTCUTS.map((s) => <div key={s.keys}><dt>{s.keys.split(' ').map((k) => <kbd key={k}>{k}</kbd>)}</dt><dd>Go to {s.label}</dd></div>)}
+          <div><dt><kbd>?</kbd></dt><dd>This list</dd></div>
+        </dl>
+        <label className="keys-toggle"><input type="checkbox" checked={on} onChange={(e) => { setOn(e.target.checked); setPref('shortcuts', e.target.checked ? 'on' : 'off'); }} /> Letter shortcuts on (they never fire while you type in a field)</label>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
-function AccentPicker() {
-  const [open, setOpen] = useState(false);
-  const [acc, setAcc] = useState<Accent>('violet');
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => { setAcc(readAccent()); }, []);
-  useEffect(() => {
-    if (!open) return undefined;
-    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); box.current?.querySelector<HTMLElement>('.accentbtn')?.focus(); } };
-    window.addEventListener('pointerdown', away);
-    window.addEventListener('keydown', key);
-    window.setTimeout(() => box.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus(), 10);
-    return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', key); };
-  }, [open]);
-  const pick = (a: Accent) => { applyAccent(a); setAcc(a); };
-  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const keys = ACCENTS.map(([k]) => k);
-    const at = keys.indexOf(acc);
-    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (at + 1) % keys.length : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (at - 1 + keys.length) % keys.length : -1;
+// ── Settings (theme, accent, motion, market colours, density, shortcuts) ───────────────────────────────────────────
+export const ACCENTS = [['violet', 'Violet'], ['cyan', 'Electric cyan'], ['lime', 'Lime'], ['coral', 'Coral']] as const;
+const SETTINGS: { name: PrefName; label: string; opts: [string, string][]; note?: string }[] = [
+  { name: 'theme', label: 'Theme', opts: [['light', 'Light'], ['dark', 'Dark']] },
+  { name: 'accent', label: 'Accent', opts: ACCENTS.map(([k, l]) => [k, l]), note: 'Only the highlight changes.' },
+  { name: 'market', label: 'Market colours', opts: [['standard', 'Green / red'], ['cb', 'Blue / orange']], note: 'Up and down always also carry a sign and an arrow.' },
+  { name: 'motion', label: 'Motion', opts: [['system', 'As the device'], ['reduced', 'Reduced']] },
+  { name: 'density', label: 'Density', opts: [['comfortable', 'Comfortable'], ['compact', 'Compact']] },
+];
+function Settings({ open, onClose, anchor }: { open: boolean; onClose: () => void; anchor: React.RefObject<HTMLButtonElement | null> }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useModal(panel, open, onClose, '[aria-checked="true"]');
+  const [vals, setVals] = useState<Record<string, string>>({});
+  useEffect(() => { if (open) setVals(Object.fromEntries(Object.keys(PREFS).map((k) => [k, readPref(k as PrefName)]))); }, [open]);
+  if (!open || typeof document === 'undefined') return null;
+  const r = anchor.current?.getBoundingClientRect();
+  const pick = (n: PrefName, v: string) => { if (n === 'theme' || n === 'accent' || n === 'market') fadeTheme(); setPref(n, v); setVals((x) => ({ ...x, [n]: v })); };
+  const onKey = (n: PrefName, opts: [string, string][]) => (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const at = opts.findIndex(([k]) => k === vals[n]);
+    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (at + 1) % opts.length : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (at - 1 + opts.length) % opts.length : -1;
     if (next < 0) return;
-    e.preventDefault();
-    pick(keys[next]);
+    e.preventDefault(); pick(n, opts[next][0]);
     e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
   };
-  const label = ACCENTS.find(([k]) => k === acc)?.[1] ?? 'Violet';
-  return (
-    <div className="accentpick" ref={box}>
-      <button className="accentbtn" aria-expanded={open} aria-controls="accentpop" aria-label={`Accent colour: ${label}. Change`} onClick={() => setOpen((o) => !o)}>
-        <i aria-hidden />
-      </button>
-      {open && (
-        <div className="accentpop" id="accentpop" role="radiogroup" aria-label="Accent colour" onKeyDown={onKey}>
-          <div className="menu-hint">Accent colour</div>
-          {ACCENTS.map(([k, l]) => (
-            <button key={k} role="radio" aria-checked={acc === k} tabIndex={acc === k ? 0 : -1} data-sw={k} onClick={() => { pick(k); setOpen(false); }}>
-              <i aria-hidden />{l}
-            </button>
-          ))}
-          <p className="dim">Only the highlight changes. Gains and losses keep green and red, always with a sign.</p>
-        </div>
-      )}
-    </div>
+  return createPortal(
+    <div className="setpop-back" onMouseDown={onClose} role="presentation">
+      <div ref={panel} className="setpop" role="dialog" aria-modal="true" aria-label="Settings" onMouseDown={(e) => e.stopPropagation()} style={r ? { top: r.bottom + 8, right: Math.max(12, window.innerWidth - r.right) } : undefined}>
+        <div className="peek-top"><span className="eyebrow">Settings · kept in this browser</span><button type="button" className="chip" data-close onClick={onClose} aria-label="Close settings">✕</button></div>
+        {SETTINGS.map((s) => (
+          <div key={s.name} className="setrow">
+            <div className="setlabel" id={`set-${s.name}`}>{s.label}</div>
+            <div className="seg" role="radiogroup" aria-labelledby={`set-${s.name}`} onKeyDown={onKey(s.name, s.opts)}>
+              {s.opts.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={vals[s.name] === k} tabIndex={vals[s.name] === k ? 0 : -1} data-sw={s.name === 'accent' ? k : undefined} onClick={() => pick(s.name, k)}>{s.name === 'accent' && <i aria-hidden />}{l}</button>)}
+            </div>
+            {s.note && <div className="dim setnote">{s.note}</div>}
+          </div>
+        ))}
+        <div className="setrow"><div className="setlabel">Letter shortcuts</div><label className="keys-toggle" style={{ margin: 0 }}><input type="checkbox" checked={vals.shortcuts !== 'off'} onChange={(e) => pick('shortcuts', e.target.checked ? 'on' : 'off')} /> On (press ? for the list)</label></div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
-function MoreSheet({ open, onClose, onSearch, path }: { open: boolean; onClose: () => void; onSearch: () => void; path: string }) {
+// ── The phone's More sheet ──────────────────────────────────────────────────────────────────────────────────────────
+function MoreSheet({ open, onClose, onSearch, onSettings, path }: { open: boolean; onClose: () => void; onSearch: () => void; onSettings: () => void; path: string }) {
   const startY = useRef<number | null>(null);
   const [dy, setDy] = useState(0);
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', k);
-    document.documentElement.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', k); document.documentElement.style.overflow = ''; };
-  }, [open, onClose]);
-  return (
-    <div className={`sheet-wrap${open ? ' open' : ''}`} aria-hidden={!open}>
+  const panel = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useModal(panel, open, onClose, '.sheet-search');
+  if (!mounted) return null;
+  return createPortal(
+    <div className={`sheet-wrap${open ? ' open' : ''}`} aria-hidden={!open} {...(!open ? ({ inert: "" } as Record<string, string>) : {})}>
       <div className="sheet-back" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="Menu" style={{ transform: open ? `translateY(${dy}px)` : undefined, transition: dy ? 'none' : undefined }}>
+      <div ref={panel} className="sheet" role="dialog" aria-modal="true" aria-label="All pages" style={{ transform: open ? `translateY(${dy}px)` : undefined, transition: dy ? 'none' : undefined }}>
         <div className="sheet-grab" onPointerDown={(e) => { startY.current = e.clientY; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
           onPointerMove={(e) => { if (startY.current !== null) setDy(Math.max(0, e.clientY - startY.current)); }}
           onPointerUp={() => { if (dy > 90) onClose(); setDy(0); startY.current = null; }}><i /></div>
@@ -204,41 +213,57 @@ function MoreSheet({ open, onClose, onSearch, path }: { open: boolean; onClose: 
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
           <span>Search companies and pages</span>
         </button>
-        {GROUPS.map((g) => (
-          <div key={g.label}>
+        {[...AREAS, { id: 'utility' as const, label: 'About alpha', hint: 'How it works and what is kept', home: '/about/' }].map((g) => (
+          <div key={g.id}>
             <div className="sheet-h">{g.label} <span>{g.hint}</span></div>
             <div className="sheet-grid">
-              {g.hrefs.map((h) => (
-                <Link key={h} href={h} onClick={onClose} aria-current={isActive(path, h) ? 'page' : undefined}>
-                  <span className="ic"><Icon d={pageOf(h).icon} /></span>
-                  <span>{pageOf(h).label}</span>
+              {pagesIn(g.id).map((p) => (
+                <Link key={p.href} href={p.href} onClick={onClose} aria-current={isActive(path, p.href) ? 'page' : undefined}>
+                  <span className="ic"><Icon d={p.icon} /></span>
+                  <span>{p.label}</span>
                 </Link>
               ))}
             </div>
           </div>
         ))}
         <div className="sheet-foot">
-          <span className="dim">Tip: in Safari, Share → Add to Home Screen for a full-screen app.</span>
+          <button type="button" className="chip" onClick={() => { onClose(); window.setTimeout(onSettings, 150); }}>Settings</button>
+          <span className="dim">In Safari: Share → Add to Home Screen for a full-screen app.</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 export default function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? '/';
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  const [keys, setKeys] = useState(false);
+  const [settings, setSettings] = useState(false);
   const [showTop, setShowTop] = useState(false);
   const [sheet, setSheet] = useState(false);
+  const gear = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     initMotion();
     const stopLight = initPointerLight();
-    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+    let pending = '', pendingAt = 0;
     const key = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => !o); }
-      else if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); setOpen(true); }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => !o); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || anyModalOpen()) return;
+      if (e.key === '/') { e.preventDefault(); setOpen(true); return; }
+      if (readPref('shortcuts') === 'off') return;
+      if (e.key === '?') { e.preventDefault(); setKeys(true); return; }
+      const k = e.key.toLowerCase();
+      if (pending && Date.now() - pendingAt < 1200) {
+        const hit = SHORTCUTS.find((s) => s.keys === `${pending} ${k}`);
+        pending = '';
+        if (hit) { e.preventDefault(); navigate(router, hit.href); }
+        return;
+      }
+      if (k === 'g') { pending = 'g'; pendingAt = Date.now(); }
     };
     window.addEventListener('keydown', key);
     const openSearch = () => setOpen(true);   // a page can ask for the palette: window.dispatchEvent(new Event('alpha:search'))
@@ -261,18 +286,19 @@ export default function Shell({ children }: { children: ReactNode }) {
       stopLight();
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [router]);
 
-  const flip = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    fadeTheme();
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('alpha-theme', next); } catch { /* private mode: the theme just will not persist */ }
-    setTheme(next);
-  };
+  // After a client navigation, focus moves to the new page's heading (Next's route announcer reads its title).
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const h = document.querySelector<HTMLElement>('main h1');
+    if (h) { if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  }, [path]);
 
   const navRef = useRef<HTMLElement>(null);
-  // The ink pill slides to the active section when the page changes (and settles on resize). Reduced motion: it jumps.
+  const [menu, setMenu] = useState<string | null>(null);
+  // The ink pill slides to the active area when the page changes (and settles on resize). Reduced motion: it jumps.
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return undefined;
@@ -281,7 +307,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       if (!a) { nav.style.setProperty('--po', '0'); return; }
       const g = a.parentElement as HTMLElement;
       nav.style.setProperty('--px', `${g.offsetLeft}px`);
-      nav.style.setProperty('--pw', `${a.offsetWidth}px`);
+      nav.style.setProperty('--pw', `${g.offsetWidth}px`);      // the whole group, caret included
       nav.style.setProperty('--po', '1');
       nav.classList.add('has-pill');
     };
@@ -290,23 +316,20 @@ export default function Shell({ children }: { children: ReactNode }) {
     window.addEventListener('resize', place);
     return () => { window.clearTimeout(t); window.removeEventListener('resize', place); };
   }, [path]);
-  // A menu opens on hover or focus, so after choosing a page it would stay open under the pointer: close it on navigation and on Escape, and let it open again once the pointer has left.
-  const lastEscape = useRef(false);
-  const closeMenus = useCallback((keepFocus = false) => {
-    const nav = navRef.current; if (!nav) return;
-    nav.dataset.closed = '1';                                   // forced-closed until the pointer leaves the nav
-    const a = document.activeElement as HTMLElement | null;
-    if (!a || !nav.contains(a)) return;
-    // Escape keeps the keyboard user's place on the group's trigger. A click or a page change drops focus instead:
-    // focus left inside the menu would hold it open (:focus-within), and refocusing the trigger re-ran the onFocus handler that reopens it.
-    const trigger = a.closest('.navgroup')?.querySelector<HTMLElement>(':scope > a');
-    if (keepFocus && trigger && a !== trigger) { lastEscape.current = true; trigger.focus(); } else a.blur();
-  }, []);
-  const lastPath = useRef(path);
-  useEffect(() => { if (lastPath.current !== path) { lastPath.current = path; closeMenus(); } }, [path, closeMenus]);
+  useEffect(() => { setMenu(null); }, [path]);
+  // menus open by click or keyboard (a separate toggle from the area's own link); hover only previews on wide screens
+  useEffect(() => {
+    if (!menu) return undefined;
+    const away = (e: PointerEvent) => { if (!navRef.current?.contains(e.target as Node)) setMenu(null); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { const id = menu; setMenu(null); navRef.current?.querySelector<HTMLElement>(`[data-menu="${id}"]`)?.focus(); } };
+    window.addEventListener('pointerdown', away);
+    window.addEventListener('keydown', esc);
+    return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', esc); };
+  }, [menu]);
 
-  const tabs = ['/', '/brief/', '/screen/', '/engines/'].map((h) => PAGES.find((p) => p.href === h)!);
-  const tabIndex = Math.max(0, tabs.findIndex((p) => isActive(path, p.href))) + (tabs.some((p) => isActive(path, p.href)) ? 0 : 4);
+  const here = areaFor(path);
+  const tabs = AREAS.map((a) => ({ ...a, icon: pageOf(a.home)!.icon }));
+  const tabIndex = here && here !== 'utility' ? AREAS.findIndex((a) => a.id === here) : 4;
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
@@ -317,17 +340,23 @@ export default function Shell({ children }: { children: ReactNode }) {
             <span className="brand-mark" aria-hidden><i /></span>
             <span>alpha</span>
           </Link>
-          <nav className="nav" aria-label="Primary" ref={navRef} onPointerLeave={() => { delete navRef.current?.dataset.closed; }} onFocus={(e) => { if (!(e.target as HTMLElement).closest('.menu') && !(e.target as HTMLElement).matches('.navgroup > a')) return; if (!lastEscape.current) delete navRef.current?.dataset.closed; lastEscape.current = false; }} onKeyDown={(e) => { if (e.key === 'Escape') { closeMenus(true); window.setTimeout(() => { lastEscape.current = false; }, 0); } }} onClick={(e) => { if ((e.target as HTMLElement).closest('.menu a')) closeMenus(); }}>
+          <nav className="nav" aria-label="Primary" ref={navRef}>
             <span className="ink-pill" aria-hidden />
-            {GROUPS.map((g) => {
-              const on = g.hrefs.some((h) => isActive(path, h));
+            {AREAS.map((g) => {
+              const on = here === g.id;
+              const list = pagesIn(g.id);
               return (
-                <div className="navgroup" key={g.label}>
-                  <Link href={g.hrefs[0]} aria-current={on ? 'page' : undefined}>{g.label}{g.hrefs.length > 1 && <svg className="caret" width="9" height="9" viewBox="0 0 10 10" aria-hidden><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>}</Link>
-                  {g.hrefs.length > 1 && (
-                    <div className="menu" role="group" aria-label={`${g.label} pages`}>
+                <div className={`navgroup${menu === g.id ? ' open' : ''}`} key={g.id} onPointerEnter={(e) => { if (e.pointerType === 'mouse' && menu && menu !== g.id) setMenu(g.id); }}>
+                  <Link href={g.home} aria-current={on ? 'page' : undefined}>{g.label}</Link>
+                  {list.length > 1 && (
+                    <button type="button" className="navcaret" data-menu={g.id} aria-expanded={menu === g.id} aria-controls={`menu-${g.id}`} aria-label={`${g.label} pages`} onClick={() => setMenu((m) => (m === g.id ? null : g.id))}>
+                      <svg className="caret" width="9" height="9" viewBox="0 0 10 10" aria-hidden><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </button>
+                  )}
+                  {list.length > 1 && menu === g.id && (
+                    <div className="menu" id={`menu-${g.id}`} role="group" aria-label={`${g.label} pages`}>
                       <div className="menu-hint">{g.hint}</div>
-                      {g.hrefs.map((h) => <Link key={h} href={h} aria-current={isActive(path, h) ? 'page' : undefined}><span className="ic"><Icon d={pageOf(h).icon} /></span><span className="mi"><b>{pageOf(h).label}</b><span>{pageOf(h).desc}</span></span></Link>)}
+                      {list.map((p) => <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined} onClick={() => setMenu(null)}><span className="ic"><Icon d={p.icon} /></span><span className="mi"><b>{p.label}</b><span>{p.desc}</span></span></Link>)}
                     </div>
                   )}
                 </div>
@@ -336,20 +365,13 @@ export default function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="top-actions">
             <MarketClock />
-            <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-label="Search ⌘K: companies and pages">
+            <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-label="Search companies, pages and commands (⌘K or /)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span>Search</span>
               <kbd>⌘K</kbd>
             </button>
-            <AccentPicker />
-            <button className="themeswitch" role="switch" aria-checked={theme === 'light'} onClick={flip} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-              <svg className="s1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-              <svg className="s2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
-              <span className="knob" aria-hidden>
-                {theme === 'dark'
-                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z" /></svg>
-                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="12" cy="12" r="5" /></svg>}
-              </span>
+            <button ref={gear} className="iconbtn gearbtn" aria-label="Settings: theme, accent, motion, market colours, density" aria-haspopup="dialog" aria-expanded={settings} onClick={() => setSettings(true)}>
+              <Icon size={18} d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" />
             </button>
           </div>
         </div>
@@ -358,16 +380,16 @@ export default function Shell({ children }: { children: ReactNode }) {
       <FreshnessBanner />
       <main id="main" key={path} className="page-in">{children}</main>
 
-      {/* One pill slides to the current tab; a page outside the four tabs lights "More". Reduced motion: it moves without sliding. */}
-      <nav className="tabbar" aria-label="Quick navigation" style={{ ['--ti' as string]: tabIndex }}>
+      {/* One pill slides to the current area; a utility page lights "More". Reduced motion: it moves without sliding. */}
+      <nav className="tabbar" aria-label="Areas" style={{ ['--ti' as string]: tabIndex }}>
         <span className="tab-pill" aria-hidden />
         {tabs.map((p) => (
-          <Link key={p.href} href={p.href} aria-current={isActive(path, p.href) ? 'page' : undefined}>
+          <Link key={p.id} href={p.home} aria-current={here === p.id ? 'page' : undefined}>
             <Icon d={p.icon} />
-            {p.label}
+            {p.id === 'desk' ? 'Desk' : p.label}
           </Link>
         ))}
-        <button onClick={() => setSheet(true)} aria-label="More: all pages and search" aria-haspopup="dialog" data-on={tabs.some((p) => isActive(path, p.href)) ? undefined : '1'}>
+        <button onClick={() => setSheet(true)} aria-label="More: every page, search and settings" aria-haspopup="dialog" data-on={tabIndex === 4 ? '1' : undefined}>
           <Icon d="M4 7h16M4 12h16M4 17h16" />
           More
         </button>
@@ -378,22 +400,23 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="footer-grid">
             <div>
               <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark" aria-hidden><i /></span><span>alpha</span></div>
-              <p style={{ margin: 0, maxWidth: '34ch' }}>An independent research desk for Indian equities. Numbers first, working shown.</p>
+              <p style={{ margin: 0, maxWidth: '34ch' }}>Your daily Indian-equity research desk: what changed, what supports the view, and what still needs checking.</p>
             </div>
-            <div><h2 className="fh">Markets</h2><Link href="/brief/">Daily brief</Link><Link href="/markets/">Live board</Link><Link href="/map/">Heat lab</Link><Link href="/ipo/">IPOs</Link></div>
-            <div><h2 className="fh">Research</h2><Link href="/screen/">Screen</Link><Link href="/engines/">Signals</Link><Link href="/reads/">Weekly reads</Link></div>
-            <div><h2 className="fh">Desk</h2><Link href="/tools/">Tools</Link><Link href="/funds/">Funds</Link><Link href="/news/">News</Link><Link href="/about/">Method &amp; sources</Link></div>
+            {AREAS.map((a) => <div key={a.id}><h2 className="fh">{a.label}</h2>{pagesIn(a.id).map((p) => <Link key={p.href} href={p.href}>{p.label}</Link>)}</div>)}
+            <div><h2 className="fh">Trust</h2>{pagesIn('utility').map((p) => <Link key={p.href} href={p.href}>{p.label}</Link>)}<Link href="/reads/#corrections">Corrections</Link></div>
           </div>
           <p className="footer-legal">
-            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules and models on this site, applied the same way to every company.
+            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. Signals are experimental research on paper; nothing here is a broker fill. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules on this site, applied the same way to every company.
           </p>
         </div>
       </footer>
       <button className={`totop${showTop ? ' show' : ''}`} aria-label="Back to top" tabIndex={showTop ? 0 : -1} onClick={() => window.scrollTo({ top: 0, behavior: prefersReduced() ? 'auto' : 'smooth' })}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 19V5M5 12l7-7 7 7" /></svg>
       </button>
-      <MoreSheet open={sheet} onClose={() => setSheet(false)} onSearch={() => setOpen(true)} path={path} />
-      <Palette open={open} onClose={() => setOpen(false)} />
+      <MoreSheet open={sheet} onClose={() => setSheet(false)} onSearch={() => setOpen(true)} onSettings={() => setSettings(true)} path={path} />
+      <Palette open={open} onClose={() => setOpen(false)} onShortcuts={() => setKeys(true)} onSettings={() => setSettings(true)} />
+      <ShortcutsDialog open={keys} onClose={() => setKeys(false)} />
+      <Settings open={settings} onClose={() => setSettings(false)} anchor={gear} />
     </>
   );
 }

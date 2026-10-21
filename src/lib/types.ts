@@ -222,7 +222,7 @@ export interface QuotesFeed { ok: boolean; fetched_at: string; live: number; tot
 
 export interface DataHealth { generated_at: string; datasets: { dataset: string; source: string; last_successful_update: string; freshness_age: string; status: string }[] }
 
-/** Swing v2 (engines/swing.py, swing_run.py): one rule book, a market gate, two setups, half at 2R + profit lock + trail. */
+/** Swing v2 (engines/swing.py, swing_run.py): one rule book, a market gate, two setups, half at 2R, stop raised above entry, then a trail. */
 export interface SigEvent { date: string; kind: 'entry' | 't1' | 't2' | 'stop' | 'lock' | 'trail' | 'time'; price: number; fraction: number }
 export interface Sig {
   id: string; engine: 'swing'; sym: string; name: string; sector: string | null; setup: 'Pullback' | 'Breakout'; date: string;
