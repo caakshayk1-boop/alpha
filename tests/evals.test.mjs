@@ -25,7 +25,7 @@ test(`ask-alpha golden set: ${golden.cases.length} cases`, () => {
     for (const c of r.claims) {
       let t = c.text;
       for (const id of c.facts) { const f = facts.find((x) => x.id === id); if (f) { t = t.split(renderFact(f)).join(''); t = t.split(renderFact({ ...f, value: String(f.value).replace(/^-/, '') })).join(''); } }
-      if (/\d/.test(t.replace(/FY\d+|52-week|(14|20|50|200)-day/g, ''))) problems.push(`unsupported digit in "${c.text}"`);
+      if (/\d/.test(t.replace(/FY\d+|52-week|(14|20|50|200)-day|\bT[12]\b/g, ''))) problems.push(`unsupported digit in "${c.text}"`);
     }
     if (problems.length) fails.push(`${k.id}: ${problems.join('; ')}`);
   }

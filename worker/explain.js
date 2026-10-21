@@ -190,6 +190,14 @@ const FALL = /\b(fell|fall|falls|down|decreased?|declined?|declining|lower|lost|
 const ACRONYMS = new Set(['ROE', 'ROCE', 'EBIT', 'EBITDA', 'EPS', 'CAGR', 'NSE', 'BSE', 'RSI', 'VIX', 'INR', 'FII', 'DII', 'NBFC', 'IPO', 'GDP', 'RBI', 'SEBI', 'NIFTY', 'SENSEX', 'FY', 'AI', 'ATR', 'SMA', 'EMA', 'T1', 'T2', 'R']);
 const NUMBER_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|million|billion|half|quarter|double|triple)\b[^.]{0,12}\b(percent|per cent|%|crore|lakh|rupees|times|points?)\b/i;
 
+// "five of nine", "three out of four": a count stated in words; "by a fifth", "doubled", "half of": a fraction in words
+const NUM_W = '(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred)';
+const COUNT_WORDS = new RegExp(`\\b${NUM_W}\\s+(of|out of|in)\\s+${NUM_W}\\b`, 'i');
+const FRACTION_WORDS = /\b(by (a|one) (half|third|quarter|fifth|tenth)|(a|one|two|three) (thirds?|quarters?|fifths?|tenths?) of|doubled|tripled|halved|twice as|three times)\b/i;
+// "buy" or "sell" as an instruction: at the start of a sentence or clause, or "says / rated buy". "Sell half at T1" in a
+// plan explanation is the plan's own wording, so a plan verb followed by half / the rest is allowed.
+const IMPERATIVE = /(^|[.;:!]\s*|\b(says|rated|rating|call is)\s+)(buy|sell|hold)\b(?!\s+(half|the rest|at t1|at t2))/i;
+
 /** A fact's figure as the reader sees it: true minus, the unit attached the way it is written. */
 export function renderFact(f) {
   const v = String(f.value);
@@ -223,8 +231,9 @@ export function validateClaims(raw, facts) {
     // a fiscal-year name ("FY26") is allowed when a cited fact carries that year in its label; any other digit is not
     const years = new Set(ids.flatMap((id) => (byId.get(id)?.label.match(/\bFY\d{2,4}\b/g) || [])));
     const bare = text.replace(/\{F\d+\}/g, ' ').replace(/\bFY\d{2,4}\b/g, (y) => (years.has(y) ? ' ' : y))
-      .replace(/\b(52-week|(14|20|50|200)-day|RSI \(14\))\b/gi, ' ');      // the names of standard windows, not figures
-    if (/\d/.test(bare) || NUMBER_WORDS.test(bare)) { no('states a number that is not taken from the figures'); continue; }
+      .replace(/\b(52-week|(14|20|50|200)-day|RSI \(14\)|T[12])\b/gi, ' ');      // the names of standard windows and plan targets, not figures
+    if (/\d/.test(bare) || NUMBER_WORDS.test(bare) || COUNT_WORDS.test(bare) || FRACTION_WORDS.test(bare)) { no('states a number that is not taken from the figures'); continue; }
+    if (IMPERATIVE.test(bare)) { no('uses advisory wording'); continue; }
     if (advisoryWording(bare)) { no('uses advisory wording'); continue; }
     const stranger = (bare.match(/\b[A-Z][A-Z&-]{2,}\b/g) || []).find((w) => !ACRONYMS.has(w) && !known.has(w))
       ?? (bare.match(/\b[A-Z][a-z]+(?='s\b|\u2019s\b)/g) || []).find((w) => !known.has(w.toUpperCase()) && !/^(It|Its|Company|Nifty|Sensex|India)$/.test(w));

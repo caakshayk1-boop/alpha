@@ -214,13 +214,14 @@ export default function MapPage() {
                     // A tile under 24px is too small to aim at by touch or reach usefully by keyboard; the text version below lists every
                     // stock as a link, so tiny tiles stay mouse-clickable but leave the tab order and the accessibility tree.
                     const tiny = t.w < 24 || t.h < 24;
-                    const a11y = tiny ? { 'aria-hidden': true } : { role: 'link', tabIndex: 0, 'aria-label': showV ? `${r.sym} ${fmtV(v)}, ${r.name}` : font > 0 ? `${r.sym}, ${r.name}, ${fmtV(v)}` : `${r.name} (${r.sym}), ${fmtV(v)}` };
+                    // the spoken name starts with the label the tile shows (WCAG 2.5.3); a tile opens the detail panel, so it is a button
+                    const a11y = tiny ? { 'aria-hidden': true } : { role: 'button', tabIndex: 0, 'aria-label': font > 0 ? `${text}${text !== r.sym ? ` (${r.sym})` : ''} ${fmtV(v)}, ${r.name}` : `${r.name} (${r.sym}), ${fmtV(v)}` };
                     return (
                       <div key={r.sym} className="tile" {...a11y}
                         style={{ left: t.x, top: t.y, width: t.w, height: t.h, background: colorFor(v, m.max), padding: font ? 2 : 0, opacity: dimmed(r) ? 0.18 : 1, outline: sel?.sym === r.sym ? '2px solid #fff' : undefined, alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
                         onMouseMove={(e) => { const b = box.current?.getBoundingClientRect(); if (b) setTip({ r, x: e.clientX - b.left, y: e.clientY - b.top }); }}
                         onFocus={() => setSel(r)}
-                        onClick={() => setSel(r)} onKeyDown={(e) => { if (e.key === 'Enter') setSel(r); }}>
+                        onClick={() => setSel(r)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(r); } }}>
                         {font > 0 && <b style={{ fontSize: font, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'clip', maxWidth: '100%', whiteSpace: 'nowrap', letterSpacing: font < 9 ? '-0.01em' : undefined }} title={text !== r.sym ? r.sym : undefined}>{text}</b>}
                         {showV && <>{' '}<span style={{ fontSize: Math.max(8, font * 0.78) }}>{fmtV(v)}</span></>}
                       </div>

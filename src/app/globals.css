@@ -141,7 +141,7 @@ main { position: relative; z-index: 1; padding-bottom: var(--s-8); min-height: 1
 .search-btn { min-width: 220px; justify-content: space-between; color: var(--dim); }
 .tabbar { display: none; }
 
-@media (max-width: 1080px) { .nav { display: none; } .search-btn { min-width: 36px; } .search-btn span, .search-btn kbd { display: none; } }
+@media (max-width: 1080px) { .nav { display: none; } .search-btn { min-width: 36px; } .search-btn kbd { display: none; } .search-btn .search-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
 @media (max-width: 860px) {
   .tabbar {
     display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 60;
@@ -1448,3 +1448,5 @@ html.anim .count-tint { animation: countTint var(--dur-flash) var(--ease-standar
 .fin-explore { margin-top: 12px; }
 html.anim .fin-explore { animation: gateIn var(--dur-base) var(--ease-standard) both; }
 .tbl-text th, .tbl-text td { white-space: normal; }
+.tbl.stress { min-width: 0; margin-top: 12px; } .tbl.stress caption { text-align: left; font-size: 12.5px; padding-bottom: 6px; }
+.co-context { margin: 8px 0 0; font-size: 13px; max-width: 34ch; margin-left: auto; } @media (max-width: 760px) { .co-context { margin-left: 0; } }

@@ -180,6 +180,19 @@ function Seasons({ sym, pre }: { sym: string; pre?: Shard['season'] }) {
 
 /** One company. `initial` is the company's slice as of the last build (pre-rendered into the static page, so the page has
  *  real content for readers and search engines before any script runs); the live slice replaces it as soon as it loads. */
+/** Pro §22.4: the price in its own context, from the screen's own fields. Where it sits in its traded 52-week range, and
+ *  the P/E against its own history. Each part drops out when its field is missing; nothing is filled in. */
+function PriceContext({ r, price }: { r: Row; price: number | null | undefined }) {
+  const parts: string[] = [];
+  if (has(price) && has(r.low52) && has(r.high52) && r.high52 > r.low52) {
+    const at = Math.round(Math.min(Math.max((price - r.low52) / (r.high52 - r.low52), 0), 1) * 100);
+    parts.push(`${at}% of the way up its 52-week range (₹${num(r.low52, 2)} to ₹${num(r.high52, 2)})`);
+  }
+  if (has(r.pe_pctile)) parts.push(`P/E at the ${ordinal(r.pe_pctile)} percentile of its own history`);
+  if (!parts.length) return null;
+  return <p className="dim co-context">{parts.join(' · ')}</p>;
+}
+
 export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | null }) {
   const live = useShard(sym);
   const sh = { data: live.data ?? initial ?? null, loading: live.loading && !initial, error: live.error && !initial ? live.error : null };
@@ -233,7 +246,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
             <ShareButton r={r} />
-          </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div></div>
+          </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div><PriceContext r={r} price={pv.price ?? r.price} /></div>
       </header>
       <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
       {(() => {

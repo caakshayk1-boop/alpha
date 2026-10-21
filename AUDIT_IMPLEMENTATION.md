@@ -38,10 +38,10 @@ left, with the reason). "Verified" means an automated test or a scripted browser
 | §22.1 | Decision Ladder on Today, Company, Screen, Compare | PARTIAL | Glance and Understand on Company (Case/Countercase above the fold), Verify (S and ? chips, financial explorer, source links), Record (cards with decision fields). Today and Screen have parts; no walkthrough with users was run |
 | §22.2 | Case / Countercase | PASS | Company page; equal columns, never collapsed, thin-countercase sentence, no verdict |
 | §22.3 | What would change my mind | PASS | Card schema v2; Desk "Needs review" from triggers and observed changes only; tests |
-| §22.4 | Bias guards | PARTIAL | 1Y default chart range; countercase first-class; prompt for a disconfirming point; base rate "x of 988" on Screen; no social proof. Not added: own-history percentile beside every price |
+| §22.4 | Bias guards | PARTIAL | 1Y default chart range; countercase first-class; prompt for a disconfirming point; base rate "x of 988" on Screen; no social proof. Company header now states where the price sits in its traded 52-week range and the P/E percentile against its own history (fields dropped when missing). Not added on list rows |
 | §22.5 | Comparison | PASS | Material-difference thresholds; "not comparable" for lenders |
 | §22.6 | Scenario tools | PARTIAL | Reverse DCF presets, assumption/observed chips, existing sensitivity grid. Position and SIP tools unchanged |
-| §23 | Typography and numbers | PARTIAL | `format.ts`: true minus, pp, bp, ratio, spoken change labels; lang en-IN. 180 ad-hoc `toFixed` remain under a ratchet. Fonts unchanged (already self-hosted via next/font) |
+| §23 | Typography and numbers | PARTIAL | `format.ts`: true minus, pp, bp, ratio, spoken change labels; lang en-IN. 177 ad-hoc `toFixed` remain in components under a ratchet; `decision.ts` (31) moved to `num()`. Fonts unchanged (already self-hosted via next/font) |
 | §24 | Colour tokens | PARTIAL | Existing semantic tokens kept and mapped in DESIGN.md (calibration); colour-blind market mode added; raw colours under a ratchet (9). No OKLCH migration and no automated contrast check in CI |
 | §25 | Layout and density | PARTIAL | Compact density mode; hubs on the existing grid. No 12-column grid rewrite |
 | §26 | Motion v2 | PARTIAL | Tokens in CSS and for GSAP; reduced motion from device or setting; View Transitions with shared ticker; press, star, count, menu and palette motion. Scroll-driven CSS animations not adopted |
@@ -50,8 +50,8 @@ left, with the reason). "Verified" means an automated test or a scripted browser
 | §28 P2/P3 | Linked views, 30-day change, ownership panel, text query, share cards, PWA, digest, alerts, API | NOT DONE | Share is a link and one line, not an image card. Each needs its own build gate |
 | §29 | Microcopy and forbidden words | PASS | Design lint in CI; empty states rewritten on Today, Desk, Research |
 | §30 | Inclusive access | PARTIAL | Chart sentences and tables; colour-blind mode; spoken change labels; reduced motion setting. High-contrast mode not added |
-| §31 | Performance budgets | NOT DONE | No field RUM; no bundle budget in CI. Needs a measured baseline first |
-| §32 | Quality gates | PARTIAL | Design lint, AI evals, route/universe parity in CI. Visual regression and CI axe not added (axe runs in the scratch audit) |
+| §31 | Performance budgets | PARTIAL | `scripts/budget.mjs` in CI: gzipped JS per route, at most 10% over a measured baseline (215–240 kB gz). No field RUM yet |
+| §32 | Quality gates | PARTIAL | Design lint, 152 AI evals, route/universe parity, JS budget and `scripts/a11y.mjs` in CI (axe serious/critical, overflow, broken text, palette keyboard; 23 routes × phone, desktop light and dark, Worker-served). First run found and fixed WCAG 2.5.3 name mismatches on the search button and map tiles. Visual regression not added |
 | §20 | Signup, sync, account | BLOCKED | See `docs/operations/launch.md`: needs an identity provider, a database and an email sender chosen and created by the owner |
 | §15 | Physical devices | BLOCKED | No device here. Owner checklist in `docs/qa/mobile-matrix.md` |
 | §16 | Production verification | PARTIAL | See `docs/qa/production-verification.md` |
