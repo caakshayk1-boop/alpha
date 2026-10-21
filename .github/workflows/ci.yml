@@ -33,6 +33,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Accessibility and layout gate (axe serious/critical, overflow, broken text, palette keyboard; Worker-served)
         run: node scripts/a11y.mjs
+      - name: Colour contrast (every text token on every surface, 12 theme and mode combinations, 4.5:1)
+        run: node scripts/contrast.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

@@ -14,6 +14,7 @@ const KEPT: [string, string][] = [
   ['Holdings you enter in the X-ray tool', 'alpha-xray'],
   ['News: saved stories, read stories, last visit', 'alpha-news-saved, alpha-news-seen, alpha-news-visit'],
   ['When you last exported', 'alpha-last-export'],
+  ['Pages you opened and the site\'s code files, so pages you have seen open offline (browser cache storage; never data or prices)', 'alpha-shell-v1, alpha-assets-v1'],
   ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
 ];
 
