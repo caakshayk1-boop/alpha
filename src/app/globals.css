@@ -1318,3 +1318,5 @@ html.anim .rw-bar i { animation: railGrow var(--dur-slow) var(--ease) both; tran
 .ask-claims .cite-u { border-style: dashed; }
 .ask-claims li.unverified { color: var(--muted); }
 .ask-unknown { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--line-2); font-size: 14px; color: var(--muted); }
+/* A study or panel under review: amber edge, readable body text (A02). */
+.notice.warn { border: 1px solid var(--warn); border-left-width: 3px; color: var(--text); background: color-mix(in srgb, var(--warn) 7%, transparent); }

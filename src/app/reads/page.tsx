@@ -53,7 +53,7 @@ export default function Reads() {
             <div className="list panel tight" style={{ position: 'sticky', top: 80 }}>
               {studies.map(({ x, i }) => (
                 <button key={x.sym} className="li" style={{ textAlign: 'left', color: open === i ? 'var(--text)' : 'var(--muted)' }} onClick={() => setOpen(i)} aria-pressed={open === i}>
-                  <div style={{ minWidth: 0 }}><div className="t">{x.name}</div><div className="s">{x.sector} · {x.read_minutes} min{x.corrections?.length ? ' · corrected' : ''}</div></div>
+                  <div style={{ minWidth: 0 }}><div className="t">{x.name}</div><div className="s">{x.sector} · {x.read_minutes} min{x.review?.status === 'under_review' ? ' · under review' : x.corrections?.length ? ' · corrected' : ''}</div></div>
                   <span aria-hidden>{open === i ? '●' : ''}</span>
                 </button>
               ))}
@@ -64,7 +64,14 @@ export default function Reads() {
                 <div className="eyebrow">{s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
                 <h2 className="disp" style={{ fontSize: 'clamp(34px, 4vw, 52px)', margin: '12px 0 8px' }}>{s.name}</h2>
                 <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={companyHref(s.sym)} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end. Not investment advice.</p>
+                <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end, and not reviewed by a person. {s.review?.status === 'machine_checked' ? `Passed Alpha's interpretation checks on ${dateLabel(s.review.checked_at)}. ` : ''}Not investment advice.</p>
+                {s.review?.status === 'under_review' && (
+                  <div className="notice warn" role="note" style={{ margin: '0 0 20px' }}>
+                    <b>Under review since {dateLabel(s.review.checked_at)}.</b> Alpha&apos;s checks found {s.review.problems.length === 1 ? 'a problem' : `${s.review.problems.length} problems`} in this study:
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.review.problems.map((p) => <li key={p}>{p}</li>)}</ul>
+                    <div style={{ marginTop: 6 }}>The text below is kept exactly as published. A corrected study will be published as a new version; until then, do not rely on the sentences named above.</div>
+                  </div>
+                )}
                 {s.corrections && s.corrections.some((c) => c.fix?.trim()) && <div className="notice" style={{ margin: '0 0 20px' }}><b>Corrected after publication.</b><ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.corrections.filter((c) => c.fix?.trim()).map((c) => <li key={c.fix}>{dateLabel(c.date)}: {c.fix}</li>)}</ul></div>}
                 <LatestFigures key={s.sym} sym={s.sym} price={s.price} mcap={s.mcap_cr} writtenAt={ed?.written_at ?? null} />
                 {headingsOf(s.study).length > 1 && <nav aria-label="In this study" className="filters" style={{ margin: '0 0 18px' }}><span className="eyebrow">In this study</span>{headingsOf(s.study).map((h) => <a key={h} className="chip" href={`#${slug(h)}`}>{h}</a>)}</nav>}
@@ -75,6 +82,14 @@ export default function Reads() {
               </Rv>
             )}
           </div>
+          {r.data?.corrections && r.data.corrections.length > 0 && (
+            <details className="panel tight" style={{ marginTop: 16 }} id="corrections">
+              <summary className="eyebrow" style={{ cursor: 'pointer' }}>Corrections log · {r.data.corrections.length} {r.data.corrections.length === 1 ? 'entry' : 'entries'}</summary>
+              <ul className="muted" style={{ fontSize: 14, paddingLeft: 18, margin: '8px 0 0', display: 'grid', gap: 6 }}>
+                {r.data.corrections.map((c) => <li key={`${c.week}-${c.sym}`}><b style={{ color: 'var(--text)' }}>{c.sym}</b>, week of {dateLabel(c.week)} · {dateLabel(c.date)}: {c.issue}. {c.action}</li>)}
+              </ul>
+            </details>
+          )}
         </Async>
       </section>
       {/* Raw text on purpose: React escapes `>` inside a <style> child on the server but not in the browser, which failed hydration. */}
