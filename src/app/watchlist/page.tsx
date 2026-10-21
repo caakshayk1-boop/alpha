@@ -16,7 +16,7 @@ import { companyHref } from '@/lib/slug';
 export default function Watchlist() {
   const s = useFeed('screen');
   const eng = useSignals();
-  const [list, add, remove, addAll] = useStoredList('alpha-watchlist');
+  const [list, add, remove, addAll, storeError] = useStoredList('alpha-watchlist');
   const px = usePx(list);
   const lv = useLive();
   const closeOn = sessionLabel(s.data?.breadth.as_of);
@@ -40,6 +40,7 @@ export default function Watchlist() {
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
       <section className="wrap">
         <div className="filters"><SymbolPicker onPick={add} exclude={list} />{rows.length > 0 && <><button className="chip" onClick={csv}>Download CSV</button><Link className="chip" href={`/compare/?s=${rows.slice(0, 4).map((r) => r.sym).join(',')}`}>Compare the first {Math.min(4, rows.length)}</Link></>}</div>
+        {storeError && <p className="notice warn" role="alert" style={{ margin: '0 0 12px' }}>{storeError}</p>}
         <Async loading={s.loading} error={s.error} rows={3}>
           {rows.length === 0 ? <div className="panel"><div className="eyebrow">Start in three steps</div><ol className="muted" style={{ paddingLeft: 20, lineHeight: 1.8, margin: '8px 0 0' }}><li>Find a company: search above, or <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>run a screen</Link> and press Watch.</li><li>Press the star on its page, or save a Research Card below with the question you are asking.</li><li>Come back: this table shows results dates and engine signals for your names.</li></ol></div> : (
             <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl">

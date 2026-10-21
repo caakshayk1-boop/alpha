@@ -8,9 +8,10 @@ import { Async, Bar, Chg, Rv } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
-import { crore, dash, num } from '@/lib/format';
+import { crore, dash, dateLabel, num } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { useBarometer } from '@/lib/useBarometer';
 
 const has = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 const SAMPLE = 'TCS 20 3400\nHDFCBANK 30 1650\nRELIANCE 15 2400\nDIXON 3 11000';
@@ -237,14 +238,16 @@ export function Confluence({ limit = 8 }: { limit?: number }) {
 // ── Market stance ─────────────────────────────────────────────────────
 export function MarketStance() {
   const s = useFeed('screen');
-  const b = useFeed('barometer');
-  const bd = s.data?.breadth, t = b.data?.today;
+  // A06: the Barometer number here is the SAME reading Today and Brief show (one rule, lib/useBarometer.ts), and it carries
+  // its own session; the six breadth tests below are the last completed session's and say so in their heading.
+  const { view, loading: bl } = useBarometer();
+  const bd = s.data?.breadth;
   const b2 = useMemo(() => (s.data ? breadth200(s.data.rows) : null), [s.data]);
   return (
-    <Async loading={s.loading || b.loading} error={s.error} rows={1}>
+    <Async loading={s.loading || bl} error={s.error} rows={1}>
       {bd && (
         <Rv className="panel spot">
-          <div className="eyebrow">Market stance · calculated from the barometer</div>
+          <div className="eyebrow">Market stance · last completed session, {dateLabel(bd.as_of)}</div>
           {(() => {
             const conds: [string, boolean, string][] = [
               ['More than half of stocks above their 200-day', (b2?.pct ?? 0) > 50, b2 && b2.pct !== null ? `${b2.above} of ${b2.withHistory} with a 200-day history (${b2.pct.toFixed(0)}%)` : 'not available'],
@@ -259,7 +262,8 @@ export function MarketStance() {
             const advice = n >= 5 ? 'Most stocks are above their averages. In past data, breakouts have tended to follow such conditions; that is not a forecast.' : n >= 3 ? 'The market is split: about half the tests pass, so stock-level differences are larger than the market-wide direction.' : 'Most stocks are in downtrends. Historically such conditions have carried higher risk for new long positions; this describes the market, not what to do.';
             return (
               <>
-                <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold{t ? `, barometer ${Math.round(t.score)} (${t.band.t.toLowerCase()})` : ''}.</p>
+                <p className="disp" style={{ fontSize: 30, margin: '10px 0 4px' }}>{stance}: {n} of {conds.length} conditions hold.</p>
+                {view && <p className="dim" style={{ margin: '0 0 8px', fontSize: 14 }}>Barometer {view.reading.score} ({view.reading.band.t.toLowerCase()}), {view.source === 'live' ? 'live' : 'published'} for the {dateLabel(view.session)} session{view.session !== bd.as_of ? `, a different session from the breadth tests below (${dateLabel(bd.as_of)})` : ''}.</p>}
                 <p className="muted" style={{ margin: '0 0 14px' }}>{advice}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 8 }}>
                   {conds.map(([l, ok, d]) => (

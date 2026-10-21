@@ -2,7 +2,8 @@
 /** A quick look at one company without leaving the page you are on, plus the two small visuals it is built from.
  *  Everything shown is a figure already on the screen feed; the two lists are the same rules `decide()` uses on the company page. */
 import Link from 'next/link';
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Chg } from '@/components/ui';
 import { decide } from '@/lib/decision';
 import { useSignals, useFeed, useLive } from '@/lib/data';
@@ -11,6 +12,7 @@ import { crore, num } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
+import { useModal } from '@/lib/useModal';
 
 const fin = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 const FACTORS = [['Quality', 'Q', 'q'], ['Growth', 'G', 'g'], ['Value', 'V', 'v'], ['Technical', 'T', 'tech']] as const;
@@ -58,46 +60,23 @@ export function RangeBar({ row }: { row: Row }) {
   );
 }
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** Slide-over for one company. Opens over the current page so filters, scroll position and unfinished work stay where they were. */
 export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () => void }) {
   const scr = useFeed('screen');
   const eng = useSignals();
   const panel = useRef<HTMLDivElement>(null);
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;           // the effect below must not restart (and re-focus) every time the page re-renders
   const row = useMemo(() => (sym ? scr.data?.rows.find((r) => r.sym === sym) ?? null : null), [sym, scr.data]);
   const lv = useLive();
   const pv = row ? priceView(row.sym, row, lv.snap) : null;
   const mine = useMemo(() => (eng.data?.signals ?? []).filter((s) => s.sym === sym && (s.status === 'open' || s.status === 'pending')), [eng.data, sym]);
   const read = useMemo(() => (row ? decide(row, mine) : null), [row, mine]);
 
-  useEffect(() => {
-    if (!sym) return undefined;
-    const back = document.activeElement as HTMLElement | null;
-    // lock the page under the panel on <html>: locking <body> widened the layout viewport on phones (measured +32 px)
-    const root = document.documentElement;
-    const prev = root.style.overflow;
-    root.style.overflow = 'hidden';
-    window.setTimeout(() => panel.current?.querySelector<HTMLElement>('[data-close]')?.focus(), 0);
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); closeRef.current(); return; }
-      if (e.key !== 'Tab' || !panel.current) return;
-      const f = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => x.offsetParent !== null);
-      if (f.length === 0) return;
-      const first = f[0], last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', key, true);
-    return () => { document.removeEventListener('keydown', key, true); root.style.overflow = prev; back?.focus?.({ preventScroll: true }); };   // return focus without scrolling the page under it
-
-  }, [sym]);
+  useModal(panel, !!sym, onClose);
 
   if (!sym) return null;
   const href = companyHref(sym);
-  return (
+  return createPortal(
     <div className="peek-back" onClick={onClose}>
       <div ref={panel} className="peek" role="dialog" aria-modal="true" aria-label={`${sym}: quick look`} onClick={(e) => e.stopPropagation()}>
         <div className="peek-top">
@@ -158,6 +137,7 @@ export function CompanyPeek({ sym, onClose }: { sym: string | null; onClose: () 
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

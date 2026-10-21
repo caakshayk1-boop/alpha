@@ -1320,3 +1320,7 @@ html.anim .rw-bar i { animation: railGrow var(--dur-slow) var(--ease) both; tran
 .ask-unknown { margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--line-2); font-size: 14px; color: var(--muted); }
 /* A study or panel under review: amber edge, readable body text (A02). */
 .notice.warn { border: 1px solid var(--warn); border-left-width: 3px; color: var(--text); background: color-mix(in srgb, var(--warn) 7%, transparent); }
+/* A08: sortable headings are buttons that look like headings */
+.th-sort { all: unset; cursor: pointer; display: inline-flex; align-items: baseline; gap: 2px; white-space: nowrap; font: inherit; color: inherit; border-radius: 4px; padding: 2px 0; }
+.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.th-sort .th-dir { color: var(--dim); } th[aria-sort="ascending"] .th-dir, th[aria-sort="descending"] .th-dir { color: var(--accent-2); }

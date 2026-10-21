@@ -167,7 +167,8 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const eng = useSignals();
   const px = usePx(sym ? [sym] : []);
   const lv = useLive();
-  const [watch, addWatch, removeWatch] = useStoredList('alpha-watchlist');
+  const [watch, addWatch, removeWatch, , watchError] = useStoredList('alpha-watchlist');
+  const [watchNote, setWatchNote] = useState('');
   const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
   type Tab = (typeof TABS)[number];
   const [tab, setTab] = useState<Tab>('overview');
@@ -204,7 +205,8 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         </div>
         <div className="co-price">
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
-            <button className="chip" aria-pressed={watch.includes(r.sym)} onClick={() => (watch.includes(r.sym) ? removeWatch(r.sym) : addWatch(r.sym))}>{watch.includes(r.sym) ? '★ Watching' : '☆ Watch'}</button>
+            <button className={`chip watch-btn${watch.includes(r.sym) ? ' on' : ''}`} aria-pressed={watch.includes(r.sym)} onClick={() => { const on = watch.includes(r.sym); if (on ? removeWatch(r.sym) : addWatch(r.sym)) setWatchNote(on ? 'Removed from your watchlist' : 'Saved to your watchlist, in this browser'); }}><span className="star" aria-hidden>{watch.includes(r.sym) ? '★' : '☆'}</span> {watch.includes(r.sym) ? 'Watching' : 'Watch'}</button>
+            {(watchError || watchNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13 }}>{watchError ?? watchNote}</span>}
             <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
             <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
           </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div></div>

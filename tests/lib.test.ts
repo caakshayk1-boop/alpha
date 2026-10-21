@@ -106,6 +106,19 @@ test('screen parser: unsupported words are listed as ignored, never silently dro
   assert.ok(q.filters.map((f) => f.label).includes('Oversold (RSI under 30)'));    // "oversold" must survive the currency clean-up of "rs"
   assert.deepEqual(q.unknown, ['zzzz']);
 });
+test('A04: "banks" means banks, never exchanges, asset managers or brokers; a broader search says it is broader', () => {
+  const fin = (sym: string, name: string) => R({ sym, name, sector: 'Financial Services', roe: 18, pe: 10 });
+  const rows = [fin('HDFCBANK', 'HDFC Bank Ltd.'), fin('SBIN', 'State Bank of India'), fin('BSE', 'BSE Ltd.'), fin('NAM-INDIA', 'Nippon Life India Asset Management Ltd.'),
+    fin('ANANDRATHI', 'Anand Rathi Wealth Ltd.'), fin('GROWW', 'Billionbrains Garage Ventures Ltd.'), fin('BAJFINANCE', 'Bajaj Finance Ltd.'), fin('SBILIFE', 'SBI Life Insurance Company Ltd.')];
+  const hits = (q: string) => { const p = parse(q); return rows.filter((r) => p.filters.every((f) => f.test(r))).map((r) => (r as unknown as { sym: string }).sym); };
+  assert.deepEqual(hits('cheap banks roe above 14'.replace('cheap ', '')), ['HDFCBANK', 'SBIN']);
+  assert.deepEqual(hits('insurance'), ['SBILIFE']);
+  assert.equal(hits('financial services').length, rows.length);
+  const p = parse('nbfc roe above 15');
+  assert.match(p.filters.find((f) => f.label.startsWith('Financial Services'))?.note ?? '', /does not separate/);
+  assert.match(parse('banks').filters[0].note ?? '', /registered name/);
+  assert.equal(parse('it stocks').filters[0].note, undefined, 'an exact sector rule carries no note');
+});
 test('screen parser: a company with no value for a measure never matches a clause on it', () => {
   const f = parse('roce above 20').filters[0];
   assert.equal(f.test(R({ roce: null })), false);
@@ -766,4 +779,23 @@ test('rotation shift: strength against the Nifty over four weekly points, strong
   const s = rotationShift(feed, 4);
   assert.deepEqual(s.map((x) => [x.name, x.shift]), [['A', 10], ['B', -10]]);
   assert.deepEqual(rotationShift({ nifty: [1], groups: {} }, 4), []);
+});
+
+import { listOps } from '../src/lib/store.ts';
+test('A09: list operations never lose or duplicate names, so a bulk add keeps all of them', () => {
+  let l: string[] = ['TCS'];
+  for (const s of ['INFY', 'HDFCBANK', 'INFY', 'TCS']) l = listOps.add(l, s);
+  assert.deepEqual(l, ['TCS', 'INFY', 'HDFCBANK']);
+  assert.deepEqual(listOps.addAll(['A'], ['B', 'C', 'B', 'A']), ['A', 'B', 'C']);
+  assert.deepEqual(listOps.remove(['A', 'B', 'C'], 'B'), ['A', 'C'], 'removing one keeps the unrelated names');
+});
+
+import { ttlFor } from '../src/lib/cache.ts';
+test('A12: every endpoint has a lifetime, live prices the shortest', () => {
+  assert.equal(ttlFor('/api/quotes'), 120_000);
+  assert.equal(ttlFor('/api/px?s=TCS'), 120_000);
+  assert.equal(ttlFor('/api/chart?s=TCS&r=1y'), 900_000);
+  assert.equal(ttlFor('/c/TCS.json'), 1_800_000);
+  assert.equal(ttlFor('/data/screen.json'), 600_000);
+  assert.ok(['/signals.json', '/rotation.json', '/universe.json'].every((u) => ttlFor(u) === 600_000));
 });

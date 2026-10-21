@@ -63,6 +63,7 @@ export default function AskScreen({ rows, tableRows, value, onValue, onTests }: 
                 );
               })}
             </div>
+            {p.filters.filter((f) => f.note && !off.includes(f.label)).map((f) => <p key={`n-${f.label}`} className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}><b style={{ color: 'var(--text)' }}>{f.label}:</b> {f.note}</p>)}
             {p.unknown.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0', alignItems: 'center' }}><span className="eyebrow" style={{ color: 'var(--warn)' }}>Ignored</span>{p.unknown.map((w) => <span key={w} className="tag warn">{w}</span>)}<span className="dim" style={{ fontSize: 13.5 }}>These words were not turned into a filter, so they did not change the results.</span></div>}
             {active.length === 0 && p.filters.length === 0 && <p className="dim" style={{ margin: '8px 0 0' }}>No filter recognised. This understands a fixed set of phrases: a sector (IT, pharma, banks), a size (large, mid, small cap), a ratio with a number (ROCE above 20, P/E under 25, debt below 0.5) or a state (uptrend, oversold, cheap, near 52 week high). Pick an example above, or use the lenses and filters below.</p>}
             {active.length === 0 && p.filters.length > 0 && <p className="dim" style={{ margin: '8px 0 0' }}>Every clause is switched off, so nothing is being filtered.</p>}
