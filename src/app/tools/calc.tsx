@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Rv } from '@/components/ui';
-import { num } from '@/lib/format';
+import { num, pct } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
-import { cagr, evBand, expectancy, positionSize, recoveryGain, streakProb } from './math';
+import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, streakProb } from './math';
 
 /* Decision calculators. Each one: inputs with a stepper and a message beside the field, one result, then the working that
    produced it, so a reader can redo the sum by hand. Arithmetic only: no input is a forecast, and nothing here says what to do. */
@@ -116,6 +116,13 @@ export function Position() {
                 ['Position value', `${num(qty)} × ${money(e, 2)}`, money(value)],
                 ['Planned loss if filled at the stop', `${num(qty)} × ${money(risk, 2)}`, money(loss)],
               ]} note={<>Rounded down to whole shares, so the planned loss if filled at the stop is at or under the budget. Not modelled: brokerage, taxes, and a gap that fills you below the stop.</>} />
+              {qty > 0 && (
+                <table className="tbl tbl-text stress" aria-label="Loss if the exit is worse than the stop">
+                  <caption className="dim">If the exit is worse than the stop (0.25% round-trip costs included). Arithmetic on your inputs, not a forecast.</caption>
+                  <thead><tr><th scope="col">Exit</th><th scope="col">Price</th><th scope="col">Loss</th><th scope="col">Of capital</th></tr></thead>
+                  <tbody>{([['At the stop', 0], ['Gap 3% below the stop', 3], ['Gap 8% below the stop', 8]] as const).map(([l, g]) => { const L = stressLoss(qty, e, s, g, 0.25); return <tr key={l}><td>{l}</td><td className="num">{money(s * (1 - g / 100), 2)}</td><td className="num down">{money(-L)}</td><td className="num">{pct(-(L / cap) * 100, 2)}</td></tr>; })}</tbody>
+                </table>
+              )}
               {qty === 0 && <p className="tool-warn">The budget ({money(budget)}) is smaller than the risk on one share ({money(risk, 2)}), so the size rounds to zero.</p>}
               {value > cap && <p className="tool-warn">This size needs {lakh(value)}, more than the capital of {lakh(cap)}: a wider stop or a smaller risk brings it inside.</p>}
             </>

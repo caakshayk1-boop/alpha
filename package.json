@@ -11,7 +11,9 @@
     "deploy": "npm run build && wrangler deploy",
     "prebuild": "node scripts/shard.mjs",
     "test": "node --experimental-strip-types --test tests/lib.test.ts tests/tools.test.ts tests/explain.test.mjs tests/evals.test.mjs tests/summary.test.mjs",
-    "lint:design": "node scripts/design-lint.mjs"
+    "lint:design": "node scripts/design-lint.mjs",
+    "budget": "node scripts/budget.mjs",
+    "a11y": "node scripts/a11y.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",
@@ -23,8 +25,10 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "axe-core": "^4.14.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
+    "playwright": "^1.56.1",
     "typescript": "^5",
     "wrangler": "^4.42.0"
   }

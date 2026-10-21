@@ -9,7 +9,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,6 +27,12 @@ jobs:
       - run: npm run build
       - name: Audit links, feeds and endpoints
         run: node scripts/audit.mjs
+      - name: JavaScript budget per route (gzipped, at most 10% over baseline)
+        run: npm run budget
+      - name: Browser for the accessibility gate
+        run: npx playwright install --with-deps chromium
+      - name: Accessibility and layout gate (axe serious/critical, overflow, broken text, palette keyboard; Worker-served)
+        run: node scripts/a11y.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

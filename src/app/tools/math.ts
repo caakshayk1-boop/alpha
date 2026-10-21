@@ -7,6 +7,13 @@ export function positionSize(capital: number, riskPct: number, entry: number, st
   return { budget, perShare, qty: Math.floor(budget / perShare) };
 }
 
+/** The loss on a long position if it exits below its stop: the open gaps `gapPct` below the stop, and `costPct` of the
+ *  entry value is paid on the round trip. A gap of 0 is a fill exactly at the stop. Pure arithmetic, not a forecast. */
+export function stressLoss(qty: number, entry: number, stop: number, gapPct: number, costPct: number): number {
+  const exit = stop * (1 - gapPct / 100);
+  return qty * (entry - exit) + qty * entry * (costPct / 100);
+}
+
 /** Expected R per trade and the win rate at which it is zero. */
 export function expectancy(p: number, win: number, loss: number, cost: number) {
   return { ev: p * win - (1 - p) * loss - cost, breakEven: (loss + cost) / (win + loss) };

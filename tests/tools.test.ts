@@ -44,3 +44,12 @@ test('recovery and CAGR', () => {
   near(cagr(100_000, 250_000, 5), (Math.pow(2.5, 0.2) - 1) * 100);
   near(cagr(100_000, 250_000, 5), 20.11, 0.01);
 });
+
+import { stressLoss } from '../src/app/tools/math.ts';
+test('§22.6: a gap below the stop and costs make the planned loss larger, never smaller', () => {
+  const atStop = stressLoss(100, 500, 470, 0, 0);
+  assert.equal(atStop, 3000);
+  assert.ok(Math.abs(stressLoss(100, 500, 470, 8, 0) - (100 * (500 - 470 * 0.92))) < 1e-9);
+  assert.ok(stressLoss(100, 500, 470, 3, 0.25) > stressLoss(100, 500, 470, 0, 0.25));
+  assert.equal(stressLoss(100, 500, 470, 0, 0.25), 3000 + 125);
+});
