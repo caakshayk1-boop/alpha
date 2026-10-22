@@ -26,7 +26,7 @@ promote_to_validated:        # alerts may be considered only from here, and stil
   unseen_history_confirmation: required # 2010-01-01..2019-10-20, run once, after walk-forward, never used to tune
 power_analysis:
   effect_r: 0.10              # smallest net expectancy worth trading, in R
-  sd_r: 1.20                  # per-trade R dispersion observed in the legacy books (Swing v2 holdout sd ~1.1-1.3)
+  sd_r: 1.20                  # Swing v2 holdout, from its win rate 36.7%, avg win 1.51R, avg loss -0.98R: sd = 1.20R (two-point approximation)
   alpha_one_sided: 0.05
   power: 0.80
   formula: n = ((z_0.95 + z_0.80) * sd / effect)^2 = ((1.645 + 0.842) * 1.2 / 0.1)^2 = 890.7, rounded up to 891
