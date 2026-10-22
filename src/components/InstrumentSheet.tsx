@@ -26,7 +26,10 @@ const fetchBars = (id: string, fresh = false) => {
 const dateOf = (t: number) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
 /** A bar from low to high with the price marked; `label` names the two ends. */
-function RangeRail({ lo, hi, at, label }: { lo: number; hi: number; at: number; label: string }) {
+function RangeRail({ lo: lo0, hi: hi0, at, label }: { lo: number; hi: number; at: number; label: string }) {
+  // a price that traded is inside the day's range by definition: when the quote's high/low lag its price (Yahoo's crypto day
+  // range did, 22 Oct 2026: price 83,965 under a 'low' of 84,024), the range is widened to the price, never the price clamped
+  const lo = Math.min(lo0, at), hi = Math.max(hi0, at);
   const p = hi > lo ? Math.max(0, Math.min(100, ((at - lo) / (hi - lo)) * 100)) : 50;
   return (
     <div className="irail" role="img" aria-label={`${label}: low ${num(lo, 2)}, high ${num(hi, 2)}, price ${num(at, 2)} at ${Math.round(p)}% of the range`}>
