@@ -17,9 +17,28 @@ const isSort = (x: string | null): x is SortKey => SORTS.some(([k]) => k === x);
 const fin = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 const short = (n: string) => n.replace(/\s*-\s*Direct Plan\s*-\s*Growth( Option)?/i, '').replace(/\s*-\s*Direct\s*-\s*Growth/i, '');
 
-function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: string }) {
+/** One figure per order: the card's headline is the figure the funds are ordered by, so changing the order changes the number. */
+const METRIC: Record<SortKey, { k: string; head: string; tone: 'chg' | 'down' | 'plain' }> = {
+  r1: { k: '1 year', head: '1-year return', tone: 'chg' },
+  r3: { k: '3 years, a year', head: '3-year return, a year', tone: 'chg' },
+  r5: { k: '5 years, a year', head: '5-year return, a year', tone: 'chg' },
+  dd3: { k: 'Worst fall, 3 yrs', head: 'worst fall in the last 3 years', tone: 'down' },
+  volatility: { k: 'Volatility', head: 'volatility, last 3 years', tone: 'plain' },
+};
+const ORDER: readonly SortKey[] = ['r1', 'r3', 'r5', 'dd3', 'volatility'];
+
+function Figure({ f, k }: { f: Fund; k: SortKey }) {
+  const v = f[k];
+  if (!fin(v)) return k === 'r5' && f.history_years < 5 ? <span className="dim" style={{ fontSize: 14 }}>under 5 yrs old</span> : k === 'r3' && f.history_years < 3 ? <span className="dim" style={{ fontSize: 14 }}>under 3 yrs old</span> : <>{dash}</>;
+  const t = METRIC[k].tone;
+  return t === 'chg' ? <Chg v={v} dp={1} /> : <span className={t === 'down' ? 'down' : undefined}>{pct(v, 1, false)}</span>;
+}
+
+function FundCard({ f, rank, sort, sortLabel }: { f: Fund; rank: number; sort: SortKey; sortLabel: string }) {
   const p = f.portfolio;
-  const headline = fin(f.r3) ? { v: f.r3, l: '3-year return, a year' } : fin(f.since_inception) ? { v: f.since_inception, l: `since launch (${num(f.history_years, 1)} yrs), a year` } : null;
+  const m = METRIC[sort];
+  const has = fin(f[sort]);
+  const rest = ORDER.filter((k) => k !== sort).slice(0, 4);
   // newest four calendar years, newest first (the feed's order is not guaranteed: sort, never slice blindly)
   const cal = [...(f.calendar ?? [])].sort((a, b) => b.year - a.year).slice(0, 4);
   const calMax = Math.max(5, ...cal.map((c) => Math.abs(c.ret)));
@@ -31,14 +50,11 @@ function FundCard({ f, rank, sortLabel }: { f: Fund; rank: number; sortLabel: st
         <div className="dim" style={{ fontSize: 13.5 }}>{f.house} · launched {dateLabel(f.inception)}</div>
       </div>
       <div>
-        <div className="disp" style={{ fontSize: 44, lineHeight: 1 }}>{headline ? <Chg v={headline.v} dp={1} /> : dash}</div>
-        <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>{headline ? headline.l : 'not enough history'}{fin(f.percentile_r3) ? ` · ${ordinal(f.percentile_r3)} percentile in its category` : ''}</div>
+        <div className="disp" style={{ fontSize: 44, lineHeight: 1 }}><Figure f={f} k={sort} /></div>
+        <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>{has ? m.head : `no ${m.head.replace(/, a year$/, '')} figure: ${num(f.history_years, 1)} yrs of history`}{sort === 'r3' && fin(f.percentile_r3) ? ` · ${ordinal(f.percentile_r3)} percentile in its category` : ''}</div>
       </div>
       <div className="kv" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <div><div className="k">1 year</div><div className="v">{fin(f.r1) ? <Chg v={f.r1} dp={1} /> : dash}</div></div>
-        <div><div className="k">5 years, a year</div><div className="v">{fin(f.r5) ? <Chg v={f.r5} dp={1} /> : <span className="dim" style={{ fontSize: 14 }}>{f.history_years < 5 ? 'under 5 yrs old' : dash}</span>}</div></div>
-        <div><div className="k">Worst fall, 3 yrs</div><div className="v down">{fin(f.dd3) ? `${pct(f.dd3, 1, false)}` : dash}</div></div>
-        <div><div className="k">Volatility</div><div className="v">{fin(f.volatility) ? `${pct(f.volatility, 1, false)}` : dash}</div></div>
+        {rest.map((k) => <div key={k}><div className="k">{METRIC[k].k}</div><div className="v"><Figure f={f} k={k} /></div></div>)}
       </div>
       {cal.length > 0 && (
         <div>
@@ -99,7 +115,7 @@ function FundsPage() {
             <span className="eyebrow">Order by</span>
             {SORTS.map(([k, l]) => <button key={k} className="chip" aria-pressed={sort === k} onClick={() => go(active?.key ?? '', k)}>{l}</button>)}
           </div>
-          <div className="grid g3" style={{ alignItems: 'start' }}>{funds.map((x, i) => <FundCard key={x.code} f={x} rank={i + 1} sortLabel={sortLabel} />)}</div>
+          <div className="grid g3" style={{ alignItems: 'start' }}>{funds.map((x, i) => <FundCard key={x.code} f={x} rank={i + 1} sort={sort} sortLabel={sortLabel} />)}</div>
           <div className="panel tight" style={{ marginTop: 14 }}>
             <p className="dim" style={{ fontSize: 13.5, margin: 0, lineHeight: 1.6 }}>
               <b style={{ color: 'var(--text)' }}>How these three are chosen:</b> the highest 3-year returns in the category. A ranking on past returns favours what has

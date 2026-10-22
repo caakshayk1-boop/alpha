@@ -10,7 +10,6 @@ const KEPT: [string, string][] = [
   ['Saved screens and screen columns', 'alpha-screen-saved, alpha-screen-cols'],
   ['Results you opened from search (not what you typed)', 'alpha-recent'],
   ['Settings (theme, accent, motion, market colours, density, contrast, shortcuts)', 'alpha-theme, alpha-accent, alpha-motion, alpha-market, alpha-density, alpha-contrast, alpha-shortcuts'],
-  ['Since-your-last-visit snapshot', 'alpha-last-visit'],
   ['Holdings you enter in the X-ray tool', 'alpha-xray'],
   ['News: saved stories, read stories, last visit', 'alpha-news-saved, alpha-news-seen, alpha-news-visit'],
   ['When you last exported', 'alpha-last-export'],
@@ -18,6 +17,7 @@ const KEPT: [string, string][] = [
   ['Page layout on Company and Compare (Quick look or Deep dive)', 'alpha-company-layout, alpha-compare-layout'],
   ['Your data conditions on My Desk', 'alpha-conditions'],
   ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
+  ['Retired: the old since-your-last-visit snapshot. Nothing writes it any more; Today deletes it if your browser still has it', 'alpha-last-visit'],
 ];
 
 export default function Privacy() {
