@@ -1585,3 +1585,12 @@ html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view
   .reads-list .li .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .reads-ed, .reads-ed .field { width: 100%; min-width: 0; }
 }
+
+/* Signal engines v3 (research): four views, mobile first */
+.v3-eng { list-style: none; margin: 10px 0 14px; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.v3-views { display: grid; gap: var(--s-3); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .v3-views { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.v3-cards { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.v3-card { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.v3-card-h { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.v3-card ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }

@@ -78,6 +78,7 @@ export const feed = <K extends FeedName>(name: K): Promise<FeedMap[K]> => load<F
 export const chartFeed = (sym: string, range: string): Promise<ChartFeed> => load<ChartFeed>(`${BASE}/api/chart?s=${encodeURIComponent(sym)}&r=${range}`);
 export const rotationFeed = (): Promise<RotationFeed> => load<RotationFeed>(`${BASE}/rotation.json`);
 export const signalsFeed = (): Promise<SignalsFeed> => load<SignalsFeed>(`${BASE}/signals.json`);
+export const enginesV3Feed = (): Promise<import('./enginesV3').V3Feed> => load<import('./enginesV3').V3Feed>(`${BASE}/engines_v3.json`);
 export const ipoLiveFeed = (): Promise<IpoLive> => load<IpoLive>(`${BASE}/api/ipo-live`);
 export const summaryFeed = (): Promise<Summary> => load<Summary>(`${BASE}/api/summary`);
 export const quotesFeed = (): Promise<QuotesFeed> => load<QuotesFeed>(`${BASE}/api/quotes`);
@@ -125,6 +126,7 @@ export interface Shard { sym: string; built_on: string; count: number; row: impo
 export const useShard = (sym: string): Loaded<Shard> => useLoaded(() => load<Shard>(`${BASE}/c/${encodeURIComponent(sym)}.json`), `shard:${sym}`, !!sym, `${BASE}/c/${encodeURIComponent(sym)}.json`);
 /** The Swing v2 book: the market gate, the rules, the backtest and every signal (public/signals.json, written nightly). */
 export const useSignals = (): Loaded<SignalsFeed> => useLoaded(signalsFeed, 'signals', true, `${BASE}/signals.json`);
+export const useEnginesV3 = (): Loaded<import('./enginesV3').V3Feed> => useLoaded(enginesV3Feed, 'engines_v3', true, `${BASE}/engines_v3.json`);
 export const useRotation = (): Loaded<RotationFeed> => useLoaded(rotationFeed, 'rotation', true, `${BASE}/rotation.json`);
 export const useIpoLive = (): Loaded<IpoLive> => useLoaded(ipoLiveFeed, 'ipolive', true, `${BASE}/api/ipo-live`);
 export const useQuotes = (): Loaded<QuotesFeed> => useLoaded(quotesFeed, 'quotes', true, `${BASE}/api/quotes`);
