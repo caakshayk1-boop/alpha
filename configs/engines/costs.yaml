@@ -1,0 +1,40 @@
+# Itemised Indian cost model for NSE cash-market DELIVERY trades (the only kind these engines take).
+# Every statutory rate below was read from an official source on the access date given; none is remembered.
+# Items marked UNKNOWN depend on the owner's broker (MISSING_DATA_AND_ACCESS.md row 5) and must be confirmed, not assumed.
+version: costs-1.0.0
+accessed: 2026-10-22
+segment: NSE cash market, delivery
+statutory:
+  stt:
+    buy_pct: 0.100
+    sell_pct: 0.100
+    basis: value of the transaction (VWAP basis per the schedule)
+    source: https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies   # "Rates w.e.f. April 1, 2026", page updated 17/04/2026
+  stamp_duty:
+    buy_pct: 0.015
+    sell_pct: 0.0
+    source: https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies
+  exchange_transaction_charge:
+    each_side_rs_per_crore: 307.00     # Rs 306.99 transaction charge + Rs 0.01 NSE IPFT, w.e.f. 2026-03-01
+    each_side_pct: 0.00307
+    source: https://nsearchives.nseindia.com/content/circulars/FA73061.pdf   # NSE/FA/73061, 27 Feb 2026
+  sebi_turnover_fee:
+    each_side_rs_per_crore: 10.0
+    each_side_pct: 0.0001
+    source: https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies
+  gst:
+    rate_pct: 18.0
+    on: [brokerage, exchange_transaction_charge, sebi_turnover_fee]
+    source: https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies
+broker:                                 # owner to confirm the broker; until then these are UNKNOWN, and the backtest
+  brokerage_delivery: UNKNOWN           # must run the stress case below rather than assume zero
+  dp_charge_per_sell_rs: UNKNOWN
+execution:                              # model hypotheses, not facts: frozen in PREREGISTRATION.md, stressed at 2x
+  half_spread_pct_by_adv:               # median daily traded value bands, Rs crore
+    ">=100": 0.03
+    "25-100": 0.06
+    "10-25": 0.12
+  slippage_pct: 0.05                    # per side, beyond the half spread, at the next-session open
+# Statutory round trip (no brokerage, no DP, no spread):
+#   STT 0.200 + stamp 0.015 + exchange 0.00614 + SEBI 0.0002 + GST 18% x (0.00614 + 0.0002) = 0.22248% of traded value.
+# The Swing v2 and ML backtests charged a flat 0.25%, which leaves ~0.03% for brokerage, DP, spread and slippage combined.
