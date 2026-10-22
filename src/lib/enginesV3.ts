@@ -17,7 +17,7 @@ export const ENGINE_NAME: Record<string, string> = {
   E4: 'Residual mean reversion', E5: 'Failed breakdown and range reclaim', E6: 'Earnings surprise drift', E7: 'Relative strength, held to the time limit',
 };
 export const STATE_WORD: Record<EngineState, string> = {
-  BLOCKED_DATA: 'Blocked: data missing', RESEARCH: 'Research', PAPER: 'Paper', VALIDATED: 'Validated', PAUSED: 'Paused', RETIRED: 'Retired',
+  BLOCKED_DATA: 'Blocked (data)', RESEARCH: 'Research', PAPER: 'Paper', VALIDATED: 'Validated', PAUSED: 'Paused', RETIRED: 'Retired',
 };
 
 export interface Card { key: string; engine: string; engineName: string; symbol: string; asOf: string; badge: string; live: boolean; lines: string[] }
@@ -66,6 +66,25 @@ function emptyViews(why: string): View[] {
     { key: 'validated', title: 'Validated alerts', cards: [], empty: 'No engine has passed validation. Nothing here is an alert.' },
     { key: 'closed', title: 'Closed record', cards: [], empty: `No closed record: ${why}.` },
   ];
+}
+
+/** The v3 lifecycle as last decided, for when engines_v3.json is not published (configs/engines/states.yaml, RELEASE_GATES.md,
+ *  RESEARCH_REPORT.md and DECISIONS #12–#15, 22 Oct 2026). A decision record, not a feed: it carries no figure, and a published
+ *  feed replaces it. No v3 engine inherits any Swing v2 result, and no row here is a record of trades. */
+export interface RegistryRow { id: string; name: string; state: EngineState; version: string; decided: string; why: string }
+export const V3_REGISTRY: RegistryRow[] = [
+  { id: 'E1', name: ENGINE_NAME.E1, state: 'RESEARCH', version: 'v1.0.0', decided: '2026-10-22', why: 'Its walk-forward result did not beat matched random entries on the same plan. Kept as the control for E7.' },
+  { id: 'E2', name: ENGINE_NAME.E2, state: 'RETIRED', version: 'v1.0.0', decided: '2026-10-22', why: 'Negative at twice the modelled costs, and below the exposure-matched Nifty.' },
+  { id: 'E3', name: ENGINE_NAME.E3, state: 'RETIRED', version: 'v1.0.0', decided: '2026-10-22', why: 'Negative in every walk-forward period but one.' },
+  { id: 'E4', name: ENGINE_NAME.E4, state: 'RETIRED', version: 'v1.0.0', decided: '2026-10-22', why: 'No event coverage, so paper-only by definition; its paper cohort lost money.' },
+  { id: 'E5', name: ENGINE_NAME.E5, state: 'RESEARCH', version: 'v1.0.0', decided: '2026-10-22', why: 'No better than its random baseline. Kept in research with a forward record.' },
+  { id: 'E6', name: ENGINE_NAME.E6, state: 'BLOCKED_DATA', version: 'v1.0.0', decided: '2026-10-22', why: 'Point-in-time announcement timestamps and quarterly statements are not available.' },
+  { id: 'E7', name: ENGINE_NAME.E7, state: 'PAPER', version: 'v1.1.0', decided: '2026-10-22', why: 'E1 without its trailing exit. Chosen after seeing history, so no historical figure counts: it is judged on its forward paper ledger alone.' },
+];
+/** The rows the Method view shows: the published feed's own states when it exists, otherwise the decision record above. */
+export function lifecycleRows(feed: V3Feed | null): { source: 'feed' | 'record'; asOf: string; rows: RegistryRow[] } {
+  if (!feed) return { source: 'record', asOf: '2026-10-22', rows: V3_REGISTRY };
+  return { source: 'feed', asOf: feed.data_watermark, rows: Object.entries(feed.engines).map(([id, e]) => ({ id, name: ENGINE_NAME[id] ?? id, state: e.state, version: e.version ?? 'not stated', decided: feed.data_watermark, why: e.why ?? '' })) };
 }
 
 /** Copy-lint (spec §6): phrases no engine card, note or reason may ever contain. */

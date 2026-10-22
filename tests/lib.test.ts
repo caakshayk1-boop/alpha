@@ -785,7 +785,9 @@ test('engines v3 copy-lint: banned phrases are caught, and no engine copy, card 
   for (const bad of ['Guaranteed returns', 'a safe bottom', 'loss-protected', 'sure-shot pick', 'win probability 70%', 'probability of profit', 'risk-free']) assert.ok(copyViolations(bad).length > 0, bad);
   assert.deepEqual(copyViolations('Research and paper records only; alerts are off.'), []);
   const { readFileSync } = await import('node:fs');
-  const text = ['src/lib/enginesV3.ts', 'src/components/EnginesV3.tsx', 'src/app/engines/page.tsx', 'engines/v3/nightly.py', 'engines/v3/publish.py']   // copy a reader can see; the rule files state the bans themselves
+  const text = ['src/lib/enginesV3.ts', 'src/components/EnginesV3.tsx', 'src/app/engines/page.tsx', 'engines/v3/nightly.py', 'engines/v3/publish.py',
+    'src/lib/signalsView.ts', 'src/components/Gate.tsx', 'src/components/signals/SignalsWorkspace.tsx', 'src/components/signals/SetupCard.tsx',
+    'src/components/signals/PaperRecord.tsx', 'src/components/signals/Method.tsx', 'src/components/signals/LagNotice.tsx']   // copy a reader can see; the rule files state the bans themselves
     .map((f) => readFileSync(f, 'utf8').replace(/\/\*\* Copy-lint[\s\S]*?\];/m, '')).join('\n');
   const vmText = JSON.stringify(viewModel(V3, new Date('2026-10-22T15:00:00Z')));
   assert.deepEqual(copyViolations(text + vmText), [], 'no banned phrase in engine copy');
