@@ -174,7 +174,7 @@ Deferred by Lane A, because each needs external accounts or data:
 
 1. **Waitlist mail:** verify askakshay.com in Zoho ZeptoMail, then set three Worker secrets: `MAIL_TOKEN`, `MAIL_FROM` and `WAITLIST_ADMIN_TOKEN` (`npx wrangler secret put …`). Until then /pro/ says the list is not open, and nothing is stored.
 2. **Contact address** for corrections and data requests (T09).
-3. Approve the new visual baselines after review.
+3. ~~Approve the new visual baselines~~: deploy authorised by the owner on 22 Oct 2026; baselines re-rendered on the CI image from this branch.
 4. Cloudflare zone Browser Cache TTL → "Respect Existing Headers". This is the open smoke-test failure on main.
 
 ## Deploy and rollback
