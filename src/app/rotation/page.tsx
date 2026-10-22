@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DataStamp } from '@/components/DataStamp';
+import { useDatasetStatus } from '@/components/DataStamp';
 import { sessionLabel } from '@/lib/price';
-import { Async, Bar, Chg, PageHead, Rv, SectionHead, Segmented, Switch } from '@/components/ui';
+import { Async, Bar, Chg, PageHead, Segmented, Switch } from '@/components/ui';
 import { useSignals, useFeed, useRotation } from '@/lib/data';
-import { weekThrough } from '@/lib/status';
+import { plural, weekThrough } from '@/lib/status';
+import { dateLabel } from '@/lib/format';
 import { dash, num, pct } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -138,18 +139,31 @@ export default function RotationPage() {
   const past = n > 0 && t < n - 1;     // a historical week is selected
   // The newest point is labelled with the Friday that ends its week even while the week is still running; say what it runs to.
   const wt = date && !past && rot.data ? weekThrough(date, eng.data?.data_through ?? null, rot.data.generated ?? null) : null;
+  const { items: dsItems } = useDatasetStatus();
+  const rotSt = dsItems.find((i) => i.id === 'rotation');
+  const lastWeek = rot.data?.dates[rot.data.dates.length - 1] ?? null;
+  const latest = rot.data && lastWeek ? weekThrough(lastWeek, eng.data?.data_through ?? null, rot.data.generated ?? null) : { through: null as string | null, inProgress: false };
+  const nReal = S.filter((x) => x.real).length, nBasket = S.length - nReal;
+  const basis = (s: Series, inScreen: number) => (s.real ? `NSE index · breadth from ${plural(inScreen, 'screened stock')}` : `Alpha basket · ${plural(s.members.length, 'stock')}${inScreen !== s.members.length ? `, ${inScreen} in today's screen` : ''}`);
   const weekLabel = wt?.inProgress ? `${date} (week in progress, data through ${wt.through})` : date;
   return (
-    <>
-      <PageHead method="rotation" eyebrow="Rotation" title="How sector strength" em="is changing." />
-      <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['rotation', 'screen']} /></section>
+    <div className="sp">
+      <PageHead method="rotation" eyebrow="Rotation" title="Sector rotation," em="strength against the Nifty." />
       <section className="wrap">
+        {rot.data && (
+          <div className="sp-status" role="group" aria-label="What this graph describes">
+            <div><span className="k">Latest point</span><span className="v">{latest.inProgress ? <span className="pill warn">Week in progress; through {dateLabel(latest.through)}</span> : latest.through ? <span className="pill ok">Week ending {dateLabel(latest.through)}</span> : 'not stated'}</span><span className="n">{latest.inProgress ? `The week ending ${dateLabel(lastWeek)} is not finished; its point moves until Friday's close` : 'A completed week'}</span></div>
+            <div><span className="k">Refresh</span><span className="v">Each weekday, 18:00 IST</span><span className="n">Rebuilt from daily bars; one point per week ending Friday{rotSt?.refreshedAt ? `. Last built ${dateLabel(rotSt.refreshedAt.slice(0, 10))}` : ''}</span></div>
+            <div><span className="k">Groups</span><span className="v num">{nReal} NSE indices · {nBasket} Alpha baskets</span><span className="n">Baskets are equal-weighted screened stocks with 6 or more members</span></div>
+            <div><span className="k">Measured against</span><span className="v">Nifty 50</span><span className="n">RS-Ratio: strength vs its 13-week average. RS-Momentum: its 4-week change</span></div>
+          </div>
+        )}
         <Async loading={rot.loading || scr.loading} error={rot.error ?? scr.error} rows={3}>
           {read && rot.data && (
             <>
-              <Rv className="panel spot" style={{ marginBottom: 14 }}>
-                <div className="eyebrow">Rotation read · calculated from the group indices · week ending {weekLabel}</div>
-                <p className="disp" style={{ fontSize: 26, lineHeight: 1.25, margin: '10px 0 8px' }}>
+              <section className="card rt-read">
+                <div className="eyebrow plain">Rotation read · week ending {weekLabel}</div>
+                <p className="rt-lead">
                   {read.by('Leading').length} groups leading, {read.by('Improving').length} improving, {read.by('Weakening').length} weakening, {read.by('Lagging').length} lagging.
                 </p>
                 <ul className="muted" style={{ paddingLeft: 18, lineHeight: 1.7, margin: 0 }}>
@@ -158,29 +172,27 @@ export default function RotationPage() {
                   {read.fade && <li><b style={{ color: 'var(--warn)' }}>{short(read.fade.s.name)}</b> is still ahead of the market but losing momentum fastest ({num(read.fade.m, 1)}): the one to watch for a handover.</li>}
                   {read.moved.length > 0 && <li>Changed phase in the last 4 weeks: {read.moved.slice(0, 5).map((x) => `${short(x.s.name)} (${x.was} → ${x.q})`).join(', ')}{read.moved.length > 5 ? ` and ${read.moved.length - 5} more` : ''}.</li>}
                 </ul>
-              </Rv>
+              </section>
 
               <div className="grid g-7-5" style={{ alignItems: 'start' }}>
                 <div style={{ display: 'grid', gap: 14 }}>
-                  <Rv className="panel">
+                  <section className="card">
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <Segmented role="group" label="Scope" value={scope} onChange={setScope} options={[['all', 'All groups'], ['index', 'NSE indices'], ['ind', 'Industries'], ['sec', 'Sectors']] as const} />
                       <Segmented role="group" label="Tail length" value={String(tail)} onChange={(v) => setTail(Number(v))} options={[['4', '4w tail'], ['8', '8w'], ['12', '12w']] as const} />
                     </div>
                     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Relative rotation graph" style={{ width: '100%', height: 'auto', display: 'block' }}>
                       <defs>
-                        <radialGradient id="gL" cx="100%" cy="0%" r="110%"><stop offset="0" stopColor="var(--up)" stopOpacity=".32" /><stop offset="1" stopColor="var(--up)" stopOpacity=".03" /></radialGradient>
-                        <radialGradient id="gI" cx="0%" cy="0%" r="110%"><stop offset="0" stopColor="var(--accent)" stopOpacity=".3" /><stop offset="1" stopColor="var(--accent)" stopOpacity=".03" /></radialGradient>
-                        <radialGradient id="gG" cx="0%" cy="100%" r="110%"><stop offset="0" stopColor="var(--down)" stopOpacity=".3" /><stop offset="1" stopColor="var(--down)" stopOpacity=".03" /></radialGradient>
-                        <radialGradient id="gW" cx="100%" cy="100%" r="110%"><stop offset="0" stopColor="var(--warn)" stopOpacity=".3" /><stop offset="1" stopColor="var(--warn)" stopOpacity=".03" /></radialGradient>
-                        <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="var(--accent-2)" stopOpacity="0" /><stop offset="1" stopColor="var(--accent-2)" stopOpacity=".45" /></linearGradient>
+                        <radialGradient id="gL" cx="100%" cy="0%" r="110%"><stop offset="0" stopColor="var(--up)" stopOpacity=".10" /><stop offset="1" stopColor="var(--up)" stopOpacity=".02" /></radialGradient>
+                        <radialGradient id="gI" cx="0%" cy="0%" r="110%"><stop offset="0" stopColor="var(--accent)" stopOpacity=".09" /><stop offset="1" stopColor="var(--accent)" stopOpacity=".02" /></radialGradient>
+                        <radialGradient id="gG" cx="0%" cy="100%" r="110%"><stop offset="0" stopColor="var(--down)" stopOpacity=".09" /><stop offset="1" stopColor="var(--down)" stopOpacity=".02" /></radialGradient>
+                        <radialGradient id="gW" cx="100%" cy="100%" r="110%"><stop offset="0" stopColor="var(--warn)" stopOpacity=".09" /><stop offset="1" stopColor="var(--warn)" stopOpacity=".02" /></radialGradient>
                       </defs>
                       <rect x={X(100)} y={pad} width={W - pad - X(100)} height={Y(100) - pad} fill="url(#gL)" rx="6" />
                       <rect x={pad} y={pad} width={X(100) - pad} height={Y(100) - pad} fill="url(#gI)" rx="6" />
                       <rect x={pad} y={Y(100)} width={X(100) - pad} height={H - pad - Y(100)} fill="url(#gG)" rx="6" />
                       <rect x={X(100)} y={Y(100)} width={W - pad - X(100)} height={H - pad - Y(100)} fill="url(#gW)" rx="6" />
                       {[0.25, 0.5, 0.75].map((f) => <g key={f} stroke="var(--line)" strokeDasharray="2 6"><line x1={pad + f * (W - 2 * pad)} x2={pad + f * (W - 2 * pad)} y1={pad} y2={H - pad} /><line x1={pad} x2={W - pad} y1={pad + f * (H - 2 * pad)} y2={pad + f * (H - 2 * pad)} /></g>)}
-                      <g className="radar" style={{ transformOrigin: `${X(100)}px ${Y(100)}px` }} aria-hidden><path d={`M${X(100)},${Y(100)} L${X(100) + (W - 2 * pad) / 2},${Y(100)} A${(W - 2 * pad) / 2},${(W - 2 * pad) / 2} 0 0 1 ${X(100) + Math.cos(0.5) * (W - 2 * pad) / 2},${Y(100) + Math.sin(0.5) * (W - 2 * pad) / 2} Z`} fill="url(#sweep)" opacity=".5" /></g>
                       <line x1={X(100)} x2={X(100)} y1={pad} y2={H - pad} stroke="var(--line-2)" /><line x1={pad} x2={W - pad} y1={Y(100)} y2={Y(100)} stroke="var(--line-2)" />
                       {([['Improving', pad + 12, pad + 22, 'start'], ['Leading', W - pad - 12, pad + 22, 'end'], ['Lagging', pad + 12, H - pad - 12, 'start'], ['Weakening', W - pad - 12, H - pad - 12, 'end']] as const).map(([q, x, y, a]) => <text key={q} x={x} y={y} textAnchor={a} fill={QC[q]} opacity=".9" fontSize="12" fontFamily="var(--f-mono)" letterSpacing="2">{q.toUpperCase()}</text>)}
                       <text x={W / 2} y={H - 12} textAnchor="middle" fill="var(--dim)" fontSize="11" fontFamily="var(--f-mono)">RS-RATIO: STRENGTH VS THE NIFTY →</text>
@@ -195,8 +207,7 @@ export default function RotationPage() {
                           <g key={x.s.name} className={`rrg-dot${hot ? ' hot' : ''}`} opacity={active ? 1 : 0.25} style={{ cursor: 'pointer', transform: `translate(${X(x.r)}px, ${Y(x.m)}px)` }} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>
                             <title>{`${short(x.s.name)}: ${x.q}, RS-Ratio ${num(x.r, 1)}, momentum ${num(x.m, 1)}`}</title>
                             {show && pts.length > 1 && <g style={{ transform: `translate(${-X(x.r)}px, ${-Y(x.m)}px)` }}><path key={`${x.s.name}${hot}${tail}`} className="rrg-tail" pathLength={1} d={pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('')} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity=".8" />{pts.slice(0, -1).map((q, i) => <circle key={i} cx={q[0]} cy={q[1]} r={1.6 + (i / pts.length) * 2.4} fill={c} opacity={0.25 + (i / pts.length) * 0.6} />)}</g>}
-                            {(x.q === 'Leading' || hot) && <circle className="pulse" r={hot ? 15 : 12} fill="none" stroke={c} strokeWidth="1.5" />}
-                            <circle r={hot ? 9 : 7} fill={c} stroke="var(--bg)" strokeWidth="2" style={{ filter: `drop-shadow(0 0 ${hot ? 9 : 5}px ${c})` }} />
+                            <circle r={hot ? 9 : 7} fill={c} stroke="var(--bg)" strokeWidth="2" />
                             {l && <text x={l.x - X(x.r)} y={l.y - Y(x.m)} textAnchor={l.anchor} fontSize="11.5" fill="var(--text)" fontWeight={hot ? 700 : 500} style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>{short(x.s.name)}</text>}
                           </g>
                         );
@@ -217,19 +228,19 @@ export default function RotationPage() {
                       </div>
                       <PhaseTimeline hist={hist} cur={cur} minT={minT} n={n} t={t} dates={rot.data.dates} onScrub={(i) => { setPlay(false); setEnd(i >= n - 1 ? null : i); }} />
                     </div>
-                  </Rv>
+                  </section>
                   <div className="phase-cards">
                     {order.map((q) => (
-                      <Rv key={q} className="panel tight spot tilt">
+                      <section key={q} className="card tight">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span className="eyebrow" style={{ color: QC[q] }}>{q}</span><span className="num dim">{read.by(q).length}</span></div>
                         <div className="dim" style={{ fontSize: 13, margin: '4px 0 10px' }}>{QNOTE[q]}</div>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>{[...read.by(q)].sort((a, b) => b.r - a.r).map((x) => <button key={x.s.name} className="chip" aria-pressed={sel === x.s.name} onClick={() => setSel(sel === x.s.name ? null : x.s.name)}>{short(x.s.name)}</button>)}</div>
-                      </Rv>
+                      </section>
                     ))}
                   </div>
                 </div>
 
-                <Rv className="panel" style={{ position: 'sticky', top: 84 }}>
+                <section className="card rt-side">
                   <div className="eyebrow">{cur ? short(cur.s.name) : 'Click a group'}</div>
                   {cur ? (
                     <>
@@ -240,7 +251,7 @@ export default function RotationPage() {
                         <div><div className="k">4-week vs Nifty</div><div className="v"><Chg v={cur.ret4t} dp={1} /></div></div>
                         <div><div className="k">13-week vs Nifty</div><div className="v"><Chg v={cur.ret13t} dp={1} /></div></div>
                         <div><div className="k">Above 200-day{past ? ` (${screenOn})` : ''}</div><div className="v">{cur.breadth !== null ? `${pct(cur.breadth, 0, false)}` : dash}</div></div>
-                        <div><div className="k">Stocks</div><div className="v">{cur.mem.length}</div></div>
+                        <div><div className="k">Basis</div><div className="v rt-basis">{basis(cur.s, cur.mem.length)}</div></div>
                       </div>
                       <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? `, as of the ${screenOn} close` : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
@@ -248,27 +259,27 @@ export default function RotationPage() {
                       ))}</div>
                     </>
                   ) : <p className="muted" style={{ marginTop: 10 }}>Select a dot, phase or row for its detail.</p>}
-                </Rv>
+                </section>
               </div>
 
-              <SectionHead title="Every group, by phase" />
+              <div className="card-h sp-sec"><div><h2 className="sec-title">Every group, by phase</h2><p className="sec-sub">NSE indices and Alpha baskets are different universes: an index and a basket for the same sector can disagree.</p></div></div>
               <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}><table className="tbl" style={{ minWidth: 760 }}>
-                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ` (${screenOn})` : ''}</th><th>Stocks</th></tr></thead>
+                <thead><tr><th>Group</th><th>Phase</th><th>RS-Ratio</th><th>RS-Momentum</th><th>4w vs Nifty</th><th>13w vs Nifty</th><th>Above 200-day{past ? ` (${screenOn})` : ''}</th><th>Members</th></tr></thead>
                 <tbody>{table.map((x) => (
                   <tr key={x.s.name} onClick={() => setSel(x.s.name)} style={{ cursor: 'pointer', background: sel === x.s.name ? 'var(--accent-soft)' : undefined }}>
-                    <td><b>{short(x.s.name)}</b>{x.s.real ? <span className="tag acc" style={{ marginLeft: 8 }}>NSE index</span> : <span className="tag" style={{ marginLeft: 8 }}>Alpha group index</span>}</td>
+                    <td><b>{short(x.s.name)}</b><span className="rt-kind">{x.s.real ? 'NSE index' : 'Alpha basket'}</span></td>
                     <td><span className="tag" style={{ color: QC[x.q] }}>{x.q}</span></td>
                     <td className="num">{num(x.r, 1)}</td><td className="num">{num(x.m, 1)}</td>
                     <td><Chg v={x.ret4t} dp={1} /></td><td><Chg v={x.ret13t} dp={1} /></td>
                     <td className="num">{x.breadth !== null ? <><Bar pct={x.breadth} kind={x.breadth >= 50 ? 'up' : 'down'} /> {pct(x.breadth, 0, false)}</> : dash}</td>
-                    <td className="num">{num(x.mem.length)}</td>
+                    <td className="num">{x.s.real ? <>{num(x.mem.length)}<small className="dim"> screened, for breadth</small></> : <>{num(x.s.members.length)}{x.mem.length !== x.s.members.length && <small className="dim"> ({num(x.mem.length)} in screen)</small>}</>}</td>
                   </tr>))}</tbody>
               </table></div>
             </>
           )}
         </Async>
       </section>
-    </>
+    </div>
   );
 }
 

@@ -1014,3 +1014,60 @@ test('since your last review: only recorded snapshots are compared; small score 
   assert.equal(d[0].to, '₹110 (+10.0%)');
   assert.deepEqual(diffSnapshot(s, was), [], 'unchanged figures: nothing listed');
 });
+
+// ── supporting pages (src/lib/support.ts) ─────────────────────────────────────────────────────────────────────────────
+import { compositeRanks, currentMonthExcluded, inWindow, navFreshness, rankSwing, readDelta, seasonRec, weekStatus, windowEnd } from '../src/lib/support.ts';
+
+test('E14 funds: freshness is computed from the NAV dates in the feed, against the calendar, skipping no-trade days', () => {
+  // Thursday 22 Oct 2026, 10:00 IST: the expected NAV is Wednesday 21 Oct; 20 Oct (Diwali) had no session
+  const now = new Date('2026-10-22T04:30:00Z'), skip = new Set(['2026-10-20']);
+  const f = navFreshness(['2026-10-16', '2026-10-16', '2026-10-15'], now, skip);
+  assert.equal(f.expected, '2026-10-21');
+  assert.equal(f.newest, '2026-10-16');
+  assert.equal(f.lag, 2);                 // 19 and 21 Oct
+  assert.equal(f.state, 'delayed');
+  assert.equal(f.behind, 1);
+  assert.equal(navFreshness(['2026-10-21'], now, skip).state, 'current');
+  assert.equal(navFreshness(['2026-10-14'], now, skip).state, 'stale');
+  assert.equal(navFreshness([null, 'n/a'], now).state, 'unknown');
+});
+
+test('E13 calendar: "next 7 days" is today and the six days after it, both ends inclusive, never eight days', () => {
+  assert.equal(inWindow(0, 7), true);
+  assert.equal(inWindow(6, 7), true);
+  assert.equal(inWindow(7, 7), false);
+  assert.equal(inWindow(-1, 7), false);
+  assert.equal(inWindow(NaN, 7), false);
+  assert.equal(windowEnd('2026-10-22', 7), '2026-10-28');
+  assert.equal(windowEnd('2026-10-29', 7), '2026-11-04');
+});
+
+test('E07 brief: rank swings carry today\'s rank, the implied previous rank, and the cause the factors point to', () => {
+  const rows = [{ sym: 'A', comp: 90 }, { sym: 'B', comp: 80, rank_move: 3 }, { sym: 'C', comp: 80 }, { sym: 'D', comp: null, rank_move: 5 }, { sym: 'E', comp: 10, rank_move: -2 }];
+  const { rank, of } = compositeRanks(rows);
+  assert.equal(of, 4);
+  assert.equal(rank.get('C'), 2, 'ties share the better rank');
+  assert.deepEqual(rankSwing(rows[1], rank), { now: 2, before: 5, move: 3 });
+  assert.deepEqual(rankSwing(rows[4], rank), { now: 4, before: 2, move: -2 });
+  assert.equal(rankSwing(rows[3], rank), null, 'no composite, no rank');
+  assert.equal(readDelta({ comp: 3, tech: 13.9, rsi: 5.8, m_pos: 3.5 }).cause, 'market');
+  assert.equal(readDelta({ comp: 1, q: 4 }).cause, 'statements');
+  assert.equal(readDelta({ comp: 1, q: 4, tech: -2 }).cause, 'mixed');
+  assert.equal(readDelta({ comp: 1 }).cause, 'unknown');
+  assert.equal(readDelta({ comp: 3, tech: 13.9, rsi: -20 }).factors[0].key, 'rsi', 'largest change first');
+});
+
+test('E08 brief: a seasonal record spells out up and down years; the running month is out of a sample built before it began', () => {
+  assert.deepEqual(seasonRec([73, 11.25, 11]), { hit: 73, median: 11.25, n: 11, up: 8, down: 3 });
+  assert.equal(seasonRec([50, 1, 0]), null);
+  assert.equal(seasonRec(undefined), null);
+  assert.equal(currentMonthExcluded('2026-09-26T22:03:10+00:00', new Date('2026-10-22T05:00:00Z')), 'before-month');
+  assert.equal(currentMonthExcluded('2026-10-02T22:03:10+00:00', new Date('2026-10-22T05:00:00Z')), 'by-rule');
+  assert.equal(currentMonthExcluded(null, new Date()), 'unknown');
+});
+
+test('E09 rotation: a week ending after the newest bar is a week in progress, through that bar', () => {
+  assert.deepEqual(weekStatus('2026-10-23', '2026-10-21'), { inProgress: true, through: '2026-10-21' });
+  assert.deepEqual(weekStatus('2026-10-16', '2026-10-21'), { inProgress: false, through: '2026-10-16' });
+  assert.deepEqual(weekStatus('2026-10-23', null), { inProgress: false, through: '2026-10-23' });
+});

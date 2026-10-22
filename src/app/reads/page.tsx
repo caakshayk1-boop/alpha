@@ -30,8 +30,8 @@ function LatestFigures({ sym, price, mcap, writtenAt }: { sym: string; price: nu
   const move = now !== null && price > 0 ? (now / price - 1) * 100 : null;
   return (
     <div className="grid g2" style={{ margin: '0 0 16px' }} role="group" aria-label="Figures at publication and latest figures">
-      <div className="panel tight"><div className="eyebrow">At publication{writtenAt ? ` · ${dateLabel(writtenAt)}` : ''}</div><div className="num" style={{ marginTop: 6 }}>₹{num(price, 2)} · {crore(mcap)}</div><div className="dim" style={{ fontSize: 13.5 }}>What the study below was written from. It is not updated.</div></div>
-      <div className="panel tight"><div className="eyebrow">Latest{pv ? ` · ${priceLabel(pv).text}` : ''}</div>
+      <div className="card tight"><div className="eyebrow">At publication{writtenAt ? ` · ${dateLabel(writtenAt)}` : ''}</div><div className="num" style={{ marginTop: 6 }}>₹{num(price, 2)} · {crore(mcap)}</div><div className="dim" style={{ fontSize: 13.5 }}>What the study below was written from. It is not updated.</div></div>
+      <div className="card tight"><div className="eyebrow">Latest{pv ? ` · ${priceLabel(pv).text}` : ''}</div>
         {sh.loading ? <div className="dim" style={{ marginTop: 6 }}>Loading…</div> : now === null ? <div className="dim" style={{ marginTop: 6 }}>Latest figures are not available for this company.</div> : <div className="num" style={{ marginTop: 6 }}>₹{num(now, 2)}</div>}
         {move !== null && <div className="dim" style={{ fontSize: 13.5 }}>{pct(move, 1)} in price since publication. Market cap is not shown here: the screen&apos;s figure is not recalculated with the price. The study&apos;s text does not change.</div>}
       </div>
@@ -55,9 +55,9 @@ export default function Reads() {
   const problems = held[cur] ?? [];
   const written = ed?.written_at ? new Date(ed.written_at) : null;
   return (
-    <>
+    <div className="sp rd">
       <div className="read-progress" aria-hidden />
-      <PageHead method="reads" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." />
+      <PageHead method="reads" eyebrow="Weekly quantitative case study" title="Weekly case studies," em="read from the numbers." lede="Quantitative case studies of listed companies, machine-written from the screen's figures and checked before they are shown. Research, not a recommendation." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
           <div className="reads-bar">
@@ -70,7 +70,7 @@ export default function Reads() {
           </div>
           {sectors.length > 1 && <div className="tabrow reads-sec" role="group" aria-label="Sector"><button className="chip" aria-pressed={sector === ''} onClick={() => setSector('')}>All sectors</button>{sectors.map((x) => <button key={x} className="chip" aria-pressed={sector === x} onClick={() => { setSector(x); const first = ed?.studies.findIndex((y, j) => y.sector === x && !held[j]?.length); const any = ed?.studies.findIndex((y) => y.sector === x); const pick = first !== undefined && first >= 0 ? first : any; if (pick !== undefined && pick >= 0) setOpen(pick); }}>{x}</button>)}</div>}
           <div className="reads-grid">
-            <div className="list panel tight reads-list" role="group" aria-label={`${studies.length} ${studies.length === 1 ? 'study' : 'studies'} this week`}>
+            <div className="list card tight reads-list" role="group" aria-label={`${studies.length} ${studies.length === 1 ? 'study' : 'studies'} this week`}>
               {studies.map(({ x, i }) => (
                 <button key={x.sym} className="li" style={{ textAlign: 'left' }} onClick={() => setOpen(i)} aria-pressed={cur === i}>
                   <div style={{ minWidth: 0 }}><div className="t">{x.name}</div><div className="s">{x.sector} · {x.read_minutes} min{held[i]?.length ? ' · withheld, under review' : x.corrections?.length ? ' · corrected' : ''}</div></div>
@@ -79,9 +79,9 @@ export default function Reads() {
               {studies.length === 0 && <p className="dim" style={{ padding: 12, margin: 0 }}>No study in this sector this week.</p>}
             </div>
             {s && (
-              <Rv key={s.sym} className="panel reads-study">
-                <div className="eyebrow">{s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
-                <h2 className="disp" style={{ fontSize: 'clamp(34px, 4vw, 52px)', margin: '12px 0 8px' }}>{s.name}</h2>
+              <Rv key={s.sym} className="card reads-study">
+                <div className="eyebrow">Quantitative case study · {s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
+                <h2 className="rd-title">{s.name}</h2>
                 <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={companyHref(s.sym)} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end, and not reviewed by a person. {s.review?.status === 'machine_checked' ? `Passed Alpha's interpretation checks on ${dateLabel(s.review.checked_at)}. ` : ''}Not investment advice.</p>
                 {problems.length > 0 && (
@@ -110,7 +110,7 @@ export default function Reads() {
             )}
           </div>
           {r.data?.corrections && r.data.corrections.length > 0 && (
-            <details className="panel tight" style={{ marginTop: 16 }} id="corrections">
+            <details className="card tight rd-log" id="corrections">
               <summary className="eyebrow" style={{ cursor: 'pointer' }}>Corrections log · {r.data.corrections.length} {r.data.corrections.length === 1 ? 'entry' : 'entries'}</summary>
               <ul className="muted" style={{ fontSize: 14, paddingLeft: 18, margin: '8px 0 0', display: 'grid', gap: 6 }}>
                 {r.data.corrections.map((c) => <li key={`${c.week}-${c.sym}`}><b style={{ color: 'var(--text)' }}>{c.sym}</b>, week of {dateLabel(c.week)} · {dateLabel(c.date)}: {c.issue}. {c.action}</li>)}
@@ -119,6 +119,6 @@ export default function Reads() {
           )}
         </Async>
       </section>
-    </>
+    </div>
   );
 }

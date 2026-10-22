@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { Rv, StatusChip } from '@/components/ui';
 import { num, pct, ratio, signed } from '@/lib/format';
 import { canAnimate, gsap } from '@/lib/motion';
-import { cagr, evBand, expectancy, positionSize, recoveryGain, stressLoss, streakProb } from './math';
+import { cagrPlan, evBand, expectancy, positionPlan, recoveryGain, recoveryPlan, stressLoss, streakProb } from './math';
 
 /* Decision calculators. Each one: inputs with a stepper and a message beside the field, one result, then the working that
    produced it, so a reader can redo the sum by hand. Arithmetic only: no input is a forecast, and nothing here says what to do. */
@@ -112,14 +112,11 @@ export function Position() {
   const [entry, setEntry] = useState('500');
   const [stop, setStop] = useState('470');
   const cap = toNum(capital), rp = toNum(riskPct), e = toNum(entry), s = toNum(stop);
-  const err = {
-    cap: !ok(cap) || cap <= 0 ? 'Enter capital above ₹0.' : null,
-    rp: !ok(rp) || rp <= 0 ? 'Enter a risk above 0%.' : rp > 100 ? 'Cannot exceed 100% of capital.' : null,
-    e: !ok(e) || e <= 0 ? 'Enter an entry price above ₹0.' : null,
-    s: !ok(s) || s <= 0 ? 'Enter a stop price above ₹0.' : ok(e) && s >= e ? 'For a long position the stop sits below the entry.' : null,
-  };
-  const size = positionSize(cap, rp, e, s);
-  const valid = !Object.values(err).some(Boolean) && size !== null;
+  const plan = positionPlan(cap, rp, e, s);
+  const pe = plan.ok ? {} : plan.errors;
+  const err = { cap: pe.capital ?? null, rp: pe.risk ?? null, e: pe.entry ?? null, s: pe.stop ?? null };
+  const valid = plan.ok;
+  const size = plan.ok ? plan.value : null;
   const budget = size?.budget ?? 0, risk = e - s;
   const qty = size?.qty ?? 0;
   const value = qty * e, loss = qty * risk;
@@ -146,7 +143,9 @@ export function Position() {
               <Working lines={[
                 ['Risk budget', `${money(cap)} × ${rp}%`, money(budget)],
                 ['Risk per share', `${money(e, 2)} − ${money(s, 2)}`, money(risk, 2)],
-                ['Shares', `⌊${num(budget, 0)} ÷ ${num(risk, 2)}⌋`, num(qty)],
+                ['Shares the risk allows', `⌊${num(budget, 0)} ÷ ${num(risk, 2)}⌋`, num(size?.byRisk ?? 0)],
+                ['Shares the capital buys', `⌊${num(cap, 0)} ÷ ${num(e, 2)}⌋`, num(size?.byCapital ?? 0)],
+                ['Shares', 'the smaller of the two', num(qty)],
                 ['Position value', `${num(qty)} × ${money(e, 2)}`, money(value)],
                 ['Planned loss if filled at the stop', `${num(qty)} × ${money(risk, 2)}`, money(loss)],
               ]} note={<>Rounded down to whole shares, so the planned loss if filled at the stop is at or under the budget. Not modelled: brokerage, taxes, and a gap that fills you below the stop.</>} />
@@ -158,7 +157,7 @@ export function Position() {
                 </table>
               )}
               {qty === 0 && <p className="tool-warn">The budget ({money(budget)}) is smaller than the risk on one share ({money(risk, 2)}), so the size rounds to zero.</p>}
-              {value > cap && <p className="tool-warn">This size needs {lakh(value)}, more than the capital of {lakh(cap)}: a wider stop or a smaller risk brings it inside.</p>}
+              {size?.capped && <p className="tool-warn">Capped by capital: the risk budget allows {num(size.byRisk)} shares ({lakh(size.byRisk * e)}), more than the {lakh(cap)} of capital buys. The size is {num(qty)}, so the loss at the stop is {money(loss)}, under the {money(budget)} budget. No leverage is assumed.</p>}
             </>
           )}
         </div>
@@ -263,13 +262,10 @@ export function Cagr() {
   const [to, setTo] = useState('250000');
   const [years, setYears] = useState('5');
   const f = toNum(from), t = toNum(to), y = toNum(years);
-  const err = {
-    f: !ok(f) || f <= 0 ? 'A start above ₹0: from zero there is no rate.' : null,
-    t: !ok(t) || t <= 0 ? 'An end above ₹0: a total loss has no meaningful rate.' : null,
-    y: !ok(y) || y <= 0 ? 'Enter years above 0.' : y > 60 ? 'Over 60 years a single rate says little.' : null,
-  };
-  const valid = !err.f && !err.t && !err.y;
-  const c = valid ? cagr(f, t, y) : null;
+  const plan = cagrPlan(f, t, y);
+  const ce = plan.ok ? {} : plan.errors;
+  const err = { f: ce.from ?? null, t: ce.to ?? null, y: ce.years ?? null };
+  const c = plan.ok ? plan.value.rate : null;
   return (
     <Rv className="panel tool" as="article">
       <Head n="05" q="What was the annual return?" a="The one steady yearly rate that turns the start value into the end value." />
@@ -300,8 +296,9 @@ export function Cagr() {
 export function Recovery() {
   const [loss, setLoss] = useState('30');
   const l = toNum(loss);
-  const err = !ok(l) || l <= 0 ? 'Enter a fall above 0%.' : l >= 100 ? 'A 100% fall leaves nothing to recover.' : null;
-  const need = err ? null : recoveryGain(l);
+  const plan = recoveryPlan(l);
+  const err = plan.ok ? null : plan.errors.loss;
+  const need = plan.ok ? plan.value : null;
   return (
     <Rv className="panel tool" as="article">
       <Head n="06" q="How deep is this hole?" a="The gain needed to get back to where a fall started. Losses and gains are not symmetrical." />
