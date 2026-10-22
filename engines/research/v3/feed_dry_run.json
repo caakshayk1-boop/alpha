@@ -1,0 +1,49 @@
+{
+ "schema": "alpha-engines/3",
+ "generated": "2026-10-22T02:51:46Z",
+ "data_watermark": "2026-10-21",
+ "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456",
+ "engines": {
+  "E1": {
+   "state": "RESEARCH",
+   "version": "v1.0.0",
+   "why": "not promoted: net_lcb_gt_0, dsr_ge_0.95, pbo_lt_0.20, neighbourhood_full_and_80pct_positive, beats_random, n_ge_891",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  },
+  "E2": {
+   "state": "RESEARCH",
+   "version": "v1.0.0",
+   "why": "not promoted: net_lcb_gt_0, dsr_ge_0.95, pbo_lt_0.20, neighbourhood_full_and_80pct_positive, costs_2x_positive, beats_exposure_matched_nifty, n_ge_891",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  },
+  "E3": {
+   "state": "RESEARCH",
+   "version": "v1.0.0",
+   "why": "not promoted: net_lcb_gt_0, dsr_ge_0.95, pbo_lt_0.20, neighbourhood_full_and_80pct_positive, costs_2x_positive, delay_1_positive, beats_exposure_matched_nifty, n_ge_891",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  },
+  "E4": {
+   "state": "RESEARCH",
+   "version": "v1.0.0",
+   "why": "not promoted: active_cohort_exists, net_lcb_gt_0, dsr_ge_0.95, pbo_lt_0.20, neighbourhood_full_and_80pct_positive, max_dd_le_10pct, costs_2x_positive, delay_1_positive, beats_random, beats_exposure_matched_nifty, n_ge_891",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  },
+  "E5": {
+   "state": "RESEARCH",
+   "version": "v1.0.0",
+   "why": "not promoted: net_lcb_gt_0, dsr_ge_0.95, pbo_lt_0.20, neighbourhood_full_and_80pct_positive, costs_2x_positive, beats_random, beats_exposure_matched_nifty, n_ge_891",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  },
+  "E6": {
+   "state": "BLOCKED_DATA",
+   "version": "v1.0.0",
+   "why": "point-in-time announcement timestamps (MISSING row 1); point-in-time quarterly statements (MISSING row 2)",
+   "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456"
+  }
+ },
+ "forming": [],
+ "paper": [],
+ "validated": [],
+ "closed": [],
+ "alerts_enabled": false
+}

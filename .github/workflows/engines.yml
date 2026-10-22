@@ -30,6 +30,7 @@ jobs:
         working-directory: engines
         run: |
           python tests/test_swing.py
+          python tests/test_integrity.py
           python tests/test_registry.py
       # Swing v2 since 21 Oct 2026 (engines/swing.py). The five ML engines (ai_run_daily.py) are retired; their registry
       # and last feed are in engines/archive/ml-2026-10-21/ and nothing reads them.

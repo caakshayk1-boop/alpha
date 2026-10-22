@@ -1,0 +1,16 @@
+# E4 · Residual mean reversion (2-7 sessions). Spec §3 E4. Not a bottom-reversal engine.
+engine: E4
+version: v1.0.0
+family: reversion
+horizon_sessions: [2, 7]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 25}      # liquid names only
+setup:
+  model: {rule: "OLS of daily stock return on market and sector return over sessions t-126..t-1", window: 126, min_obs: 100}
+  residual_z: {rule: "sum of the last 3 residuals, standardised by the training window's 3-session residual sums", window: 3, z_max: -2.0}
+  trigger: {rule: "close > previous close (recovery), on or after the dislocation"}
+  events: {rule: "known earnings / adverse-news windows excluded", coverage: MISSING, status_without_coverage: paper_only}
+invalidation: {rule: "min(low, dislocation window) - 0.25 * ATR14", pad_atr: 0.25}
+exits: {rule: "z >= 0, stop, or 7 sessions", time_stop_sessions: 7, min_reward_risk_after_costs: 1.0, baseline: normalisation, t3: N/A}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}
+regimes: {active: [range], paper_only: [trend_up], inactive: [trend_down, stress, unknown]}
+note: "Event coverage is missing (MISSING_DATA row 1), so every E4 result is paper-only by its own definition."

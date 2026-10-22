@@ -1,0 +1,9 @@
+{
+ "last_attempt": {
+  "watermark": "2026-10-21",
+  "universe": 889,
+  "with_bar": 530,
+  "ran": "2026-10-22T02:57:51Z",
+  "status": "incomplete: 530 of 889 symbols have a 2026-10-21 bar; nothing recorded"
+ }
+}

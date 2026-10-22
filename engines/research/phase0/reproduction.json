@@ -1,0 +1,228 @@
+{
+ "original_run_utc": "2026-10-21T05:07:09Z",
+ "original_data_through": "2026-10-21",
+ "original_partial_bar": "the original run started 10:37 IST on 21 Oct, so any 21 Oct bar it read was an incomplete intraday bar",
+ "fetched": "2026-10-22T01:22:47.328859+00:00",
+ "universe_at": "31d8822ff0ac906ebc4e328b26741ac867b88659",
+ "runs": {
+  "completed_sessions": {
+   "end": "2026-10-20",
+   "data_hash": "29f07fa75b28c823a8e1379c27a69ca542f04d759ce6990a476169a096b504b0",
+   "universe": 941,
+   "data_through": "2026-10-19",
+   "comparison": [
+    {
+     "figure": "rules.holdout.n",
+     "published": 49,
+     "reproduced": 49,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.expectancy_r",
+     "published": -0.063,
+     "reproduced": -0.063,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.profit_factor",
+     "published": 0.9,
+     "reproduced": 0.9,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.clustered_t_clustered",
+     "published": -0.91,
+     "reproduced": -0.91,
+     "match": true
+    },
+    {
+     "figure": "rules.development.n",
+     "published": 267,
+     "reproduced": 268,
+     "match": false
+    },
+    {
+     "figure": "rules.all.n",
+     "published": 316,
+     "reproduced": 317,
+     "match": false
+    },
+    {
+     "figure": "no_gate.holdout.n",
+     "published": 162,
+     "reproduced": 163,
+     "match": false
+    },
+    {
+     "figure": "no_gate.holdout.expectancy_r",
+     "published": -0.26,
+     "reproduced": -0.261,
+     "match": true
+    },
+    {
+     "figure": "no_gate.holdout.profit_factor",
+     "published": 0.6,
+     "reproduced": 0.6,
+     "match": true
+    },
+    {
+     "figure": "no_gate.holdout.clustered_t_clustered",
+     "published": -3.35,
+     "reproduced": -3.41,
+     "match": false
+    }
+   ],
+   "all_match": false,
+   "gate_on_pct_by_year": {
+    "2020": 17.2,
+    "2021": 45.6,
+    "2022": 25.4,
+    "2023": 62.4,
+    "2024": 62.6,
+    "2025": 24.9,
+    "2026": 2.0
+   },
+   "candidates": 1888
+  },
+  "as_recorded": {
+   "end": "2026-10-21",
+   "data_hash": "ee2d01e79af3a009b123c6da704a649f676bdf8b9a5b1897495c000ffe94ff62",
+   "universe": 941,
+   "data_through": "2026-10-21",
+   "comparison": [
+    {
+     "figure": "rules.holdout.n",
+     "published": 49,
+     "reproduced": 49,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.expectancy_r",
+     "published": -0.063,
+     "reproduced": -0.063,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.profit_factor",
+     "published": 0.9,
+     "reproduced": 0.9,
+     "match": true
+    },
+    {
+     "figure": "rules.holdout.clustered_t_clustered",
+     "published": -0.91,
+     "reproduced": -0.91,
+     "match": true
+    },
+    {
+     "figure": "rules.development.n",
+     "published": 267,
+     "reproduced": 268,
+     "match": false
+    },
+    {
+     "figure": "rules.all.n",
+     "published": 316,
+     "reproduced": 317,
+     "match": false
+    },
+    {
+     "figure": "no_gate.holdout.n",
+     "published": 162,
+     "reproduced": 163,
+     "match": false
+    },
+    {
+     "figure": "no_gate.holdout.expectancy_r",
+     "published": -0.26,
+     "reproduced": -0.261,
+     "match": true
+    },
+    {
+     "figure": "no_gate.holdout.profit_factor",
+     "published": 0.6,
+     "reproduced": 0.6,
+     "match": true
+    },
+    {
+     "figure": "no_gate.holdout.clustered_t_clustered",
+     "published": -3.35,
+     "reproduced": -3.41,
+     "match": false
+    }
+   ],
+   "all_match": false,
+   "gate_on_pct_by_year": {
+    "2020": 17.2,
+    "2021": 45.6,
+    "2022": 25.4,
+    "2023": 62.4,
+    "2024": 62.6,
+    "2025": 24.9,
+    "2026": 2.0
+   },
+   "candidates": 1888
+  }
+ },
+ "gate": {
+  "sessions": 136,
+  "first": "2026-04-02",
+  "last": "2026-10-19",
+  "on_sessions": 0,
+  "on_pct": 0.0,
+  "pass_count": {
+   "trend": 0,
+   "intermediate": 59,
+   "breadth_ok": 97,
+   "vix_ok": 131
+  },
+  "passed_distribution": {
+   "0": 4,
+   "1": 36,
+   "2": 37,
+   "3": 59
+  },
+  "trend_parts": {
+   "nifty_above_200": 0,
+   "sma200_rising": 0
+  },
+  "breadth": {
+   "min": 0.22,
+   "median": 0.5983,
+   "max": 0.8914
+  },
+  "agrees_with_published": 136,
+  "published_sessions_matched": 136
+ },
+ "diagnosis": [
+  {
+   "check": "Index symbol mapping",
+   "detail": "benchmark ^NSEI, 1730 sessions, last 2026-10-19 close 22888.95; published 200-day check reads 'Nifty 22,889 \u00b7 200-day 24,174'; rebuilt on 2026-10-19: Nifty 22888.95, 200-day 24174.48"
+  },
+  {
+   "check": "Date/timezone alignment",
+   "detail": "3 stock dates with no Nifty bar (['2019-10-27', '2020-11-14', '2026-01-15']), 0 Nifty dates with no stock bar, 3 weekend dates; indexes are tz-naive exchange dates"
+  },
+  {
+   "check": "Adjustment policy",
+   "detail": "backtest and gate read exchange-price bars (split-adjusted Close, dividends NOT removed): a 50-day average crosses at ex-dates by the dividend amount; trend tests on ^NSEI (a price index)"
+  },
+  {
+   "check": "Breadth denominator (point-in-time)",
+   "detail": "denominator = today's screened universe with 50 bars of history: min 924, max 941 in the window. Not point-in-time constituents: names delisted or dropped are absent (survivorship), names listed later enter as soon as they have 50 bars"
+  },
+  {
+   "check": "200-day warm-up",
+   "detail": "first valid 200-day average 2020-08-11; window starts 2026-04-02; null 200-day averages inside the window: 0"
+  },
+  {
+   "check": "Null handling",
+   "detail": "VIX missing on 17 Nifty sessions before forward-fill; inside the window VIX null after fill: 0 (null fails the check, never passes it); breadth null: 0"
+  },
+  {
+   "check": "Exchange calendar",
+   "detail": "sessions = Nifty's own dates; in the last 136, 0 sessions where under half the universe has a bar ([]); no NSE holiday calendar is applied, so a missing Yahoo bar and a holiday look alike"
+  }
+ ],
+ "reproduced": false
+}

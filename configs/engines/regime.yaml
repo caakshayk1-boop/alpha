@@ -1,0 +1,11 @@
+# Market regime model (PREREGISTRATION §2). Deterministic, completed sessions only. Frozen before any evaluation.
+version: regime-1.0.0
+inputs: [nifty_close, india_vix]
+states:
+  stress: "realised vol 20d (annualised) > 90th pct of preceding 504 sessions OR VIX > 90th pct of its preceding 504 sessions"
+  trend_up: "nifty > SMA200 and SMA50 > SMA200 and 60-session return > 0"
+  trend_down: "nifty < SMA200 and SMA50 < SMA200 and 60-session return < 0"
+  range: "otherwise"
+  unknown: "any input missing; VIX missing alone falls back to the realised-vol test"
+precedence: [unknown, stress, trend_up, trend_down, range]
+hysteresis_sessions: 3

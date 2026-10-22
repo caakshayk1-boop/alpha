@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 import swing as SW
+import trial_registry as TR
 from ai_trades import monthly_t
 from common import Ctx, stats
 
@@ -62,9 +63,10 @@ def summary(trades) -> dict:
     return out
 
 
-def main(argv) -> None:
+def evaluate(bars, uni, bench, indices, vix) -> dict:
+    """The whole test on the bars given, with nothing written. main() and the Phase 0 reproduction (phase0.py) both call it,
+    so a reproduction runs exactly the code that produced the published figures."""
     t0 = time.time()
-    bars, uni, bench, indices, vix = load(argv)
     ctx = Ctx(bars, bench, uni, indices)
     sector_of = {u["sym"]: u.get("sector") for u in uni}
     gate = SW.market_gate(bench, vix, bars)
@@ -121,10 +123,20 @@ def main(argv) -> None:
         ],
         "seconds": round(time.time() - t0),
     }
+    return out
+
+
+def main(argv) -> None:
+    loaded = load(argv)
+    out = evaluate(*loaded)
+    TR.record("swing", out["version"], out["fingerprint"], TR.bars_hash(loaded[0], loaded[2], loaded[4]),
+              {"start": out["periods"]["development"][0], "end": out["data_through"]},
+              {b: {k: out[b]["holdout"].get(k) for k in ("n", "expectancy_r", "profit_factor", "clustered_t_clustered")} for b in ("rules", "no_gate", "random")},
+              "swing_backtest.py: the research run of record for this version")
     dest = pathlib.Path(__file__).resolve().parent / "research" / "swing_results.json"
     dest.write_text(json.dumps(out, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     h = out["rules"]["holdout"]
-    print(f"wrote {dest}: {len(t_rules)} trades; holdout n={h.get('n')} exp={h.get('expectancy_r')}R t={h.get('clustered_t_clustered')}")
+    print(f"wrote {dest}: {out['rules']['all'].get('n')} trades; holdout n={h.get('n')} exp={h.get('expectancy_r')}R t={h.get('clustered_t_clustered')}")
 
 
 if __name__ == "__main__":

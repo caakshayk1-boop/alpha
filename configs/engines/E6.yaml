@@ -1,0 +1,13 @@
+# E6 · Earnings surprise and post-event drift (5-40 sessions). Spec §3 E6.
+engine: E6
+version: v1.0.0
+state: BLOCKED_DATA
+blocked_by: ["point-in-time announcement timestamps (MISSING row 1)", "point-in-time quarterly statements (MISSING row 2)"]
+setup:
+  surprise: {rule: "(EPS_q - EPS_q-4) / sd of such changes known before release", min_prior_changes: 8, z_min: 1.0, label: "seasonal surprise, not an analyst-consensus beat"}
+  event_return: {rule: "sector-adjusted event-day return > 0"}
+  event_volume: {ratio: 1.5}
+  entry: "after the first full post-publication session closes"
+invalidation: {rule: "first full post-publication session low - 0.25 * ATR14"}
+exits: {time_stop_sessions: 40}
+never: ["simulate timestamps", "call it a consensus beat"]

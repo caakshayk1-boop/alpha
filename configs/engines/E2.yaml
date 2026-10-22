@@ -1,0 +1,22 @@
+# E2 · Volatility compression breakout (5-25 sessions). Spec §3 E2.
+engine: E2
+version: v1.0.0
+family: trend
+horizon_sessions: [5, 25]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 10}
+setup:
+  compression: {rule: "ATR14/close < 25th percentile of its preceding 252 sessions", window: 252, min_obs: 126, pct: 25}
+  trigger: {rule: "close > max(high, previous 20 sessions)", lookback: 20}
+  volume: {rule: "volume / median(volume, preceding 20) >= 1.5", ratio: 1.5, lookback: 20}
+rank:                 # outliers capped at the 1st/99th percentile of that day's cross-section
+  - {feature: compression_depth, weight: 1}
+  - {feature: breakout_over_atr, weight: 1}
+  - {feature: relative_volume, weight: 1}
+invalidation: {rule: "min(low, preceding 10) - 0.25 * ATR14", lookback: 10, pad_atr: 0.25}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}
+exits:
+  time_stop_sessions: 25
+  failed_breakout: {rule: "two completed closes below the broken level", closes: 2}
+  baseline: no_partials
+  challenger: {partials: [[0.30, 1.5], [0.30, 2.5], [0.40, 4.0]]}
+regimes: {active: [trend_up, range], paper_only: [], inactive: [trend_down, stress, unknown]}

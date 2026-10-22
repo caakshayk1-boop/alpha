@@ -58,6 +58,8 @@ jobs:
         working-directory: engines
         run: |
           python tests/test_swing.py
+          python tests/test_integrity.py
+          python tests/test_v3.py
           python tests/test_ai.py
           python tests/test_registry.py
       - name: Static export has every page

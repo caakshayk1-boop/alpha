@@ -6,6 +6,7 @@ import Curve from '@/components/Curve';
 import { GatePanel } from '@/components/Gate';
 import { AskAI } from '@/components/Explain';
 import { Async, Flash, PageHead, Rv, StatusChip } from '@/components/ui';
+import { EnginesV3 } from '@/components/EnginesV3';
 import { dash, num, signed, tone } from '@/lib/format';
 import { journalHref } from '@/lib/journal';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, markSource, money } from '@/lib/plan';
@@ -141,6 +142,7 @@ export default function SignalsPage() {
           )}
         </Async>
       </section>
+      <EnginesV3 />
     </>
   );
 }

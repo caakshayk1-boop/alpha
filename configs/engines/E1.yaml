@@ -1,0 +1,22 @@
+# E1 · Relative-strength continuation (15-60 sessions). Spec §3 E1, transcribed; numbers are research hypotheses, not optima.
+engine: E1
+version: v1.0.0
+family: trend
+horizon_sessions: [15, 60]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 10}
+setup:
+  momentum: {lookback: 126, skip: 21, rule: "total return t-147..t-21 > 0 and in the top quintile of the universe that day"}
+  trigger: {rule: "close > max(high, previous 20 sessions, excluding today)", lookback: 20}
+  sma50_rising: {length: 50, over: 10}
+rank:                 # equal weights; percentiles from that day's cross-section; a percentile is not a probability
+  - {feature: momentum_pct, weight: 1}
+  - {feature: sector_relative_momentum_pct, weight: 1}
+  - {feature: inverse_realised_vol_pct, weight: 1, window: 63}
+invalidation: {rule: "min(low, preceding 10 sessions) - 0.25 * ATR14", atr: 14, lookback: 10, pad_atr: 0.25}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}     # frozen a priori, before any evaluation
+exits:
+  time_stop_sessions: 60
+  trail: {rule: "close < min(low, previous 20 sessions)", lookback: 20, effective: next_session_open}
+  baseline: no_partials
+  challenger: {partials: [[0.30, 1.5], [0.30, 2.5], [0.40, 4.0]]}
+regimes: {active: [trend_up, range], paper_only: [], inactive: [trend_down, stress, unknown]}

@@ -1,0 +1,25 @@
+# E3 · Orderly trend pullback (3-15 sessions). Spec §3 E3.
+engine: E3
+version: v1.0.0
+family: trend
+horizon_sessions: [3, 15]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 10}
+setup:
+  trend: {rule: "close > SMA50 and SMA50 rising over 10 sessions"}
+  relative: {rule: "63-session return > median of its sector that day", lookback: 63}
+  pullback: {rule: "2-5 consecutive lower closes ending yesterday, low within 1 ATR of EMA20", min_days: 2, max_days: 5, within_atr: 1.0,
+             start: "the first lower close after the most recent 10-session high"}
+  trigger: {rule: "close > previous high"}
+  event_gap_excluded: {rule: "no open gap > 4% of the prior close inside the pullback", gap_pct: 4.0}   # routed to E6
+rank:
+  - {feature: trend_strength, weight: 1}             # (close / SMA50 - 1) / ATR%
+  - {feature: pullback_depth_over_atr, weight: 1}
+  - {feature: pullback_volume_contraction, weight: 1}
+invalidation: {rule: "pullback low - 0.25 * ATR14", pad_atr: 0.25}
+target: {primary: "max(high, preceding 20 sessions)", min_reward_risk_after_costs: 1.5}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}
+exits:
+  time_stop_sessions: 15
+  baseline: target_or_stop
+  challenger: {partials: [[0.30, 1.5], [0.30, 2.5], [0.40, 4.0]]}
+regimes: {active: [trend_up], paper_only: [range], inactive: [trend_down, stress, unknown]}

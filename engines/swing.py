@@ -60,7 +60,7 @@ import pandas as pd
 from common import COST_PCT, Trade
 from indicators import atr, ema, rsi, sma
 
-VERSION = "swing-2.0.0"
+VERSION = "swing-2.0.1"     # 2.0.1: group benchmark membership is point in time (DECISIONS #2)
 LAUNCHED = "2026-10-21"
 ALERT_MIN_T = 2.0          # the owner's rule (21 Oct 2026): alerts only when the holdout month-clustered t is at least 2
 

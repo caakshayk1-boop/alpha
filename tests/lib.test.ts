@@ -752,6 +752,42 @@ test('levels: averages, pivots from the last complete session, 52-week range and
   assert.equal(levels({ t: [1], o: [1], h: [1], l: [1], c: [1] }, 1), null);
 });
 
+import { BANNED, copyViolations, isStale, viewModel, type V3Feed } from '../src/lib/enginesV3.ts';
+const V3: V3Feed = { schema: 'alpha-engines/3', generated: '2026-10-22T14:00:00Z', data_watermark: '2026-10-22', evidence: 'abc', alerts_enabled: false,
+  engines: { E1: { state: 'RESEARCH', why: 'not promoted: n_ge_891' }, E6: { state: 'BLOCKED_DATA', why: 'timestamps missing' } },
+  forming: [{ engine: 'E1', symbol: 'TCS', as_of: '2026-10-22', state: 'RESEARCH', met: 'top-quintile momentum', missing: 'a close above 3,400.00' }],
+  paper: [{ id: 'E2:INFY:2026-10-22', engine: 'E2', symbol: 'INFY', as_of: '2026-10-22', state: 'RESEARCH', entry_rule: 'next open', invalidation: 1500, expiry: 'end of the next session' }],
+  validated: [], closed: [{ id: 'E5:ITC:2026-10-01', engine: 'E5', symbol: 'ITC', as_of: '2026-10-01', state: 'RESEARCH', status: 'filled', r_net: -1.04, exit_reason: 'stop_gap', exit_date: '2026-10-03' }] };
+test('engines v3 views: four views, research cards never live, empty and stale states are stated', () => {
+  const vm = viewModel(V3, new Date('2026-10-22T15:00:00Z'));
+  assert.equal(vm.status, 'ok');
+  assert.deepEqual(vm.views.map((v) => v.key), ['forming', 'paper', 'validated', 'closed']);
+  assert.ok(vm.views.flatMap((v) => v.cards).every((c) => !c.live), 'no research card is live');
+  assert.equal(vm.views[0].cards[0].lines[1], 'Still needs: a close above 3,400.00');
+  assert.equal(vm.views[2].cards.length, 0);
+  assert.match(vm.views[2].empty, /No engine has passed validation/);
+  assert.match(vm.views[3].cards[0].lines[0], /−1\.04R net of costs/);
+  const stale = viewModel(V3, new Date('2026-10-30T00:00:00Z'));
+  assert.equal(stale.status, 'stale');
+  assert.match(stale.note, /Nothing below describes today/);
+  const missing = viewModel(null, new Date());
+  assert.equal(missing.status, 'missing');
+  assert.ok(missing.views.every((v) => v.cards.length === 0 && v.empty.length > 0), 'every view says why it is empty');
+  assert.ok(isStale('2026-10-16', new Date('2026-10-21T10:00:00Z')) && !isStale('2026-10-19', new Date('2026-10-21T10:00:00Z')));
+  const val = viewModel({ ...V3, alerts_enabled: false, validated: [{ ...V3.paper[0], state: 'VALIDATED' }] }, new Date('2026-10-22T15:00:00Z'));
+  assert.ok(!val.views[2].cards[0].live, 'validated but alerts off: still not live');
+});
+test('engines v3 copy-lint: banned phrases are caught, and no engine copy, card or reason uses one', async () => {
+  for (const bad of ['Guaranteed returns', 'a safe bottom', 'loss-protected', 'sure-shot pick', 'win probability 70%', 'probability of profit', 'risk-free']) assert.ok(copyViolations(bad).length > 0, bad);
+  assert.deepEqual(copyViolations('Research and paper records only; alerts are off.'), []);
+  const { readFileSync } = await import('node:fs');
+  const text = ['src/lib/enginesV3.ts', 'src/components/EnginesV3.tsx', 'src/app/engines/page.tsx', 'engines/v3/nightly.py', 'engines/v3/publish.py']   // copy a reader can see; the rule files state the bans themselves
+    .map((f) => readFileSync(f, 'utf8').replace(/\/\*\* Copy-lint[\s\S]*?\];/m, '')).join('\n');
+  const vmText = JSON.stringify(viewModel(V3, new Date('2026-10-22T15:00:00Z')));
+  assert.deepEqual(copyViolations(text + vmText), [], 'no banned phrase in engine copy');
+  assert.ok(BANNED.length >= 6);
+});
+
 test('levels: windows are calendar time, so a 7-day crypto market gets a true 52 weeks and a true one-year return', () => {
   // 366 daily bars, every day of the week (crypto). A peak of 115 in the first month of the year, then 80s.
   const n = 366, t0 = 1761091200;                          // 22 Oct 2025 00:00 UTC
