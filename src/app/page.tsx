@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Flash, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
@@ -155,6 +155,8 @@ function TradesCard() {
 }
 
 export default function Home() {
+  // the retired since-your-last-visit panel left a snapshot in browsers that saw it; Privacy no longer lists the key, so it goes
+  useEffect(() => { try { localStorage.removeItem('alpha-last-visit'); } catch { /* storage blocked */ } }, []);
   return (
     <TodayProvider>
       <TodayHero />
