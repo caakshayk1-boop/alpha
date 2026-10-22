@@ -1,6 +1,6 @@
 # Itemised Indian cost model for NSE cash-market DELIVERY trades (the only kind these engines take).
 # Every statutory rate below was read from an official source on the access date given; none is remembered.
-# Items marked UNKNOWN depend on the owner's broker (MISSING_DATA_AND_ACCESS.md row 5) and must be confirmed, not assumed.
+# Brokerage and DP are set to 0 by the owner's decision (2026-10-22), with a stress case reported beside every result.
 version: costs-1.0.0
 accessed: 2026-10-22
 segment: NSE cash market, delivery
@@ -26,9 +26,10 @@ statutory:
     rate_pct: 18.0
     on: [brokerage, exchange_transaction_charge, sebi_turnover_fee]
     source: https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies
-broker:                                 # owner to confirm the broker; until then these are UNKNOWN, and the backtest
-  brokerage_delivery: UNKNOWN           # must run the stress case below rather than assume zero
-  dp_charge_per_sell_rs: UNKNOWN
+broker:                                 # owner, 2026-10-22: broker question dropped. Base case 0 (discount-broker delivery);
+  brokerage_delivery_rs_per_order: 0    # every result is ALSO reported under the stress case, never only the base
+  dp_charge_per_sell_rs: 0
+  stress: {brokerage_rs_per_order: 20, dp_charge_per_sell_rs: 15.93}
 execution:                              # model hypotheses, not facts: frozen in PREREGISTRATION.md, stressed at 2x
   half_spread_pct_by_adv:               # median daily traded value bands, Rs crore
     ">=100": 0.03

@@ -1,0 +1,20 @@
+# E5 · Failed breakdown and range reclaim (3-15 sessions). Spec §3 E5. Never labelled a safe bottom.
+engine: E5
+version: v1.0.0
+family: range
+horizon_sessions: [3, 15]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 10}
+setup:
+  breakdown: {rule: "low < min(low, previous 20 sessions) and close >= that level and close in the top 25% of the day's range", lookback: 20, close_location: 0.75}
+  confirmation: {rule: "a later completed close > the reclaim bar's high, within 5 sessions", within: 5}
+  exclude: [zero_range_bar, open_gap_beyond_stop]
+rank:
+  - {feature: reclaim_distance_over_atr, weight: 1}
+  - {feature: close_location, weight: 1}
+  - {feature: relative_volume, weight: 1}
+invalidation: {rule: "failed-breakdown low - 0.25 * ATR14", pad_atr: 0.25}
+targets: {t1: "midpoint of the 20-session range at signal", t2: "20-session range high at signal", t3: N/A, frozen_at: signal,
+          min_reward_risk_after_costs: 1.5}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}
+exits: {time_stop_sessions: 15, baseline: targets_and_stop}
+regimes: {active: [range], paper_only: [trend_down], inactive: [stress, unknown], research_cohort: trend_down}
