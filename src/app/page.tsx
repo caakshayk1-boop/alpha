@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { Flash, LazyMount, Rv, SectionHead, Skel } from '@/components/ui';
 import { Confluence } from '@/components/AiTools';
 import { DataStamp } from '@/components/DataStamp';
@@ -21,7 +21,6 @@ import { sessionHead } from '@/lib/session';
 import { istHM } from '@/lib/today';
 import { takeaway, vixWord } from '@/lib/takeaway';
 import { useStoredList } from '@/lib/store';
-import { diffSnapshots, parseSnapshot, type Snapshot, type VisitDiff } from '@/lib/visit';
 
 const GAUGE_LEN = Math.PI * 52;
 // the semicircle path below: radius 52
@@ -133,34 +132,6 @@ function JobTiles() {
   );
 }
 
-/** What changed since this browser last saw a different data date. Kept in this browser only; with no earlier snapshot it says so instead of inventing changes. */
-function SinceVisit() {
-  const bar = useFeed('barometer');
-  const pulse = useFeed('pulse');
-  const eng = useSignals();
-  const [diff, setDiff] = useState<VisitDiff | null>(null);
-  const done = useRef(false);
-  useEffect(() => {
-    const t = bar.data?.today, br = pulse.data?.breadth;
-    if (done.current || !t || !br || !eng.data || !t.nifty_date) return;
-    done.current = true;
-    const cur: Snapshot = { asOf: t.nifty_date, score: typeof t.score === 'number' ? t.score : null, up: br.up, down: br.down, signals: eng.data.signals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => `${x.sym}·${x.setup}`) };
-    let prev: Snapshot | null = null;
-    try { prev = parseSnapshot(localStorage.getItem('alpha-last-visit')); } catch { /* blocked: behave as a first visit */ }
-    setDiff(diffSnapshots(prev, cur));
-    try { if (!prev || prev.asOf !== cur.asOf) localStorage.setItem('alpha-last-visit', JSON.stringify(cur)); } catch { /* storage blocked or full */ }
-  }, [bar.data, pulse.data, eng.data]);
-  if (!diff) return <div className="panel" aria-hidden><Skel h={90} /></div>;
-  return (
-    <Rv className="panel">
-      <div className="eyebrow">Since your last visit · kept in this browser</div>
-      {diff.kind === 'start' && <p className="disp" style={{ fontSize: 24, lineHeight: 1.25, margin: '12px 0 0' }}>First visit from this browser. Next time, what changed since today will show here.</p>}
-      {diff.kind === 'same' && <p className="disp" style={{ fontSize: 24, lineHeight: 1.25, margin: '12px 0 0' }}>No newer data since you last looked (data through {dateLabel(diff.asOf)}).</p>}
-      {diff.kind === 'changes' && <><p className="dim" style={{ margin: '10px 0 0', fontSize: 13.5 }}>Compared with data through {dateLabel(diff.since)}:</p><ul style={{ margin: '6px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 15 }}>{diff.lines.map((l) => <li key={l}>{l}</li>)}</ul></>}
-    </Rv>
-  );
-}
-
 /** The book in one line: the market gate, today's R, the open count and what the rules say to do next. Detail on /trades/. */
 function TradesCard() {
   const { feed, totalR, marked, todayR, todayN, open, pending, groups } = useBook();
@@ -190,7 +161,7 @@ export default function Home() {
       <JobTiles />
       <IndexStrip />
       <section className="wrap section">
-        <div className="grid g2"><SectorBars /><SinceVisit /></div>
+        <SectorBars />
       </section>
       <section className="wrap section" aria-label="Today's movers and your watchlist">
         <div className="grid g2"><LiveMovers /><LiveWatchlist /></div>

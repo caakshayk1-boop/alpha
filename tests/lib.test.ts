@@ -6,7 +6,6 @@ import { buildCard, cardDelta, normaliseCard, parseImport, serializeCard, serial
 import { describe as describeStatus, expectedSession, ordinal, plural, rankPhrase, reconcile, sessionsBetween, weekThrough } from '../src/lib/status.ts';
 import { nseDate, plainText, rupeeBand } from '../src/lib/format.ts';
 import { bucketOf, mentionsIn, summarise as summariseNews, topicsOf } from '../src/lib/newsdesk.ts';
-import { diffSnapshots, parseSnapshot } from '../src/lib/visit.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
 import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
 import { MIN_ENTRIES, journalHref, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
@@ -160,26 +159,6 @@ test('cardDelta: missing data on either side yields no change, and a dropped eng
   assert.equal(d.length, 1);
   assert.equal(d[0].after, 'no longer an active signal');
   assert.deepEqual(cardDelta(card, {}), []);
-});
-
-test('visit: no earlier snapshot claims nothing; the same data date is not a change', () => {
-  const cur = { asOf: '2026-10-12', score: 40, up: 10, down: 20, signals: ['A·Rank'] };
-  assert.equal(diffSnapshots(null, cur).kind, 'start');
-  assert.equal(diffSnapshots({ ...cur }, cur).kind, 'same');
-});
-test('visit: a later date lists real differences only', () => {
-  const prev = { asOf: '2026-10-09', score: 40.2, up: 10, down: 20, signals: ['A·Rank', 'B·Rank'] };
-  const d = diffSnapshots(prev, { asOf: '2026-10-12', score: 44, up: 15, down: 12, signals: ['B·Rank', 'C·Rank'] });
-  assert.equal(d.kind, 'changes');
-  if (d.kind === 'changes') {
-    assert.equal(d.since, '2026-10-09');
-    assert.ok(d.lines.some((l) => l.includes('40 → 44')) && d.lines.some((l) => l.includes('New engine signals: C·Rank')) && d.lines.some((l) => l.includes('No longer active: A·Rank')));
-  }
-});
-test('visit: a corrupt stored snapshot is ignored, not trusted', () => {
-  assert.equal(parseSnapshot('{not json'), null);
-  assert.equal(parseSnapshot(JSON.stringify({ asOf: 'yesterday' })), null);
-  assert.equal(parseSnapshot(null), null);
 });
 
 test('glossary: every entry is complete, anchors are unique and URL-safe, search needs every word', () => {

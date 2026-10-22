@@ -45,30 +45,33 @@ export default function Reads() {
       <PageHead method="reads" eyebrow="Weekly reads" title="Seven companies," em="read from the numbers." />
       <section className="wrap">
         <Async loading={r.loading} error={r.error}>
-          <div className="filters" role="group" aria-label="Edition">
-            {r.data?.editions.map((x, i) => <button key={x.week} className="chip" aria-pressed={e === i} onClick={() => { setE(i); setOpen(0); setSector(''); }}>Week of {dateLabel(x.week)}</button>)}
+          <div className="reads-bar">
+            <label className="reads-ed"><span className="eyebrow">Edition</span>
+              <select className="field" value={e} onChange={(ev) => { setE(Number(ev.target.value)); setOpen(0); setSector(''); }}>
+                {r.data?.editions.map((x, i) => <option key={x.week} value={i}>Week of {dateLabel(x.week)}{i === 0 ? ' (latest)' : ''}</option>)}
+              </select>
+            </label>
+            {ed && <p className="dim">Written {written && !Number.isNaN(written.getTime()) ? `${written.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${written.toISOString().slice(11, 16)} UTC` : dateLabel(ed.week)}. Prices and ratios inside each study are as of that moment, not today.</p>}
           </div>
-          {ed && <p className="dim" style={{ fontSize: 13.5, margin: '0 0 12px' }}>Written {written && !Number.isNaN(written.getTime()) ? `${written.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${written.toISOString().slice(11, 16)} UTC` : dateLabel(ed.week)}. Prices and ratios inside each study are as of that moment, not today.</p>}
-          {sectors.length > 1 && <div className="filters" role="group" aria-label="Sector"><button className="chip" aria-pressed={sector === ''} onClick={() => setSector('')}>All sectors</button>{sectors.map((x) => <button key={x} className="chip" aria-pressed={sector === x} onClick={() => { setSector(x); const first = ed?.studies.findIndex((y) => y.sector === x); if (first !== undefined && first >= 0) setOpen(first); }}>{x}</button>)}</div>}
-          <div className="grid" style={{ gridTemplateColumns: 'minmax(220px, 300px) 1fr', alignItems: 'start' }}>
-            <div className="list panel tight" style={{ position: 'sticky', top: 80 }}>
+          {sectors.length > 1 && <div className="tabrow reads-sec" role="group" aria-label="Sector"><button className="chip" aria-pressed={sector === ''} onClick={() => setSector('')}>All sectors</button>{sectors.map((x) => <button key={x} className="chip" aria-pressed={sector === x} onClick={() => { setSector(x); const first = ed?.studies.findIndex((y) => y.sector === x); if (first !== undefined && first >= 0) setOpen(first); }}>{x}</button>)}</div>}
+          <div className="reads-grid">
+            <div className="list panel tight reads-list" role="group" aria-label={`${studies.length} ${studies.length === 1 ? 'study' : 'studies'} this week`}>
               {studies.map(({ x, i }) => (
-                <button key={x.sym} className="li" style={{ textAlign: 'left', color: open === i ? 'var(--text)' : 'var(--muted)' }} onClick={() => setOpen(i)} aria-pressed={open === i}>
+                <button key={x.sym} className="li" style={{ textAlign: 'left' }} onClick={() => setOpen(i)} aria-pressed={open === i}>
                   <div style={{ minWidth: 0 }}><div className="t">{x.name}</div><div className="s">{x.sector} · {x.read_minutes} min{x.review?.status === 'under_review' ? ' · under review' : x.corrections?.length ? ' · corrected' : ''}</div></div>
-                  <span aria-hidden>{open === i ? '●' : ''}</span>
                 </button>
               ))}
               {studies.length === 0 && <p className="dim" style={{ padding: 12, margin: 0 }}>No study in this sector this week.</p>}
             </div>
             {s && (
-              <Rv key={s.sym} className="panel">
+              <Rv key={s.sym} className="panel reads-study">
                 <div className="eyebrow">{s.industry && s.industry !== s.sector ? `${s.sector} · ${s.industry}` : s.sector}</div>
                 <h2 className="disp" style={{ fontSize: 'clamp(34px, 4vw, 52px)', margin: '12px 0 8px' }}>{s.name}</h2>
                 <div className="dim num" style={{ fontSize: 14, marginBottom: 12 }}>{crore(s.mcap_cr)} · ₹{s.price.toLocaleString('en-IN')} at writing · <Link href={companyHref(s.sym)} style={{ color: 'var(--accent-2)' }}>full company page →</Link></div>
                 <p className="dim" style={{ fontSize: 13.5, margin: '0 0 18px' }}>Machine-written{s.model ? ` (${s.model})` : ''} from the figures listed at the end, and not reviewed by a person. {s.review?.status === 'machine_checked' ? `Passed Alpha's interpretation checks on ${dateLabel(s.review.checked_at)}. ` : ''}Not investment advice.</p>
                 {s.review?.status === 'under_review' && (
                   <div className="notice warn" role="note" style={{ margin: '0 0 20px' }}>
-                    <StatusChip kind="review">Under review</StatusChip> <b>Since {dateLabel(s.review.checked_at)}.</b> Alpha&apos;s checks found {s.review.problems.length === 1 ? 'a problem' : `${s.review.problems.length} problems`} in this study:
+                    <div><StatusChip kind="review">Under review</StatusChip> <b>Since {dateLabel(s.review.checked_at)}.</b> Alpha&apos;s checks found {s.review.problems.length === 1 ? 'a problem' : `${s.review.problems.length} problems`} in this study:</div>
                     <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{s.review.problems.map((p) => <li key={p}>{p}</li>)}</ul>
                     <div style={{ marginTop: 6 }}>The text below is kept exactly as published. A corrected study will be published as a new version; until then, do not rely on the sentences named above.</div>
                   </div>
@@ -93,8 +96,6 @@ export default function Reads() {
           )}
         </Async>
       </section>
-      {/* Raw text on purpose: React escapes `>` inside a <style> child on the server but not in the browser, which failed hydration. */}
-      <style dangerouslySetInnerHTML={{ __html: '@media (max-width: 860px) { .wrap > .grid[style] { grid-template-columns: 1fr !important; } .wrap > .grid > .list { position: static !important; } }' }} />
     </>
   );
 }
