@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 import swing as SW
+import trial_registry as TR
 from ai_trades import monthly_t
 from common import Ctx, stats
 
@@ -126,7 +127,12 @@ def evaluate(bars, uni, bench, indices, vix) -> dict:
 
 
 def main(argv) -> None:
-    out = evaluate(*load(argv))
+    loaded = load(argv)
+    out = evaluate(*loaded)
+    TR.record("swing", out["version"], out["fingerprint"], TR.bars_hash(loaded[0], loaded[2], loaded[4]),
+              {"start": out["periods"]["development"][0], "end": out["data_through"]},
+              {b: {k: out[b]["holdout"].get(k) for k in ("n", "expectancy_r", "profit_factor", "clustered_t_clustered")} for b in ("rules", "no_gate", "random")},
+              "swing_backtest.py: the research run of record for this version")
     dest = pathlib.Path(__file__).resolve().parent / "research" / "swing_results.json"
     dest.write_text(json.dumps(out, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     h = out["rules"]["holdout"]

@@ -204,12 +204,16 @@ class Ctx:
     # ── group benchmarks ─────────────────────────────────────────
     def _build_groups(self, bars, closes, universe, indices):
         info = {u["sym"]: u for u in universe if u["sym"] in bars}
-        liq = {s: bool(liquid(bars[s]).iloc[-250:].mean() > 0.6) for s in info}
+        # Point in time (swing-2.0.1, DECISIONS #2): a stock counts in its group's index on a date only if it was liquid on most
+        # of the 250 sessions up to that date. It used to be judged once, on the LAST 250 bars of the download, so membership
+        # in 2019 was decided by trading in 2026.
+        liq_pit = pd.DataFrame({s: liquid(bars[s]).astype(float).rolling(250, min_periods=60).mean() > 0.6 for s in info}).reindex(closes.index)
+        liq_pit = liq_pit.fillna(False).astype(bool)
+        liq = {s: bool(liq_pit[s].iloc[-1]) for s in info}        # today's membership, for display (group_n) only
+        self._liq_pit = liq_pit
         by_ind: dict[str, list[str]] = {}
         by_sec: dict[str, list[str]] = {}
         for s, u in info.items():
-            if not liq[s]:
-                continue
             if u.get("ind"):
                 by_ind.setdefault(u["ind"], []).append(s)
             if u.get("sector"):
@@ -239,10 +243,9 @@ class Ctx:
         for g, syms in members.items():
             if g in self.group_level:
                 continue
-            pool = [x for x in syms if liq.get(x)]
-            r = rets[pool]
+            r = rets[syms].where(liq_pit[syms])                     # a member's return counts only on dates it was liquid
             tot, cnt = r.sum(axis=1, skipna=True), r.count(axis=1)
-            self.group_n[g] = len(pool)
+            self.group_n[g] = int(sum(1 for x in syms if liq.get(x)))
             self.group_level[g] = ((tot / cnt.replace(0, np.nan)).fillna(0) + 1).cumprod() * 100
             # leave-one-out series are built lazily per stock (see bench_for)
             self._grp_tot = getattr(self, "_grp_tot", {})
@@ -262,7 +265,7 @@ class Ctx:
             if g in getattr(self, "_grp_tot", {}):
                 tot, cnt = self._grp_tot[g]
                 own = self._rets[sym]
-                own_ok = own.notna()
+                own_ok = own.notna() & self._liq_pit[sym]          # leave out only what was put in
                 t2 = tot - own.fillna(0).where(own_ok, 0)
                 c2 = cnt - own_ok.astype(int)
                 level = ((t2 / c2.replace(0, np.nan)).fillna(0) + 1).cumprod() * 100
