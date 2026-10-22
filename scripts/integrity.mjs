@@ -139,6 +139,19 @@ try {
     await ctx.close();
   }
 
+  // ── a selected control stays legible under hover (iOS keeps :hover after a tap; the hover colour once equalled the fill) ──
+  for (const scheme of ['light', 'dark']) {
+    const { ctx, p } = await open('/reads/', { scheme, width: 390, height: 900 });
+    const sel = p.locator('.chip[aria-pressed="true"]').first();
+    if (await sel.count()) {
+      await sel.hover(); await p.waitForTimeout(600);
+      const [fg, bg] = await sel.evaluate((el) => { const c = getComputedStyle(el); return [c.color, c.backgroundColor]; });
+      ok(`legible · ${scheme}: a hovered selected chip keeps its text colour off its fill`, fg !== bg, `${fg} on ${bg}`);
+    } else ok(`legible · ${scheme}: a selected chip on Weekly Reads`, false, 'none found');
+    ok(`legible · ${scheme}: a notice lays its text out as text, not as flex columns`, await p.evaluate(() => [...document.querySelectorAll('.notice')].every((n) => getComputedStyle(n).display !== 'flex')));
+    await ctx.close();
+  }
+
   // ── back keeps context (§17) ────────────────────────────────────────────────────────────────────────────────────
   {
     const { ctx, p } = await open('/screen/?size=large');
