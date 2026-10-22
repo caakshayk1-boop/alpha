@@ -35,27 +35,55 @@ Shared across all six: universe = today's screened companies (survivorship); cos
 Indian schedule; no NSE holiday calendar; fills at the next open with no slippage model.
 
 ## Reproduction of displayed metrics
+Command: `engines/phase0.py` on GitHub Actions (`.github/workflows/engines_phase0.yml`, run 39705031021, commit f5704e5, rules
+`swing-2.0.0`), universe = the screen at trading-dashboard `31d8822` (the one the original run read), window 2019-10-21 to
+2026-10-21. Snapshot SHA-256 `a513d759ca19c68d013e9e004b93767f8b092991e5036e09c5dda69cfa266dbb` (artifact `phase0-snapshot`,
+90 days). Bars hash (`trial_registry.bars_hash`) `ee2d01e79af3a009…`; full values in `engines/research/phase0/reproduction.json`.
+
 | Metric | Displayed | Reproduced | Match? | Command | Data hash |
 |---|---|---|---|---|---|
-| Market gate conditions met | 1/4 | NOT RUN | | | |
-| Gate on, last 136 sessions | 0% | NOT RUN | | | |
-| Holdout trades | 49 | NOT RUN | | | |
-| Holdout expectancy | −0.06R | NOT RUN | | | |
-| Holdout PF | 0.90 | NOT RUN | | | |
-| Month-clustered t | −0.91 | NOT RUN | | | |
-| No-gate trades | 162 | NOT RUN | | | |
-| No-gate expectancy | −0.26R | NOT RUN | | | |
-| No-gate PF | 0.60 | NOT RUN | | | |
+| Market gate conditions met | 1/4 | 1/4 on 2026-10-19 (VIX only) | YES | phase0.py · gate_funnel.csv | ee2d01e7… |
+| Gate on, last 136 sessions | 0% | 0 of 136 (2026-04-02 to 2026-10-19), 136 of 136 sessions agree with the published history | YES | phase0.py | ee2d01e7… |
+| Holdout trades | 49 | 49 | YES (exact) | phase0.py | ee2d01e7… |
+| Holdout expectancy | −0.06R | −0.063R | YES | phase0.py | ee2d01e7… |
+| Holdout PF | 0.90 | 0.90 | YES | phase0.py | ee2d01e7… |
+| Month-clustered t | −0.91 | −0.91 | YES | phase0.py | ee2d01e7… |
+| No-gate trades | 162 | 163 | **NO** (+1) | phase0.py | ee2d01e7… |
+| No-gate expectancy | −0.26R | −0.261R | YES (within rounding) | phase0.py | ee2d01e7… |
+| No-gate PF | 0.60 | 0.60 | YES | phase0.py | ee2d01e7… |
+
+Not displayed but checked: development trades 268 vs 267 published (+1); no-gate holdout clustered t −3.41 vs −3.35.
+On today's screen instead of the original one: no-gate 164, development 268 (run 39704019508).
+
+**Verdict: FAIL on the exact-count criterion, by one trade in two books.** The displayed rules-book figures reproduce exactly. The
+residual is the universe: 941 usable symbols now against 940 in the original run. `data.download` silently drops a chunk after
+three failed attempts and drops any symbol with fewer than 120 bars, and the original run kept no snapshot, so the missing symbol
+cannot be identified. **STOP (CLAUDE_TASK Phase 0):** no new engine is built on that data path. New work runs only on a hashed
+snapshot (`phase0-snapshot`, or its successor), never on a fresh unpinned download.
+
+Further defects found while reproducing:
+- **Incomplete bar.** The original run started 05:07 UTC on 21 Oct, which is 10:37 IST, during the session, and recorded
+  `data_through 2026-10-21`. Its last bar was an intraday bar. Including or excluding the (now complete) 21 Oct bar leaves every figure
+  unchanged, so the partial bar is unlikely to have moved this result; that cannot be proven, and nothing in the backtest prevents it.
+- **Lookahead in group benchmarks** (found by `tests/test_integrity.py`, future-poison): `common.Ctx` judged each stock's
+  liquidity for its group index on the LAST 250 bars of the download, so membership in 2019 depended on 2026. Fixed in
+  `swing-2.0.1` (DECISIONS #2); 2.0.1 has its own registered research run. The ML engines used the same `Ctx` and carry the same
+  defect in their recorded results.
 
 ## 0% gate diagnosis
+The 0% is the market, not the code. Every one of the 136 sessions failed the trend check: Nifty closed below its 200-day average
+on all 136 (2 Apr: 22,713 vs 25,207; 19 Oct: 22,889 vs 24,174), and the 200-day average was not rising over 20 sessions on any of
+them. Per-check passes in the window: trend 0, Nifty above 50-day 59, breadth ≥ 50% 97, VIX ≤ 20 131. Sessions by checks passed:
+0 → 4, 1 → 36, 2 → 37, 3 → 59, 4 → 0. Funnel per session: `engines/research/phase0/gate_funnel.csv`.
+
 | Check | Result | Evidence |
 |---|---|---|
-| Index symbol mapping | NOT RUN | |
-| Date/timezone alignment | NOT RUN | |
-| Adjustment policy | NOT RUN | |
-| Breadth denominator (point-in-time) | NOT RUN | |
-| 200-day warm-up | NOT RUN | |
-| Null handling | NOT RUN | |
-| Exchange calendar | NOT RUN | |
+| Index symbol mapping | PASS | `^NSEI`; rebuilt 19 Oct close 22,888.95 and 200-day 24,174.48 equal the published "Nifty 22,889 · 200-day 24,174" |
+| Date/timezone alignment | PASS with note | tz-naive exchange dates; 3 stock dates without a Nifty bar (2019-10-27 and 2020-11-14 are weekend dates, probably Diwali muhurat sessions; 2026-01-15 unexplained), none in the window |
+| Adjustment policy | NOTE | gate and backtest read exchange-price (split-only) bars; dividends are not removed, so a stock's 50-day test shifts by the dividend at ex-dates. The index test uses `^NSEI`, a price index |
+| Breadth denominator (point-in-time) | FAIL (survivorship) | denominator = today's screened universe with 50 bars (924–941 in the window). Delisted and dropped names are absent; historical constituents not available (MISSING row 3). Breadth did not decide the 0%: the trend check failed on every session regardless |
+| 200-day warm-up | PASS | first valid 200-day average 2020-08-11; no null inside the window |
+| Null handling | PASS | VIX missing on 17 sessions in the history before forward-fill, none in the window after it; a null VIX fails its check, never passes it |
+| Exchange calendar | NOTE | sessions are Nifty's own dates; no NSE holiday calendar, so a missing Yahoo bar and a holiday look alike. 0 thin sessions in the window |
 
 The holdout above has been **INSPECTED**. It is historical evidence only and must never be called untouched.
