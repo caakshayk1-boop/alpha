@@ -39,7 +39,7 @@ const PHRASES: [RegExp, string, (r: Row) => boolean][] = [
   [/\buptrend(ing)?\b|\btrending up\b/, 'In an uptrend (price > 50-day > 200-day)', (r) => has(r.price) && has(r.sma50) && has(r.sma200) && r.price > r.sma50 && r.sma50 > r.sma200],
   [/\babove (the )?200[- ]?(day|dma)\b/, 'Above its 200-day average', (r) => has(r.price) && has(r.sma200) && r.price > r.sma200],
   [/\bnear (its )?(52[- ]?week|yearly|52w) high\b|\bnear highs?\b/, 'Within 5% of its 52-week high', (r) => has(r.from_high) && r.from_high >= -5],
-  [/\bbeaten[- ]?down\b|\bfar from (its )?highs?\b/, 'More than 40% below its 52-week high', (r) => has(r.from_high) && r.from_high <= -40],
+  [/\bbeaten[- ]?down\b|\bfar from (its )?highs?\b/, 'At least 40% below its 52-week high', (r) => has(r.from_high) && r.from_high <= -40],
   [/\boversold\b/, 'Oversold (RSI under 30)', (r) => has(r.rsi) && r.rsi < 30],
   [/\boverbought\b/, 'Overbought (RSI over 70)', (r) => has(r.rsi) && r.rsi > 70],
   [/\b(cheap|undervalued|value)\b/, 'Cheap against its own history (P/E percentile ≤ 35)', (r) => has(r.pe_pctile) && r.pe_pctile <= 35],
@@ -70,6 +70,8 @@ const METRICS: [RegExp, string, string, Num][] = [
   [/(?:1[- ]?(?:year|yr|y) return|1y)/, '1-year return', '%', (r) => r.r1y], [/(?:3[- ]?(?:month|m) return|3m)/, '3-month return', '%', (r) => r.r3m], [/(?:1[- ]?(?:month|m) return|1m)/, '1-month return', '%', (r) => r.r1m],
   [/(?:\bquality\b)/, 'Quality score', '', (r) => r.q], [/(?:\bvalue score\b)/, 'Value score', '', (r) => r.v],
 ];
+/** The query-language field for each measure (lib/query.ts), named in a note when the strict form is wanted. */
+const QKEY: Record<string, string> = { ROCE: 'roce', ROE: 'roe', 'Debt/equity': 'debt_to_equity', 'P/E': 'pe', 'P/B': 'pb', 'Revenue CAGR': 'revenue_cagr', 'EPS CAGR': 'eps_cagr', 'Dividend yield': 'dividend_yield', Piotroski: 'piotroski', RSI: 'rsi', 'Net margin': 'net_margin', 'EBIT margin': 'ebit_margin', 'Interest cover': 'interest_cover', 'Promoter holding': 'promoter_holding', 'Market cap': 'market_cap', 'Daily turnover': 'turnover', '1-year return': 'return_1y', '3-month return': 'return_3m', '1-month return': 'return_1m', 'Quality score': 'quality', 'Value score': 'value' };
 const ABOVE = '(?:above|over|greater than|more than|at least|>=|>|min(?:imum)?|exceeds?)';
 const BELOW = '(?:below|under|less than|at most|<=|<|max(?:imum)?|lower than)';
 
@@ -86,7 +88,12 @@ export function parse(q: string): Parsed {
       const dir = m[1] ?? '>=';
       const below = new RegExp(`^${BELOW}$`).test(dir);
       const v = Number(m[2]);
-      filters.push({ label: `${label} ${below ? 'at most' : 'at least'} ${v}${u}`, test: (r) => { const x = g(r); return has(x) && (below ? x <= v : x >= v); } });
+      // C03: the clause is inclusive (≥ / ≤) and its label says so. When the words asked for a strict comparison ("above",
+      // "under"), the note says the boundary is included and how to ask for the strict form, so nothing differs silently.
+      const strict = m[1] !== undefined && !/^(?:at least|at most|>=|<=|min(?:imum)?|max(?:imum)?)$/.test(m[1]);
+      const key = QKEY[label];
+      const note = strict ? `You wrote “${m[1]} ${v}”; this includes ${v}${u} itself (${below ? '≤' : '≥'}).${key ? ` For strictly ${below ? 'below' : 'above'}, type ${key} ${below ? '<' : '>'} ${v}.` : ''}` : undefined;
+      filters.push({ label: `${label} ${below ? 'at most' : 'at least'} ${v}${u}`, test: (r) => { const x = g(r); return has(x) && (below ? x <= v : x >= v); }, ...(note ? { note } : {}) });
       s = s.replace(m[0], ' ');
     }
   }
