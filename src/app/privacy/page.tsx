@@ -24,10 +24,12 @@ const KEPT: [string, string][] = [
 export default function Privacy() {
   return (
     <>
-      <PageHead eyebrow="Privacy and terms" title="What alpha keeps," em="and what it sends." />
+      <PageHead eyebrow="Privacy and terms" title="What alpha keeps," em="and what it sends." lede="Updated 22 Oct 2026 with the Pro waitlist: the one place alpha stores personal data." />
       <section className="wrap prose-col">
-        <h2>There is no account</h2>
-        <p>alpha has no sign-in and no user database. Your saved records (watchlist, research cards, journal, conditions, preferences) are kept in <b>this browser only</b>, in its local storage, and never uploaded. Two things do leave the browser, both listed below: a question you type into Ask while the AI explainer is on, and a sampled page-speed reading. Clearing this site&rsquo;s data in your browser deletes it. Export a copy from <Link href="/watchlist/#cards">Watchlist</Link> or <Link href="/journal/">Journal</Link> to keep it.</p>
+        <h2>Browsing needs no account</h2>
+        <p>alpha has no sign-in. Your saved records (watchlist, research cards, journal, conditions, preferences) are kept in <b>this browser only</b>, in its local storage, and never uploaded. Three things can leave the browser, all listed below: an email address you give the Pro waitlist, a question you type into Ask while the AI explainer is on, and a sampled page-speed reading. Clearing this site&rsquo;s data in your browser deletes what is kept here. Export a copy from <Link href="/desk/">My Desk</Link> to keep it.</p>
+        <h2 id="waitlist">The one exception: the Pro waitlist</h2>
+        <p>If you join the <Link href="/pro/">Alpha Pro waitlist</Link>, alpha stores, on its own server (a Cloudflare Durable Object): your email address, when you joined, which page you joined from, the page that linked you there (address only, no query), whether you confirmed, and a random token for the confirm and unsubscribe links. That is the only personal data alpha stores. It is used for two emails only: the confirmation, and one email when Pro opens. It is never sold or shared, and it is not linked to anything you do on the site. Mail is sent through Zoho ZeptoMail from the askakshay.com domain. The unsubscribe link in every email deletes your address immediately; you can also ask for it to be deleted.</p>
         <table className="tbl tbl-text" style={{ margin: '12px 0 20px', tableLayout: 'fixed', width: '100%', minWidth: 0 }}>
           <thead><tr><th scope="col">What</th><th scope="col">Where in this browser</th></tr></thead>
           <tbody>{KEPT.map(([w, k]) => <tr key={k}><td>{w}</td><td className="dim" style={{ fontFamily: 'var(--f-mono)', fontSize: 13, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{k}</td></tr>)}</tbody>

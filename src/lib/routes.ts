@@ -28,6 +28,7 @@ export const PAGES: readonly Page[] = [
   { href: '/watchlist/', label: 'Watchlist', area: 'desk', keys: 'g w', desc: 'Your names, kept privately in this browser', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
   { href: '/journal/', label: 'Journal', area: 'desk', keys: 'g j', desc: 'Why you decided, and where the price went after', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
   { href: '/about/', label: 'Method', area: 'utility', desc: 'Where each number comes from and how fresh it is', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
+  { href: '/pro/', label: 'Pro — coming soon', area: 'utility', desc: 'Better tools, never calls: join the waitlist', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
   { href: '/privacy/', label: 'Privacy and terms', area: 'utility', desc: 'What is kept, where, and what is sent anywhere', icon: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z' },
 ];
 

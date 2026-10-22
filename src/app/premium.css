@@ -336,3 +336,23 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .cite:hover { background: var(--accent-soft); }
 @media (pointer: coarse) { .case-col .cite { height: 32px; padding: 0 10px; } }
 @media (max-width: 760px) { .co-summary { font-size: var(--fs-base); } }
+
+/* ── Alpha Pro waitlist ───────────────────────────────────────────────────────────────────────────────────────────── */
+.pro { max-width: 980px; padding-block: var(--sp-6) var(--sp-7); display: grid; gap: var(--sp-5); }
+.pro-head h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(36px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -0.022em; margin: var(--sp-2) 0 var(--sp-3); }
+.pro-lede { font-size: var(--fs-lg); color: var(--muted); max-width: 62ch; margin: 0; line-height: 1.55; }
+.pro-lede b { color: var(--text); }
+.pro-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--sp-5); }
+@media (max-width: 860px) { .pro-grid { grid-template-columns: 1fr; } }
+.pro-list { margin: var(--sp-3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
+.pro-list li { padding-left: 18px; position: relative; line-height: 1.5; }
+.pro-list li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); }
+.pro-never { margin: var(--sp-3) 0 0; line-height: 1.55; }
+.pro-join .wl { margin-top: var(--sp-4); }
+.pro-fine { font-size: var(--fs-sm); margin: var(--sp-3) 0 0; }
+.wl { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.wl .field { flex: 1 1 240px; min-height: 44px; }
+.wl-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.wl-msg { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); min-height: 1.4em; }
+.pro-strip { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); align-items: center; justify-content: space-between; }
+.pro-strip p { margin: 0; max-width: 60ch; }
