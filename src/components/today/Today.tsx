@@ -5,7 +5,7 @@
  *  a feed the site already publishes, through the same shared computations as the pages it previews. Nothing is estimated. */
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Chg, LazyMount, Skel } from '@/components/ui';
+import { Chg, Flash, LazyMount, Skel } from '@/components/ui';
 import { FreshnessPill, useDatasetStatus } from '@/components/DataStamp';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, useToday } from '@/components/widgets/DayContext';
@@ -31,11 +31,12 @@ export function Masthead() {
   const baro = useBarometer();
   const today = useToday();
   const day = today?.day ?? null;
-  const head = sessionHead(day?.session ?? baro.view?.session ?? null, today?.live.snap ?? null);
+  // one authoritative session state, rendered once: nothing is stated until the live snapshot has answered (or failed)
+  const head = baro.settled ? sessionHead(day?.session ?? baro.view?.session ?? null, today?.live.snap ?? null) : null;
   const [date, ...state] = (head ?? '').split(' · ');
   return (
     <div className="wrap mast">
-      <div className="mast-date">{head ? <>{date}{state.length > 0 && <span> · {state.join(' · ')}</span>}</> : <span>Today</span>}</div>
+      <div className="mast-date" aria-busy={!baro.settled}>{head ? <>{date}{state.length > 0 && <span> · {state.join(' · ')}</span>}</> : <span className="skel" style={{ display: 'inline-block', width: 280, height: 16, verticalAlign: 'middle' }} aria-hidden />}</div>
       <div className="mast-r"><span className="show-sm"><FreshnessPill /></span><span className="today-clock"><MarketClock /></span></div>
     </div>
   );
@@ -49,7 +50,7 @@ export function MarketRead() {
   const v = baro.view, r = v?.reading ?? null;
   const b200 = sum.data?.above200 ?? null;
   const prev = v?.previous ?? null;
-  const tk = useMemo(() => (v && r ? takeaway({ score: r.score, band: r.band.t, stage: r.stage?.t ?? null, nifty: r.nifty, drawdownPct: r.drawdownPct, vix: r.vix, asOf: v.session, above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev }) : null), [v, r, b200, prev]);
+  const tk = useMemo(() => (v && r && baro.settled ? takeaway({ score: r.score, band: r.band.t, stage: r.stage?.t ?? null, nifty: r.nifty, drawdownPct: r.drawdownPct, vix: r.vix, asOf: v.session, above200: b200?.above ?? null, with200: b200?.withHistory ?? null, previous: prev }) : null), [v, r, b200, prev, baro.settled]);
   const day = today?.day ?? null;
   const stamp = v ? (v.source === 'live' && v.at ? `live ${istHM(v.at)} IST` : `${dateLabel(v.session)} close`) : null;
   const [lead, ...rest] = (tk?.headline ?? '').replace(/\.$/, '').split(', ');
@@ -65,10 +66,10 @@ export function MarketRead() {
 
       <section className="card" aria-labelledby="baro-h">
         <div className="card-h">
-          <h2 id="baro-h">Market barometer{r ? <> · <span className="num">{r.score}</span><span className="dim" style={{ fontWeight: 500 }}> / 100</span></> : null}</h2>
+          <h2 id="baro-h">Market barometer{r && baro.settled ? <> · <span className="num">{r.score}</span><span className="dim" style={{ fontWeight: 500 }}> / 100</span></> : null}</h2>
           <Link className="more" href="/brief/">The brief →</Link>
         </div>
-        {r ? (
+        {r && baro.settled ? (
           <>
             <p className="dim" style={{ margin: '-4px 0 14px', fontSize: 13 }}>{r.band.t}{prev ? `, ${r.score > prev.score ? 'up' : r.score < prev.score ? 'down' : 'unchanged'} from ${prev.score} on ${dateLabel(prev.date)}` : ''} · {stamp}{r.stage ? ` · price stage: ${stageWords(r.stage.k)}` : ''}</p>
             {r.parts.length > 0 ? (
@@ -89,12 +90,17 @@ export function MarketRead() {
         ) : baro.error ? <div className="state"><b>The Barometer did not load.</b><p>Nothing is estimated in its place. The market strip below has the index levels.</p></div> : <Skel h={180} />}
       </section>
 
-      {day && day.counted > 0 && (
-        <p className="mread-breadth dim">
-          {dayLabel(day, today?.live.snap ?? null)}: <b className="up num">{num(day.up)}</b> of {num(day.counted)} priced stocks rose, <b className="down num">{num(day.down)}</b> fell.
-          {b200 && <> At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of the {num(b200.withHistory)} with a 200-day history sat above that average (the screen&apos;s count; the Barometer&apos;s factor above is its own job&apos;s count over every priced name, so the two can differ).</>}
-        </p>
-      )}
+      {day && day.counted > 0 ? (
+        <section className="card tight breadth2 bx" aria-label="The day's breadth">
+          <div className="eyebrow">{dayLabel(day, today?.live.snap ?? null)} · {num(day.counted)} stocks</div>
+          <div className="bx-row">
+            <div className="n up"><Flash value={day.up}>{num(day.up)}</Flash><small>rose</small></div>
+            <div className="bx-bar" aria-hidden><i className="u" style={{ width: `${(day.up / day.counted) * 100}%` }} /><i className="f" style={{ width: `${(day.flat / day.counted) * 100}%` }} /><i className="d" style={{ width: `${(day.down / day.counted) * 100}%` }} /></div>
+            <div className="n down"><Flash value={day.down}>{num(day.down)}</Flash><small>fell</small></div>
+          </div>
+          <p className="dim bx-key"><span>{Math.round((day.up / day.counted) * 100)}% rose</span> · <span>{num(day.flat)} unchanged</span>{b200 && <> · at the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of the {num(b200.withHistory)} with a 200-day history sat above it (the screen&apos;s count; the Barometer&apos;s own job counts every priced name, so the two can differ)</>}</p>
+        </section>
+      ) : today && !today.live.loading && !!today.summaryError ? <div className="state" style={{ marginTop: 16 }}><b>The day&apos;s breadth could not be loaded.</b><p>Nothing is estimated in its place.</p></div> : null}
     </div>
   );
 }

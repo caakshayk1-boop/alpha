@@ -19,7 +19,10 @@ export interface BarometerView {
   previous: { score: number; date: string; drawdownPct?: number | null; above200Pct?: number | null; vix?: number | null } | null;
 }
 
-export function useBarometer(): { view: BarometerView | null; loading: boolean; error: string | null } {
+/** `settled`: the published reading AND the live inputs have both answered (or failed), so the reading shown is the final one
+ *  for this load. Today renders its headline only once settled, so a reload never shows a published reading that a live one
+ *  replaces a second later (Lane A 0.2.3: LIVE vs LATEST CLOSE alternating across reloads). */
+export function useBarometer(): { view: BarometerView | null; loading: boolean; error: string | null; settled: boolean } {
   const bar = useFeed('barometer');
   const quotes = useLiveQuotes();
   const { day, live } = useDay();
@@ -59,5 +62,6 @@ export function useBarometer(): { view: BarometerView | null; loading: boolean; 
     };
     return { reading, source: 'published', session: t.nifty_date, at: null, previous: prevOf(t.nifty_date) };
   }, [bar.data, quotes.data, day, live.snap, live.universe]);
-  return { view, loading: bar.loading && quotes.loading, error: bar.error };
+  const settled = !bar.loading && !quotes.loading && !live.loading;
+  return { view, loading: bar.loading && quotes.loading, error: bar.error, settled };
 }
