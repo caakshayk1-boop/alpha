@@ -1,9 +1,9 @@
 # RESEARCH_REPORT: Alpha Signal Engines
 
-> **Honest summary (one paragraph, written last):** what qualified, what did not, and why. If no engine qualified, say so plainly.
+> **Honest summary (interim, 22 Oct 2026, after Phase 0):** nothing qualifies. Swing v2's displayed figures reproduce exactly, but two books are one trade off because the original run kept no data snapshot, so the unpinned data path is stopped. The 0% gate is a real market state (Nifty below its 200-day on all 136 sessions), not a bug. A lookahead in the group benchmarks was found and corrected (swing-2.0.1); the corrected holdout is +0.015R, t −0.62: no edge. The five ML engines never cleared t 2 and share the same benchmark leak. E1–E5 are not built yet and no new out-of-sample result exists; the pre-registration awaits owner approval.
 
 ## 1. Legacy audit summary
-See LEGACY_AUDIT.md. Reproduction status: NOT RUN.
+See LEGACY_AUDIT.md. Reproduction status: FAIL on exact counts (displayed figures exact; no-gate 163 vs 162, development 268 vs 267). Gate diagnosis: DONE.
 
 ## 2. Data and universe
 Sources, date ranges, point-in-time coverage and survivorship limits (details in MANIFEST.md).

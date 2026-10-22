@@ -70,6 +70,23 @@ Further defects found while reproducing:
   `swing-2.0.1` (DECISIONS #2); 2.0.1 has its own registered research run. The ML engines used the same `Ctx` and carry the same
   defect in their recorded results.
 
+## Swing v2.0.1 (lookahead corrected): research run of record
+`swing_research.yml` run 39705750576 (commit 82e40b6), today's screen (941 usable symbols), data through 2026-10-21, registered in
+`engines/research/trials.jsonl` (bars hash `12a04ceb…`). The holdout was already inspected, so this is a correction of the record,
+not new out-of-sample evidence.
+
+| Book · period | 2.0.0 n · avg R · PF · clustered t | 2.0.1 n · avg R · PF · clustered t |
+|---|---|---|
+| Rules · development | 267 · +0.235 · 1.43 · +1.73 | 264 · +0.203 · 1.37 · +1.00 |
+| Rules · holdout | 49 · −0.063 · 0.90 · −0.91 | 46 · +0.015 · 1.03 · −0.62 |
+| No gate · holdout | 162 · −0.260 · 0.60 · −3.35 | 158 · −0.254 · 0.61 · −3.19 |
+| Random entry · holdout | 30 · −0.302 · 0.59 · −2.69 | 29 · −0.148 · 0.77 · −0.87 |
+
+Reading: removing the lookahead cut the development t from 1.73 to 1.00, so part of the development edge was the leak. The holdout
+stays indistinguishable from zero (t −0.62), so **Swing v2 shows no edge** and alerts stay off (t < 2). The gate still adds value
+against the no-gate book (+0.015R vs −0.254R in the holdout), but against random entries on the same days the difference is small
+and the samples are too short to separate them. Failure cause: NO EDGE, with the 2026 market leaving the gate shut.
+
 ## 0% gate diagnosis
 The 0% is the market, not the code. Every one of the 136 sessions failed the trend check: Nifty closed below its 200-day average
 on all 136 (2 Apr: 22,713 vs 25,207; 19 Oct: 22,889 vs 24,174), and the 200-day average was not rising over 20 sessions on any of
