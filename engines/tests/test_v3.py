@@ -209,6 +209,8 @@ check("a state bound to another evidence hash is RESEARCH", PB.bound_state("VALI
 check("BLOCKED_DATA stays blocked whatever the hash", PB.bound_state("BLOCKED_DATA", None, "x") == "BLOCKED_DATA")
 feed = PB.build_feed({"engines": {"E1": {"state": "VALIDATED", "evidence": "stale", "version": "v1.0.0"}}}, [], [{"engine": "E1", "id": "a"}], [], "2026-10-21")
 check("a stale VALIDATED claim publishes nothing as validated, and alerts are off", feed["engines"]["E1"]["state"] == "RESEARCH" and not feed["validated"] and feed["alerts_enabled"] is False)
+feed_r = PB.build_feed({"engines": {"E3": {"state": "RESEARCH", "evidence": feed["evidence"], "version": "v1.0.0"}}}, [], [], [], "2026-10-21")
+check("an engine retired in states.yaml publishes as RETIRED with its reason", feed_r["engines"]["E3"]["state"] == "RETIRED" and "retired" in (feed_r["engines"]["E3"]["why"] or ""), feed_r["engines"]["E3"])
 check("the publisher is a dry run unless told otherwise", PB.publish(feed, tmp / "x.json").startswith("DRY RUN") and not (tmp / "x.json").exists())
 
 print("controls: a planted edge is found at its size; noise is not significant")

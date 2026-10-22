@@ -12,6 +12,7 @@ Every record carries the engine's state (RESEARCH / PAPER / ...), bound to the f
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 import time
@@ -103,6 +104,12 @@ def main() -> None:
         return
     results = json.loads((OUT / "results.json").read_text()) if (OUT / "results.json").exists() else {"engines": {}}
     st = {e: PB.bound_state(results.get("engines", {}).get(e, {}).get("state", "RESEARCH"), results.get("engines", {}).get(e, {}).get("evidence"), cfgs["evidence"]) for e in config.ENGINES}
+    life = PB.lifecycle()                                   # configs/engines/states.yaml: retired and paused engines
+    why = {e: results.get("engines", {}).get(e, {}).get("why") for e in config.ENGINES}
+    for e, d in life.get("retired", {}).items():
+        st[e], why[e] = "RETIRED", f"retired {d['date']}: {d['why']}"
+    for e, d in (life.get("paused") or {}).items():
+        st[e], why[e] = "PAUSED", f"paused {d['date']}: {d['why']}"
     adj = pd.DataFrame({s: snap["adj"][s]["Close"] for s in bars if s in snap["adj"]})
     sector_of = {u["sym"]: u.get("sector") for u in snap["universe"]}
     ctx = S.context(adj, sector_of)
@@ -111,6 +118,8 @@ def main() -> None:
     mret = nifty.pct_change(fill_method=None)
     paper, form = [], []
     for e in EN.ENGINES:
+        if st[e] in ("RETIRED", "PAUSED"):
+            continue                                        # a retired engine records nothing new; its past stays in the ledger
         cfg = cfgs["engines"][e]
         for c in EN.candidates(e, "baseline", bars, ctx, cfg, regime, sector_of, mret, cost, wm, wm + pd.Timedelta(days=1)):
             sig = {"id": f"{e}:{c.sym}:{c.date.date()}", "kind": "signal", "engine": e, "version": cfg["version"], "state": st[e], "symbol": c.sym,
@@ -157,9 +166,10 @@ def main() -> None:
             L.append(LEDGER, out)
             closed.append({**b, **{k: out[k] for k in ("status", "r_net", "exit_reason", "exit_date")}})
     ok, why = L.verify(LEDGER)
-    feed = PB.build_feed({"engines": {e: {"state": st[e], "evidence": cfgs["evidence"], "version": "v1.0.0"} for e in config.ENGINES}},
+    feed = PB.build_feed({"engines": {e: {"state": st[e], "evidence": cfgs["evidence"], "version": "v1.0.0", "why": why[e]} for e in config.ENGINES}},
                          form, paper, closed, str(wm.date()))
-    print(PB.publish(feed, HERE.parent.parent / "public" / "engines_v3.json", dry_run=True))
+    # published only by the scheduled job on main (V3_PUBLISH=1, DECISIONS #14); every other run is a dry run
+    print(PB.publish(feed, HERE.parent.parent / "public" / "engines_v3.json", dry_run=os.environ.get("V3_PUBLISH") != "1"))
     (OUT / "feed_nightly.json").write_text(json.dumps(feed, indent=1, default=str))
     state.update({"status": "recorded", "signals": len(paper), "forming": len(form), "closed": len(closed), "ledger_ok": ok, "ledger_check": why, "states": st})
     STATE.write_text(json.dumps(state, indent=1))

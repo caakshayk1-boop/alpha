@@ -15,6 +15,13 @@ from . import config
 STATES = ("BLOCKED_DATA", "RESEARCH", "PAPER", "VALIDATED", "PAUSED", "RETIRED")
 
 
+def lifecycle() -> dict:
+    """Retired and paused engines (configs/engines/states.yaml). Missing file: nothing retired."""
+    import yaml
+    f = config.CONF / "states.yaml"
+    return yaml.safe_load(f.read_text()) if f.exists() else {"retired": {}, "paused": {}}
+
+
 def bound_state(state: str, bound_evidence: str | None, current_evidence: str) -> str:
     if state not in STATES:
         return "RESEARCH"
@@ -27,9 +34,13 @@ def build_feed(results: dict, forming: list[dict], paper: list[dict], closed: li
     hashes = config.verify()                                   # raises FrozenMismatch: nothing is published
     ev = config.evidence_hash(hashes)
     engines = {}
+    life = lifecycle()
     for e, r in results.get("engines", {}).items():
-        engines[e] = {"state": bound_state(r.get("state", "RESEARCH"), r.get("evidence"), ev), "version": r.get("version"),
-                      "why": r.get("why"), "evidence": ev}
+        state = bound_state(r.get("state", "RESEARCH"), r.get("evidence"), ev)
+        why = r.get("why")
+        if e in (life.get("retired") or {}):
+            state, why = "RETIRED", f"retired {life['retired'][e]['date']}: {life['retired'][e]['why']}"
+        engines[e] = {"state": state, "version": r.get("version"), "why": why, "evidence": ev}
     validated = [s for s in paper if engines.get(s["engine"], {}).get("state") == "VALIDATED"]
     return {"schema": "alpha-engines/3", "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "data_watermark": data_watermark,
             "evidence": ev, "engines": engines, "forming": forming, "paper": [s for s in paper if s not in validated],

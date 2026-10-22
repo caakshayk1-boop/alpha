@@ -1,0 +1,7 @@
+# Engine lifecycle decisions (spec §6 states). Not part of the frozen rule set: a state change retires or pauses an engine, it never
+# edits a rule. Every change is logged in docs/engines/DECISIONS.md. The publisher applies these over the validation verdicts.
+retired:
+  E2: {date: 2026-10-22, by: owner-delegated, why: "walk-forward +0.040R; negative at 2x costs; below the exposure-matched Nifty (impl 1.0.1, run 39712264699)"}
+  E3: {date: 2026-10-22, by: owner-delegated, why: "walk-forward -0.228R; negative in every period but one"}
+  E4: {date: 2026-10-22, by: owner-delegated, why: "paper-only by definition (no event coverage); paper cohort -0.112R over 870 trades"}
+paused: {}
