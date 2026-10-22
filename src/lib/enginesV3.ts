@@ -51,7 +51,7 @@ export function viewModel(feed: V3Feed | null, now: Date): ViewModel {
     { key: 'paper', title: 'Paper signals', empty: 'No engine fired on the latest session.', cards: feed.paper.map((s) => card(s, plan(s))) },
     { key: 'validated', title: 'Validated alerts', empty: 'No engine has passed validation. Nothing here is an alert.', cards: feed.validated.map((s) => card(s, plan(s))) },
     { key: 'closed', title: 'Closed record', empty: 'No paper signal has closed yet.',
-      cards: feed.closed.map((c) => card(c, [c.status === 'filled' ? `Result: ${c.r_net === null ? 'not measured' : `${signed(c.r_net, 2, 'R')} net of costs`}` : `Not entered: ${c.status === 'cancelled_gap' ? 'opened at or below the invalidation' : 'opened above the chase limit'}`,
+      cards: feed.closed.map((c) => card(c, [c.status === 'filled' ? `Result: ${c.r_net === null ? 'not measured' : `${signed(c.r_net, 2, 'R')} net of costs`}` : `Not entered: ${c.status === 'cancelled_gap' ? 'opened at or below the invalidation' : c.status === 'cancelled_risk' ? 'at the opening price the stop sat outside 1–10% of it' : 'opened above the chase limit'}`,
         c.exit_reason ? `Exit: ${c.exit_reason.replace('_', ' ')}${c.exit_date ? `, ${c.exit_date}` : ''}` : ''].filter(Boolean))) },
   ];
   const engines = Object.entries(feed.engines).map(([id, e]) => ({ id, name: ENGINE_NAME[id] ?? id, state: STATE_WORD[e.state] ?? 'Research', why: e.why ?? '' }));

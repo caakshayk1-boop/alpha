@@ -54,3 +54,17 @@ def count(engine: str) -> int:
     if not REGISTRY.exists():
         return 0
     return sum(1 for line in REGISTRY.read_text().splitlines() if line.strip() and json.loads(line).get("engine") == engine)
+
+
+def count_distinct(engine: str, version: str | None = None) -> int:
+    """Distinct configurations tried for an engine (its parameter fingerprints), the N that multiple-testing corrections need.
+    Re-running the same configuration does not add a trial."""
+    if not REGISTRY.exists():
+        return 0
+    seen = set()
+    for line in REGISTRY.read_text().splitlines():
+        if line.strip():
+            r = json.loads(line)
+            if r.get("engine") == engine and (version is None or r.get("version") == version):
+                seen.add(r.get("params"))
+    return len(seen)

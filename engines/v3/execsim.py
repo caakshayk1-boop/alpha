@@ -32,16 +32,19 @@ class Plan:
     trail: Callable[[int], float | None] | None = None                   # bar index -> new stop from that completed bar
     adv_cr: float | None = None
     qty: int = 1
+    partials_r: list[tuple[float, float]] = field(default_factory=list)  # (R multiple, fraction): priced from the EXECUTED entry
+    stop_pct: tuple[float, float] | None = None                           # (min, max) stop distance in %, re-checked at the fill
 
 
 @dataclass
 class Fill:
-    status: str                                    # filled | cancelled_gap | cancelled_chase | no_next_session | open
+    status: str                                    # filled | cancelled_gap | cancelled_chase | cancelled_risk | no_next_session | open
     entry: float | None = None
     entry_i: int | None = None
     exits: list = field(default_factory=list)      # (bar index, price, fraction, reason)
-    r_gross: float | None = None
+    r_gross: float | None = None                   # after spread and slippage, before itemised fees ("after impact")
     r_net: float | None = None
+    r_ideal: float | None = None                   # no spread, no slippage, no fees: fills at the printed prices
     cost_rs: float = 0.0
     ambiguous_bar: bool = False
     exit_i: int | None = None
@@ -62,9 +65,11 @@ def simulate(df: pd.DataFrame, plan: Plan, costs: CostModel) -> Fill:
     risk = entry - plan.stop
     if risk <= 0:
         return Fill("cancelled_gap")
+    if plan.stop_pct is not None and not (plan.stop_pct[0] <= risk / entry * 100 <= plan.stop_pct[1]):
+        return Fill("cancelled_risk")              # the frozen 1-10% rule, judged at the price actually paid
     stop, left, exits, amb = plan.stop, 1.0, [], False
     pending_exit = False
-    targets = sorted(plan.targets)
+    targets = sorted(list(plan.targets) + [(entry + k * risk, f) for k, f in plan.partials_r])
     last = min(len(df) - 1, i0 + plan.time_stop - 1)
     for i in range(i0, last + 1):
         if pending_exit:                            # a close-based exit decided on bar i-1 executes at this open
@@ -110,9 +115,10 @@ def simulate(df: pd.DataFrame, plan: Plan, costs: CostModel) -> Fill:
     gross_pnl = sum((px - entry) * fr for _, px, fr, _ in exits)
     r_gross = gross_pnl / risk
     r_net = r_gross - cost / (risk * plan.qty)
-    xi = exits[-1][0]
-    return Fill("filled", entry, i0, exits, float(r_gross), float(r_net), float(cost), amb, xi, exits[-1][3])
-
+    raw_entry = o[i0]                               # every fill is printed price x (1 -/+ impact); undo it for the no-cost figure
+    ideal = sum((px / (1 - imp) - raw_entry) * fr for _, px, fr, _ in exits) / (raw_entry - plan.stop)
+    return Fill("filled", entry=entry, entry_i=i0, exits=exits, r_gross=float(r_gross), r_net=float(r_net), r_ideal=float(ideal),
+                cost_rs=float(cost), ambiguous_bar=amb, exit_i=exits[-1][0], reason=exits[-1][3])
 
 def signal_close_plus_atr(close: float, atr: float, k: float = 0.5) -> float:
     return close + k * atr

@@ -108,17 +108,16 @@ def main() -> None:
     ctx = S.context(adj, sector_of)
     regime = RG.regime(nifty, vix, cfgs["regime"]["hysteresis_sessions"])
     cost = C.CostModel.from_config(cfgs["costs"])
-    rt = cost.statutory_round_trip_pct() / 100
     mret = nifty.pct_change(fill_method=None)
     paper, form = [], []
     for e in EN.ENGINES:
         cfg = cfgs["engines"][e]
-        for c in EN.candidates(e, "baseline", bars, ctx, cfg, regime, sector_of, mret, rt, wm, wm + pd.Timedelta(days=1)):
+        for c in EN.candidates(e, "baseline", bars, ctx, cfg, regime, sector_of, mret, cost, wm, wm + pd.Timedelta(days=1)):
             sig = {"id": f"{e}:{c.sym}:{c.date.date()}", "kind": "signal", "engine": e, "version": cfg["version"], "state": st[e], "symbol": c.sym,
                    "exchange": "NSE", "as_of": str(c.date.date()), "earliest_entry": "next session open", "expiry": "end of the next session",
                    "regime": c.regime, "regime_status": c.status,
                    "entry_rule": f"next open, cancelled at or below {c.stop:.2f} or above {c.ref + 0.5 * c.atr:.2f}",
-                   "invalidation": round(c.stop, 2), "target_policy": TARGET_POLICY[e],
+                   "invalidation": round(c.stop, 2), "chase": round(c.ref + 0.5 * c.atr, 2), "target_policy": TARGET_POLICY[e],
                    "initial_risk_pct": round((c.ref - c.stop) / c.ref * 100, 2), "ref_close": round(c.ref, 2), "rank_score": round(c.score, 4),
                    "rank_components": [None if f is None or f != f else round(float(f), 4) for f in getattr(c, "feats", [])],
                    "data_watermark": str(wm.date()), "sources": ["Yahoo Finance daily bars (exchange prices)", "NSE screen universe"],
@@ -145,10 +144,13 @@ def main() -> None:
         if d not in df.index:
             continue
         t = df.index.get_loc(d)
-        fr = EN.setup_frame(b["engine"], b["symbol"], df, ctx, cfgs["engines"][b["engine"]], mret, rt)
-        plan = EN._plan(b["engine"], "baseline", b["symbol"], df, fr, t, cfgs["engines"][b["engine"]], float(fr["tv"].iloc[t]), 1)
+        fr = EN.setup_frame(b["engine"], b["symbol"], df, ctx, cfgs["engines"][b["engine"]], mret, cost)
+        # the plan as RECORDED: the ledger's stop and chase, never levels recomputed from revised bars (review finding 10)
+        plan = EN._plan(b["engine"], "baseline", b["symbol"], df, fr, t, cfgs["engines"][b["engine"]], float(fr["tv"].iloc[t]), 1, stop_override=float(b["invalidation"]))
+        if b.get("chase") is not None:
+            plan.chase = float(b["chase"])
         fl = simulate(df, plan, cost)
-        if fl.status in ("filled", "cancelled_gap", "cancelled_chase"):
+        if fl.status in ("filled", "cancelled_gap", "cancelled_chase", "cancelled_risk"):
             out = {"id": f"{b['id']}:close", "kind": "outcome", "of": b["id"], "status": fl.status, "r_net": None if fl.r_net is None else round(fl.r_net, 4),
                    "r_gross": None if fl.r_gross is None else round(fl.r_gross, 4), "exit_reason": fl.reason, "ambiguous_bar": fl.ambiguous_bar,
                    "exit_date": None if fl.exit_i is None else str(df.index[fl.exit_i].date()), "recorded": state["ran"]}

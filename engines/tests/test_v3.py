@@ -125,6 +125,12 @@ check("open at or below the stop cancels the entry", X.simulate(b([(94, 96, 93, 
 check("open above the chase limit cancels the entry", X.simulate(b([(111, 112, 110, 111)]), X.Plan("T", "S", 11, 95.0, 110, 20), Z).status == "cancelled_chase")
 check("no next session: nothing is filled or booked", X.simulate(b([], n=12), X.Plan("T", "S", 11, 95.0, 110, 20), Z).status == "no_next_session")
 
+f = X.simulate(b([(95.5, 100, 95.2, 99)]), X.Plan("T", "S", 11, 95.0, 110, 20, stop_pct=(1.0, 10.0)), Z)
+check("a fill too close to the stop (0.5%) is cancelled: the 1-10% rule is judged at the price paid", f.status == "cancelled_risk", f.status)
+f = X.simulate(b([(102, 104, 101, 103), (103, 110, 102, 109)]), X.Plan("T", "S", 11, 95.0, 110, 20, partials_r=[(1.0, 1.0)]), Z)
+check("partial targets are priced from the executed entry (102 + 1R = 109), not the signal close", f.reason == "target" and abs(f.exits[0][1] - 109.0) < 1e-9, f.exits)
+check("no-cost R equals after-impact R when impact is zero", abs(f.r_ideal - f.r_gross) < 1e-12)
+
 print("cost sanity")
 v = 1e6
 rt = (COST.side(v, True) + COST.side(v, False)) / v * 100
@@ -138,11 +144,16 @@ print("data: stale symbols and corporate-action jumps")
 jump = BARS["S01"].copy()
 jump.iloc[400, :4] = jump.iloc[400, :4] * 0.5
 check("an unexplained 50% overnight move marks the bar unclean", not EN.clean_mask(jump).iloc[400])
-stale = {**BARS, "STALE": BARS["S02"].iloc[:-10]}
-cands = EN.candidates("E1", "baseline", stale, S.context(adj(stale), {**SECTOR, "STALE": "A"}), CFG["engines"]["E1"], pd.Series("trend_up", index=IDX),
-                      {**SECTOR, "STALE": "A"}, NIFTY.pct_change(), RT, IDX[0], IDX[-1] + pd.Timedelta(days=1))
-check("a symbol more than a week behind the market issues nothing", not any(c.sym == "STALE" for c in cands))
-
+# staleness is judged per date (DECISIONS #8a): a history that ENDS early keeps its past; a bar after a suspension is unclean
+gap = BARS["S02"].drop(BARS["S02"].index[500:512])                   # a 12-session hole (more than 8 calendar days)
+check("the first bar back from a suspension is unclean", not EN.clean_mask(gap).loc[BARS["S02"].index[512]])
+short = {**BARS, "ENDS": BARS["S04"].iloc[:-10]}
+ctx_s = S.context(adj(short), {**SECTOR, "ENDS": "B"})
+c_short = EN.candidates("E2", "baseline", short, ctx_s, CFG["engines"]["E2"], pd.Series("trend_up", index=IDX), {**SECTOR, "ENDS": "B"}, NIFTY.pct_change(), COST, IDX[0], IDX[-1] + pd.Timedelta(days=1))
+c_full = EN.candidates("E2", "baseline", BARS, S.context(adj(BARS), SECTOR), CFG["engines"]["E2"], pd.Series("trend_up", index=IDX), SECTOR, NIFTY.pct_change(), COST, IDX[0], IDX[-1] + pd.Timedelta(days=1))
+past = lambda cs, sym: sorted((c.date, round(c.stop, 6)) for c in cs if c.sym == sym and c.date <= BARS["S04"].index[-11])   # noqa: E731
+check("a history that ends early keeps its past candidates (no lookahead selection)", past(c_short, "ENDS") == past(c_full, "S04"), (len(past(c_short, "ENDS")), len(past(c_full, "S04"))))
+check("a symbol issues nothing after its last bar", all(c.date <= short["ENDS"].index[-1] for c in c_short if c.sym == "ENDS"))
 print("portfolio: one position per symbol, limits")
 def mk(e, sym, score):
     df = BARS[sym]
@@ -153,6 +164,22 @@ check("two engines on one symbol: one position, the other a supporting tag", len
 pos, sk = P.run_book([mk("E1", f"S{i:02d}", 0.9 - i / 100) for i in range(10)], BARS, COST)
 check("at most six positions, total open risk <= 1.5%", len(pos) == 6 and sk["limits"] == 4, (len(pos), sk))
 check("sizing: shares = floor(0.25% of equity / stop distance), within the caps", all(p.qty <= 2500 // (p.cand.ref - p.cand.stop) for p in pos))
+
+pos, _ = P.run_book([mk("E1", f"S{i:02d}", 0.9 - i / 100) for i in range(10)], BARS, COST)
+spent = sum(p.qty * p.cand.ref for p in pos)
+check("no leverage: the book never commits more than its equity", spent <= 1_000_000 + 1e-6, spent)
+for p in pos[:3]:
+    mtm = P.position_pnl(BARS[p.cand.sym], p, COST).sum()
+    if p.fill.status == "filled":
+        net = (p.fill.r_net) * (p.fill.entry - p.cand.stop) * p.qty
+        check(f"marked to market, {p.cand.sym}'s daily P&L sums to its realised net", abs(mtm - net) < 1e-6 * max(1, abs(net)), (mtm, net))
+def mkc(e, sym, score, chase):
+    df = BARS[sym]
+    return P.Cand(e, sym, IDX[300], 300, score, float(df["Close"].iloc[300]), float(df["Close"].iloc[300]) * 0.95, 5.0, 500.0, "A", "trend_up", "active",
+                  lambda q, sym=sym, ch=chase: X.Plan(e, sym, 300, float(BARS[sym]["Close"].iloc[300]) * 0.95, ch, 10, qty=q))
+lim = {**P.LIMITS, "max_positions": 1, "max_open_risk_pct": 0.25}
+pos, sk = P.run_book([mkc("E1", "S01", 0.9, 0.0), mkc("E1", "S02", 0.8, 1e9)], BARS, COST, limits=lim)
+check("a cancelled order's slot is not refilled the same day with knowledge of the open", len(pos) == 0 and sk["cancelled"] == 1, (len(pos), sk))
 
 print("ledger: idempotent, append-only, hash-chained")
 tmp = pathlib.Path(tempfile.mkdtemp())
