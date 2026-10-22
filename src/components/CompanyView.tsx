@@ -5,20 +5,19 @@ import { eligibility } from '@/lib/coverage';
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Segmented, Skel, TabRow } from '@/components/ui';
-import { useStoredPreset } from '@/lib/layout';
-import { DataStamp } from '@/components/DataStamp';
+import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Skel } from '@/components/ui';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
 import { AskAI, AskCompany, MetricPanel } from '@/components/Explain';
 import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
 import { CaseBlock, ShareButton, ShareImageButton, WhatChanged, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { BackToContext } from '@/components/TickerLink';
+import { Drawer, NotesColumn, Overflow, ResearchSummary, SixMetrics } from '@/components/company/Parts';
 import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
 import { useStoredList } from '@/lib/store';
-import { crore, dash, heat, num, pct, ratio, sayCrore } from '@/lib/format';
+import { crore, dash, dateLabel, heat, num, pct, ratio, sayCrore } from '@/lib/format';
 import { ordinal } from '@/lib/status';
 import type { Row, Year } from '@/lib/types';
 
@@ -207,13 +206,18 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const lv = useLive();
   const [watch, addWatch, removeWatch, , watchError] = useStoredList('alpha-watchlist');
   const [watchNote, setWatchNote] = useState('');
-  const TABS = ['overview', 'financials', 'valuation', 'engines', 'ownership', 'seasonality'] as const;
+  const TABS = ['overview', 'financials', 'valuation', 'ownership', 'events', 'notes', 'engines'] as const;
   type Tab = (typeof TABS)[number];
   const [tab, setTab] = useState<Tab>('overview');
-  const [layout, setLayout] = useStoredPreset('alpha-company-layout');
   const [metric, setMetric] = useState<{ k: string; v: string } | null>(null);
-  useEffect(() => { setMetric(null); }, [sym]);
-  useEffect(() => { const h = window.location.hash.slice(1) as Tab; if ((TABS as readonly string[]).includes(h)) setTab(h); }, [sym]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [ask, setAsk] = useState(false);
+  useEffect(() => { setMetric(null); setAsk(false); }, [sym]);
+  useEffect(() => {
+    // old anchors keep working: #seasonality lives under Valuation now
+    const h = window.location.hash.slice(1);
+    const t = (h === 'seasonality' ? 'valuation' : h) as Tab;
+    if ((TABS as readonly string[]).includes(t)) setTab(t);
+  }, [sym]); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (t: Tab) => { setTab(t); try { window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${t}`); } catch { /* history unavailable */ } };
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => sh.data?.row ?? full.data?.rows.find((x) => x.sym.toUpperCase() === sym), [sh.data, full.data, sym]);
@@ -227,132 +231,155 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const pl = priceLabel(pv);
   const closeOn = sessionLabel(r.last_date);
   const elig = eligibility(r);
-  const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Signals (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
+  const years = pre?.years ? pre.years.length : undefined;
+  const thin = elig?.thin ?? false;
+  const watching = watch.includes(r.sym);
+  const toggleWatch = () => { const on = watching; if (on ? removeWatch(r.sym) : addWatch(r.sym)) setWatchNote(on ? 'Removed from your watchlist' : 'Watching: saved in this browser'); };
+  const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ['ownership', 'Ownership'], ['events', 'Events'], ['notes', 'Notes'], ...(mySignals.length > 0 ? [['engines', `Signals (${mySignals.length})`] as const] : [])];
   const view: Tab = tabOptions.some(([k]) => k === tab) ? tab : 'overview';      // a link to #engines on a company with no signal falls back to Overview
+  const explain = (k: string, v: string) => setMetric(metric?.k === k ? null : { k, v });
+  const kv = (k: string, v: string, say?: string) => <Kv k={k} v={v} say={say} onPick={explain} on={metric?.k === k} />;
+  const plansOpen = mySignals.filter((x) => x.status === 'open' || x.status === 'pending');
   return (
     <>
-      <header className="wrap co-head">
-        <div>
-          <div className="eyebrow"><BackToContext /> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
-          <h1 className="disp">{r.name}</h1>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <header className="wrap co-head2">
+        <div className="co-id">
+          <div className="eyebrow plain"><BackToContext /> &nbsp;·&nbsp; {r.sector}{r.ind && r.ind.trim().toLowerCase() !== (r.sector ?? '').trim().toLowerCase() ? ` · ${r.ind}` : ''}</div>
+          <h1>{r.name}</h1>
+          <div className="co-tags">
             <span className="tag acc" style={{ viewTransitionName: 'ticker' }}>{r.sym}</span>
             {r.tier && <span className="tag">{r.tier} cap</span>}
             {r.ahimsa && <span className="tag up">Ahimsa 500</span>}
-            {/* the screen's DATA gate, named for what it is: it is not Alpha's research checks below and not an editorial review */}
+            {/* the screen's DATA gate, named for what it is: it is not Alpha's research checks and not an editorial review */}
             {elig && <span className={`tag ${elig.ok ? '' : 'warn'}`} title={elig.detail}>{elig.label}</span>}
             {r.risk && r.risk.level !== 'LOW' && <span className="tag warn">Risk {r.risk.level.toLowerCase()}</span>}
           </div>
         </div>
-        <div className="co-price">
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
-            <button className={`chip watch-btn${watch.includes(r.sym) ? ' on' : ''}`} aria-pressed={watch.includes(r.sym)} onClick={() => { const on = watch.includes(r.sym); if (on ? removeWatch(r.sym) : addWatch(r.sym)) setWatchNote(on ? 'Removed from your watchlist' : 'Saved to your watchlist, in this browser'); }}><span className="star" aria-hidden>{watch.includes(r.sym) ? '★' : '☆'}</span> {watch.includes(r.sym) ? 'Watching' : 'Watch'}</button>
-            {(watchError || watchNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13 }}>{watchError ?? watchNote}</span>}
-            <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare</Link>
-            <SaveCardButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
+        <div className="co-quote">
+          <div className="px num"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div>
+          <div className="co-chg"><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim">{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div>
+          <PriceContext r={r} price={pv.price ?? r.price} />
+        </div>
+        <div className="co-acts">
+          <button type="button" className="act primary watch-act" aria-pressed={watching} onClick={toggleWatch}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill={watching ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>
+            {watching ? 'Watching' : 'Watch'}
+          </button>
+          <Link className="act" href={`/compare/?s=${r.sym}`}>Compare</Link>
+          <button type="button" className="act" onClick={() => { pick('notes'); window.setTimeout(() => document.getElementById('co-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); }}>Save a note</button>
+          <button type="button" className="act" onClick={() => setAsk(true)}>Ask about this evidence</button>
+          <Overflow label="Share and export">
             <ShareButton r={r} />
-            <ShareImageButton r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
-          </div><div className="px"><Flash value={pv.price}>{pv.price === null ? dash : `₹${num(pv.price, 2)}`}</Flash></div><div style={{ marginTop: 6 }}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} /></Flash> <span className="dim" style={{ fontSize: 13.5 }}>{pl.live ? <><span className="tag up" style={{ fontSize: 11.5 }}>live</span> {pl.text.replace(/^live /, '')}</> : pl.text}</span></div><PriceContext r={r} price={pv.price ?? r.price} /></div>
+            <ShareImageButton r={r} sigs={mySignals} years={years} />
+            <SaveCardButton r={r} sigs={mySignals} years={years} />
+          </Overflow>
+          {(watchError || watchNote) && <span className={watchError ? 'warn' : 'dim'} role="status" style={{ fontSize: 13 }}>{watchError ?? watchNote}</span>}
+        </div>
       </header>
-      <section className="wrap" style={{ paddingTop: 0, paddingBottom: 0 }}><DataStamp ids={['prices', 'screen']} /></section>
-      <section className="wrap" style={{ paddingTop: 8, paddingBottom: 0 }}><AskAI subject="move" sym={r.sym} title={`Why did ${r.sym} move?`} compact /></section>
       {(() => {
         const live = pv.source === 'close' ? null : pv.price;
         if (!has(live) || !has(r.price) || r.price <= 0 || Math.abs(live / r.price - 1) <= 0.08) return null;
         return <section className="wrap"><p className="notice" role="alert">The live quote (₹{num(live, 2)}) differs from the screen&apos;s close (₹{num(r.price, 2)}{r.last_date ? ` on ${closeOn}` : ''}) by {pct(Math.abs((live / r.price - 1) * 100), 1, false)}. A split, bonus or other corporate action, or a symbol mismatch at the price source, can cause this. Check before relying on price-based figures; scores and levels below use the screen close.</p></section>;
       })()}
 
-      <CaseBlock r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} />
-      <section className="wrap" style={{ paddingTop: 8 }}>
-        <h2 className="sr">Price chart</h2>
-        <Rv className="panel"><StockChart sym={r.sym} plans={mySignals.filter((x) => x.status === 'open' || x.status === 'pending').map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></Rv>
+      <section className="wrap co-open"><ResearchSummary r={r} sigs={mySignals} /></section>
+      <CaseBlock r={r} sigs={mySignals} years={years} />
+      <section className="wrap section2" aria-label="Price chart">
+        <div className="card"><StockChart sym={r.sym} plans={plansOpen.map((x) => ({ sl: x.stop_now ?? x.sl, entry: x.entry ?? x.ref_price, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan], label: `Swing ${x.setup}` }))} /><div style={{ marginTop: 12 }}><ExternalLinks sym={r.sym} /></div></div>
       </section>
-      <section className="wrap" style={{ paddingTop: 4, paddingBottom: 0 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Segmented label="Page layout" role="group" value={layout} onChange={setLayout} options={[['quick', 'Quick look'], ['deep', 'Deep dive']] as const} />
-          <Link className="chip" href={`/compare/?s=${r.sym}`}>Compare with peers →</Link>
-          <span className="dim" style={{ fontSize: 13.5 }}>{layout === 'quick' ? 'The case, the chart and the scorecard. Everything else is one tap away.' : 'Every section.'}</span>
-        </div>
-      </section>
-      {layout === 'deep' && <LazyMount minHeight={180}><WhatChanged r={r} sigs={mySignals} /></LazyMount>}
-      <section className="wrap section">
-        <SectionHead eyebrow={`Scorecard · screen close ${closeOn}`} title="Where it ranks" />
-        <Scorecard of={s.count} items={[{ label: 'Quality', value: r.q, tone: 'lav', note: 'ROCE, ROE, margins, debt and interest cover' }, { label: 'Growth', value: r.g, tone: 'mint', note: 'Revenue, EBITDA and EPS growth' }, { label: 'Value', value: r.v, tone: 'lime', note: 'P/E and P/B against its own history; higher is cheaper' }, { label: 'Technical', value: r.tech, tone: 'peach', note: 'Trend, momentum, breakouts and volume' }]} />
-        <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions. 50 is the median company, which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
-      </section>
-      {layout === 'deep' && (<>
-      <section className="wrap" style={{ paddingTop: 0 }}>
-        <TabRow label="Company views" value={view} onChange={pick} options={tabOptions} />
+      <section className="wrap section2" aria-labelledby="six-h">
+        <div className="card-h"><h2 id="six-h" className="sec-title">Six measures{lender ? ' for a lender' : ''}</h2><span className="dim" style={{ fontSize: 13 }}>Screen close {closeOn}; statement figures to {r.fy ?? 'the latest filing'}</span></div>
+        <SixMetrics r={r} onExplain={explain} />
+        {metric && <MetricPanel metric={metric.k} value={metric.v} sym={r.sym} onClose={() => setMetric(null)} />}
       </section>
 
-      {view === 'overview' && (<>
-      <section className="wrap section"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={pre?.years ? pre.years.length : undefined} /></section>
-      <section className="wrap section">
-        <div className="grid g-7-5">
-          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 14 }} /><Returns r={r} /></Rv>
-          <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
-            {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{fixCopy(r.vd.o)}.</p> : <p className="muted">Nothing notable.</p>}
-            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{fixCopy(f)}</li> : <li key={i}>{fixCopy(f.t)}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
-            {r.next_earnings && <p className="dim" style={{ fontSize: 14, marginBottom: 0 }}>Next results expected {r.next_earnings}.</p>}
-          </Rv>
+      <nav className="secnav section2" aria-label="Company sections" id="co-body">
+        <div className="wrap" role="tablist" aria-label="Company sections">
+          {tabOptions.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => pick(k)}>{l}</button>)}
         </div>
-      </section>
-      <section className="wrap section">
-        <SectionHead title="Key numbers" />
-        <p className="dim" style={{ fontSize: 13.5, margin: '-6px 2px 12px' }}>From the screen: price-based ratios use the {closeOn} close; the rest come from the latest filed statements.</p>
-        <Rv className="kv">
-          <Kv k="Market cap" v={has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed'} say={has(r.mcap_cr) && r.mcap_cr > 0 ? sayCrore(r.mcap_cr) : undefined} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Market cap'} /><Kv k="P/E" v={has(r.pe) ? `${ratio(r.pe, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E'} /><Kv k="P/B" v={has(r.pb) ? `${ratio(r.pb, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/B'} />
-          <Kv k="ROCE" v={has(r.roce) ? `${pct(r.roce, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROCE'} /><Kv k="ROE" v={has(r.roe) ? `${pct(r.roe, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'ROE'} /><Kv k="EBIT margin" v={has(r.ebit_margin) ? `${pct(r.ebit_margin, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EBIT margin'} />
-          <Kv k="Debt / equity" v={has(r.de) ? num(r.de, 2) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Debt / equity'} /><Kv k="Interest cover" v={has(r.icover) ? `${ratio(r.icover, 1)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Interest cover'} /><Kv k="Dividend yield" v={has(r.div_yield) ? `${pct(r.div_yield, 2, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Dividend yield'} />
-          <Kv k="Revenue CAGR" v={has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Revenue CAGR'} /><Kv k="EPS CAGR" v={has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'EPS CAGR'} /><Kv k="Cash / profit" v={has(r.cfo_pat) ? `${ratio(r.cfo_pat, 2)}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Cash / profit'} />
-          <Kv k="Piotroski F" v={has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Piotroski F'} /><Kv k="RSI (14)" v={has(r.rsi) ? num(r.rsi, 0) : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'RSI (14)'} />
-          {r.mf?.rank && <Kv k="Magic Formula" v={`#${r.mf.rank} of ${r.mf.of}`} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Magic Formula'} />}
-          <Kv k="P/E vs own history" v={has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'P/E vs own history'} /><Kv k="Daily turnover" v={crore(r.turnover_cr)} say={sayCrore(r.turnover_cr)} onPick={(k, v) => setMetric(metric?.k === k ? null : { k, v })} on={metric?.k === 'Daily turnover'} />
-        </Rv>
-        {metric && <MetricPanel metric={metric.k} value={metric.v} sym={r.sym} onClose={() => setMetric(null)} />}
-        <div style={{ height: 16 }} /><AskCompany sym={r.sym} />
-      </section>
-      </>)}
-      {view === 'financials' && (<>
-      <section className="wrap section"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
-      <section className="wrap section"><SectionHead title="Latest exchange announcements" /><AskAI subject="filing" sym={r.sym} title={`Summarise ${r.sym}'s latest filings`} compact /><p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>Read from the text of the company&apos;s own NSE announcements when you ask; nothing is recalled from memory. <a href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(r.sym)}`} target="_blank" rel="noopener noreferrer">The filings on NSE ↗</a></p></section>
-      <section className="wrap section"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={pre?.years ? pre.years.length : undefined} /></section>
-      </>)}
-      {view === 'valuation' && (<>
-      <section className="wrap section"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = mySignals.find((y) => y.status === 'open' || y.status === 'pending'); return x ? { sl: x.stop_now ?? x.sl, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan] } : undefined; })()} /></Rv></LazyMount></section>
-      <section className="wrap section"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
-      </>)}
-      {view === 'engines' && (<>
-      {mySignals.length > 0 && (
-        <section className="wrap section">
-          <SectionHead eyebrow="Signals · Swing v2" title="This stock's plans" href="/engines/" cta="The rule book" />
-          <div className="grid g2">{mySignals.map((x) => {
-            // the same price rule and mark as the Trades page: the engines' close unless a live session is newer
-            const m = mark(x, priceFor(x, lv.snap, px.quotes[sym]), noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null));
-            return (
-            <Rv key={x.id} className="panel spot">
-              <div className="sig2-head">
-                <div><div className="eyebrow">{x.setup} · signal {sessionLabel(x.date)}</div><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></div>
-                <div className="sig2-now">{m.r !== null && <div className={`v num ${m.r >= 0 ? 'up' : 'down'}`}>{m.r > 0 ? '+' : m.r < 0 ? '−' : ''}{num(Math.abs(m.r), 2)}R</div>}<div className="dim num" style={{ fontSize: 12 }}>{x.status === 'closed' ? `closed ${sessionLabel(x.closed_date)}` : m.price !== null ? markSource(m) : ''}</div></div>
+      </nav>
+      <div className={`wrap co-body${view === 'notes' ? ' one' : ''}`}>
+        <div className="co-main" role="tabpanel" aria-label={tabOptions.find(([k]) => k === view)?.[1]}>
+          {view === 'overview' && (<>
+            <section className="section2">
+              <SectionHead eyebrow={`Scorecard · screen close ${closeOn}`} title="Where it ranks" />
+              <Scorecard of={s.count} items={[{ label: 'Quality', value: r.q, tone: 'lav', note: 'ROCE, ROE, margins, debt and interest cover' }, { label: 'Growth', value: r.g, tone: 'mint', note: thin ? `Ranked on only ${r.fy_count ?? 'a few'} statement years: not a multi-year record` : 'Revenue, EBITDA and EPS growth' }, { label: 'Value', value: r.v, tone: 'lime', note: 'P/E and P/B against its own history; higher is cheaper' }, { label: 'Technical', value: r.tech, tone: 'peach', note: 'Trend, momentum, breakouts and volume (longer horizon than the chart’s key line)' }]} />
+              <p className="dim" style={{ fontSize: 13.5, margin: '10px 2px 0' }}>Scores are percentiles within the screen’s {num(s.count)} companies, not predictions. 50 is the median company, which is not a neutral rating.{lender ? ' This is a lender or insurer, so cash-conversion and leverage ratios are read differently.' : ''}</p>
+            </section>
+            <section className="section2"><SectionHead eyebrow="Research summary" title="Why this name?" /><DecisionDesk r={r} sigs={mySignals} years={years} /></section>
+            <section className="section2">
+              <div className="grid g-7-5">
+                <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 14 }} /><Returns r={r} /></Rv>
+                <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
+                  {r.vd?.o ? <p style={{ fontSize: 19, lineHeight: 1.35, margin: 0, fontWeight: 600 }}>{fixCopy(r.vd.o)}.</p> : <p className="muted">Nothing notable.</p>}
+                  {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{fixCopy(f)}</li> : <li key={i}>{fixCopy(f.t)}{f.k && <small className="dim" style={{ display: 'block', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
+                </Rv>
               </div>
-              <div className="kv sig2-plan">
-                <div><div className="k">{x.entry ? 'Entry' : 'Signal close'}</div><div className="v">{money(x.entry ?? x.ref_price)}</div></div>
-                <div><div className="k">{STOP_TEXT[m.stopKind]}</div><div className="v">{money(m.stop)}</div></div>
-                <div><div className="k">T1 · sell half</div><div className="v">{money(m.t1)}</div></div>
-                <div><div className="k">T2 · the rest</div><div className="v">{money(m.t2)}</div></div>
-              </div>
-              <ul className="sig2-why">{x.why.map((w) => <li key={w}>{w}</li>)}</ul>
-            </Rv>); })}</div>
-        </section>
-      )}
-      </>)}
-      {view === 'ownership' && (<>
-      <section className="wrap section"><SectionHead title="Who owns it" /><Ownership sym={r.sym} pre={pre?.inst} /></section>
-      </>)}
-      {view === 'seasonality' && (<>
-      <section className="wrap section"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
-      </>)}
-      </>)}
+            </section>
+            <section className="section2">
+              <div className="card-h"><h2 className="sec-title">All key numbers</h2><button type="button" className="act quiet" onClick={() => setAsk(true)}>Ask about these figures</button></div>
+              <p className="dim" style={{ fontSize: 13.5, margin: '-6px 2px 12px' }}>From the screen: price-based ratios use the {closeOn} close; the rest come from the latest filed statements. Select a label to see its formula, period, source and limits.</p>
+              <Rv className="kv">
+                {kv('Market cap', has(r.mcap_cr) && r.mcap_cr > 0 ? crore(r.mcap_cr) : 'Not in the feed', has(r.mcap_cr) && r.mcap_cr > 0 ? sayCrore(r.mcap_cr) : undefined)}{kv('P/E', has(r.pe) ? `${ratio(r.pe, 1)}` : dash)}{kv('P/B', has(r.pb) ? `${ratio(r.pb, 2)}` : dash)}
+                {kv('ROCE', has(r.roce) ? `${pct(r.roce, 1, false)}` : dash)}{kv('ROE', has(r.roe) ? `${pct(r.roe, 1, false)}` : dash)}{kv('EBIT margin', has(r.ebit_margin) ? `${pct(r.ebit_margin, 1, false)}` : dash)}
+                {kv('Debt / equity', has(r.de) ? num(r.de, 2) : dash)}{kv('Interest cover', has(r.icover) ? `${ratio(r.icover, 1)}` : dash)}{kv('Dividend yield', has(r.div_yield) ? `${pct(r.div_yield, 2, false)}` : dash)}
+                {kv('Revenue CAGR', has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash)}{kv('EPS CAGR', has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash)}{kv('Cash / profit', has(r.cfo_pat) ? `${ratio(r.cfo_pat, 2)}` : dash)}
+                {kv('Piotroski F', has(r.piotroski) ? `${r.piotroski} / ${r.piotroski_of ?? 9}` : dash)}{kv('RSI (14)', has(r.rsi) ? num(r.rsi, 0) : dash)}
+                {r.mf?.rank && kv('Magic Formula', `#${r.mf.rank} of ${r.mf.of}`)}
+                {kv('P/E vs own history', has(r.pe_pctile) ? `${ordinal(r.pe_pctile)} percentile` : dash)}{kv('Daily turnover', crore(r.turnover_cr), sayCrore(r.turnover_cr))}
+              </Rv>
+            </section>
+          </>)}
+          {view === 'financials' && (<>
+            <section className="section2"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
+            <section className="section2"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={years} /></section>
+          </>)}
+          {view === 'valuation' && (<>
+            <section className="section2"><SectionHead eyebrow="Calculated insight" title="Price performance and research context" /><LazyMount minHeight={280}><Rv className="panel"><RiskCone sym={r.sym} plan={(() => { const x = plansOpen[0]; return x ? { sl: x.stop_now ?? x.sl, targets: [x.t1 ?? x.t1_plan, x.t2 ?? x.t2_plan] } : undefined; })()} /></Rv></LazyMount></section>
+            <section className="section2"><SectionHead eyebrow="Comparables" title="Companies with the same profile" /><LookalikesLazy r={r} /></section>
+            <section className="section2" id="seasonality"><SectionHead title="By calendar month" /><Seasons sym={r.sym} pre={pre?.season} /></section>
+          </>)}
+          {view === 'ownership' && <section className="section2"><SectionHead title="Who owns it" /><Ownership sym={r.sym} pre={pre?.inst} /></section>}
+          {view === 'events' && (<>
+            <section className="section2 card tight" aria-labelledby="res-h">
+              <div className="card-h"><h3 id="res-h">Next results</h3><Link className="more" href="/calendar/">Calendar →</Link></div>
+              <p style={{ margin: 0 }}>{r.next_earnings ? <>A results date of <b>{dateLabel(r.next_earnings)}</b> is on file. It is the screen&apos;s estimate, not an exchange confirmation: check the company&apos;s own announcement.</> : 'No results date is on file for this company.'} <a className="link" href={`https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(r.sym)}`} target="_blank" rel="noopener noreferrer">Filings on NSE ↗</a></p>
+            </section>
+            <LazyMount minHeight={180}><WhatChanged r={r} sigs={mySignals} /></LazyMount>
+            <section className="section2"><SectionHead title="Latest exchange announcements" /><AskAI subject="filing" sym={r.sym} title={`Summarise ${r.sym}'s latest filings`} compact /><p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}>Read from the text of the company&apos;s own NSE announcements when you ask; nothing is recalled from memory.</p></section>
+          </>)}
+          {view === 'notes' && <section className="section2"><NotesColumn r={r} sigs={mySignals} /></section>}
+          {view === 'engines' && mySignals.length > 0 && (
+            <section className="section2">
+              <SectionHead eyebrow="Signals · Swing v2" title="This stock's plans" href="/engines/" cta="The rule book" />
+              <div className="grid g2">{mySignals.map((x) => {
+                // the same price rule and mark as the Trades page: the engines' close unless a live session is newer
+                const m = mark(x, priceFor(x, lv.snap, px.quotes[sym]), noSessionDays(lv.snap?.session, lv.snap ? Date.parse(lv.snap.fetchedAt) / 1000 : null));
+                return (
+                  <Rv key={x.id} className="panel spot">
+                    <div className="sig2-head">
+                      <div><div className="eyebrow">{x.setup} · signal {sessionLabel(x.date)}</div><span className={`tag ${STATE_TONE[m.state]}`}>{STATE_TEXT[m.state]}</span></div>
+                      <div className="sig2-now">{m.r !== null && <div className={`v num ${m.r >= 0 ? 'up' : 'down'}`}>{m.r > 0 ? '+' : m.r < 0 ? '−' : ''}{num(Math.abs(m.r), 2)}R</div>}<div className="dim num" style={{ fontSize: 12 }}>{x.status === 'closed' ? `closed ${sessionLabel(x.closed_date)}` : m.price !== null ? markSource(m) : ''}</div></div>
+                    </div>
+                    <div className="kv sig2-plan">
+                      <div><div className="k">{x.entry ? 'Entry' : 'Signal close'}</div><div className="v">{money(x.entry ?? x.ref_price)}</div></div>
+                      <div><div className="k">{STOP_TEXT[m.stopKind]}</div><div className="v">{money(m.stop)}</div></div>
+                      <div><div className="k">T1 · sell half</div><div className="v">{money(m.t1)}</div></div>
+                      <div><div className="k">T2 · the rest</div><div className="v">{money(m.t2)}</div></div>
+                    </div>
+                    <ul className="sig2-why">{x.why.map((w) => <li key={w}>{w}</li>)}</ul>
+                  </Rv>); })}</div>
+            </section>
+          )}
+        </div>
+        {view !== 'notes' && <aside className="co-aside" aria-label="Your notes on this company"><NotesColumn r={r} sigs={mySignals} /></aside>}
+      </div>
+      <Drawer open={ask} onClose={() => setAsk(false)} title={`Ask about ${r.sym}`}>
+        <p className="dim" style={{ fontSize: 14, margin: '0 0 12px' }}>Questions are answered from the figures on this page, with each figure cited and dated. The mode of every answer is shown: Rules, Glossary or AI-assisted.</p>
+        <AskAI subject="move" sym={r.sym} title={`Why did ${r.sym} move?`} compact />
+        <div style={{ height: 16 }} />
+        <AskCompany sym={r.sym} />
+      </Drawer>
     </>
   );
 }

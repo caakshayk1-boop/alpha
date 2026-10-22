@@ -281,3 +281,58 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .kvrow .row-s { white-space: normal; }
 @media (max-width: 480px) { .kvrow { grid-template-columns: 1fr; gap: 4px; } }
 .fx-list .f-l b .f-w { display: inline; font-style: normal; font-weight: 500; color: var(--dim); font-size: var(--fs-xs); margin-left: 6px; }
+
+/* ── Company workspace ────────────────────────────────────────────────────────────────────────────────────────────── */
+.co-head2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'id quote' 'acts acts'; gap: var(--sp-4) var(--sp-6); padding: var(--sp-6) 0 var(--sp-4); align-items: end; }
+.co-id { grid-area: id; min-width: 0; }
+.co-id h1 { font: 600 clamp(28px, 3vw, 38px)/1.12 var(--f-ui); letter-spacing: -0.025em; margin: var(--sp-2) 0 var(--sp-3); text-wrap: balance; }
+.co-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.co-quote { grid-area: quote; text-align: right; }
+.co-quote .px { font: 600 clamp(30px, 3.2vw, 40px)/1 var(--f-ui); letter-spacing: -0.03em; }
+.co-chg { margin-top: 6px; font-size: var(--fs-md); }
+.co-quote .co-context { margin: 6px 0 0; font-size: var(--fs-sm); max-width: 44ch; margin-left: auto; }
+.co-acts { grid-area: acts; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.co-acts .ovf-menu .chip { border: 0; padding: 10px 12px; border-radius: 8px; font-size: var(--fs-md); justify-content: flex-start; width: 100%; color: var(--text); }
+.co-acts .ovf-menu .chip:hover { background: var(--panel-2); }
+.watch-act[aria-pressed='true'] svg { color: var(--accent); }
+@media (max-width: 760px) {
+  .co-head2 { grid-template-columns: 1fr; grid-template-areas: 'id' 'quote' 'acts'; gap: var(--sp-3); padding-top: var(--sp-5); }
+  .co-quote { text-align: left; } .co-quote .co-context { margin-left: 0; }
+  .co-acts .act { flex: 1 1 auto; }
+}
+.co-open { padding-top: var(--sp-4); }
+.co-summary { font-size: var(--fs-lg); line-height: 1.5; margin: 0; max-width: 75ch; }
+.co-summary .co-qual { font-weight: 600; color: var(--warn); }
+.co-summary .co-asof { font-size: var(--fs-sm); }
+.co-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-6); align-items: start; }
+.co-body.one { grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+.co-main { min-width: 0; }
+.co-aside { position: sticky; top: calc(var(--nav-h) + 56px); padding-top: var(--sp-6); }
+@media (max-width: 1080px) { .co-body { grid-template-columns: 1fr; } .co-aside { position: static; padding-top: 0; } }
+.notes-col { display: grid; gap: var(--sp-4); }
+.note-form { display: grid; gap: var(--sp-3); }
+.note-form label > span, .note-form legend { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.note-form .field { width: 100%; }
+.note-form textarea.field { resize: vertical; min-height: 64px; padding: 10px 12px; font: inherit; }
+.note-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.note-form .radio { display: flex; gap: 8px; align-items: center; font-size: var(--fs-md); color: var(--text); min-height: 32px; }
+.m-x { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--accent-2); padding: 2px 6px; border-radius: 6px; min-height: 24px; }
+.m-x:hover { background: var(--accent-soft); }
+.secnav.section2 { margin-top: var(--sp-6); padding: 0; }
+.case-wrap { padding-top: var(--sp-4); }
+
+/* section heads in the UI face; the serif stays for Today's lead and editorial titles */
+.sec-h h2 { font: 600 var(--fs-xl)/1.25 var(--f-ui); letter-spacing: -0.015em; }
+.sec-h { padding-bottom: 0; margin-bottom: var(--sp-3); }
+.sec-h::after { display: none; }
+@media (max-width: 760px) { .sec-h h2 { font-size: 20px; } }
+.co-main .disp, .desk .disp { font-family: var(--f-ui); font-weight: 600; letter-spacing: -0.015em; }
+/* the scorecard: neutral surfaces; the bar carries the value, not a pastel */
+.scard, .scard.t-lav, .scard.t-mint, .scard.t-lime, .scard.t-peach { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-card); }
+.scard .v { font: 600 34px/1 var(--f-ui); letter-spacing: -0.03em; }
+.scard .bar2 i { background: var(--text); }
+/* visible "Source" and "Explain" on every case point (C20), touch-sized on phones */
+.cite { min-width: 0; height: 24px; padding: 0 8px; font-size: var(--fs-xs); color: var(--accent-2); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.cite:hover { background: var(--accent-soft); }
+@media (pointer: coarse) { .case-col .cite { height: 32px; padding: 0 10px; } }
+@media (max-width: 760px) { .co-summary { font-size: var(--fs-base); } }
