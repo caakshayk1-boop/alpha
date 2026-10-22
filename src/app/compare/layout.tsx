@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import '../discover.css';
 
 export const metadata: Metadata = {
   title: 'Compare companies side by side',

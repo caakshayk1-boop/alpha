@@ -1,168 +1,251 @@
 'use client';
-import { LENDER_NA, isLender } from '@/lib/sector';
-
+/** Compare (brief Part I §4): a short read of what differs and what cannot be compared, then one table with company headings
+ *  that stay in view, switched between Overview, Quality, Valuation, Financials and the full table. No winner: a figure is
+ *  marked only where "better" is defined and the gap is material (lib/compare.ts). Companies are replaced in place, the
+ *  selection lives in the address, and the comparison can be saved to My Desk as a research card. */
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo, useState } from 'react';
-import { DataStamp } from '@/components/DataStamp';
-import SymbolPicker from '@/components/SymbolPicker';
-import { Async, Chg, Flash, Notice, PageHead, Rv, Segmented } from '@/components/ui';
-import { useStoredPreset } from '@/lib/layout';
+import { Overflow } from '@/components/company/Parts';
+import { DataStamp, useDatasetStatus } from '@/components/DataStamp';
 import { AskAI } from '@/components/Explain';
+import SymbolPicker from '@/components/SymbolPicker';
+import { Chg, Flash, PageHead } from '@/components/ui';
+import { buildCard } from '@/lib/card';
+import { LENDER_CARE, SPECS, VIEWS, lenderCaveat, mark, summarise, type View } from '@/lib/compare';
 import { useFeedWhen, useLive, useShard } from '@/lib/data';
+import { dash, dateLabel, num } from '@/lib/format';
+import { useCards } from '@/lib/library';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
-import { crore, dash, num, pct, ratio } from '@/lib/format';
-import type { Row } from '@/lib/types';
+import { isLender } from '@/lib/sector';
 import { companyHref } from '@/lib/slug';
+import type { Row } from '@/lib/types';
 
 const has = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-const PERIOD_DEPENDENT = new Set(['Revenue CAGR', 'EPS CAGR']);
-/** `material`: the smallest difference between the best and the next value that is worth marking (Pro §22.5): in the
- *  measure's own units for levels (5 points of a margin, 0.3 of debt/equity), or as a share for multiples (`rel`). Below it
- *  the row stays neutral: a 0.4-point gap in ROCE is noise, not a winner. */
-type Spec = { label: string; quick?: boolean; get: (r: Row) => number | null | undefined; fmt: (v: number) => string; better: 'high' | 'low' | null; material?: number; rel?: boolean };
-const SPECS: Spec[] = [
-  { label: 'Market cap', get: (r) => r.mcap_cr, fmt: (v) => crore(v), better: null },
-  { label: 'Composite score', quick: true, material: 10, get: (r) => r.comp, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Quality', quick: true, material: 10, get: (r) => r.q, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Growth', quick: true, material: 10, get: (r) => r.g, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Value', quick: true, material: 10, get: (r) => r.v, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'Technical', quick: true, material: 10, get: (r) => r.tech, fmt: (v) => num(v, 0), better: 'high' },
-  { label: 'P/E', quick: true, material: 0.2, rel: true, get: (r) => (has(r.pe) && r.pe > 0 ? r.pe : null), fmt: (v) => `${ratio(v, 1)}`, better: 'low' },
-  { label: 'P/B', material: 0.2, rel: true, get: (r) => r.pb, fmt: (v) => `${ratio(v, 2)}`, better: 'low' },
-  { label: 'ROCE', quick: true, material: 5, get: (r) => r.roce, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'ROE', material: 5, get: (r) => r.roe, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'EBIT margin', material: 5, get: (r) => r.ebit_margin, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'Debt / equity', quick: true, material: 0.3, get: (r) => r.de, fmt: (v) => num(v, 2), better: 'low' },
-  { label: 'Revenue CAGR', material: 5, get: (r) => r.rev_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'EPS CAGR', material: 5, get: (r) => r.eps_cagr, fmt: (v) => `${pct(v, 1, false)}`, better: 'high' },
-  { label: 'Cash conversion', material: 0.2, get: (r) => r.cfo_pat, fmt: (v) => `${ratio(v, 2)}`, better: 'high' },
-  { label: 'Dividend yield', material: 1, get: (r) => r.div_yield, fmt: (v) => `${pct(v, 2, false)}`, better: 'high' },
-  { label: 'Piotroski F', material: 2, get: (r) => r.piotroski, fmt: (v) => `${num(v, 0)}/9`, better: 'high' },
-  { label: '1 year', quick: true, material: 10, get: (r) => r.r1y, fmt: (v) => `${pct(v, 1)}`, better: 'high' },
-  { label: 'From 52-week high', material: 10, get: (r) => r.from_high, fmt: (v) => `${pct(v, 0, false)}`, better: 'high' },
-];
-
-/** One small score profile per company, titled with its name (small multiples). Identity comes from the label, not a colour:
- *  four overlaid polygons needed four hues, and no set of four non-gain/loss hues stays apart on the dark surface (checked with
- *  the dataviz palette validator, 15 Oct). Same scale (0 to 100) and same axes in every panel, so shapes compare directly. */
+/** One small score profile per company, titled with its name (small multiples). Identity comes from the label, not a colour.
+ *  Same scale (0 to 100) and the same axes in every panel, so shapes compare directly. */
 const AXES: [string, (r: Row) => number | null | undefined][] = [['Quality', (r) => r.q], ['Growth', (r) => r.g], ['Value', (r) => r.v], ['Technical', (r) => r.tech], ['Composite', (r) => r.comp]];
 function Radar({ r }: { r: Row }) {
   const C = 80, R = 52;
   const pt = (i: number, v: number) => { const a = (-Math.PI / 2) + (i / AXES.length) * Math.PI * 2; return [C + Math.cos(a) * R * (v / 100), C + Math.sin(a) * R * (v / 100)] as const; };
   const label = AXES.map(([l, g]) => `${l} ${has(g(r)) ? Math.round(g(r) as number) : 'not scored'}`).join(', ');
   return (
-    <figure style={{ margin: 0, textAlign: 'center' }}>
-      <figcaption style={{ font: '600 15px var(--f-ui)' }}><Link href={companyHref(r.sym)}>{r.sym}</Link></figcaption>
-      <svg viewBox="-24 0 208 160" style={{ width: '100%', maxWidth: 200, display: 'block', margin: '0 auto' }} role="img" aria-label={`${r.sym} scores: ${label}`}>
+    <figure className="cmpx-radar">
+      <figcaption><Link href={companyHref(r.sym)}>{r.sym}</Link></figcaption>
+      <svg viewBox="-24 0 208 160" role="img" aria-label={`${r.sym} scores: ${label}`}>
         {[50, 100].map((g) => <polygon key={g} points={AXES.map((_, i) => pt(i, g).join(',')).join(' ')} fill="none" stroke="var(--line-2)" />)}
         {AXES.map(([l], i) => { const [x, y] = pt(i, 128); return <text key={l} x={x} y={y + 3} textAnchor="middle" fontSize="9" fill="var(--dim)" fontFamily="var(--f-ui)">{l}</text>; })}
-        <polygon points={AXES.map(([, g], i) => pt(i, Math.max(2, Math.min(100, g(r) ?? 0))).join(',')).join(' ')} fill="var(--accent)" fillOpacity=".16" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" />
+        <polygon points={AXES.map(([, g], i) => pt(i, Math.max(2, Math.min(100, g(r) ?? 0))).join(',')).join(' ')} fill="var(--text)" fillOpacity=".08" stroke="var(--text)" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     </figure>
   );
 }
 
 const EXAMPLES: [string, string][] = [['IT services', 'TCS,INFY,HCLTECH,WIPRO'], ['Private banks', 'HDFCBANK,ICICIBANK,KOTAKBANK,AXISBANK'], ['FMCG', 'HINDUNILVR,NESTLEIND,BRITANNIA,DABUR']];
+const VIEW_IDS = new Set(VIEWS.map(([k]) => k));
 
 function Compare() {
   const sp = useSearchParams();
   const router = useRouter();
-  const syms = (sp.get('s') ?? '').split(',').map((x) => x.trim().toUpperCase()).filter(Boolean).slice(0, 4);
+  const syms = (sp.get('s') ?? '').split(',').map((x) => x.trim().toUpperCase()).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, 4);
+  const vRaw = sp.get('v') ?? 'overview';
+  const view = (VIEW_IDS.has(vRaw as View) ? vRaw : 'overview') as View | 'full';
   const sh = [useShard(syms[0] ?? ''), useShard(syms[1] ?? ''), useShard(syms[2] ?? ''), useShard(syms[3] ?? '')];
   // Each company's row comes from its own 6 KB file; the 490 KB screen is fetched only if one of those is missing.
   const needFull = syms.some((x, i) => !!x && !!sh[i].error);
   const s = useFeedWhen('screen', needFull);
+  const shardRows = sh.map((x) => x.data?.row ?? null);
+  const rows = useMemo(() => syms.map((x, i) => shardRows[i] ?? s.data?.rows.find((r) => r.sym.toUpperCase() === x)).filter((r): r is Row => !!r), [s.data, syms.join(','), ...shardRows]); // eslint-disable-line react-hooks/exhaustive-deps
   const yearsOf = (sym: string) => { const i = syms.indexOf(sym); const y = i >= 0 ? sh[i].data?.years : null; return y ? y.length : null; };
   // the periods a CAGR spans: first and last statement date, not just how many years
   const spanOf = (sym: string) => { const i = syms.indexOf(sym); const y = i >= 0 ? sh[i].data?.years : null; return y && y.length ? `${y[0].end}|${y[y.length - 1].end}` : null; };
-  const shardRows = sh.map((x) => x.data?.row ?? null);
-  const rows = useMemo(() => syms.map((x, i) => shardRows[i] ?? s.data?.rows.find((r) => r.sym.toUpperCase() === x)).filter((r): r is Row => !!r), [s.data, syms.join(','), ...shardRows]); // eslint-disable-line react-hooks/exhaustive-deps
+  const spans = rows.map((r) => spanOf(r.sym));
   const loading = syms.some((x, i) => !!x && sh[i].loading) || (needFull && s.loading);
+  const missingSyms = !loading ? syms.filter((x) => !rows.some((r) => r.sym.toUpperCase() === x)) : [];
   const lv = useLive();
-  // layout preset (Pro §28 P2): Quick look keeps the scores, P/E, ROCE, leverage and the year's return; Deep dive shows all
-  const [preset, setPreset] = useStoredPreset('alpha-compare-layout');
-  // linked views: pointing at or focusing any part of one company (its column, a cell, its score shape) highlights all of it
+  const { add, ok: canSave } = useCards();
+  const { items } = useDatasetStatus();
+  const [replacing, setReplacing] = useState<number | null>(null);
+  const [msg, setMsg] = useState('');
+  // linked views: pointing at or focusing any part of one company highlights all of it
   const [focusCol, setFocusCol] = useState<number | null>(null);
   const linkOn = (e: React.SyntheticEvent) => { const c = (e.target as HTMLElement).closest<HTMLElement>('[data-col]')?.dataset.col; setFocusCol(c === undefined ? null : Number(c)); };
-  const set = (next: string[]) => router.replace(next.length ? `/compare/?s=${next.join(',')}` : '/compare/');
+
+  const go = (next: string[], v: string = view) => {
+    const p = new URLSearchParams();
+    if (next.length) p.set('s', next.join(','));
+    if (v !== 'overview') p.set('v', v);
+    const qs = p.toString().replace(/%2C/g, ',');
+    setMsg('');
+    router.replace(qs ? `/compare/?${qs}` : '/compare/', { scroll: false });
+  };
+  const replaceAt = (i: number, sym: string) => { const next = [...syms]; next[i] = sym; setReplacing(null); go(next); };
+  const summary = useMemo(() => summarise(rows, spans), [rows, spans.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cautions = rows.map((r) => ({ sym: r.sym, text: lenderCaveat(r) })).filter((x) => x.text);
+  const specs = SPECS.filter((x) => view === 'full' || x.views.includes(view as View));
+
+  const save = () => {
+    const card = buildCard({
+      question: `How do ${rows.map((r) => r.sym).join(', ').replace(/, ([^,]*)$/, ' and $1')} compare?`,
+      companies: rows.map((r) => { const pv = priceView(r.sym, r, lv.snap); return { sym: r.sym, name: r.name, price: has(pv.price) ? pv.price : null, priceAsOf: r.last_date ?? null }; }),
+      comparison: SPECS.map((x) => { const m = mark(x, rows, spans); return { metric: x.label, values: Object.fromEntries(rows.map((r, i) => [r.sym, m.na[i] ? null : m.vals[i]])) }; }),
+      nextResults: Object.fromEntries(rows.map((r) => [r.sym, r.next_earnings ?? null])),
+      dataStatus: items.map((i) => ({ id: i.id, asOf: i.asOf, refreshedAt: i.refreshedAt, state: i.state })),
+      note: [...summary, ...cautions.map((c) => `${c.sym}: ${c.text}`)].join(' '),
+    });
+    setMsg(add(card) ? 'Saved to My Desk in this browser, with every figure, the summary and the data dates. A figure that is not comparable is saved as empty.' : 'Could not save: browser storage is blocked or full.');
+  };
+  const copy = () => { try { void navigator.clipboard.writeText(window.location.href).then(() => setMsg('Link copied. It opens this same selection and view.'), () => setMsg('Could not copy; the address bar holds the same link.')); } catch { setMsg('Could not copy; the address bar holds the same link.'); } };
+
   return (
     <>
       <PageHead method="compare" eyebrow="Compare" title="Side by side," em="up to four." />
-      <section className="wrap wide">
-        <div className="cmp-bar">
-          <ol className="cmp-slots" aria-label={`Companies chosen: ${syms.length} of 4`}>
+      <section className="wrap wide cmpx">
+        <div className="cmpx-top">
+          <ol className="cmpx-slots" aria-label={`Companies chosen: ${syms.length} of 4`}>
             {[0, 1, 2, 3].map((i) => {
               const x = syms[i];
-              return x
-                ? <li key={x} className="cmp-slot on"><span className="cmp-i" aria-hidden>{i + 1}</span><Link href={companyHref(x)}><b>{x}</b></Link><button className="cmp-x" onClick={() => set(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}>✕</button></li>
-                : <li key={`e${i}`} className="cmp-slot"><span className="cmp-i" aria-hidden>{i + 1}</span><span className="dim">{i < 2 ? 'Add a company' : 'Optional'}</span></li>;
+              const r = rows.find((y) => y.sym === x);
+              if (x && replacing !== i) return (
+                <li key={x} className="cmpx-slot on">
+                  <span className="cmpx-i" aria-hidden>{i + 1}</span>
+                  <span className="cmpx-id"><Link href={companyHref(x)}><b>{x}</b></Link><span className="cmpx-nm">{r?.name ?? (loading ? 'Loading…' : 'Not in the screen')}</span></span>
+                  <span className="cmpx-sa">
+                    <button type="button" className="act quiet" onClick={() => setReplacing(i)} aria-label={`Replace ${x}`}>Replace</button>
+                    <button type="button" className="act quiet cmpx-x" onClick={() => go(syms.filter((y) => y !== x))} aria-label={`Remove ${x}`}><span aria-hidden>✕</span></button>
+                  </span>
+                </li>
+              );
+              const first = !x && i === syms.length;
+              return (
+                <li key={x ? `r${i}` : `e${i}`} className={`cmpx-slot${x ? ' on' : ''}${first || x ? ' pick' : ''}`}>
+                  <span className="cmpx-i" aria-hidden>{i + 1}</span>
+                  {x ? (
+                    <span className="cmpx-rep"><SymbolPicker onPick={(n) => replaceAt(i, n)} placeholder={`Replace ${x} with…`} exclude={syms} /><button type="button" className="act quiet" onClick={() => setReplacing(null)}>Cancel</button></span>
+                  ) : first ? <SymbolPicker onPick={(n) => go([...syms, n])} placeholder={i < 2 ? 'Add a company…' : 'Add another (optional)…'} exclude={syms} /> : <span className="dim">{i < 2 ? 'Add a company' : 'Optional'}</span>}
+                </li>
+              );
             })}
           </ol>
-          <div className="cmp-add">
-            <SymbolPicker onPick={(x) => syms.length < 4 && set([...syms, x])} placeholder={syms.length < 4 ? 'Type a symbol or name…' : 'Four is the limit'} exclude={syms} />
-            {syms.length > 0 && <button className="chip" onClick={() => set([])}>Clear all</button>}
-          </div>
+          {rows.length >= 2 && (
+            <div className="cmpx-acts">
+              <DataStamp ids={['prices', 'screen']} />
+              <span className="cmpx-acts-r">
+                <button type="button" className="act primary" onClick={save} disabled={!canSave}>Save to My Desk</button>
+                <Overflow label="More compare actions">
+                  <button type="button" onClick={copy}>Copy link to this comparison</button>
+                  <button type="button" onClick={() => go([])}>Clear all</button>
+                </Overflow>
+              </span>
+            </div>
+          )}
+          {msg && <p className="cmpx-msg" role="status">{msg}</p>}
+          {missingSyms.length > 0 && <div className="state"><b>{missingSyms.join(', ')} {missingSyms.length === 1 ? 'is' : 'are'} not in the screen.</b><p>The symbol may be mistyped or not covered. It is left out; nothing is shown in its place.</p><div className="acts"><button type="button" className="act" onClick={() => go(syms.filter((x) => !missingSyms.includes(x)))}>Remove {missingSyms.join(', ')}</button></div></div>}
         </div>
-        <Async loading={loading} error={needFull ? s.error : null} rows={3}>
-          {rows.length >= 2 && <div style={{ margin: '0 0 12px' }}><DataStamp ids={['prices', 'screen']} /></div>}
-          {rows.length < 2 ? (
-            <div className="cmp-start">
-              <ol className="cmp-steps" aria-label="How it works">
-                <li className={syms.length >= 2 ? 'done' : 'now'}><b>Pick two to four</b><span>{syms.length === 1 ? `${syms[0]} is in. Add one more to start the table.` : 'Type a symbol or a name above, or open a set below.'}</span></li>
-                <li><b>Read one table</b><span>Every number side by side; the highest or lowest is tagged where higher or lower is clearly better.</span></li>
-                <li><b>Check the shapes</b><span>Each company&apos;s score profile on the same 0 to 100 scale.</span></li>
-              </ol>
-              <div className="eyebrow" style={{ margin: '20px 0 10px' }}>Ready-made sets</div>
-              <div className="cmp-sets">
-                {EXAMPLES.map(([l, q]) => (
-                  <button key={l} className="cmp-set" onClick={() => set(q.split(','))}>
-                    <b>{l}</b>
-                    <span className="cmp-tk">{q.split(',').map((t) => <span key={t} className="tag">{t}</span>)}</span>
-                    <span className="cmp-go">Compare these four <span aria-hidden>→</span></span>
-                  </button>
-                ))}
-              </div>
+
+        {loading ? (
+          <div className="state" role="status" aria-busy="true"><b>Loading {syms.join(', ')}…</b><p>Each company&apos;s figures come from its own small file.</p></div>
+        ) : needFull && s.error ? (
+          <div className="state" role="alert"><b>The figures could not be loaded.</b><p>{s.error}. They are read live, so trying again usually fixes it.</p><div className="acts"><button type="button" className="act primary" onClick={() => window.location.reload()}>Try again</button></div></div>
+        ) : rows.length < 2 ? (
+          <div className="cmp-start">
+            <ol className="cmp-steps" aria-label="How it works">
+              <li className={syms.length >= 2 ? 'done' : 'now'}><b>Pick two to four</b><span>{syms.length === 1 ? `${syms[0]} is in. Add one more to start the table.` : 'Type a symbol or a name above, or open a set below.'}</span></li>
+              <li><b>Read what differs</b><span>A short summary first: material differences, and what cannot be compared.</span></li>
+              <li><b>Check the table</b><span>Every measure side by side, marked only where a difference is defined and material. No winner is picked.</span></li>
+            </ol>
+            <div className="eyebrow" style={{ margin: '20px 0 10px' }}>Ready-made sets</div>
+            <div className="cmp-sets">
+              {EXAMPLES.map(([l, q]) => (
+                <button key={l} type="button" className="cmp-set" onClick={() => go(q.split(','))}>
+                  <b>{l}</b>
+                  <span className="cmp-tk">{q.split(',').map((t) => <span key={t} className="tag">{t}</span>)}</span>
+                  <span className="cmp-go">Compare these four <span aria-hidden>→</span></span>
+                </button>
+              ))}
             </div>
-          ) : (
-            <>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '0 0 12px' }}>
-              <Segmented label="Layout" role="group" value={preset} onChange={setPreset} options={[['quick', 'Quick look'], ['deep', 'Deep dive']] as const} />
-              <span className="dim" style={{ fontSize: 13.5 }}>{preset === 'quick' ? 'Scores, P/E, ROCE, leverage and the one-year return.' : 'Every measure on file.'} Point at a company to follow it across the table and its score shape.</span>
+          </div>
+        ) : (
+          <>
+            <section className="card cmpx-sum" aria-labelledby="cmpx-sum-h">
+              <div className="card-h"><h2 id="cmpx-sum-h">What differs</h2><span className="dim cmpx-asof">{rows[0]?.last_date ? `${sessionLabel(rows[0].last_date)} close · latest filed statements` : 'latest filed statements'}</span></div>
+              <ul className="cmpx-pts">{summary.map((x) => <li key={x}>{x}</li>)}</ul>
+              {cautions.length > 0 && <p className="cmpx-care-note"><span className="pill warn">Read with care</span> {cautions.length === rows.length ? 'For these lenders' : `For ${cautions.map((c) => c.sym).join(', ')}`}: {cautions[0].text}</p>}
+              <p className="card-foot">Built from the figures below, by fixed rules. It names differences; it does not pick a winner. A cheaper P/E can be cheap for a reason.</p>
+            </section>
+
+            <div className="secnav cmpx-tabs" role="tablist" aria-label="Measures to show" onKeyDown={(e) => {
+              const keys = VIEWS.map(([k]) => k); const at = keys.indexOf(view);
+              const n = e.key === 'ArrowRight' ? (at + 1) % keys.length : e.key === 'ArrowLeft' ? (at - 1 + keys.length) % keys.length : -1;
+              if (n < 0) return; e.preventDefault(); go(syms, keys[n]); (e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[n])?.focus();
+            }}>
+              {VIEWS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={view === k} tabIndex={view === k ? 0 : -1} aria-controls="cmpx-table" onClick={() => go(syms, k)}>{l}</button>)}
             </div>
-            {focusCol !== null && <style>{`.cmp-linked [data-col="${focusCol}"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }`}</style>}
-            <div className="grid g-7-5 cmp-linked" style={{ alignItems: 'start' }} onPointerOver={linkOn} onFocus={linkOn} onPointerLeave={() => setFocusCol(null)} onBlur={() => setFocusCol(null)}>
-              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none' }}>
-                <table className="tbl" style={{ minWidth: 560 }}>
-                  <thead><tr><th>Measure</th>{rows.map((r, ci) => <th key={r.sym} data-col={ci}><Link href={companyHref(r.sym)}>{r.sym}</Link></th>)}</tr></thead>
+
+            {focusCol !== null && <style>{`.cmp-linked [data-col="${focusCol}"] { background: var(--accent-soft); }`}</style>}
+            <div id="cmpx-table" role="tabpanel" aria-label={VIEWS.find(([k]) => k === view)?.[1]} className="cmp-linked" onPointerOver={linkOn} onFocus={linkOn} onPointerLeave={() => setFocusCol(null)} onBlur={() => setFocusCol(null)}>
+              <div className="tbl-wrap cmpx-wrap" tabIndex={0} role="region" aria-label="Comparison table (scrolls inside this box on small screens)">
+                <table className={`tbl cmpx-tbl n${rows.length}`}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Measure</th>
+                      {rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return (
+                        <th key={r.sym} scope="col" data-col={ci}>
+                          <Link href={companyHref(r.sym)}>{r.sym}</Link>
+                          <span className="cmpx-hn">{r.name}</span>
+                          <span className="cmpx-hp"><span className="num">{has(pv.price) ? `₹${num(pv.price, 2)}` : dash}</span> <Chg v={pv.pct} dp={1} /></span>
+                          {isLender(r) && <span className="pill nodot cmpx-lender" title="A bank, NBFC or insurer: the screen's lender rule applies">Lender</span>}
+                        </th>
+                      ); })}
+                    </tr>
+                  </thead>
                   <tbody>
-                    <tr style={{ cursor: 'default' }}><td>Price</td>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci} className="num"><Flash value={pv.price}>₹{num(pv.price, 2)}</Flash><div className="dim" style={{ fontSize: 12, fontWeight: 400 }}>{priceLabel(pv).text}</div></td>; })}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Day move</td>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td>; })}</tr>
-                    <tr style={{ cursor: 'default' }}><td>Statement years on file</td>{rows.map((r, ci) => <td key={r.sym} data-col={ci} className="num">{yearsOf(r.sym) ?? dash}<div className="dim" style={{ fontSize: 12 }}>{spanOf(r.sym)?.split('|').reverse().map((d) => d.slice(0, 7)).join(' → ') ?? ''}</div></td>)}</tr>
-                    {SPECS.filter((x) => preset === 'deep' || x.quick).map((sp2) => {
-                      const vals = rows.map((r) => sp2.get(r));
-                      const nums = vals.filter(has);
-                      const spans = rows.map((r) => spanOf(r.sym));
-                      const periodsAgree = !PERIOD_DEPENDENT.has(sp2.label) || (spans.every((y) => y !== null) && new Set(spans).size === 1);
-                      // a lender's ROCE, margins, leverage and cash conversion are not comparable with an operating company's
-                      const na = rows.map((r) => LENDER_NA.has(sp2.label) && isLender(r));
-                      const cmp = vals.filter((v, i) => has(v) && !na[i]) as number[];
-                      const sorted = [...cmp].sort((a, b) => (sp2.better === 'low' ? a - b : b - a));
-                      const gap = sorted.length > 1 ? (sp2.rel ? Math.abs(sorted[0] / sorted[1] - 1) : Math.abs(sorted[0] - sorted[1])) : 0;
-                      const best = sp2.better && periodsAgree && sorted.length > 1 && gap >= (sp2.material ?? 0) ? sorted[0] : null;
-                      return <tr key={sp2.label} style={{ cursor: 'default' }}><td>{sp2.label}</td>{vals.map((v, i) => <td key={i} data-col={i} className="num" style={best !== null && v === best && !na[i] ? { fontWeight: 700 } : undefined}>{na[i] ? <span className="dim" title="The screen reads this measure differently for a bank, NBFC or insurer: debt is the raw material" style={{ fontSize: 12.5 }}>not comparable</span> : has(v) ? sp2.fmt(v) : <span title="Not in the feed for this company"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>}{best !== null && v === best && !na[i] ? <span className="tag acc" style={{ marginLeft: 6, fontSize: 11.5 }}>{sp2.better === 'high' ? 'highest' : 'lowest'}</span> : null}</td>)}</tr>;
+                    {(view === 'overview' || view === 'full') && (
+                      <tr><th scope="row">Price<span className="cmpx-b">live in market hours, else the last close</span></th>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci}><Flash value={pv.price}><span className="num">{has(pv.price) ? `₹${num(pv.price, 2)}` : dash}</span></Flash><span className="cmpx-sub">{priceLabel(pv).text}</span></td>; })}</tr>
+                    )}
+                    {(view === 'overview' || view === 'full') && (
+                      <tr><th scope="row">Day move</th>{rows.map((r, ci) => { const pv = priceView(r.sym, r, lv.snap); return <td key={r.sym} data-col={ci}><Flash value={pv.pct} dir={null}><Chg v={pv.pct} dp={1} /></Flash></td>; })}</tr>
+                    )}
+                    {(view === 'financials' || view === 'full') && (
+                      <tr><th scope="row">Statement years on file</th>{rows.map((r, ci) => <td key={r.sym} data-col={ci}><span className="num">{yearsOf(r.sym) ?? dash}</span><span className="cmpx-sub">{spanOf(r.sym)?.split('|').reverse().map((d) => dateLabel(d.slice(0, 10))).join(' back to ') ?? ''}</span></td>)}</tr>
+                    )}
+                    {specs.map((x) => {
+                      const m = mark(x, rows, spans);
+                      return (
+                        <tr key={x.label}>
+                          <th scope="row">{x.label}<span className="cmpx-b">{x.basis}</span></th>
+                          {m.vals.map((v, i) => {
+                            const best = m.best !== null && v === m.best && !m.na[i];
+                            const care = LENDER_CARE.has(x.label) && isLender(rows[i]);
+                            return (
+                              <td key={i} data-col={i} className={best ? 'best' : undefined}>
+                                {m.na[i] ? <span className="dim cmpx-na" title="The screen reads this measure differently for a bank, NBFC or insurer: debt is the raw material">not comparable</span>
+                                  : v !== null ? <span className="num">{x.fmt(v, rows[i])}</span>
+                                  : <span className="dim" title="Not in the feed for this company"><span aria-hidden>{dash}</span><span className="sr">not available</span></span>}
+                                {best && <span className="tag acc cmpx-tag">{x.better === 'high' ? 'highest' : 'lowest'}</span>}
+                                {care && v !== null && <span className="cmpx-sub warn" title={lenderCaveat(rows[i]) ?? undefined}>read with care</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
                     })}
                   </tbody>
                 </table>
               </div>
-              <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 12 }}>Score profiles · percentiles, 0 to 100</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>{rows.map((r, ci) => <div key={r.sym} data-col={ci} className="cmp-radar"><Radar r={r} /></div>)}</div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '12px 0 0' }}>Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest in a row where higher or lower is clearly better, and only when the gap to the next company is material (5 points of a margin or return, 0.3 of debt/equity, 20% of a P/E); a smaller gap is left unmarked, because it is not a difference worth acting on. A dash means the number is not in the feed: it is left out of the comparison, never counted as zero. CAGR rows are marked only when every company&apos;s statements cover the same period; otherwise they are shown unmarked. For banks, NBFCs and insurers, ROCE, margins, debt/equity and cash conversion read &ldquo;not comparable&rdquo;: debt is their raw material. It is arithmetic, not advice: a cheaper P/E can be cheap for a reason.</p></Rv>
             </div>
-            <div style={{ marginTop: 16 }}><AskAI subject="compare" syms={rows.map((r) => r.sym)} title="Ask how these compare" compact /></div>
-            </>
-          )}
-        </Async>
+            <p className="cmpx-method">Price and day move follow the prices stamp above (live in market hours); every other row is from the screen{rows[0]?.last_date ? ` (the ${sessionLabel(rows[0].last_date)} close and the latest filed statements)` : ''}. A tag marks the highest or lowest only where higher or lower is clearly better and the gap to the next company is material (5 points of a margin or return, 0.3 of debt/equity, 20% of a P/E); past returns, size and the distance from the high are never marked. CAGR rows are marked only when every company&apos;s statements cover the same period, Piotroski only when the same number of tests could be computed. For banks, NBFCs and insurers, ROCE, margins, debt/equity, cash conversion and interest cover read &ldquo;not comparable&rdquo;, and their Quality and Piotroski are never marked, because they rest on inputs that do not apply to lenders. A dash means the number is not in the feed: it is left out, never counted as zero.</p>
+
+            {(view === 'overview' || view === 'full') && (
+              <section className="card cmpx-shapes" aria-labelledby="cmpx-shp-h">
+                <div className="card-h"><h2 id="cmpx-shp-h">Score profiles</h2><span className="dim cmpx-asof">scores, 0 to 100, screen build</span></div>
+                <div className={`cmpx-radars n${rows.length}`}>{rows.map((r, ci) => <div key={r.sym} data-col={ci}><Radar r={r} /></div>)}</div>
+              </section>
+            )}
+            <div className="cmpx-ask"><AskAI subject="compare" syms={rows.map((r) => r.sym)} title="Ask how these compare" compact /></div>
+          </>
+        )}
       </section>
     </>
   );
