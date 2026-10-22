@@ -50,7 +50,7 @@ export default function Research() {
         </div>
         <div className="grid g3 hub-grid">
           <Tile href="/compare/"><p>Two to four companies on the same measures, with a metric marked only when the difference is material, and &ldquo;not comparable&rdquo; where a measure does not apply to a sector.</p></Tile>
-          <Tile href="/reads/" extra={underReview > 0 ? <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}><span className="tag warn">{underReview} under review</span> see the corrections log</p> : null}>
+          <Tile href="/reads/" extra={underReview > 0 ? <p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}><span className="tag warn">{underReview} under review</span> across all {reads.data?.editions.length ?? 0} editions, not this week&apos;s count; see the corrections log</p> : null}>
             <p>{ed ? <>Latest edition: week of {dateLabel(ed.week)}, {ed.studies.length} {ed.studies.length === 1 ? 'study' : 'studies'}. Machine-written from the figures, each with its review status.</> : reads.error ? 'The weekly studies did not load.' : 'Loading the latest edition…'}</p>
           </Tile>
           <Tile href="/engines/" extra={<p className="dim" style={{ fontSize: 13, margin: '6px 0 0' }}><span className="tag exp">Experimental research</span></p>}>

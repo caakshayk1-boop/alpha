@@ -1,5 +1,6 @@
 'use client';
 
+import { fixCopy } from '@/lib/copyfix';
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -288,8 +289,8 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
         <div className="grid g-7-5">
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 6 }}>Price · to the {closeOn} close</div><Range r={r} /><div style={{ height: 14 }} /><Returns r={r} /></Rv>
           <Rv className="panel"><div className="eyebrow" style={{ marginBottom: 14 }}>What the screen notes</div>
-            {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{r.vd.o}.</p> : <p className="muted">Nothing notable.</p>}
-            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{f}</li> : <li key={i}>{f.t}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
+            {r.vd?.o ? <p className="disp" style={{ fontSize: 26, lineHeight: 1.2, margin: 0 }}>{fixCopy(r.vd.o)}.</p> : <p className="muted">Nothing notable.</p>}
+            {r.risk && r.risk.flags.length > 0 && <ul className="muted" style={{ paddingLeft: 18, marginBottom: 0 }}>{r.risk.flags.map((f, i) => typeof f === 'string' ? <li key={i}>{fixCopy(f)}</li> : <li key={i}>{fixCopy(f.t)}{f.k && <small className="dim" style={{ display: 'block', fontFamily: 'var(--f-mono)', fontSize: 12 }}>{f.k}</small>}</li>)}</ul>}
             {r.next_earnings && <p className="dim" style={{ fontSize: 14, marginBottom: 0 }}>Next results expected {r.next_earnings}.</p>}
           </Rv>
         </div>

@@ -227,7 +227,7 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
         </div>
       </div>
       <div className="num" style={{ fontSize: 13.5, minHeight: 20, marginBottom: 4, color: 'var(--muted)' }}>
-        {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{pct(chg, 2, false)}</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · {kl.dir[i] === 1 ? 'uptrend' : 'downtrend'}</span>}</>}
+        {bars && <><b style={{ color: 'var(--text)' }}>{fmtDate(bars.t[i])}</b> · O {px(bars.o[i])} H {px(bars.h[i])} L {px(bars.l[i])} C <b style={{ color: 'var(--text)' }}>{px(bars.c[i])}</b>{chg !== null && <span className={chg >= 0 ? 'up' : 'down'}> {chg >= 0 ? '+' : ''}{pct(chg, 2, false)}</span>}{chg !== null && <span className="dim"> vs the {fmtDate(bars.t[i - 1])} {data?.interval === '1wk' ? 'weekly ' : ''}close</span>}{kl && kl.dir[i] !== 0 && <span className={kl.dir[i] === 1 ? 'up' : 'down'}> · short-term key line {kl.dir[i] === 1 ? 'up' : 'down'}</span>}</>}
       </div>
       <div ref={wrap} style={{ position: 'relative', minHeight: 300 }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <canvas ref={cv} role="img" aria-label={bars ? `Price chart for ${sym}. ${chartSummary(bars.t, bars.c, bars.h, bars.l)}` : `Price chart for ${sym}`} style={{ display: 'block', touchAction: 'pan-y' }} />

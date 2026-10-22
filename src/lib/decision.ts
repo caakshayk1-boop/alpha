@@ -7,14 +7,21 @@ const has = (n: number | null | undefined): n is number => typeof n === 'number'
 export interface Point { text: string; weight: number }
 export interface Check { label: string; pass: boolean | null; detail: string }
 export interface Evidence { text: string; side: 'for' | 'against'; source: string }
+/** The version of the nine research checks below. Every surface that counts them (Today, Tools, Peek, the company page, a saved
+ *  card) calls decide() on the same screen row, so the same row always gives the same count (A03). Bump it when a rule changes. */
+export const CHECKS_VERSION = 'checks-1.1';
 export interface Decision {
+  version: string;
   dims: { name: string; score: number | null; note: string }[];
   bull: Point[]; bear: Point[]; checks: Check[]; headline: string; triggers: string[];
   evidence: Evidence[]; agree: string[]; conflicts: string[]; missing: string[]; nextResults: string | null;
 }
 
 /** Deterministic read of one company from the screen's own numbers. Every sentence is built from a figure on the page; nothing is generated or predicted. */
-export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
+export function decide(r: Row, sigs: Sig[], yearsIn?: number | null): Decision {
+  // statement years: the caller's count when it has the filed statements, else the screen row's own count, so a page without the
+  // statements (Today, Tools) never counts a growth check the company page refuses as too short (A03)
+  const years = yearsIn ?? (has(r.fy_count) ? r.fy_count : null);
   const bull: Point[] = [], bear: Point[] = [];
   const lender = isLender(r);
   const add = (cond: boolean, side: 'bull' | 'bear', text: string, weight: number) => { if (cond) (side === 'bull' ? bull : bear).push({ text, weight }); };
@@ -29,7 +36,7 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   add(!thin && has(r.eps_cagr) && r.eps_cagr >= 15, 'bull', `EPS has compounded at ${num(r.eps_cagr, 0)}% a year`, 2);
   add(!thin && has(r.rev_cagr) && r.rev_cagr < 0, 'bear', `Revenue has shrunk ${num(Math.abs(r.rev_cagr ?? 0), 0)}% a year`, 3);
   add(!thin && has(r.eps_cagr) && r.eps_cagr < 0, 'bear', `EPS has fallen ${num(Math.abs(r.eps_cagr ?? 0), 0)}% a year`, 2);
-  add(has(r.cfo_pat) && r.cfo_pat >= 0.9 && !lender, 'bull', `Cash profit is ${num(r.cfo_pat, 2)}× reported profit: earnings are backed by cash`, 2);
+  add(has(r.cfo_pat) && r.cfo_pat >= 0.9 && !lender, 'bull', `Operating cash flow is ${num(r.cfo_pat, 2)}× net profit (latest year): earnings are backed by cash`, 2);
   add(has(r.cfo_pat) && r.cfo_pat < 0.5 && !lender, 'bear', `Operating cash is only ${num(r.cfo_pat, 2)}× reported profit: earnings are not turning into cash`, 3);
   add(has(r.piotroski) && r.piotroski >= 7, 'bull', `Piotroski score ${r.piotroski}/${r.piotroski_of ?? 9}: financial health is improving on most tests`, 2);
   add(has(r.piotroski) && r.piotroski <= 3, 'bear', `Piotroski score ${r.piotroski}/${r.piotroski_of ?? 9}: weak on most tests of financial health`, 2);
@@ -48,6 +55,9 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   add(has(r.turnover_cr) && r.turnover_cr < 2, 'bear', `Only ₹${num(r.turnover_cr, 1)} crore traded a day: hard to exit in size`, 2);
   add(has(r.insiders) && r.insiders >= 50, 'bull', `Promoters hold ${num(r.insiders, 0)}%: owners have a lot at stake`, 1);
   if (r.mf?.rank && r.mf.of) add(r.mf.rank <= r.mf.of * 0.1, 'bull', `Magic Formula rank #${r.mf.rank} of ${r.mf.of}: cheap and high-return together`, 3);
+  // limitations Alpha already knows belong in the countercase, not only further down the page (C09)
+  add(thin, 'bear', `Only ${years} fiscal year${years === 1 ? '' : 's'} of statements on file: growth and multi-year figures are thin`, 3);
+  add(has(r.tech) && r.tech <= 25, 'bear', `Technical score ${Math.round(r.tech ?? 0)}/100: bottom quarter of the screen on trend and momentum`, 2);
   const live = sigs.filter((s) => s.status === 'open' || s.status === 'pending');
   if (live.length) add(true, 'bull', `Passed every Swing v2 rule (${live[0].setup.toLowerCase()}) at the ${live[0].date} close, with the market gate on`, 2);
 
@@ -57,7 +67,7 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   const dimScore = (v: number | null | undefined): number | null => (has(v) ? Math.round((v - 50) / 25 * 10) / 10 : null);
   const dims = [
     { name: 'Quality', score: dimScore(r.q), note: has(r.q) ? `${ordinal(r.q)} percentile of the screen` : 'not scored' },
-    { name: 'Growth', score: dimScore(r.g), note: has(r.g) ? `${ordinal(r.g)} percentile` : 'not scored' },
+    { name: 'Growth', score: thin ? null : dimScore(r.g), note: thin ? `not judged: only ${years} statement years (rank ${has(r.g) ? ordinal(r.g) : 'n/a'} on thin history)` : has(r.g) ? `${ordinal(r.g)} percentile` : 'not scored' },
     { name: 'Value', score: dimScore(r.v), note: has(r.v) ? `${ordinal(r.v)} percentile (higher is cheaper)` : 'not scored' },
     { name: 'Trend', score: dimScore(r.tech), note: has(r.tech) ? `${ordinal(r.tech)} percentile` : 'not scored' },
     { name: 'Engines', score: live.length ? 2 : null, note: live.length ? 'an active Swing plan' : 'no active plan' },
@@ -66,7 +76,7 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   const checks: Check[] = [
     { label: 'Earns more than it costs to run the capital', pass: lender ? null : has(r.roce) ? r.roce >= 12 : null, detail: has(r.roce) ? `ROCE ${num(r.roce, 1)}% (bar 12%)` : 'not available' },
     { label: 'Debt is manageable', pass: lender ? null : has(r.de) ? r.de <= 1 : null, detail: has(r.de) ? `Debt/equity ${num(r.de, 2)} (bar 1.0)` : 'not available' },
-    { label: 'Profit becomes cash', pass: lender ? null : has(r.cfo_pat) ? r.cfo_pat >= 0.7 : null, detail: has(r.cfo_pat) ? `Cash/profit ${num(r.cfo_pat, 2)}× (bar 0.7)` : 'not available' },
+    { label: 'Profit becomes cash', pass: lender ? null : has(r.cfo_pat) ? r.cfo_pat >= 0.7 : null, detail: has(r.cfo_pat) ? `Operating cash flow / net profit ${num(r.cfo_pat, 2)}× (bar 0.7)` : 'not available' },
     { label: 'Growing', pass: thin ? null : has(r.rev_cagr) ? r.rev_cagr >= 8 : null, detail: thin ? `only ${years} statement years on file: too short for a growth trend` : has(r.rev_cagr) ? `Revenue CAGR ${num(r.rev_cagr, 1)}% (bar 8%)` : 'not available' },
     { label: 'Not expensive against its own history', pass: has(r.pe_pctile) ? r.pe_pctile < 70 : null, detail: has(r.pe_pctile) ? `P/E at ${ordinal(r.pe_pctile)} percentile (bar 70)` : 'not available' },
     { label: 'In an uptrend', pass: has(r.price) && has(r.sma50) && has(r.sma200) ? r.price > r.sma50 && r.sma50 > r.sma200 : null, detail: has(r.sma200) ? `price ${num(r.price, 0)} · 50d ${num(r.sma50, 0)} · 200d ${num(r.sma200, 0)}` : 'not available' },
@@ -106,7 +116,8 @@ export function decide(r: Row, sigs: Sig[], years?: number | null): Decision {
   if (neg.length >= 2) agree.push(`${neg.join(', ')} all point the same way (negative).`);
   const missing = checks.filter((c) => c.pass === null).map((c) => `${c.label}: ${c.detail}`);
   if (typeof years === 'number' && years < 4) missing.push(`Only ${years} fiscal year${years === 1 ? '' : 's'} of statements on file: multi-year figures are thin.`);
-  return { dims, bull: bull.slice(0, 5), bear: bear.slice(0, 5), checks, headline, triggers: triggers.slice(0, 5), evidence, agree, conflicts, missing, nextResults: r.next_earnings ?? null };
+  return {
+    version: CHECKS_VERSION, dims, bull: bull.slice(0, 5), bear: bear.slice(0, 5), checks, headline, triggers: triggers.slice(0, 5), evidence, agree, conflicts, missing, nextResults: r.next_earnings ?? null };
 }
 
 /** The companies most like this one on quality, growth, value, trend, return on capital, margin, leverage and strength. */

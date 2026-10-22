@@ -7,7 +7,7 @@ import { describe as describeStatus, expectedSession, ordinal, plural, rankPhras
 import { nseDate, plainText, rupeeBand } from '../src/lib/format.ts';
 import { bucketOf, mentionsIn, summarise as summariseNews, topicsOf } from '../src/lib/newsdesk.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
-import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
+import { groupStories } from '../src/lib/news.ts';
 import { MIN_ENTRIES, journalHref, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
 import { takeaway, vixWord } from '../src/lib/takeaway.ts';
 import { readFileSync } from 'node:fs';
@@ -178,14 +178,6 @@ test('news: near-identical headlines from different sources group; the same sour
   assert.equal(g.length, 3);
   assert.equal(g[0].more.length, 1);
   assert.equal(g[0].more[0].source, 'B');
-});
-test('news: a company matches by ticker or whole name, and says which; substrings do not match', () => {
-  const cos = [{ sym: 'TCS', name: 'Tata Consultancy Services Ltd.' }, { sym: 'IT', name: 'Gartner IT' }, { sym: 'LCL', name: 'Lloyds Construction Ltd' }];
-  assert.equal(shortName('Tata Consultancy Services Ltd.'), 'Tata Consultancy Services');
-  assert.deepEqual(matchCompanies('TCS wins a large deal', cos).map((m) => m.sym), ['TCS']);
-  assert.deepEqual(matchCompanies('Tata Consultancy Services posts results', cos).map((m) => m.basis), ['name “Tata Consultancy Services” in the text']);
-  assert.deepEqual(matchCompanies('The IT sector rallied; ITC and LCLX rose', cos), []);   // short tickers and substrings never match
-  assert.deepEqual(matchCompanies('tcs lowercase mention', cos), []);                    // a ticker must be written as one
 });
 
 const near = (a: number | null, b: number) => assert.ok(a !== null && Math.abs(a - b) < 1e-9, `${a} is not ${b}`);
@@ -433,6 +425,18 @@ test('A05: an institution never resolves to a listed company; the company itself
   assert.deepEqual(m('Infosys wins a deal'), ['INFY']);
   assert.deepEqual(m('Bajajfin Housing raises funds'), [], 'a brand word followed by a different capitalised word is another name');
   assert.deepEqual(m('Bajajfin shares rise'), ['BAJFIN']);
+});
+
+test('A01 (master build): a longer legal name never resolves to the listed company it starts with', () => {
+  const cos = [{ sym: 'INDIACEM', name: 'India Cements Ltd.', mcap: 12000 }, { sym: 'TCS', name: 'Tata Consultancy Services Ltd.', mcap: 1200000 }];
+  const m = (t: string) => mentionsIn(t, cos).map((x) => x.sym);
+  // the story of 21 Oct 2026 as BusinessLine published it
+  assert.deepEqual(m('India Cements Capital receives open offer letter at ₹12 per share. The open offer will open on October 28 and close on November 11, 2026'), []);
+  assert.deepEqual(m('India Cements Capital Receives Open Offer Letter'), [], 'Title Case: "Capital" still continues a name');
+  assert.deepEqual(m('India Cements Ltd reports a loss'), ['INDIACEM'], 'its legal ending is still the company');
+  assert.deepEqual(m('India Cements reports a quarterly loss'), ['INDIACEM']);
+  assert.deepEqual(m('India Cements Shares Fall After Results'), ['INDIACEM'], 'Title Case: an ordinary next word does not end the match');
+  assert.deepEqual(m('TCS Q2 results beat estimates'), ['TCS'], 'a ticker is not cut short by the word after it');
 });
 
 import { fromQuery, SCREEN_DEFAULT, toQuery } from '../src/lib/screenUrl.ts';
@@ -939,4 +943,18 @@ test('sayCrore: crore figures are spoken in words, never as "L cr"', async () =>
   assert.equal(sayCrore(123456), '1.23 lakh crore rupees');
   assert.equal(sayCrore(950.4), '950 crore rupees');
   assert.equal(sayCrore(null), 'not available');
+});
+
+import { checkStudy } from '../src/lib/readcheck.ts';
+test('A04/E01: a percentage restated as the wrong paise, or a percentile read as an average, is caught; correct glosses pass', () => {
+  assert.equal(checkStudy('* **Net profit margin 69.9 %** – after tax, roughly seven paise of each revenue rupee stay as profit.').length, 1);
+  assert.equal(checkStudy('* **EBIT margin 91.8 %** – almost every rupee turns into operating profit, about 92 paise.').length, 0);
+  assert.equal(checkStudy('Net margin 11.4 % translates to 11.4 paise of profit per rupee of sales.').length, 0);
+  assert.equal(checkStudy('about 53 paise of EBIT and about 42 paise of net profit (EBIT margin 52.9 %, net margin 42.4 %).').length, 0);
+  assert.equal(checkStudy('A 40% EBIT margin is eighty paise per rupee.').length, 1);
+  assert.equal(checkStudy('roughly 80 paise of profit turns into cash (0.80x).').length, 0, 'no percentage in the sentence: nothing to compare');
+  assert.equal(checkStudy('The P/E sits at the 48th percentile, above its historical average.').length, 1);
+  assert.equal(checkStudy('The P/E sits at the 48th percentile of its own history: higher than about 48% of it.').length, 0);
+  assert.equal(checkStudy('The P/E sits at the 48th percentile, above its median.').length, 1, 'the 48th percentile is below the median');
+  assert.equal(checkStudy('sitting at the 58th percentile of its own history, the stock trades above its median multiple').length, 0);
 });

@@ -20,7 +20,7 @@ export const PAGES: readonly Page[] = [
   { href: '/calendar/', label: 'Calendar', area: 'discover', desc: 'Results dates on file, largest companies first', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
   { href: '/research/', label: 'Research', area: 'research', keys: 'g r', desc: 'Look up a company, compare, read, and test a plan', icon: 'M10 4a6 6 0 104.5 10L20 19.5M10 7v6M7 10h6' },
   { href: '/compare/', label: 'Compare', area: 'research', keys: 'g c', desc: 'Two to four companies, every number in one table', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
-  { href: '/reads/', label: 'Weekly reads', area: 'research', desc: 'Seven companies from one sector, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
+  { href: '/reads/', label: 'Weekly reads', area: 'research', desc: 'Seven companies a week, across sectors, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
   { href: '/engines/', label: 'Signals', area: 'research', desc: 'Experimental research: one rule book, gated by the market', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
   { href: '/trades/', label: 'Paper trades', area: 'research', desc: 'The signal book marked to the price: paper only, never a fill', icon: 'M3 17l6-6 4 4 8-8M15 7h6v6' },
   { href: '/tools/', label: 'Tools', area: 'research', desc: 'Size a position, test a plan’s arithmetic, X-ray holdings', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },

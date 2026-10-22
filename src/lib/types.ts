@@ -57,6 +57,10 @@ export interface Row {
   vd?: Verdict;
   ahimsa?: boolean;
   vet?: { s: string; p: number; n: number; f: string[]; w: string };
+  /** fiscal years of statements on file, and whether there are any; the screen's own count */
+  fy_count?: number | null; has_stmts?: boolean | null;
+  /** coverage of each score: the share of its inputs that were measured (0-1) */
+  q_conf?: number | null; g_conf?: number | null; v_conf?: number | null; tech_conf?: number | null;
   mf?: { rank?: number; of?: number; roc_rank?: number; ey_rank?: number; score?: number; roc?: number; ey?: number; ev_cr?: number; ebit_cr?: number; why?: string };
   next_earnings?: string | null;
   last_date?: string;

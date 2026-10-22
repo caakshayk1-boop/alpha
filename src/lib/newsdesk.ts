@@ -43,6 +43,16 @@ const GENERIC = new Set(['general', 'national', 'international', 'global', 'cent
 /** Phrases that name an institution, never a listed company, wherever they appear. A match inside one is discarded. */
 const INSTITUTIONS = /\b(federal reserve|federal government|federal bureau|reserve bank of india|us fed|state bank of pakistan|bank of england|bank of japan|european central bank|people'?s bank of china|world bank|union budget|union government|state government)\b/gi;
 const BRAND_MIN_MCAP_CR = 20_000;
+/** The legal ending of a name: "India Cements Ltd" is still India Cements. */
+const LEGAL = new Set(['ltd', 'limited', 'pvt', 'private', 'plc', 'inc']);
+/** Words that continue a company's name, so a listed name followed by one is a different, longer name. */
+const NAME_WORDS = new Set(['capital', 'finance', 'financial', 'fincorp', 'finserv', 'holdings', 'investments', 'investment', 'ventures', 'securities', 'industries',
+  'infra', 'infrastructure', 'power', 'energy', 'bank', 'housing', 'life', 'general', 'insurance', 'asset', 'amc', 'global', 'international', 'technologies',
+  'technology', 'tech', 'labs', 'pharma', 'pharmaceuticals', 'chemicals', 'motors', 'steel', 'cements', 'cement', 'textiles', 'foods', 'enterprises', 'realty',
+  'properties', 'logistics', 'ports', 'solar', 'green', 'renewables', 'exports', 'trading', 'retail', 'consumer', 'products', 'systems', 'solutions', 'services',
+  'healthcare', 'hospitals', 'agro', 'sugar', 'papers', 'paper', 'metals', 'mines', 'minerals', 'oil', 'gas', 'petro', 'auto', 'electricals', 'electric', 'engineering', 'projects', 'corporation', 'company', 'group']);
+/** A headline set in Title Case, where a capitalised word says nothing about where a name ends. */
+const titleCase = (t: string) => { const w = t.split(/\s+/).filter((x) => /^[A-Za-z]/.test(x) && x.length > 3); return w.length >= 4 && w.filter((x) => /^[A-Z]/.test(x)).length / w.length >= 0.7; };
 
 /** Builds the matcher once for a company list. A company is named in a story when:
  *   1. its ticker is written in capitals as its own word (3+ letters), or
@@ -59,12 +69,18 @@ export function makeMatcher(cos: NewsCo[]): (text: string) => Mention[] {
     return { c, nm, w };
   });
   const word = (x: string) => new RegExp(`(^|[^A-Za-z0-9&])(${esc(x)})(?=[^A-Za-z0-9&]|$)`, 'g');
-  // a name written right after another capitalised word is part of a longer name ("Reserve Bank of India")
-  const standalone = (re: RegExp, text: string) => {
+  // a name written right after another capitalised word is part of a longer name ("Reserve Bank of India"), and so is one
+  // written right before a word that continues a company name ("India Cements Capital" is not India Cements, A01): in running
+  // text any capitalised next word does; in a Title Case headline only a word companies are named with does
+  const standalone = (re: RegExp, text: string, name = false) => {
+    const title = titleCase(text);
     re.lastIndex = 0;
     for (let m = re.exec(text); m; m = re.exec(text)) {
       const at = m.index + m[1].length;
-      if (!/(^|[\s(])[A-Z][A-Za-z&.]*\s+$/.test(text.slice(Math.max(0, at - 24), at)) || at === 0) return true;
+      if (at > 0 && /(^|[\s(])[A-Z][A-Za-z&.]*\s+$/.test(text.slice(Math.max(0, at - 24), at))) continue;
+      const after = /^\s+([A-Z][A-Za-z&]*)/.exec(text.slice(m.index + m[0].length))?.[1];
+      if (name && after && !LEGAL.has(after.toLowerCase()) && (!title || NAME_WORDS.has(after.toLowerCase()))) continue;
+      return true;
     }
     return false;
   };
@@ -91,7 +107,7 @@ export function makeMatcher(cos: NewsCo[]): (text: string) => Mention[] {
     const out: Mention[] = [];
     for (const r of compiled) {
       if (r.tick && standalone(r.tick, text)) out.push({ sym: r.sym, basis: `ticker ${r.sym}` });
-      else if (r.full && standalone(r.full.re, text)) out.push({ sym: r.sym, basis: `“${r.full.nm}”` });
+      else if (r.full && standalone(r.full.re, text, true)) out.push({ sym: r.sym, basis: `“${r.full.nm}”` });
       else if (r.brand && brandAlone(r.brand.re, text, r.brand.next)) out.push({ sym: r.sym, basis: `“${r.brand.w}” (a large company, and no other starts with it)` });
     }
     return out;

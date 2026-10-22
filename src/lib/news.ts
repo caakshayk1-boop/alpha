@@ -16,19 +16,4 @@ export function groupStories<T extends Story>(items: T[], threshold = 0.6): Grou
   }
   return out.map((o) => o.g);
 }
-
 export interface Co { sym: string; name: string }
-const SUFFIX = /\b(ltd|limited|inc|corp|corporation|company|co|industries|industry|enterprises|india|private|pvt|plc)\b\.?/gi;
-export const shortName = (name: string) => name.replace(SUFFIX, ' ').replace(/[^A-Za-z0-9&\s]/g, ' ').replace(/\s+/g, ' ').trim();
-const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/** Companies a story mentions, each with why: the ticker as a standalone capitalised word, or the company's name as a whole phrase. */
-export function matchCompanies(text: string, cos: Co[]): { sym: string; basis: string }[] {
-  const out: { sym: string; basis: string }[] = [];
-  for (const c of cos) {
-    const nm = shortName(c.name);
-    if (c.sym.length >= 3 && new RegExp(`(^|[^A-Za-z0-9])${esc(c.sym)}([^A-Za-z0-9]|$)`).test(text)) out.push({ sym: c.sym, basis: `ticker ${c.sym} in the text` });
-    else if (nm.length >= 5 && new RegExp(`(^|[^A-Za-z0-9])${esc(nm)}([^A-Za-z0-9]|$)`, 'i').test(text)) out.push({ sym: c.sym, basis: `name “${nm}” in the text` });
-  }
-  return out;
-}
