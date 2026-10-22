@@ -1016,3 +1016,11 @@ test('since your last review: only recorded snapshots are compared; small score 
   assert.equal(d[0].to, '₹110 (+10.0%)');
   assert.deepEqual(diffSnapshot(s, was), [], 'unchanged figures: nothing listed');
 });
+
+import { readFileSync as readHolidays } from 'node:fs';
+import { NSE_HOLIDAYS } from '../src/lib/holidays.ts';
+test('T12: the site and the engines read the same NSE holiday calendar', () => {
+  const cfg = JSON.parse(readHolidays(new URL('../configs/nse_holidays.json', import.meta.url), 'utf8'));
+  for (const [y, days] of Object.entries(cfg.weekday_holidays as Record<string, string[]>)) assert.deepEqual([...(NSE_HOLIDAYS[Number(y)] ?? [])], days, `year ${y}`);
+  assert.deepEqual(Object.keys(NSE_HOLIDAYS).map(String), Object.keys(cfg.weekday_holidays));
+});

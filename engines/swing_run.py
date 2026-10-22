@@ -179,8 +179,14 @@ if __name__ == "__main__":
         if ist.hour * 60 + ist.minute < 16 * 60 + 30:      # a bar dated today is still forming before the close
             bars = {k: (df[df.index < ist.tz_localize(None).normalize()] if len(df) and df.index[-1] >= ist.tz_localize(None).normalize() else df) for k, df in bars.items()}
         late = data.refetch_late(_adj, bars, "2y")
+        # a finished session Yahoo's daily download still lacks is rebuilt from its hourly bars (sessions.py), so the book
+        # describes the same session as the screen (21 Oct 2026: 940 of 941 stocks had no daily 21 Oct bar at 22:30 IST)
+        import sessions as SESS
+        session = SESS.last_finished_session()
+        data.complete_from_hourly(_adj, bars, session)
+        late = sorted(s for s, df in bars.items() if len(df) and df.index[-1] < pd.Timestamp(session))
         if late:
-            print(f"WARNING {len(late)} stocks still have no bar for the newest session: {', '.join(late[:20])}", file=sys.stderr)
+            print(f"WARNING {len(late)} stocks still have no {session} bar, daily or hourly: {', '.join(late[:20])}", file=sys.stderr)
         if len(bars) < 0.85 * len(uni):
             raise SystemExit(f"only {len(bars)} of {len(uni)} symbols downloaded: refusing to publish")
 
@@ -191,6 +197,10 @@ if __name__ == "__main__":
             s.index = pd.to_datetime(s.index).tz_localize(None)
             return s
         bench, vix = one("^NSEI"), one("^INDIAVIX")
+        bench, b_re = data.series_from_hourly("^NSEI", bench, session)
+        vix, v_re = data.series_from_hourly("^INDIAVIX", vix, session)
+        if b_re or v_re:
+            print(f"  rebuilt the {session} close from hourly bars for: {', '.join(n for n, f in (('Nifty', b_re), ('India VIX', v_re)) if f)}")
         if ist.hour * 60 + ist.minute < 16 * 60 + 30:
             bench = bench[bench.index < ist.tz_localize(None).normalize()]
             vix = vix[vix.index < ist.tz_localize(None).normalize()]
