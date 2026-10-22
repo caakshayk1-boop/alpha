@@ -1,0 +1,377 @@
+{
+ "evidence": "99db61b581b0a09cb802709f0a091532a6473c0b6390a9962424a7612223c456",
+ "data_hash": "cfa0e433e76dd3ebdbaaa49bca6e0be5184187c28d2791037830569f25e70e7b",
+ "data_through": "2026-10-21",
+ "draws": 20,
+ "books": {
+  "E1": {
+   "walk_forward_2023_24": {
+    "n": 57,
+    "expectancy_r": 0.2373,
+    "median_r": -0.5583,
+    "win_rate": 40.4,
+    "profit_factor": 1.339,
+    "expected_shortfall_r": -3.9901,
+    "worst_r": -9.6942,
+    "book_return_pct": 3.98,
+    "daily_mean_ci95_pct": [
+     -0.00987,
+     0.02713
+    ],
+    "sharpe_daily": 0.03221341101736213,
+    "max_dd_pct": -3.265,
+    "exposure_avg_pct": 12.01,
+    "exposure_matched_nifty_pct": 2.63,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 33.1,
+    "turnover_trades_per_month": 3.0,
+    "independent_months": 19,
+    "no_cost_expectancy_r": 0.3024,
+    "by_regime": {
+     "range": {
+      "n": 18,
+      "expectancy_r": 0.7823,
+      "median_r": -0.5543,
+      "win_rate": 33.3,
+      "profit_factor": 2.425,
+      "expected_shortfall_r": -1.0623,
+      "worst_r": -1.0623
+     },
+     "trend_up": {
+      "n": 39,
+      "expectancy_r": -0.0143,
+      "median_r": -0.6151,
+      "win_rate": 43.6,
+      "profit_factor": 0.981,
+      "expected_shortfall_r": -5.4426,
+      "worst_r": -9.6942
+     }
+    },
+    "ambiguous_bars": 0
+   },
+   "inspected_2025_26": {
+    "n": 44,
+    "expectancy_r": 0.0424,
+    "median_r": -0.7793,
+    "win_rate": 29.5,
+    "profit_factor": 1.069,
+    "expected_shortfall_r": -1.3514,
+    "worst_r": -1.8309,
+    "book_return_pct": 1.059,
+    "daily_mean_ci95_pct": [
+     -0.01546,
+     0.02178
+    ],
+    "sharpe_daily": 0.013439658823096463,
+    "max_dd_pct": -3.816,
+    "exposure_avg_pct": 9.38,
+    "exposure_matched_nifty_pct": -1.938,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 31.1,
+    "turnover_trades_per_month": 3.38,
+    "independent_months": 13,
+    "no_cost_expectancy_r": 0.0982,
+    "by_regime": {
+     "range": {
+      "n": 22,
+      "expectancy_r": 0.1813,
+      "median_r": -0.7793,
+      "win_rate": 27.3,
+      "profit_factor": 1.281,
+      "expected_shortfall_r": -1.4454,
+      "worst_r": -1.8309
+     },
+     "trend_up": {
+      "n": 22,
+      "expectancy_r": -0.0966,
+      "median_r": -0.7128,
+      "win_rate": 31.8,
+      "profit_factor": 0.834,
+      "expected_shortfall_r": -1.1098,
+      "worst_r": -1.1634
+     }
+    },
+    "ambiguous_bars": 0
+   },
+   "development_2019_22": {
+    "n": 76,
+    "expectancy_r": 0.3632,
+    "median_r": -0.7077,
+    "win_rate": 35.5,
+    "profit_factor": 1.654,
+    "expected_shortfall_r": -1.0531,
+    "worst_r": -1.0677,
+    "book_return_pct": 6.752,
+    "daily_mean_ci95_pct": [
+     -0.00346,
+     0.02039
+    ],
+    "sharpe_daily": 0.04858245516467965,
+    "max_dd_pct": -4.106,
+    "exposure_avg_pct": 9.53,
+    "exposure_matched_nifty_pct": 2.584,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 33.3,
+    "turnover_trades_per_month": 2.71,
+    "independent_months": 28,
+    "no_cost_expectancy_r": 0.4261,
+    "by_regime": {
+     "range": {
+      "n": 28,
+      "expectancy_r": 0.7575,
+      "median_r": -0.5058,
+      "win_rate": 42.9,
+      "profit_factor": 2.552,
+      "expected_shortfall_r": -1.0474,
+      "worst_r": -1.0476
+     },
+     "trend_up": {
+      "n": 48,
+      "expectancy_r": 0.1332,
+      "median_r": -0.8408,
+      "win_rate": 31.2,
+      "profit_factor": 1.224,
+      "expected_shortfall_r": -1.055,
+      "worst_r": -1.0677
+     }
+    },
+    "ambiguous_bars": 0
+   }
+  },
+  "E1_NOTRAIL": {
+   "walk_forward_2023_24": {
+    "n": 55,
+    "expectancy_r": 0.9301,
+    "median_r": -1.0295,
+    "win_rate": 47.3,
+    "profit_factor": 2.719,
+    "expected_shortfall_r": -1.1128,
+    "worst_r": -1.1909,
+    "book_return_pct": 13.482,
+    "daily_mean_ci95_pct": [
+     0.00442,
+     0.04965
+    ],
+    "sharpe_daily": 0.10996596867801581,
+    "max_dd_pct": -2.723,
+    "exposure_avg_pct": 12.47,
+    "exposure_matched_nifty_pct": 3.371,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 38.1,
+    "turnover_trades_per_month": 2.89,
+    "independent_months": 19,
+    "no_cost_expectancy_r": 1.0024,
+    "by_regime": {
+     "range": {
+      "n": 16,
+      "expectancy_r": 1.0773,
+      "median_r": -1.0314,
+      "win_rate": 37.5,
+      "profit_factor": 2.749,
+      "expected_shortfall_r": -1.0623,
+      "worst_r": -1.0623
+     },
+     "trend_up": {
+      "n": 39,
+      "expectancy_r": 0.8697,
+      "median_r": 0.4012,
+      "win_rate": 51.3,
+      "profit_factor": 2.704,
+      "expected_shortfall_r": -1.1381,
+      "worst_r": -1.1909
+     }
+    },
+    "ambiguous_bars": 0
+   },
+   "inspected_2025_26": {
+    "n": 42,
+    "expectancy_r": 0.0655,
+    "median_r": -1.0347,
+    "win_rate": 33.3,
+    "profit_factor": 1.091,
+    "expected_shortfall_r": -1.3529,
+    "worst_r": -1.8309,
+    "book_return_pct": 1.305,
+    "daily_mean_ci95_pct": [
+     -0.01343,
+     0.0215
+    ],
+    "sharpe_daily": 0.0164561796801166,
+    "max_dd_pct": -3.819,
+    "exposure_avg_pct": 9.4,
+    "exposure_matched_nifty_pct": -1.895,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 32.2,
+    "turnover_trades_per_month": 3.5,
+    "independent_months": 12,
+    "no_cost_expectancy_r": 0.1223,
+    "by_regime": {
+     "range": {
+      "n": 19,
+      "expectancy_r": 0.2511,
+      "median_r": -1.0373,
+      "win_rate": 31.6,
+      "profit_factor": 1.332,
+      "expected_shortfall_r": -1.8309,
+      "worst_r": -1.8309
+     },
+     "trend_up": {
+      "n": 23,
+      "expectancy_r": -0.0878,
+      "median_r": -1.0335,
+      "win_rate": 34.8,
+      "profit_factor": 0.872,
+      "expected_shortfall_r": -1.1138,
+      "worst_r": -1.1634
+     }
+    },
+    "ambiguous_bars": 0
+   },
+   "development_2019_22": {
+    "n": 71,
+    "expectancy_r": 0.4149,
+    "median_r": -1.03,
+    "win_rate": 39.4,
+    "profit_factor": 1.681,
+    "expected_shortfall_r": -1.0845,
+    "worst_r": -1.1715,
+    "book_return_pct": 7.328,
+    "daily_mean_ci95_pct": [
+     -0.00406,
+     0.02228
+    ],
+    "sharpe_daily": 0.050710898546999304,
+    "max_dd_pct": -4.259,
+    "exposure_avg_pct": 10.04,
+    "exposure_matched_nifty_pct": 1.852,
+    "cash_pct": 0.0,
+    "avg_hold_sessions": 36.7,
+    "turnover_trades_per_month": 2.63,
+    "independent_months": 27,
+    "no_cost_expectancy_r": 0.4798,
+    "by_regime": {
+     "range": {
+      "n": 28,
+      "expectancy_r": 0.7749,
+      "median_r": -0.373,
+      "win_rate": 50.0,
+      "profit_factor": 2.494,
+      "expected_shortfall_r": -1.0474,
+      "worst_r": -1.0476
+     },
+     "trend_up": {
+      "n": 43,
+      "expectancy_r": 0.1805,
+      "median_r": -1.0322,
+      "win_rate": 32.6,
+      "profit_factor": 1.27,
+      "expected_shortfall_r": -1.0967,
+      "worst_r": -1.1715
+     }
+    },
+    "ambiguous_bars": 0
+   }
+  },
+  "RAND": {
+   "walk_forward_2023_24": {
+    "expectancy_r_median": 0.4452,
+    "expectancy_r_p10_p90": [
+     0.163,
+     0.5692
+    ],
+    "book_return_pct_median": 7.627,
+    "n_median": 69,
+    "share_of_draws_beating_E1": 0.75
+   },
+   "inspected_2025_26": {
+    "expectancy_r_median": -0.2425,
+    "expectancy_r_p10_p90": [
+     -0.3662,
+     -0.0163
+    ],
+    "book_return_pct_median": -3.92,
+    "n_median": 66,
+    "share_of_draws_beating_E1": 0.0
+   },
+   "development_2019_22": {
+    "expectancy_r_median": 0.1098,
+    "expectancy_r_p10_p90": [
+     -0.0368,
+     0.3178
+    ],
+    "book_return_pct_median": 2.667,
+    "n_median": 98,
+    "share_of_draws_beating_E1": 0.1
+   }
+  },
+  "RAND_TREND": {
+   "walk_forward_2023_24": {
+    "expectancy_r_median": 0.4462,
+    "expectancy_r_p10_p90": [
+     0.2014,
+     0.6228
+    ],
+    "book_return_pct_median": 7.489,
+    "n_median": 69,
+    "share_of_draws_beating_E1": 0.75
+   },
+   "inspected_2025_26": {
+    "expectancy_r_median": -0.174,
+    "expectancy_r_p10_p90": [
+     -0.3182,
+     0.1066
+    ],
+    "book_return_pct_median": -2.243,
+    "n_median": 58,
+    "share_of_draws_beating_E1": 0.15
+   },
+   "development_2019_22": {
+    "expectancy_r_median": 0.2958,
+    "expectancy_r_p10_p90": [
+     0.0299,
+     0.5016
+    ],
+    "book_return_pct_median": 6.663,
+    "n_median": 93,
+    "share_of_draws_beating_E1": 0.2
+   }
+  },
+  "RAND_MOM": {
+   "walk_forward_2023_24": {
+    "expectancy_r_median": 0.449,
+    "expectancy_r_p10_p90": [
+     0.1929,
+     0.8037
+    ],
+    "book_return_pct_median": 8.704,
+    "n_median": 71,
+    "share_of_draws_beating_E1": 0.85
+   },
+   "inspected_2025_26": {
+    "expectancy_r_median": -0.0834,
+    "expectancy_r_p10_p90": [
+     -0.4764,
+     0.2202
+    ],
+    "book_return_pct_median": -0.69,
+    "n_median": 58,
+    "share_of_draws_beating_E1": 0.25
+   },
+   "development_2019_22": {
+    "expectancy_r_median": 0.4255,
+    "expectancy_r_p10_p90": [
+     0.1374,
+     0.7149
+    ],
+    "book_return_pct_median": 10.371,
+    "n_median": 91,
+    "share_of_draws_beating_E1": 0.65
+   }
+  }
+ },
+ "nifty_exposure_matched_pct": {
+  "walk_forward_2023_24": 2.63,
+  "inspected_2025_26": -1.938,
+  "development_2019_22": 2.584
+ }
+}
