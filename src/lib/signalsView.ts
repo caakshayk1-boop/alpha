@@ -61,7 +61,7 @@ export function setupReasons(f: SignalsFeed, lag: Lag | null, v3Published: boole
   ];
 }
 
-/** The evening runs that write the book: 18:00, 20:00 and 22:30 IST on weekdays. Exchange holidays are not known here. */
+/** The evening runs that write the book: 18:00, 20:00 and 22:30 IST on every weekday (the cron also runs on an exchange holiday; it then records no new session). */
 export const RUN_SLOTS_IST: [number, number][] = [[18, 0], [20, 0], [22, 30]];
 export function nextRun(now: Date): Date {
   const ist = new Date(now.getTime() + 5.5 * 3600000);                 // the IST wall clock, read through UTC getters

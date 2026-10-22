@@ -13,7 +13,7 @@ export function LagNotice({ feed, lag }: { feed: SignalsFeed; lag: Lag | null })
   return (
     <div className="state sg-lag" role="status">
       <b>Last successful decision session: {sessionLabel(feed.data_through)}; {lag.lagSessions} session{lag.lagSessions === 1 ? '' : 's'} behind; next expected run: {now ? istStamp(nextRun(now)) : 'the next evening run'}.</b>
-      <p>The calendar expects the {lag.reference ? sessionLabel(lag.reference) : 'latest'} session. Everything below describes {sessionLabel(feed.data_through)} and is not a decision for a later session. Exchange holidays are not known here, so a holiday can read as one session behind.</p>
+      <p>The calendar expects the {lag.reference ? sessionLabel(lag.reference) : 'latest'} session. Everything below describes {sessionLabel(feed.data_through)} and is not a decision for a later session. Sessions follow NSE's published holiday calendar.</p>
     </div>
   );
 }
