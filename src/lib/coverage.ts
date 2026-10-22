@@ -12,11 +12,12 @@ export interface Eligibility { ok: boolean; label: string; detail: string; thin:
 export function eligibility(r: Row): Eligibility | null {
   const v = r.vet;
   if (!v) return null;
+  const f = Array.isArray(v.f) ? v.f : [];
   const years = typeof r.fy_count === 'number' ? r.fy_count : null;
-  const thin = v.f.includes('stmts') || (years !== null && years < 4);
+  const thin = f.includes('stmts') || (years !== null && years < 4);
   if (v.s === 'cleared') return { ok: true, label: `Data checks ${v.p}/${v.n}`, detail: `The screen's ${v.n} data checks: ${v.p} pass.`, thin };
-  const first = v.f[0];
+  const first = f[0];
   const label = first === 'stmts' && years !== null ? `Limited history: ${years} fiscal year${years === 1 ? '' : 's'} available` : `${GATE[first] ?? 'Data check held'}${v.w && first !== 'stmts' ? ` · ${v.w}` : ''}`;
-  const more = v.f.slice(1).map((k) => GATE[k] ?? k).join(', ');
+  const more = f.slice(1).map((k) => GATE[k] ?? k).join(', ');
   return { ok: false, label, thin, detail: `A gate on the data, not a view on the company: ${v.p} of ${v.n} data checks pass.${more ? ` Also: ${more.toLowerCase()}.` : ''}` };
 }

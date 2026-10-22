@@ -980,3 +980,37 @@ test('A03: the nine checks give one count for one row, whether or not the caller
   assert.ok(today.bear.some((p) => /2 fiscal years/.test(p.text)), 'the countercase names the thin history (C09)');
   assert.equal(today.dims.find((d) => d.name === 'Growth')?.score, null, 'a growth rank on two years is not called strong (C08)');
 });
+
+import { rankIdeas, upcomingResults } from '../src/lib/ideas.ts';
+test('ideas: one reason and one limitation each; a held data gate is the limitation, named in words (H08)', () => {
+  const base = { roce: 30, de: 0.1, cfo_pat: 1.2, rev_cagr: 20, pe_pctile: 40, price: 100, sma50: 95, sma200: 90, rs3m: 70, turnover_cr: 20, risk: { level: 'LOW', flags: [] }, piotroski: 8 };
+  const rows = [
+    { sym: 'THIN', name: 'Thin Ltd', fy_count: 2, vet: { s: 'held', p: 8, n: 9, f: ['stmts'], w: '2 fiscal years of statements' }, ...base },
+    { sym: 'FULL', name: 'Full Ltd', fy_count: 4, vet: { s: 'cleared', p: 9, n: 9, f: [], w: '' }, ...base, pe: 70 },
+    { sym: 'ILLIQ', name: 'Illiquid', fy_count: 4, ...base, turnover_cr: 1 },
+  ] as never[];
+  const { ideas } = rankIdeas(rows, [], false, 3);
+  assert.deepEqual(ideas.map((i) => i.r.sym), ['FULL', 'THIN'], 'illiquid names are not ideas; thin history ranks below a full record');
+  const thin = ideas.find((i) => i.r.sym === 'THIN')!;
+  assert.equal(thin.limitationKind, 'data');
+  assert.equal(thin.limitation, 'Limited history: 2 fiscal years available');
+  const full = ideas.find((i) => i.r.sym === 'FULL')!;
+  assert.equal(full.limitationKind, 'countercase');
+  assert.match(full.limitation, /P\/E of 70/);
+  assert.ok(full.reason.length > 0);
+});
+test('upcoming results: followed names first, inside the window only', () => {
+  const rows = [{ sym: 'A', name: 'A', next_earnings: '2026-10-25', mcap_cr: 10 }, { sym: 'B', name: 'B', next_earnings: '2026-10-30', mcap_cr: 99 }, { sym: 'C', name: 'C', next_earnings: '2026-12-30', mcap_cr: 999 }, { sym: 'D', name: 'D', next_earnings: '2026-10-01' }] as never[];
+  assert.deepEqual(upcomingResults(rows, ['B'], '2026-10-22').map((u) => u.sym), ['B', 'A']);
+});
+
+import { diffSnapshot, snapshotOf } from '../src/lib/review.ts';
+test('since your last review: only recorded snapshots are compared; small score drift is not a change', () => {
+  const was = { sym: 'X', name: 'X', price: 100, q: 80, g: 60, v: 40, tech: 50, risk: { level: 'LOW', flags: [] }, next_earnings: '2026-10-30', last_date: '2026-10-20', vet: { s: 'cleared', p: 9, n: 9, f: [], w: '' } } as never;
+  const s = snapshotOf(was, '2026-10-20T10:00:00Z');
+  const now = { ...(was as object), price: 110, q: 82, tech: 30, risk: { level: 'HIGH', flags: [] }, next_earnings: '2026-11-04' } as never;
+  const d = diffSnapshot(s, now);
+  assert.deepEqual(d.map((x) => x.field), ['Price', 'Technical rank', 'Risk grade', 'Results date on file']);
+  assert.equal(d[0].to, '₹110 (+10.0%)');
+  assert.deepEqual(diffSnapshot(s, was), [], 'unchanged figures: nothing listed');
+});

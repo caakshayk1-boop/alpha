@@ -148,7 +148,7 @@ export interface Barometer {
     vix_date?: string;
     counted?: number;
   };
-  history: { date: string; score: number; nifty: number; vix: number; nifty_date?: string }[];
+  history: { date: string; score: number; nifty: number; vix: number; nifty_date?: string; drawdown_pct?: number; above_200dma_pct?: number }[];
 }
 
 export interface Regime {

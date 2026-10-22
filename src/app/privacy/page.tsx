@@ -16,6 +16,7 @@ const KEPT: [string, string][] = [
   ['Pages you opened and the site\'s code files, so pages you have seen open offline (browser cache storage; never data or prices)', 'alpha-shell-v1, alpha-assets-v1'],
   ['Page layout on Company and Compare (Quick look or Deep dive)', 'alpha-company-layout, alpha-compare-layout'],
   ['Your data conditions on My Desk', 'alpha-conditions'],
+  ['What a company looked like when you last marked it reviewed, so the next visit can show what changed', 'alpha-reviewed'],
   ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
   ['Retired: the old since-your-last-visit snapshot. Nothing writes it any more; Today deletes it if your browser still has it', 'alpha-last-visit'],
 ];

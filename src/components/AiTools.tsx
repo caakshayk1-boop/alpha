@@ -8,6 +8,7 @@ import { Async, Bar, Chg, Rv, StatusChip } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
+import { MIN_CHECKS, rankIdeas } from '@/lib/ideas';
 import { crore, dash, dateLabel, num, pct, ratio } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -197,21 +198,10 @@ export function ReverseDcf() {
 export function Confluence({ limit = 8 }: { limit?: number }) {
   const s = useFeed('screen');
   const eng = useSignals();
-  const MIN_CHECKS = 6;                      // a name needs at least six of the nine checks to apply before it can be ranked at all
   const { rows, skipped } = useMemo(() => {
     if (!s.data) return { rows: [], skipped: 0 };
-    const sigs = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending');
-    const full = !!eng.data?.alertable;      // full weight only once the rule book's holdout clears the alert bar
-    let skipped = 0;
-    const out = s.data.rows.filter((r) => has(r.turnover_cr) && r.turnover_cr >= 5).map((r) => {
-      const mine = sigs.filter((x) => x.sym === r.sym);
-      const d = decide(r, mine);
-      const passed = d.checks.filter((c) => c.pass === true).length, known = d.checks.filter((c) => c.pass !== null).length;
-      const engines = mine.length * (full ? 1 : 0.5);
-      const score = (known ? passed / known : 0) * 6 + engines * 2 + (r.mf?.rank && r.mf.rank <= 100 ? 1 : 0) + (r.vd?.c === 'BUY' ? 1 : 0) - (r.risk?.level === 'HIGH' ? 3 : 0);
-      return { r, mine, d, passed, known, total: d.checks.length, score };
-    }).filter((x) => { if (x.known < MIN_CHECKS) { skipped++; return false; } return true; });
-    return { rows: out.sort((a, b) => b.score - a.score).slice(0, limit), skipped };
+    const out = rankIdeas(s.data.rows, eng.data?.signals ?? [], !!eng.data?.alertable, limit);
+    return { rows: out.ideas, skipped: out.skipped };
   }, [s.data, eng.data, limit]);
   return (
     <Async loading={s.loading} error={s.error} rows={3}>

@@ -4,6 +4,7 @@ import Shell from '@/components/Shell';
 import { PREFS_SCRIPT } from '@/lib/prefs';
 import './globals.css';
 import './tokens-oklch.css';      // the same tokens authored in OKLCH (scripts/oklch.mjs), where supported
+import './premium.css';           // design system v4: the last layer, so its tokens and type win by order
 
 const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
 };
-export const viewport: Viewport = { themeColor: '#f5f3ee', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+export const viewport: Viewport = { themeColor: '#f6f5f1', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 // Start the first data a page waits on while its JavaScript is still downloading, and let lib/data.ts pick up the same
 // requests (window.__alphaPre) instead of fetching again. Today: the summary and the Barometer. A company page: its live slice
