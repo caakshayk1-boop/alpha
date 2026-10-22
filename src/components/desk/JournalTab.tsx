@@ -10,7 +10,9 @@ import { Drawer } from '@/components/company/Parts';
 import { QuickAdd, plural, stampLabel, type Go } from '@/components/desk/common';
 import type { ResearchCard } from '@/lib/card';
 import { dateLabel, num } from '@/lib/format';
-import { ACTIONS, MIN_ENTRIES, makeEntry, outcome, summarise, type JournalAction, type JournalEntry } from '@/lib/journal';
+import { ACTIONS, MIN_ENTRIES, makeEntry, outcome, regimeMatrix, summarise, type JournalAction, type JournalEntry, type JournalRegime } from '@/lib/journal';
+import { useBarometer } from '@/lib/useBarometer';
+import { useSignals } from '@/lib/data';
 import type { LiveSnap } from '@/lib/live';
 import { priceLabel, priceView } from '@/lib/price';
 import { companyHref } from '@/lib/slug';
@@ -31,6 +33,11 @@ export function JournalTab({ list, setList, ready, storeError, rows, loading, er
     return m;
   }, [rows, snap]);
   const summary = useMemo(() => summarise(list, (s) => quote.get(s)?.price ?? null), [list, quote]);
+  const regimes = useMemo(() => regimeMatrix(list, (s) => quote.get(s)?.price ?? null), [list, quote]);
+  const baro = useBarometer();
+  const eng = useSignals();
+  // the market now, attached only to an entry dated today (a back-dated entry gets none, never a guess)
+  const regimeNow: JournalRegime | null = baro.view ? { barometer: baro.view.reading.score, gate: eng.data?.gate.passed ?? null, asOf: baro.view.session } : null;
   const shown = useMemo(() => [...list].filter((e) => !focus || e.sym === focus).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [list, focus]);
   const [editing, setEditing] = useState<JournalEntry | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -58,7 +65,7 @@ export function JournalTab({ list, setList, ready, storeError, rows, loading, er
       <div className="desk-aside">
         <section className="card tight" aria-labelledby="jn-h">
           <div className="card-h"><h3 id="jn-h">New entry</h3></div>
-          <NewEntry formRef={formRef} focus={focus} onSave={(entry) => setList((cur) => [...cur, entry])} />
+          <NewEntry formRef={formRef} focus={focus} onSave={(entry) => setList((cur) => [...cur, entry.date === localToday() && regimeNow ? { ...entry, regime: regimeNow } : entry])} />
         </section>
         <section className="card tight" aria-labelledby="js-h">
           <div className="card-h"><h3 id="js-h">Took, skipped, watching</h3></div>
@@ -71,6 +78,19 @@ export function JournalTab({ list, setList, ready, storeError, rows, loading, er
             ))}
           </ul>
           <p className="card-foot">An average is a price follow-up across your entries, not a return you earned. It appears only at {MIN_ENTRIES} measured decisions in a group, so two lucky calls do not read as a rate.</p>
+        </section>
+        <section className="card tight" aria-labelledby="jr-h">
+          <div className="card-h"><h3 id="jr-h">By the market at entry</h3></div>
+          <p className="dim desk-small" style={{ margin: '0 0 8px' }}>Your &ldquo;took it&rdquo; decisions grouped by the Barometer on the day you recorded them, with the Swing v2 gate count then. R is the price follow-up against your stop, not executed P&amp;L.</p>
+          <ul className="rows">
+            {regimes.rows.map((g) => (
+              <li key={g.id} className="row">
+                <span style={{ minWidth: 0 }}><span className="row-t">{g.label}</span><span className="row-s">{plural(g.entries, 'decision', 'decisions')}{g.avgGate !== null ? `, gate ${g.avgGate.toFixed(1)} of 4 on average` : ''}</span></span>
+                <span className="row-r">{g.enough && g.avgR !== null ? <><b className={`num ${g.avgR >= 0 ? 'up' : 'down'}`}>{g.avgR >= 0 ? '+' : '−'}{Math.abs(g.avgR).toFixed(2)}R</b><small>{Math.round((g.share ?? 0) * 100)}% above entry</small></> : <small className="desk-need">Needs {MIN_ENTRIES} with a stop and a price ({g.measured} so far)</small>}</span>
+              </li>
+            ))}
+          </ul>
+          {regimes.unrecorded > 0 && <p className="card-foot">{plural(regimes.unrecorded, 'decision has', 'decisions have')} no market reading: {regimes.unrecorded === 1 ? 'it was' : 'they were'} recorded before this was kept, or back-dated.</p>}
         </section>
       </div>
 
@@ -169,7 +189,7 @@ function EntryEditor({ e, onSave }: { e: JournalEntry; onSave: (e: JournalEntry)
   const save = () => {
     const made = makeEntry({ ...f, sym: e.sym }, e.id);
     if ('error' in made) { setErr(made.error); return; }
-    if (!onSave({ ...made.entry, updatedAt: new Date().toISOString() })) setErr('Could not save: this browser is blocking storage. Nothing was changed.');
+    if (!onSave({ ...made.entry, ...(e.regime ? { regime: e.regime } : {}), updatedAt: new Date().toISOString() })) setErr('Could not save: this browser is blocking storage. Nothing was changed.');
   };
   return (
     <form className="note-form" onSubmit={(ev) => { ev.preventDefault(); save(); }}>
