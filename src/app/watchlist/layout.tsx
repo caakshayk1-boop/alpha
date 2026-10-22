@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import '../desk.css';      // My Desk's own layer, loaded after premium.css
 
 export const metadata: Metadata = {
-  title: 'Watchlist and research cards',
-  description: 'A private watchlist and portable research cards kept in your browser, with export and import and no account.',
-  openGraph: { title: 'Watchlist and research cards', description: 'A private watchlist and portable research cards kept in your browser, with export and import and no account.', url: '/watchlist/', type: 'website' },
+  title: 'Following · My Desk',
+  description: 'The companies you follow and your research cards, on My Desk: kept in your browser, with one export and import and no account.',
+  openGraph: { title: 'Following · My Desk', description: 'The companies you follow and your research cards, on My Desk: kept in your browser, with one export and import and no account.', url: '/watchlist/', type: 'website' },
   robots: { index: false, follow: true },      // personal, browser-local content: nothing to index
 };
 
