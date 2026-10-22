@@ -14,8 +14,10 @@ import { LIFECYCLE_TONE, istStamp, setupReasons, swingLifecycle, type Lag } from
 import type { SignalsFeed } from '@/lib/types';
 import { useBook } from '@/lib/useBook';
 import { LagNotice } from './LagNotice';
-import { PaperRecord } from './PaperRecord';
-import { MethodView } from './Method';
+import dynamic from 'next/dynamic';
+// the two tabs that are not the default load when first opened, so /engines/ ships only the Setups view up front
+const PaperRecord = dynamic(() => import('./PaperRecord').then((m) => m.PaperRecord), { loading: () => <div className="skel" style={{ height: 320 }} aria-hidden /> });
+const MethodView = dynamic(() => import('./Method').then((m) => m.MethodView), { loading: () => <div className="skel" style={{ height: 320 }} aria-hidden /> });
 import { SetupCard } from './SetupCard';
 
 export type SignalsTab = 'setups' | 'record' | 'method';

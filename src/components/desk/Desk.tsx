@@ -10,11 +10,14 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { PageHead } from '@/components/ui';
-import CardPanel from '@/components/CardPanel';
+import dynamic from 'next/dynamic';
 import { Following } from '@/components/desk/Following';
-import { JournalTab } from '@/components/desk/JournalTab';
-import { ConditionsTab } from '@/components/desk/ConditionsTab';
 import { BackupBar } from '@/components/desk/BackupBar';
+// the tabs other than the one a page opens on load when first opened
+const wait = () => <div className="skel" style={{ height: 320 }} aria-hidden />;
+const CardPanel = dynamic(() => import('@/components/CardPanel'), { loading: wait });
+const JournalTab = dynamic(() => import('@/components/desk/JournalTab').then((m) => m.JournalTab), { loading: wait });
+const ConditionsTab = dynamic(() => import('@/components/desk/ConditionsTab').then((m) => m.ConditionsTab), { loading: wait });
 import { QuickAdd, istToday, type DeskTab } from '@/components/desk/common';
 import { reviewDue, type CurrentCompany } from '@/lib/card';
 import { useFeed, useLive, usePx, useSignals } from '@/lib/data';

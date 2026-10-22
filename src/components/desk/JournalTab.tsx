@@ -85,8 +85,8 @@ export function JournalTab({ list, setList, ready, storeError, rows, loading, er
           <ul className="rows">
             {regimes.rows.map((g) => (
               <li key={g.id} className="row">
-                <span style={{ minWidth: 0 }}><span className="row-t">{g.label}</span><span className="row-s">{plural(g.entries, 'decision', 'decisions')}{g.avgGate !== null ? `, gate ${g.avgGate.toFixed(1)} of 4 on average` : ''}</span></span>
-                <span className="row-r">{g.enough && g.avgR !== null ? <><b className={`num ${g.avgR >= 0 ? 'up' : 'down'}`}>{g.avgR >= 0 ? '+' : '−'}{Math.abs(g.avgR).toFixed(2)}R</b><small>{Math.round((g.share ?? 0) * 100)}% above entry</small></> : <small className="desk-need">Needs {MIN_ENTRIES} with a stop and a price ({g.measured} so far)</small>}</span>
+                <span style={{ minWidth: 0 }}><span className="row-t">{g.label}</span><span className="row-s">{plural(g.entries, 'decision', 'decisions')}{g.avgGate !== null ? `, gate ${num(g.avgGate, 1)} of 4 on average` : ''}</span></span>
+                <span className="row-r">{g.enough && g.avgR !== null ? <><b className={`num ${g.avgR >= 0 ? 'up' : 'down'}`}>{g.avgR >= 0 ? '+' : '−'}{num(Math.abs(g.avgR), 2)}R</b><small>{Math.round((g.share ?? 0) * 100)}% above entry</small></> : <small className="desk-need">Needs {MIN_ENTRIES} with a stop and a price ({g.measured} so far)</small>}</span>
               </li>
             ))}
           </ul>
