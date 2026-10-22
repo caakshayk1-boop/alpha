@@ -12,7 +12,7 @@ import { GLOSSARY } from '@/lib/glossary';
 import StockChart from '@/components/StockChart';
 import { CaseBlock, ShareButton, ShareImageButton, WhatChanged, DecisionDesk, ExternalLinks, LookalikesLazy, RiskCone, SaveCardButton } from '@/components/CompanyTools';
 import { BackToContext } from '@/components/TickerLink';
-import { Drawer, NotesColumn, Overflow, ResearchSummary, SixMetrics } from '@/components/company/Parts';
+import { Drawer, EarningsQuality, NotesColumn, Overflow, ResearchSummary, SixMetrics } from '@/components/company/Parts';
 import { isLender } from '@/lib/sector';
 import { useSignals, useFeedWhen, useLive, usePx, useShard, type Shard } from '@/lib/data';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
@@ -332,6 +332,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
           </>)}
           {view === 'financials' && (<>
             <section className="section2"><SectionHead title="The business, year by year" /><Financials sym={r.sym} pre={pre?.years} /></section>
+            <section className="section2"><EarningsQuality years={pre?.years} lender={isLender(r)} /></section>
             <section className="section2"><SectionHead title="Strengths, weaknesses, threats" /><Swot sym={r.sym} pre={pre?.swot} years={years} /></section>
           </>)}
           {view === 'valuation' && (<>

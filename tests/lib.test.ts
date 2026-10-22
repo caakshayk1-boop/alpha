@@ -1026,3 +1026,21 @@ test('T12: the site and the engines read the same NSE holiday calendar', () => {
   for (const [y, days] of Object.entries(cfg.weekday_holidays as Record<string, string[]>)) assert.deepEqual([...(NSE_HOLIDAYS[Number(y)] ?? [])], days, `year ${y}`);
   assert.deepEqual(Object.keys(NSE_HOLIDAYS).map(String), Object.keys(cfg.weekday_holidays));
 });
+
+import { earningsQuality } from '../src/lib/forensic.ts';
+test('earnings quality: three pillars measured from statements, five reported as not measured, no composite', () => {
+  const Y = (fy: string, o: Partial<import('../src/lib/types.ts').Year>) => ({ fy, end: '', rev_cr: 100, ebitda_cr: 30, ebit_cr: 20, pat_cr: 15, eps: 1, roe: 20, roce: 20, ebit_margin: 20, de: 0.2, cfo_cr: 27, fcf_cr: 12, ...o });
+  const years = [Y('FY26', { ebit_cr: 40, roce: 25 }), Y('FY25', {}), Y('FY24', {}), Y('FY23', { ebit_cr: 20, roce: 20 })];
+  const q = earningsQuality(years, false);
+  const by = Object.fromEntries(q.pillars.map((p) => [p.id, p]));
+  assert.equal(by.F1.value, '90%'); assert.equal(by.F1.light, 'GREEN');      // 81 / 90
+  assert.equal(by.F3.value, '80%'); assert.equal(by.F3.light, 'GREEN');      // 36 / 45
+  // capital employed 160 vs 100: (40 − 20) / 60 = 33%
+  assert.equal(by.F8.value, '33%'); assert.equal(by.F8.light, 'GREEN');
+  for (const id of ['F2', 'F4', 'F5', 'F6', 'F7']) { assert.equal(by[id].light, null); assert.ok(by[id].missing); }
+  assert.equal(q.measured, 3); assert.equal(q.weightMeasured, 40);
+  assert.equal(earningsQuality(years.slice(0, 2), false).measured, 0, 'two years: nothing measured');
+  assert.equal(earningsQuality(years, true).applies, false, 'lenders are out of scope');
+  const red = earningsQuality([Y('FY26', { fcf_cr: -10, de: 0.9 }), Y('FY25', { fcf_cr: -5 }), Y('FY24', { fcf_cr: 1, de: 0.3 })], false);
+  assert.equal(red.pillars.find((p) => p.id === 'F3')!.light, 'RED');
+});

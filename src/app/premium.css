@@ -363,3 +363,5 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .bx-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--panel-3); }
 .bx-bar .u { background: var(--up); } .bx-bar .f { background: var(--line-2); } .bx-bar .d { background: var(--down); }
 .bx-key { font-size: var(--fs-sm); margin: var(--sp-2) 0 0; line-height: 1.5; }
+.eq-row { align-items: start; }
+.eq-row .row-r { display: grid; justify-items: end; gap: 4px; }

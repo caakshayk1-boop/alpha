@@ -408,7 +408,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div><h2 className="fh">Trust</h2>{pagesIn('utility').map((p) => <Link key={p.href} href={p.href}>{p.label}</Link>)}<Link href="/reads/#corrections">Corrections</Link></div>
           </div>
           <p className="footer-legal">
-            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. Signals are experimental research on paper; nothing here is a broker fill. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules on this site, applied the same way to every company.
+            For information and education only. alpha is not registered with SEBI as a Research Analyst or Investment Adviser; every score, screen and rule is a published method applied the same way to every company. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. Signals are experimental research on paper; nothing here is a broker fill. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules on this site, applied the same way to every company.
           </p>
         </div>
       </footer>

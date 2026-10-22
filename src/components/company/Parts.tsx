@@ -14,6 +14,7 @@ import { GLOSSARY } from '@/lib/glossary';
 import { parseJournal, type JournalEntry } from '@/lib/journal';
 import { useCards } from '@/lib/library';
 import { isLender } from '@/lib/sector';
+import { earningsQuality } from '@/lib/forensic';
 import { ordinal } from '@/lib/status';
 import { useModal } from '@/lib/useModal';
 import type { Row, Sig } from '@/lib/types';
@@ -156,5 +157,31 @@ export function NotesColumn({ r, sigs }: { r: Row; sigs: Sig[] }) {
         )}
       </section>
     </div>
+  );
+}
+
+/** Earnings-quality checks (Blueprint §2.1): the pillars Alpha can measure, with their rule and figure, and the ones it
+ *  cannot, said plainly. No composite score: three of eight pillars are not a score. */
+export function EarningsQuality({ years, lender }: { years: import('@/lib/types').Year[] | null | undefined; lender: boolean }) {
+  const q = useMemo(() => earningsQuality(years ?? [], lender), [years, lender]);
+  const tone = (l: string | null) => (l === 'GREEN' ? 'ok' : l === 'AMBER' ? 'warn' : l === 'RED' ? 'bad' : '');
+  const word = (l: string | null) => (l === 'GREEN' ? 'Pass' : l === 'AMBER' ? 'Watch' : l === 'RED' ? 'Flag' : 'Not measured');
+  if (!q.applies) return <div className="state"><b>Not applied to lenders and insurers.</b><p>Cash conversion and capital-employed measures do not describe a bank&apos;s or insurer&apos;s business, so these checks are left out rather than scored.</p></div>;
+  return (
+    <section className="card" aria-labelledby="eq-h">
+      <div className="card-h"><h3 id="eq-h">Earnings-quality checks</h3><span className="pill nodot">{q.measured} of 8 measured · {q.weightMeasured}% of the weight</span></div>
+      <p className="dim" style={{ fontSize: 13.5, margin: '0 0 12px' }}>From the filed statements on file (fiscal years, newest first). No overall score is given: the pillars Alpha cannot measure are not filled in, and a partial score would read as a full one. A flag is a reason to read the filings, not a verdict.</p>
+      <ul className="rows eq-rows">
+        {q.pillars.map((p) => (
+          <li key={p.id} className="row eq-row">
+            <span style={{ minWidth: 0 }}>
+              <span className="row-t">{p.id} · {p.name} <span className="dim" style={{ fontWeight: 500 }}>· weight {p.weight}%</span></span>
+              <div className="row-s" style={{ whiteSpace: 'normal' }}>{p.light ? p.rule : `Not measured: ${p.missing}.`} {p.light ? p.why : ''}</div>
+            </span>
+            <span className="row-r">{p.value && <b className="num">{p.value}</b>}<small><span className={`pill ${tone(p.light)}${p.light ? '' : ' nodot'}`}>{word(p.light)}</span></small></span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
