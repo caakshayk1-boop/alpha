@@ -22,6 +22,12 @@ export const stageOf = (drawdown: number, abovePct: number): Stage =>
     : drawdown >= 15 && abovePct <= 40 ? { k: 'real', t: 'Worth buying in instalments', c: 'up' }
       : drawdown >= 10 ? { k: 'early', t: 'Slightly cheaper', c: '' } : { k: 'none', t: 'Nothing on sale', c: '' };
 
+/** What the stage measures, in words (H03): it is read from the index's fall from its 52-week high and the share of stocks above
+ *  their 200-day average. No valuation input (earnings, book, yield) enters it, so it is never shown as "valuation". The port
+ *  keeps upstream's own label in `t`; pages show this one. */
+export const STAGE_WORDS: Record<Stage['k'], string> = { deep: 'deep drawdown, narrow breadth', real: 'broad drawdown', early: 'early drawdown', none: 'no meaningful drawdown' };
+export const stageWords = (k: Stage['k'] | string | undefined | null): string | null => (k && k in STAGE_WORDS ? STAGE_WORDS[k as Stage['k']] : null);
+
 /** Python's round(): halves go to the even neighbour (round(40.5) == 40), unlike Math.round. */
 export function pyRound(x: number, dp = 0): number {
   const m = 10 ** dp, y = x * m, f = Math.floor(y), d = y - f;

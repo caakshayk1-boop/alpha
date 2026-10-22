@@ -4,10 +4,11 @@ import { FactorStrip } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import SymbolPicker from '@/components/SymbolPicker';
-import { Async, Bar, Chg, Rv, StatusChip } from '@/components/ui';
+import { Async, Bar, Chg, Rv } from '@/components/ui';
 import { useSignals, useFeed, usePx } from '@/lib/data';
 import { breadth200 } from '@/lib/breadth';
 import { decide, screenClass } from '@/lib/decision';
+import { MIN_CHECKS, rankIdeas } from '@/lib/ideas';
 import { crore, dash, dateLabel, num, pct, ratio } from '@/lib/format';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -136,82 +137,14 @@ export function PortfolioXray() {
   );
 }
 
-// ── Reverse DCF ───────────────────────────────────────────────────────
-function impliedGrowth(price: number, eps: number, r: number, years: number, tg: number): number | null {
-  const pv = (g: number) => { let s = 0, e = eps; for (let t = 1; t <= years; t++) { e *= 1 + g; s += e / (1 + r) ** t; } return s + (e * (1 + tg) / (r - tg)) / (1 + r) ** years; };
-  let lo = -0.3, hi = 0.8;
-  if (pv(lo) > price || pv(hi) < price) return null;
-  for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (pv(m) < price) lo = m; else hi = m; }
-  return (lo + hi) / 2;
-}
-export function ReverseDcf() {
-  const s = useFeed('screen');
-  const [sym, setSym] = useState('TCS');
-  const [rate, setRate] = useState('12');
-  const [yrs, setYrs] = useState('10');
-  const [tg, setTg] = useState('5');
-  const r = s.data?.rows.find((x) => x.sym === sym);
-  const eps = r && has(r.pe) && r.pe > 0 && has(r.price) ? r.price / r.pe : null;
-  const g = r && eps && r.price ? impliedGrowth(r.price, eps, Number(rate) / 100, Math.max(1, Math.min(30, Number(yrs) || 10)), Number(tg) / 100) : null;
-  const rateN = Number(rate), yrsN = Number(yrs), tgN = Number(tg);
-  const valid = rateN > tgN && rateN > 0 && rateN <= 50 && yrsN >= 1 && yrsN <= 30 && tgN >= 0 && tgN <= 10;
-  return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Reverse DCF · an earnings-based teaching model</div>
-      <p className="muted" style={{ margin: '8px 0 12px' }}>Instead of guessing the future and getting a value, start from today&apos;s price and solve for the earnings growth it needs.</p>
-      {/* Pro §22.6: presets the reader can edit; every input is labelled as the reader's assumption, the price and EPS as observed */}
-      <div className="filters" role="group" aria-label="Scenario">
-        <span className="eyebrow">Scenario</span>
-        {([['Conservative', '14', '8', '4'], ['Base', '12', '10', '5'], ['Optimistic', '11', '12', '6']] as const).map(([n, a, b, c]) => <button key={n} type="button" className="chip" aria-pressed={rate === a && yrs === b && tg === c} onClick={() => { setRate(a); setYrs(b); setTg(c); }}>{n}</button>)}
-        <StatusChip kind="assumption">Your assumption</StatusChip><span className="dim" style={{ fontSize: 13 }}>return, years and terminal growth</span>
-      </div>
-      <div className="filters"><SymbolPicker placeholder={`Company (now ${sym})`} onPick={setSym} />
-        {([['Required return %', rate, setRate], ['Years of growth', yrs, setYrs], ['Terminal growth %', tg, setTg]] as const).map(([l, v, f]) => <label key={l} className="muted" style={{ fontSize: 14 }}>{l} <input className="field" style={{ width: 80, height: 36 }} inputMode="decimal" value={v} onChange={(e) => f(e.target.value.replace(/[^\d.]/g, ''))} /></label>)}</div>
-      {!r ? <p className="dim">Pick a company.</p> : !valid ? <p className="notice">Needs a required return above 0 and up to 50%, terminal growth from 0 to 10% and below the required return, and between 1 and 30 years of growth.</p> : eps === null ? <p className="notice">{r.sym} has no positive P/E, so there are no earnings to discount.</p> : (
-        <>
-        <div className="grid g3" style={{ marginTop: 12 }}>
-          <div className="panel tight"><div className="eyebrow">{r.sym} at ₹{num(r.price, 2)} <StatusChip kind="observed">Observed · screen close {r.last_date ? dateLabel(r.last_date) : ''}</StatusChip></div><p className="num" style={{ margin: '8px 0 0' }}>EPS ≈ ₹{num(eps, 2)} · P/E {ratio(r.pe, 1)}</p></div>
-          <div className="panel tight"><div className="eyebrow">Growth the price needs</div><div className="disp" style={{ fontSize: 34, margin: '6px 0 0', color: 'var(--accent-2)' }}>{g === null ? 'outside −30% to 80%' : `${pct((g * 100), 1, false)} a year`}</div><div className="dim" style={{ fontSize: 13 }}>for {yrs} years, then {tg}% forever</div></div>
-          <div className="panel tight"><div className="eyebrow">What it actually did</div><p className="num" style={{ margin: '8px 0 0' }}>EPS CAGR {has(r.eps_cagr) ? `${pct(r.eps_cagr, 1, false)}` : dash}<br />Revenue CAGR {has(r.rev_cagr) ? `${pct(r.rev_cagr, 1, false)}` : dash}</p>
-            {g !== null && has(r.eps_cagr) && <p className={r.eps_cagr * 1 >= g * 100 ? 'up' : 'down'} style={{ fontSize: 13.5, margin: '8px 0 0' }}>{r.eps_cagr >= g * 100 ? 'Historical EPS growth exceeds this scenario’s implied rate. Future growth may differ.' : `This scenario implies ${num((g * 100 - r.eps_cagr), 1)} points more growth than EPS has delivered historically.`}</p>}</div>
-        </div>
-        {eps !== null && r.price && (
-          <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 'none', marginTop: 14 }}>
-            <table className="tbl" style={{ minWidth: 420 }}>
-              <caption className="dim" style={{ textAlign: 'left', fontSize: 13.5, padding: '0 0 6px' }}>Growth the price needs (% a year for {yrsN} years), by required return and terminal growth. A dash means outside −30% to 80%.</caption>
-              <thead><tr><th scope="col">Required return ↓ · terminal growth →</th>{[3, 5, 7].map((t) => <th key={t} scope="col" className="num">{t}%</th>)}</tr></thead>
-              <tbody>{[10, 12, 14, 16].map((rr) => (
-                <tr key={rr} style={{ cursor: 'default', background: rr === rateN ? 'var(--panel-2)' : undefined }}><th scope="row">{rr}%</th>{[3, 5, 7].map((t) => { const x = rr > t ? impliedGrowth(r.price as number, eps, rr / 100, Math.max(1, Math.min(30, yrsN || 10)), t / 100) : null; return <td key={t} className="num">{x === null ? dash : `${pct((x * 100), 1, false)}`}</td>; })}</tr>
-              ))}</tbody>
-            </table>
-          </div>
-        )}
-        <p className="dim" style={{ fontSize: 13, margin: '10px 0 0' }}>This is arithmetic on your assumptions, not a forecast. EPS is the screen&apos;s price divided by its P/E (trailing twelve months).</p>
-        </>
-      )}
-    </Rv>
-  );
-}
-
 // ── Confluence board ──────────────────────────────────────────────────
 export function Confluence({ limit = 8 }: { limit?: number }) {
   const s = useFeed('screen');
   const eng = useSignals();
-  const MIN_CHECKS = 6;                      // a name needs at least six of the nine checks to apply before it can be ranked at all
   const { rows, skipped } = useMemo(() => {
     if (!s.data) return { rows: [], skipped: 0 };
-    const sigs = (eng.data?.signals ?? []).filter((x) => x.status === 'open' || x.status === 'pending');
-    const full = !!eng.data?.alertable;      // full weight only once the rule book's holdout clears the alert bar
-    let skipped = 0;
-    const out = s.data.rows.filter((r) => has(r.turnover_cr) && r.turnover_cr >= 5).map((r) => {
-      const mine = sigs.filter((x) => x.sym === r.sym);
-      const d = decide(r, mine);
-      const passed = d.checks.filter((c) => c.pass === true).length, known = d.checks.filter((c) => c.pass !== null).length;
-      const engines = mine.length * (full ? 1 : 0.5);
-      const score = (known ? passed / known : 0) * 6 + engines * 2 + (r.mf?.rank && r.mf.rank <= 100 ? 1 : 0) + (r.vd?.c === 'BUY' ? 1 : 0) - (r.risk?.level === 'HIGH' ? 3 : 0);
-      return { r, mine, d, passed, known, total: d.checks.length, score };
-    }).filter((x) => { if (x.known < MIN_CHECKS) { skipped++; return false; } return true; });
-    return { rows: out.sort((a, b) => b.score - a.score).slice(0, limit), skipped };
+    const out = rankIdeas(s.data.rows, eng.data?.signals ?? [], !!eng.data?.alertable, limit);
+    return { rows: out.ideas, skipped: out.skipped };
   }, [s.data, eng.data, limit]);
   return (
     <Async loading={s.loading} error={s.error} rows={3}>

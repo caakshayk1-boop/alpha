@@ -21,7 +21,8 @@ test('lists the move against the Nifty, a new 52-week high, the big day and the 
   // the fall is 6.0%, the rebound the next session 6.7%: the larger of the two is reported
   assert.match(out.items.find((x) => x.kind === 'move')!.text, /^Rose 6\.7% on/);
   assert.deepEqual([...out.items].sort((a, b) => (a.date < b.date ? 1 : -1)).map((x) => x.date), out.items.map((x) => x.date));
-  assert.ok(out.notes.some((x) => /keeps no history of past ranks/.test(x)), 'rank changes are declared unavailable, never invented');
+  assert.ok(out.notes.some((x) => /Only the previous-build rank comparison/.test(x)), 'a longer rank history is declared unavailable, never invented (C13)');
+  assert.ok(!out.items.some((x) => x.kind === 'rank'), 'no rank_move on the row: no rank item');
 });
 
 test('news counts only stories that name the company and fall in the window', () => {

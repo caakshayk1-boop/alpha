@@ -1,38 +1,37 @@
 'use client';
 /** The market gate: the four checks that must all hold before Swing v2 opens any new trade (engines/swing.py market_gate).
- *  Read at the engines' latest close. Each check names its own value, so "off" always says why. */
-import Link from 'next/link';
+ *  Read at the engines' latest close. Each check names its own value, so "off" always says why. The history line counts the
+ *  sessions on file (gate_history holds on/off only, so per-check counts exist for the latest session alone). */
 import { sessionLabel } from '@/lib/price';
+import { gateFunnel } from '@/lib/signalsView';
 import type { SignalsFeed } from '@/lib/types';
 
 export function GatePanel({ feed, compact = false }: { feed: SignalsFeed; compact?: boolean }) {
   const g = feed.gate;
   const hist = feed.gate_history ?? [];
-  const onShare = hist.length ? Math.round((hist.filter((x) => x.on).length / hist.length) * 100) : null;
+  const fn = gateFunnel(feed);
   return (
-    <section className={`gate panel tight${g.on ? ' on' : ' off'}`} aria-labelledby="gate-h">
-      <div className="gate-top">
-        <div>
-          <div className="eyebrow">Market gate · {sessionLabel(g.date)} close</div>
-          <h2 id="gate-h" className="gate-h">{g.on ? 'On: new trades allowed' : 'Off: no new trades'} <span className="dim num">{g.passed} of 4</span></h2>
-        </div>
-        {!compact && hist.length > 0 && (
-          <div className="gate-strip" role="img" aria-label={`Gate on for ${onShare}% of the last ${hist.length} sessions`}>
-            {hist.map((x) => <i key={x.d} className={x.on ? 'on' : ''} title={`${sessionLabel(x.d)}: ${x.on ? 'on' : 'off'}`} />)}
-            <span className="dim num">on {onShare}% of the last {hist.length} sessions</span>
-          </div>
-        )}
+    <section className={`card sg-gate${g.on ? ' on' : ' off'}`} aria-labelledby="gate-h">
+      <div className="card-h">
+        <h3 id="gate-h">Market gate <span className="dim sg-h-note">· {sessionLabel(g.date)} close</span></h3>
+        <span className={`pill ${g.on ? 'ok' : 'bad'}`}>{g.on ? 'On' : 'Off'} · {fn.passed} of {fn.total} pass</span>
       </div>
-      <ul className="gate-checks">
+      <ul className="rows sg-checks">
         {g.checks.map((c) => (
-          <li key={c.rule} className={c.ok ? 'ok' : 'no'}>
-            <span className="gate-mark" aria-hidden>{c.ok ? '✓' : '✕'}</span>
-            <span>{c.rule}<span className="sr">: {c.ok ? 'passes' : 'fails'}</span></span>
-            {c.value && <span className="dim num">{c.value}</span>}
+          <li key={c.rule} className={`row ${c.ok ? 'ok' : 'no'}`}>
+            <span className="sg-check-l"><span className="sg-mark" aria-hidden>{c.ok ? '✓' : '✕'}</span><span>{c.rule}<span className="sr">: {c.ok ? 'passes' : 'fails'}</span></span></span>
+            <span className="row-r num">{c.value ?? ''}<small>{c.ok ? 'passes' : 'fails'}</small></span>
           </li>
         ))}
       </ul>
-      {compact && <Link href="/engines/" className="more">Rules and record →</Link>}
+      {!compact && hist.length > 0 && (
+        <div className="sg-strip-wrap">
+          <div className="sg-strip" role="img" aria-label={`Gate on in ${fn.on} of the last ${fn.sessions} sessions`}>
+            {hist.map((x) => <i key={x.d} className={x.on ? 'on' : ''} title={`${sessionLabel(x.d)}: ${x.on ? 'on' : 'off'}`} />)}
+          </div>
+          <p className="card-foot sg-strip-note">On in <b className="num">{fn.on}</b> of the last <b className="num">{fn.sessions}</b> sessions ({sessionLabel(fn.from)} to {sessionLabel(fn.to)}){fn.on === 0 ? '' : `; off for the last ${fn.offRun}`}. The feed keeps on or off per session, not each check, so the per-check counts above are for the latest close only.</p>
+        </div>
+      )}
     </section>
   );
 }

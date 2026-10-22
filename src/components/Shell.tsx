@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { FreshnessBanner } from '@/components/DataStamp';
+import { FreshnessPill } from '@/components/DataStamp';
 import { MarketClock } from '@/components/MarketClock';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { feed } from '@/lib/data';
-import { fadeTheme, initMotion, initPointerLight, prefersReduced } from '@/lib/motion';
+import { fadeTheme, initMotion, prefersReduced } from '@/lib/motion';
 import { startRum } from '@/lib/rum';
 import { PREFS, readPref, setPref, type PrefName } from '@/lib/prefs';
 import { AREAS, PAGES, SHORTCUTS, areaFor, isActive, pageOf, pagesIn } from '@/lib/routes';
@@ -250,7 +250,6 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     initMotion();
-    const stopLight = initPointerLight();
     startRum();      // sampled, anonymous field speed of this page load (lib/rum.ts)
     // the offline shell (public/sw.js): pages network-first with the last good copy kept, data never cached by it
     if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
@@ -288,7 +287,6 @@ export default function Shell({ children }: { children: ReactNode }) {
       window.removeEventListener('keydown', key);
       window.removeEventListener('alpha:search', openSearch);
       window.removeEventListener('scroll', onScroll);
-      stopLight();
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [router]);
@@ -334,7 +332,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   const here = areaFor(path);
   const tabs = AREAS.map((a) => ({ ...a, icon: pageOf(a.home)!.icon }));
-  const tabIndex = here && here !== 'utility' ? AREAS.findIndex((a) => a.id === here) : 4;
+  const tabIndex = here && here !== 'utility' ? AREAS.findIndex((a) => a.id === here) : -1;
   return (
     <>
       <a href="#main" className="sr">Skip to content</a>
@@ -369,11 +367,15 @@ export default function Shell({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="top-actions">
+            <span className="hide-sm"><FreshnessPill /></span>
             <MarketClock />
             <button className="iconbtn search-btn" onClick={() => setOpen(true)} aria-keyshortcuts="Meta+K /">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span className="search-word">Search</span><span className="sr"> companies, pages and commands</span>
               <kbd aria-hidden>⌘K</kbd>
+            </button>
+            <button type="button" className="iconbtn menubtn" onClick={() => setSheet(true)} aria-label="Every page, search and settings" aria-haspopup="dialog" aria-expanded={sheet}>
+              <Icon size={18} d="M4 7h16M4 12h16M4 17h16" />
             </button>
             <button ref={gear} className="iconbtn gearbtn" aria-label="Settings: theme, accent, motion, market colours, density, contrast" aria-haspopup="dialog" aria-expanded={settings} onClick={() => setSettings(true)}>
               <Icon size={18} d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" />
@@ -382,11 +384,10 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <FreshnessBanner />
       <main id="main" key={path} className="page-in">{children}</main>
 
-      {/* One pill slides to the current area; a utility page lights "More". Reduced motion: it moves without sliding. */}
-      <nav className="tabbar" aria-label="Areas" style={{ ['--ti' as string]: tabIndex }}>
+      {/* Four labelled areas; one pill slides to the current one (none on a utility page). Every other page is in the menu at the top. */}
+      <nav className="tabbar" aria-label="Areas" style={{ ['--ti' as string]: Math.max(0, tabIndex), ['--to' as string]: tabIndex < 0 ? 0 : 1 }}>
         <span className="tab-pill" aria-hidden />
         {tabs.map((p) => (
           <Link key={p.id} href={p.home} aria-current={here === p.id ? 'page' : undefined}>
@@ -394,10 +395,6 @@ export default function Shell({ children }: { children: ReactNode }) {
             {p.id === 'desk' ? 'Desk' : p.label}
           </Link>
         ))}
-        <button onClick={() => setSheet(true)} aria-label="More: every page, search and settings" aria-haspopup="dialog" data-on={tabIndex === 4 ? '1' : undefined}>
-          <Icon d="M4 7h16M4 12h16M4 17h16" />
-          More
-        </button>
       </nav>
 
       <footer className="footer">
@@ -411,7 +408,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div><h2 className="fh">Trust</h2>{pagesIn('utility').map((p) => <Link key={p.href} href={p.href}>{p.label}</Link>)}<Link href="/reads/#corrections">Corrections</Link></div>
           </div>
           <p className="footer-legal">
-            For information and education only. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. Signals are experimental research on paper; nothing here is a broker fill. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules on this site, applied the same way to every company.
+            For information and education only. alpha is not registered with SEBI as a Research Analyst or Investment Adviser; every score, screen and rule is a published method applied the same way to every company. This is not investment advice, a recommendation or an offer to buy or sell any security. Figures are computed from public filings, exchange and AMFI data and may be delayed or incomplete: always check the source and your own situation before acting. Past performance does not indicate future results. Signals are experimental research on paper; nothing here is a broker fill. The author holds no position in any company shown here (stated 21 Oct 2026); rankings and signals come from the published rules on this site, applied the same way to every company.
           </p>
         </div>
       </footer>

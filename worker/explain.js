@@ -78,7 +78,7 @@ export function factsForMarket({ summary, barometer, gate } = {}) {
     add('Barometer date', t.nifty_date);
     add('Barometer score', r(t.score, 0), 'of 100');
     add('Barometer reading', t.band?.t);
-    add('Valuation stage', t.stage?.t);
+    add('Price-drawdown stage (from index drawdown and breadth; not a valuation measure)', t.stage?.t);
     add('Nifty 50 close', r(t.nifty, 0));
     add('Nifty distance below its high', r(t.drawdown_pct, 1), '%');
     add('India VIX', r(t.vix, 1));

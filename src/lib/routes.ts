@@ -20,14 +20,15 @@ export const PAGES: readonly Page[] = [
   { href: '/calendar/', label: 'Calendar', area: 'discover', desc: 'Results dates on file, largest companies first', icon: 'M5 6h14v14H5zM5 10h14M9 3v4M15 3v4' },
   { href: '/research/', label: 'Research', area: 'research', keys: 'g r', desc: 'Look up a company, compare, read, and test a plan', icon: 'M10 4a6 6 0 104.5 10L20 19.5M10 7v6M7 10h6' },
   { href: '/compare/', label: 'Compare', area: 'research', keys: 'g c', desc: 'Two to four companies, every number in one table', icon: 'M7 4v16M17 4v16M3 8h8M13 16h8' },
-  { href: '/reads/', label: 'Weekly reads', area: 'research', desc: 'Seven companies from one sector, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
+  { href: '/reads/', label: 'Weekly reads', area: 'research', desc: 'Seven companies a week, across sectors, read from the numbers', icon: 'M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM9 8h6M9 12h6' },
   { href: '/engines/', label: 'Signals', area: 'research', desc: 'Experimental research: one rule book, gated by the market', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18M12 9a3 3 0 100 6 3 3 0 000-6z' },
   { href: '/trades/', label: 'Paper trades', area: 'research', desc: 'The signal book marked to the price: paper only, never a fill', icon: 'M3 17l6-6 4 4 8-8M15 7h6v6' },
   { href: '/tools/', label: 'Tools', area: 'research', desc: 'Size a position, test a plan’s arithmetic, X-ray holdings', icon: 'M14 6l4 4-9 9H5v-4zM12 8l4 4' },
   { href: '/desk/', label: 'My Desk', area: 'desk', keys: 'g d', desc: 'What you track, what needs review, and what you concluded', icon: 'M4 5h16v11H4zM8 20h8M12 16v4' },
-  { href: '/watchlist/', label: 'Watchlist', area: 'desk', keys: 'g w', desc: 'Your names, kept privately in this browser', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
-  { href: '/journal/', label: 'Journal', area: 'desk', keys: 'g j', desc: 'Why you decided, and where the price went after', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
+  { href: '/watchlist/', label: 'Watchlist', area: 'desk', keys: 'g w', desc: 'My Desk’s Following tab: your names and what changed since review', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
+  { href: '/journal/', label: 'Journal', area: 'desk', keys: 'g j', desc: 'My Desk’s Journal tab: why you decided, and the price after', icon: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4' },
   { href: '/about/', label: 'Method', area: 'utility', desc: 'Where each number comes from and how fresh it is', icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 11v5M12 8h.01' },
+  { href: '/pro/', label: 'Pro — coming soon', area: 'utility', desc: 'Better tools, never calls: join the waitlist', icon: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' },
   { href: '/privacy/', label: 'Privacy and terms', area: 'utility', desc: 'What is kept, where, and what is sent anywhere', icon: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z' },
 ];
 

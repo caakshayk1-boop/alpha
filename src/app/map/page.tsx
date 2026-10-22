@@ -2,11 +2,10 @@
 
 import { DataStamp } from '@/components/DataStamp';
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Async, Chg, PageHead } from '@/components/ui';
 import { useFeed } from '@/lib/data';
 import { crore, num, pct } from '@/lib/format';
-import { canAnimate, gsap } from '@/lib/motion';
 import { labelFor, squarify } from '@/lib/treemap';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
@@ -29,7 +28,7 @@ const METRICS: Metric[] = [
   { id: 'comp', label: 'Composite percentile (50 = universe median)', get: (r) => (n(r.comp) === null ? null : (r.comp as number) - 50), max: 30, unit: '', group: 'Quality' },
   { id: 'q', label: 'Quality score', get: (r) => (n(r.q) === null ? null : (r.q as number) - 50), max: 40, unit: '', group: 'Quality' },
   { id: 'roce', label: 'ROCE (colour centred on 15%)', get: (r) => (n(r.roce) === null ? null : (r.roce as number) - 15), max: 20, unit: '', group: 'Quality' },
-  { id: 'pe', label: 'Cheapness: P/E under 25', get: (r) => (n(r.pe) !== null && (r.pe as number) > 0 ? 25 - (r.pe as number) : null), max: 20, unit: '', group: 'Quality' },
+  { id: 'pe', label: 'P/E relative to 25× (a threshold, not a sector-neutral valuation)', get: (r) => (n(r.pe) !== null && (r.pe as number) > 0 ? 25 - (r.pe as number) : null), max: 20, unit: '', group: 'Quality' },
 ];
 const SIZES = [
   { id: 'mcap', label: 'Market cap', get: (r: Row) => n(r.mcap_cr) },
@@ -96,6 +95,9 @@ export default function MapPage() {
   const grp = GROUPS.find((g) => g.id === groupBy) ?? GROUPS[0];
   const sz = SIZES.find((x) => x.id === sizeBy) ?? SIZES[0];
 
+  const all = s.data?.rows ?? [];
+  const unsized = all.filter((r) => !((sz.get(r) ?? 0) > 0)).length;
+  const sizedCount = all.length - unsized;
   const universe = useMemo(() => {
     let list = (s.data?.rows ?? []).filter((r) => (sz.get(r) ?? 0) > 0);
     if (onlyVetted) list = list.filter((r) => r.vet?.s === 'cleared');
@@ -118,6 +120,14 @@ export default function MapPage() {
     };
   }, [vsGroup, universe, raw, grp]);
 
+  const filteredOut = useMemo(() => {
+    let list = (s.data?.rows ?? []).filter((r) => (sz.get(r) ?? 0) > 0);
+    const before = list.length;
+    if (onlyVetted) list = list.filter((r) => r.vet?.s === 'cleared');
+    if (tiers.size) list = list.filter((r) => r.tier && tiers.has(r.tier));
+    return { byFilter: before - list.length, eligible: list.length };
+  }, [s.data, sz, onlyVetted, tiers]);
+  const noValue = universe.filter((r) => raw(r) === null).length;
   const shown = useMemo(() => (zoom ? universe.filter((r) => grp.get(r) === zoom) : universe), [universe, zoom, grp]);
 
   const layout = useMemo(() => {
@@ -141,11 +151,6 @@ export default function MapPage() {
     return { n: vals.length, up: t.up, down: t.down, flat: t.flat, med: median(vals), top: ranked.slice(0, 5), bottom: ranked.slice(-5).reverse(), ranked };
   }, [shown, valueOf]);
 
-  useEffect(() => {
-    if (!stage.current || !canAnimate() || !layout.tiles.length) return;
-    const els = stage.current.querySelectorAll<HTMLElement>('.tile:not(.sectorhead)');
-    gsap.fromTo(els, { opacity: 0, scale: 0.88 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'power3.out', stagger: { amount: 0.8, from: 'start' }, immediateRender: false, clearProps: 'opacity,transform' });
-  }, [layout.tiles.length, zoom, groupBy]);
 
   const q = query.trim().toLowerCase();
   const dimmed = (r: Row) => !!q && !(r.sym.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
@@ -154,14 +159,24 @@ export default function MapPage() {
   const metricGroups = Array.from(new Set(METRICS.map((x) => x.group)));
 
   return (
-    <>
-      <PageHead method="map" eyebrow="Heat lab" title="Every name," em="read three ways." />
+    <div className="sp">
+      <PageHead method="map" eyebrow="Heat lab" title="Heat map," em="sized, grouped and coloured as you choose." />
       <section className="wrap wide">
         <Async loading={s.loading} error={s.error} rows={3}>
           {(
             <>
               <div style={{ marginBottom: 10 }}><DataStamp ids={['screen']} /></div>
-              <div className="panel tight" style={{ marginBottom: 12, display: 'grid', gap: 10 }}>
+              <section className="card tight hm-basis" aria-label="What the map shows">
+                <p><b>Showing the {num(universe.length)} largest companies by {sz.label.toLowerCase()}</b>{count < filteredOut.eligible ? <>, out of {num(filteredOut.eligible)} that qualify</> : ''}, from the {num(all.length)} in the screen. Change it under Filters (60 to 600).</p>
+                <ul className="hm-excl" aria-label="Left out of the map">
+                  {sz.id !== 'equal' && <li><b className="num">{num(unsized)}</b> left out: no {sz.id === 'mcap' ? 'market cap' : 'traded value'} published, so they cannot be sized by it (never sized as zero)</li>}
+                  {filteredOut.byFilter > 0 && <li><b className="num">{num(filteredOut.byFilter)}</b> left out by your filters ({[onlyVetted ? 'vetted only' : '', tiers.size ? `${[...tiers].join(', ')} cap` : ''].filter(Boolean).join(', ')})</li>}
+                  {count < filteredOut.eligible && <li><b className="num">{num(filteredOut.eligible - universe.length)}</b> smaller ones beyond the top {count}</li>}
+                  {noValue > 0 && <li><b className="num">{num(noValue)}</b> on the map have no {m.label.split(' (')[0].toLowerCase()} value and are drawn grey</li>}
+                </ul>
+                {sizedCount === 0 && <p className="sp-note">No company has this size measure in the current screen.</p>}
+              </section>
+              <div className="card tight" style={{ marginBottom: 12, display: 'grid', gap: 10 }}>
                 <div className="filters" style={{ margin: 0, alignItems: 'center' }}>
                   <label className="eyebrow" htmlFor="heat-colour">Colour</label>
                   <select id="heat-colour" className="field" style={{ height: 36, minWidth: 0, width: 'min(100%, 260px)' }} value={metric} onChange={(e) => setMetric(e.target.value)}>
@@ -185,16 +200,16 @@ export default function MapPage() {
                       <button className="chip" aria-pressed={vsGroup} onClick={() => setVsGroup((v) => !v)} title="Colour each stock by how far it is from its own group's median">Outliers: vs own {grp.id === 'none' ? 'market' : grp.label.toLowerCase()}</button>
                     </div>
                   </details>
-                  <span className="legend">−{m.max}{m.unit} <i /> +{m.max}{m.unit}</span>
+                  <span className="legend">{m.id === 'pe' ? 'P/E above 25× ' : `−${m.max}${m.unit} `}<i />{m.id === 'pe' ? ' below 25×' : ` +${m.max}${m.unit}`}</span>
                 </div>
                 <p className="lv-metric" aria-live="polite"><b>{mLabel}</b>{isToday && day ? <> · whole market {day.source === 'live' ? 'live' : 'at the close'}: <span className="up">▲ {num(day.up)} up</span>, <span className="down">▼ {num(day.down)} down</span>, {num(day.flat)} unchanged, of {num(day.counted)} priced{day.stale ? `; ${num(day.stale)} with no trade this session left out` : ''}</> : null}</p>
               </div>
 
-              <div className="grid g4" style={{ marginBottom: 12 }}>
-                <div className="panel tight"><div className="eyebrow">On screen</div><div className="disp" style={{ fontSize: 34 }}>{num(summary.n)}</div></div>
-                <div className="panel tight"><div className="eyebrow">Up vs down</div><div className="disp" style={{ fontSize: 34 }}><span className="up">{summary.up}</span> <span className="dim">/</span> <span className="down">{summary.down}</span></div>{summary.flat > 0 && <div className="dim num" style={{ fontSize: 13 }}>{summary.flat} unchanged</div>}</div>
-                <div className="panel tight"><div className="eyebrow">Median</div><div className="disp" style={{ fontSize: 34 }}>{fmtV(summary.med)}</div></div>
-                <div className="panel tight"><div className="eyebrow">Leaders</div><div className="num" style={{ fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>{summary.top.map((x) => x.r.sym).join(' · ') || '—'}</div></div>
+              <div className="metrics hm-metrics" role="list" aria-label="What is on the map now">
+                <div role="listitem"><div className="m-l">On the map</div><div className="m-v">{num(summary.n)}</div><div className="m-n">with a value</div></div>
+                <div role="listitem"><div className="m-l">Above zero · below</div><div className="m-v"><span className="up">▲ {summary.up}</span> <span className="down">▼ {summary.down}</span></div><div className="m-n">{summary.flat > 0 ? `${summary.flat} unchanged` : m.id === 'pe' ? 'below 25× · above 25×' : 'up · down'}</div></div>
+                <div role="listitem"><div className="m-l">Median</div><div className="m-v">{fmtV(summary.med)}</div><div className="m-n">{vsGroup ? 'vs own group' : 'of the colour measure'}</div></div>
+                <div role="listitem"><div className="m-l">Highest</div><div className="m-v hm-names">{summary.top.slice(0, 3).map((x) => x.r.sym).join(' · ') || '—'}</div><div className="m-n">on this view</div></div>
               </div>
 
               {zoom && <div className="filters"><button className="chip on" onClick={() => setZoom(null)}>← All {grp.label.toLowerCase()}s</button><span className="muted">Zoomed into <b>{zoom}</b>, {shown.length} stocks. Select a tile for detail.</span></div>}
@@ -239,7 +254,7 @@ export default function MapPage() {
                 )}
               </div>
 
-              <details className="panel tight" style={{ marginTop: 14 }}>
+              <details className="card tight" style={{ marginTop: 14 }}>
                 <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Text version of this map: {summary.n} stocks coloured by {mLabel}</summary>
                 <p className="dim" style={{ fontSize: 14, margin: '10px 0' }}>Colour is a second signal, not the only one: the same values are listed here, strongest first, for screen readers and for anyone who cannot tell red from green. {summary.up} of {summary.n} are above zero, {summary.down} below{summary.flat ? `, ${summary.flat} unchanged` : ''}; the median is {fmtV(summary.med)}.</p>
                 <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)" style={{ maxHeight: 360 }}>
@@ -251,8 +266,8 @@ export default function MapPage() {
                 <p className="dim" style={{ fontSize: 13, margin: '8px 0 0' }}>Every stock on the map with a value, strongest first. Each name opens its company page.</p>
               </details>
 
-              <div className="grid g-7-5" style={{ marginTop: 14 }}>
-                <div className="panel">
+              <div className="grid g-7-5" style={{ marginTop: 14, alignItems: 'start' }}>
+                <div className="card">
                   {sel ? (
                     <>
                       <div className="eyebrow">Selected · {sel.sector}</div>
@@ -268,9 +283,9 @@ export default function MapPage() {
                       </div>
                       <Link className="btn" href={companyHref(sel.sym)} style={{ marginTop: 14 }}>Open {sel.sym} <span aria-hidden>→</span></Link>
                     </>
-                  ) : <p className="muted" style={{ margin: 0 }}>Select a tile for the numbers behind it. {zoom ? '' : 'Select a sector title to zoom into it.'}</p>}
+                  ) : <div className="state"><b>No company selected.</b><p>Select a tile for the numbers behind it.{zoom ? '' : ' Select a sector title to zoom into it.'} The text version above lists every company as a link.</p></div>}
                 </div>
-                <div className="panel">
+                <div className="card">
                   <div className="eyebrow">Leaders and laggards on this view</div>
                   <div className="grid g2" style={{ marginTop: 8 }}>
                     <div className="list">{summary.top.map((x) => <button className="li" key={x.r.sym} style={{ textAlign: 'left' }} onClick={() => setSel(x.r)}><div className="t">{x.r.sym}</div><span className="num up">{fmtV(x.v)}</span></button>)}</div>
@@ -278,11 +293,11 @@ export default function MapPage() {
                   </div>
                 </div>
               </div>
-              <p className="dim" style={{ fontSize: 13.5, marginTop: 12 }}>{num((s.data?.rows.length ?? 0) - (s.data?.rows.filter((r) => n(r.mcap_cr) !== null).length ?? 0))} companies with no published market cap cannot be sized by it. Tiles too small for readable text are left unlabeled; zoom into their sector. Colour describes what happened.</p>
+              <p className="sp-note hm-foot">Tiles too small for readable text are left unlabelled; zoom into their sector. Colour describes what happened, never what will. {m.id === 'pe' ? 'P/E relative to 25× compares every company with one fixed threshold: a bank and a software company are held to the same 25×, so green is not a conclusion that a stock is cheap for its sector.' : ''}</p>
             </>
           )}
         </Async>
       </section>
-    </>
+    </div>
   );
 }

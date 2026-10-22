@@ -1,5 +1,6 @@
 'use client';
 
+import { stageWords } from '@/lib/barometer';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Async, Chg, PageHead, Rv, SectionHead, Skel, Spark } from '@/components/ui';
@@ -10,13 +11,13 @@ import { useBarometer } from '@/lib/useBarometer';
 import { useFeed, useQuotes, useSummary } from '@/lib/data';
 import { dateLabel, num, pct, quoteState } from '@/lib/format';
 import { plural } from '@/lib/status';
+import { compositeRanks, currentMonthExcluded, rankSwing, readDelta, seasonRec } from '@/lib/support';
 import type { Row } from '@/lib/types';
 import { companyHref } from '@/lib/slug';
 import { useToday } from '@/lib/useToday';
 import { movers, sessionDate, sessionDay } from '@/lib/today';
 
 const TOC: [string, string][] = [['read', 'The read'], ['valuation', 'Valuation'], ['week', 'The week'], ['screen', 'Rank changes'], ['seasonal', 'Seasonal record']];
-const has = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
 export default function Brief() {
   const bar = useFeed('barometer');
@@ -51,17 +52,30 @@ export default function Brief() {
   const { view: tv, day: today, live } = useToday(screen.data?.breadth.as_of ?? null);
   const rows = useMemo(() => screen.data?.rows ?? [], [screen.data]);
 
-  const moved = useMemo(() => rows.filter((r) => has((r as Row & { rank_move?: number }).rank_move)).sort((a, b) => Math.abs((b as Row & { rank_move: number }).rank_move) - Math.abs((a as Row & { rank_move: number }).rank_move)).slice(0, 6), [rows]);
+  // E07: rank swings with today's rank, the implied previous rank, the universe, the two builds compared and the factors that moved
+  const ranks = useMemo(() => compositeRanks(rows as unknown as Parameters<typeof compositeRanks>[0]), [rows]);
+  const moved = useMemo(() => rows
+    .map((r) => ({ r, sw: rankSwing(r as unknown as Parameters<typeof rankSwing>[0], ranks.rank), d: readDelta((r as Row & { delta?: Record<string, number> }).delta) }))
+    .filter((x): x is { r: Row; sw: NonNullable<typeof x.sw>; d: typeof x.d } => x.sw !== null)
+    .sort((a, b) => Math.abs(b.sw.move) - Math.abs(a.sw.move)), [rows, ranks]);
+  const [causeView, setCauseView] = useState<'all' | 'statements'>('all');
+  const changes = (screen.data as (typeof screen.data & { changes?: { compared_with?: string; new?: number; moved?: number }; price_date?: string }) | null)?.changes ?? null;
+  const priceDate = (screen.data as (typeof screen.data & { price_date?: string }) | null)?.price_date ?? screen.data?.breadth.as_of ?? null;
+  const byCause = { market: moved.filter((x) => x.d.cause === 'market').length, statements: moved.filter((x) => x.d.cause === 'statements' || x.d.cause === 'mixed').length };
+  const movedShown = (causeView === 'statements' ? moved.filter((x) => x.d.cause !== 'market') : moved).slice(0, 8);
 
   const month = new Date().getMonth();
+  const monthName = new Date().toLocaleString('en-IN', { month: 'long' });
   const seasonal = useMemo(() => {
     const st = season.data?.stocks ?? {};
     const idx = new Map(rows.map((r) => [r.sym, r]));
     return Object.entries(st)
-      .map(([sym, d]) => ({ sym, rec: d.m[month], r: idx.get(sym) }))
-      .filter((x) => x.rec && x.rec[0] >= 75 && x.rec[2] >= 8 && x.r?.vet?.s === 'cleared')
-      .sort((a, b) => b.rec[0] - a.rec[0] || b.rec[1] - a.rec[1]).slice(0, 8);
+      .map(([sym, d]) => ({ sym, rec: seasonRec(d.m[month]), r: idx.get(sym) }))
+      .filter((x): x is { sym: string; rec: NonNullable<ReturnType<typeof seasonRec>>; r: Row | undefined } => !!x.rec && x.rec.hit >= 75 && x.rec.n >= 8 && x.r?.vet?.s === 'cleared')
+      .sort((a, b) => b.rec.hit - a.rec.hit || b.rec.median - a.rec.median).slice(0, 8);
   }, [season.data, rows, month]);
+  const seasonGen = (season.data as (typeof season.data & { generated_at?: string; universe?: number; covered?: number; min_observations?: number }) | null);
+  const excl = currentMonthExcluded(seasonGen?.generated_at, new Date());
 
   // The 200-day share and the close's sector medians come from the screen's own rows (/api/summary).
   const secs = sum.data?.sectors ?? [];
@@ -106,7 +120,7 @@ export default function Brief() {
   };
 
   return (
-    <>
+    <div className="sp">
       <PageHead eyebrow={today?.source === 'live' ? `Live prices ${tv.at} IST · screen of ${dateLabel(screen.data?.breadth.as_of)}` : screen.data ? `Market data as of ${dateLabel(screen.data.breadth.as_of)}` : 'Market data'} title="The brief," em="what the week changed." method="brief" />
       <section className="wrap" style={{ paddingTop: 0 }}><DataStamp ids={['screen', 'barometer']} /></section>
       <section className="wrap readgrid">
@@ -123,38 +137,76 @@ export default function Brief() {
 
         <Async loading={bar.loading || sum.loading} error={null} rows={2}>
           <div id="valuation" data-sec />
-          <Rv className="panel tight">
-            <div className="eyebrow">Valuation stage · from the Barometer</div>
-            <div className="disp" style={{ fontSize: 34, margin: '6px 0 2px' }}>{t?.stage.t ?? '—'}</div>
-            <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
+          <Rv className="card tight">
+            <div className="eyebrow">Price stage · from the Barometer, not a valuation measure</div>
+            <div className="disp" style={{ fontSize: 34, margin: '6px 0 2px' }}>{t?.stage ? (stageWords('k' in t.stage ? t.stage.k : null) ?? t.stage.t) : '—'}</div>
+            <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · Nifty {num(t?.drawdown_pct, 1)}% below its 52-week high · VIX {num(t?.vix, 1)}.</p>
           </Rv>
 
           <div id="week" data-sec />
           <SectionHead eyebrow={`Past week · to the ${dateLabel(screen.data?.breadth.as_of)} close`} title="What moved this week" />
           <div className="grid g2">
-            <Rv className="panel tight"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
-            <Rv className="panel tight"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+            <Rv className="card tight"><div className="eyebrow">Biggest weekly gains</div><div className="list">{(pulse.data?.movers_up ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
+            <Rv className="card tight"><div className="eyebrow">Biggest weekly falls</div><div className="list">{(pulse.data?.movers_dn ?? []).slice(0, 6).map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="li"><div><div className="t">{m.sym}</div><div className="s">{m.name}</div></div><Chg v={m.r1w} dp={0} /></Link>)}</div></Rv>
           </div>
 
           <div id="screen" data-sec />
-          <SectionHead eyebrow="Screen" title="Rank changes since the last build" />
+          <SectionHead eyebrow="Screen" title="Rank changes between two builds" />
           <Async loading={screen.loading} error={screen.error} rows={1}>
-            <Rv className="panel tight">
-              {moved.length === 0 ? <p className="muted" style={{ margin: 0 }}>No ranking moves recorded in the latest build.</p> : (
-                <div className="list">{moved.map((r) => { const mv = (r as Row & { rank_move: number }).rank_move; return <Link key={r.sym} href={companyHref(r.sym)} className="li"><div><div className="t">{r.sym} · {r.name}</div><div className="s">Composite {num(r.comp, 0)} · {r.sector}</div></div><span className={`num ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? `▲ up ${mv}` : `▼ down ${Math.abs(mv)}`} places</span></Link>; })}</div>
+            <section className="card br-rank">
+              <p className="sp-note br-basis">Composite rank among <b className="num">{num(ranks.of)}</b> ranked companies (of {num(rows.length)} in the screen). Build of <b>{dateLabel(screen.data?.built_on ?? null)}</b>, prices to {dateLabel(priceDate)}, compared with the build of <b>{changes?.compared_with ? dateLabel(changes.compared_with) : 'a date the feed does not state'}</b>{typeof changes?.moved === 'number' ? `; ${num(changes.moved)} changed rank` : ''}{changes?.new ? `, ${num(changes.new)} new to the screen and not ranked before` : ''}.</p>
+              {moved.length === 0 ? <div className="state"><b>No rank changes are recorded in the latest build.</b><p>Either the build matched the previous one or the comparison was not published.</p></div> : (
+                <>
+                  <div className="sp-seg br-seg" role="group" aria-label="Which rank changes">
+                    <button type="button" aria-pressed={causeView === 'all'} onClick={() => setCauseView('all')}>Largest swings</button>
+                    <button type="button" aria-pressed={causeView === 'statements'} onClick={() => setCauseView('statements')}>Statement-driven <span className="num">{byCause.statements}</span></button>
+                  </div>
+                  {movedShown.length === 0 ? <div className="state"><b>No rank change came from the statement-based scores.</b><p>Every recorded swing here moved with prices ({num(byCause.market)} of {num(moved.length)}): the technical score, RSI, P/E or the valuation score. None looks like a data correction or new results.</p></div> : (
+                    <ul className="rows">
+                      {movedShown.map(({ r, sw, d }) => (
+                        <li key={r.sym}>
+                          <Link href={companyHref(r.sym)} className="row br-row">
+                            <span className="br-id"><span className="row-t">{r.sym} <span className="dim br-nm">{r.name}</span></span>
+                              <span className="row-s br-why">{d.factors.slice(0, 3).map((f) => `${f.label} ${f.v > 0 ? '+' : '−'}${num(Math.abs(f.v), 1)}`).join(' · ') || 'Changed factors not in the feed'}</span>
+                              <span className={`br-cause ${d.cause}`}>{d.cause === 'market' ? 'Market move: only price-based factors changed' : d.cause === 'statements' ? 'Statement change: quality or growth moved, from new results or a data revision (the feed does not say which)' : d.cause === 'mixed' ? 'Mixed: prices moved, and so did a statement-based score (new results or a data revision)' : 'Cause not detectable from the feed'}</span></span>
+                            <span className="row-r"><b className={sw.move > 0 ? 'up' : 'down'}>{sw.move > 0 ? '▲' : '▼'} {Math.abs(sw.move)}</b><small className="num">#{sw.before} → #{sw.now} of {num(ranks.of)}</small></span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="card-foot">Today&apos;s rank is computed here from the published composite; the previous rank is that rank plus the recorded move. {num(byCause.market)} of {num(moved.length)} swings moved with prices alone. Only the previous-build comparison exists; a longer rank history is not stored.</p>
+                </>
               )}
-            </Rv>
+            </section>
           </Async>
 
           <div id="seasonal" data-sec />
-          <SectionHead eyebrow={new Date().toLocaleString('en-IN', { month: 'long' })} title="The seasonal record" />
-          <Rv className="panel tight">
-            <div className="list">{seasonal.map(({ sym, rec, r }) => <Link key={sym} href={companyHref(sym)} className="li"><div><div className="t">{sym} · {r?.name}</div><div className="s">Up in {rec[0]}% of the last {rec[2]} {new Date().toLocaleString('en-IN', { month: 'long' })}s</div></div><span className="num up">median {pct(rec[1], 1)}</span></Link>)}</div>
-            {seasonal.length === 0 && <p className="muted" style={{ margin: 0 }}>No vetted name clears the 75% bar this month.</p>}
-          </Rv>
+          <SectionHead eyebrow={monthName} title="The seasonal record" />
+          <section className="card br-season">
+            <p className="sp-note br-basis"><b>Descriptive only: this records what happened in past {monthName}s, not what will happen in this one.</b> Vetted companies up in at least 75% of at least 8 completed {monthName}s{seasonGen?.years ? `, in a window of up to ${seasonGen.years} years` : ''}. {excl === 'before-month' ? `${monthName} ${new Date().getFullYear()} is not in the sample: the record was built on ${dateLabel(seasonGen?.generated_at?.slice(0, 10) ?? null)}, before the month began.` : excl === 'by-rule' ? `The record was built during ${monthName}; the pipeline counts completed months only, so the month now running is left out by its rule.` : 'The build date is not in the feed, so it cannot be shown that the month now running is left out.'}</p>
+            {season.error ? <div className="state"><b>The seasonal record did not load.</b><p>Nothing is shown in its place.</p></div> : seasonal.length === 0 ? <div className="state"><b>No vetted company clears the 75% bar for {monthName}.</b><p>That is the rule working, not missing data.</p></div> : (
+              <div className="sp-tblwrap" tabIndex={0} role="region" aria-label={`Seasonal record for ${monthName}`}>
+                <table className="sp-tbl br-tbl">
+                  <thead><tr><th scope="col">Company</th><th scope="col" className="r">Years up</th><th scope="col" className="r">Years down</th><th scope="col" className="r">Sample</th><th scope="col" className="r">Median {monthName}</th><th scope="col">Worst year</th></tr></thead>
+                  <tbody>{seasonal.map(({ sym, rec, r }) => (
+                    <tr key={sym}>
+                      <td className="co"><Link href={companyHref(sym)}><b>{sym}</b></Link><span>{r?.name}</span></td>
+                      <td className="r num">{rec.up} <small>{rec.hit}%</small></td>
+                      <td className="r num"><span className={rec.down > 0 ? 'down' : undefined}>{rec.down}</span></td>
+                      <td className="r num">{plural(rec.n, 'year')}</td>
+                      <td className="r"><Chg v={rec.median} dp={1} /></td>
+                      <td className="dim">not in the feed</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
+            <p className="card-foot">{(season.data?.caveats ?? []).join(' ')} The feed publishes each month&apos;s hit rate, median and sample size, but not the individual years, so the size of the worst {monthName} cannot be shown; {seasonal.length > 0 ? 'the down-year count is how often it lost.' : ''}</p>
+          </section>
         </Async>
         </div>
       </section>
-    </>
+    </div>
   );
 }

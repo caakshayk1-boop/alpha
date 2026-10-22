@@ -202,7 +202,7 @@ export function decide(s: Sig, m: Mark, session: string | null): Decision | null
     return { ...base, kind: 'void', headline: 'Entry skipped', detail: `The ${sessionLabel(s.entry_date ?? s.date)} open ${s.void_reason ?? 'broke the entry rule'}, so the plan never entered.` };
   }
   if (s.status === 'pending' || m.state === 'awaiting-entry') {
-    return { ...base, kind: 'enter', headline: `${s.setup}: buy at the next open`, detail: `Skip it if the open is above ${money(s.ref_price * (1 + GAP_MAX))} (2% over the signal close) or at/below the stop ${money(s.sl)}. Stop ${money(s.sl)} (−${s.risk_pct.toFixed(1)}%); T1 +2R sells half, T2 +4R the rest.` };
+    return { ...base, kind: 'enter', headline: `${s.setup}: rule entry at the next open (paper)`, detail: `The rule skips it if the open is above ${money(s.ref_price * (1 + GAP_MAX))} (2% over the signal close) or at/below the rule stop ${money(s.sl)}. Rule stop ${money(s.sl)} (−${s.risk_pct.toFixed(1)}%); rule T1 +2R closes half, rule T2 +4R the rest.` };
   }
   const what = m.half ? 'the remaining half' : 'all of it';
   switch (m.state) {

@@ -28,8 +28,8 @@ function CasePoint({ p, side, source }: { p: Point; side: 'for' | 'against'; sou
       <span className={side === 'for' ? 'up' : 'down'} aria-hidden>{side === 'for' ? '▲' : '▼'}</span>
       <span>
         {p.text}{' '}
-        <button type="button" className="cite" aria-expanded={open === 's'} onClick={() => setOpen((o) => (o === 's' ? null : 's'))} aria-label="Source and date">S</button>
-        {g && <button type="button" className="cite" aria-expanded={open === 'q'} onClick={() => setOpen((o) => (o === 'q' ? null : 'q'))} aria-label={`What ${g.name} means`}>?</button>}
+        <button type="button" className="cite" aria-expanded={open === 's'} onClick={() => setOpen((o) => (o === 's' ? null : 's'))} aria-label="Source and date">Source</button>
+        {g && <button type="button" className="cite" aria-expanded={open === 'q'} onClick={() => setOpen((o) => (o === 'q' ? null : 'q'))} aria-label={`Explain ${g.name}`}>Explain</button>}
         {open === 's' && <span className="cite-pop" role="note">{source}</span>}
         {open === 'q' && g && <span className="cite-pop" role="note"><b>{g.name}.</b> {g.what} {g.how} <a href={`/about/#${metricId(metric!)}`}>Method</a></span>}
       </span>
@@ -127,7 +127,7 @@ export function WhatChanged({ r, sigs }: { r: Row; sigs: Sig[] }) {
       <h2 id="changed-h" className="disp" style={{ fontSize: 26, margin: '0 0 6px' }}>What changed in 30 days</h2>
       {!out ? <p className="dim">Loading the last 30 days…</p> : (
         <Rv className="panel">
-          <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>{dateLabel(out.window[0])} to {dateLabel(out.window[1])}. Facts only, each with its source; nothing here says why it happened.</p>
+          <p className="dim" style={{ fontSize: 13.5, margin: '0 0 10px' }}>{dateLabel(out.window[0])} to {dateLabel(out.window[1])}. A price move is measured from the last close before the window opened. Facts only, each with its source; nothing here says why it happened.</p>
           {out.items.length === 0 ? <p className="muted">Nothing on file changed for {r.sym} in this window.</p> : (
             <ol className="changes">{out.items.map((x, i) => <li key={`${x.date}-${i}`}><span className="num dim">{dateLabel(x.date)}</span><span>{x.href ? <a href={x.href} target="_blank" rel="noopener noreferrer">{x.text} ↗</a> : x.text}<span className="dim"> · {x.source}</span></span></li>)}</ol>
           )}

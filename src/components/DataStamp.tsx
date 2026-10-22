@@ -138,3 +138,22 @@ export function FreshnessBanner() {
     </div>
   );
 }
+
+/** The one global freshness indicator (brief §7.5): a pill in the header. Silent green when every core dataset is on schedule;
+ *  otherwise it names how many are behind, and the full sentence is its label and tooltip. Each page warns locally only where a
+ *  figure it shows is affected; the detail lives in Method → Data dates. */
+export function FreshnessPill() {
+  const { items, loading } = useDatasetStatus();
+  if (loading) return <span className="fresh-pill" aria-hidden><i style={{ background: 'var(--line-2)' }} />Data</span>;
+  const behind = items.filter((i) => i.state !== 'current');
+  const serious = behind.some((i) => i.state === 'stale' || i.state === 'error' || i.state === 'unavailable' || i.state === 'missing');
+  const sentence = behind.length
+    ? behind.map((i) => (i.state === 'error' ? `${i.label} could not be loaded` : `${i.label} ${describe(i)}${i.asOf ? ` (describes ${dateLabel(i.asOf)})` : ''}`)).join('; ')
+    : `Every core dataset is on schedule: ${items.map((i) => `${i.label} ${i.asOf ? dateLabel(i.asOf) : ''}`.trim()).join(', ')}`;
+  const word = !behind.length ? 'Data current' : `${behind.length} ${behind.length === 1 ? 'dataset' : 'datasets'} behind`;
+  return (
+    <Link href="/about/#data-dates" className={`fresh-pill${behind.length ? (serious ? ' bad' : ' warn') : ''}`} title={`${sentence}.`} aria-label={`${word}. ${sentence}. Open the data dates.`}>
+      <i aria-hidden />{word}
+    </Link>
+  );
+}

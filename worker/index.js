@@ -7,9 +7,10 @@
 
 import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsForMarket, factsForSignal, parseClaims, validateClaims, validateQuestion } from './explain.js';
 import { Rum, validateBeacon } from './rum.js';
+import { Waitlist, waitlist } from './waitlist.js';
 import { PROMPTS, cleanThesis, factsForCompare, factsForFiling, factsForMove, factsForWatchlist, noIdentifiedCause, parseSuggestions, validateEntities, validateFiling, validateThesis } from './askalpha.js';
 
-export { Rum };
+export { Rum, Waitlist };
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIGNAL_RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
@@ -803,6 +804,9 @@ export default {
     }
     if (url.pathname === '/api/rum' || url.pathname === '/api/rum/') {
       return rum(request, env, url, ctx);
+    }
+    if (url.pathname === '/api/waitlist' || url.pathname.startsWith('/api/waitlist/')) {
+      return withHeaders(await waitlist(request, env, url, { json, limitKey }));
     }
     if (url.pathname === '/api/quotes' || url.pathname === '/api/quotes/') {
       return quotes(ctx);

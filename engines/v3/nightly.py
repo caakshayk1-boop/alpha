@@ -55,7 +55,14 @@ def fetch() -> dict:
         s = b["Close"].dropna()
         s.index = pd.to_datetime(s.index).tz_localize(None)
         return s
-    return {"adj": adj, "exchange": ex, "universe": uni, "nifty": one("^NSEI"), "vix": one("^INDIAVIX"), "fetched": pd.Timestamp.utcnow().isoformat()}
+    # a finished session Yahoo's daily download still lacks is rebuilt from hourly bars (engines/sessions.py): the 21 Oct 2026
+    # nightly stopped at "530 of 889 symbols have a bar" for exactly this reason
+    import sessions as SESS
+    session = SESS.last_finished_session()
+    data.complete_from_hourly(adj, ex, session)
+    nifty, _ = data.series_from_hourly("^NSEI", one("^NSEI"), session)
+    vix, _ = data.series_from_hourly("^INDIAVIX", one("^INDIAVIX"), session)
+    return {"adj": adj, "exchange": ex, "universe": uni, "nifty": nifty, "vix": vix, "fetched": pd.Timestamp.utcnow().isoformat()}
 
 
 def forming(engine: str, sym: str, df: pd.DataFrame, ctx: dict) -> dict | None:

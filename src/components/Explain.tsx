@@ -86,13 +86,15 @@ export function AskAI({ title, compact = false, ...who }: Subject & { title: str
   const fid = `ask-${key.replace(/[^A-Za-z0-9]/g, '')}`;
   return (
     <section className={`ask${compact ? ' ask-compact' : ' panel spot'}`} aria-label={title}>
-      <div className="eyebrow"><span className="ai-dot" aria-hidden /> {title} · AI, from Alpha&apos;s own figures</div>
+      <div className="eyebrow">{title} · Alpha explanation, from Alpha&apos;s own figures</div>
       <div className="filters" style={{ marginTop: 8 }}>{PRESETS_FOR[who.subject].map((p) => <button key={p} className="chip" disabled={busy} onClick={() => { setQ(p); void ask(p); }}>{p}</button>)}</div>
       <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <label className="sr" htmlFor={fid}>Your question</label>
         <input id={fid} className="field" style={{ flex: '1 1 240px', height: 40 }} value={q} maxLength={300} onChange={(e) => setQ(e.target.value)} placeholder="Ask in your own words" />
         <button className="btn" type="submit" disabled={busy || q.trim().length < 3}>{busy ? 'Reading the figures…' : 'Ask'}</button>
       </form>
+      {/* what leaves the browser, said where the question is typed (T10) */}
+      <p className="dim ask-disclose">{on ? 'Definitions and some questions are answered by Alpha’s rules in this browser. Others send your question and the company’s figures to Anthropic to word the answer; nothing else from this browser is sent. Each answer says which.' : 'Answered by Alpha’s rules only; the AI explainer is off, so nothing is sent to a model.'}</p>
       <div role="status" aria-live="polite">
         {busy && <div className="ask-think" aria-hidden><i /><i /><i /></div>}
         {res && !res.ok && <p className="notice" style={{ marginTop: 10 }}>{res.error ?? 'No answer.'}</p>}
@@ -100,6 +102,7 @@ export function AskAI({ title, compact = false, ...who }: Subject & { title: str
         {res && !res.ok && res.unknowns && res.unknowns.length > 0 && <ul className="muted" style={{ margin: '6px 0 0' }}>{res.unknowns.map((u) => <li key={u}>{u}</li>)}</ul>}
         {res?.ok && res.glossary && GLOSSARY[res.glossary] && (
           <div className="ask-answer">
+            <span className="mode-tag">Glossary</span>
             <p style={{ margin: 0, lineHeight: 1.6 }}><b>{GLOSSARY[res.glossary].name}.</b> {GLOSSARY[res.glossary].what} {GLOSSARY[res.glossary].how}</p>
             <p className="muted" style={{ margin: '6px 0 0' }}>{GLOSSARY[res.glossary].read} {GLOSSARY[res.glossary].caveat}</p>
             <p className="dim" style={{ fontSize: 12.5, margin: '8px 0 0' }}>Alpha&apos;s glossary, a fixed definition; no AI was used. <a href={`/about/#${metricId(res.glossary)}`} style={{ textDecoration: 'underline' }}>Method</a></p>
@@ -107,6 +110,7 @@ export function AskAI({ title, compact = false, ...who }: Subject & { title: str
         )}
         {res?.ok && res.claims && (
           <div className="ask-answer">
+            <span className={`mode-tag${res.deterministic ? '' : ' ai'}`}>{res.deterministic ? 'Rules' : 'AI-assisted'}</span>
             <ul className="ask-claims">
               {res.claims.map((c, i) => (
                 <li key={i} className={c.status}>

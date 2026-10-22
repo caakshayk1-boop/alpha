@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CompanyView } from '@/components/CompanyView';
+import dynamic from 'next/dynamic';
+// loaded only when the address is a company with no pre-built page, so an ordinary 404 ships none of the company page
+const CompanyView = dynamic(() => import('@/components/CompanyView').then((m) => m.CompanyView));
 import { slugToSym } from '@/lib/slug';
 
 /** 404. One case is not really missing: /company/<SYM>/ for a company with no pre-built page (an engine pick outside the

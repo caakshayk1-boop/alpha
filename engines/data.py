@@ -109,6 +109,51 @@ def refetch_late(adj: dict, raw: dict, period: str, waits=(60, 180), log=print) 
     return late
 
 
+def complete_from_hourly(adj: dict, raw: dict, session, chunk: int = 40, log=print) -> int:
+    """Rebuild a FINISHED session's missing daily bar from its hourly bars (sessions.py) for every stock that lacks it, after
+    the daily refetch has given up. Returns how many were rebuilt; the run reports the count, so a rebuilt day is never silent."""
+    import sessions as S
+    ts = pd.Timestamp(session)
+    late = sorted(s for s, df in raw.items() if len(df) and df.index[-1] < ts)
+    n = 0
+    for i in range(0, len(late), chunk):
+        part = late[i:i + chunk]
+        tickers = [f"{s}.NS" for s in part]
+        try:
+            h = yf.download(tickers, period="5d", interval="60m", auto_adjust=False, group_by="ticker", threads=True, progress=False)
+        except Exception as e:  # noqa: BLE001
+            log(f"  hourly chunk {i}: {type(e).__name__}")
+            continue
+        for s, t in zip(part, tickers):
+            try:
+                bar = S.day_from_hourly(h[t] if len(tickers) > 1 else h, session)
+            except KeyError:
+                continue
+            if bar:
+                raw[s] = S.append_day(raw[s], session, bar)
+                adj[s] = S.append_day(adj[s], session, bar)
+                n += 1
+    log(f"  rebuilt {n} of {len(late)} missing {session} bars from hourly data")
+    return n
+
+
+def series_from_hourly(ticker: str, s: pd.Series, session) -> tuple[pd.Series, bool]:
+    """An index close series (^NSEI, ^INDIAVIX) completed with a finished session's close from hourly bars, when it lacks it."""
+    import sessions as S
+    ts = pd.Timestamp(session)
+    if len(s) and s.index[-1] >= ts:
+        return s, False
+    try:
+        h = yf.download(ticker, period="5d", interval="60m", auto_adjust=False, progress=False)
+        h.columns = [c[0] if isinstance(c, tuple) else c for c in h.columns]
+        bar = S.day_from_hourly(h, session)
+    except Exception:  # noqa: BLE001
+        return s, False
+    if not bar:
+        return s, False
+    return pd.concat([s, pd.Series([bar["Close"]], index=[ts])]), True
+
+
 if __name__ == "__main__":
     dest = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "bars.pkl")
     uni = universe()
