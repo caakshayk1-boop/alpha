@@ -244,7 +244,7 @@ export default function RotationPage() {
                       </div>
                       <div className="eyebrow" style={{ marginBottom: 6 }}>Strongest members (3-month strength{past ? `, as of the ${screenOn} close` : ''})</div>
                       <div className="list">{[...cur.mem].filter((x) => typeof x.rs3m === 'number').sort((a, b) => (b.rs3m as number) - (a.rs3m as number)).slice(0, 6).map((x) => (
-                        <Link key={x.sym} href={companyHref(x.sym)} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>RS {Math.round(x.rs3m as number)} · <Chg v={x.r3m} dp={0} /></span></Link>
+                        <Link key={x.sym} href={companyHref(x.sym)} className="li"><div><div className="t">{x.sym}</div><div className="s">{x.name}</div></div><span className="num" style={{ fontSize: 14 }}>{(x.rs3m as number) >= 0 ? '+' : '−'}{Math.round(Math.abs(x.rs3m as number))} pts vs Nifty · <Chg v={x.r3m} dp={0} /></span></Link>
                       ))}</div>
                     </>
                   ) : <p className="muted" style={{ marginTop: 10 }}>Select a dot, phase or row for its detail.</p>}

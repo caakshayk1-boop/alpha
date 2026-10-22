@@ -35,7 +35,7 @@ export const FIELDS: Record<string, { label: string; unit: string; get: Get; ali
   return_3m: { label: '3-month return', unit: '%', get: (r) => r.r3m, aliases: ['r3m'] },
   return_1y: { label: '1-year return', unit: '%', get: (r) => r.r1y, aliases: ['r1y'] },
   from_high: { label: 'Distance from 52-week high', unit: '%', get: (r) => r.from_high },
-  relative_strength: { label: '3-month relative strength', unit: '', get: (r) => r.rs3m, aliases: ['rs3m'] },
+  relative_strength: { label: '3-month return vs the Nifty (points)', unit: '', get: (r) => r.rs3m, aliases: ['rs3m'] },
   quality: { label: 'Quality score', unit: '', get: (r) => r.q, aliases: ['q'] },
   growth: { label: 'Growth score', unit: '', get: (r) => r.g, aliases: ['g'] },
   value: { label: 'Value score', unit: '', get: (r) => r.v, aliases: ['v'] },

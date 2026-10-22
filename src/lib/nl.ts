@@ -44,7 +44,7 @@ const PHRASES: [RegExp, string, (r: Row) => boolean][] = [
   [/\boverbought\b/, 'Overbought (RSI over 70)', (r) => has(r.rsi) && r.rsi > 70],
   [/\b(cheap|undervalued|value)\b/, 'Cheap against its own history (P/E percentile ≤ 35)', (r) => has(r.pe_pctile) && r.pe_pctile <= 35],
   [/\b(high|good|top) quality\b|\bquality\b/, 'Quality score 70 or more', (r) => has(r.q) && r.q >= 70],
-  [/\b(strong|good) momentum\b|\bmomentum\b|\boutperform(ing|ers)?\b/, '3-month relative strength 70 or more', (r) => has(r.rs3m) && r.rs3m >= 70],
+  [/\b(strong|good) momentum\b|\bmomentum\b|\boutperform(ing|ers)?\b/, '3-month return at least 10 points ahead of the Nifty', (r) => has(r.rs3m) && r.rs3m >= 10],
   [/\blow debt\b|\bdebt[- ]?free\b|\bno debt\b|\bunlevered\b/, 'Debt/equity 0.3 or less', (r) => has(r.de) && r.de <= 0.3],
   [/\bprofitable\b/, 'Profitable (positive net margin)', (r) => has(r.net_margin) && r.net_margin > 0],
   [/\bcash[- ]?(generative|rich|backed)\b/, 'Operating cash at least 0.8× profit', (r) => has(r.cfo_pat) && r.cfo_pat >= 0.8],

@@ -129,7 +129,7 @@ const PHRASE_DEFS: Record<string, string> = {
   'Overbought (RSI over 70)': 'Overbought: 14-day RSI strictly above 70 at the latest close; 70 itself does not count.',
   'Cheap against its own history (P/E percentile ≤ 35)': 'Cheap: P/E at or below the 35th percentile of the company’s own P/E history. Cheap against itself, not against other companies.',
   'Quality score 70 or more': 'Quality: the screen’s quality score of 70 or more (70 counts).',
-  '3-month relative strength 70 or more': 'Momentum: the feed’s 3-month relative strength (its return minus the Nifty’s, in points) of 70 or more; 70 counts.',
+  '3-month return at least 10 points ahead of the Nifty': 'Momentum: the stock’s 3-month return minus the Nifty’s, in percentage points, of 10 or more; 10 counts.',
   'Debt/equity 0.3 or less': 'Low debt: debt/equity of 0.3 or less on the latest balance sheet (0.3 counts). Applied to lenders too, where debt is the raw material.',
   'Profitable (positive net margin)': 'Profitable: net margin strictly above zero in the latest fiscal year; exactly zero does not count.',
   'Operating cash at least 0.8× profit': 'Cash-backed: operating cash flow of 0.8× net profit or more (0.8 counts).',

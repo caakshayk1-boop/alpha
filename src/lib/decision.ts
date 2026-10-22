@@ -9,7 +9,7 @@ export interface Check { label: string; pass: boolean | null; detail: string }
 export interface Evidence { text: string; side: 'for' | 'against'; source: string }
 /** The version of the nine research checks below. Every surface that counts them (Today, Tools, Peek, the company page, a saved
  *  card) calls decide() on the same screen row, so the same row always gives the same count (A03). Bump it when a rule changes. */
-export const CHECKS_VERSION = 'checks-1.1';
+export const CHECKS_VERSION = 'checks-1.2';      // 1.2: rs3m read as what it is, a 3-month return gap to the Nifty in points, not a 0-100 score
 export interface Decision {
   version: string;
   dims: { name: string; score: number | null; note: string }[];
@@ -43,8 +43,8 @@ export function decide(r: Row, sigs: Sig[], yearsIn?: number | null): Decision {
   add(has(r.pe_pctile) && r.pe_pctile <= 25, 'bull', `P/E sits at the ${ordinal(r.pe_pctile ?? 0)} percentile of its own history: cheap against itself`, 2);
   add(has(r.pe_pctile) && r.pe_pctile >= 80, 'bear', `P/E sits at the ${ordinal(r.pe_pctile ?? 0)} percentile of its own history: expensive against itself`, 2);
   add(has(r.pe) && r.pe > 60, 'bear', `P/E of ${num(r.pe, 0)}× prices in years of strong growth`, 2);
-  add(has(r.rs3m) && r.rs3m >= 70, 'bull', `3-month relative strength ${Math.round(r.rs3m ?? 0)}/100: beating most of the market`, 2);
-  add(has(r.rs3m) && r.rs3m <= 30, 'bear', `3-month relative strength ${Math.round(r.rs3m ?? 0)}/100: lagging most of the market`, 2);
+  add(has(r.rs3m) && r.rs3m >= 10, 'bull', `3-month return ${Math.round(r.rs3m ?? 0)} points ahead of the Nifty`, 2);
+  add(has(r.rs3m) && r.rs3m <= -10, 'bear', `3-month return ${Math.round(Math.abs(r.rs3m ?? 0))} points behind the Nifty`, 2);
   add(has(r.price) && has(r.sma200) && r.price > r.sma200, 'bull', 'Trading above its 200-day average', 1);
   add(has(r.price) && has(r.sma200) && r.price < r.sma200, 'bear', 'Trading below its 200-day average', 2);
   add(has(r.from_high) && r.from_high >= -5, 'bull', `Within ${num(Math.abs(r.from_high ?? 0), 0)}% of its 52-week high`, 1);
@@ -80,7 +80,7 @@ export function decide(r: Row, sigs: Sig[], yearsIn?: number | null): Decision {
     { label: 'Growing', pass: thin ? null : has(r.rev_cagr) ? r.rev_cagr >= 8 : null, detail: thin ? `only ${years} statement years on file: too short for a growth trend` : has(r.rev_cagr) ? `Revenue CAGR ${num(r.rev_cagr, 1)}% (bar 8%)` : 'not available' },
     { label: 'Not expensive against its own history', pass: has(r.pe_pctile) ? r.pe_pctile < 70 : null, detail: has(r.pe_pctile) ? `P/E at ${ordinal(r.pe_pctile)} percentile (bar 70)` : 'not available' },
     { label: 'In an uptrend', pass: has(r.price) && has(r.sma50) && has(r.sma200) ? r.price > r.sma50 && r.sma50 > r.sma200 : null, detail: has(r.sma200) ? `price ${num(r.price, 0)} · 50d ${num(r.sma50, 0)} · 200d ${num(r.sma200, 0)}` : 'not available' },
-    { label: 'Beating the market', pass: has(r.rs3m) ? r.rs3m >= 50 : null, detail: has(r.rs3m) ? `3-month relative strength ${Math.round(r.rs3m)}/100` : 'not available' },
+    { label: 'Beating the market', pass: has(r.rs3m) ? r.rs3m > 0 : null, detail: has(r.rs3m) ? `3-month return ${r.rs3m >= 0 ? '+' : '−'}${Math.round(Math.abs(r.rs3m))} points against the Nifty (bar: above 0)` : 'not available' },
     { label: 'Liquid enough to trade', pass: has(r.turnover_cr) ? r.turnover_cr >= 5 : null, detail: has(r.turnover_cr) ? `₹${num(r.turnover_cr, 1)} crore a day (bar 5)` : 'not available' },
     { label: 'No high-risk flags', pass: r.risk ? r.risk.level !== 'HIGH' : null, detail: r.risk ? `risk ${r.risk.level.toLowerCase()}` : 'not available' },
   ];
