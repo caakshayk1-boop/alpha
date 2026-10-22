@@ -17,6 +17,7 @@ const KEPT: [string, string][] = [
   ['Page layout on Company and Compare (Quick look or Deep dive)', 'alpha-company-layout, alpha-compare-layout'],
   ['Your data conditions on My Desk', 'alpha-conditions'],
   ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
+  ['Retired: the old since-your-last-visit snapshot. Nothing writes it any more; Today deletes it if your browser still has it', 'alpha-last-visit'],
 ];
 
 export default function Privacy() {
