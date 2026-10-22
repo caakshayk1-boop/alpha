@@ -1,0 +1,46 @@
+name: engines-phase0
+# Phase 0 of docs/engines/CLAUDE_TASK.md: reproduce the published Swing v2 figures and explain the 0% market gate.
+# Read-only on the strategy: it changes no rule, publishes nothing and sends nothing. It runs for a pushed commit whose message
+# carries [phase0] (Yahoo refuses the dev container), or by dispatch once on main, and commits its evidence to the same branch.
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+concurrency:
+  group: engines-phase0-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  reproduce:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[phase0]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: engines/requirements.txt
+      - run: pip install -r engines/requirements.txt
+      - name: Reproduce and diagnose
+        working-directory: engines
+        env:
+          PHASE0_SNAPSHOT: ${{ runner.temp }}/phase0_bars.pkl
+        run: python phase0.py
+      - name: Snapshot hash
+        run: sha256sum "${{ runner.temp }}/phase0_bars.pkl" | tee engines/research/phase0/snapshot.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase0-snapshot
+          path: ${{ runner.temp }}/phase0_bars.pkl
+          retention-days: 90
+      - name: Commit the evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add engines/research/phase0 engines/research/trials.jsonl
+          git diff --cached --quiet && echo 'unchanged' && exit 0
+          git commit -m "research: engines phase 0 reproduction and gate funnel"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
