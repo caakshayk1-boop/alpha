@@ -1,0 +1,39 @@
+name: visual-baseline
+# Renders the visual-regression baselines on the SAME runner image and browser that CI compares against, and commits them
+# to the branch it was dispatched on. Baselines rendered anywhere else differ by 0.4-1.9% of pixels on every route (text
+# rasterisation), which no honest tolerance can absorb. Run it only to approve an intended change, then review the PNGs
+# in the commit before merging; CI is dispatched afterwards because a GITHUB_TOKEN push starts no workflow by itself.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: visual-baseline-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Render and approve the baselines
+        run: node scripts/visual.mjs --update
+      - name: Commit the baselines if they changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/baseline
+          if git diff --cached --quiet; then echo 'baselines unchanged'; exit 0; fi
+          git commit -m "Visual baselines rendered on the CI image (ubuntu-24.04, Playwright Chromium)"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"
+        env:
+          GH_TOKEN: ${{ github.token }}

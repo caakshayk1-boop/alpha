@@ -3,12 +3,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  # dispatched after visual-baseline.yml commits new baselines: a GITHUB_TOKEN push starts no workflow by itself
+  workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # pinned: the visual baselines are rendered on this image (visual-baseline.yml), and a different one renders text differently
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
