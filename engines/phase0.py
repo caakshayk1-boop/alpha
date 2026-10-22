@@ -31,6 +31,9 @@ PUBLISHED = HERE / "research" / "swing_results.json"
 FEED = HERE.parent / "public" / "signals.json"
 ORIGINAL_RUN_UTC = "2026-10-21T05:07:09Z"       # commit 29c1020: 10:37 IST, during the 21 Oct session
 START = pd.Timestamp("2019-10-21")               # period="7y" counted back from the original run date
+# The screen as it stood when the original run read it: trading-dashboard docs/screen.json at the last commit before 05:07 UTC on
+# 21 Oct 2026. The live screen has since gained AHCL and SMCGLOBAL and lost HINDOILEXP and SHILCTECH, which alone moves trade counts.
+UNIVERSE_AT = os.environ.get("PHASE0_UNIVERSE_SHA", "31d8822ff0ac906ebc4e328b26741ac867b88659")
 ENDS = {"completed_sessions": pd.Timestamp("2026-10-20"), "as_recorded": pd.Timestamp("2026-10-21")}
 FIGURES = [("rules", "holdout", "n"), ("rules", "holdout", "expectancy_r"), ("rules", "holdout", "profit_factor"),
            ("rules", "holdout", "clustered_t_clustered"), ("rules", "development", "n"), ("rules", "all", "n"),
@@ -39,10 +42,18 @@ FIGURES = [("rules", "holdout", "n"), ("rules", "holdout", "expectancy_r"), ("ru
 TOL = {"n": 0, "expectancy_r": 0.0015, "profit_factor": 0.015, "clustered_t_clustered": 0.015}   # trade counts exactly; the rest within the published rounding
 
 
+def universe_at(sha: str) -> list[dict]:
+    import urllib.request
+    url = f"https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/{sha}/docs/screen.json"
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "alpha-engines/phase0"}), timeout=60) as r:
+        rows = json.load(r)["rows"]
+    return [{"sym": x["sym"], "name": x["name"], "sector": x.get("sector"), "ind": x.get("ind"), "mcap_cr": x.get("mcap_cr")} for x in rows]
+
+
 def fetch():
     import yfinance as yf
     import data
-    uni = data.universe()
+    uni = universe_at(UNIVERSE_AT)
     _adj, ex = data.download([u["sym"] for u in uni], period="8y", with_exchange=True)
 
     def one(t):
@@ -52,7 +63,7 @@ def fetch():
         s.index = pd.to_datetime(s.index).tz_localize(None)
         return s
     return {"exchange": ex, "universe": uni, "bench": one("^NSEI"), "indices": data.indices("8y"), "vix": one("^INDIAVIX"),
-            "fetched": pd.Timestamp.utcnow().isoformat()}
+            "fetched": pd.Timestamp.utcnow().isoformat(), "universe_at": UNIVERSE_AT}
 
 
 def cut(snap: dict, end: pd.Timestamp) -> tuple:
@@ -147,7 +158,7 @@ def main(argv) -> None:
                   f"original run {ORIGINAL_RUN_UTC}, registered retrospectively by phase0.py from research/swing_results.json")
     report = {"original_run_utc": ORIGINAL_RUN_UTC, "original_data_through": published.get("data_through"),
               "original_partial_bar": "the original run started 10:37 IST on 21 Oct, so any 21 Oct bar it read was an incomplete intraday bar",
-              "fetched": snap.get("fetched"), "runs": {}}
+              "fetched": snap.get("fetched"), "universe_at": snap.get("universe_at", "live screen"), "runs": {}}
     for name, end in ENDS.items():
         bars, uni, bench, idx, vix = cut(snap, end)
         h = TR.bars_hash(bars, bench, vix)
