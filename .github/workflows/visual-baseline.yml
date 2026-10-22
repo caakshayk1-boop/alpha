@@ -1,18 +1,21 @@
 name: visual-baseline
 # Renders the visual-regression baselines on the SAME runner image and browser that CI compares against, and commits them
 # to the branch it was dispatched on. Baselines rendered anywhere else differ by 0.4-1.9% of pixels on every route (text
-# rasterisation), which no honest tolerance can absorb. Run it only to approve an intended change, then review the PNGs
-# in the commit before merging; CI is dispatched afterwards because a GITHUB_TOKEN push starts no workflow by itself.
+# rasterisation), which no honest tolerance can absorb. It runs only for a pushed commit whose message carries
+# [approve-visual] (or by dispatch once this file is on main), and the PNGs it commits are reviewed before merging.
+# A GITHUB_TOKEN push starts no workflow, so CI re-runs on the next push to the branch.
 on:
+  push:
+    branches-ignore: [main]
   workflow_dispatch:
 permissions:
   contents: write
-  actions: write
 concurrency:
   group: visual-baseline-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   baseline:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[approve-visual]')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -34,6 +37,3 @@ jobs:
           if git diff --cached --quiet; then echo 'baselines unchanged'; exit 0; fi
           git commit -m "Visual baselines rendered on the CI image (ubuntu-24.04, Playwright Chromium)"
           git push origin "HEAD:${GITHUB_REF_NAME}"
-          gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"
-        env:
-          GH_TOKEN: ${{ github.token }}

@@ -3,7 +3,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  # dispatched after visual-baseline.yml commits new baselines: a GITHUB_TOKEN push starts no workflow by itself
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}
