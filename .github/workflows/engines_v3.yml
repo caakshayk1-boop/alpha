@@ -1,0 +1,69 @@
+name: engines-v3
+# E1-E5 validation under the frozen pre-registration (configs/engines/FROZEN.sha256), and the nightly paper record.
+# Research and paper only: nothing is published to the site and nothing is sent. Runs the Phase 3 suite first and stops if it
+# fails. The validation run is triggered by [v3-run] in a pushed commit message (or by dispatch once this file is on main).
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      mode: {description: "validate | nightly", default: nightly}
+  schedule:
+    - cron: '45 13 * * 1-5'       # 19:15 IST, after the EOD completeness window; the job itself skips a session already recorded
+concurrency:
+  group: engines-v3-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  validate:
+    if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[v3-run]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11', cache: pip, cache-dependency-path: engines/requirements.txt}
+      - run: pip install -r engines/requirements.txt
+      - name: Phase 3 integrity suite (must pass before any evaluation)
+        working-directory: engines
+        run: python tests/test_v3.py
+      - name: Validation run
+        working-directory: engines
+        env: {V3_SNAPSHOT: "${{ runner.temp }}/v3_bars.pkl"}
+        run: python -m v3.run
+      - name: Snapshot hash
+        run: sha256sum "${{ runner.temp }}/v3_bars.pkl" | tee engines/research/v3/snapshot.sha256
+      - uses: actions/upload-artifact@v4
+        with: {name: v3-snapshot, path: "${{ runner.temp }}/v3_bars.pkl", retention-days: 90}
+      - name: Commit the evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add engines/research/v3 engines/research/trials.jsonl
+          git diff --cached --quiet && echo unchanged && exit 0
+          git commit -m "research: engines v3 validation run [skip ci]"
+          for i in 1 2 3; do git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; git pull --rebase origin "${GITHUB_REF_NAME}"; done; exit 1
+  nightly:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[v3-nightly]'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11', cache: pip, cache-dependency-path: engines/requirements.txt}
+      - run: pip install -r engines/requirements.txt
+      - name: Phase 3 integrity suite
+        working-directory: engines
+        run: python tests/test_v3.py
+      - name: Nightly paper record (dry-run publish)
+        working-directory: engines
+        run: python -m v3.nightly
+      - name: Commit the paper record
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add engines/research/v3/paper_ledger.jsonl engines/research/v3/nightly.json engines/research/v3/feed_nightly.json
+          git diff --cached --quiet && echo unchanged && exit 0
+          git commit -m "paper: engines v3 nightly $(date -u +%Y-%m-%d) [skip ci]"
+          for i in 1 2 3; do git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; git pull --rebase origin "${GITHUB_REF_NAME}"; done; exit 1
