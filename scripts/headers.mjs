@@ -23,6 +23,8 @@ async function security(label, url, wantStatus) {
 
 const html = await security('HTML /', `${base}/`, 200);
 check('HTML /: not cached as immutable', !/immutable/.test(html.headers.get('cache-control') || ''), html.headers.get('cache-control') || 'none');
+// a page the browser may reuse for hours is a reader on yesterday's build (22 Oct 2026: the zone's Browser Cache TTL held pages 4h)
+check('HTML /: revalidated on every load (no-cache, or max-age 60 or less)', /no-cache|no-store/.test(html.headers.get('cache-control') || '') || /max-age=([0-5]?\d|60)\b/.test(html.headers.get('cache-control') || ''), html.headers.get('cache-control') || 'none');
 await security('404 page', `${base}/nope-not-a-page/`, 404);
 const api = await security('JSON /api/quotes', `${base}/api/quotes`, 200);
 check('JSON /api/quotes: content-type json', /application\/json/.test(api.headers.get('content-type') || ''), api.headers.get('content-type'));

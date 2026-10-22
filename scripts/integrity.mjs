@@ -152,6 +152,19 @@ try {
     await ctx.close();
   }
 
+  // ── scroll-driven reveals finish fast: a card well inside the viewport is opaque (the "grey overlay" of 22 Oct 2026) ──
+  {
+    const { ctx, p } = await open('/', { width: 390, height: 844, reduced: false });
+    let worst = null;
+    for (let y = 0; y <= 2400; y += 300) {
+      await p.evaluate((v) => window.scrollTo(0, v), y); await p.waitForTimeout(250);
+      const bad = await p.evaluate(() => [...document.querySelectorAll('[data-rv="sd"]')].map((el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), op: +getComputedStyle(el).opacity }; }).filter((x) => x.top >= 0 && x.top < innerHeight - 120 && x.op < 0.99));
+      if (bad.length && !worst) worst = { y, ...bad[0] };
+    }
+    ok('motion: every card more than 120px into the viewport is fully opaque while scrolling Today', !worst, worst ? JSON.stringify(worst) : '');
+    await ctx.close();
+  }
+
   // ── back keeps context (§17) ────────────────────────────────────────────────────────────────────────────────────
   {
     const { ctx, p } = await open('/screen/?size=large');

@@ -1289,6 +1289,8 @@ html.anim .gate-checks li { animation: gateIn var(--dur-slow) var(--ease) both; 
 .qbtn::before { content: 'Levels ›'; position: absolute; right: 12px; bottom: 10px; font: 600 11.5px var(--f-ui); color: var(--accent-2); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease); z-index: 1; }
 .qbtn:hover::before, .qbtn:focus-within::before { opacity: 1; transform: none; }
 @media (hover: none) { .qbtn::before { opacity: .8; transform: none; } }
+/* the index strip's cards are 140px wide: the hint gets its own line under the last-trade time instead of printing over it */
+.istrip-i.qbtn { padding-bottom: 30px; }
 .isheet { display: flex; flex-direction: column; gap: 10px; } .isheet > * { flex-shrink: 0; } .isheet-h { font-size: 30px; margin: 2px 0 0; line-height: 1.1; } .isheet-px { font-size: 15px; } .isheet-px .num:first-child { font: 600 26px var(--f-ui); margin-right: 6px; }
 .irail { display: grid; gap: 4px; padding: 10px 12px; border-radius: var(--r-2); background: var(--panel-2); }
 .irail-k { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
@@ -1531,7 +1533,9 @@ html[data-contrast='high'] .panel, html[data-contrast='high'] .chip, html[data-c
 
 /* ── Scroll-driven motion (Pro §26.3), where supported; content is fully visible without it ───────────────────── */
 @supports (animation-timeline: view()) {
-  html.anim [data-rv='sd'] { animation: rv-in linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
+  /* the fade completes within the first 96px of a card entering, whatever its height: as a share of the card (entry 70%), a tall
+     card stayed half-transparent for most of a phone screen and read as a grey overlay over Today (22 Oct 2026) */
+  html.anim [data-rv='sd'] { animation: rv-in linear both; animation-timeline: view(); animation-range: entry 0px entry 96px; }
   @keyframes rv-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
   /* the reading-progress hairline on a Weekly Read */
   .read-progress { position: fixed; inset: 0 0 auto 0; height: 2px; z-index: 60; background: var(--alpha-accent); transform-origin: 0 50%; animation: read-progress linear both; animation-timeline: scroll(root); pointer-events: none; }

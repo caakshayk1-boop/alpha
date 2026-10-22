@@ -51,7 +51,11 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const c = await caches.open(SHELL);
       try {
-        const res = await fetch(req);
+        // revalidate with the server every time: a plain fetch() is answered from the HTTP cache, and the Cloudflare zone's
+        // Browser Cache TTL once kept pages 4 hours there, so a reader saw yesterday's build "from the network" (22 Oct 2026).
+        // redirect: 'manual' because a service worker may not hand a navigation a redirected response; those go through as-is.
+        let res = await fetch(url.href, { cache: 'no-cache', credentials: 'same-origin', redirect: 'manual' });
+        if (res.type === 'opaqueredirect') res = await fetch(req);
         if (res.ok && res.type === 'basic') { c.put(url.pathname, res.clone()); trim(SHELL, MAX_PAGES); }
         return res;
       } catch {
