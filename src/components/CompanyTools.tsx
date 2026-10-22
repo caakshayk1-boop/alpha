@@ -29,7 +29,7 @@ function CasePoint({ p, side, source }: { p: Point; side: 'for' | 'against'; sou
       <span>
         {p.text}{' '}
         <button type="button" className="cite" aria-expanded={open === 's'} onClick={() => setOpen((o) => (o === 's' ? null : 's'))} aria-label="Source and date">Source</button>
-        {g && <button type="button" className="cite" aria-expanded={open === 'q'} onClick={() => setOpen((o) => (o === 'q' ? null : 'q'))} aria-label={`What ${g.name} means`}>Explain</button>}
+        {g && <button type="button" className="cite" aria-expanded={open === 'q'} onClick={() => setOpen((o) => (o === 'q' ? null : 'q'))} aria-label={`Explain ${g.name}`}>Explain</button>}
         {open === 's' && <span className="cite-pop" role="note">{source}</span>}
         {open === 'q' && g && <span className="cite-pop" role="note"><b>{g.name}.</b> {g.what} {g.how} <a href={`/about/#${metricId(metric!)}`}>Method</a></span>}
       </span>
