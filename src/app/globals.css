@@ -1576,9 +1576,9 @@ html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view
 .reads-study .prose, .reads-study > p { max-width: 72ch; }
 @media (max-width: 860px) {
   .reads-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
-  .reads-list { position: static; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0; background: none; border: 0; box-shadow: none; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
-  .reads-list::-webkit-scrollbar { display: none; }
-  .reads-list::after { display: none; }
+  .panel.reads-list { position: static; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; background: none; border: 0; box-shadow: none; border-radius: 0; margin-inline: -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+  .panel.reads-list::-webkit-scrollbar { display: none; }
+  .panel.reads-list::before, .panel.reads-list::after { display: none; }
   .reads-list .li { flex: 0 0 auto; width: min(70vw, 240px); scroll-snap-align: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
   .reads-list .li:last-child { border-bottom: 1px solid var(--line); }
   .reads-list .li[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
