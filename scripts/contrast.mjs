@@ -10,7 +10,7 @@ const dir = 'out/_next/static/css';
 const css = readdirSync(dir).filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(dir, f), 'utf8')).join('\n');
 const TEXT = ['--text', '--muted', '--dim', '--up', '--down', '--warn', '--accent-2'];
 const SURFACES = ['--bg', '--bg-2', '--panel', '--panel-2'];
-const PAIRS = [['--accent-ink', '--accent'], ['--sel-fg', '--sel-bg'], ['--ink-text', '--ink'], ['--ink-dim', '--ink']];
+const PAIRS = [['--accent-ink', '--accent'], ['--sel-fg', '--sel-bg'], ['--ink-text', '--ink'], ['--ink-dim', '--ink'], ['--accent-2', '--accent-soft']];
 const MODES = [];
 for (const theme of ['light', 'dark']) for (const extra of [{}, { contrast: 'high' }, { market: 'cb' }, { accent: 'cyan' }, { accent: 'lime' }, { accent: 'coral' }]) MODES.push({ theme, ...extra });
 const MIN = 4.5;

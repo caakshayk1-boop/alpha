@@ -14,7 +14,9 @@
     "lint:design": "node scripts/design-lint.mjs",
     "budget": "node scripts/budget.mjs",
     "a11y": "node scripts/a11y.mjs",
-    "contrast": "node scripts/contrast.mjs"
+    "contrast": "node scripts/contrast.mjs",
+    "visual": "node scripts/visual.mjs",
+    "integrity": "node scripts/integrity.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",
@@ -29,7 +31,9 @@
     "axe-core": "^4.14.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
+    "pixelmatch": "6.0.0",
     "playwright": "^1.56.1",
+    "pngjs": "7.0.0",
     "typescript": "^5",
     "wrangler": "^4.42.0"
   }

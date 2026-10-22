@@ -217,7 +217,15 @@ export function Segmented<T extends string>({ value, options, onChange, label, r
 /** Tabs for a row that can be wider than the screen: scrolls sideways, keeps the selected tab in view, one tab stop with arrow keys. Unlike Segmented it does not assume equal widths. */
 export function TabRow<T extends string>({ value, options, onChange, label }: { value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [value]);
+  // Keep the selected tab in view by scrolling the ROW sideways only. scrollIntoView() also scrolls the page vertically
+  // whenever the row starts below the fold, which jumped the company page down to its tabs on load (found by the visual gate).
+  useEffect(() => {
+    const row = ref.current, el = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!row || !el) return;
+    const left = el.offsetLeft - row.offsetLeft;
+    if (left < row.scrollLeft) row.scrollLeft = Math.max(0, left - 16);
+    else if (left + el.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollLeft = left + el.offsetWidth - row.clientWidth + 16;
+  }, [value]);
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const keys = options.map(([k]) => k), at = keys.indexOf(value);
     const next = e.key === 'ArrowRight' ? (at + 1) % keys.length : e.key === 'ArrowLeft' ? (at - 1 + keys.length) % keys.length : e.key === 'Home' ? 0 : e.key === 'End' ? keys.length - 1 : -1;
