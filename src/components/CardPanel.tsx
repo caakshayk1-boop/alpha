@@ -1,129 +1,148 @@
 'use client';
-
+/** Research cards, the My Desk tab: every card saved in this browser with its question, companies, saved and edited dates,
+ *  data dates, review trigger and whether it is due (lib/card.ts reviewDue: the reader's own triggers and observed changes
+ *  only). Each card can be edited (question, note, "what would change my mind"), exported on its own, or deleted after a
+ *  confirmation. Importing lives in the one backup (BackupBar), so a card file and a full backup take the same path. */
 import Link from 'next/link';
-import { useRef, useState } from 'react';
-import { Rv } from '@/components/ui';
-import { cardDelta, parseImport, reviewDue, serializeCard, serializeLibrary, summarise, type CardDecision, type CurrentCompany, type ResearchCard } from '@/lib/card';
-import { useCards } from '@/lib/library';
-import { companyHref } from '@/lib/slug';
+import { useState } from 'react';
 import { AskAI } from '@/components/Explain';
+import { Drawer } from '@/components/company/Parts';
+import { plural, stampLabel, type Go } from '@/components/desk/common';
+import { cardDelta, reviewDue, serializeCard, type CardDecision, type CurrentCompany, type ResearchCard } from '@/lib/card';
+import { downloadText } from '@/lib/deskStore';
+import { dateLabel } from '@/lib/format';
+import type { JournalEntry } from '@/lib/journal';
+import { companyHref } from '@/lib/slug';
 
-const download = (name: string, text: string) => {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  try { localStorage.setItem('alpha-last-export', new Date().toISOString()); } catch { /* not recorded */ }      // shown on My Desk
-};
+type Patch = Partial<Pick<ResearchCard, 'question' | 'note' | 'decision'>>;
 
-/** The local research library: cards saved in this browser, export and import without an account. */
-export default function CardPanel({ watchlist, onImportWatchlist, current }: { watchlist: string[]; onImportWatchlist: (syms: string[]) => void; current?: Record<string, CurrentCompany | undefined> }) {
-  const { cards, ok, addMany, remove, setNote, setDecision } = useCards();
-  const [paste, setPaste] = useState('');
-  const [preview, setPreview] = useState<{ cards: ResearchCard[]; watchlist: string[]; warnings: string[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const file = useRef<HTMLInputElement>(null);
-
-  const inspect = (text: string) => {
-    setDone(null);
-    const r = parseImport(text);
-    if (!r.ok) { setPreview(null); setError(r.error); return; }
-    setError(null);
-    setPreview({ ...r.value, warnings: r.warnings });
-  };
-  const confirm = () => {
-    if (!preview) return;
-    const saved = addMany(preview.cards);
-    if (preview.watchlist.length) onImportWatchlist(preview.watchlist);
-    setDone(saved ? `Imported ${preview.cards.length} card${preview.cards.length === 1 ? '' : 's'}${preview.watchlist.length ? ` and ${preview.watchlist.length} watchlist name${preview.watchlist.length === 1 ? '' : 's'}` : ''}.` : 'Could not write to this browser\'s storage: nothing was imported. Free some space or allow site data, then try again.');
-    setPreview(null);
-    setPaste('');
-  };
+export default function CardPanel({ cards, ok, current, today, focus, journal, watch, onUpdate, onRemove, go }: {
+  cards: ResearchCard[]; ok: boolean; current: Record<string, CurrentCompany | undefined>; today: string; focus: string | null; journal: JournalEntry[]; watch: string[];
+  onUpdate: (id: string, patch: Patch) => boolean; onRemove: (id: string) => void; go: Go;
+}) {
+  const [editing, setEditing] = useState<ResearchCard | null>(null);
+  const shown = focus ? cards.filter((c) => c.companies.some((x) => x.sym === focus)) : cards;
+  const withDue = shown.map((c) => ({ c, due: reviewDue(c, today, current) })).sort((a, b) => (b.due.length ? 1 : 0) - (a.due.length ? 1 : 0));
+  const first = focus ?? watch[0] ?? null;
 
   return (
-    <Rv className="panel">
-      <div className="eyebrow">Research cards · kept in this browser only</div>
-      <p className="muted" style={{ margin: '8px 0 12px', fontSize: 14.5 }}>A card holds one question, the companies and evidence behind it, what was missing and the data dates, as a file you can keep. Nothing is uploaded and there is no account: if you clear this site&apos;s data the cards go with it, so export what matters.</p>
-      {!ok && <p className="notice" role="alert">This browser is blocking or has corrupted local storage, so cards cannot be saved here. You can still import a file to read it, and export it again.</p>}
-      <div className="filters">
-        <button className="chip" disabled={!cards.length && !watchlist.length} onClick={() => download('alpha-research-library.json', serializeLibrary(watchlist, cards))}>Export everything</button>
-        <button className="chip" onClick={() => file.current?.click()}>Import a file…</button>
-        <input ref={file} type="file" accept="application/json,.json" hidden aria-label="Import a research card or library" onChange={async (e) => { const f = e.target.files?.[0]; if (f) inspect(await f.text()); e.target.value = ''; }} />
-      </div>
-      <details style={{ margin: '4px 0 12px' }}>
-        <summary className="eyebrow" style={{ cursor: 'pointer' }}>Or paste exported JSON</summary>
-        <textarea className="field" style={{ width: '100%', minHeight: 90, padding: 10, fontFamily: 'var(--f-mono)', fontSize: 13.5, marginTop: 8 }} value={paste} onChange={(e) => setPaste(e.target.value)} aria-label="Exported JSON" spellCheck={false} />
-        <button className="chip" onClick={() => inspect(paste)} disabled={!paste.trim()} style={{ marginTop: 6 }}>Check it</button>
-      </details>
-      {error && <p className="notice" role="alert">{error}</p>}
-      {done && <p className="muted" role="status" style={{ margin: '8px 0' }}>{done}</p>}
-      {preview && (
-        <div className="panel tight" style={{ background: 'var(--panel-2)', marginBottom: 12 }}>
-          <div className="eyebrow">Preview: nothing is saved until you confirm</div>
-          <ul className="muted" style={{ paddingLeft: 18, margin: '8px 0', lineHeight: 1.6, fontSize: 14.5 }}>{preview.cards.map((c) => <li key={c.id}>{summarise(c)}</li>)}{preview.watchlist.length > 0 && <li>Watchlist: {preview.watchlist.join(', ')}</li>}</ul>
-          {preview.warnings.length > 0 && <ul className="dim" style={{ paddingLeft: 18, margin: '0 0 8px', fontSize: 13.5 }}>{preview.warnings.slice(0, 6).map((w) => <li key={w}>{w}</li>)}</ul>}
-          <div style={{ display: 'flex', gap: 8 }}><button className="btn" onClick={confirm}>Import {preview.cards.length} card{preview.cards.length === 1 ? '' : 's'}</button><button className="btn ghost" onClick={() => setPreview(null)}>Cancel</button></div>
+    <div className="desk-cards">
+      {!ok && <p className="desk-err" role="alert">This browser is blocking or has corrupted local storage, so cards cannot be saved here. Importing a backup still lets you read it.</p>}
+      {shown.length === 0 ? (
+        <div className="state">
+          <b>{focus ? `No research card mentions ${focus}.` : 'No research cards yet.'}</b>
+          <p>A card keeps one question, the evidence for and against, and the data dates it was based on, so you can see later what changed. Save one from a company page under &ldquo;Your research question&rdquo;.</p>
+          <div className="acts">
+            {first ? <Link className="act" href={`${companyHref(first)}#notes`}>Write a question about {first}</Link> : <button type="button" className="act" onClick={() => window.dispatchEvent(new Event('alpha:search'))}>Find a company</button>}
+            <Link className="act quiet" href="/screen/">Ask the screen in plain English</Link>
+          </div>
         </div>
+      ) : (
+        <ul className="desk-cardlist">
+          {withDue.map(({ c, due }) => <li key={c.id}><CardItem c={c} due={due} current={current} entries={journal.filter((e) => c.companies.some((x) => x.sym === e.sym)).length} onEdit={() => setEditing(c)} onRemove={() => onRemove(c.id)} go={go} /></li>)}
+        </ul>
       )}
-      {cards.length === 0 ? <p className="dim" style={{ margin: 0 }}>No cards yet. Use &ldquo;Save research card&rdquo; on a company page or after a plain-English screen.</p> : (
-        <div className="list">
-          {cards.map((c) => (
-            <div key={c.id} className="li" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="t">{c.question ?? 'Untitled research'}</div>
-                <div className="s">{c.companies.slice(0, 8).map((x, i) => <span key={x.sym}>{i ? ', ' : ''}<Link href={companyHref(x.sym)} style={{ color: 'var(--accent-2)' }}>{x.sym}</Link></span>)}{c.companies.length > 8 ? ` +${c.companies.length - 8}` : ''} · {c.createdAt.slice(0, 10)}{c.dataStatus.length ? ` · data ${c.dataStatus.filter((s) => s.asOf).map((s) => `${s.id} ${s.asOf}`).join(', ')}` : ''}</div>
-                {c.evidence && c.evidence.length > 0 && <ul className="dim" style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 13.5 }}>{c.evidence.slice(0, 3).map((e) => <li key={e.text}>{e.side === 'for' ? '▲' : '▼'} {e.text}</li>)}</ul>}
-                {current && (() => { const ch = cardDelta(c, current); return (
-                  <div style={{ marginTop: 8 }}>
-                    <div className="eyebrow">Changed since saved ({new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })})</div>
-                    {ch.length ? <ul className="muted" style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 13.5, lineHeight: 1.6 }}>{ch.map((x) => <li key={`${x.sym}-${x.what}`}><b>{x.sym}</b> · {x.what}: {x.before} → {x.after}</li>)}</ul> : <p className="dim" style={{ fontSize: 13.5, margin: '4px 0 0' }}>No change in the saved figures on a newer data date.</p>}
-                  </div>); })()}
-                <DecisionEditor card={c} onSave={(d) => setDecision(c.id, d)} due={reviewDue(c, new Date().toISOString().slice(0, 10), current ?? {})} />
-                <label className="sr" htmlFor={`note-${c.id}`}>Note</label>
-                <input id={`note-${c.id}`} className="field" style={{ width: '100%', marginTop: 8, height: 36, fontSize: 14 }} placeholder="Add a private note" defaultValue={c.note ?? ''} onBlur={(e) => setNote(c.id, e.target.value)} />
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="chip" onClick={() => download(`alpha-card-${c.companies[0]?.sym ?? 'research'}-${c.createdAt.slice(0, 10)}.json`, serializeCard(c))}>Export</button>
-                <button className="chip" onClick={() => remove(c.id)} aria-label="Delete this card">✕</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </Rv>
+      <Drawer open={!!editing} onClose={() => setEditing(null)} title="Edit research card">
+        {editing && <CardEditor key={editing.id} card={editing} onSave={(p) => { const done = onUpdate(editing.id, p); if (done) setEditing(null); return done; }} />}
+      </Drawer>
+    </div>
   );
 }
 
-/** "What would change my mind" (Pro §22.3): four fields in the reader's own words. Saving a thesis with no disconfirming
- *  point asks for one (skippable): the countercase is first-class here too. */
-function DecisionEditor({ card, onSave, due }: { card: ResearchCard; onSave: (d: CardDecision | null) => boolean; due: string[] }) {
+function trigger(c: ResearchCard, current: Record<string, CurrentCompany | undefined>): string {
+  const d = c.decision;
+  const parts: string[] = [];
+  if (d?.reviewOn) parts.push(`on ${dateLabel(d.reviewOn.slice(0, 10))}`);
+  if (d?.reviewWhen === 'results') {
+    const next = c.companies.map((x) => ({ sym: x.sym, at: current[x.sym]?.nextResults ?? c.nextResults?.[x.sym] ?? null })).find((x) => x.at);
+    parts.push(next?.at ? `after the next results (${next.sym} on file ${dateLabel(next.at)}, unconfirmed)` : 'after the next results (no date on file)');
+  }
+  return parts.length ? parts.join(' and ') : 'none set';
+}
+
+function CardItem({ c, due, current, entries, onEdit, onRemove, go }: { c: ResearchCard; due: string[]; current: Record<string, CurrentCompany | undefined>; entries: number; onEdit: () => void; onRemove: () => void; go: Go }) {
+  const [confirm, setConfirm] = useState(false);
+  const ch = cardDelta(c, current);
+  const d = c.decision;
+  const hasTrigger = !!(d?.reviewOn || d?.reviewWhen);
+  const dates = c.dataStatus.filter((s) => s.asOf);
+  const sym = c.companies[0]?.sym ?? null;
+  return (
+    <article className={`card dcard${due.length ? ' is-due' : ''}`} aria-labelledby={`card-${c.id}`}>
+      <div className="dcard-h">
+        <h3 id={`card-${c.id}`}>{c.question ?? 'Untitled research'}</h3>
+        {due.length ? <span className="pill warn">Review due</span> : hasTrigger ? <span className="pill ok">Not due yet</span> : <span className="pill nodot">No review trigger</span>}
+      </div>
+      <p className="dcard-co">
+        {c.companies.slice(0, 8).map((x, i) => <span key={x.sym}>{i ? ', ' : ''}<Link className="link" href={companyHref(x.sym)}>{x.sym}</Link></span>)}
+        {c.companies.length > 8 ? ` +${c.companies.length - 8}` : ''}
+        {!c.companies.length && <span className="dim">No company on this card</span>}
+      </p>
+      <dl className="dcard-kv">
+        <div><dt>Saved</dt><dd>{stampLabel(c.createdAt) ?? 'date unknown'}{c.updatedAt ? <span className="dim"> · edited {stampLabel(c.updatedAt)}</span> : null}</dd></div>
+        <div><dt>Data dates</dt><dd>{dates.length ? dates.map((s) => `${s.id} ${dateLabel(s.asOf)}`).join(' · ') : 'not recorded on this card'}</dd></div>
+        <div><dt>Review</dt><dd>{trigger(c, current)}</dd></div>
+      </dl>
+      {due.length > 0 && <p className="dcard-due"><b>Due because</b> {due.join('; ')}.</p>}
+      {(d?.thesis || d?.against || d?.unknowns || c.note) && (
+        <dl className="dcard-words">
+          {d?.thesis && <div><dt>Thesis</dt><dd>{d.thesis}</dd></div>}
+          {d?.against && <div><dt>Would change my mind</dt><dd>{d.against}</dd></div>}
+          {d?.unknowns && <div><dt>Unknowns</dt><dd>{d.unknowns}</dd></div>}
+          {c.note && <div><dt>Note</dt><dd>{c.note}</dd></div>}
+        </dl>
+      )}
+      <details className="dcard-more">
+        <summary>Changed since saved{ch.length ? ` · ${ch.length}` : ''}{c.evidence?.length ? ` · evidence ${c.evidence.length}` : ''}</summary>
+        {ch.length ? <ul className="desk-plain">{ch.map((x) => <li key={`${x.sym}-${x.what}`}><b>{x.sym}</b> · {x.what}: {x.before} → {x.after}</li>)}</ul> : <p className="dim">No saved figure changed on a newer data date.</p>}
+        {c.evidence && c.evidence.length > 0 && <ul className="desk-plain">{c.evidence.slice(0, 6).map((e) => <li key={e.text}><span className={e.side === 'for' ? 'up' : 'down'}>{e.side === 'for' ? 'For' : 'Against'}</span> · {e.text} <span className="dim">({e.source})</span></li>)}</ul>}
+      </details>
+      <div className="dcard-acts">
+        <button type="button" className="act" onClick={onEdit}>Edit</button>
+        {sym && <button type="button" className="act quiet" onClick={() => go('journal', sym)}>{plural(entries, 'journal entry', 'journal entries')}</button>}
+        <button type="button" className="act quiet" onClick={() => downloadText(`alpha-card-${sym ?? 'research'}-${c.createdAt.slice(0, 10)}.json`, serializeCard(c))}>Export card</button>
+        {confirm ? (
+          <span className="dcard-confirm" role="group" aria-label="Confirm delete">
+            <span className="dim">Delete for good? Only an exported copy can bring it back.</span>
+            <button type="button" className="act danger" onClick={onRemove}>Delete card</button>
+            <button type="button" className="act quiet" onClick={() => setConfirm(false)}>Keep it</button>
+          </span>
+        ) : <button type="button" className="act quiet" onClick={() => setConfirm(true)}>Delete…</button>}
+      </div>
+    </article>
+  );
+}
+
+/** The reader's own words on a card, in one form: the question, a note, and "what would change my mind" with its review
+ *  trigger. A thesis with no disconfirming point asks for one (skippable): the countercase is first-class here too. */
+function CardEditor({ card, onSave }: { card: ResearchCard; onSave: (p: Patch) => boolean }) {
   const d = card.decision;
-  const [f, setF] = useState({ thesis: d?.thesis ?? '', against: d?.against ?? '', unknowns: d?.unknowns ?? '', reviewOn: d?.reviewOn?.slice(0, 10) ?? '', results: d?.reviewWhen === 'results' });
+  const [f, setF] = useState({ question: card.question ?? '', note: card.note ?? '', thesis: d?.thesis ?? '', against: d?.against ?? '', unknowns: d?.unknowns ?? '', reviewOn: d?.reviewOn?.slice(0, 10) ?? '', results: d?.reviewWhen === 'results' });
   const [msg, setMsg] = useState<string | null>(null);
   const save = () => {
-    const next: CardDecision = { thesis: f.thesis.trim() || null, against: f.against.trim() || null, unknowns: f.unknowns.trim() || null, reviewOn: f.reviewOn || null, reviewWhen: f.results ? 'results' : null };
-    const empty = !next.thesis && !next.against && !next.unknowns && !next.reviewOn && !next.reviewWhen;
-    setMsg(onSave(empty ? null : next) ? 'Saved in this browser.' : 'Could not save: this browser is blocking storage.');
+    const dec: CardDecision = { thesis: f.thesis.trim().slice(0, 1000) || null, against: f.against.trim().slice(0, 1000) || null, unknowns: f.unknowns.trim().slice(0, 1000) || null, reviewOn: f.reviewOn || null, reviewWhen: f.results ? 'results' : null };
+    const empty = !dec.thesis && !dec.against && !dec.unknowns && !dec.reviewOn && !dec.reviewWhen;
+    const ok = onSave({ question: f.question.trim().slice(0, 300) || null, note: f.note.trim().slice(0, 4000) || null, decision: empty ? null : dec });
+    if (!ok) setMsg('Could not save: this browser is blocking storage. Nothing was changed.');
   };
-  const id = (k: string) => `dec-${k}-${card.id}`;
+  const id = (k: string) => `ed-${k}-${card.id}`;
+  const one = card.companies.length === 1 ? card.companies[0].sym : null;
   return (
-    <details className="decision" open={!!d || due.length > 0}>
-      <summary className="eyebrow">What would change my mind{due.length > 0 && <span className="tag warn" style={{ marginLeft: 8 }}>Needs review</span>}</summary>
-      {due.length > 0 && <p className="dim" style={{ margin: '6px 0', fontSize: 13.5 }}>Due because: {due.join('; ')}.</p>}
-      <div className="dec-grid">
-        <label htmlFor={id('t')}>Thesis<textarea id={id('t')} className="field" rows={2} value={f.thesis} onChange={(e) => setF({ ...f, thesis: e.target.value })} placeholder="What I think, in one or two sentences" /></label>
-        <label htmlFor={id('a')}>Disconfirming evidence I would watch<textarea id={id('a')} className="field" rows={2} value={f.against} onChange={(e) => setF({ ...f, against: e.target.value })} placeholder="What would show this is wrong" /></label>
-        <label htmlFor={id('u')}>Unknowns<textarea id={id('u')} className="field" rows={2} value={f.unknowns} onChange={(e) => setF({ ...f, unknowns: e.target.value })} placeholder="What the data here does not tell me" /></label>
-        <div className="dec-when">
-          <label htmlFor={id('d')}>Review on <input id={id('d')} type="date" className="field" value={f.reviewOn} onChange={(e) => setF({ ...f, reviewOn: e.target.value })} /></label>
-          <label className="keys-toggle" style={{ margin: 0 }}><input type="checkbox" checked={f.results} onChange={(e) => setF({ ...f, results: e.target.checked })} /> and when the next results are out</label>
-        </div>
-      </div>
-      {f.thesis.trim() && !f.against.trim() && <p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>Add one point that would prove this wrong. Optional, but a thesis with no counterpoint is easy to keep for the wrong reasons.</p>}
-      {f.thesis.trim().length >= 10 && card.companies.length === 1 && <div style={{ marginTop: 10 }}><AskAI subject="thesis" sym={card.companies[0].sym} thesis={f.thesis.trim()} title="Challenge my thesis" compact /><p className="dim" style={{ fontSize: 12.5, margin: '4px 0 0' }}>Returns questions that would test it, and the data Alpha lacks; never a verdict. Asking sends the thesis text and the symbol, nothing else.</p></div>}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}><button type="button" className="chip" onClick={save}>Save</button>{msg && <span className="dim" role="status" style={{ fontSize: 13 }}>{msg}</span>}</div>
-    </details>
+    <form className="note-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
+      <label htmlFor={id('q')}><span>Question</span><input id={id('q')} className="field" value={f.question} maxLength={300} onChange={(e) => setF({ ...f, question: e.target.value })} /></label>
+      <label htmlFor={id('t')}><span>Thesis</span><textarea id={id('t')} className="field" rows={2} value={f.thesis} onChange={(e) => setF({ ...f, thesis: e.target.value })} placeholder="What I think, in one or two sentences" /></label>
+      <label htmlFor={id('a')}><span>What would change my mind</span><textarea id={id('a')} className="field" rows={2} value={f.against} onChange={(e) => setF({ ...f, against: e.target.value })} placeholder="What would show this is wrong" /></label>
+      {f.thesis.trim() && !f.against.trim() && <p className="dim desk-small">Add one point that would prove this wrong. Optional, but a thesis with no counterpoint is easy to keep for the wrong reasons.</p>}
+      <label htmlFor={id('u')}><span>Unknowns</span><textarea id={id('u')} className="field" rows={2} value={f.unknowns} onChange={(e) => setF({ ...f, unknowns: e.target.value })} placeholder="What the data here does not tell me" /></label>
+      <fieldset>
+        <legend>Look again</legend>
+        <label htmlFor={id('d')} className="desk-inline"><span>On a date</span><input id={id('d')} type="date" className="field" value={f.reviewOn} onChange={(e) => setF({ ...f, reviewOn: e.target.value })} /></label>
+        <label className="radio"><input type="checkbox" checked={f.results} onChange={(e) => setF({ ...f, results: e.target.checked })} /> When the next results are out</label>
+      </fieldset>
+      <label htmlFor={id('n')}><span>Private note</span><textarea id={id('n')} className="field" rows={3} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
+      {one && f.thesis.trim().length >= 10 && <div><AskAI subject="thesis" sym={one} thesis={f.thesis.trim()} title="Challenge my thesis" compact /><p className="dim desk-small">Returns questions that would test it, and the data Alpha lacks; never a verdict. Asking sends the thesis text and the symbol, nothing else.</p></div>}
+      <div className="desk-formacts"><button type="submit" className="act primary">Save changes</button>{msg && <span className="desk-err" role="alert">{msg}</span>}</div>
+      <p className="dim desk-small">Saved in this browser only. The edit date is recorded so a later backup import keeps the newer copy.</p>
+    </form>
   );
 }

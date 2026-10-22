@@ -148,10 +148,10 @@ export function NotesColumn({ r, sigs }: { r: Row; sigs: Sig[] }) {
       </section>
       <section className="card tight" aria-labelledby="saved-h">
         <div className="card-h"><h3 id="saved-h">Saved about {r.sym}</h3><Link className="more" href="/desk/">My Desk →</Link></div>
-        {mine.length + journal.length === 0 ? <p className="dim" style={{ margin: 0, fontSize: 14 }}>Nothing yet. A question saved above, or a decision in the <Link className="link" href="/journal/">journal</Link>, appears here.</p> : (
+        {mine.length + journal.length === 0 ? <p className="dim" style={{ margin: 0, fontSize: 14 }}>Nothing yet. A question saved above, or a decision in the <Link className="link" href="/desk/#journal">journal</Link>, appears here.</p> : (
           <ul className="rows">
-            {mine.slice(0, 4).map((c) => <li key={c.id}><Link className="row" href="/desk/"><span style={{ minWidth: 0 }}><span className="row-t">{c.question ?? 'Untitled question'}</span><div className="row-s">Research card · saved {dateLabel(c.createdAt.slice(0, 10))}{c.decision?.reviewOn ? ` · review ${dateLabel(c.decision.reviewOn)}` : c.decision?.reviewWhen === 'results' ? ' · review after results' : ''}</div></span></Link></li>)}
-            {journal.slice(0, 3).map((e) => <li key={e.id}><Link className="row" href="/journal/"><span style={{ minWidth: 0 }}><span className="row-t">{e.action === 'took' ? 'Took it' : e.action === 'skipped' ? 'Skipped' : 'Watching'} · {dateLabel(e.date)}</span><div className="row-s">{e.why}</div></span></Link></li>)}
+            {mine.slice(0, 4).map((c) => <li key={c.id}><Link className="row" href="/desk/#cards"><span style={{ minWidth: 0 }}><span className="row-t">{c.question ?? 'Untitled question'}</span><div className="row-s">Research card · saved {dateLabel(c.createdAt.slice(0, 10))}{c.decision?.reviewOn ? ` · review ${dateLabel(c.decision.reviewOn)}` : c.decision?.reviewWhen === 'results' ? ' · review after results' : ''}</div></span></Link></li>)}
+            {journal.slice(0, 3).map((e) => <li key={e.id}><Link className="row" href="/desk/#journal"><span style={{ minWidth: 0 }}><span className="row-t">{e.action === 'took' ? 'Took it' : e.action === 'skipped' ? 'Skipped' : 'Watching'} · {dateLabel(e.date)}</span><div className="row-s">{e.why}</div></span></Link></li>)}
           </ul>
         )}
       </section>

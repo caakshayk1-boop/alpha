@@ -12,6 +12,8 @@ export interface JournalEntry {
   price: number | null;     // price at the time of the decision
   stop: number | null;
   target: number | null;
+  /** When the entry was last edited (absent: never edited). The backup merge keeps the later copy of the same id. */
+  updatedAt?: string;
 }
 
 /** Entries needed in each group before an average is shown as anything but "too early to say". A judgement call, not a statistical test. */
@@ -76,7 +78,7 @@ export function parseJournal(raw: string | null): JournalEntry[] {
       if (typeof o.id !== 'string' || !o.id || seen.has(o.id) || typeof o.sym !== 'string' || !o.sym || !isDate(o.date)) continue;
       if (!(ACTIONS as readonly unknown[]).includes(o.action) || typeof o.why !== 'string') continue;
       seen.add(o.id);
-      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target) });
+      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target), ...(typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(o.updatedAt) ? { updatedAt: o.updatedAt } : {}) });
     }
     return out;
   } catch { return []; }
