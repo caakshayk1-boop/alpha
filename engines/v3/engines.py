@@ -18,7 +18,7 @@ from . import setups as S
 from .execsim import Plan
 from .portfolio import Cand
 
-ENGINES = ("E1", "E2", "E3", "E4", "E5")
+ENGINES = ("E1", "E2", "E3", "E4", "E5", "E7")     # E7: forward-only (DECISIONS #15); E6 has no setup
 
 
 def clean_mask(df: pd.DataFrame) -> pd.Series:
@@ -39,7 +39,7 @@ def setup_frame(engine: str, sym: str, df: pd.DataFrame, ctx: dict, cfg: dict, m
     """`cost` is a CostModel (fees + spread + slippage enter the reward-to-risk filters) or a plain round-trip fraction."""
     from . import ind
     cost_rt = round_trip(cost, ind.traded_value_cr(df, 20)) if hasattr(cost, "impact") else cost
-    if engine == "E1":
+    if engine in ("E1", "E7"):                      # E7 is E1's setup with a different exit
         return S.e1(sym, df, ctx, cfg)
     if engine == "E2":
         return S.e2(sym, df, ctx, cfg)
@@ -68,6 +68,8 @@ def _plan(engine: str, variant: str, sym: str, df: pd.DataFrame, fr: pd.DataFram
         low20 = fr["exit_low20"].to_numpy(float)
         p.exit_on_close = lambda i, e: c[i] < low20[i]
         p.partials_r = partials
+    elif engine == "E7":
+        pass                                        # no trailing exit: the stop and the 60-session limit only
     elif engine == "E2":
         lvl = float(row["level"])
         p.exit_on_close = lambda i, e: i - 1 > t and c[i] < lvl and c[i - 1] < lvl

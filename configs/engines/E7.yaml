@@ -1,0 +1,28 @@
+# E7 · E1 without its trailing exit (forward-only). Chosen from the E1 decomposition (research/v3/decompose_e1.json) on history that
+# was already inspected, so NO historical result counts for it: it is judged on the prospective paper record alone.
+engine: E7
+version: v1.1.0
+derived_from: {engine: E1, version: v1.0.0, change: "trailing exit removed"}
+evidence_basis: forward_only
+family: trend
+horizon_sessions: [15, 60]
+universe: {min_price: 50, min_median_traded_value_cr_20d: 10}
+setup:
+  momentum: {lookback: 126, skip: 21, rule: "total return t-147..t-21 > 0 and in the top quintile of the universe that day"}
+  trigger: {rule: "close > max(high, previous 20 sessions, excluding today)", lookback: 20}
+  sma50_rising: {length: 50, over: 10}
+rank:                 # equal weights; percentiles from that day's cross-section; a percentile is not a probability
+  - {feature: momentum_pct, weight: 1}
+  - {feature: sector_relative_momentum_pct, weight: 1}
+  - {feature: inverse_realised_vol_pct, weight: 1, window: 63}
+invalidation: {rule: "min(low, preceding 10 sessions) - 0.25 * ATR14", atr: 14, lookback: 10, pad_atr: 0.25}
+reject: {max_stop_distance_pct: 10.0, min_stop_distance_pct: 1.0}     # frozen a priori, before any evaluation
+exits:
+  time_stop_sessions: 60
+  trail: none                        # the only difference from E1: no 20-session-low exit; the stop and the time limit remain
+  baseline: no_partials
+regimes: {active: [trend_up, range], paper_only: [], inactive: [trend_down, stress, unknown]}
+promotion:
+  basis: prospective paper record only (from the v1.1.0 freeze date); every promotion_policy criterion applies to that record
+  min_paper_trades: 30            # before any criterion is read; the policy's 891-trade sample still binds promotion
+  control: E1 (same entries, with its trail), recorded beside it every night

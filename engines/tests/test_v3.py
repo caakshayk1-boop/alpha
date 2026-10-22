@@ -87,6 +87,16 @@ for e in EN.ENGINES:
         same = all(po[s].loc[:t, ["setup", "stop"]].fillna(-1).equals(full[s].loc[:t, ["setup", "stop"]].fillna(-1)) for s in BARS)
         check(f"{e} · future poison after {t.date()}: nothing at or before it changes", same)
 
+fr1 = frames(BARS, NIFTY, "E1")
+fr7 = frames(BARS, NIFTY, "E7")
+check("E7 fires exactly E1's setups", all(fr1[s_]["setup"].equals(fr7[s_]["setup"]) for s_ in BARS))
+s0 = next(s_ for s_ in BARS if fr7[s_]["setup"].any())
+t0 = int(np.flatnonzero(fr7[s0]["setup"].to_numpy())[0])
+p7 = EN._plan("E7", "baseline", s0, BARS[s0], fr7[s0], t0, CFG["engines"]["E7"], 500.0, 10)
+p1 = EN._plan("E1", "baseline", s0, BARS[s0], fr1[s0], t0, CFG["engines"]["E1"], 500.0, 10)
+check("E7's plan has no trailing exit and E1's has one; same stop and time limit", p7.exit_on_close is None and p1.exit_on_close is not None and p7.stop == p1.stop and p7.time_stop == p1.time_stop == 60)
+check("E7 is forward-only by its own config", CFG["engines"]["E7"]["evidence_basis"] == "forward_only")
+
 print("regime: hysteresis, unknown, transitions")
 raw = pd.Series(["range"] * 5 + ["trend_up"] + ["range"] * 3 + ["trend_up"] * 3 + ["unknown"] + ["range"], index=pd.bdate_range("2026-01-01", periods=14))
 hy = R.with_hysteresis(raw, 3)

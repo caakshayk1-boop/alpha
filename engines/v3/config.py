@@ -10,7 +10,7 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONF = ROOT / "configs" / "engines"
 FROZEN = CONF / "FROZEN.sha256"
-ENGINES = ("E1", "E2", "E3", "E4", "E5", "E6")
+ENGINES = ("E1", "E2", "E3", "E4", "E5", "E6", "E7")
 
 
 class FrozenMismatch(RuntimeError):

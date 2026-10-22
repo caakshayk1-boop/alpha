@@ -14,7 +14,7 @@ export interface V3Feed { schema: string; generated: string; data_watermark: str
 
 export const ENGINE_NAME: Record<string, string> = {
   E1: 'Relative-strength continuation', E2: 'Volatility compression breakout', E3: 'Orderly trend pullback',
-  E4: 'Residual mean reversion', E5: 'Failed breakdown and range reclaim', E6: 'Earnings surprise drift',
+  E4: 'Residual mean reversion', E5: 'Failed breakdown and range reclaim', E6: 'Earnings surprise drift', E7: 'Relative strength, held to the time limit',
 };
 export const STATE_WORD: Record<EngineState, string> = {
   BLOCKED_DATA: 'Blocked: data missing', RESEARCH: 'Research', PAPER: 'Paper', VALIDATED: 'Validated', PAUSED: 'Paused', RETIRED: 'Retired',

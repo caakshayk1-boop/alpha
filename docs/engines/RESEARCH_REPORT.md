@@ -113,13 +113,33 @@ No walk-forward session was classified stress or trend-down.
 | E4 | 0.0 | 0.0001 | 0.0035 | 1.0 | 0.0068 | +0.0000 |
 | E5 | 0.0 | 0.0 | 0.0 | 0.0068 | 1.0 | +0.0578 |
 
-**Recommendation (owner decision):**
-- E1: keep in RESEARCH. The result points at the exit plan, not the selection, so the next research question is whether a plain
-  "liquid stock, trend filter, E1 exit" baseline is the engine.
-- E2: merge into E1 as a challenger, or retire.
-- E3 and E4: retire.
-- E5: keep in paper for a forward sample.
-- E6: blocked until point-in-time event data exist.
+**Decided (owner delegated, DECISIONS #12–#15):**
+- E2, E3 and E4 are retired.
+- E1 and E5 stay in RESEARCH with a forward paper record.
+- E6 stays blocked.
+- E7 (E1 without its trailing exit, §8a) is added as a forward-only engine.
+
+## 8a. Reverse-engineering E1 (diagnostic, inspected history: cannot promote)
+`engines/v3/decompose.py` (research/v3/decompose_e1.json). The books share E1's signal days, plan builder, costs and portfolio. Random books
+are the median of 20 seeded draws. Net expectancy (R):
+
+| Book | 2019–22 | 2023–24 | 2025–26 |
+|---|---|---|---|
+| E1 | +0.363 | +0.237 | +0.042 |
+| E1_NOTRAIL | +0.415 | +0.930 | +0.066 |
+| RAND | +0.110 | +0.445 | -0.242 |
+| RAND_TREND | +0.296 | +0.446 | -0.174 |
+| RAND_MOM | +0.425 | +0.449 | -0.083 |
+
+Reading:
+- **The selection is real, but only outside the rally.** The trend filter and the momentum rank each add value in 2019–22 and
+  2025–26; E1 beats every random draw in 2025–26. In 2023–24 any long position with a 60-session hold made money, which hid it.
+- **The trailing exit is the weak part.** Exiting on a close below the 20-session low lowered E1's result in all three periods,
+  by about 0.7R per trade in 2023–24.
+
+**Result: E7** (configs/engines/E7.yaml, rules v1.1.0, DECISIONS #15) is E1 with the trailing exit removed. It was chosen after
+seeing this history, so no historical figure counts for it: it is judged on the prospective paper ledger alone, recorded nightly
+beside E1 as its control, under the same promotion policy.
 
 ## 9. Trial registry
 `engines/research/trials.jsonl`: every evaluated configuration is appended (E1–E5 baseline, challenger and four neighbours each,

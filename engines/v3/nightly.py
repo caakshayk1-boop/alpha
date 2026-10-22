@@ -34,6 +34,7 @@ TARGET_POLICY = {
     "E2": "exit at the next open after two closes below the broken level, or after 25 sessions",
     "E3": "the whole position at the preceding 20-session high, or after 15 sessions",
     "E4": "exit at the next open once the residual z is back to 0, or after 7 sessions; no third target",
+    "E7": "no target and no trailing exit: the stop, or after 60 sessions (E1's entry)",
     "E5": "half at the range midpoint, half at the range high (both fixed at the signal), or after 15 sessions; no third target",
 }
 
@@ -106,6 +107,9 @@ def main() -> None:
     st = {e: PB.bound_state(results.get("engines", {}).get(e, {}).get("state", "RESEARCH"), results.get("engines", {}).get(e, {}).get("evidence"), cfgs["evidence"]) for e in config.ENGINES}
     life = PB.lifecycle()                                   # configs/engines/states.yaml: retired and paused engines
     why = {e: results.get("engines", {}).get(e, {}).get("why") for e in config.ENGINES}
+    for e in config.ENGINES:
+        if cfgs["engines"][e].get("evidence_basis") == "forward_only":
+            why[e] = f"forward-only since {cfgs['engines'][e].get('version')}: judged on this paper record alone (DECISIONS #15)"
     for e, d in life.get("retired", {}).items():
         st[e], why[e] = "RETIRED", f"retired {d['date']}: {d['why']}"
     for e, d in (life.get("paused") or {}).items():
