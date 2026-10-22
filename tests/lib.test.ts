@@ -668,14 +668,16 @@ test('sessionHead: live in hours, close after the bell, "latest close" before th
 });
 
 import { sessionGaps } from '../src/lib/status.ts';
-test('status: a weekday the NSE did not trade (20 Oct 2026, Diwali) is not a session the data should hold', () => {
+test('status: a weekday the NSE did not trade (20 Oct 2026, Dussehra) is not a session the data should hold', () => {
   const sessions = ['2026-10-15', '2026-10-16', '2026-10-19', '2026-10-21'];
   assert.deepEqual(sessionGaps(sessions), ['2026-10-20']);
   assert.deepEqual(sessionGaps(['2026-10-16', '2026-10-19']), [], 'a weekend is not a gap');
   assert.deepEqual(sessionGaps(null), []);
   const skip = new Set(sessionGaps(sessions));
   const wedMorning = new Date('2026-10-21T04:00:00Z');                                            // Wed 09:30 IST
-  assert.equal(expectedSession(wedMorning), '2026-10-20', 'without the market record, Tuesday is expected');
+  assert.equal(expectedSession(wedMorning), '2026-10-19', 'T12: NSE\'s own calendar knows 20 Oct 2026 (Dussehra) was a holiday, even without the market record');
+  assert.equal(expectedSession(new Date('2026-10-28T04:00:00Z')), '2026-10-27', 'an ordinary weekday stays expected');
+  assert.equal(expectedSession(new Date('2026-11-11T04:00:00Z')), '2026-11-09', '10 Nov 2026 (Diwali Balipratipada) is skipped');
   assert.equal(expectedSession(wedMorning, skip), '2026-10-19', 'with it, the holiday is skipped');
   const d = (id: string, asOf: string) => ({ id, label: id, source: 'x', asOf, refreshedAt: null });
   assert.deepEqual(reconcile([d('screen', '2026-10-19')], expectedSession(wedMorning, skip), skip).map((x) => x.state), ['current']);
