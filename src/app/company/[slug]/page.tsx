@@ -31,10 +31,25 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   const facts = [fmt(r?.pe, 1, '× P/E'), fmt(r?.roce, 1, '% ROCE'), fmt(r?.de, 2, ' debt/equity'), typeof r?.q === 'number' ? `quality score ${Math.round(r.q)}/100` : null].filter(Boolean).join(', ');
   const description = `${name} (${sym})${r?.sector ? `, ${r.sector}` : ''}: ${facts || 'scores, financials and ownership'}. Chart, scorecard, financials, ownership and look-alikes, every figure dated and sourced. Not investment advice.`;
   const title = `${name} (${sym}) share analysis`;
-  return { title: { absolute: `${title} · alpha` }, description, alternates: { canonical: `/company/${symToSlug(sym)}/` }, openGraph: { title: `${title} · alpha`, description, url: `/company/${symToSlug(sym)}/`, type: 'website' } };
+  return { title: { absolute: `${title} · alpha` }, description, alternates: { canonical: `/company/${symToSlug(sym)}/` }, openGraph: { title: `${title} · alpha`, description, url: `/company/${symToSlug(sym)}/`, type: 'website', siteName: 'alpha', images: [{ url: '/og/alpha.png', width: 1200, height: 630, alt: 'alpha: Indian equity research' }] }, twitter: { card: 'summary_large_image', images: ['/og/alpha.png'] } };
+}
+
+/** Structured data that matches the page exactly: a dated web page about a listed company, with its NSE symbol. No ratings,
+ *  reviews or financial-product claims (brief Part III §4). */
+function jsonLd(sym: string, sh: Shard | null) {
+  const r = sh?.row;
+  const url = `https://alpha.askakshay.com/company/${symToSlug(sym)}/`;
+  const data = {
+    '@context': 'https://schema.org', '@type': 'WebPage', url, name: `${r?.name ?? sym} (${sym}) share analysis`,
+    ...(sh?.built_on ? { dateModified: sh.built_on } : {}),
+    isPartOf: { '@type': 'WebSite', name: 'alpha', url: 'https://alpha.askakshay.com/' },
+    about: { '@type': 'Corporation', name: r?.name ?? sym, tickerSymbol: `NSE:${sym}`, ...(r?.isin ? { identifier: r.isin } : {}) },
+  };
+  return JSON.stringify(data).replace(/</g, '\\u003c');
 }
 
 export default function Page({ params }: { params: { slug: string } }) {
   const sym = slugToSym(params.slug);
-  return <CompanyView sym={sym} initial={shardOf(sym)} />;
+  const sh = shardOf(sym);
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(sym, sh) }} /><CompanyView sym={sym} initial={sh} /></>;
 }
