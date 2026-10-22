@@ -140,7 +140,21 @@ plus the legacy Swing runs). DSR uses each engine's registry count as N. Variant
 partials (E1–E3); stop pad 0.20/0.30 ATR; time stop ±20%.
 
 ## 10. Top 10 ways these results could still be wrong
-See the adversarial review below (independent reviewer, read-only).
+An independent reviewer (a separate agent, read-only, no network) reviewed engines/v3 against the frozen configs on 22 Oct 2026.
+Items marked **fixed** are corrected in impl 1.0.1 (DECISIONS #8) and the run is repeated; the 75bdfd7 figures above are superseded by it.
+
+| # | Risk | Severity | Mitigation in place | Open action |
+|---|---|---|---|---|
+| 1 | Survivorship (today's universe; 452 symbols in 2010 vs 890 now), plus a filter that used a symbol's LAST bar to drop its whole history, and a price floor applied to split-adjusted prices | High | **fixed** per-date staleness; floor kept and listed (DECISIONS #10); survivorship stated on every result | Historical constituents (MISSING row 3); log and fail on dropped download chunks |
+| 2 | Daily returns booked only on exit dates, so drawdown, the bootstrap CI, Sharpe, DSR and PBO read a lumpy series; segment trades and P&L were dated differently | High | **fixed** marked to market each session, built only from trades signalled in the segment | — |
+| 3 | R denominator unchecked at the fill (a next open just above the stop inflates R), and partials anchored to the signal close | High | **fixed** 1–10% rule re-checked at the fill (`cancelled_risk`); partials priced from the executed entry | — |
+| 4 | Paper-only regime cohorts pooled into the promotion book (E4: 633 of 881 trades), and E4 labelled active although its event coverage is missing | High | **fixed** separate active and paper-only books; only active is evidence; E4 paper-only throughout | — |
+| 5 | PBO computed across five engines at once; DSR's SR0 from other engines' Sharpes; N counted rows, not distinct trials | Medium | **fixed** per-engine PBO and SR variance over its own configurations; N = distinct configurations | — |
+| 6 | The neighbourhood perturbed only the stop pad and time stop, after sizing | Medium | **fixed** perturbs before sizing; scope reported PARTIAL and can never pass (DECISIONS #11) | v1.1: re-run every setup parameter ±20% |
+| 7 | The random baseline was not matched (15-session hold for all, 5% chase, 10 cr floor, outside the book) | Medium | **fixed** each engine's own plan, floors and clean check, through the same book | — |
+| 8 | The "unseen" 2010–19 segment was computed in the first run; no purge or embargo | Medium | Breach recorded (DECISIONS #9); the segment is withheld unless a one-shot flag is set and is labelled "seen once". The rules fit nothing, so folds are plain date splits and need no purge or embargo | A genuinely unseen confirmation set no longer exists for these rules |
+| 9 | Leverage possible (6 × 20% = 120%), open risk counted by position, same-day substitution after a cancel | Medium-low | **fixed** cash ledger, actual open risk, a cancelled order keeps its slot | — |
+| 10 | Smaller items: "gross" included impact; 2× stress doubled a zero brokerage; reward-to-risk filters ignored spread and slippage; a split could leak into E4's residual for 3 bars; nightly outcomes used revised bars | Low-medium | **fixed** no-cost R added; 2× doubles the broker-stress model; filters include impact; 3 bars after a jump unclean; outcomes from the ledger's recorded stop and chase | E4's residual mixes a price index (^NSEI) with dividend-inclusive stock returns: small drift, open |
 
 ## 11. Limitations
 These are research results, not investment advice. Past backtests do not guarantee future results. Survivorship, the absence of
