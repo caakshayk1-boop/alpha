@@ -9,6 +9,9 @@ Runs on GitHub Actions (Yahoo refuses the dev container). It:
   4. appends each evaluation to research/trials.jsonl.
 Writes research/phase0/reproduction.json and research/phase0/gate_funnel.csv. Nothing is published or sent.
 
+It imports the running rules, so it reproduces swing-2.0.0 only when checked out at f5704e5 (the commit of record, run
+39705031021). From swing-2.0.1 on, the same script measures the new version against 2.0.0's published figures.
+
 Usage: python phase0.py [snapshot.pkl]   (no argument: download, then save the snapshot to $PHASE0_SNAPSHOT or ./phase0_bars.pkl)
 """
 from __future__ import annotations
