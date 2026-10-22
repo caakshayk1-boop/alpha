@@ -1,0 +1,33 @@
+# Promotion policy for Alpha signal engines E1-E6. Frozen BEFORE any new out-of-sample result (CLAUDE_TASK Phase 1).
+# status DRAFT: every threshold below is a proposal by the research engineer and binds nothing until the owner approves it
+# (owner_approval filled, commit SHA + file hash recorded in PREREGISTRATION.md). Any later change is a new version, logged in
+# docs/engines/DECISIONS.md, and voids every qualification granted under the old one.
+version: policy-1.0.0
+status: DRAFT_AWAITING_OWNER
+owner_approval: null
+states: [BLOCKED_DATA, RESEARCH, PAPER, VALIDATED, PAUSED, RETIRED]
+default_state: RESEARCH
+fail_closed: true            # any missing evidence, version or hash mismatch -> RESEARCH, never PASS
+promote_to_paper:            # all must hold on nested walk-forward OOS, net of costs-1.0.0
+  net_expectancy_lcb_gt: 0.0            # 95% lower bound, stationary block bootstrap
+  bootstrap: {method: stationary_block, mean_block_sessions: 21, resamples: 10000, seed: 20261022}
+  dsr_probability_ge: 0.95              # Deflated Sharpe Ratio with N = trial_registry.count(engine), daily book returns
+  pbo_lt: 0.20                          # CSCV, S = 16 blocks
+  parameter_neighbourhood: {each_parameter_pct: 20, one_at_a_time: true, share_of_neighbours_net_positive_ge: 0.80}
+  max_drawdown_equity_pct_le: 10.0      # at 0.25% risk per position
+  cost_stress_2x_net_expectancy_gt: 0.0
+  one_session_delay_net_expectancy_gt: 0.0
+  beats_baselines: [cash, exposure_matched_nifty, matched_random_entry]
+  min_independent_observations: 891     # power analysis below
+  capacity: {max_position_pct_of_20d_median_traded_value: 1.0, book_size_rs: OWNER_TO_SET}
+promote_to_validated:        # alerts may be considered only from here, and still need owner authorisation (gate G24)
+  prospective_paper_trades_ge: 30
+  paper_vs_backtest: {net_expectancy_within_backtest_ci95: true, median_fill_slippage_pct_le: 0.20}
+  unseen_history_confirmation: required # 2010-01-01..2019-10-20, run once, after walk-forward, never used to tune
+power_analysis:
+  effect_r: 0.10              # smallest net expectancy worth trading, in R
+  sd_r: 1.20                  # per-trade R dispersion observed in the legacy books (Swing v2 holdout sd ~1.1-1.3)
+  alpha_one_sided: 0.05
+  power: 0.80
+  formula: n = ((z_0.95 + z_0.80) * sd / effect)^2 = ((1.645 + 0.842) * 1.2 / 0.1)^2 = 890.7, rounded up to 891
+  note: trades on the same day or overlapping holds are not independent; the bootstrap and month clustering account for it
