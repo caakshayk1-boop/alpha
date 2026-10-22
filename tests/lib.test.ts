@@ -786,6 +786,8 @@ test('engines v3 copy-lint: banned phrases are caught, and no engine copy, card 
   const vmText = JSON.stringify(viewModel(V3, new Date('2026-10-22T15:00:00Z')));
   assert.deepEqual(copyViolations(text + vmText), [], 'no banned phrase in engine copy');
   assert.ok(BANNED.length >= 6);
+});
+
 test('levels: windows are calendar time, so a 7-day crypto market gets a true 52 weeks and a true one-year return', () => {
   // 366 daily bars, every day of the week (crypto). A peak of 115 in the first month of the year, then 80s.
   const n = 366, t0 = 1761091200;                          // 22 Oct 2025 00:00 UTC
