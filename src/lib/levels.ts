@@ -4,8 +4,12 @@
  *    pivots     classic floor pivots from the last COMPLETE session: P = (H + L + C) / 3, R1 = 2P - L, S1 = 2P - H,
  *               R2 = P + (H - L), S2 = P - (H - L)
  *    range      52-week high and low of the daily highs and lows, with their dates
+ *    windows    the 52-week range, the 1W/1M/3M/1Y returns and the best and worst day are CALENDAR windows read from the
+ *               timestamps (7, 30, 91, 365 days), never bar counts: a crypto market trades 7 days a week, so 252 bars is
+ *               about 8 months, and BTC's "52-week high" once ignored everything before February (22 Oct 2026)
  *    typical    average daily range (high - low) over 14 sessions, as % of the close
- *    volatility standard deviation of daily returns over 20 sessions, annualised (x sqrt 252)
+ *    volatility standard deviation of daily returns over 20 sessions, annualised by the number of bars the instrument
+ *               actually prints in a year (about 250 for NSE, 365 for crypto)
  *  Pure functions only: tested in tests/lib.test.ts. */
 
 export interface Bars { t: number[]; o: number[]; h: number[]; l: number[]; c: number[] }
@@ -40,13 +44,23 @@ export function levels(b: Bars, price: number | null | undefined, sessionOpen = 
   if (n < 20) return null;
   const last = typeof price === 'number' && price > 0 ? price : b.c[n - 1];
   const closes = sessionOpen ? [...b.c.slice(0, -1), last] : b.c;
-  const yr = Math.max(0, n - 252);
+  const DAY = 86400, lastT = b.t[n - 1];
+  /** index of the first bar inside the last `days` calendar days */
+  const since = (days: number) => { const from = lastT - days * DAY; let i = n - 1; while (i > 0 && b.t[i - 1] > from) i--; return i; };
+  /** index of the last bar at or before `days` calendar days ago; the first bar when the data start within 4 days after that
+   *  date (a one-year download can begin the day after, or after a weekend or holiday); -1 when they do not reach that far */
+  const before = (days: number) => {
+    const at = lastT - days * DAY;
+    for (let i = n - 1; i >= 0; i--) if (b.t[i] <= at) return i;
+    return b.t[0] - at <= 4 * DAY ? 0 : -1;
+  };
+  const yr = since(365);
   let hi = { v: -Infinity, t: 0 }, lo = { v: Infinity, t: 0 };
   for (let i = yr; i < n; i++) { if (b.h[i] > hi.v) hi = { v: b.h[i], t: b.t[i] }; if (b.l[i] < lo.v) lo = { v: b.l[i], t: b.t[i] }; }
   const hi52 = Number.isFinite(hi.v) ? hi : null, lo52 = Number.isFinite(lo.v) ? lo : null;
   const pi = sessionOpen ? n - 2 : n - 1;
   const pivots = pi >= 0 ? (() => { const H = b.h[pi], L = b.l[pi], C = b.c[pi], P = (H + L + C) / 3; return { p: P, r1: 2 * P - L, s1: 2 * P - H, r2: P + (H - L), s2: P - (H - L), from: b.t[pi] }; })() : null;
-  const back = (k: number) => (closes.length > k ? closes[closes.length - 1 - k] : null);
+  const back = (days: number) => { const i = before(days); return i >= 0 ? closes[i] : null; };
   const year = ist(b.t[n - 1]).slice(0, 4);
   const firstThisYear = b.t.findIndex((t) => ist(t).slice(0, 4) === year);
   const ytdBase = firstThisYear > 0 ? b.c[firstThisYear - 1] : null;
@@ -60,7 +74,7 @@ export function levels(b: Bars, price: number | null | undefined, sessionOpen = 
     streak += d;
   }
   let best: Levels['best'] = null, worst: Levels['worst'] = null;
-  for (let i = Math.max(1, n - 252); i < n; i++) {
+  for (let i = Math.max(1, yr); i < n; i++) {
     const r = (b.c[i] / b.c[i - 1] - 1) * 100;
     if (!best || r > best.pct) best = { pct: r, t: b.t[i] };
     if (!worst || r < worst.pct) worst = { pct: r, t: b.t[i] };
@@ -74,13 +88,15 @@ export function levels(b: Bars, price: number | null | undefined, sessionOpen = 
     ...(hi52 ? [{ label: '52-week high', value: hi52.v, kind: 'range' as const }] : []),
     ...(lo52 ? [{ label: '52-week low', value: lo52.v, kind: 'range' as const }] : []),
   ].sort((x, y) => y.value - x.value);
+  // bars a year for this instrument, from the data when a full year is present (NSE ~250, crypto 365), else the equity convention
+  const perYear = before(365) >= 0 ? n - yr : 252;
   const range14 = b.h.slice(-14).map((h, i) => (h - b.l.slice(-14)[i]) / b.c.slice(-14)[i]);
   return {
     last, sma20, sma50, sma200, hi52, lo52,
     pos52: hi52 && lo52 && hi52.v > lo52.v ? Math.max(0, Math.min(100, ((last - lo52.v) / (hi52.v - lo52.v)) * 100)) : null,
     fromHigh: hi52 ? pct(last, hi52.v) : null,
-    ret: { w1: pct(last, back(5)), m1: pct(last, back(21)), m3: pct(last, back(63)), ytd: pct(last, ytdBase), y1: n >= 250 ? pct(last, back(Math.min(251, closes.length - 1))) : null },
-    pivots, rangePct: range14.length ? avg(range14) * 100 : null, vol20: sd === null ? null : sd * Math.sqrt(252) * 100,
+    ret: { w1: pct(last, back(7)), m1: pct(last, back(30)), m3: pct(last, back(91)), ytd: pct(last, ytdBase), y1: pct(last, back(365)) },
+    pivots, rangePct: range14.length ? avg(range14) * 100 : null, vol20: sd === null ? null : sd * Math.sqrt(perYear) * 100,
     streak, best, worst, ladder,
   };
 }

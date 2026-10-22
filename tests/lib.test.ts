@@ -786,6 +786,28 @@ test('engines v3 copy-lint: banned phrases are caught, and no engine copy, card 
   const vmText = JSON.stringify(viewModel(V3, new Date('2026-10-22T15:00:00Z')));
   assert.deepEqual(copyViolations(text + vmText), [], 'no banned phrase in engine copy');
   assert.ok(BANNED.length >= 6);
+test('levels: windows are calendar time, so a 7-day crypto market gets a true 52 weeks and a true one-year return', () => {
+  // 366 daily bars, every day of the week (crypto). A peak of 115 in the first month of the year, then 80s.
+  const n = 366, t0 = 1761091200;                          // 22 Oct 2025 00:00 UTC
+  const t = Array.from({ length: n }, (_, i) => t0 + i * 86400);
+  const c = Array.from({ length: n }, (_, i) => (i < 30 ? 110 + (i === 10 ? 5 : 0) : 84));
+  const b = { t, o: c, h: c.map((x) => x + 0.5), l: c.map((x) => x - 0.5), c };
+  const lv = levels(b, null)!;
+  assert.equal(lv.hi52!.v, 115.5, 'the October peak is inside 52 weeks; 252 bars would have stopped in February');
+  assert.ok(lv.ret.y1! < -20, `one year: 110 -> 84 is about -24%, got ${lv.ret.y1}`);
+  assert.ok(Math.abs(lv.ret.w1!) < 1e-9 && Math.abs(lv.ret.m1!) < 1e-9, 'a flat last month is 0%, not a bar-count window reaching back into the peak');
+  // equities: ~250 sessions a year; the same windows cover the same calendar
+  const eqT: number[] = [];
+  for (let d = 0; eqT.length < 270; d++) { const x = t0 + d * 86400, wd = new Date(x * 1000).getUTCDay(); if (wd !== 0 && wd !== 6) eqT.push(x); }
+  const ec = eqT.map((_, i) => 100 + i);
+  const e = levels({ t: eqT, o: ec, h: ec, l: ec, c: ec }, null)!;
+  const yearAgo = eqT[eqT.length - 1] - 365 * 86400;
+  const base = ec[eqT.findLastIndex((x) => x <= yearAgo)];
+  assert.ok(Math.abs(e.ret.y1! - (ec[ec.length - 1] / base - 1) * 100) < 1e-9, 'equity one-year return is from the close a calendar year back');
+  // a one-year download that starts the day after the anniversary still gives a one-year return (4-day slack)
+  const late = levels({ t: t.slice(1), o: c.slice(1), h: c.slice(1), l: c.slice(1), c: c.slice(1) }, null)!;
+  assert.ok(late.ret.y1 !== null, 'one day short of a year is still a one-year figure');
+  assert.equal(levels({ t: t.slice(-100), o: c.slice(-100), h: c.slice(-100), l: c.slice(-100), c: c.slice(-100) }, null)!.ret.y1, null, 'a hundred days of data has no one-year return');
 });
 
 import { rotationShift } from '../src/lib/rotationShift.ts';
