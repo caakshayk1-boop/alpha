@@ -1,5 +1,6 @@
 'use client';
 
+import { stageWords } from '@/lib/barometer';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Async, Chg, PageHead, Rv, SectionHead, Skel, Spark } from '@/components/ui';
@@ -124,9 +125,9 @@ export default function Brief() {
         <Async loading={bar.loading || sum.loading} error={null} rows={2}>
           <div id="valuation" data-sec />
           <Rv className="panel tight">
-            <div className="eyebrow">Valuation stage · from the Barometer</div>
-            <div className="disp" style={{ fontSize: 34, margin: '6px 0 2px' }}>{t?.stage.t ?? '—'}</div>
-            <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · index {num(t?.drawdown_pct, 1)}% off its high · VIX {num(t?.vix, 1)}.</p>
+            <div className="eyebrow">Price stage · from the Barometer, not a valuation measure</div>
+            <div className="disp" style={{ fontSize: 34, margin: '6px 0 2px' }}>{t?.stage ? (stageWords('k' in t.stage ? t.stage.k : null) ?? t.stage.t) : '—'}</div>
+            <p className="muted" style={{ margin: 0 }}>Barometer <b className="num">{typeof t?.score === 'number' ? Math.round(t.score) : '—'}</b>/100 · Nifty {num(t?.drawdown_pct, 1)}% below its 52-week high · VIX {num(t?.vix, 1)}.</p>
           </Rv>
 
           <div id="week" data-sec />

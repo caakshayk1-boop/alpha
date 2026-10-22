@@ -26,7 +26,7 @@ export default function Privacy() {
       <PageHead eyebrow="Privacy and terms" title="What alpha keeps," em="and what it sends." />
       <section className="wrap prose-col">
         <h2>There is no account</h2>
-        <p>alpha has no sign-in and no user database. Everything personal you do here is kept in <b>this browser only</b>, in its local storage, and never uploaded. Clearing this site&rsquo;s data in your browser deletes it. Export a copy from <Link href="/watchlist/#cards">Watchlist</Link> or <Link href="/journal/">Journal</Link> to keep it.</p>
+        <p>alpha has no sign-in and no user database. Your saved records (watchlist, research cards, journal, conditions, preferences) are kept in <b>this browser only</b>, in its local storage, and never uploaded. Two things do leave the browser, both listed below: a question you type into Ask while the AI explainer is on, and a sampled page-speed reading. Clearing this site&rsquo;s data in your browser deletes it. Export a copy from <Link href="/watchlist/#cards">Watchlist</Link> or <Link href="/journal/">Journal</Link> to keep it.</p>
         <table className="tbl tbl-text" style={{ margin: '12px 0 20px', tableLayout: 'fixed', width: '100%', minWidth: 0 }}>
           <thead><tr><th scope="col">What</th><th scope="col">Where in this browser</th></tr></thead>
           <tbody>{KEPT.map(([w, k]) => <tr key={k}><td>{w}</td><td className="dim" style={{ fontFamily: 'var(--f-mono)', fontSize: 13, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{k}</td></tr>)}</tbody>

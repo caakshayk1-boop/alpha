@@ -286,18 +286,18 @@ const TK = { score: 35, band: 'Weak', stage: 'Slightly cheaper', nifty: 22721.95
 test('takeaway: the headline and facts are built only from the figures given, in plain words', () => {
   const t = takeaway(TK);
   assert.equal(t.available, true);
-  assert.equal(t.headline, 'A weak market, 13.8% below its high.');
+  assert.equal(t.headline, 'A weak market, the Nifty 13.8% below its 52-week high.');
   assert.equal(t.sub, 'Barometer 35 of 100 (up from 29 on 9 Oct 2026). India VIX 14.1, normal. 51% of stocks sit above their 200-day average.');   // 470/930 = 50.5% -> 51
   assert.deepEqual(t.facts.map((f) => [f.id, f.value, f.note, f.tone]), [
     ['barometer', '35 / 100', 'Weak · Slightly cheaper', 'down'],
-    ['nifty', '22,722', '13.8% below its high', 'neutral'],
+    ['nifty', '22,722', '13.8% below its 52-week high', 'neutral'],
     ['breadth', '51%', '470 of 930 with history', 'neutral'],
     ['vix', '14.1', 'normal', 'neutral'],
   ]);
 });
 test('takeaway: tone follows the band; a missing figure drops its sentence and tile instead of being invented', () => {
   const firm = takeaway({ ...TK, score: 60, band: 'Firm', stage: null, drawdownPct: 0.4, vix: null, nifty: null, above200: null, with200: null, previous: null });
-  assert.equal(firm.headline, 'A firm market, close to its high.');
+  assert.equal(firm.headline, 'A firm market, the Nifty close to its 52-week high.');
   assert.equal(firm.sub, 'Barometer 60 of 100.');
   assert.deepEqual(firm.facts.map((f) => [f.id, f.note, f.tone]), [['barometer', 'Firm', 'up']]);
   assert.equal(takeaway({ ...TK, band: 'Mixed', score: 48, drawdownPct: null }).headline, 'A mixed market.');
@@ -308,8 +308,8 @@ test('takeaway: tone follows the band; a missing figure drops its sentence and t
 test('takeaway: the change wording, the 1% threshold, and the zero-denominator guard', () => {
   assert.match(takeaway({ ...TK, previous: { score: 35, date: '2026-10-09' } }).sub, /\(unchanged from 35 on 9 Oct 2026\)/);
   assert.match(takeaway({ ...TK, previous: { score: 40, date: '2026-10-09' } }).sub, /\(down from 40 on 9 Oct 2026\)/);
-  assert.equal(takeaway({ ...TK, drawdownPct: 1.0 }).headline, 'A weak market, 1.0% below its high.');
-  assert.equal(takeaway({ ...TK, drawdownPct: 0.99 }).headline, 'A weak market, close to its high.');
+  assert.equal(takeaway({ ...TK, drawdownPct: 1.0 }).headline, 'A weak market, the Nifty 1.0% below its 52-week high.');
+  assert.equal(takeaway({ ...TK, drawdownPct: 0.99 }).headline, 'A weak market, the Nifty close to its 52-week high.');
   const none = takeaway({ ...TK, with200: 0 });
   assert.ok(!/200-day/.test(none.sub) && !none.facts.some((f) => f.id === 'breadth'));
 });
@@ -957,4 +957,26 @@ test('A04/E01: a percentage restated as the wrong paise, or a percentile read as
   assert.equal(checkStudy('The P/E sits at the 48th percentile of its own history: higher than about 48% of it.').length, 0);
   assert.equal(checkStudy('The P/E sits at the 48th percentile, above its median.').length, 1, 'the 48th percentile is below the median');
   assert.equal(checkStudy('sitting at the 58th percentile of its own history, the stock trades above its median multiple').length, 0);
+});
+
+import { eligibility } from '../src/lib/coverage.ts';
+import { decide, CHECKS_VERSION } from '../src/lib/decision.ts';
+test('C07: a held data gate names its reason in words, apart from the research checks', () => {
+  const r = { sym: 'LCL', name: 'Lohia Corp', fy_count: 2, vet: { s: 'held', p: 8, n: 9, f: ['stmts'], w: '2 fiscal years of statements' } } as never;
+  const e = eligibility(r)!;
+  assert.equal(e.label, 'Limited history: 2 fiscal years available');
+  assert.equal(e.ok, false); assert.equal(e.thin, true);
+  const c = eligibility({ sym: 'X', name: 'X', fy_count: 4, vet: { s: 'held', p: 7, n: 9, f: ['cash', 'cover'], w: 'CFO/PAT 0.31x median' } } as never)!;
+  assert.equal(c.label, 'Profit not turning into cash · CFO/PAT 0.31x median');
+  assert.match(c.detail, /thin interest cover/);
+});
+test('A03: the nine checks give one count for one row, whether or not the caller has the statements', () => {
+  const r = { sym: 'LCL', name: 'Lohia Corp', fy_count: 2, roce: 41, de: 0.34, cfo_pat: 1.44, rev_cagr: 25, pe_pctile: 62, price: 570, sma50: 560, sma200: 540, rs3m: 40, turnover_cr: 17, risk: { level: 'LOW', flags: [] }, tech: 22, g: 95 } as never;
+  const today = decide(r, []), company = decide(r, [], 2);
+  const count = (d: ReturnType<typeof decide>) => [d.checks.filter((c) => c.pass === true).length, d.checks.filter((c) => c.pass !== null).length];
+  assert.deepEqual(count(today), count(company));
+  assert.equal(today.version, CHECKS_VERSION);
+  assert.equal(today.checks.find((c) => c.label === 'Growing')?.pass, null, 'two statement years: growth is not judged');
+  assert.ok(today.bear.some((p) => /2 fiscal years/.test(p.text)), 'the countercase names the thin history (C09)');
+  assert.equal(today.dims.find((d) => d.name === 'Growth')?.score, null, 'a growth rank on two years is not called strong (C08)');
 });

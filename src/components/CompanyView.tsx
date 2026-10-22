@@ -1,6 +1,7 @@
 'use client';
 
 import { fixCopy } from '@/lib/copyfix';
+import { eligibility } from '@/lib/coverage';
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -225,6 +226,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const pv = priceView(r.sym, r, lv.snap, px.quotes[sym]);
   const pl = priceLabel(pv);
   const closeOn = sessionLabel(r.last_date);
+  const elig = eligibility(r);
   const tabOptions: (readonly [Tab, string])[] = [['overview', 'Overview'], ['financials', 'Financials'], ['valuation', 'Valuation'], ...(mySignals.length > 0 ? [['engines', `Signals (${mySignals.length})`] as const] : []), ['ownership', 'Ownership'], ['seasonality', 'Seasonality']];
   const view: Tab = tabOptions.some(([k]) => k === tab) ? tab : 'overview';      // a link to #engines on a company with no signal falls back to Overview
   return (
@@ -238,7 +240,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             {r.tier && <span className="tag">{r.tier} cap</span>}
             {r.ahimsa && <span className="tag up">Ahimsa 500</span>}
             {/* the screen's DATA gate, named for what it is: it is not Alpha's research checks below and not an editorial review */}
-            {r.vet && <span className={`tag ${r.vet.s === 'cleared' ? '' : 'warn'}`} title={`The screen's data checks (statements on file and fresh, price fresh, size, liquidity, leverage, interest cover, cash conversion, run rate): ${r.vet.p} of ${r.vet.n} pass. A gate on the data, not a view on the company, and not a review by a person.`}>{r.vet.s === 'cleared' ? `Data checks ${r.vet.p}/${r.vet.n}` : `Data checks: held · ${r.vet.w}`}</span>}
+            {elig && <span className={`tag ${elig.ok ? '' : 'warn'}`} title={elig.detail}>{elig.label}</span>}
             {r.risk && r.risk.level !== 'LOW' && <span className="tag warn">Risk {r.risk.level.toLowerCase()}</span>}
           </div>
         </div>

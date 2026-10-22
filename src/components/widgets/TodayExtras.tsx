@@ -9,6 +9,7 @@ import { num, pct } from '@/lib/format';
 import { rotationShift } from '@/lib/rotationShift';
 import { companyHref } from '@/lib/slug';
 import { useBarometer } from '@/lib/useBarometer';
+import { stageWords } from '@/lib/barometer';
 
 export function RotationWidget() {
   const r = useRotation();
@@ -38,7 +39,7 @@ export function BriefDigest() {
   return (
     <Rv className="panel tight xw">
       <div className="tr-h"><h2>The week</h2><Link href="/brief/" className="more">The brief →</Link></div>
-      {baro?.reading.stage?.t && <p className="xw-lead">Valuation: <b>{baro.reading.stage.t.toLowerCase()}</b> · Barometer {Math.round(baro.reading.score)}/100</p>}
+      {baro?.reading.stage && <p className="xw-lead">Price stage: <b>{stageWords(baro.reading.stage.k)}</b> · Barometer {Math.round(baro.reading.score)}/100</p>}
       {!p.data ? <Skel h={120} /> : (
         <div className="xw-cols">
           <div><div className="eyebrow">Biggest gains</div><div className="xw-list">{up.map((m) => <Link key={m.sym} href={companyHref(m.sym)} className="xw-li"><span className="t">{m.sym}</span><Chg v={m.r1w} dp={0} /></Link>)}</div></div>

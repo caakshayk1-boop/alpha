@@ -17,6 +17,7 @@ import { AskAI } from '@/components/Explain';
 import { BriefDigest, QuickSizer, RotationWidget } from '@/components/widgets/TodayExtras';
 import { dateLabel, num } from '@/lib/format';
 import { useBarometer } from '@/lib/useBarometer';
+import { stageWords } from '@/lib/barometer';
 import { sessionHead } from '@/lib/session';
 import { istHM } from '@/lib/today';
 import { takeaway, vixWord } from '@/lib/takeaway';
@@ -81,7 +82,7 @@ function TodayHero() {
                 {typeof r.nifty === 'number' && <span className="sky-pill">Nifty <b>{num(r.nifty, 0)}</b></span>}
                 {typeof r.vix === 'number' && <span className="sky-pill">VIX {num(r.vix, 1)} · {vixWord(r.vix)}</span>}
                 {pct200 !== null && <span className="sky-pill">{pct200}% above 200-day</span>}
-                {r.stage?.t && <span className="sky-pill">Valuation: {r.stage.t.toLowerCase()}</span>}
+                {r.stage && <span className="sky-pill" title="From the Nifty's fall from its 52-week high and the share of stocks above their 200-day average. Not a valuation measure.">Price stage: {stageWords(r.stage.k)}</span>}
               </div>
               <Link className="sky-link" href="/brief/">Read the five-minute brief →</Link>
             </div>

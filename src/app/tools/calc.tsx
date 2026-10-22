@@ -125,7 +125,7 @@ export function Position() {
   const value = qty * e, loss = qty * risk;
   return (
     <Rv className="panel tool" as="article">
-      <Head n="01" q="How many shares does my stop allow?" a="Fix the most you will lose if the stop is hit, then let the distance to the stop set the size." />
+      <Head n="01" q="How many shares does my stop allow?" a="Set your planned loss if the stop fills at its stated price, then let the distance to the stop set the size. A gap through the stop can lose more; the table below shows how much." />
       <div className="tool-grid">
         <div className="tool-in">
           <Stepper label="Capital" value={capital} set={setCapital} step={50000} min={0} prefix="₹" error={err.cap} />
