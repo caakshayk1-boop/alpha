@@ -2,11 +2,12 @@
  "original_run_utc": "2026-10-21T05:07:09Z",
  "original_data_through": "2026-10-21",
  "original_partial_bar": "the original run started 10:37 IST on 21 Oct, so any 21 Oct bar it read was an incomplete intraday bar",
- "fetched": "2026-10-22T01:12:07.364094+00:00",
+ "fetched": "2026-10-22T01:22:47.328859+00:00",
+ "universe_at": "31d8822ff0ac906ebc4e328b26741ac867b88659",
  "runs": {
   "completed_sessions": {
    "end": "2026-10-20",
-   "data_hash": "4422ff6554c486f78138afd5c69c113ae6ef38ae7745f94f20d5a9753f65eb8a",
+   "data_hash": "29f07fa75b28c823a8e1379c27a69ca542f04d759ce6990a476169a096b504b0",
    "universe": 941,
    "data_through": "2026-10-19",
    "comparison": [
@@ -49,26 +50,26 @@
     {
      "figure": "no_gate.holdout.n",
      "published": 162,
-     "reproduced": 164,
+     "reproduced": 163,
      "match": false
     },
     {
      "figure": "no_gate.holdout.expectancy_r",
      "published": -0.26,
-     "reproduced": -0.257,
-     "match": false
+     "reproduced": -0.261,
+     "match": true
     },
     {
      "figure": "no_gate.holdout.profit_factor",
      "published": 0.6,
-     "reproduced": 0.61,
+     "reproduced": 0.6,
      "match": true
     },
     {
      "figure": "no_gate.holdout.clustered_t_clustered",
      "published": -3.35,
-     "reproduced": -3.36,
-     "match": true
+     "reproduced": -3.41,
+     "match": false
     }
    ],
    "all_match": false,
@@ -81,11 +82,11 @@
     "2025": 24.9,
     "2026": 2.0
    },
-   "candidates": 1887
+   "candidates": 1888
   },
   "as_recorded": {
    "end": "2026-10-21",
-   "data_hash": "2d96202127b8a7c13a55ba1c7bccc7351d7145defabb9066f160038960d933f2",
+   "data_hash": "ee2d01e79af3a009b123c6da704a649f676bdf8b9a5b1897495c000ffe94ff62",
    "universe": 941,
    "data_through": "2026-10-21",
    "comparison": [
@@ -128,26 +129,26 @@
     {
      "figure": "no_gate.holdout.n",
      "published": 162,
-     "reproduced": 164,
+     "reproduced": 163,
      "match": false
     },
     {
      "figure": "no_gate.holdout.expectancy_r",
      "published": -0.26,
-     "reproduced": -0.257,
-     "match": false
+     "reproduced": -0.261,
+     "match": true
     },
     {
      "figure": "no_gate.holdout.profit_factor",
      "published": 0.6,
-     "reproduced": 0.61,
+     "reproduced": 0.6,
      "match": true
     },
     {
      "figure": "no_gate.holdout.clustered_t_clustered",
      "published": -3.35,
-     "reproduced": -3.36,
-     "match": true
+     "reproduced": -3.41,
+     "match": false
     }
    ],
    "all_match": false,
@@ -160,7 +161,7 @@
     "2025": 24.9,
     "2026": 2.0
    },
-   "candidates": 1887
+   "candidates": 1888
   }
  },
  "gate": {
@@ -186,9 +187,9 @@
    "sma200_rising": 0
   },
   "breadth": {
-   "min": 0.2221,
-   "median": 0.5994,
-   "max": 0.8903
+   "min": 0.22,
+   "median": 0.5983,
+   "max": 0.8914
   },
   "agrees_with_published": 136,
   "published_sessions_matched": 136
