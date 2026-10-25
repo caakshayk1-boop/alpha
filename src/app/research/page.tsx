@@ -55,7 +55,7 @@ export default function Research() {
           <ul className="rows card rs-list">
             {entries.map((e) => (
               <li key={e.href}>
-                <Link href={e.href} className="row rs-row" aria-label={`${e.cta}: ${e.t}`}><span className="rs-id"><span className="row-t">{e.t}{e.tag && <span className="pill warn nodot rs-tag">{e.tag}</span>}</span><span className="row-s">{e.s}</span></span><span className="row-r link" aria-hidden>{e.cta} →</span></Link>
+                <Link href={e.href} className="row rs-row"><span className="rs-id"><span className="row-t">{e.t}{e.tag && <span className="pill warn nodot rs-tag">{e.tag}</span>}</span><span className="row-s">{e.s}</span></span><span className="row-r link">{e.cta} →</span></Link>
               </li>
             ))}
           </ul>
