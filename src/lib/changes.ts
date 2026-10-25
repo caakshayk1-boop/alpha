@@ -6,17 +6,17 @@
 //   results    a results date on file inside the window (unverified, as the Calendar says)
 //   news       stories in the news feed that name the company by Alpha's matcher (A05 rules), with source and date
 //   signals    Swing signals filed, entered, closed or voided in the window
-// Rank changes are not available: the screen keeps no history, and the panel says so rather than inventing one.
+// Rank: only the screen's comparison with its previous build exists (rank_move); a longer rank history is not stored (C13).
 import type { ChartFeed, Row, Sig } from './types';
 import type { Story } from './news';
 import { pct } from './format.ts';
 
-export interface Change { date: string; kind: 'price' | 'extreme' | 'move' | 'results' | 'news' | 'signal'; text: string; source: string; href?: string }
+export interface Change { date: string; kind: 'price' | 'extreme' | 'move' | 'results' | 'news' | 'signal' | 'rank'; text: string; source: string; href?: string }
 const DAY = 864e5;
 const iso = (s: number) => new Date(s * 1000 + 5.5 * 3600e3).toISOString().slice(0, 10);      // the session date in India
 const label = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
-export function whatChanged(o: { row: Row; chart: ChartFeed | null; news: (Story & { mentions: string[] })[]; sigs: Sig[]; now: number; days?: number }): { items: Change[]; window: [string, string]; notes: string[] } {
+export function whatChanged(o: { row: Row; chart: ChartFeed | null; news: (Story & { mentions: string[] })[]; sigs: Sig[]; now: number; days?: number; prevBuild?: string | null }): { items: Change[]; window: [string, string]; notes: string[] } {
   const days = o.days ?? 30;
   const end = new Date(o.now + 5.5 * 3600e3).toISOString().slice(0, 10);
   const start = new Date(o.now - days * DAY + 5.5 * 3600e3).toISOString().slice(0, 10);
@@ -33,7 +33,11 @@ export function whatChanged(o: { row: Row; chart: ChartFeed | null; news: (Story
       const mv = (c.c[last] / c.c[base] - 1) * 100;
       const n0 = c.nifty[base], n1 = c.nifty[last];
       const nifty = typeof n0 === 'number' && typeof n1 === 'number' ? ` against the Nifty's ${pct((n1 / n0 - 1) * 100, 1)}` : '';
-      items.push({ date: iso(c.t[last]), kind: 'price', text: `${mv >= 0 ? 'Up' : 'Down'} ${pct(Math.abs(mv), 1, false)} from the ${label(iso(c.t[base]))} close to the ${label(iso(c.t[last]))} close${nifty}`, source: 'Daily closes (Yahoo Finance)' });
+      // a bar for today while the session can still be trading is a price, not a close (C11)
+      const istNow = new Date(o.now + 5.5 * 3600e3), mins = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+      const intraday = iso(c.t[last]) === end && mins < 15 * 60 + 40;
+      const to = intraday ? `the latest intraday price on ${label(iso(c.t[last]))}` : `the ${label(iso(c.t[last]))} close`;
+      items.push({ date: iso(c.t[last]), kind: 'price', text: `${mv >= 0 ? 'Up' : 'Down'} ${pct(Math.abs(mv), 1, false)} from the ${label(iso(c.t[base]))} close to ${to}${nifty}`, source: 'Daily closes (Yahoo Finance)' });
       // new 52-week extremes: a close above (below) every close of the 252 sessions before it
       let hi: string | null = null, lo: string | null = null;
       for (let i = first; i <= last; i++) {
@@ -61,7 +65,9 @@ export function whatChanged(o: { row: Row; chart: ChartFeed | null; news: (Story
     if (g.status === 'closed' && inWin(g.closed_date)) items.push({ date: g.closed_date!, kind: 'signal', text: `Swing plan closed (${g.exit_reason ?? 'exit'})${typeof g.r_net === 'number' ? `, ${g.r_net >= 0 ? '+' : '−'}${Math.abs(g.r_net).toLocaleString('en-IN', { maximumFractionDigits: 2 })}R after costs` : ''}`, source: 'Swing engine' });
     if (g.status === 'void' && inWin(g.first_seen)) items.push({ date: g.first_seen, kind: 'signal', text: `Swing signal voided${g.void_reason ? `: ${g.void_reason}` : ''}`, source: 'Swing engine' });
   }
-  notes.push('Rank changes are not shown: the screen keeps no history of past ranks.');
+  const mv = (o.row as Row & { rank_move?: number | null }).rank_move;
+  if (typeof mv === 'number' && mv !== 0) items.push({ date: o.row.last_date ?? end, kind: 'rank', text: `${mv > 0 ? 'Up' : 'Down'} ${Math.abs(mv)} place${Math.abs(mv) === 1 ? '' : 's'} in the screen's composite rank since its ${o.prevBuild ? `${label(o.prevBuild)} ` : 'previous '}build`, source: 'Screen, previous-build comparison' });
+  notes.push('Only the previous-build rank comparison is available; a longer rank history is not stored.');
   const newsDays = o.news.map((s) => (s.published ? Date.parse(s.published) : NaN)).filter(Number.isFinite);
   if (newsDays.length) { const oldest = new Date(Math.min(...newsDays)).toISOString().slice(0, 10); if (oldest > start) notes.push(`The news feed reaches back only to ${label(oldest)}, so earlier stories in the window are not listed.`); }
   items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));

@@ -16,10 +16,13 @@ export interface BarometerView {
   session: string;
   /** epoch seconds of the Nifty trade behind a live reading */
   at: number | null;
-  previous: { score: number; date: string } | null;
+  previous: { score: number; date: string; drawdownPct?: number | null; above200Pct?: number | null; vix?: number | null } | null;
 }
 
-export function useBarometer(): { view: BarometerView | null; loading: boolean; error: string | null } {
+/** `settled`: the published reading AND the live inputs have both answered (or failed), so the reading shown is the final one
+ *  for this load. Today renders its headline only once settled, so a reload never shows a published reading that a live one
+ *  replaces a second later (Lane A 0.2.3: LIVE vs LATEST CLOSE alternating across reloads). */
+export function useBarometer(): { view: BarometerView | null; loading: boolean; error: string | null; settled: boolean } {
   const bar = useFeed('barometer');
   const quotes = useLiveQuotes();
   const { day, live } = useDay();
@@ -28,7 +31,7 @@ export function useBarometer(): { view: BarometerView | null; loading: boolean; 
     const hist = bar.data?.history ?? [];
     const prevOf = (session: string) => {
       const older = hist.filter((h) => typeof h.score === 'number' && (h.nifty_date ?? h.date) < session).sort((a, b) => ((a.nifty_date ?? a.date) < (b.nifty_date ?? b.date) ? 1 : -1))[0];
-      return older ? { score: Math.round(older.score), date: older.nifty_date ?? older.date } : null;
+      return older ? { score: Math.round(older.score), date: older.nifty_date ?? older.date, drawdownPct: older.drawdown_pct ?? null, above200Pct: older.above_200dma_pct ?? null, vix: older.vix ?? null } : null;
     };
     const nifty = quotes.data?.quotes.find((q) => q.id === 'nifty');
     const vix = quotes.data?.quotes.find((q) => q.id === 'vix');
@@ -52,10 +55,13 @@ export function useBarometer(): { view: BarometerView | null; loading: boolean; 
     const reading: Reading = {
       score: Math.round(t.score), band: { k: t.band.k as Reading['band']['k'], t: t.band.t, c: (t.band.c as Reading['band']['c']) ?? '' },
       stage: t.stage ? { k: t.stage.k as NonNullable<Reading['stage']>['k'], t: t.stage.t, c: (t.stage.c as '' | 'up') ?? '' } : null,
-      parts: [], coverage: { parts: 0, partsTotal: 5, weightUsed: 0, weightTotal: 100, missing: [], complete: true },
-      counted: 0, nifty: t.nifty ?? null, drawdownPct: t.drawdown_pct ?? null, above200Pct: null, vix: t.vix ?? null,
+      // the published reading's own factors, so the page can say what drives the score (H02)
+      parts: (t.parts ?? []).map((p) => ({ key: p.key as Reading['parts'][number]['key'], label: p.label, score: p.score, weight: p.weight, detail: p.detail })),
+      coverage: { parts: t.parts?.length ?? 0, partsTotal: 5, weightUsed: (t.parts ?? []).reduce((x, p) => x + p.weight, 0), weightTotal: 100, missing: [], complete: (t.parts ?? []).reduce((x, p) => x + p.weight, 0) === 100 },
+      counted: 0, nifty: t.nifty ?? null, drawdownPct: t.drawdown_pct ?? null, above200Pct: t.above_200dma_pct ?? null, vix: t.vix ?? null,
     };
     return { reading, source: 'published', session: t.nifty_date, at: null, previous: prevOf(t.nifty_date) };
   }, [bar.data, quotes.data, day, live.snap, live.universe]);
-  return { view, loading: bar.loading && quotes.loading, error: bar.error };
+  const settled = !bar.loading && !quotes.loading && !live.loading;
+  return { view, loading: bar.loading && quotes.loading, error: bar.error, settled };
 }

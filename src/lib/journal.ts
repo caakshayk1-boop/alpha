@@ -12,7 +12,13 @@ export interface JournalEntry {
   price: number | null;     // price at the time of the decision
   stop: number | null;
   target: number | null;
+  /** When the entry was last edited (absent: never edited). The backup merge keeps the later copy of the same id. */
+  updatedAt?: string;
+  /** The market when the decision was recorded on its own day (Blueprint §4.2): the Barometer score and band and the Swing v2
+   *  market-gate count. Only recorded for an entry made on the day it describes; a back-dated entry has none, never a guess. */
+  regime?: JournalRegime;
 }
+export interface JournalRegime { barometer: number | null; gate: number | null; asOf: string | null }
 
 /** Entries needed in each group before an average is shown as anything but "too early to say". A judgement call, not a statistical test. */
 export const MIN_ENTRIES = 5;
@@ -76,7 +82,7 @@ export function parseJournal(raw: string | null): JournalEntry[] {
       if (typeof o.id !== 'string' || !o.id || seen.has(o.id) || typeof o.sym !== 'string' || !o.sym || !isDate(o.date)) continue;
       if (!(ACTIONS as readonly unknown[]).includes(o.action) || typeof o.why !== 'string') continue;
       seen.add(o.id);
-      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target) });
+      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target), ...(typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(o.updatedAt) ? { updatedAt: o.updatedAt } : {}), ...regimeOf(o.regime) });
     }
     return out;
   } catch { return []; }
@@ -96,4 +102,29 @@ export function journalHref(sym: string, price: number | null | undefined, stop:
   const put = (k: string, v: number | null | undefined) => { if (typeof v === 'number' && Number.isFinite(v) && v > 0) q.set(k, String(Math.round(v * 100) / 100)); };
   put('p', price); put('sl', stop); put('t', target);
   return `/journal/?${q.toString()}`;
+}
+
+const regimeOf = (v: unknown): { regime?: JournalRegime } => {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const n = (x: unknown, lo: number, hi: number) => (typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= hi ? x : null);
+  const r = { barometer: n(o.barometer, 0, 100), gate: n(o.gate, 0, 4), asOf: isDate(o.asOf) ? o.asOf : null };
+  return r.barometer === null && r.gate === null ? {} : { regime: r };
+};
+
+/** The three regimes of the Blueprint's matrix, by the Barometer at entry. */
+export const REGIMES = [{ id: 'strong', label: 'Barometer 65–100', lo: 65, hi: 100 }, { id: 'mixed', label: 'Barometer 40–64', lo: 40, hi: 64.999 }, { id: 'hostile', label: 'Barometer 0–39', lo: 0, hi: 39.999 }] as const;
+export interface RegimeRow { id: string; label: string; entries: number; measured: number; enough: boolean; avgR: number | null; share: number | null; avgGate: number | null }
+/** "Took it" decisions grouped by the market at entry: how many, and (with a stop and a price now) the average price
+ *  follow-up in R and the share above the decision price. Price follow-up, not executed P&L; averages need MIN_ENTRIES. */
+export function regimeMatrix(list: JournalEntry[], priceOf: (sym: string) => number | null): { rows: RegimeRow[]; unrecorded: number } {
+  const took = list.filter((e) => e.action === 'took');
+  const rows = REGIMES.map((g) => {
+    const mine = took.filter((e) => e.regime?.barometer !== null && e.regime?.barometer !== undefined && e.regime.barometer >= g.lo && e.regime.barometer <= g.hi);
+    const rs = mine.map((e) => outcome(e, priceOf(e.sym)).r).filter((r): r is number => r !== null);
+    const gates = mine.map((e) => e.regime?.gate).filter((x): x is number => typeof x === 'number');
+    const enough = rs.length >= MIN_ENTRIES;
+    return { id: g.id, label: g.label, entries: mine.length, measured: rs.length, enough, avgR: enough ? rs.reduce((a, b) => a + b, 0) / rs.length : null, share: enough ? rs.filter((r) => r > 0).length / rs.length : null, avgGate: gates.length ? gates.reduce((a, b) => a + b, 0) / gates.length : null };
+  });
+  return { rows, unrecorded: took.filter((e) => !e.regime || e.regime.barometer === null).length };
 }

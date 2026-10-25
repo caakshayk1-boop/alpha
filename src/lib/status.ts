@@ -10,7 +10,8 @@
  *  A weekly dataset (the rotation graph) is judged against the last completed week instead. Without a clock the old rule applies:
  *  `current` means "as new as the newest dataset", which cannot notice every dataset freezing together.
  *  `delayed` is 1 or 2 sessions behind (1 week for a weekly dataset); `stale` is STALE_AFTER_SESSIONS or more (2 weeks for weekly).
- *  Exchange holidays are not known here, so a gap that spans one can read one session longer than it was. */
+ *  Exchange holidays come from NSE's published calendar (lib/holidays.ts); a year without a calendar on file falls back to weekdays. */
+import { isNseHoliday } from './holidays.ts';
 export type Freshness = 'current' | 'delayed' | 'stale' | 'partial' | 'missing' | 'unavailable' | 'error';
 
 export const STALE_AFTER_SESSIONS = 3;
@@ -49,7 +50,8 @@ export function sessionsBetween(from: string, to: string, skip?: ReadonlySet<str
   while (a < b) {
     a += DAY;
     const d = new Date(a).getUTCDay();
-    if (d !== 0 && d !== 6 && !skip?.has(new Date(a).toISOString().slice(0, 10))) n++;
+    const iso = new Date(a).toISOString().slice(0, 10);
+    if (d !== 0 && d !== 6 && !skip?.has(iso) && !isNseHoliday(iso)) n++;
   }
   return n;
 }
@@ -70,11 +72,12 @@ const addDays = (s: string, n: number) => new Date(ymd(s) + n * DAY).toISOString
 const weekday = (s: string) => new Date(ymd(s)).getUTCDay();
 const lastFridayOnOrBefore = (s: string) => { let d = s; while (weekday(d) !== 5) d = addDays(d, -1); return d; };
 
-/** The session whose data Alpha should already hold at `now`: the last weekday strictly before the India (UTC+5:30) date of `now`
- *  minus 7 hours, so the 05:10 IST morning screen build is on time until 07:00 IST. Exchange holidays are not known. */
+/** The session whose data Alpha should already hold at `now`: the last NSE session strictly before the India (UTC+5:30) date of
+ *  `now` minus 7 hours, so the 05:10 IST morning screen build is on time until 07:00 IST. Exchange holidays come from NSE's own
+ *  calendar (lib/holidays.ts, T12) and from the market's record of missed sessions (`skip`). */
 export function expectedSession(now: Date, skip?: ReadonlySet<string>): string {
   let d = new Date(now.getTime() - 1.5 * 3600000).toISOString().slice(0, 10);   // UTC+5:30 minus 7h grace = UTC minus 1.5h
-  do { d = addDays(d, -1); } while (weekday(d) === 0 || weekday(d) === 6 || skip?.has(d));
+  do { d = addDays(d, -1); } while (weekday(d) === 0 || weekday(d) === 6 || skip?.has(d) || isNseHoliday(d));
   return d;
 }
 

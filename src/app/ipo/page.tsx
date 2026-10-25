@@ -1,9 +1,16 @@
 'use client';
+// IPOs: where each issue is in its life (upcoming, open, closed, listed), what was published about it, and how recent listings
+// have traded since their first close. Issue details are the source's, as published; nothing here is checked against the
+// offer document or the exchange's own filings, and the page says so (E16, E17).
 
-import { Async, Bar, Chg, Notice, PageHead, Rv, SectionHead } from '@/components/ui';
+import Link from 'next/link';
+import { Chg, PageHead, Skel } from '@/components/ui';
 import { useFeed, useIpoLive } from '@/lib/data';
 import { ago, dash, dateLabel, nseDate, num, rupeeBand, ratio, pct } from '@/lib/format';
-import type { IpoLiveIssue, IpoUpcoming } from '@/lib/types';
+import { plural } from '@/lib/status';
+import type { IpoListed, IpoLiveIssue, IpoOpen, IpoUpcoming } from '@/lib/types';
+
+type Doc = { enriched_url?: string | null };
 
 /** The mirror's generated_at has no timezone. It is written by ipo_radar.py with datetime.now() on a GitHub runner, which runs
  *  in UTC, so a stamp without an offset is read as UTC (not as the reader's local time). */
@@ -22,68 +29,84 @@ const daysTo = (iso: string) => {
 };
 const leftLabel = (o: { close_date?: string | null; days_left: number }) => {
   const n = o.close_date && /^\d{4}-\d{2}-\d{2}$/.test(o.close_date) ? daysTo(o.close_date) : null;
-  if (n === null) return o.days_left > 0 ? `${o.days_left} day${o.days_left > 1 ? 's' : ''} left when the mirror was built` : 'closing day when the mirror was built';
-  return n > 0 ? `${n} day${n > 1 ? 's' : ''} left · closes ${dateLabel(o.close_date)}` : n === 0 ? 'Closes today' : `Closed ${dateLabel(o.close_date)}`;
+  if (n === null) return o.days_left > 0 ? `${plural(o.days_left, 'day')} left when the mirror was built` : 'closing day when the mirror was built';
+  return n > 0 ? `Closes ${dateLabel(o.close_date)} · ${plural(n, 'day')} left` : n === 0 ? 'Closes today' : `Closed ${dateLabel(o.close_date)}`;
 };
+const cr = (v: number | null | undefined, dp = 0) => (typeof v === 'number' && Number.isFinite(v) ? `${v < 0 ? '−' : ''}₹${num(Math.abs(v), dp)} cr` : dash);
+
+function DocLink({ url }: { url?: string | null }) {
+  return url ? <a className="link" href={url} target="_blank" rel="noopener noreferrer">Issue page (Chittorgarh) ↗</a> : <span className="dim">No document link in the feed</span>;
+}
 
 function LiveBook({ i }: { i: IpoLiveIssue }) {
   const cats = [...(i.categories ?? [])].sort((a, b) => b.x - a.x);
   const max = Math.max(1, ...cats.map((c) => c.x), i.total_x ?? 0);
   const noBids = !i.total_x && cats.every((c) => !c.x);
   return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Live subscription · {i.status ?? 'active'}</div>
-      <div className="disp" style={{ fontSize: 30, margin: '12px 0 4px' }}>{i.company ?? i.symbol}</div>
-      <div className="dim num" style={{ fontSize: 14, marginBottom: 18 }}>{[i.price_band ? rupeeBand(i.price_band) : null, i.opens && i.closes ? `open ${nseDate(i.opens)} to ${nseDate(i.closes)}` : null].filter(Boolean).join(' · ')}</div>
-      {noBids ? (
-        <div className="muted" style={{ fontSize: 16, lineHeight: 1.5 }}>No bids reported yet. NSE publishes the book during the day, so this fills in as bidding starts.</div>
-      ) : (
-        <div className="disp" style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>{i.total_x != null ? `${ratio(i.total_x, 2)}` : dash}<span className="dim" style={{ fontSize: 18 }}> subscribed overall</span></div>
+    <article className="card ip-card">
+      <div className="ip-top"><span className="pill ok">Open · live NSE book</span><span className="dim">{i.opens && i.closes ? `${nseDate(i.opens)} to ${nseDate(i.closes)}` : 'dates not stated'}</span></div>
+      <h3 className="ip-name">{i.company ?? i.symbol}</h3>
+      <p className="sp-note">{i.price_band ? `Band ${rupeeBand(i.price_band)}` : 'Band not stated'} · symbol {i.symbol}</p>
+      {noBids ? <div className="state"><b>No bids reported yet.</b><p>NSE publishes the book during the day; this fills in as bidding starts.</p></div> : (
+        <>
+          <div className="big-stat ip-big"><b>{i.total_x != null ? ratio(i.total_x, 2) : dash}</b><span>subscribed overall</span></div>
+          {cats.length > 0 && (
+            <ul className="ip-meter" aria-label="Subscription by investor category">
+              {cats.map((c) => <li key={c.cat}><span>{c.cat}</span><span className="ip-bar" aria-hidden><i className={c.x >= 1 ? 'up' : 'down'} style={{ width: `${(c.x / max) * 100}%` }} /></span><b className="num">{ratio(c.x, 2)}</b></li>)}
+            </ul>
+          )}
+        </>
       )}
-      {!noBids && cats.length > 0 && (
-        <div className="meter" style={{ marginTop: 18 }}>
-          {cats.map((c) => (
-            <div className="meter-row" key={c.cat}>
-              <span className="lab">{c.cat}</span>
-              <Bar pct={(c.x / max) * 100} kind={c.x >= 1 ? 'up' : 'down'} />
-              <span className="num">{ratio(c.x, 2)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </Rv>
+    </article>
+  );
+}
+
+function Facts({ items }: { items: [string, React.ReactNode, string?][] }) {
+  return <dl className="ip-facts">{items.map(([k, v, n]) => <div key={k}><dt>{k}</dt><dd>{v}{n && <small>{n}</small>}</dd></div>)}</dl>;
+}
+
+function MirrorOpen({ o, built }: { o: IpoOpen & Partial<IpoUpcoming>; built: string }) {
+  return (
+    <article className="card ip-card">
+      <div className="ip-top"><span className="pill ok">Open</span><span className="dim">{leftLabel(o)}</span></div>
+      <h3 className="ip-name">{o.company}</h3>
+      <Facts items={[
+        ['Price band', rupeeBand(o.price_band)],
+        ['Issue size', cr(o.issue_size_cr)],
+        ['Lot · minimum', `${num(o.lot_size)} · ₹${num(o.min_investment)}`],
+        ['Subscribed', typeof o.subscription_x === 'number' ? ratio(o.subscription_x, 2) : 'pending', `as of the mirror, ${built}`],
+        ['Grey market', o.gmp_text ?? dash, 'unofficial; source and time not stated; not scored'],
+        ['Listing date', o.listing_date ? dateLabel(o.listing_date) : 'not announced'],
+      ]} />
+      <p className="ip-doc"><DocLink url={o.enriched_url} /></p>
+    </article>
   );
 }
 
 function Upcoming({ u }: { u: IpoUpcoming }) {
   const parts = Object.entries(u.score?.parts ?? {});
   return (
-    <Rv className="panel spot">
-      <div className="eyebrow">Opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}{u.sector ? ` · ${u.sector}` : ''}</div>
-      <div className="disp" style={{ fontSize: 34, margin: '12px 0' }}>{u.company}</div>
-      <div className="kv">
-        <div><div className="k">Price band</div><div className="v" style={{ fontSize: 15 }}>{rupeeBand(u.price_band)}</div></div>
-        <div><div className="k">Issue size</div><div className="v">₹{num(u.issue_size_cr)} cr</div></div>
-        <div><div className="k">Lot · minimum</div><div className="v" style={{ fontSize: 15 }}>{u.lot_size} · ₹{num(u.min_investment)}</div></div>
-        <div><div className="k">Grey market (unofficial)</div><div className="v" style={{ fontSize: 15 }}>{u.gmp_text ?? dash}</div><div className="dim" style={{ fontSize: 12, marginTop: 3 }}>Source and time are not stated in the feed; not scored.</div></div>
-        <div><div className="k">Revenue · profit</div><div className="v" style={{ fontSize: 15 }}>{u.revenue_cr ? `₹${num(u.revenue_cr, 0)} · ₹${num(u.pat_cr, 0)} cr` : dash}</div></div>
-        <div><div className="k">Listing date</div><div className="v" style={{ fontSize: 15 }}>{u.listing_date ? dateLabel(u.listing_date) : 'Not announced yet'}</div></div>
-        <div><div className="k">P/E post issue vs peers</div><div className="v" style={{ fontSize: 15 }}>{u.pe_post_issue ? `${ratio(u.pe_post_issue, 1)} vs ${num(u.peer_pe, 1) ?? dash}×` : dash}</div></div>
-      </div>
+    <article className="card ip-card">
+      <div className="ip-top"><span className="pill acc">Upcoming</span><span className="dim">Opens {dateLabel(u.open_date)} · closes {dateLabel(u.close_date)}{u.sector ? ` · ${u.sector}` : ''}</span></div>
+      <h3 className="ip-name">{u.company}</h3>
+      <Facts items={[
+        ['Price band', rupeeBand(u.price_band)],
+        ['Issue size', cr(u.issue_size_cr)],
+        ['Lot · minimum', `${num(u.lot_size)} · ₹${num(u.min_investment)}`],
+        ['Revenue · profit', u.revenue_cr ? `₹${num(u.revenue_cr, 0)} · ₹${num(u.pat_cr, 0)} cr` : dash, 'latest year in the offer summary'],
+        ['P/E post issue · peers', u.pe_post_issue ? `${ratio(u.pe_post_issue, 1)} · ${u.peer_pe ? ratio(u.peer_pe, 1) : dash}` : dash, 'at the top of the band'],
+        ['Grey market', u.gmp_text ?? dash, 'unofficial; not scored'],
+        ['Listing date', u.listing_date ? dateLabel(u.listing_date) : 'not announced'],
+      ]} />
       {u.score && (
-        <div style={{ marginTop: 16 }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Mechanical attributes, not a quality rating · {u.score.points} of {u.score.of} points measured</div>
-          <div className="meter">{parts.map(([k, v]) => { const [a, b] = v.split('/').map(Number); return <div className="meter-row" key={k}><span className="lab">{k}</span><Bar pct={(a / b) * 100} /><span className="num">{v}</span></div>; })}</div>
-          <ul className="dim" style={{ fontSize: 13.5, margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
-            {'Size' in (u.score.parts ?? {}) && <li><b>Size</b>: the issue size, ₹{num(u.issue_size_cr)} cr; this attribute scores a bigger issue higher; size alone says nothing about quality.</li>}
-            {'Pricing' in (u.score.parts ?? {}) && u.price_low && u.price_high ? <li><b>Pricing</b>: how narrow the price band is ({pct((((u.price_high - u.price_low) / u.price_low) * 100), 1, false)} wide here); this attribute scores a narrower band higher. It does not measure valuation and does not establish the underwriter&apos;s intent.</li> : null}
-            <li>The P/E post issue and peer P/E shown above are <b>not part of this score</b>: valuation multiples are not measured by it, which is why they appear in the not-measured list.</li>
-            <li>Not measured at all: {u.score.not_measured.join(', ')}. The grey-market premium is shown and deliberately not scored.</li>
-          </ul>
-          {u.enriched_url && <p className="dim" style={{ fontSize: 13.5, margin: '8px 0 0' }}>Issue data: <a href={u.enriched_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-2)', textDecoration: 'underline' }}>Chittorgarh issue page ↗</a>. The offer document is on the NSE and company sites; this feed does not link to it.</p>}
-        </div>
+        <details className="ip-score">
+          <summary>Mechanical attributes, not a quality rating · {u.score.points} of {u.score.of} points</summary>
+          <ul className="ip-meter">{parts.map(([k, v]) => { const [a, b] = v.split('/').map(Number); return <li key={k}><span>{k}</span><span className="ip-bar" aria-hidden><i style={{ width: `${b ? (a / b) * 100 : 0}%` }} /></span><b className="num">{v}</b></li>; })}</ul>
+          <p className="sp-note">Size scores a bigger issue higher; Pricing scores a narrower band higher{u.price_low && u.price_high ? ` (${pct(((u.price_high - u.price_low) / u.price_low) * 100, 1, false)} wide here)` : ''}. Neither measures quality or valuation. Not measured: {u.score.not_measured.join(', ')}.</p>
+        </details>
       )}
-    </Rv>
+      <p className="ip-doc"><DocLink url={u.enriched_url} /></p>
+    </article>
   );
 }
 
@@ -92,52 +115,97 @@ export default function Ipo() {
   const live = useIpoLive();
   const d = f.data;
   const liveIssues = live.data?.ok ? live.data.issues : [];
+  const measured = (d?.recent_listed ?? []).filter((r): r is IpoListed & { since_listing_pct: number } => !!r.measured && typeof r.since_listing_pct === 'number');
+  const built = d ? istStamp(d.generated_at) : '';
+  const nOpen = liveIssues.length || d?.open.length || 0;
+  const stages: [string, string, number, string][] = d ? [
+    ['upcoming', 'Upcoming', d.upcoming.length, 'dates announced, book not open'],
+    ['open', 'Open', nOpen, liveIssues.length ? 'live NSE book' : 'from the daily mirror'],
+    ['closed', 'Closed', d.awaiting_listing.length, 'awaiting listing'],
+    ['listed', 'Listed', measured.length, `measured, last ${d.recent_listed.length} listings`],
+  ] : [];
   return (
-    <>
-      <PageHead method="ipo" eyebrow="IPO" title="Books open now," em="and what is coming." />
+    <div className="sp">
+      <PageHead method="ipo" eyebrow="IPOs" title="Issues by stage," em="from upcoming to listed." />
       <section className="wrap">
-        <Async loading={f.loading} error={f.error}>
-          {d && (
-            <>
-              {liveIssues.length > 0 && <><div id="open" /><SectionHead eyebrow="Live from NSE" title="Open books" /><div className="grid g2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div><p className="dim" style={{ fontSize: 13.5, marginTop: 8 }}>Fetched {ago(live.data?.at)} from NSE, cached 15 minutes. The book moves fastest on the last day.</p><div style={{ height: 20 }} /></>}
-              {live.data && !live.data.ok && <><Notice>The live NSE book could not be reached right now, so open issues below use the daily mirror (built {istStamp(d.generated_at)}, {ago(utc(d.generated_at))}).</Notice><div style={{ height: 14 }} /></>}
+        {f.loading ? <div className="sp-stack" aria-busy="true"><Skel h={90} /><Skel h={260} /></div>
+          : f.error || !d ? <div className="state"><b>The IPO feed did not load.</b><p>Nothing is shown in its place{f.error ? ` (${f.error})` : ''}. A refresh usually brings it back.</p><div className="acts"><button type="button" className="act" onClick={() => window.location.reload()}>Refresh</button></div></div>
+            : (
+              <>
+                <ol className="ip-stages" aria-label="Issue lifecycle">
+                  {stages.map(([id, l, n, note]) => (
+                    <li key={id} className={n > 0 ? 'has' : undefined}>
+                      {n > 0 ? <a href={`#${id}`}><span className="ip-sl">{l}</span><b className="num">{n}</b><small>{note}</small></a>
+                        : <span><span className="ip-sl">{l}</span><b className="num dim">0</b><small>none right now</small></span>}
+                    </li>
+                  ))}
+                </ol>
+                <p className="sp-note ip-src">Issue details are <b>as published by the source</b> (Chittorgarh, through the daily mirror built {built}; open books live from NSE), <b>not verified against exchange documents</b>. Check the offer document on the NSE or company site before relying on any figure. <Link className="link" href="/about/#ipo">Method</Link></p>
+                {live.data && !live.data.ok && <div className="state ip-warn" role="status"><b>The live NSE book could not be reached.</b><p>Open issues below use the daily mirror, built {built} ({ago(utc(d.generated_at))}), so their subscription is that old.</p></div>}
 
-              <ol className="filters" aria-label="Issue lifecycle" style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
-                {([['Upcoming', d.upcoming.length, 'upcoming'], ['Open', liveIssues.length || d.open.length, 'open'], ['Closed, awaiting listing', d.awaiting_listing.length, 'closed'], ['Listed (measured)', d.recent_listed.filter((r) => r.measured).length, 'listed']] as const).map(([l, n, id], i) => <li key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{i > 0 && <span aria-hidden className="dim step-arrow">→</span>}{n > 0 ? <a className="chip" href={`#${id}`}>{l} · {n}</a> : <span className="chip" aria-disabled="true" style={{ opacity: 0.55 }}>{l} · none</span>}</li>)}
-              </ol>
-              <p className="dim" style={{ fontSize: 13.5, margin: '-8px 0 20px' }}>Upcoming, closed and listed issues come from the daily mirror, built {istStamp(d.generated_at)}{liveIssues.length > 0 ? '; open books above are live from NSE' : ''}.</p>
-              <div id="upcoming" /><SectionHead eyebrow="Next" title="Opening soon" />
-              {d.upcoming.length === 0 ? <p className="muted">No mainboard issue is scheduled to open yet.</p> : <div className="grid g2">{d.upcoming.map((u) => <Upcoming key={u.symbol} u={u} />)}</div>}
+                <section id="open" className="sp-sec" aria-labelledby="ip-open">
+                  <div className="card-h"><h2 id="ip-open" className="sec-title">Open now</h2>{liveIssues.length > 0 && <span className="sp-note">Fetched {ago(live.data?.at)} from NSE, cached 15 minutes</span>}</div>
+                  {liveIssues.length > 0 ? <div className="grid-2">{liveIssues.map((i) => <LiveBook key={i.symbol} i={i} />)}</div>
+                    : d.open.length > 0 ? <div className="grid-2">{d.open.map((o) => <MirrorOpen key={o.symbol} o={o as IpoOpen & Partial<IpoUpcoming>} built={built} />)}</div>
+                      : <div className="state"><b>No mainboard book is open.</b><p>Upcoming issues are listed below when dates are announced.</p></div>}
+                </section>
 
-              {liveIssues.length === 0 && d.open.length > 0 && <>
-                <div style={{ height: 20 }} /><div id="open" /><SectionHead title="Open (daily mirror)" />
-                <div className="grid g2">{d.open.map((o) => (
-                  <Rv key={o.symbol} className="panel spot"><div className="eyebrow">{leftLabel(o)}</div>
-                    <div className="disp" style={{ fontSize: 30, margin: '12px 0' }}>{o.company}</div>
-                    <div className="dim num">{rupeeBand(o.price_band)} · {o.subscription_x ? `${ratio(o.subscription_x, 2)} subscribed as of ${istStamp(d.generated_at)}` : 'subscription pending'}</div></Rv>))}</div></>}
+                <section id="upcoming" className="sp-sec" aria-labelledby="ip-up">
+                  <div className="card-h"><h2 id="ip-up" className="sec-title">Upcoming</h2></div>
+                  {d.upcoming.length === 0 ? <div className="state"><b>No mainboard issue is scheduled to open yet.</b><p>The mirror lists an issue once its dates are announced.</p></div> : <div className="grid-2">{d.upcoming.map((u) => <Upcoming key={u.symbol} u={u} />)}</div>}
+                </section>
 
-              <div style={{ height: 20 }} />
-              <div id="closed" /><SectionHead title="Closed, awaiting listing" />
-              <div className="tbl-wrap" tabIndex={0} role="region" aria-label="Table (scrolls sideways on small screens)"><table className="tbl"><thead><tr><th>Company</th><th>Price band</th><th>Closed</th><th>Lists</th><th>Revenue</th><th>PAT</th><th>P/E post issue</th><th>Peer P/E</th></tr></thead><tbody>
-                {d.awaiting_listing.map((a) => <tr key={a.symbol} style={{ cursor: 'default' }}><td><div className="co"><b>{a.symbol}</b><span>{a.company}</span></div></td><td>{rupeeBand(a.price_band)}</td><td>{dateLabel(a.close_date)}</td><td>{a.listing_date ? dateLabel(a.listing_date) : <span className="dim">Not announced</span>}</td><td className="num">{a.revenue_cr ? `₹${num(a.revenue_cr, 1)} cr` : dash}</td><td className="num">{a.pat_cr ? `₹${num(a.pat_cr, 1)} cr` : dash}</td><td className="num">{a.pe_post_issue ? `${ratio(a.pe_post_issue, 1)}` : dash}</td><td className="num">{a.peer_pe ? `${ratio(a.peer_pe, 1)}` : dash}</td></tr>)}
-                {d.awaiting_listing.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: 'center' }}>None awaiting listing.</td></tr>}
-              </tbody></table></div>
+                <section id="closed" className="sp-sec" aria-labelledby="ip-cl">
+                  <div className="card-h"><h2 id="ip-cl" className="sec-title">Closed, awaiting listing</h2></div>
+                  {d.awaiting_listing.length === 0 ? <div className="state"><b>No closed issue is awaiting listing.</b><p>Listed issues are measured below.</p></div> : (
+                    <div className="card flush">
+                      <div className="sp-tblwrap" tabIndex={0} role="region" aria-label="Closed issues (scrolls sideways on small screens)">
+                        <table className="sp-tbl ip-tbl">
+                          <thead><tr><th scope="col">Company</th><th scope="col">Price band</th><th scope="col">Closed</th><th scope="col">Lists</th><th scope="col" className="r">Revenue</th><th scope="col" className="r">Profit</th><th scope="col" className="r">P/E post issue</th><th scope="col" className="r">Peer P/E</th><th scope="col">Documents</th></tr></thead>
+                          <tbody>{d.awaiting_listing.map((a) => (
+                            <tr key={a.symbol}>
+                              <td className="co"><b>{a.symbol}</b><span>{a.company}</span></td>
+                              <td>{rupeeBand(a.price_band)}</td>
+                              <td className="num">{dateLabel(a.close_date)}</td>
+                              <td>{a.listing_date ? <span className="num">{dateLabel(a.listing_date)}</span> : <span className="dim">not announced</span>}</td>
+                              <td className="r">{cr(a.revenue_cr, 1)}</td>
+                              <td className="r">{typeof a.pat_cr === 'number' ? <span className={a.pat_cr < 0 ? 'down' : undefined}>{cr(a.pat_cr, 1)}</span> : dash}</td>
+                              <td className="r">{a.pe_post_issue ? ratio(a.pe_post_issue, 1) : <span className="dim">{typeof a.pat_cr === 'number' && a.pat_cr < 0 ? 'loss-making' : dash}</span>}</td>
+                              <td className="r">{a.peer_pe ? ratio(a.peer_pe, 1) : dash}</td>
+                              <td><DocLink url={(a as Doc).enriched_url} /></td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                      <p className="card-foot">Revenue and profit: the latest year in the issue summary, as published by the source.</p>
+                    </div>
+                  )}
+                </section>
 
-              <div style={{ height: 20 }} />
-              <div id="listed" /><SectionHead eyebrow="Track record" title="How recent listings traded" />
-              <div className="panel">
-                <div className="meter">
-                  {d.recent_listed.filter((r) => r.measured && typeof r.since_listing_pct === 'number').slice(0, 24).map((r) => {
-                    const v = r.since_listing_pct as number;
-                    return <div className="meter-row" key={r.symbol} style={{ gridTemplateColumns: '120px 1fr 80px' }}><span className="lab">{r.symbol}</span><Bar pct={Math.min(100, (Math.abs(v) / 60) * 100)} kind={v >= 0 ? 'up' : 'down'} /><Chg v={v} dp={1} /></div>;
-                  })}
-                </div>
-                <p className="dim" style={{ fontSize: 13.5, margin: '14px 0 0' }}>Measured from the first close to the last close in the mirror built {istStamp(d.generated_at)}, not from the issue price. Bars saturate at ±60%. {d.recent_listed.filter((r) => r.measured).length} of the last {d.recent_listed.length} listings have enough trading history to measure.</p>
-              </div>
-            </>
-          )}
-        </Async>
+                <section id="listed" className="sp-sec" aria-labelledby="ip-li">
+                  <div className="card-h"><div><h2 id="ip-li" className="sec-title">How recent listings traded</h2><p className="sec-sub"><b>Baseline: first close to latest close, not the issue price.</b> A listing-day pop or drop is not in these figures.</p></div></div>
+                  {measured.length === 0 ? <div className="state"><b>No recent listing has enough trading to measure.</b><p>A listing is measured once it has traded for a few sessions.</p></div> : (
+                    <div className="card">
+                      <ul className="ip-listed" aria-label="Change from first close to latest close">
+                        {measured.slice(0, 24).map((r) => {
+                          const v = r.since_listing_pct;
+                          const x = r as IpoListed & { sessions?: number };
+                          return (
+                            <li key={r.symbol}>
+                              <span className="ip-lid"><b>{r.symbol}</b><small>listed {r.listing_date ? dateLabel(r.listing_date) : 'date not stated'}{typeof x.sessions === 'number' ? ` · ${plural(x.sessions, 'session')}` : ''}</small></span>
+                              <span className="ip-lbar" aria-hidden><i className={v >= 0 ? 'up' : 'down'} style={{ width: `${Math.min(50, (Math.abs(v) / 60) * 50)}%`, [v >= 0 ? 'left' : 'right']: '50%' }} /></span>
+                              <span className="ip-lv"><Chg v={v} dp={1} /><small>{typeof r.first_close === 'number' && typeof r.last_close === 'number' ? `₹${num(r.first_close, 1)} → ₹${num(r.last_close, 1)}` : 'first close to latest'}</small></span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="card-foot">Every figure: first close after listing to the latest close in the mirror built {built}. Bars saturate at ±60%. {measured.length} of the last {d.recent_listed.length} listings have enough trading to measure{measured.length > 24 ? '; the 24 most recent are shown' : ''}.</p>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
       </section>
-    </>
+    </div>
   );
 }

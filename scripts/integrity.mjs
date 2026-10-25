@@ -99,12 +99,13 @@ try {
   // ── decision ladder (§22.1), keyboard only ──────────────────────────────────────────────────────────────────────
   {
     const { ctx, p } = await open('/company/TCS/');
-    ok('ladder company · glance: name, price and as-of above the fold', await p.evaluate(() => { const v = (s) => { const el = document.querySelector(s); const r = el?.getBoundingClientRect(); return !!r && r.top < innerHeight && r.height > 0; }; return v('h1') && v('.co-price .px') && v('.stamp-item, [class*="stamp"]'); }));
+    ok('ladder company · glance: name, price and as-of above the fold', await p.evaluate(() => { const v = (s) => { const el = document.querySelector(s); const r = el?.getBoundingClientRect(); return !!r && r.top < innerHeight && r.height > 0; }; return v('h1') && v('.co-price .px, .co-quote .px') && (v('.stamp-item, [class*="stamp"]') || /\d{1,2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}|live/.test(document.querySelector('.co-chg')?.textContent ?? '')); }));
     ok('ladder company · understand: case and countercase side by side, countercase not collapsed', await p.evaluate(() => { const g = document.querySelector('.case-grid'); return !!g && g.querySelectorAll('.case-col').length === 2 && [...g.querySelectorAll('.case-col')].every((c) => c.getBoundingClientRect().height > 40); }));
-    const sBtn = p.locator('.case-grid button', { hasText: /^S$/ }).first();
+    const sBtn = p.locator('.case-grid button', { hasText: /^(S|Source)$/ }).first();
     if (await sBtn.count()) { await sBtn.focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(300); }
     ok('ladder company · verify: a source opens from the keyboard', await p.evaluate(() => /source|filing|screen close|Yahoo|NSE/i.test(document.querySelector('.case-grid')?.textContent ?? '')));
-    const save = p.getByRole('button', { name: /Save research card/i }).first();
+    // the company page saves the reader's own question to My Desk from its notes column (master build); the old chip is in the overflow menu
+    const save = p.getByRole('button', { name: /Save to My Desk|Save research card/i }).first();
     const before = await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('alpha-cards-v1') ?? '[]').length; } catch { return -1; } });
     if (await save.count()) { await save.focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(500); }
     const after = await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('alpha-cards-v1') ?? '[]').length; } catch { return -1; } });

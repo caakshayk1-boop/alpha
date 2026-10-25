@@ -7,7 +7,7 @@ import { describe as describeStatus, expectedSession, ordinal, plural, rankPhras
 import { nseDate, plainText, rupeeBand } from '../src/lib/format.ts';
 import { bucketOf, mentionsIn, summarise as summariseNews, topicsOf } from '../src/lib/newsdesk.ts';
 import { GLOSSARY, metricId, searchGlossary } from '../src/lib/glossary.ts';
-import { groupStories, matchCompanies, shortName } from '../src/lib/news.ts';
+import { groupStories } from '../src/lib/news.ts';
 import { MIN_ENTRIES, journalHref, makeEntry, mergeJournal, outcome, parseJournal, serializeJournal, summarise } from '../src/lib/journal.ts';
 import { takeaway, vixWord } from '../src/lib/takeaway.ts';
 import { readFileSync } from 'node:fs';
@@ -179,14 +179,6 @@ test('news: near-identical headlines from different sources group; the same sour
   assert.equal(g[0].more.length, 1);
   assert.equal(g[0].more[0].source, 'B');
 });
-test('news: a company matches by ticker or whole name, and says which; substrings do not match', () => {
-  const cos = [{ sym: 'TCS', name: 'Tata Consultancy Services Ltd.' }, { sym: 'IT', name: 'Gartner IT' }, { sym: 'LCL', name: 'Lloyds Construction Ltd' }];
-  assert.equal(shortName('Tata Consultancy Services Ltd.'), 'Tata Consultancy Services');
-  assert.deepEqual(matchCompanies('TCS wins a large deal', cos).map((m) => m.sym), ['TCS']);
-  assert.deepEqual(matchCompanies('Tata Consultancy Services posts results', cos).map((m) => m.basis), ['name “Tata Consultancy Services” in the text']);
-  assert.deepEqual(matchCompanies('The IT sector rallied; ITC and LCLX rose', cos), []);   // short tickers and substrings never match
-  assert.deepEqual(matchCompanies('tcs lowercase mention', cos), []);                    // a ticker must be written as one
-});
 
 const near = (a: number | null, b: number) => assert.ok(a !== null && Math.abs(a - b) < 1e-9, `${a} is not ${b}`);
 const J = (over: Partial<Parameters<typeof outcome>[0]> = {}) => ({ id: 'a', date: '2026-10-01', sym: 'ABC', action: 'took' as const, why: 'Breakout above resistance on volume', price: 100, stop: 90, target: 130, ...over });
@@ -294,18 +286,18 @@ const TK = { score: 35, band: 'Weak', stage: 'Slightly cheaper', nifty: 22721.95
 test('takeaway: the headline and facts are built only from the figures given, in plain words', () => {
   const t = takeaway(TK);
   assert.equal(t.available, true);
-  assert.equal(t.headline, 'A weak market, 13.8% below its high.');
+  assert.equal(t.headline, 'A weak market, the Nifty 13.8% below its 52-week high.');
   assert.equal(t.sub, 'Barometer 35 of 100 (up from 29 on 9 Oct 2026). India VIX 14.1, normal. 51% of stocks sit above their 200-day average.');   // 470/930 = 50.5% -> 51
   assert.deepEqual(t.facts.map((f) => [f.id, f.value, f.note, f.tone]), [
     ['barometer', '35 / 100', 'Weak · Slightly cheaper', 'down'],
-    ['nifty', '22,722', '13.8% below its high', 'neutral'],
+    ['nifty', '22,722', '13.8% below its 52-week high', 'neutral'],
     ['breadth', '51%', '470 of 930 with history', 'neutral'],
     ['vix', '14.1', 'normal', 'neutral'],
   ]);
 });
 test('takeaway: tone follows the band; a missing figure drops its sentence and tile instead of being invented', () => {
   const firm = takeaway({ ...TK, score: 60, band: 'Firm', stage: null, drawdownPct: 0.4, vix: null, nifty: null, above200: null, with200: null, previous: null });
-  assert.equal(firm.headline, 'A firm market, close to its high.');
+  assert.equal(firm.headline, 'A firm market, the Nifty close to its 52-week high.');
   assert.equal(firm.sub, 'Barometer 60 of 100.');
   assert.deepEqual(firm.facts.map((f) => [f.id, f.note, f.tone]), [['barometer', 'Firm', 'up']]);
   assert.equal(takeaway({ ...TK, band: 'Mixed', score: 48, drawdownPct: null }).headline, 'A mixed market.');
@@ -316,8 +308,8 @@ test('takeaway: tone follows the band; a missing figure drops its sentence and t
 test('takeaway: the change wording, the 1% threshold, and the zero-denominator guard', () => {
   assert.match(takeaway({ ...TK, previous: { score: 35, date: '2026-10-09' } }).sub, /\(unchanged from 35 on 9 Oct 2026\)/);
   assert.match(takeaway({ ...TK, previous: { score: 40, date: '2026-10-09' } }).sub, /\(down from 40 on 9 Oct 2026\)/);
-  assert.equal(takeaway({ ...TK, drawdownPct: 1.0 }).headline, 'A weak market, 1.0% below its high.');
-  assert.equal(takeaway({ ...TK, drawdownPct: 0.99 }).headline, 'A weak market, close to its high.');
+  assert.equal(takeaway({ ...TK, drawdownPct: 1.0 }).headline, 'A weak market, the Nifty 1.0% below its 52-week high.');
+  assert.equal(takeaway({ ...TK, drawdownPct: 0.99 }).headline, 'A weak market, the Nifty close to its 52-week high.');
   const none = takeaway({ ...TK, with200: 0 });
   assert.ok(!/200-day/.test(none.sub) && !none.facts.some((f) => f.id === 'breadth'));
 });
@@ -433,6 +425,18 @@ test('A05: an institution never resolves to a listed company; the company itself
   assert.deepEqual(m('Infosys wins a deal'), ['INFY']);
   assert.deepEqual(m('Bajajfin Housing raises funds'), [], 'a brand word followed by a different capitalised word is another name');
   assert.deepEqual(m('Bajajfin shares rise'), ['BAJFIN']);
+});
+
+test('A01 (master build): a longer legal name never resolves to the listed company it starts with', () => {
+  const cos = [{ sym: 'INDIACEM', name: 'India Cements Ltd.', mcap: 12000 }, { sym: 'TCS', name: 'Tata Consultancy Services Ltd.', mcap: 1200000 }];
+  const m = (t: string) => mentionsIn(t, cos).map((x) => x.sym);
+  // the story of 21 Oct 2026 as BusinessLine published it
+  assert.deepEqual(m('India Cements Capital receives open offer letter at ₹12 per share. The open offer will open on October 28 and close on November 11, 2026'), []);
+  assert.deepEqual(m('India Cements Capital Receives Open Offer Letter'), [], 'Title Case: "Capital" still continues a name');
+  assert.deepEqual(m('India Cements Ltd reports a loss'), ['INDIACEM'], 'its legal ending is still the company');
+  assert.deepEqual(m('India Cements reports a quarterly loss'), ['INDIACEM']);
+  assert.deepEqual(m('India Cements Shares Fall After Results'), ['INDIACEM'], 'Title Case: an ordinary next word does not end the match');
+  assert.deepEqual(m('TCS Q2 results beat estimates'), ['TCS'], 'a ticker is not cut short by the word after it');
 });
 
 import { fromQuery, SCREEN_DEFAULT, toQuery } from '../src/lib/screenUrl.ts';
@@ -664,14 +668,16 @@ test('sessionHead: live in hours, close after the bell, "latest close" before th
 });
 
 import { sessionGaps } from '../src/lib/status.ts';
-test('status: a weekday the NSE did not trade (20 Oct 2026, Diwali) is not a session the data should hold', () => {
+test('status: a weekday the NSE did not trade (20 Oct 2026, Dussehra) is not a session the data should hold', () => {
   const sessions = ['2026-10-15', '2026-10-16', '2026-10-19', '2026-10-21'];
   assert.deepEqual(sessionGaps(sessions), ['2026-10-20']);
   assert.deepEqual(sessionGaps(['2026-10-16', '2026-10-19']), [], 'a weekend is not a gap');
   assert.deepEqual(sessionGaps(null), []);
   const skip = new Set(sessionGaps(sessions));
   const wedMorning = new Date('2026-10-21T04:00:00Z');                                            // Wed 09:30 IST
-  assert.equal(expectedSession(wedMorning), '2026-10-20', 'without the market record, Tuesday is expected');
+  assert.equal(expectedSession(wedMorning), '2026-10-19', 'T12: NSE\'s own calendar knows 20 Oct 2026 (Dussehra) was a holiday, even without the market record');
+  assert.equal(expectedSession(new Date('2026-10-28T04:00:00Z')), '2026-10-27', 'an ordinary weekday stays expected');
+  assert.equal(expectedSession(new Date('2026-11-11T04:00:00Z')), '2026-11-09', '10 Nov 2026 (Diwali Balipratipada) is skipped');
   assert.equal(expectedSession(wedMorning, skip), '2026-10-19', 'with it, the holiday is skipped');
   const d = (id: string, asOf: string) => ({ id, label: id, source: 'x', asOf, refreshedAt: null });
   assert.deepEqual(reconcile([d('screen', '2026-10-19')], expectedSession(wedMorning, skip), skip).map((x) => x.state), ['current']);
@@ -781,7 +787,9 @@ test('engines v3 copy-lint: banned phrases are caught, and no engine copy, card 
   for (const bad of ['Guaranteed returns', 'a safe bottom', 'loss-protected', 'sure-shot pick', 'win probability 70%', 'probability of profit', 'risk-free']) assert.ok(copyViolations(bad).length > 0, bad);
   assert.deepEqual(copyViolations('Research and paper records only; alerts are off.'), []);
   const { readFileSync } = await import('node:fs');
-  const text = ['src/lib/enginesV3.ts', 'src/components/EnginesV3.tsx', 'src/app/engines/page.tsx', 'engines/v3/nightly.py', 'engines/v3/publish.py']   // copy a reader can see; the rule files state the bans themselves
+  const text = ['src/lib/enginesV3.ts', 'src/components/EnginesV3.tsx', 'src/app/engines/page.tsx', 'engines/v3/nightly.py', 'engines/v3/publish.py',
+    'src/lib/signalsView.ts', 'src/components/Gate.tsx', 'src/components/signals/SignalsWorkspace.tsx', 'src/components/signals/SetupCard.tsx',
+    'src/components/signals/PaperRecord.tsx', 'src/components/signals/Method.tsx', 'src/components/signals/LagNotice.tsx']   // copy a reader can see; the rule files state the bans themselves
     .map((f) => readFileSync(f, 'utf8').replace(/\/\*\* Copy-lint[\s\S]*?\];/m, '')).join('\n');
   const vmText = JSON.stringify(viewModel(V3, new Date('2026-10-22T15:00:00Z')));
   assert.deepEqual(copyViolations(text + vmText), [], 'no banned phrase in engine copy');
@@ -939,4 +947,157 @@ test('sayCrore: crore figures are spoken in words, never as "L cr"', async () =>
   assert.equal(sayCrore(123456), '1.23 lakh crore rupees');
   assert.equal(sayCrore(950.4), '950 crore rupees');
   assert.equal(sayCrore(null), 'not available');
+});
+
+import { checkStudy } from '../src/lib/readcheck.ts';
+test('A04/E01: a percentage restated as the wrong paise, or a percentile read as an average, is caught; correct glosses pass', () => {
+  assert.equal(checkStudy('* **Net profit margin 69.9 %** – after tax, roughly seven paise of each revenue rupee stay as profit.').length, 1);
+  assert.equal(checkStudy('* **EBIT margin 91.8 %** – almost every rupee turns into operating profit, about 92 paise.').length, 0);
+  assert.equal(checkStudy('Net margin 11.4 % translates to 11.4 paise of profit per rupee of sales.').length, 0);
+  assert.equal(checkStudy('about 53 paise of EBIT and about 42 paise of net profit (EBIT margin 52.9 %, net margin 42.4 %).').length, 0);
+  assert.equal(checkStudy('A 40% EBIT margin is eighty paise per rupee.').length, 1);
+  assert.equal(checkStudy('roughly 80 paise of profit turns into cash (0.80x).').length, 0, 'no percentage in the sentence: nothing to compare');
+  assert.equal(checkStudy('The P/E sits at the 48th percentile, above its historical average.').length, 1);
+  assert.equal(checkStudy('The P/E sits at the 48th percentile of its own history: higher than about 48% of it.').length, 0);
+  assert.equal(checkStudy('The P/E sits at the 48th percentile, above its median.').length, 1, 'the 48th percentile is below the median');
+  assert.equal(checkStudy('sitting at the 58th percentile of its own history, the stock trades above its median multiple').length, 0);
+});
+
+import { eligibility } from '../src/lib/coverage.ts';
+import { decide, CHECKS_VERSION } from '../src/lib/decision.ts';
+test('C07: a held data gate names its reason in words, apart from the research checks', () => {
+  const r = { sym: 'LCL', name: 'Lohia Corp', fy_count: 2, vet: { s: 'held', p: 8, n: 9, f: ['stmts'], w: '2 fiscal years of statements' } } as never;
+  const e = eligibility(r)!;
+  assert.equal(e.label, 'Limited history: 2 fiscal years available');
+  assert.equal(e.ok, false); assert.equal(e.thin, true);
+  const c = eligibility({ sym: 'X', name: 'X', fy_count: 4, vet: { s: 'held', p: 7, n: 9, f: ['cash', 'cover'], w: 'CFO/PAT 0.31x median' } } as never)!;
+  assert.equal(c.label, 'Profit not turning into cash · CFO/PAT 0.31x median');
+  assert.match(c.detail, /thin interest cover/);
+});
+test('A03: the nine checks give one count for one row, whether or not the caller has the statements', () => {
+  const r = { sym: 'LCL', name: 'Lohia Corp', fy_count: 2, roce: 41, de: 0.34, cfo_pat: 1.44, rev_cagr: 25, pe_pctile: 62, price: 570, sma50: 560, sma200: 540, rs3m: 40, turnover_cr: 17, risk: { level: 'LOW', flags: [] }, tech: 22, g: 95 } as never;
+  const today = decide(r, []), company = decide(r, [], 2);
+  const count = (d: ReturnType<typeof decide>) => [d.checks.filter((c) => c.pass === true).length, d.checks.filter((c) => c.pass !== null).length];
+  assert.deepEqual(count(today), count(company));
+  assert.equal(today.version, CHECKS_VERSION);
+  assert.equal(today.checks.find((c) => c.label === 'Growing')?.pass, null, 'two statement years: growth is not judged');
+  assert.ok(today.bear.some((p) => /2 fiscal years/.test(p.text)), 'the countercase names the thin history (C09)');
+  assert.equal(today.dims.find((d) => d.name === 'Growth')?.score, null, 'a growth rank on two years is not called strong (C08)');
+});
+
+import { rankIdeas, upcomingResults } from '../src/lib/ideas.ts';
+test('ideas: one reason and one limitation each; a held data gate is the limitation, named in words (H08)', () => {
+  const base = { roce: 30, de: 0.1, cfo_pat: 1.2, rev_cagr: 20, pe_pctile: 40, price: 100, sma50: 95, sma200: 90, rs3m: 70, turnover_cr: 20, risk: { level: 'LOW', flags: [] }, piotroski: 8 };
+  const rows = [
+    { sym: 'THIN', name: 'Thin Ltd', fy_count: 2, vet: { s: 'held', p: 8, n: 9, f: ['stmts'], w: '2 fiscal years of statements' }, ...base },
+    { sym: 'FULL', name: 'Full Ltd', fy_count: 4, vet: { s: 'cleared', p: 9, n: 9, f: [], w: '' }, ...base, pe: 70 },
+    { sym: 'ILLIQ', name: 'Illiquid', fy_count: 4, ...base, turnover_cr: 1 },
+  ] as never[];
+  const { ideas } = rankIdeas(rows, [], false, 3);
+  assert.deepEqual(ideas.map((i) => i.r.sym), ['FULL', 'THIN'], 'illiquid names are not ideas; thin history ranks below a full record');
+  const thin = ideas.find((i) => i.r.sym === 'THIN')!;
+  assert.equal(thin.limitationKind, 'data');
+  assert.equal(thin.limitation, 'Limited history: 2 fiscal years available');
+  const full = ideas.find((i) => i.r.sym === 'FULL')!;
+  assert.equal(full.limitationKind, 'countercase');
+  assert.match(full.limitation, /P\/E of 70/);
+  assert.ok(full.reason.length > 0);
+});
+test('upcoming results: followed names first, inside the window only', () => {
+  const rows = [{ sym: 'A', name: 'A', next_earnings: '2026-10-25', mcap_cr: 10 }, { sym: 'B', name: 'B', next_earnings: '2026-10-30', mcap_cr: 99 }, { sym: 'C', name: 'C', next_earnings: '2026-12-30', mcap_cr: 999 }, { sym: 'D', name: 'D', next_earnings: '2026-10-01' }] as never[];
+  assert.deepEqual(upcomingResults(rows, ['B'], '2026-10-22').map((u) => u.sym), ['B', 'A']);
+});
+
+import { diffSnapshot, snapshotOf } from '../src/lib/review.ts';
+test('since your last review: only recorded snapshots are compared; small score drift is not a change', () => {
+  const was = { sym: 'X', name: 'X', price: 100, q: 80, g: 60, v: 40, tech: 50, risk: { level: 'LOW', flags: [] }, next_earnings: '2026-10-30', last_date: '2026-10-20', vet: { s: 'cleared', p: 9, n: 9, f: [], w: '' } } as never;
+  const s = snapshotOf(was, '2026-10-20T10:00:00Z');
+  const now = { ...(was as object), price: 110, q: 82, tech: 30, risk: { level: 'HIGH', flags: [] }, next_earnings: '2026-11-04' } as never;
+  const d = diffSnapshot(s, now);
+  assert.deepEqual(d.map((x) => x.field), ['Price', 'Technical rank', 'Risk grade', 'Results date on file']);
+  assert.equal(d[0].to, '₹110 (+10.0%)');
+  assert.deepEqual(diffSnapshot(s, was), [], 'unchanged figures: nothing listed');
+});
+
+import { readFileSync as readHolidays } from 'node:fs';
+import { NSE_HOLIDAYS } from '../src/lib/holidays.ts';
+test('T12: the site and the engines read the same NSE holiday calendar', () => {
+  const cfg = JSON.parse(readHolidays(new URL('../configs/nse_holidays.json', import.meta.url), 'utf8'));
+  for (const [y, days] of Object.entries(cfg.weekday_holidays as Record<string, string[]>)) assert.deepEqual([...(NSE_HOLIDAYS[Number(y)] ?? [])], days, `year ${y}`);
+  assert.deepEqual(Object.keys(NSE_HOLIDAYS).map(String), Object.keys(cfg.weekday_holidays));
+});
+
+import { earningsQuality } from '../src/lib/forensic.ts';
+test('earnings quality: three pillars measured from statements, five reported as not measured, no composite', () => {
+  const Y = (fy: string, o: Partial<import('../src/lib/types.ts').Year>) => ({ fy, end: '', rev_cr: 100, ebitda_cr: 30, ebit_cr: 20, pat_cr: 15, eps: 1, roe: 20, roce: 20, ebit_margin: 20, de: 0.2, cfo_cr: 27, fcf_cr: 12, ...o });
+  const years = [Y('FY26', { ebit_cr: 40, roce: 25 }), Y('FY25', {}), Y('FY24', {}), Y('FY23', { ebit_cr: 20, roce: 20 })];
+  const q = earningsQuality(years, false);
+  const by = Object.fromEntries(q.pillars.map((p) => [p.id, p]));
+  assert.equal(by.F1.value, '90%'); assert.equal(by.F1.light, 'GREEN');      // 81 / 90
+  assert.equal(by.F3.value, '80%'); assert.equal(by.F3.light, 'GREEN');      // 36 / 45
+  // capital employed 160 vs 100: (40 − 20) / 60 = 33%
+  assert.equal(by.F8.value, '33%'); assert.equal(by.F8.light, 'GREEN');
+  for (const id of ['F2', 'F4', 'F5', 'F6', 'F7']) { assert.equal(by[id].light, null); assert.ok(by[id].missing); }
+  assert.equal(q.measured, 3); assert.equal(q.weightMeasured, 40);
+  assert.equal(earningsQuality(years.slice(0, 2), false).measured, 0, 'two years: nothing measured');
+  assert.equal(earningsQuality(years, true).applies, false, 'lenders are out of scope');
+  const red = earningsQuality([Y('FY26', { fcf_cr: -10, de: 0.9 }), Y('FY25', { fcf_cr: -5 }), Y('FY24', { fcf_cr: 1, de: 0.3 })], false);
+  assert.equal(red.pillars.find((p) => p.id === 'F3')!.light, 'RED');
+});
+
+// ── supporting pages (src/lib/support.ts) ─────────────────────────────────────────────────────────────────────────────
+import { compositeRanks, currentMonthExcluded, inWindow, navFreshness, rankSwing, readDelta, seasonRec, weekStatus, windowEnd } from '../src/lib/support.ts';
+
+test('E14 funds: freshness is computed from the NAV dates in the feed, against the calendar, skipping no-trade days', () => {
+  // Thursday 22 Oct 2026, 10:00 IST: the expected NAV is Wednesday 21 Oct; 20 Oct (Diwali) had no session
+  const now = new Date('2026-10-22T04:30:00Z'), skip = new Set(['2026-10-20']);
+  const f = navFreshness(['2026-10-16', '2026-10-16', '2026-10-15'], now, skip);
+  assert.equal(f.expected, '2026-10-21');
+  assert.equal(f.newest, '2026-10-16');
+  assert.equal(f.lag, 2);                 // 19 and 21 Oct
+  assert.equal(f.state, 'delayed');
+  assert.equal(f.behind, 1);
+  assert.equal(navFreshness(['2026-10-21'], now, skip).state, 'current');
+  assert.equal(navFreshness(['2026-10-14'], now, skip).state, 'stale');
+  assert.equal(navFreshness([null, 'n/a'], now).state, 'unknown');
+});
+
+test('E13 calendar: "next 7 days" is today and the six days after it, both ends inclusive, never eight days', () => {
+  assert.equal(inWindow(0, 7), true);
+  assert.equal(inWindow(6, 7), true);
+  assert.equal(inWindow(7, 7), false);
+  assert.equal(inWindow(-1, 7), false);
+  assert.equal(inWindow(NaN, 7), false);
+  assert.equal(windowEnd('2026-10-22', 7), '2026-10-28');
+  assert.equal(windowEnd('2026-10-29', 7), '2026-11-04');
+});
+
+test('E07 brief: rank swings carry today\'s rank, the implied previous rank, and the cause the factors point to', () => {
+  const rows = [{ sym: 'A', comp: 90 }, { sym: 'B', comp: 80, rank_move: 3 }, { sym: 'C', comp: 80 }, { sym: 'D', comp: null, rank_move: 5 }, { sym: 'E', comp: 10, rank_move: -2 }];
+  const { rank, of } = compositeRanks(rows);
+  assert.equal(of, 4);
+  assert.equal(rank.get('C'), 2, 'ties share the better rank');
+  assert.deepEqual(rankSwing(rows[1], rank), { now: 2, before: 5, move: 3 });
+  assert.deepEqual(rankSwing(rows[4], rank), { now: 4, before: 2, move: -2 });
+  assert.equal(rankSwing(rows[3], rank), null, 'no composite, no rank');
+  assert.equal(readDelta({ comp: 3, tech: 13.9, rsi: 5.8, m_pos: 3.5 }).cause, 'market');
+  assert.equal(readDelta({ comp: 1, q: 4 }).cause, 'statements');
+  assert.equal(readDelta({ comp: 1, q: 4, tech: -2 }).cause, 'mixed');
+  assert.equal(readDelta({ comp: 1 }).cause, 'unknown');
+  assert.equal(readDelta({ comp: 3, tech: 13.9, rsi: -20 }).factors[0].key, 'rsi', 'largest change first');
+});
+
+test('E08 brief: a seasonal record spells out up and down years; the running month is out of a sample built before it began', () => {
+  assert.deepEqual(seasonRec([73, 11.25, 11]), { hit: 73, median: 11.25, n: 11, up: 8, down: 3 });
+  assert.equal(seasonRec([50, 1, 0]), null);
+  assert.equal(seasonRec(undefined), null);
+  assert.equal(currentMonthExcluded('2026-09-26T22:03:10+00:00', new Date('2026-10-22T05:00:00Z')), 'before-month');
+  assert.equal(currentMonthExcluded('2026-10-02T22:03:10+00:00', new Date('2026-10-22T05:00:00Z')), 'by-rule');
+  assert.equal(currentMonthExcluded(null, new Date()), 'unknown');
+});
+
+test('E09 rotation: a week ending after the newest bar is a week in progress, through that bar', () => {
+  assert.deepEqual(weekStatus('2026-10-23', '2026-10-21'), { inProgress: true, through: '2026-10-21' });
+  assert.deepEqual(weekStatus('2026-10-16', '2026-10-21'), { inProgress: false, through: '2026-10-16' });
+  assert.deepEqual(weekStatus('2026-10-23', null), { inProgress: false, through: '2026-10-23' });
 });

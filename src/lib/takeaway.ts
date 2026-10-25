@@ -34,7 +34,7 @@ export function takeaway(i: TakeawayInput): Takeaway {
     return { headline: 'The market read is not available right now.', sub: 'The latest readings could not be loaded. Nothing below is estimated in their place.', facts: [], available: false };
   }
   const dd = fin(i.drawdownPct) ? i.drawdownPct : null;
-  const headline = `A ${i.band.toLowerCase()} market${dd === null ? '' : dd >= 1 ? `, ${num(dd, 1)}% below its high` : ', close to its high'}.`;
+  const headline = `A ${i.band.toLowerCase()} market${dd === null ? '' : dd >= 1 ? `, the Nifty ${num(dd, 1)}% below its 52-week high` : ', the Nifty close to its 52-week high'}.`;
 
   const change = i.previous ? ` (${i.score > i.previous.score ? 'up from' : i.score < i.previous.score ? 'down from' : 'unchanged from'} ${i.previous.score} on ${dateLabel(i.previous.date)})` : '';
   const parts = [`Barometer ${num(i.score, 0)} of 100${change}.`];
@@ -45,7 +45,7 @@ export function takeaway(i: TakeawayInput): Takeaway {
   const facts: Fact[] = [
     { id: 'barometer', label: 'Market barometer', value: `${num(i.score, 0)} / 100`, note: `${i.band}${i.stage ? ` · ${i.stage}` : ''}`, tone: bandTone(i.band) },
   ];
-  if (fin(i.nifty)) facts.push({ id: 'nifty', label: 'Nifty 50', value: num(i.nifty, 0), note: dd === null ? 'distance from high not available' : dd >= 1 ? `${num(dd, 1)}% below its high` : 'close to its high', tone: 'neutral' });
+  if (fin(i.nifty)) facts.push({ id: 'nifty', label: 'Nifty 50', value: num(i.nifty, 0), note: dd === null ? 'distance from high not available' : dd >= 1 ? `${num(dd, 1)}% below its 52-week high` : 'close to its 52-week high', tone: 'neutral' });
   if (breadth !== null) facts.push({ id: 'breadth', label: 'Stocks above 200-day', value: `${breadth}%`, note: `${num(i.above200 as number)} of ${num(i.with200 as number)} with history`, tone: 'neutral' });
   if (fin(i.vix)) facts.push({ id: 'vix', label: 'India VIX', value: num(i.vix, 1), note: vixWord(i.vix), tone: 'neutral' });
   return { headline, sub: parts.join(' '), facts, available: true };

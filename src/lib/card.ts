@@ -28,6 +28,9 @@ export interface ResearchCard {
   /** "What would change my mind" (Pro §22.3): the reader's own words, never generated. reviewOn is a date; reviewWhen a data
    *  condition Alpha can observe ('results': the next results date on file has passed). */
   decision?: CardDecision | null;
+  /** When the reader last edited the question, note or decision (null: never edited since it was saved). Optional, so a
+   *  version 2 card from before 22 Oct 2026 reads unchanged; the backup merge uses it to keep the later copy. */
+  updatedAt?: string | null;
 }
 export interface CardDecision { thesis: string | null; against: string | null; unknowns: string | null; reviewOn: string | null; reviewWhen: 'results' | null }
 export interface Library { schema: typeof LIBRARY_SCHEMA; version: number; exportedAt: string; watchlist: string[]; cards: ResearchCard[] }
@@ -47,7 +50,7 @@ export function buildCard(p: Partial<ResearchCard> & { companies: CardCompany[] 
   return {
     schema: CARD_SCHEMA, version: CARD_VERSION, id: p.id ?? newId(now.getTime()), createdAt: p.createdAt ?? now.toISOString(),
     question: p.question ?? null, query: p.query ?? null, companies: p.companies, comparison: p.comparison ?? null, evidence: p.evidence ?? null,
-    engines: p.engines ?? null, nextResults: p.nextResults ?? null, dataStatus: p.dataStatus ?? [], note: p.note ?? null, decision: p.decision ?? null,
+    engines: p.engines ?? null, nextResults: p.nextResults ?? null, dataStatus: p.dataStatus ?? [], note: p.note ?? null, decision: p.decision ?? null, updatedAt: p.updatedAt ?? null,
   };
 }
 
@@ -66,7 +69,7 @@ export function normaliseCard(raw: unknown): Parsed<ResearchCard> {
   const version = num(o.version);
   if (version === null || version < 1) return { ok: false, error: 'The card has no valid version number, so it cannot be read safely.' };
   if (version > CARD_VERSION) return { ok: false, error: `This card was made by a newer version of Alpha (version ${version}; this one reads up to ${CARD_VERSION}). Update Alpha, or export it again from the version that made it.` };
-  const known = new Set(['schema', 'version', 'id', 'createdAt', 'question', 'query', 'companies', 'comparison', 'evidence', 'engines', 'nextResults', 'dataStatus', 'note', 'decision']);
+  const known = new Set(['schema', 'version', 'id', 'createdAt', 'question', 'query', 'companies', 'comparison', 'evidence', 'engines', 'nextResults', 'dataStatus', 'note', 'decision', 'updatedAt']);
   for (const k of Object.keys(o)) if (!known.has(k)) warnings.push(`Ignored an unrecognised field: ${k}.`);
 
   const companies: CardCompany[] = [];
@@ -94,7 +97,7 @@ export function normaliseCard(raw: unknown): Parsed<ResearchCard> {
     value: {
       schema: CARD_SCHEMA, version, id: str(o.id, 60) ?? newId(), createdAt: iso(o.createdAt) ?? new Date(0).toISOString(), question: str(o.question, 300),
       query: q ? { text: str(q.text, 300), applied: strs(q.applied), ignored: strs(q.ignored), matches: num(q.matches) } : null,
-      companies, comparison, evidence, engines, nextResults, dataStatus, note: str(o.note, 4000), decision: decisionOf(o.decision),
+      companies, comparison, evidence, engines, nextResults, dataStatus, note: str(o.note, 4000), decision: decisionOf(o.decision), updatedAt: iso(o.updatedAt),
     },
   };
 }
