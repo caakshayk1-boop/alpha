@@ -9,6 +9,7 @@ import { Chg, Flash, LazyMount, Skel } from '@/components/ui';
 import { FreshnessPill, useDatasetStatus } from '@/components/DataStamp';
 import { EvidenceDigest } from '@/components/EvidenceDigest';
 import { DotGauge } from '@/components/DotGauge';
+import { APP } from '@/lib/edition';
 import { RulesToday } from '@/components/signals/RuleBoard';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, useToday } from '@/components/widgets/DayContext';
@@ -73,7 +74,7 @@ export function MarketRead() {
       )}
 
       <section className="card mh" aria-labelledby="baro-h" data-play={play ? '' : undefined}>
-        <div className="card-h"><h2 id="baro-h">Market barometer</h2><Link className="more" href="/brief/">The brief →</Link></div>
+        <div className="card-h"><h2 id="baro-h">Market barometer</h2>{!APP && <Link className="more" href="/brief/">The brief →</Link>}</div>
         {r && baro.settled ? (
           <>
             <div className="mh-top">
@@ -224,7 +225,7 @@ function IdeasBody() {
 export function ComingUp() {
   return (
     <section className="card" aria-labelledby="coming-h">
-      <div className="card-h"><h2 id="coming-h">Coming up</h2><Link className="more" href="/calendar/">Calendar →</Link></div>
+      <div className="card-h"><h2 id="coming-h">Coming up</h2>{!APP && <Link className="more" href="/calendar/">Calendar →</Link>}</div>
       <LazyMount minHeight={160}><ComingBody /></LazyMount>
     </section>
   );
@@ -253,10 +254,12 @@ export function Previews() {
         <RulesToday />
         <p className="card-foot">Counts of liquid stocks meeting each fixed rule at the last close. Observations, not recommendations.</p>
       </section>
-      <div className="grid-2 previews">
-        <SignalsStatus />
-        <RotationPreview />
-      </div>
+      {!APP && (
+        <div className="grid-2 previews">
+          <SignalsStatus />
+          <RotationPreview />
+        </div>
+      )}
     </>
   );
 }

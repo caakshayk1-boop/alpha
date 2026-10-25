@@ -1,0 +1,41 @@
+name: app
+on:
+  pull_request:
+    paths: ['src/**', 'scripts/app-*.mjs', 'wrangler.app.jsonc', 'next.config.mjs', 'package.json', 'public/**', '.github/workflows/app.yml']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy the app Worker (owner decision; needs the address chosen first, see docs/app/README.md)'
+        type: boolean
+        default: false
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build the app edition
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ vars.APP_URL }}
+        run: npm run build:app
+      - name: Check the app edition
+        run: npm run check:app
+      - name: Deploy (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::Cloudflare secrets missing. Nothing was deployed."; exit 1; fi
+          npx wrangler deploy --config wrangler.app.jsonc

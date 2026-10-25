@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { here } from '@/lib/edition';
 import SymbolPicker from '@/components/SymbolPicker';
 import { PageHead } from '@/components/ui';
 import { useFeed, useSignals } from '@/lib/data';
@@ -53,7 +54,7 @@ export default function Research() {
         <section className="sp-sec" aria-labelledby="rs-in">
           <h2 id="rs-in" className="sec-title rs-sub">Ways in</h2>
           <ul className="rows card rs-list">
-            {entries.map((e) => (
+            {entries.filter((e) => here(e.href)).map((e) => (
               <li key={e.href}>
                 <Link href={e.href} className="row rs-row"><span className="rs-id"><span className="row-t">{e.t}{e.tag && <span className="pill warn nodot rs-tag">{e.tag}</span>}</span><span className="row-s">{e.s}</span></span><span className="row-r link">{e.cta} →</span></Link>
               </li>

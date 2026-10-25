@@ -21,3 +21,5 @@ tests/visual/diff/
 
 __pycache__/
 *.pyc
+/out-app/
+/out-app-build/

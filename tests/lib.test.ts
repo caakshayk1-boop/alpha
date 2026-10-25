@@ -1269,3 +1269,25 @@ test('rule board: each rule is a fixed public test; boundaries, missing data, il
   assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'oversold')!, 27.4), '27');
   assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'rs-leader')!, 21.04), '+21.0 pts');
 });
+
+import { APP_PREFIXES, APP_ROUTES, FULL_SITE, inApp } from '../src/lib/edition.ts';
+import { APP_AREAS, FULL_PAGES, appPages } from '../src/lib/routes.ts';
+
+test('edition: the app owns twelve routes and company pages, and nothing else', () => {
+  assert.equal(inApp('/'), true);
+  assert.equal(inApp('/engines'), true);
+  assert.equal(inApp('/screen/?q=x#top'), true);
+  assert.equal(inApp('/company/TCS/'), true);
+  for (const p of ['/rotation/', '/news/', '/reads/', '/funds/', '/ipo/', '/markets/', '/map/', '/calendar/', '/brief/', '/trades/']) assert.equal(inApp(p), false, p);
+  assert.ok(APP_ROUTES.every((r) => r.startsWith('/') && r.endsWith('/')));
+  assert.deepEqual([...APP_PREFIXES], ['/company/']);
+  assert.ok(FULL_SITE.startsWith('https://'));
+});
+
+test('edition: the app has four tabs and every kept page belongs to one', () => {
+  assert.equal(APP_AREAS.length, 4);
+  const pages = appPages(FULL_PAGES);
+  assert.ok(pages.length > 0 && pages.every((p) => inApp(p.href)));
+  const areas = new Set(APP_AREAS.map((a) => a.id as string));
+  assert.ok(pages.filter((p) => p.area !== 'utility').every((p) => areas.has(p.area)));
+});

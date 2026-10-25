@@ -1,0 +1,22 @@
+{
+  // The app edition of alpha: the same Worker code as wrangler.jsonc, serving out-app/ (npm run build:app) as its own Worker.
+  // Nothing here is deployed by merging a branch. Deploy with the "app" workflow (manual), after the owner has chosen the address.
+  "name": "alpha-app",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-05-01",
+  "assets": {
+    "directory": "./out-app",
+    "binding": "ASSETS",
+    "run_worker_first": ["/data/*", "/api/*", "/c/*", "/company/"],
+    "not_found_handling": "404-page"
+  },
+  // The launch address is the owner's choice. Add a route here (a custom domain on a zone in this Cloudflare account) or attach one in
+  // the dashboard. Until then the app is reachable only at its workers.dev address, if that is enabled below.
+  // "routes": [{ "pattern": "app.example.com", "custom_domain": true }],
+  "workers_dev": true,
+  // Its own rate-limit namespaces: the app's budget is counted apart from the full site's.
+  "ratelimits": [{ "name": "EXPLAIN_LIMIT", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } }, { "name": "RUM_LIMIT", "namespace_id": "2002", "simple": { "limit": 10, "period": 60 } }, { "name": "WAITLIST_LIMIT", "namespace_id": "2003", "simple": { "limit": 3, "period": 60 } }],
+  "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }, { "name": "RUM", "class_name": "Rum" }, { "name": "WAITLIST", "class_name": "Waitlist" }] },
+  "migrations": [{ "tag": "v1-quota", "new_sqlite_classes": ["Quota"] }, { "tag": "v2-rum", "new_sqlite_classes": ["Rum"] }, { "tag": "v3-waitlist", "new_sqlite_classes": ["Waitlist"] }],
+  "observability": { "enabled": true }
+}

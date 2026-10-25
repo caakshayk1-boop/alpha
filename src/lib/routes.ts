@@ -4,10 +4,13 @@
  *
  *  `desc` is the one line a menu shows under each page: what that page answers, never what to do with it. */
 
+import { APP, inApp } from './edition.ts';
+
 export type Area = 'today' | 'discover' | 'research' | 'desk' | 'utility';
 export interface Page { href: string; label: string; desc: string; area: Area; icon: string; keys?: string }
 
-export const PAGES: readonly Page[] = [
+/** Every page of the full site. */
+export const FULL_PAGES: readonly Page[] = [
   { href: '/', label: 'Today', area: 'today', keys: 'g t', desc: 'What changed today, your names and the market in one view', icon: 'M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
   { href: '/brief/', label: 'Brief', area: 'today', keys: 'g b', desc: 'The day’s market read, section by section', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5' },
   { href: '/markets/', label: 'Markets', area: 'today', keys: 'g m', desc: 'Indices, sectors, commodities, currencies and rates', icon: 'M3 17l5-6 4 3 8-9M16 5h4v4' },
@@ -33,12 +36,26 @@ export const PAGES: readonly Page[] = [
 ];
 
 /** The four primary areas, in order. `home` is where the area's own link goes. */
-export const AREAS: readonly { id: Exclude<Area, 'utility'>; label: string; hint: string; home: string }[] = [
+export const FULL_AREAS: readonly { id: Exclude<Area, 'utility'>; label: string; hint: string; home: string }[] = [
   { id: 'today', label: 'Today', hint: 'What changed and what matters today', home: '/' },
   { id: 'discover', label: 'Discover', hint: 'What deserves more research', home: '/screen/' },
   { id: 'research', label: 'Research', hint: 'What supports or weakens the case', home: '/research/' },
   { id: 'desk', label: 'My Desk', hint: 'What you track and what needs review', home: '/desk/' },
 ];
+
+/** The app edition's four areas and where each page sits in them. Signals gets its own tab; discovery, research and comparison are one "Find". */
+export const APP_AREAS: readonly { id: Exclude<Area, 'utility'>; label: string; hint: string; home: string }[] = [
+  { id: 'today', label: 'Today', hint: 'The market and your names, in a minute', home: '/' },
+  { id: 'discover', label: 'Signals', hint: 'Which stocks meet which rule today', home: '/engines/' },
+  { id: 'research', label: 'Find', hint: 'Search, screen and compare companies', home: '/screen/' },
+  { id: 'desk', label: 'My Desk', hint: 'What you follow, the evidence, your journal, your sizing', home: '/desk/' },
+];
+const APP_PLACE: Record<string, Area> = { '/': 'today', '/engines/': 'discover', '/screen/': 'research', '/research/': 'research', '/compare/': 'research', '/tools/': 'desk', '/desk/': 'desk', '/watchlist/': 'desk', '/journal/': 'desk' };
+/** The app's pages, each placed in an app area (pure: tested for both editions). */
+export const appPages = (pages: readonly Page[]): Page[] => pages.filter((p) => inApp(p.href)).map((p) => ({ ...p, area: APP_PLACE[p.href] ?? p.area }));
+
+export const PAGES: readonly Page[] = APP ? appPages(FULL_PAGES) : FULL_PAGES;
+export const AREAS = APP ? APP_AREAS : FULL_AREAS;
 
 export const pagesIn = (a: Area) => PAGES.filter((p) => p.area === a);
 export const pageOf = (href: string) => PAGES.find((p) => p.href === href);

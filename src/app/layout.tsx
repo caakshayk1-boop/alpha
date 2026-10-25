@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter_Tight, Instrument_Serif } from 'next/font/google';
 import Shell from '@/components/Shell';
+import { APP, FULL_SITE } from '@/lib/edition';
 import { PREFS_SCRIPT } from '@/lib/prefs';
 import './globals.css';
 import './tokens-oklch.css';      // the same tokens authored in OKLCH (scripts/oklch.mjs), where supported
@@ -9,7 +10,23 @@ import './premium.css';           // design system v4: the last layer, so its to
 const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
 
-export const metadata: Metadata = {
+// The app edition names its own address (NEXT_PUBLIC_APP_URL). Until the owner sets one it points its canonical at the full site and asks
+// search engines not to index it, so a launch address is never competing with alpha.askakshay.com by accident.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || '';
+const appMeta: Metadata = {
+  metadataBase: new URL(APP_URL || FULL_SITE),
+  title: { default: 'alpha: signals by rule, your names, your desk', template: '%s · alpha' },
+  description: 'The daily research app for Indian stocks: which names meet which rule, the evidence on the companies you follow, and position sizing. Working shown, never advice.',
+  openGraph: { title: 'alpha: signals by rule, your names, your desk', description: 'Which Indian stocks meet which rule today, the evidence on your names, and position sizing. Working shown.', url: APP_URL || FULL_SITE, type: 'website', siteName: 'alpha', images: [{ url: '/og/alpha.png', width: 1200, height: 630, alt: 'alpha: Indian equity research, with the working shown' }] },
+  twitter: { card: 'summary_large_image', images: ['/og/alpha.png'] },
+  alternates: { canonical: APP_URL ? './' : FULL_SITE },
+  robots: APP_URL ? { index: true, follow: true } : { index: false, follow: false },
+  manifest: '/manifest.webmanifest',
+  icons: { icon: [{ url: '/icons/favicon-32.png?v=2', sizes: '32x32' }, { url: '/icons/icon-192.png?v=2', sizes: '192x192' }], apple: '/icons/apple-touch-icon.png?v=2' },
+  appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },
+  formatDetection: { telephone: false },
+};
+const fullMeta: Metadata = {
   metadataBase: new URL('https://alpha.askakshay.com'),
   title: { default: 'alpha — Indian equity research desk', template: '%s · alpha' },
   description: 'One screen for Indian markets: a live board, nearly 1,000 companies screened on quality, growth and value, weekly company studies, IPOs, funds and the news that touches them.',
@@ -21,6 +38,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
 };
+export const metadata: Metadata = APP ? appMeta : fullMeta;
 export const viewport: Viewport = { themeColor: '#f6f5f1', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 // Start the first data a page waits on while its JavaScript is still downloading, and let lib/data.ts pick up the same
