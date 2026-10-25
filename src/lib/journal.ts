@@ -12,6 +12,12 @@ export interface JournalEntry {
   price: number | null;     // price at the time of the decision
   stop: number | null;
   target: number | null;
+  /** What would make the idea wrong, in the user's words. Optional; written at decision time. */
+  wrong?: string;
+  /** The day the user wants to look again (YYYY-MM-DD). Optional; Alpha sends no reminder, the Journal only marks it due. */
+  reviewBy?: string;
+  /** A retrospective, written later. Kept apart from `why`, which stays the original thesis. */
+  lesson?: string;
   /** When the entry was last edited (absent: never edited). The backup merge keeps the later copy of the same id. */
   updatedAt?: string;
   /** The market when the decision was recorded on its own day (Blueprint §4.2): the Barometer score and band and the Swing v2
@@ -28,7 +34,7 @@ const isDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
 
 /** Build an entry from form text. Returns the problem as a sentence instead of throwing, so the form can show it. */
-export function makeEntry(input: { date: string; sym: string; action: string; why: string; price: string; stop: string; target: string }, id: string): { entry: JournalEntry } | { error: string } {
+export function makeEntry(input: { date: string; sym: string; action: string; why: string; price: string; stop: string; target: string; wrong?: string; reviewBy?: string; lesson?: string }, id: string): { entry: JournalEntry } | { error: string } {
   const sym = input.sym.trim().toUpperCase();
   if (!sym) return { error: 'Pick a company.' };
   if (!isDate(input.date)) return { error: 'The date must be a real date.' };
@@ -40,8 +46,15 @@ export function makeEntry(input: { date: string; sym: string; action: string; wh
   if (price === 'bad' || stop === 'bad' || target === 'bad') return { error: 'Price, stop and target must be numbers above zero, or left empty.' };
   if (price !== null && stop !== null && stop >= price) return { error: 'The stop must be below the price (this journal records long ideas).' };
   if (price !== null && target !== null && target <= price) return { error: 'The target must be above the price.' };
-  return { entry: { id, date: input.date, sym, action: input.action as JournalAction, why, price, stop, target } };
+  const reviewBy = (input.reviewBy ?? '').trim();
+  if (reviewBy && !isDate(reviewBy)) return { error: 'The review date must be a real date, or left empty.' };
+  if (reviewBy && reviewBy < input.date) return { error: 'The review date comes before the decision date.' };
+  const wrong = (input.wrong ?? '').trim().slice(0, 600), lesson = (input.lesson ?? '').trim().slice(0, 2000);
+  return { entry: { id, date: input.date, sym, action: input.action as JournalAction, why, price, stop, target, ...(wrong ? { wrong } : {}), ...(reviewBy ? { reviewBy } : {}), ...(lesson ? { lesson } : {}) } };
 }
+
+/** An entry whose review date has arrived and which has no retrospective yet. */
+export const reviewDue = (e: JournalEntry, today: string): boolean => !!e.reviewBy && e.reviewBy <= today && !e.lesson;
 
 export type OutcomeState = 'no-price' | 'no-reference' | 'open' | 'below-stop' | 'above-target';
 export interface Outcome { state: OutcomeState; movePct: number | null; r: number | null }
@@ -82,7 +95,7 @@ export function parseJournal(raw: string | null): JournalEntry[] {
       if (typeof o.id !== 'string' || !o.id || seen.has(o.id) || typeof o.sym !== 'string' || !o.sym || !isDate(o.date)) continue;
       if (!(ACTIONS as readonly unknown[]).includes(o.action) || typeof o.why !== 'string') continue;
       seen.add(o.id);
-      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target), ...(typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(o.updatedAt) ? { updatedAt: o.updatedAt } : {}), ...regimeOf(o.regime) });
+      out.push({ id: o.id, date: o.date, sym: o.sym.toUpperCase().slice(0, 20), action: o.action as JournalAction, why: o.why.slice(0, 2000), price: num(o.price), stop: num(o.stop), target: num(o.target), ...(typeof o.wrong === 'string' && o.wrong.trim() ? { wrong: o.wrong.slice(0, 600) } : {}), ...(isDate(o.reviewBy) ? { reviewBy: o.reviewBy } : {}), ...(typeof o.lesson === 'string' && o.lesson.trim() ? { lesson: o.lesson.slice(0, 2000) } : {}), ...(typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(o.updatedAt) ? { updatedAt: o.updatedAt } : {}), ...regimeOf(o.regime) });
     }
     return out;
   } catch { return []; }

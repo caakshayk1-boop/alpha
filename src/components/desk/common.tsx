@@ -2,7 +2,7 @@
 /** Small pieces every My Desk tab shares. */
 import SymbolPicker from '@/components/SymbolPicker';
 
-export type DeskTab = 'following' | 'cards' | 'journal' | 'conditions';
+export type DeskTab = 'following' | 'digest' | 'cards' | 'journal' | 'conditions';
 export type Go = (t: DeskTab, sym?: string | null) => void;
 export const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
