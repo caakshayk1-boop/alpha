@@ -19,8 +19,9 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 | 3 | Discover: search, sector/size/valuation/quality/momentum filters, chips, saved screens, reset, sorting with nulls last, follow, compare, loading/empty/failure states | PASS | Unit tests for filter and sort; journey. Quality filter excludes lenders. Only the Nifty 500 screen (988 names) is covered, and the page says so |
 | 4 | Company research: identity, dated close, case and countercase, 52-week range with averages, statements, business-appropriate ratios, rules that fired, timeline, review checklist, thesis, four actions | PASS with gaps | **No price-history chart** (the data files carry no price series; the website's chart needs a live API Tripwire does not have): NOT BUILT. No ownership or announcements/corporate actions timeline: NOT BUILT (no verified source in the data) |
 | 5 | Compare up to three, six views, sticky headings, missing and non-comparable values named, saved comparisons, no winner | PASS | Journey; lender rule |
-| 6 | Signals: ten public rules, six engines E1–E6 with lifecycle, four ledger views, diagnostics | PASS (display) | Reads `engines_v3.json` when published; until the first nightly publishes it, the Engines view shows the 22 Oct decision record and says so. No engine is VALIDATED and alerts are off. **Server-side engine runs are the existing Python engines in `engines/`; Tripwire does not run or re-implement them.** Funnel diagnostics ("why excluded") are NOT BUILT in the UI |
+| 6 | Signals: three factor engines (Momentum, Quality at a fair price, Steady uptrend), picks with criteria and funnel, paper tracker | PASS (code and tests), NOT RUN (live Yahoo) | `docs/tripwire/ENGINES.md`. Replaced the E1-E6 lifecycle chooser and the market-gate message, which are gone. **No backtest on Indian prices exists**; the repository's earlier engines failed walk-forward. A server-side nightly forward ledger of every pick: NOT BUILT |
 | 7 | Paper planner | PASS | `sizePlan` unit-tested (each cap, each refusal); journey. Versioned plan edits (`rev`), expiry, saved ≠ paper fill ≠ holding. Trailing-stop policy, time exit and three-target plans: NOT BUILT (two conditional targets at +2R and +4R) |
+| 7b | Paper tracker with live prices | PASS with mocked bars; **live Yahoo NOT RUN** | Replays daily bars: next-open fill, gap and stop rules, time exit, costs, delayed live mark, forming bar. Worker route `/api/bars` |
 | 8 | My Desk: following, journal with seven fields, versioned history, archive, search, review dates, weekly process review, saved comparisons and screens, export | PASS | Unit tests and journey. A "what changed since" note on an overdue review: NOT BUILT |
 | 9 | Portfolio: manual holdings, CSV import, reconciliation | **NOT BUILT** | Next piece of work. Broker connection is BLOCKED (credentials and consent) |
 | 10 | Notification centre, quiet hours, outbox delivery | **NOT BUILT / BLOCKED** | Needs a delivery service. The existing Python alert outbox has no sender. Profile states this |
@@ -37,7 +38,7 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 ## What was actually run
 
 - `npm run tripwire:types`: no errors.
-- `npm run tripwire:test`: 16 checks (planner, filters, journal history, review dates, snapshots, weekly review, CSV/JSON, merge, freshness, copy).
+- `npm run tripwire:test`: 35 checks (planner, filters, journal history, review dates, snapshots, weekly review, CSV/JSON, merge, freshness, copy, the three engines, the tracker, the Worker's bar parsing).
 - `npm run tripwire:check`: serves the build on its own Worker config and runs `journey.mjs` (every step above marked PASS) and `a11y.mjs`.
 
 ## Defects found by running it, and fixed

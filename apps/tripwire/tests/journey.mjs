@@ -11,7 +11,7 @@ const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 const pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
-const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('engines_v3')) bad.push(r.status() + ' ' + r.url()); });
+const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
 const text = () => pg.locator('body').innerText();
 
@@ -24,7 +24,8 @@ ok((await pg.locator('nav.tabs a').allInnerTexts()).map((s) => s.trim()).join('|
 await pg.waitForSelector('.gauge svg', { timeout: 15000 });
 await pg.waitForTimeout(600); await shot('01-today');
 ok(/Data through/.test(await text()), 'Today states the data date');
-ok(/market gate is/i.test(await text()), 'Today states the market gate');
+ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
+ok(/pick/i.test(await text()) && /engines? tonight/i.test(await text()), 'Today states what the engines picked');
 
 // Discover → follow → compare → research
 await pg.getByRole('link', { name: 'Discover' }).click();
@@ -93,15 +94,46 @@ const [dl] = await Promise.all([pg.waitForEvent('download'), pg.getByRole('butto
 ok(dl.suggestedFilename() === 'tripwire-journal.csv', 'journal exports as CSV');
 await shot('07-journal');
 
-// signals
-await pg.goto(base + '/#/signals'); await pg.waitForSelector('details.ev'); await shot('08-signals');
-ok((await pg.locator('details.ev').count()) === 10, 'rules view lists the ten rules');
-await pg.getByRole('tab', { name: 'Engines' }).click(); await pg.waitForSelector('.stage');
-ok((await pg.locator('.card .k', { hasText: /^E[1-6]$/ }).count()) === 6, 'engines view lists E1 to E6');
-ok(/Alerts are off/.test(await text()), 'engines view says alerts are off');
-await shot('09-engines');
-await pg.getByRole('tab', { name: 'Paper ledger' }).click(); await pg.waitForSelector('h2.h');
-ok(/Forming setups/i.test(await text()) && /Validated alerts/i.test(await text()) && /Closed paper record/i.test(await text()), 'ledger shows the four lifecycle views');
+// signals: three engines, picks, paper tracker with mocked bars
+await pg.goto(base + '/#/signals'); await pg.waitForSelector('section[aria-label]'); await shot('08-signals');
+ok((await pg.locator('section[aria-label]').count()) === 3, 'signals shows exactly three engines');
+ok(!/E[1-6]\b|Blocked: data|Alerts are off|lifecycle/i.test(await text()), 'no engine-selection or lifecycle chooser remains');
+ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && /Steady uptrend/i.test(await text()), 'the three engines are named');
+const firstPick = await pg.locator('section[aria-label] a .sym').first().innerText().then((s) => s.replace(/^\d+\.\s*/, ''));
+await pg.locator('section[aria-label]').first().getByText('How it picks').click();
+ok(/Funnel tonight/.test(await text()), 'each engine explains its funnel');
+await pg.locator('section[aria-label]').first().getByText('Why it qualified').first().click();
+ok(/Close above the 200-day/.test(await text()), 'each pick lists the criteria it passed');
+const sym = firstPick;
+const day = 86400;
+const refTxt = await pg.locator('section[aria-label]').first().locator('.card').nth(1).innerText();
+const ref = Number((refTxt.match(/Signal close\s*₹([\d,]+\.?\d*)/) || [])[1]?.replace(/,/g, ''));
+ok(ref > 0, `a pick states its signal close (${ref})`);
+// bars that begin AFTER the paper trade was taken, near the signal close, never touching the stop: the trade must open and be marked live
+const mock = (route) => {
+  const u = new URL(route.request().url()); const syms = (u.searchParams.get('s') || '').split(',').filter(Boolean);
+  const now = Math.floor(Date.now() / 1000); const bars = {};
+  for (const s of syms) { const t = [], o = [], h = [], l = [], c = []; for (let i = 0; i < 4; i++) { t.push(now + (i + 1) * 60); o.push(ref * (1.002 + i * 0.002)); h.push(ref * (1.02 + i * 0.002)); l.push(ref * 0.995); c.push(ref * (1.01 + i * 0.002)); } bars[s] = { t, o, h, l, c, forming: true, live: { px: ref * 1.03, t: now + 5 * 60 } }; }
+  route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: new Date().toISOString(), bars, missing: [] }) });
+};
+await pg.route('**/api/bars*', mock);
+await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Paper trade this' }).first().click();
+ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
+await pg.getByRole('tab', { name: /Paper tracker/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.waitForFunction(() => /Updated \d\d:\d\d IST/.test(document.body.innerText), null, { timeout: 15000 });
+ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
+ok(/Prices from Yahoo Finance, delayed/.test(await text()), 'tracker says its prices are delayed and where they come from');
+await shot('09-tracker');
+ok(/\bOpen\b/.test(await pg.locator('.card .tag').allInnerTexts().then((x) => x.join(' '))), 'the trade opens at the first open after it was taken');
+ok(/Live \(delayed\)/i.test(await text()) && /Session 4 of/.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
+ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
+ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
+// a failed price service shows an honest error, not a guess
+await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
+await pg.reload(); await pg.waitForSelector('text=Prices unavailable', { timeout: 15000 });
+ok(/Nothing is estimated in their place/.test(await text()), 'price outage is stated and nothing is estimated');
+await pg.unroute('**/api/bars*');
+await pg.goto(base + '/#/signals'); await pg.getByRole('button', { name: /Paper-trade all/ }).click().catch(() => {});
 
 // search
 await pg.getByRole('button', { name: 'Search' }).click();

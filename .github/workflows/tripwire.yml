@@ -1,7 +1,7 @@
 name: tripwire
 on:
   pull_request:
-    paths: ['apps/tripwire/**', 'wrangler.tripwire.jsonc', 'src/lib/rules.ts', '.github/workflows/tripwire.yml']
+    paths: ['apps/tripwire/**', 'wrangler.tripwire.jsonc', '.github/workflows/tripwire.yml']
   workflow_dispatch:
     inputs:
       deploy:

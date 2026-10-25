@@ -71,7 +71,7 @@ export function App(): ReactNode {
   else if (head === 'compare') view = <Compare syms={(loc.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
   else if (tab === 'discover') view = <Discover />;
-  else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'rules'} />;
+  else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'picks'} />;
   else if (tab === 'desk') view = <Desk seg={loc.q.get('v') ?? 'follow'} />;
   else if (tab === 'profile') view = <Profile />;
   else view = <Today />;

@@ -7,7 +7,6 @@ export interface SignalsFeed { schema: string; generated: string; data_through: 
 export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null }
 export interface Flag { s: string; t: string; k: string }
 export interface Company { sym: string; built_on: string; row: Row & { risk_top?: string }; years: Year[]; swot: { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] } | null; risk: { level: string; score: number; flags: Flag[] } | null }
-export interface V3Feed { generated: string; data_watermark: string; alerts_enabled: boolean; engines: Record<string, { state: string; why?: string; version?: string }>; forming: { engine: string; symbol: string; as_of: string; met: string; missing: string }[]; paper: { id: string; engine: string; symbol: string; as_of: string; entry_rule?: string; invalidation?: number; initial_risk_pct?: number }[]; validated: unknown[]; closed: { id: string; engine: string; symbol: string; r_net: number | null; exit_reason: string | null; exit_date: string | null }[]; health?: { status: string; days_behind: number | null } }
 
 const memo = new Map<string, Promise<unknown>>();
 export function getJson<T>(url: string, timeout = 20000): Promise<T> {
@@ -34,5 +33,29 @@ export function useJson<T>(url: string | null): Loaded<T> {
 }
 export const useScreen = () => useJson<ScreenFeed>('/data/screen.json');
 export const useSignals = () => useJson<SignalsFeed>('/data/signals.json');
-export const useEnginesV3 = () => useJson<V3Feed>('/data/engines_v3.json');
 export const useCompany = (sym: string) => useJson<Company>(`/data/c/${encodeURIComponent(sym)}.json`);
+
+export interface BarsFeed { ok: boolean; fetched_at: string; bars: Record<string, { t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; forming: boolean; live: { px: number; t: number } | null }>; missing: string[] }
+/** Daily bars and a delayed live price for the symbols with a paper trade. Refreshes every 60 seconds while the page is visible. */
+export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; err: string | null; at: number | null; loading: boolean } {
+  const key = [...new Set(syms)].sort().join(',');
+  const [st, set] = useState<{ data: BarsFeed | null; err: string | null; at: number | null; loading: boolean }>({ data: null, err: null, at: null, loading: false });
+  useEffect(() => {
+    if (!on || !key) { set({ data: null, err: null, at: null, loading: false }); return; }
+    let live = true; let timer: number | undefined;
+    const load = async () => {
+      if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, 60000); return; }
+      set((s) => ({ ...s, loading: true }));
+      try {
+        const r = await fetch(`/api/bars?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20000) });
+        const d = (await r.json()) as BarsFeed;
+        if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no bars returned');
+        set({ data: d, err: null, at: Date.now(), loading: false });
+      } catch (e) { if (live) set((s) => ({ data: s.data, err: (e as Error).message || 'unreachable', at: s.at, loading: false })); }
+      if (live) timer = window.setTimeout(load, 60000);
+    };
+    void load();
+    return () => { live = false; window.clearTimeout(timer); };
+  }, [key, on]);
+  return st;
+}
