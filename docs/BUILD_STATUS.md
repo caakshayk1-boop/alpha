@@ -49,6 +49,9 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 - The dial's caption overlapped its end dots.
 - Axe: `aria-prohibited-attr` on the lifecycle bar and a focusless scroll region on the statements table.
 
+## Trend tag
+Every company carries an Uptrend, Downtrend or Mixed tag, taken from the Alpha site's own uptrend rule (price above its 50-day average and the 50-day above the 200-day, strict, at the latest close). **Alpha publishes no downtrend, so Downtrend here is the exact mirror** (price below the 50-day, the 50-day below the 200-day); everything else is Mixed, and a name missing an average is untagged, never Mixed. It appears on Discover rows (compact arrow), company pages (with the figures behind it), Compare and the picks; Discover can filter by it, and saved screens from before the tag still work. A descriptive label of where price sits against two averages, not a forecast; it feeds no engine score.
+
 ## Price chart
 `/api/chart` (Worker) returns every daily close Yahoo holds for a symbol, split-adjusted and **not** dividend-adjusted; the page cuts the ranges and builds the monthly view (last close of each month) in the browser. Log scale shows percentage moves evenly. A range longer than the history says so and shows all of it. Pure maths (`src/chart.ts`) is unit-tested: windows, monthly, peak-preserving downsampling, return/CAGR, geometry, scrubbing. A 10-year window needs about 2,500 daily points, drawn as at most about 700. A Nifty comparison line (both indexed to 100, with the gap in points) is built. Not built: volume bars, dividend-adjusted returns.
 

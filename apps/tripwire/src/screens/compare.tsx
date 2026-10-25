@@ -3,7 +3,7 @@ import { go, setState, useAppState } from '../app.tsx';
 import { useCompany } from '../data.ts';
 import { Empty, useUi } from '../ui.tsx';
 import { Failed, PageBar } from './common.tsx';
-import { isLender } from '../screen.ts';
+import { isLender, trendOf, TREND_WORD } from '../screen.ts';
 import { cr, dash, inr, isNum, pct, x1 } from '../fmt.ts';
 import { saveCompare } from '../store.ts';
 import type { Company } from '../data.ts';
@@ -15,7 +15,8 @@ const VIEWS: Record<View, { label: string; lines: Line[] }> = {
   overview: { label: 'Overview', lines: [
     { label: 'Price', get: (c) => c.row.price, fmt: inr as never }, { label: 'Day', get: (c) => c.row.r1d, fmt: pct as never },
     { label: 'Against the Nifty, 3m (pts)', get: (c) => c.row.rs3m, fmt: ((v: number) => `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}`) as never, best: 'high' },
-    { label: 'From 52-week high', get: (c) => c.row.from_high, fmt: pct as never, best: 'high' }, { label: 'Size', get: (c) => c.row.tier, fmt: ((v: string) => v) as never }, { label: 'Sector', get: (c) => c.row.sector, fmt: ((v: string) => v) as never } ] },
+    { label: 'From 52-week high', get: (c) => c.row.from_high, fmt: pct as never, best: 'high' }, { label: 'Trend', get: (c) => { const x = trendOf(c.row).trend; return x ? TREND_WORD[x] : null; }, fmt: ((v: string) => v) as never },
+    { label: 'Size', get: (c) => c.row.tier, fmt: ((v: string) => v) as never }, { label: 'Sector', get: (c) => c.row.sector, fmt: ((v: string) => v) as never } ] },
   growth: { label: 'Growth', lines: [
     { label: 'Revenue growth, 3y', get: (c) => c.row.rev_cagr, fmt: pct as never, best: 'high' }, { label: 'EPS growth, 3y', get: (c) => c.row.eps_cagr, fmt: pct as never, best: 'high' } ] },
   profit: { label: 'Profit', lines: [
