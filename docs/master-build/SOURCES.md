@@ -62,3 +62,5 @@ Greps find phrases only; where a phrase was absent I read the code before writin
 | A nightly evidence digest per followed name (news, results date, moves, with source and time) | Done (this pass): `lib/evidence.ts`, a Digest tab on My Desk and a card on Today. Built in the browser from the feeds that refresh each evening. It does not see filings or exchange announcements, and says so |
 
 Visual baselines for the changed routes were re-rendered on the CI image (ubuntu-24.04) in commit efa8660, after the evidence digest and the Today progress block were in.
+
+Visual baselines for Today v2 and the Signals rule board were re-rendered on the CI image in commit 2b24a4d. The Signals tab is now a rule board (lib/rules.ts); the screen's own tags and entry ladders are not used.
