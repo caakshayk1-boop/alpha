@@ -28,7 +28,9 @@ jobs:
       - run: pip install -r engines/requirements.txt
       - name: Phase 3 integrity suite (must pass before any evaluation)
         working-directory: engines
-        run: python tests/test_v3.py
+        run: |
+          python tests/test_v3.py
+          python tests/test_ops.py
       - name: Validation run
         working-directory: engines
         env: {V3_SNAPSHOT: "${{ runner.temp }}/v3_bars.pkl"}
@@ -56,7 +58,9 @@ jobs:
       - run: pip install -r engines/requirements.txt
       - name: Phase 3 integrity suite
         working-directory: engines
-        run: python tests/test_v3.py
+        run: |
+          python tests/test_v3.py
+          python tests/test_ops.py
       - name: Nightly paper record (publishes the feed only on main's schedule; DECISIONS #14)
         working-directory: engines
         env:
@@ -86,7 +90,9 @@ jobs:
       - run: pip install -r engines/requirements.txt
       - name: Phase 3 integrity suite
         working-directory: engines
-        run: python tests/test_v3.py
+        run: |
+          python tests/test_v3.py
+          python tests/test_ops.py
       - name: E1 decomposition (diagnostic, inspected history)
         working-directory: engines
         run: python -m v3.decompose

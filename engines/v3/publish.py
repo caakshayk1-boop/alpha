@@ -10,7 +10,11 @@ import json
 import pathlib
 import time
 
-from . import config
+from . import config, provenance as PV
+
+class MissingProvenance(Exception):
+    """A record without source, session, observation and ingestion time, adjustment policy and dataset version."""
+
 
 STATES = ("BLOCKED_DATA", "RESEARCH", "PAPER", "VALIDATED", "PAUSED", "RETIRED")
 
@@ -30,8 +34,12 @@ def bound_state(state: str, bound_evidence: str | None, current_evidence: str) -
     return state if bound_evidence == current_evidence else "RESEARCH"
 
 
-def build_feed(results: dict, forming: list[dict], paper: list[dict], closed: list[dict], data_watermark: str) -> dict:
+def build_feed(results: dict, forming: list[dict], paper: list[dict], closed: list[dict], data_watermark: str, extra: dict | None = None) -> dict:
     hashes = config.verify()                                   # raises FrozenMismatch: nothing is published
+    # a record that cannot say where it came from, when, and on which dataset is not published (DATA CONTRACT): fail closed
+    bad = [r.get("id", "?") for r in [*forming, *paper, *closed] if PV.missing(r.get("provenance"))]
+    if bad:
+        raise MissingProvenance(f"{len(bad)} record(s) carry no complete provenance, first: {bad[0]}")
     ev = config.evidence_hash(hashes)
     engines = {}
     life = lifecycle()
@@ -44,7 +52,7 @@ def build_feed(results: dict, forming: list[dict], paper: list[dict], closed: li
     validated = [s for s in paper if engines.get(s["engine"], {}).get("state") == "VALIDATED"]
     return {"schema": "alpha-engines/3", "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "data_watermark": data_watermark,
             "evidence": ev, "engines": engines, "forming": forming, "paper": [s for s in paper if s not in validated],
-            "validated": validated, "closed": closed, "alerts_enabled": False}
+            "validated": validated, "closed": closed, "alerts_enabled": False, **(extra or {})}
 
 
 def publish(feed: dict, dest: pathlib.Path, dry_run: bool = True) -> str:

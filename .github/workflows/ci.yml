@@ -63,6 +63,7 @@ jobs:
           python tests/test_ai.py
           python tests/test_registry.py
           python tests/test_sessions.py
+          python tests/test_ops.py
           python tests/test_brief.py
       - name: Static export has every page
         run: |

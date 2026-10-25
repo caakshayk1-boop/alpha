@@ -3,7 +3,8 @@
 // Signal engines v3 (research): the four views from engines_v3.json, with its truthful missing and stale states (lib/enginesV3.ts).
 // "compact" is the Setups view's one-card status; "full" is the Method view's section with the four views.
 import { useEnginesV3 } from '@/lib/data';
-import { STATE_WORD, lifecycleRows, viewModel } from '@/lib/enginesV3';
+import Link from 'next/link';
+import { FUNNEL_STAGES, STATE_WORD, healthModel, lifecycleRows, viewModel } from '@/lib/enginesV3';
 import { sessionLabel } from '@/lib/price';
 import { LIFECYCLE_TONE, type Lifecycle } from '@/lib/signalsView';
 
@@ -13,6 +14,7 @@ export function EnginesV3({ mode = 'full', onMethod }: { mode?: 'compact' | 'ful
   const feed = f.error ? null : f.data;
   const vm = viewModel(feed, new Date());
   const reg = lifecycleRows(feed);
+  const hm = healthModel(feed, new Date());
   const status = vm.status === 'missing' ? ['warn', 'Not published'] : vm.status === 'stale' ? ['warn', 'Stale'] : ['acc', 'Published'];
   const chips = (
     <ul className="sg-chips" aria-label={`Lifecycle of each v3 engine, ${reg.source === 'feed' ? 'from the feed' : 'decision record of'} ${sessionLabel(reg.asOf)}`}>
@@ -54,6 +56,7 @@ export function EnginesV3({ mode = 'full', onMethod }: { mode?: 'compact' | 'ful
                     <div className="sg-v3card-h"><b>{c.symbol}</b><span className="pill nodot">{c.badge}</span></div>
                     <div className="dim sg-sub">{c.engine} · {c.engineName} · as of {c.asOf}</div>
                     <ul>{c.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+                    {c.links.length > 0 && <p className="sg-v3links">{c.links.map((l) => <Link key={l.label} className="link" href={l.href}>{l.label}</Link>)}</p>}
                   </li>
                 ))}
               </ul>
@@ -61,6 +64,22 @@ export function EnginesV3({ mode = 'full', onMethod }: { mode?: 'compact' | 'ful
           </div>
         ))}
       </div>
+      )}
+      {hm.status !== 'missing' && (
+        <div className="card tight sg-health" aria-labelledby="v3h-h">
+          <div className="card-h"><h3 id="v3h-h">Engine health and what was excluded</h3><span className={`pill ${hm.status === 'ok' ? 'acc' : 'warn'}`}>{hm.status === 'ok' ? 'Current' : 'Stale'}</span></div>
+          <p className="sg-note" role={hm.status === 'stale' ? 'status' : undefined}>{hm.line}</p>
+          {hm.rows.length > 0 ? (
+            <div className="sg-table-wrap">
+              <table className="sg-table">
+                <caption className="sr">Symbols remaining after each filter, on the latest session, per engine</caption>
+                <thead><tr><th scope="col">Engine</th>{FUNNEL_STAGES.map((s) => <th key={s.id} scope="col" title={s.why}>{s.label}</th>)}</tr></thead>
+                <tbody>{hm.rows.map((r) => <tr key={r.engine}><th scope="row">{r.engine} <span className="dim">{r.state}</span></th>{r.stages.map((n, i) => <td key={FUNNEL_STAGES[i].id} className="num" title={n === null ? FUNNEL_STAGES[i].why : undefined}>{n === null ? '—' : n.toLocaleString('en-IN')}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          ) : <p className="dim sg-note">This feed carries no exclusion counts.</p>}
+          <p className="card-foot">A dash means the stage is not decided on the night: whether an order can be filled is settled at the next open, and the portfolio limits apply to the whole book. An engine that is retired or paused is not run, so it has no row.{hm.detail.length > 0 && <> {hm.detail.join(' · ')}.</>}</p>
+        </div>
       )}
     </section>
   );

@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from v3 import config, costs as C, engines as EN, execsim as X, ledger as L, portfolio as P, publish as PB, regime as R, setups as S, stats as ST  # noqa: E402
+from v3 import config, costs as C, engines as EN, execsim as X, ledger as L, portfolio as P, provenance as PV, publish as PB, regime as R, setups as S, stats as ST  # noqa: E402
 
 ok = fail = 0
 
@@ -217,7 +217,7 @@ except config.FrozenMismatch:
     check("a changed rule without a new version is refused", True)
 check("a state bound to another evidence hash is RESEARCH", PB.bound_state("VALIDATED", "old", "new") == "RESEARCH")
 check("BLOCKED_DATA stays blocked whatever the hash", PB.bound_state("BLOCKED_DATA", None, "x") == "BLOCKED_DATA")
-feed = PB.build_feed({"engines": {"E1": {"state": "VALIDATED", "evidence": "stale", "version": "v1.0.0"}}}, [], [{"engine": "E1", "id": "a"}], [], "2026-10-21")
+feed = PB.build_feed({"engines": {"E1": {"state": "VALIDATED", "evidence": "stale", "version": "v1.0.0"}}}, [], [{"engine": "E1", "id": "a", "provenance": PV.provenance("2026-10-21", "2026-10-22T12:00:00Z", "d" * 16, "AAA")}], [], "2026-10-21")
 check("a stale VALIDATED claim publishes nothing as validated, and alerts are off", feed["engines"]["E1"]["state"] == "RESEARCH" and not feed["validated"] and feed["alerts_enabled"] is False)
 feed_r = PB.build_feed({"engines": {"E3": {"state": "RESEARCH", "evidence": feed["evidence"], "version": "v1.0.0"}}}, [], [], [], "2026-10-21")
 check("an engine retired in states.yaml publishes as RETIRED with its reason", feed_r["engines"]["E3"]["state"] == "RETIRED" and "retired" in (feed_r["engines"]["E3"]["why"] or ""), feed_r["engines"]["E3"])

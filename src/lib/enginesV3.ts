@@ -4,13 +4,20 @@
  *  VALIDATED and alerts are enabled; no research card ever does. No probability is shown anywhere: no engine has a calibrated one. */
 
 import { signed } from './format.ts';
+import { journalHref } from './journal.ts';
+import { companyHref } from './slug.ts';
 
 export type EngineState = 'BLOCKED_DATA' | 'RESEARCH' | 'PAPER' | 'VALIDATED' | 'PAUSED' | 'RETIRED';
-export interface V3Signal { id: string; engine: string; symbol: string; as_of: string; state: EngineState; regime?: string; entry_rule?: string; invalidation?: number; target_policy?: string; initial_risk_pct?: number; expiry?: string }
+export interface V3Signal { id: string; engine: string; symbol: string; as_of: string; state: EngineState; regime?: string; entry_rule?: string; invalidation?: number; target_policy?: string; initial_risk_pct?: number; expiry?: string; ref_close?: number }
 export interface V3Forming { engine: string; symbol: string; as_of: string; state: EngineState; met: string; missing: string }
 export interface V3Closed extends V3Signal { status: string; r_net: number | null; exit_reason: string | null; exit_date: string | null }
 export interface V3Feed { schema: string; generated: string; data_watermark: string; evidence: string; alerts_enabled: boolean;
-  engines: Record<string, { state: EngineState; why?: string; version?: string }>; forming: V3Forming[]; paper: V3Signal[]; validated: V3Signal[]; closed: V3Closed[] }
+  engines: Record<string, { state: EngineState; why?: string; version?: string }>; forming: V3Forming[]; paper: V3Signal[]; validated: V3Signal[]; closed: V3Closed[];
+  /** per engine, the night's exclusion funnel; a stage that is not decided on the night is null */
+  funnel?: Record<string, Partial<Record<FunnelStage | 'candidates', number | null>>>;
+  health?: { status: 'ok' | 'stale' | 'unknown'; watermark: string | null; expected: string | null; days_behind: number | null };
+  provenance?: { source?: string; ingested_at?: string; dataset_version?: string; adjustment_policy?: Record<string, string> } | null; job_key?: string }
+export type FunnelStage = 'available' | 'clean' | 'liquid' | 'setup' | 'context' | 'executable' | 'portfolio_selected';
 
 export const ENGINE_NAME: Record<string, string> = {
   E1: 'Relative-strength continuation', E2: 'Volatility compression breakout', E3: 'Orderly trend pullback',
@@ -20,7 +27,8 @@ export const STATE_WORD: Record<EngineState, string> = {
   BLOCKED_DATA: 'Blocked (data)', RESEARCH: 'Research', PAPER: 'Paper', VALIDATED: 'Validated', PAUSED: 'Paused', RETIRED: 'Retired',
 };
 
-export interface Card { key: string; engine: string; engineName: string; symbol: string; asOf: string; badge: string; live: boolean; lines: string[] }
+export interface CardLink { label: string; href: string }
+export interface Card { key: string; engine: string; engineName: string; symbol: string; asOf: string; badge: string; live: boolean; lines: string[]; links: CardLink[] }
 export interface View { key: 'forming' | 'paper' | 'validated' | 'closed'; title: string; cards: Card[]; empty: string }
 export interface ViewModel { status: 'missing' | 'stale' | 'ok'; note: string; engines: { id: string; name: string; state: string; why: string }[]; views: View[] }
 
@@ -39,7 +47,7 @@ export function viewModel(feed: V3Feed | null, now: Date): ViewModel {
   const stale = isStale(feed.data_watermark, now);
   const live = (s: EngineState) => s === 'VALIDATED' && feed.alerts_enabled === true;
   const card = (s: V3Signal, lines: string[]): Card => ({ key: s.id, engine: s.engine, engineName: ENGINE_NAME[s.engine] ?? s.engine, symbol: s.symbol, asOf: s.as_of,
-    badge: STATE_WORD[s.state] ?? 'Research', live: live(s.state) && !stale, lines });
+    badge: STATE_WORD[s.state] ?? 'Research', live: live(s.state) && !stale, lines, links: linksFor(s.symbol, s.ref_close, s.invalidation) });
   const plan = (s: V3Signal) => [
     s.entry_rule ? `Entry: ${s.entry_rule}` : '', typeof s.invalidation === 'number' ? `Invalidation: ${s.invalidation}` : '',
     s.target_policy ? `Exit: ${s.target_policy}` : '', s.expiry ? `Expires: ${s.expiry}` : '', s.regime ? `Market context: ${s.regime.replace('_', ' ')}` : '',
@@ -47,7 +55,7 @@ export function viewModel(feed: V3Feed | null, now: Date): ViewModel {
   const views: View[] = [
     { key: 'forming', title: 'Forming setups', empty: 'No setup is forming on the latest session.',
       cards: feed.forming.map((f) => ({ key: `${f.engine}:${f.symbol}:${f.as_of}:f`, engine: f.engine, engineName: ENGINE_NAME[f.engine] ?? f.engine, symbol: f.symbol, asOf: f.as_of,
-        badge: STATE_WORD[f.state] ?? 'Research', live: false, lines: [`Met: ${f.met}`, `Still needs: ${f.missing}`] })) },
+        badge: STATE_WORD[f.state] ?? 'Research', live: false, lines: [`Met: ${f.met}`, `Still needs: ${f.missing}`], links: linksFor(f.symbol) })) },
     { key: 'paper', title: 'Paper signals', empty: 'No engine fired on the latest session.', cards: feed.paper.map((s) => card(s, plan(s))) },
     { key: 'validated', title: 'Validated alerts', empty: 'No engine has passed validation. Nothing here is an alert.', cards: feed.validated.map((s) => card(s, plan(s))) },
     { key: 'closed', title: 'Closed record', empty: 'No paper signal has closed yet.',
@@ -91,4 +99,45 @@ export function lifecycleRows(feed: V3Feed | null): { source: 'feed' | 'record';
 export const BANNED = [/\bguarantee(d|s)?\b/i, /\bsafe (bottom|bet|trade|entry|stock)s?\b/i, /\bloss[- ]protected\b/i, /\bsure[- ]?shot\b/i, /\bwin(ning)? probability\b/i, /\bprobability of (winning|profit|success)\b/i, /\brisk[- ]free\b/i];
 export function copyViolations(text: string): string[] {
   return BANNED.filter((re) => re.test(text)).map((re) => re.source);
+}
+
+/** From a setup to the rest of the product: the company's research (where it can be followed), the position calculator filled with
+ *  the reference close, the invalidation and the paper risk of 0.25%, and the journal pre-filled the same way. A number that is not on
+ *  the record is left out of the link, never guessed. */
+export function linksFor(symbol: string, ref?: number | null, stop?: number | null): CardLink[] {
+  const ok = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
+  const out: CardLink[] = [{ label: 'Research and follow', href: companyHref(symbol) }];
+  if (ok(ref) && ok(stop) && stop < ref) {
+    out.push({ label: 'Size a paper position', href: `/tools/?p=${Math.round(ref * 100) / 100}&sl=${Math.round(stop * 100) / 100}&rk=0.25` });
+    out.push({ label: 'Write it in the journal', href: journalHref(symbol, ref, stop, null) });
+  }
+  return out;
+}
+
+export const FUNNEL_STAGES: readonly { id: FunnelStage; label: string; why: string }[] = [
+  { id: 'available', label: 'Universe', why: 'Symbols with a bar on the session' },
+  { id: 'clean', label: 'Clean', why: 'A complete bar, no unexplained overnight jump, not just back from a suspension' },
+  { id: 'liquid', label: 'Liquid', why: 'The engine\'s price and traded-value floors' },
+  { id: 'setup', label: 'Setup met', why: 'Every setup condition including the trigger' },
+  { id: 'context', label: 'Context fits', why: 'The market context is one the engine accepts' },
+  { id: 'executable', label: 'Executable', why: 'Decided at the next open by the simulator, so not counted on the night' },
+  { id: 'portfolio_selected', label: 'In the book', why: 'Decided by the portfolio limits, so not counted on the night' },
+];
+export interface HealthRow { engine: string; name: string; state: string; stages: (number | null)[]; candidates: number | null }
+export interface HealthModel { status: 'missing' | 'stale' | 'ok'; line: string; detail: string[]; rows: HealthRow[] }
+
+/** The engine-health and exclusion-diagnostics view. Missing data is a state, never a row of zeros. */
+export function healthModel(feed: V3Feed | null, now: Date): HealthModel {
+  if (!feed) return { status: 'missing', line: 'No engine health to show: nothing has been published.', detail: [], rows: [] };
+  const stale = isStale(feed.data_watermark, now) || feed.health?.status === 'stale';
+  const h = feed.health;
+  const line = h?.status === 'ok' ? `The record is current: it describes the last finished session, ${feed.data_watermark}.`
+    : h?.status === 'stale' ? `The record is ${h.days_behind} day${h.days_behind === 1 ? '' : 's'} behind the last finished session (${h.expected}).`
+      : stale ? `Stale: the latest session in this feed is ${feed.data_watermark}.` : `Data through ${feed.data_watermark}. The feed does not say whether that is the latest finished session.`;
+  const p = feed.provenance;
+  const detail = [p?.source ? `Source: ${p.source}` : '', p?.ingested_at ? `Read at ${p.ingested_at}` : '', p?.dataset_version ? `Dataset ${p.dataset_version}` : '',
+    p?.adjustment_policy?.levels ? `Levels: ${p.adjustment_policy.levels}` : '', p?.adjustment_policy?.returns ? `Returns: ${p.adjustment_policy.returns}` : ''].filter(Boolean);
+  const rows = Object.entries(feed.funnel ?? {}).map(([id, f]) => ({ engine: id, name: ENGINE_NAME[id] ?? id, state: STATE_WORD[feed.engines[id]?.state] ?? 'Research',
+    stages: FUNNEL_STAGES.map((st) => (typeof f[st.id] === 'number' ? (f[st.id] as number) : null)), candidates: typeof f.candidates === 'number' ? f.candidates : null }));
+  return { status: stale ? 'stale' : 'ok', line, detail, rows };
 }
