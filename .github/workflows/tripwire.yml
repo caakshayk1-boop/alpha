@@ -1,0 +1,37 @@
+name: tripwire
+on:
+  pull_request:
+    paths: ['apps/tripwire/**', 'wrangler.tripwire.jsonc', 'src/lib/rules.ts', '.github/workflows/tripwire.yml']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy the Tripwire Worker (owner decision; choose the address first, see docs/tripwire/README.md)'
+        type: boolean
+        default: false
+concurrency:
+  group: tripwire-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tripwire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run tripwire:types
+      - run: npm run tripwire:test
+      - run: npm run tripwire:build
+      - run: npm run tripwire:check
+      - name: Deploy (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::Cloudflare secrets missing. Nothing was deployed."; exit 1; fi
+          npx wrangler deploy --config wrangler.tripwire.jsonc

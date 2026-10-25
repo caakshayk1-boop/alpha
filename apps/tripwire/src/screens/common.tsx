@@ -1,0 +1,42 @@
+import type { ReactNode } from 'react';
+import { Icon, useUi } from '../ui.tsx';
+import { back, go, setState, useAppState, useSheets } from '../app.tsx';
+import { toggleFollow } from '../store.ts';
+import type { Row } from '../screen.ts';
+import { initials, inr, pct, tone } from '../fmt.ts';
+
+export function PageBar({ title, sub, onBack, right }: { title: string; sub?: ReactNode; onBack?: boolean; right?: ReactNode }) {
+  const { open } = useSheets();
+  return <header className="bar">
+    {onBack && <button className="icon-btn" onClick={back} aria-label="Back"><Icon n="back" /></button>}
+    <div className="grow"><h1 className="trunc">{title}</h1>{sub && <div className="sub">{sub}</div>}</div>
+    {right}
+    <button className="icon-btn" onClick={() => open({ k: 'search' })} aria-label="Search"><Icon n="search" /></button>
+  </header>;
+}
+export function Head({ children, aside }: { children: ReactNode; aside?: ReactNode }) { return <h2 className="h">{children}<span className="rule" />{aside}</h2>; }
+
+export function FollowButton({ sym, name }: { sym: string; name?: string }) {
+  const s = useAppState(); const { toast, tick } = useUi();
+  const on = s.follows.includes(sym);
+  return <button className="icon-btn" aria-pressed={on} aria-label={`${on ? 'Unfollow' : 'Follow'} ${name ?? sym}`}
+    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setState((x) => toggleFollow(x, sym)); tick(); toast(on ? `Stopped following ${sym}` : `Following ${sym}. Kept on this device.`); }}>
+    <Icon n="star" /></button>;
+}
+export function CompanyRow({ r, extra, compare }: { r: Row; extra?: ReactNode; compare?: { on: boolean; toggle: () => void; disabled: boolean } }) {
+  return <div className="li">
+    <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }}>
+      <span className="avatar" aria-hidden="true">{initials(r.sym)}</span>
+      <span className="grow" style={{ minWidth: 0 }}><span className="sym">{r.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{r.name}</span></span>
+      <span className="px num"><b>{inr(r.price)}</b><span className={tone(r.r1d)}>{pct(r.r1d)}</span></span>
+    </a>
+    {extra}
+    {compare && <button className="icon-btn" aria-pressed={compare.on} disabled={compare.disabled && !compare.on} aria-label={`${compare.on ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={compare.toggle}><Icon n="compare" /></button>}
+    <FollowButton sym={r.sym} name={r.name} />
+  </div>;
+}
+export const openCompany = (sym: string) => go(`/c/${encodeURIComponent(sym)}`);
+export function Loading({ what }: { what: string }) { return <div className="card" aria-busy="true"><div className="sk" style={{ height: 26, width: '60%', marginBottom: 12 }} /><div className="sk" style={{ height: 14, width: '90%', marginBottom: 8 }} /><div className="sk" style={{ height: 14, width: '70%' }} /><span className="sr">Loading {what}</span></div>; }
+export function Failed({ what, err, retry }: { what: string; err: string; retry: () => void }) {
+  return <div className="note" role="alert">Could not load {what} ({err}). Nothing is shown in its place. <button className="btn sm" onClick={retry} style={{ marginLeft: 8 }}>Try again</button></div>;
+}

@@ -1,0 +1,9 @@
+{
+  // Tripwire: a static PWA. No Worker code, no secrets, no bindings. It reads only the data files copied into dist/data at build time.
+  // No route on purpose: the address is the owner's decision (docs/tripwire/README.md).
+  "name": "tripwire",
+  "compatibility_date": "2026-05-01",
+  "assets": { "directory": "./apps/tripwire/dist", "not_found_handling": "single-page-application" },
+  "workers_dev": true,
+  "observability": { "enabled": true }
+}
