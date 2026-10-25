@@ -50,8 +50,8 @@ export function Today() {
       <section className="card glass" aria-label="Market read">
         <div className="gauge">
           <DotArc lit={lit} label={b.pct == null ? 'Breadth not measured' : `${b.pct.toFixed(0)} percent of liquid stocks closed above their 50-day average`} />
-          <div style={{ marginTop: -86, textAlign: 'center', maxWidth: 190 }}>
-            <div className="big num">{b.pct == null ? '—' : b.pct.toFixed(0)}<span style={{ fontSize: 22 }}>{b.pct == null ? '' : '%'}</span></div>
+          <div style={{ marginTop: -76, textAlign: 'center', maxWidth: 170 }}>
+            <div className="big num">{b.pct == null ? '—' : b.pct.toFixed(0)}<span style={{ fontSize: 18 }}>{b.pct == null ? '' : '%'}</span></div>
             <div className="k" style={{ marginTop: 6, lineHeight: 1.35 }}>liquid stocks above their 50-day average</div>
           </div>
         </div>
@@ -63,7 +63,7 @@ export function Today() {
 
       <div className="card" style={{ marginTop: 10, borderColor: 'var(--line2)' }}>
         <div className="k">One thing to do</div>
-        <p style={{ margin: '6px 0 12px', fontSize: 16 }}>{next.t}</p>
+        <p style={{ margin: '6px 0 12px', fontSize: 15 }}>{next.t}</p>
         <button className="btn pri" onClick={next.go}>{next.cta}</button>
       </div>
 

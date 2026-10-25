@@ -11,7 +11,7 @@ const ROUTES = ['/#/today', '/#/discover', '/#/signals', '/#/signals?v=tracker',
 const state = { v: 1, follows: ['TCS'], plans: [], compares: [], screens: [], snaps: {}, onboarded: true, reviews: [], paper: [{ id: 'pp1', sym: 'TCS', engine: 'MOM', asOf: '2026-10-23', ref: 2530, stop: 2400, horizon: 20, qty: 10, takenAt: 1761000000 }], prefs: { motion: 'off', haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
   entries: [{ id: 'x1', sym: 'TCS', created: '2026-10-01T00:00:00Z', archived: false, versions: [{ at: '2026-10-01T00:00:00Z', thesis: 'Seed', support: '', counter: '', decision: '', invalidation: '', trigger: '', reviewOn: '2026-10-10' }] }] };
 const problems = []; const b = await chromium.launch(); let n = 0;
-for (const [w, h, tag] of [[390, 844, 'phone'], [1280, 900, 'desktop']]) {
+for (const [w, h, tag] of [[390, 844, 'phone'], [360, 740, 'small'], [320, 640, 'tiny'], [1280, 900, 'desktop']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, bypassCSP: true });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, state);
   const mockSeries = (() => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 3000; i++) { d += 86400; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(px); } return JSON.stringify({ ok: true, sym: 'X', t, c }); })();
