@@ -1,0 +1,52 @@
+name: tripwire-ledger
+# The forward record of the three Tripwire engines. Runs after the screen is built (21:00 IST, with a retry at 23:00 IST), writes down every
+# pick once per data day, and replays unfinished picks against real daily bars. Paper only: nothing is sent and nothing is published to a site.
+# A run that cannot fetch most of its prices fails (red), so a blind night is visible. The commit is [skip ci]; the app reads the file live
+# through its /api/ledger route, so no deploy is needed.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 18 * * 1-5'      # 00:00 IST, after the 21:00 and 23:00 IST screen builds
+    - cron: '30 22 * * 1-5'      # 04:00 IST, a retry; the job records a data day once
+concurrency:
+  group: tripwire-ledger
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run tripwire:test
+      - name: Fetch the published screen
+        run: node scripts/shard.mjs
+      - run: npm run tripwire:build
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: pip, cache-dependency-path: engines/requirements.txt }
+      - run: pip install -r engines/requirements.txt
+      - run: python apps/tripwire/ledger/test_bars.py
+      - name: Write down tonight's picks
+        run: node --experimental-strip-types apps/tripwire/ledger/record.ts record
+      - name: Fetch daily bars (yfinance)
+        run: python apps/tripwire/ledger/bars.py
+        continue-on-error: true
+      - name: Replay unfinished picks
+        id: rec
+        run: node --experimental-strip-types apps/tripwire/ledger/record.ts evaluate
+        continue-on-error: true
+      - name: Commit the ledger
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/tripwire/ledger/ledger.json
+          git diff --cached --quiet && echo unchanged && exit 0
+          git commit -m "paper: tripwire ledger $(date -u +%Y-%m-%d) [skip ci]"
+          for i in 1 2 3; do git push origin HEAD:main && break; git pull --rebase origin main; [ "$i" = 3 ] && exit 1; done
+      - name: Fail the run if the prices could not be fetched
+        if: steps.rec.outcome == 'failure'
+        run: echo "::error::The ledger recorded its picks but could not fetch most prices. Outcomes were left as they were." && exit 1

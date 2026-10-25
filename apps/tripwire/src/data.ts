@@ -60,6 +60,9 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
   return st;
 }
 
-export interface ChartFeed { ok: boolean; sym: string; t: number[]; c: number[] }
+export interface ChartFeed { ok: boolean; sym: string; t: number[]; c: number[]; n?: (number | null)[] | null }
 /** Every daily close Yahoo holds for a symbol, fetched once; the ranges and the monthly view are cut from it in the browser. */
 export const useChart = (sym: string) => useJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(sym)}`);
+
+export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger }
+export const useLedger = () => useJson<LedgerFeed>('/api/ledger');

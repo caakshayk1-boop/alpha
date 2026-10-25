@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
-import { useBars, useSignals } from '../data.ts';
+import { useBars, useLedger, useSignals } from '../data.ts';
+import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar } from './common.tsx';
 import { ENGINES, type Pick } from '../quant.ts';
@@ -14,12 +15,12 @@ const DEFAULT_COST = 0.25;
 export function useCost() { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
 
 export function Signals({ seg }: { seg: string }) {
-  const v = seg === 'tracker' ? 'tracker' : 'picks';
+  const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : 'picks';
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `Paper tracker${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }]} />
-    {v === 'picks' ? <Picks /> : <Tracker />}
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `My paper${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }]} />
+    {v === 'picks' ? <Picks /> : v === 'tracker' ? <Tracker /> : <RecordView />}
   </div>;
 }
 
@@ -105,3 +106,29 @@ function TradeCard({ p, v, onArchive }: { p: { sym: string; engine: string; ref:
   </div>;
 }
 void removePaper;
+
+/** The engines' forward record: every pick of every night, taken by anyone or not. The only unbiased test of the three engines. */
+function RecordView() {
+  const feed = useLedger();
+  const sum = useMemo(() => (feed.data?.ledger ? summarizeLedger(feed.data.ledger) : null), [feed.data]);
+  if (feed.loading) return <Loading what="the record" />;
+  if (feed.err || !sum || !feed.data) return <Empty title="The record has not started" action={<button className="btn" onClick={feed.retry}>Check again</button>}>{feed.err === 'the first nightly run has not happened yet' || feed.err === 'not published' ? 'It starts with the first nightly run, which writes down every pick after each trading day. Nothing before that night counts.' : `The record could not be read (${feed.err ?? 'no data'}). Nothing is shown in its place.`}</Empty>;
+  const l = feed.data.ledger; const a = sum.all; const recent = l.picks.map((p) => ({ p, o: l.outcomes[p.id] })).filter((x) => x.o?.status === 'closed').sort((x, y) => (y.o!.exitDay ?? '').localeCompare(x.o!.exitDay ?? '')).slice(0, 8);
+  const fmtR = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
+  return <>
+    <div className="card glass">
+      <div className="k">Forward record since {dayWord(sum.first)}</div>
+      <p className="lead" style={{ marginTop: 6 }}><em className="ed">{a.closed}</em> of {MIN_TRADES} trades closed</p>
+      <div className="stage" role="img" aria-label={`${a.closed} of ${MIN_TRADES} closed`} style={{ marginTop: 10 }}>{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < Math.floor((Math.min(a.closed, MIN_TRADES) / MIN_TRADES) * 10) ? 'on' : ''} />)}</div>
+      <p className="dim small" style={{ margin: '10px 0 0' }}>{l.days.length} night{l.days.length === 1 ? '' : 's'} recorded, through {dayWord(sum.last)} · {a.picks} picks · {a.open} open · {a.skipped} skipped · {a.pending} waiting for prices.</p>
+      <p className="small" style={{ margin: '8px 0 0' }}>{a.enough ? <>Average <b className="num">{fmtR(a.avgR)}</b> a trade · won {a.winRate}% {a.avgExcess != null ? <>· <span className="num">{a.avgExcess > 0 ? '+' : '−'}{Math.abs(a.avgExcess).toFixed(2)}%</span> against the Nifty over the same days</> : null}</> : <span className="dim">Average R, win rate and the comparison with the Nifty stay hidden until {MIN_TRADES} trades have closed. Fewer than that says nothing.</span>}</p>
+    </div>
+    <Head>By engine</Head>
+    {sum.engines.map((e) => { const def = ENGINES.find((x) => x.id === e.engine)!; const idle = l.days.filter((d) => (d.engines[e.engine]?.picked ?? 0) === 0).length; return <div key={e.engine} className="card">
+      <div className="row between"><b>{def.name}</b><span className="tag num">{e.picks} picks</span></div>
+      <div className="num small dim" style={{ margin: '8px 0 0' }}>{e.closed} closed · {e.open} open · {e.skipped} skipped · {e.pending} pending · total <b style={{ color: 'var(--tx)' }}>{fmtR(e.closed ? e.totalR : null)}</b>{e.enough ? ` · average ${fmtR(e.avgR)}` : ''}</div>
+      <div className="small mute" style={{ marginTop: 4 }}>{idle} of {l.days.length} night{l.days.length === 1 ? '' : 's'} with no pick.</div></div>; })}
+    {recent.length > 0 && <><Head>Latest closed</Head><div className="card" style={{ padding: '2px 14px' }}><div className="list">{recent.map(({ p, o }) => <a key={p.id} className="li" href={`#/c/${p.sym}`}><span className="grow"><span className="sym">{p.sym}</span> <span className="tag">{p.engine}</span><span className="dim small" style={{ display: 'block' }}>{o!.reason} · {o!.sessions} session{o!.sessions === 1 ? '' : 's'} · {dayWord(o!.exitDay)}</span></span><span className={`num ${(o!.r ?? 0) > 0 ? 'up' : 'down'}`} style={{ fontWeight: 650 }}>{fmtR(o!.r)}</span></a>)}</div></div></>}
+    <div className="note info" style={{ marginTop: 12 }}><b>How to read this.</b> Every night, each engine's picks are written down before anyone knows how they turn out, whether or not you took them, and replayed with the same rules as your own paper trades (next-open fill, stop first, time exit, costs). It is a forward record: nothing before the first night counts, and 30 trades is a minimum, not proof. Prices come from Yahoo Finance through a nightly job; if a night's prices could not be fetched, those picks wait rather than count as zero.</div>
+  </>;
+}

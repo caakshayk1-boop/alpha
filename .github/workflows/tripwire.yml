@@ -8,6 +8,12 @@ on:
         description: 'Deploy the Tripwire Worker (owner decision; choose the address first, see docs/tripwire/README.md)'
         type: boolean
         default: false
+  # The app's data is a snapshot taken at build time, so it goes a day stale unless it is rebuilt. The website's screen is built at 21:00 IST
+  # (retry 23:00 IST); these runs build and deploy after it. They run every check first, and a failing check stops the deploy.
+  # A schedule only runs on the default branch. Remove these two lines to make deploys manual again.
+  schedule:
+    - cron: '15 18 * * 1-6'      # 23:45 IST, Monday to Saturday
+    - cron: '45 22 * * 1-6'      # 04:15 IST, a catch-up if the first run found no new data
 concurrency:
   group: tripwire-${{ github.ref }}
   cancel-in-progress: true
@@ -29,8 +35,8 @@ jobs:
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
       - run: npm run tripwire:check
-      - name: Deploy (manual only)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+      - name: Deploy (manual, or the scheduled refresh on main)
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main') }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
