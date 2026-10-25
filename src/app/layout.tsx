@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', images: ['/og/alpha.png'] },
   alternates: { canonical: './' },
   manifest: '/manifest.webmanifest',
-  icons: { icon: [{ url: '/icons/favicon-32.png', sizes: '32x32' }, { url: '/icons/icon-192.png', sizes: '192x192' }], apple: '/icons/apple-touch-icon.png' },
+  icons: { icon: [{ url: '/icons/favicon-32.png?v=2', sizes: '32x32' }, { url: '/icons/icon-192.png?v=2', sizes: '192x192' }], apple: '/icons/apple-touch-icon.png?v=2' },
   appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
 };

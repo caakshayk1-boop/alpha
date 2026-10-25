@@ -356,7 +356,7 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .wl-msg { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); min-height: 1.4em; }
 .pro-strip { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); align-items: center; justify-content: space-between; }
 .pro-strip p { margin: 0; max-width: 60ch; }
-.bx { margin-top: var(--sp-4); }
+.bx { margin-top: var(--sp-4); min-height: 0; padding: 18px 20px; }
 .bx-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-4); align-items: center; margin-top: var(--sp-2); }
 .bx .n { font: 600 28px/1 var(--f-ui); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
 .bx .n small { font: 500 var(--fs-sm) var(--f-ui); color: var(--dim); }
@@ -372,28 +372,57 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .sg-table th:first-child { text-align: left; }
 .sg-table thead th { font-weight: 600; color: var(--dim); border-top: 0; }
 
-/* ── Today's progress: a dotted arc and three small cards (counts only; see components/today/Progress.tsx) ── */
-.pg-hero { display: flex; align-items: center; gap: var(--sp-5, 24px); flex-wrap: wrap; }
-.pg-gauge { position: relative; width: min(260px, 100%); flex: 0 0 auto; }
-.pg-arc { display: block; width: 100%; height: auto; }
-.pg-arc circle { fill: var(--line-2); }
-.pg-arc circle.on { fill: var(--accent); }
-.pg-num { position: absolute; inset: auto 0 0 0; text-align: center; font: 600 var(--fs-sm, 14px)/1.1 var(--f-ui); color: var(--dim); }
-.pg-num b { font-size: 40px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
-.pg-cap { margin: 0; display: grid; gap: 4px; min-width: 200px; flex: 1 1 200px; }
-.pg-cap b { font: 600 var(--fs-md, 16px)/1.3 var(--f-ui); color: var(--text); }
-.pg-cap span { color: var(--muted); font: 400 var(--fs-sm, 14px)/1.45 var(--f-ui); }
-.pg-cards { list-style: none; margin: var(--sp-4, 16px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3, 12px); }
-.pg-c { display: grid; gap: 6px; align-content: start; padding: var(--sp-3, 12px); border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+/* ── Dotted-arc gauge, the market hero and Today's progress (components/DotGauge.tsx, today/Today.tsx, today/Progress.tsx) ──
+   Lit dots are accent; unlit are a quiet tint. The figure in the centre is real text; the dots are decoration. */
+.dg { position: relative; width: min(300px, 100%); flex: 0 0 auto; }
+.dg svg { display: block; width: 100%; height: auto; }
+.dg circle { fill: var(--line-2); }
+.dg circle.on { fill: var(--accent); }
+.dg-c { position: absolute; left: 0; right: 0; bottom: 4%; display: grid; justify-items: center; gap: 2px; text-align: center; }
+.dg-n { font: 600 56px/1 var(--f-ui); letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums lining-nums; }
+.dg-u { font: 500 13px/1.3 var(--f-ui); color: var(--muted); }
+.dg-sm { width: min(210px, 100%); }
+.dg-sm .dg-n { font-size: 38px; }
+.dg-sm .dg-u { font-size: 12px; }
+.mh-top { display: flex; align-items: center; gap: var(--sp-5, 24px); flex-wrap: wrap; margin: 4px 0 var(--sp-4, 16px); }
+.mh-side { display: grid; gap: 8px; min-width: 200px; flex: 1 1 200px; }
+.mh-chip { margin: 0; display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); font: 600 14px/1.2 var(--f-ui); color: var(--text); }
+.mh-note { margin: 0; font: 400 13px/1.45 var(--f-ui); }
+.mh-parts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px 28px; }
+.mh-parts li { display: grid; grid-template-columns: minmax(0, 1fr) 72px 34px; align-items: center; gap: 10px; font: 500 14px/1.3 var(--f-ui); }
+.mh-l { min-width: 0; color: var(--text); }
+.mh-parts .f-bar { height: 8px; border-radius: 4px; background: var(--panel-3); overflow: hidden; }
+.mh-parts .f-bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transform-origin: left; }
+.mh-parts .f-v { text-align: right; font-weight: 600; }
+.wk { margin-top: var(--sp-4, 16px); border-top: 1px solid var(--line); padding-top: 10px; }
+.wk summary { cursor: pointer; font: 600 14px/1.4 var(--f-ui); color: var(--accent-2); list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+.wk summary::-webkit-details-marker { display: none; }
+.wk summary::before { content: '+'; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 13px; line-height: 1; }
+.wk[open] summary::before { content: '–'; }
+.wk-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.wk-list li { display: grid; gap: 1px; font: 400 14px/1.4 var(--f-ui); color: var(--muted); }
+.wk-list b { color: var(--text); font-weight: 600; }
+.wk-list .f-w { font-style: normal; font-weight: 500; color: var(--dim); font-size: 12px; margin-left: 6px; }
+.wk-note { margin: 4px 0 0; font: 400 13px/1.5 var(--f-ui); }
+.pg-row { display: flex; flex-wrap: wrap; gap: var(--sp-4, 16px) var(--sp-5, 24px); align-items: center; }
+.pg-hero { display: flex; align-items: center; gap: var(--sp-4, 16px); flex-wrap: wrap; flex: 1 1 320px; }
+.pg-cap { margin: 0; display: grid; gap: 4px; min-width: 160px; flex: 1 1 160px; }
+.pg-cap b { font: 600 16px/1.3 var(--f-ui); color: var(--text); }
+.pg-cap span { color: var(--muted); font: 400 14px/1.45 var(--f-ui); }
+.pg-c { display: grid; gap: 6px; align-content: start; padding: var(--sp-3, 12px); border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); flex: 0 1 220px; min-width: 180px; }
 .pg-l { font: 600 12px/1.2 var(--f-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dim); }
 .pg-c b { font: 600 16px/1.3 var(--f-ui); color: var(--text); }
 .pg-s { font: 400 13px/1.4 var(--f-ui); color: var(--muted); }
-.pg-seg { display: flex; gap: 4px; }
-.pg-seg i { flex: 1; height: 10px; border-radius: 3px; background: var(--line-2); }
-.pg-seg i.on { background: var(--accent); }
-.pg-bar { display: block; height: 10px; border-radius: 5px; background: var(--line-2); overflow: hidden; }
-.pg-bar i { display: block; height: 100%; background: var(--accent); }
-.today-main { display: grid; gap: var(--sp-4, 16px); align-content: start; min-width: 0; }
+
+/* Entrances: played once per browser session, only when this tab can animate (html.anim); the site's Reduced and Off settings
+   and the device's reduced-motion setting remove them. Content is complete without them. Figures never count up. */
+@keyframes dgIn { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
+@keyframes barIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+html.anim .dg[data-play] circle.on, html.anim [data-play] .dg circle.on { transform-box: fill-box; transform-origin: center; animation: dgIn 280ms cubic-bezier(0.2, 0, 0, 1) var(--d, 0ms) both; }
+html.anim [data-play] .mh-parts .f-bar i { animation: barIn 600ms cubic-bezier(0.2, 0, 0, 1) calc(var(--n, 0) * 80ms + 250ms) both; }
+html.anim [data-play] .mh-chip, html.anim [data-play] .dg-c { animation: riseIn 320ms cubic-bezier(0, 0, 0.2, 1) 500ms both; }
+@media (prefers-reduced-motion: reduce) { .dg circle.on, .mh-parts .f-bar i, .mh-chip, .dg-c { animation: none !important; } }
 
 /* ── Evidence digest ── */
 .ev-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
@@ -406,3 +435,9 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .ev-names { display: grid; gap: var(--sp-4, 16px); }
 .ev-n h3 { margin: 0 0 4px; font: 600 16px/1.3 var(--f-ui); }
 .ev-none { margin: 0; }
+
+/* Engine lifecycle chips wherever they appear (Today and Signals): the same rules as signals.css, which only loads on the Signals route */
+.sg-chips { list-style: none; margin: var(--sp-4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sg-chips li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: var(--fs-sm); }
+.sg-chips b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sg-chips .pill { border: 0; background: var(--panel-2); }

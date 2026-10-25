@@ -1199,3 +1199,30 @@ test('evidence digest: every item names its source and time; thresholds and wind
   assert.deepEqual(newestFirst(ev, 3).map((e) => e.at), ['2026-10-30', '2026-10-24T10:00:00Z', '2026-10-23']);   // newest first across kinds
   assert.equal(newestFirst(ev, 2).length, 2);
 });
+
+test('gauge: dots sit on concentric semicircles, one fraction lights the same share of every ring, a missing value lights nothing', async () => {
+  const { gaugeDots, gaugeBox, fraction, lit } = await import('../src/lib/gauge.ts');
+  const d = gaugeDots(3, 12, 60, 14, 5);
+  const per = [0, 1, 2].map((k) => d.filter((x: { ring: number }) => x.ring === k));
+  assert.deepEqual(per.map((p: unknown[]) => p.length), [12, 15, 18]);                         // spacing stays even as the radius grows
+  const box = gaugeBox(3, 60, 14, 5);
+  for (const p of per) { assert.equal(p[0].t, 0); assert.equal(p[p.length - 1].t, 1); }
+  assert.ok(d.every((x: { x: number; y: number }) => x.x >= 0 && x.x <= box.w && x.y >= 0 && x.y <= box.h), 'every dot is inside its box');
+  const outer = per[2];
+  assert.equal(outer[0].y, outer[outer.length - 1].y);                                         // both ends rest on the baseline
+  assert.ok(outer.every((x: { y: number }) => x.y <= outer[0].y));
+  assert.ok(outer[Math.floor(outer.length / 2)].y < outer[0].y - 40);                          // the middle is the top
+  assert.equal(fraction(24, 100), 0.24);
+  assert.equal(fraction(150, 100), 1);
+  assert.equal(fraction(-5, 100), 0);
+  assert.equal(fraction(null, 100), null);
+  assert.equal(fraction(5, 0), null);
+  assert.equal(fraction(Number.NaN, 100), null);
+  const on = (f: number | null) => d.filter((x: { t: number }) => lit(x.t, f)).length;
+  assert.equal(on(null), 0);
+  assert.equal(on(0), 0);
+  assert.equal(on(1), d.length);
+  assert.ok(on(0.24) > 3 && on(0.24) < d.length * 0.4);
+  assert.ok(on(0.5) > on(0.24));
+  assert.ok(on(0.001) >= 3);                                                                   // a measured non-zero value shows a start on each ring
+});

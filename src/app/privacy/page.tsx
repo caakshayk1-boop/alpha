@@ -18,6 +18,7 @@ const KEPT: [string, string][] = [
   ['Your data conditions on My Desk', 'alpha-conditions'],
   ['What a company looked like when you last marked it reviewed, so the next visit can show what changed', 'alpha-reviewed'],
   ['The list you opened a company from, for its back link (this tab only, cleared when the tab closes)', 'alpha-from'],
+  ['Whether Today\'s opening animation has already played in this session, so it does not repeat on every visit (this tab only, cleared when the tab closes; stores no personal data)', 'alpha-played-market, alpha-played-progress'],
   ['Retired: the old since-your-last-visit snapshot. Nothing writes it any more; Today deletes it if your browser still has it', 'alpha-last-visit'],
 ];
 
