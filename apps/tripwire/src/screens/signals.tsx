@@ -1,65 +1,107 @@
-import { useMemo, useState } from 'react';
-import { go } from '../app.tsx';
-import { useEnginesV3, useScreen, useSignals } from '../data.ts';
-import { Seg, Empty, Icon } from '../ui.tsx';
+import { useEffect, useMemo, useState } from 'react';
+import { go, setState, useAppState, useSheets } from '../app.tsx';
+import { useBars, useSignals } from '../data.ts';
+import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar } from './common.tsx';
-import { RULES, THEMES, WIDE_SHARE, printValue, runRules } from '../../../../src/lib/rules.ts';
-import { ENGINES, LIFECYCLE, STATE_WORD } from '../engines.ts';
-import { dayWord, inr, pct } from '../fmt.ts';
+import { ENGINES, type Pick } from '../quant.ts';
+import { useEngines } from '../useEngines.ts';
+import { sizePlan } from '../planner.ts';
+import { archivePaper, removePaper, takePaper } from '../store.ts';
+import { evaluatePaper, summarize, SLIPPAGE_PCT, type Bar, type View } from '../tracker.ts';
+import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
-type Seg = 'rules' | 'engines' | 'ledger';
+const DEFAULT_COST = 0.25;
+export function useCost() { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
+
 export function Signals({ seg }: { seg: string }) {
-  const v: Seg = seg === 'engines' || seg === 'ledger' ? seg : 'rules';
+  const v = seg === 'tracker' ? 'tracker' : 'picks';
+  const s = useAppState();
   return <div>
-    <PageBar title="Signals" sub="Paper only. Nothing here is advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'rules', label: 'Rules' }, { id: 'engines', label: 'Engines' }, { id: 'ledger', label: 'Paper ledger' }]} />
-    {v === 'rules' ? <RuleBoard /> : v === 'engines' ? <Engines /> : <Ledger />}
+    <PageBar title="Signals" sub="Paper only. Not advice." />
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `Paper tracker${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }]} />
+    {v === 'picks' ? <Picks /> : <Tracker />}
   </div>;
 }
-function RuleBoard() {
-  const scr = useScreen(); const [theme, setTheme] = useState<string>('All');
-  const out = useMemo(() => (scr.data ? runRules(scr.data.rows as never) : null), [scr.data]);
-  if (scr.loading) return <Loading what="the rules" />;
-  if (scr.err || !out) return <Failed what="the rules" err={scr.err ?? 'no data'} retry={scr.retry} />;
-  const list = out.results.filter((r) => theme === 'All' || r.rule.theme === theme);
+
+/** Create a paper trade from a pick, sized by the planner with the user's own defaults. Returns a reason when it cannot. */
+export function usePaperTake() {
+  const s = useAppState(); const { toast, tick } = useUi();
+  return (p: Pick, quiet = false): boolean => {
+    const plan = sizePlan({ equity: s.prefs.equity, cash: s.prefs.cash, riskPct: s.prefs.riskPct, entry: p.ref, stop: p.stop, maxPositionPct: s.prefs.maxPositionPct, costRoundTripPct: DEFAULT_COST });
+    if (!plan.ok) { if (!quiet) toast(`${p.sym}: ${plan.error}`); return false; }
+    let ok = false;
+    setState((x) => { const r = takePaper(x, { sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: plan.qty }); ok = r.ok; return r.s; });
+    if (!quiet) { tick(); toast(ok ? `${p.sym}: paper trade taken. Enters at the next open.` : `${p.sym} is already in your paper book`); }
+    return ok;
+  };
+}
+
+function Picks() {
+  const { scr, out } = useEngines(); const s = useAppState(); const take = usePaperTake(); const { toast } = useUi();
+  if (scr.loading) return <Loading what="the engines" />;
+  if (scr.err || !out) return <Failed what="the engines" err={scr.err ?? 'no data'} retry={scr.retry} />;
+  const have = new Set(s.paper.filter((p) => !p.closedByUser).map((p) => p.sym));
+  const all = out.picks;
   return <>
-    <p className="dim" style={{ margin: '0 0 12px' }}>Ten fixed public tests run on {out.liquid} liquid names at the close of {dayWord(scr.data!.as_of)}. A rule firing describes price and volume. It is not a recommendation, target or probability.</p>
-    <div className="chips" role="group" aria-label="Theme">{['All', ...THEMES].map((t) => <button key={t} className="chip" aria-pressed={theme === t} onClick={() => setTheme(t)}>{t}</button>)}</div>
-    {list.map((r) => <details key={r.rule.id} className="ev"><summary>
-      <span className="grow"><span style={{ display: 'block' }}>{r.rule.title}</span><span className="small dim" style={{ fontWeight: 400 }}>{r.rule.check.length > 70 ? r.rule.check.slice(0, 68) + '…' : r.rule.check}</span></span>
-      <span className="tag lime num">{r.hits.length}</span><span className="chev">▾</span></summary>
-      <div className="body">
-        {r.wide && <div className="note" style={{ marginBottom: 10 }}>This rule fires on {Math.round((r.share ?? 0) * 100)}% of liquid names (the line is {WIDE_SHARE * 100}%). It describes the market, not a stock.</div>}
-        <p className="small dim" style={{ marginTop: 0 }}>{r.rule.check}{r.unmeasured ? ` ${r.unmeasured} names lacked a figure and are counted as unmeasured, not as misses.` : ''}</p>
-        {r.hits.length ? <div className="list">{r.hits.slice(0, 8).map((h) => <a key={h.sym} className="li" href={`#/c/${h.sym}`}><span className="grow"><span className="sym">{h.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{h.name}</span></span><span className="px num"><b>{inr(h.price)}</b><span className="dim">{r.rule.measure.label} {printValue(r.rule, h.value)}</span></span></a>)}</div>
-          : <span className="dim">Nothing fired.</span>}
-        {r.hits.length > 8 && <p className="mute small">Showing 8 of {r.hits.length}, most notable first.</p>}
-      </div></details>)}
+    <p className="dim" style={{ margin: '0 0 12px' }}>Three engines, each a published factor idea with fixed rules, run on the close of <b>{dayWord(scr.data!.as_of)}</b>. They rank. They do not predict, and none has been backtested on Indian prices.</p>
+    {all.length > 0 && <button className="btn" style={{ width: '100%', marginBottom: 6 }} onClick={() => { let n = 0; for (const p of all) if (!have.has(p.sym) && take(p, true)) { n++; have.add(p.sym); } toast(n ? `${n} paper trade${n > 1 ? 's' : ''} taken. They enter at the next open.` : 'Nothing new to take'); }}><Icon n="plan" />Paper-trade all {all.length} picks</button>}
+    {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
+      <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
+      <div className="card"><div className="row between"><span className="dim small">{def.line}</span></div>
+        <p className="mute small" style={{ margin: '6px 0 0' }}>{def.theory}</p>
+        <details className="ev" style={{ marginTop: 10 }}><summary>How it picks<span className="chev">▾</span></summary><div className="body"><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
+          <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>
+      {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
+        <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
+        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
+        <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}</div></details>
+        <button className={`btn ${have.has(p.sym) ? '' : 'pri'}`} style={{ width: '100%', marginTop: 10 }} disabled={have.has(p.sym)} onClick={() => take(p)}>{have.has(p.sym) ? 'In your paper book' : 'Paper trade this'}</button></div>)
+        : <Empty title="No pick tonight">{run.funnel.passed ? `${run.funnel.passed} names passed, but each needed a stop wider than the engine allows.` : 'No name passed every filter. Rules are never loosened to fill this list.'}</Empty>}
+    </section>; })}
+    <p className="mute small" style={{ marginTop: 14 }}>A pick is a starting point for your own research, never an instruction. Entry in the tracker is the open of the next session, so a pick published after the close is never filled at that close.</p>
   </>;
 }
-function Engines() {
-  const v3 = useEnginesV3(); const sig = useSignals();
-  const feed = v3.data;
-  const rows = ENGINES.map((e) => ({ ...e, state: (feed?.engines?.[e.id]?.state as typeof e.state) ?? e.state, why: feed?.engines?.[e.id]?.why ?? e.why }));
+
+const hm = (ms: number) => new Date(ms + 330 * 60000).toISOString().slice(11, 16);
+export function Tracker() {
+  const s = useAppState(); const cost = useCost(); const { open } = useSheets(); const { toast } = useUi();
+  const [visible, setVisible] = useState(true);
+  useEffect(() => { const f = () => setVisible(document.visibilityState === 'visible'); document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
+  const active = s.paper.filter((p) => !p.closedByUser); const syms = active.map((p) => p.sym);
+  const feed = useBars(syms, visible);
+  const views = useMemo(() => active.map((p) => {
+    const b = feed.data?.bars[p.sym]; const bars: Bar[] | null = b ? b.t.map((t, i) => ({ t, o: b.o[i], h: b.h[i], l: b.l[i], c: b.c[i], forming: b.forming && i === b.t.length - 1 })) : null;
+    return { p, v: evaluatePaper(p, bars, b?.live ?? null, cost) as View };
+  }), [active, feed.data, cost]);
+  const sum = summarize(views.map((x) => x.v));
+  if (!s.paper.length) return <Empty title="Your paper book is empty" action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>Take a pick and Tripwire follows it with real daily prices: the next open fills it, the stop and the time limit close it. Nothing is real money.</Empty>;
   return <>
-    <div className="note info" style={{ marginBottom: 12 }}><b>Alerts are off.</b> No engine has met its evidence bar, so none can alert. {sig.data ? sig.data.alert_why : ''}</div>
-    <p className="dim small" style={{ margin: '0 0 8px' }}>{feed ? `Published feed, data through ${dayWord(feed.data_watermark)}.` : 'The nightly engine feed is not published yet, so this is the last decision record (22 Oct 2026), not live output.'}</p>
-    {rows.map((e) => { const i = LIFECYCLE.indexOf(e.state); return <div key={e.id} className="card"><div className="row between"><div><span className="k">{e.id}</span><div style={{ fontWeight: 650 }}>{e.name}</div></div><span className={`tag ${e.state === 'PAPER' || e.state === 'VALIDATED' ? 'lime' : e.state === 'RETIRED' || e.state === 'BLOCKED_DATA' ? 'peach' : ''}`}>{STATE_WORD[e.state]}</span></div>
-      <div className="stage" role="img" aria-label={`Lifecycle position: ${STATE_WORD[e.state]}`}>{LIFECYCLE.map((s, k) => <i key={s} className={k <= i ? (e.state === 'RETIRED' || e.state === 'BLOCKED_DATA' ? 'off' : 'on') : ''} />)}</div>
-      <p className="dim small" style={{ margin: '8px 0 0' }}>{e.why}</p></div>; })}
-    <p className="mute small">Lifecycle: blocked (data) → research → paper → validated → paused or retired. Rankings are not win probabilities. Promotion needs far more independent observations than any engine has.</p>
+    <div className="card glass">
+      <div className="row between"><div><div className="k">Open P&L (paper)</div><div className={`num ${sum.openPnl > 0 ? 'up' : sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 34px/1.1 var(--sans)' }}>{feed.data || sum.open ? `${sum.openPnl >= 0 ? '+' : '−'}${inr0(Math.abs(sum.openPnl))}` : '—'}</div></div>
+        <div style={{ textAlign: 'right' }}><div className="k">Closed</div><div className="num" style={{ font: '600 22px/1.2 var(--sans)' }}>{sum.closed ? `${sum.totalR > 0 ? '+' : sum.totalR < 0 ? '−' : ''}${Math.abs(sum.totalR).toFixed(2)}R` : '—'}</div><div className="small dim">{sum.closed} trade{sum.closed === 1 ? '' : 's'}</div></div></div>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 10 }}><span className="tag">{sum.open} open</span><span className="tag">{sum.waiting} waiting for an open</span><span className="tag">{sum.skipped} skipped</span></div>
+      <p className="small dim" style={{ margin: '10px 0 0' }}>{feed.err ? <span className="down">Prices unavailable: {feed.err}. Nothing is estimated in their place.</span> : feed.data ? <>Prices from Yahoo Finance, delayed. Updated {feed.at ? hm(feed.at) : ''} IST{feed.loading ? ', refreshing' : ''}. Refreshes every minute while this page is open.</> : feed.loading ? 'Loading prices…' : 'No prices yet.'}</p>
+      {!sum.enough && sum.closed > 0 && <p className="small dim" style={{ margin: '6px 0 0' }}>Average R is withheld until 30 trades have closed. {sum.closed} is too few to say anything.</p>}
+    </div>
+    {views.map(({ p, v }) => <TradeCard key={p.id} p={p} v={v} onArchive={() => { setState((x) => archivePaper(x, p.id)); toast('Taken off the active list. The record is kept.'); }} />)}
+    {s.paper.filter((p) => p.closedByUser).length > 0 && <p className="mute small">{s.paper.filter((p) => p.closedByUser).length} hidden by you. They stay in your backup.</p>}
+    <div className="note info" style={{ marginTop: 12 }}><b>How a trade is followed.</b> Entry: the open of the first session after you took it, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), or the close of the last session of the horizon. Costs {cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Real fills differ.</div>
+    <button className="btn" style={{ width: '100%', marginTop: 10 }} onClick={() => open({ k: 'plan' })}>Open the position sizer</button>
   </>;
 }
-function Ledger() {
-  const v3 = useEnginesV3(); const sig = useSignals();
-  const f = v3.data;
-  const Sec = ({ title, n, children }: { title: string; n: number; children: React.ReactNode }) => <><Head aside={<span className="tag num">{n}</span>}>{title}</Head>{children}</>;
-  return <>
-    <Sec title="Forming setups" n={f?.forming?.length ?? 0}>{f?.forming?.length ? f.forming.map((x) => <div key={x.engine + x.symbol} className="card"><b>{x.symbol}</b> <span className="tag">{x.engine}</span><p className="small dim" style={{ margin: '6px 0 0' }}>Met: {x.met}. Missing: {x.missing}.</p></div>) : <Empty title="None forming">{f ? 'No engine has a candidate waiting on a trigger.' : 'The engine feed is not published yet.'}</Empty>}</Sec>
-    <Sec title="Paper signals" n={f?.paper?.length ?? 0}>{f?.paper?.length ? f.paper.map((x) => <a key={x.id} href={`#/c/${x.symbol}`} className="card" style={{ display: 'block' }}><b>{x.symbol}</b> <span className="tag">{x.engine}</span><p className="small dim" style={{ margin: '6px 0 0' }}>{x.entry_rule ?? 'Entry rule not stated'}{x.invalidation ? ` · invalidation ${inr(x.invalidation)}` : ''}</p></a>) : <Empty title="No paper signals">Swing v2 {sig.data?.gate.on ? 'is on but filed nothing' : 'is gated off'}; the six engines have filed nothing yet. Rules are never weakened to fill this list.</Empty>}</Sec>
-    <Sec title="Validated alerts" n={f?.validated?.length ?? 0}><Empty title="None, by design">An engine reaches this list only after its pre-registered evidence bar. None has.</Empty></Sec>
-    <Sec title="Closed paper record" n={f?.closed?.length ?? sig.data?.record.closed ?? 0}>{f?.closed?.length ? f.closed.map((x) => <div key={x.id} className="card"><b>{x.symbol}</b> <span className="tag">{x.engine}</span> <span className="num">{x.r_net == null ? 'R not recorded' : `${x.r_net > 0 ? '+' : '−'}${Math.abs(x.r_net).toFixed(2)}R after costs`}</span></div>) : <Empty title="No closed trades">{sig.data ? `Swing v2 has closed ${sig.data.record.closed} paper trades since ${dayWord(sig.data.launched)}.` : 'The record is not available.'} A record of zero is not a record.</Empty>}</Sec>
-    <p className="mute small">Paper ledger: planned entries, not fills. Tripwire places no orders.</p>
-  </>;
+function TradeCard({ p, v, onArchive }: { p: { sym: string; engine: string; ref: number; stop: number; horizon: number; qty: number; asOf: string; id: string }; v: View; onArchive: () => void }) {
+  const eng = ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine;
+  const W: Record<View['status'], string> = { waiting: 'Waiting for prices', pending: 'Enters at the next open', open: 'Open', closed: 'Closed', skipped: 'Skipped' };
+  return <div className="card">
+    <div className="row between"><a href={`#/c/${p.sym}`}><span className="sym">{p.sym}</span> <span className="tag">{eng}</span></a><span className={`tag ${v.status === 'open' ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
+    <div className="num small dim" style={{ margin: '8px 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</div>
+    {(v.status === 'open' || v.status === 'closed') && <>
+      <div className="row between"><div><div className="k">{v.status === 'open' ? (v.markKind === 'live' ? 'Live (delayed)' : 'Last close') : 'Exit'}</div><div className="num" style={{ fontWeight: 650, fontSize: 18 }}>{inr(v.status === 'open' ? v.mark : v.exit)}</div></div>
+        <div style={{ textAlign: 'center' }}><div className="k">Entry</div><div className="num">{inr(v.entry)}</div></div>
+        <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ fontWeight: 650, fontSize: 18 }}>{v.pnl == null ? '—' : `${v.pnl >= 0 ? '+' : '−'}${inr0(Math.abs(v.pnl))}`}</div><div className="small dim num">{v.r == null ? '' : `${v.r > 0 ? '+' : v.r < 0 ? '−' : ''}${Math.abs(v.r).toFixed(2)}R · ${pct(v.pct)}`}</div></div></div>
+      <p className="small dim num" style={{ margin: '8px 0 0' }}>{v.status === 'open' ? `Session ${v.sessions} of ${p.horizon} · ${v.left} left · stop ${pct(((p.stop / (v.mark ?? p.stop)) - 1) * 100)} from the mark` : `${v.reason} · ${v.sessions} session${v.sessions === 1 ? '' : 's'} held${v.exitT ? ` · ${dayWord(new Date((v.exitT + 19800) * 1000).toISOString())}` : ''}`}</p></>}
+    {v.status === 'skipped' && <p className="small down" style={{ margin: 0 }}>{v.skipReason}. No trade was opened, and none is counted.</p>}
+    {(v.status === 'closed' || v.status === 'skipped') && <button className="btn sm" style={{ marginTop: 10 }} onClick={onArchive}>Hide from the active list</button>}
+  </div>;
 }
-void pct; void Icon;
+void removePaper;

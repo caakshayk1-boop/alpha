@@ -4,7 +4,7 @@ import { sizePlan } from '../src/planner.ts';
 import { filterRows, sortRows, NO_FILTER, type Row } from '../src/screen.ts';
 import { DEFAULTS, addEntry, editEntry, current, reviewDue, savePlan, markPaperFill, closePlan, saveCompare, recordSnap, changesSince, weeklyReview, journalCsv, parseState, mergeStates, toggleFollow, exportJson } from '../src/store.ts';
 import { METRICS, glossarySearch } from '../src/metrics.ts';
-import { ENGINES } from '../src/engines.ts';
+import { ENGINES } from '../src/quant.ts';
 
 const base = { equity: 1_000_000, cash: 1_000_000, riskPct: 0.5, entry: 100, stop: 95, maxPositionPct: 15, costRoundTripPct: 0.4 };
 
@@ -111,8 +111,8 @@ test('merge: a guest and an account keep every record, the longer history wins',
 test('copy: no definition or engine reason promises returns', () => {
   const bad = /guarantee|sure[- ]?shot|risk[- ]free|will (rise|fall|go up)|win(ning)? probability/i;
   for (const m of METRICS) assert.ok(!bad.test(m.what + (m.caution ?? '')), m.id);
-  for (const e of ENGINES) assert.ok(!bad.test(e.why), e.id);
-  assert.ok(ENGINES.every((e) => e.state !== 'VALIDATED') && ENGINES.length === 6);
+  for (const e of ENGINES) assert.ok(!bad.test(e.how.join(' ') + e.line), e.id);
+  assert.equal(ENGINES.length, 3);
   assert.ok(glossarySearch('roce').length >= 1 && glossarySearch('').length === 0);
 });
 

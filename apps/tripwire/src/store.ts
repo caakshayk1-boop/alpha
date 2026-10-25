@@ -1,6 +1,7 @@
 /** Local-first state for Tripwire. Everything is stored on this device until an identity provider is configured (docs/tripwire/BUILD_STATUS.md).
  *  All transitions are pure functions so the journal's history rules, review dates and snapshots can be tested without a browser. */
 import type { Filters } from './screen.ts';
+import type { Paper } from './tracker.ts';
 export const VERSION = 1;
 export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null }
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
@@ -10,8 +11,10 @@ export interface Prefs { motion: 'auto' | 'off'; haptics: boolean; horizon: stri
 export interface State {
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
+  /** paper trades taken from engine picks; the tracker replays real bars against them */
+  paper: Paper[];
 }
-export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [],
+export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [],
   prefs: { motion: 'auto', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -59,6 +62,15 @@ export function saveScreen(s: State, name: string, f: Filters): State {
   return { ...s, screens: [{ name: n, f }, ...s.screens.filter((x) => x.name !== n)] };
 }
 
+/** Take a paper trade from an engine pick. One live paper trade per symbol: a second take of the same name is refused, not duplicated. */
+export function takePaper(s: State, p: Omit<Paper, 'id' | 'takenAt'>, nowSec = Math.floor(Date.now() / 1000)): { s: State; ok: boolean } {
+  if (s.paper.some((x) => x.sym === p.sym && !x.closedByUser)) return { s, ok: false };
+  return { s: { ...s, paper: [{ ...p, id: uid(), takenAt: nowSec }, ...s.paper] }, ok: true };
+}
+export const removePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.filter((x) => x.id !== id) });
+/** Closing by hand stops the one-per-symbol lock but keeps the record; the tracker still shows what the rules did. */
+export const archivePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.map((x) => (x.id === id ? { ...x, closedByUser: true } : x)) });
+
 /** Snapshots make "since you last looked" honest: a change is reported only against a stored earlier day, never invented. */
 export function recordSnap(s: State, sym: string, snap: Omit<Snap, 'at'>, now = new Date()): State {
   const list = s.snaps[sym] ?? [];
@@ -105,7 +117,7 @@ export function parseState(text: string): State | null {
   try {
     const d = JSON.parse(text);
     if (!d || typeof d !== 'object' || d.v !== VERSION || !Array.isArray(d.follows) || !Array.isArray(d.entries) || !Array.isArray(d.plans)) return null;
-    return { ...DEFAULTS, ...d, prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) }, snaps: d.snaps ?? {} };
+    return { ...DEFAULTS, ...d, paper: Array.isArray(d.paper) ? d.paper : [], prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) }, snaps: d.snaps ?? {} };
   } catch { return null; }
 }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
@@ -115,5 +127,6 @@ export function mergeStates(a: State, b: State): State {
     entries: byId(a.entries, b.entries, (p, q) => (q.versions.length > p.versions.length ? q : p)),
     plans: byId(a.plans, b.plans, (p, q) => (q.rev > p.rev ? q : p)),
     compares: [...a.compares, ...b.compares.filter((c) => !a.compares.some((d) => d.join() === c.join()))],
-    screens: [...a.screens, ...b.screens.filter((c) => !a.screens.some((d) => d.name === c.name))] };
+    screens: [...a.screens, ...b.screens.filter((c) => !a.screens.some((d) => d.name === c.name))],
+    paper: byId(a.paper ?? [], b.paper ?? [], (p) => p) };
 }

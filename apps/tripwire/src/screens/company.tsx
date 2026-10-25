@@ -4,7 +4,8 @@ import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
 import { isLender } from '../screen.ts';
-import { RULES } from '../../../../src/lib/rules.ts';
+import { ENGINES, evaluate, type Q } from '../quant.ts';
+import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
 import { checklistFor } from '../insight.ts';
 import { istDay, current, toggleFollow } from '../store.ts';
@@ -15,7 +16,8 @@ export function Company({ sym }: { sym: string }) {
   const row = c.data?.row; const lender = row ? isLender(row) : false;
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
-  const fires = useMemo(() => (row ? RULES.filter((r) => row.liquid && r.test(row as never) === true) : []), [row]);
+  const { out: eng } = useEngines();
+  const evals = useMemo(() => (row && eng ? ENGINES.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
@@ -46,10 +48,11 @@ export function Company({ sym }: { sym: string }) {
       {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">No risk flag or weakness was raised. Read the filings anyway; the screen only sees ratios.</span>}</div></details>
     <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours. Risk grade: {row.risk_lvl ?? 'not graded'}.</p>
 
-    <Head>Rules that fired at this close</Head>
-    {!row.liquid ? <div className="card dim">Too thinly traded for the public rules, which only run on liquid names.</div>
-      : fires.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">{fires.map((r) => <div key={r.id} className="li"><span className="tag lime">{r.theme}</span><span className="grow"><b>{r.title}</b><span className="dim small" style={{ display: 'block' }}>{r.check}</span></span></div>)}</div></div>
-        : <div className="card dim">None of the ten public rules fired for this name at the last close.</div>}
+    <Head>Engine check</Head>
+    {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>
+      <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }} aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
+        {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
+    {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
 
     <Head>Business</Head>
     {yrs.length > 0 ? <div className="card"><div className="k">Revenue, ₹ crore, fiscal years</div>

@@ -16,7 +16,7 @@ await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: t
 await build({ entryPoints: [join(HERE, 'src/style.css')], bundle: true, minify: true, outfile: join(DIST, `app.${stamp}.css`), logLevel: 'warning' });
 
 // The screen rows: one compact file for Discover, the rules and Today. Fields not listed here are not shipped.
-const KEEP = ['sym', 'name', 'sector', 'tier', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'rs3m', 'from_high', 'high52', 'low52', 'sma20', 'sma50', 'sma200', 'rsi', 'vol_spike', 'liquid', 'turnover_cr', 'pe', 'pb', 'roce_med', 'rev_cagr', 'eps_cagr', 'de', 'net_margin', 'ebit_margin', 'div_yield', 'risk_lvl', 'next_earnings', 'last_date', 'fy', 'has_stmts'];
+const KEEP = ['sym', 'name', 'sector', 'tier', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'rs3m', 'from_high', 'high52', 'low52', 'sma20', 'sma50', 'sma200', 'rsi', 'vol_spike', 'liquid', 'turnover_cr', 'pe', 'pb', 'roce_med', 'rev_cagr', 'eps_cagr', 'de', 'net_margin', 'ebit_margin', 'div_yield', 'risk_lvl', 'next_earnings', 'last_date', 'fy', 'has_stmts', 'r6m', 'r1y', 'sd1y', 'atr_pct', 'piotroski'];
 const files = readdirSync(join(PUB, 'c')).filter((f) => f.endsWith('.json'));
 const rows = []; let built = null;
 for (const f of files) {
@@ -26,6 +26,7 @@ for (const f of files) {
   for (const k of KEEP) if (r[k] !== undefined) o[k] = r[k];
   const flag = (r.risk?.flags ?? []).find((x) => x.s === 'high') ?? (r.risk?.flags ?? [])[0];
   if (flag) o.risk_top = flag.t;
+  if (r.mf && Number.isFinite(r.mf.rank)) o.mf = { rank: r.mf.rank, of: r.mf.of };
   rows.push(o);
   // per-company file: statements, case/countercase, risk flags and nothing else
   const keep = { sym: d.sym, built_on: d.built_on, row: o, years: d.years ?? [], swot: d.swot ?? null, risk: r.risk ?? null };

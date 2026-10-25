@@ -1,26 +1,23 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
-import { useScreen, useSignals } from '../data.ts';
 import { DotArc, Empty } from '../ui.tsx';
 import { Head, Loading, Failed, PageBar, CompanyRow } from './common.tsx';
 import { freshness } from '../fresh.ts';
 import { breadth } from '../insight.ts';
-import { RULES, runRules } from '../../../../src/lib/rules.ts';
 import { changesSince, istDay, recordSnap, reviewDue, current } from '../store.ts';
 import { dayWord, isNum, pct } from '../fmt.ts';
-import { useEffect } from 'react';
+import { useEngines } from '../useEngines.ts';
+import { ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
 
-const CAND = ['aligned', 'rs-leader', 'pullback', 'near-high'];
 export function Today() {
   const s = useAppState(); const { open } = useSheets();
-  const scr = useScreen(); const sig = useSignals();
+  const { scr, out } = useEngines();
   const rows = scr.data?.rows ?? [];
   const day = scr.data?.as_of ?? null;
   const fr = freshness(day);
   const today = istDay();
   const b = useMemo(() => breadth(rows), [rows]);
-  const board = useMemo(() => (rows.length ? runRules(rows as never) : null), [rows]);
   // one snapshot per data day for each followed name: this is what makes "since you last looked" honest
   useEffect(() => {
     if (!day) return;
@@ -34,27 +31,16 @@ export function Today() {
   }, [s.follows, s.snaps, rows, day]);
   const events = s.follows.map((sym) => rows.find((r) => r.sym === sym)).filter((r): r is Row => !!r && !!r.next_earnings && r.next_earnings >= today && r.next_earnings <= addDays(today, 30)).sort((a, b) => a.next_earnings!.localeCompare(b.next_earnings!));
   const reviews = s.entries.filter((e) => ['overdue', 'today'].includes(reviewDue(e) ?? ''));
-  const cands = useMemo(() => {
-    if (!board) return [];
-    const seen = new Set<string>(); const out: { r: Row; why: string; risk: string }[] = [];
-    for (const id of CAND) {
-      const res = board.results.find((x) => x.rule.id === id); if (!res || res.wide) continue;
-      for (const h of res.hits) {
-        const r = rows.find((x) => x.sym === h.sym); if (!r || seen.has(r.sym) || r.risk_lvl === 'HIGH' || s.follows.includes(r.sym)) continue;
-        if (s.prefs.interests.length && r.sector && !s.prefs.interests.includes(r.sector) && out.length < 1) continue;
-        seen.add(r.sym); out.push({ r, why: `${res.rule.title}: ${res.rule.check}`, risk: r.risk_top ?? `Screen risk grade ${r.risk_lvl ?? 'not graded'}. Open the countercase before anything else.` });
-        break;
-      }
-      if (out.length >= 3) break;
-    }
-    return out;
-  }, [board, rows, s.follows, s.prefs.interests]);
-  const g = sig.data?.gate;
+  // the best pick of each engine, never more than three, skipping names already followed
+  const cands = useMemo(() => (out ? out.runs.map((r) => r.picks.find((p) => !s.follows.includes(p.sym))).filter((p): p is NonNullable<typeof p> => !!p) : []), [out, s.follows]);
+  const total = out?.picks.length ?? 0;
+  const book = s.paper.filter((p) => !p.closedByUser).length;
   const lit = b.pct == null ? 0 : Math.round((b.pct / 100) * 28);
   const next = reviews.length ? { t: `Review ${reviews[0].sym}: your date has come.`, go: () => open({ k: 'thesis', sym: reviews[0].sym, id: reviews[0].id }), cta: 'Open review' }
+    : total && !book ? { t: 'The engines have picks tonight. Take one on paper and Tripwire will follow it with real prices.', go: () => go('/signals'), cta: 'See the picks' }
     : !s.entries.length ? { t: 'Write your first thesis, in seven short fields. Everything else gets easier to judge.', go: () => go('/discover'), cta: 'Pick a name' }
     : !s.follows.length ? { t: 'Follow one name so Today can tell you what changed in it.', go: () => go('/discover'), cta: 'Find a name' }
-    : { t: 'Nothing is due. Check whether any of your invalidation levels is close.', go: () => go('/desk'), cta: 'Open My Desk' };
+    : { t: 'Nothing is due. Check the paper book against its stops.', go: () => go('/signals?v=tracker'), cta: 'Open the tracker' };
 
   return <div>
     <PageBar title="Today" sub={day ? <>Data through {dayWord(day)} · <span className={fr.tone === 'lime' ? 'up' : 'down'}>{fr.word}</span></> : 'Loading'} />
@@ -70,10 +56,9 @@ export function Today() {
           </div>
         </div>
         <p className="lead" style={{ marginTop: 18 }}>
-          {g ? <>The market gate is <em className="ed">{g.on ? 'on' : 'off'}</em>: {g.passed} of {g.checks.length} conditions pass{g.on ? '.' : ', so the swing rules file nothing.'}</> : <>Gate status is <em className="ed">unavailable</em> right now.</>}
+          {total ? <><em className="ed">{total}</em> pick{total > 1 ? 's' : ''} from {out!.runs.filter((r) => r.picks.length).length} of {ENGINES.length} engines tonight.</> : <>No engine has a pick <em className="ed">tonight</em>.</>}
         </p>
-        <p className="dim small" style={{ margin: '8px 0 0' }}>{b.n} liquid names measured. Sources: Alpha screen (last close), swing gate{sig.data ? `, data through ${dayWord(sig.data.data_through)}` : ''}. Holidays are not modelled in the freshness check.</p>
-        {g && !g.on && <details className="ev"><summary>What is not met<Chev /></summary><div className="body">{g.checks.filter((c) => !c.ok).map((c) => <p key={c.rule} style={{ margin: '0 0 8px' }}>{c.rule}<br /><span className="mute small">{c.value}</span></p>)}</div></details>}
+        <p className="dim small" style={{ margin: '8px 0 0' }}>{b.n} liquid names measured at the close of {dayWord(day)}. Breadth is context, not a switch: the engines run either way, and say so when nothing qualifies.</p>
       </section>
 
       <div className="card" style={{ marginTop: 10, borderColor: 'var(--line2)' }}>
@@ -81,6 +66,8 @@ export function Today() {
         <p style={{ margin: '6px 0 12px', fontSize: 16 }}>{next.t}</p>
         <button className="btn pri" onClick={next.go}>{next.cta}</button>
       </div>
+
+      {book > 0 && <a className="card" href="#/signals?v=tracker" style={{ display: 'flex', marginTop: 10, alignItems: 'center', gap: 10 }}><span className="grow"><span className="k">Paper book</span><span style={{ display: 'block', fontWeight: 650 }}>{book} paper trade{book > 1 ? 's' : ''} being followed</span></span><span className="tag lime">Open tracker</span></a>}
 
       <Head>Since you last looked</Head>
       {!s.follows.length ? <Empty title="You follow nothing yet">Follow a name and Tripwire will report what moved, from your second visit on.</Empty>
@@ -94,13 +81,12 @@ export function Today() {
         </div></div></>}
 
       <Head aside={<span className="tag">{cands.length} of 3</span>}>Worth a look</Head>
-      {cands.length ? cands.map((c) => <div key={c.r.sym} className="card"><CompanyRow r={c.r} />
-        <p className="small" style={{ margin: '8px 0 4px' }}><span className="up">Why it came up</span> · {c.why}</p>
-        <p className="small" style={{ margin: 0 }}><span className="down">Main risk</span> · {c.risk}</p></div>)
-        : <Empty title="No names qualify today">Starting points come from narrow public rules on liquid names with a risk grade below HIGH. When none fit, Tripwire shows none.</Empty>}
-      <p className="mute small" style={{ marginTop: 8 }}>Starting points to investigate, not recommendations. Rules: {RULES.filter((r) => CAND.includes(r.id)).map((r) => r.title).join('; ')}.</p>
+      {cands.length ? cands.map((p) => { const r = rows.find((x) => x.sym === p.sym); return r ? <div key={p.sym} className="card"><CompanyRow r={r} />
+        <p className="small" style={{ margin: '8px 0 4px' }}><span className="up">{ENGINES.find((e) => e.id === p.engine)!.name}</span> · rank {p.rank} of {ENGINES.find((e) => e.id === p.engine)!.top}, score {p.score}</p>
+        <p className="small" style={{ margin: 0 }}><span className="down">Main risk</span> · {p.risk ?? 'not stated'}</p></div> : null; })
+        : <Empty title="Nothing qualifies tonight">Each engine publishes only names that pass every one of its filters. When none do, Tripwire shows none.</Empty>}
+      <p className="mute small" style={{ marginTop: 8 }}>The top pick of each engine. Starting points to investigate, not recommendations.</p>
     </>}
   </div>;
 }
-const Chev = () => <span className="chev" aria-hidden="true">▾</span>;
 function addDays(d: string, n: number) { return new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10); }

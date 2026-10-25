@@ -13,6 +13,9 @@ npm run tripwire:types && npm run tripwire:test
 npm run tripwire:check   # starts the Worker, runs the browser journeys and the accessibility gate
 ```
 
+## Engines and the paper tracker
+See `docs/tripwire/ENGINES.md`. The Worker has one read-only route, `/api/bars`, that serves daily bars and a delayed live price from Yahoo Finance to the tracker. It has no secrets and stores nothing.
+
 ## Data ("the same database")
 `build.mjs` reads `public/c/*.json`, `public/universe.json` and `public/signals.json` (and `public/engines_v3.json` when it exists) and writes a compact `dist/data/screen.json` plus one small file per company. It is a snapshot: Tripwire is only as fresh as its last build, and every screen states the data date. Rebuild and redeploy after the website's data refresh, or schedule the build. There is no live data connection.
 
@@ -24,4 +27,4 @@ Nothing is deployed from here. `wrangler.tripwire.jsonc` is an assets-only Worke
 4. Roll back by deleting the route or redeploying the previous Worker version.
 
 ## What is not here yet
-Accounts and sync, notifications, billing, the AI assistant, portfolio import and share links all need a credential, a provider or a decision. See `docs/BUILD_STATUS.md` for each, with its exact dependency.
+A server-side nightly ledger of every engine pick, accounts and sync, notifications, billing, the AI assistant, portfolio import and share links all need a credential, a provider or a decision. See `docs/BUILD_STATUS.md` for each, with its exact dependency.

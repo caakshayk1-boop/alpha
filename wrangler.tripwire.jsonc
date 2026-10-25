@@ -1,9 +1,10 @@
 {
-  // Tripwire: a static PWA. No Worker code, no secrets, no bindings. It reads only the data files copied into dist/data at build time.
-  // Address chosen by the owner's go-ahead on 25 Oct 2026. Indexing stays off (noindex + robots) until the owner decides.
+  // Tripwire: a static PWA plus one read-only Worker route (/api/bars) that serves daily bars and a delayed live price to the paper tracker.
+  // No secrets, no bindings other than the asset store. Address chosen by the owner's go-ahead on 25 Oct 2026. Indexing stays off.
   "name": "tripwire",
+  "main": "apps/tripwire/worker.js",
   "compatibility_date": "2026-05-01",
-  "assets": { "directory": "./apps/tripwire/dist", "not_found_handling": "single-page-application" },
+  "assets": { "directory": "./apps/tripwire/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "routes": [{ "pattern": "tripwire.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
   "observability": { "enabled": true }
