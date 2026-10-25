@@ -60,7 +60,7 @@ export function MarketRead() {
       {tk?.available ? (
         <h1 className="lead-h">{lead}{rest.length > 0 && <>, <em>{rest.join(', ')}</em></>}.</h1>
       ) : baro.error ? <h1 className="lead-h">The market read is not available right now.</h1> : (
-        <div role="status" aria-busy="true" aria-label="Loading the market read"><h1 className="lead-h"><span className="skel" style={{ display: 'block', height: '1.1em', width: '82%' }} aria-hidden /></h1></div>
+        <div role="status" aria-busy="true" aria-label="Loading the market read"><h1 className="lead-h"><span className="sr">Today: the market read</span><span className="skel" style={{ display: 'block', height: '1.1em', width: '82%' }} aria-hidden /></h1></div>
       )}
       <p className="lead-sub">{tk?.available ? tk.sub : baro.error ? 'The Barometer could not be loaded. Nothing is estimated in its place.' : ' '}</p>
 

@@ -51,13 +51,13 @@ const PRESETS_FOR: Record<Subject['subject'], string[]> = {
   company: PRESETS,
   market: ['What is the market doing today?', 'Why is the market gate on or off?', 'Which sectors are strongest and weakest?', 'How broad is the move?'],
   signal: ['Explain this plan in plain words', 'Why did this stock qualify?', 'What happens at T1?', 'What would end this trade?'],
-  move: ['Why did it move?'],
+  move: ['What changed in the data for this company?'],
   compare: ['How do these compare?', 'Which measures differ most?', 'Where is one of them not comparable?'],
   watchlist: ['What changed for my names?'],
   filing: ['What do the latest announcements say?'],
   thesis: ['Challenge my thesis'],
 };
-/** Subjects that may answer without a model: "why did it move" says "no identified cause" by rule, and lists dated stories. */
+/** Subjects that may answer without a model: a question about a price move says "no identified cause" by rule, and lists dated stories. */
 const WORKS_OFF = new Set<Subject['subject']>(['move']);
 
 /** Ask one question about a company, the day's market, or one signal. A definition question is answered from the glossary

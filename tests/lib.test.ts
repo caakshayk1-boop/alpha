@@ -1121,3 +1121,23 @@ test('journal: invalidation, review date and retrospective are optional, validat
   const plain = makeEntry(base, 'd');
   assert.ok('entry' in plain && !('wrong' in plain.entry) && !('reviewBy' in plain.entry));   // older entries stay unchanged
 });
+
+test('progress: reviewed-today counts followed names saved on the IST day, and an empty list is not 0%', async () => {
+  const { reviewedToday, filledDots, arcDots, reviewsDue } = await import('../src/lib/progress.ts');
+  const snaps = { TCS: { at: '2026-10-25T20:00:00Z' }, INFY: { at: '2026-10-25T10:00:00Z' }, OLD: { at: '2026-10-25T10:00:00Z' }, BAD: { at: 'nonsense' } };
+  // 20:00Z on the 25th is 01:30 IST on the 26th: another IST day
+  assert.deepEqual(reviewedToday(['TCS', 'INFY', 'BAD', 'TCS'], snaps, '2026-10-25'), { done: 1, total: 3 });
+  assert.deepEqual(reviewedToday(['TCS'], snaps, '2026-10-26'), { done: 1, total: 1 });
+  assert.deepEqual(reviewedToday([], snaps, '2026-10-25'), { done: 0, total: 0 });
+  assert.equal(filledDots(0, 5, 24), 0);
+  assert.equal(filledDots(0, 0, 24), 0);
+  assert.equal(filledDots(1, 100, 24), 1);       // a start is visible
+  assert.equal(filledDots(5, 5, 24), 24);
+  assert.equal(filledDots(9, 5, 24), 24);        // never more than the whole
+  assert.equal(filledDots(2, 5, 24), 9);         // floor(9.6)
+  const d = arcDots(5, 100);
+  assert.equal(d.length, 5);
+  assert.deepEqual([d[0], d[2], d[4]], [{ x: 0, y: 100 }, { x: 100, y: 0 }, { x: 200, y: 100 }]);
+  const j = (id: string, reviewBy?: string, lesson?: string) => ({ id, date: '2026-10-01', sym: 'X', action: 'watching' as const, why: 'a long enough reason', price: null, stop: null, target: null, reviewBy, lesson });
+  assert.equal(reviewsDue([j('a', '2026-10-25'), j('b', '2026-10-26'), j('c', '2026-10-01', 'done'), j('d')], '2026-10-25'), 1);
+});
