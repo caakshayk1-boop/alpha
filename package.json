@@ -16,7 +16,12 @@
     "a11y": "node scripts/a11y.mjs",
     "contrast": "node scripts/contrast.mjs",
     "visual": "node scripts/visual.mjs",
-    "integrity": "node scripts/integrity.mjs"
+    "integrity": "node scripts/integrity.mjs",
+    "tripwire:build": "node apps/tripwire/build.mjs",
+    "tripwire:test": "node --experimental-strip-types --test apps/tripwire/tests/logic.test.ts",
+    "tripwire:types": "tsc -p apps/tripwire/tsconfig.json",
+    "tripwire:check": "node apps/tripwire/tests/check.mjs",
+    "tripwire:dev": "wrangler dev --config wrangler.tripwire.jsonc --local --port 8801"
   },
   "dependencies": {
     "gsap": "^3.12.5",
