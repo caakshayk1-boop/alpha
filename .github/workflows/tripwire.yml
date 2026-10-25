@@ -25,6 +25,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run tripwire:types
       - run: npm run tripwire:test
+      - name: Fetch the published company data (the same step the website's build runs)
+        run: node scripts/shard.mjs
       - run: npm run tripwire:build
       - run: npm run tripwire:check
       - name: Deploy (manual only)

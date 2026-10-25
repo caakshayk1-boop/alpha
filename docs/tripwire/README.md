@@ -6,6 +6,7 @@ It is **not** a re-skin of the alpha website: its own design system (`apps/tripw
 
 ## Run
 ```
+node scripts/shard.mjs      # once, to fetch the published feeds into public/c (the website build does this too)
 npm run tripwire:build   # bundles the app and copies the data feeds into apps/tripwire/dist
 npm run tripwire:dev     # serves it on http://localhost:8801
 npm run tripwire:types && npm run tripwire:test
