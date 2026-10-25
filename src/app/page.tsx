@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { TodayProvider } from '@/components/widgets/DayContext';
-import { EnginesV3 } from '@/components/EnginesV3';
 import { Rv } from '@/components/ui';
 import { TodayProgress } from '@/components/today/Progress';
 import { ComingUp, EvidenceOnNames, Masthead, MarketRead, MarketStrip, Previews, WorthInvestigating, YourNames } from '@/components/today/Today';
@@ -23,7 +22,7 @@ export default function Home() {
       <div className="section2"><MarketStrip /></div>
       <WorthInvestigating />
       <section className="wrap section2" aria-label="Signals and rotation"><Previews /></section>
-      <div className="wrap"><EnginesV3 mode="compact" /></div>
+      
       <section className="wrap section2" aria-label="Alpha Pro">
         <div className="card tight pro-strip">
           <p><b>Alpha Pro is coming.</b> <span className="muted">Same-session data, change alerts, exports and research memos. Better tools, never buy or sell calls.</span></p>

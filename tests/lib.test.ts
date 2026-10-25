@@ -1226,3 +1226,46 @@ test('gauge: dots sit on concentric semicircles, one fraction lights the same sh
   assert.ok(on(0.5) > on(0.24));
   assert.ok(on(0.001) >= 3);                                                                   // a measured non-zero value shows a start on each ring
 });
+
+test('rule board: each rule is a fixed public test; boundaries, missing data, illiquid names and wide rules are handled', async () => {
+  const { RULES, runRules, printValue, WIDE_SHARE } = await import('../src/lib/rules.ts');
+  const base = { name: 'X Ltd', sector: 'S', liquid: true, price: 100, sma20: 99, sma50: 95, sma200: 90, rsi: 50, r1d: 0, r1w: 0, from_high: -10, low52: 70, rs3m: 0, vol_spike: 1 };
+  const row = (sym: string, o: object) => ({ sym, ...base, ...o }) as never;
+  const hit = (id: string, o: object) => runRules([row('A', o)]).results.find((x: { rule: { id: string } }) => x.rule.id === id)!.hits.length === 1;
+  assert.equal(RULES.length, 10);
+  assert.equal(new Set(RULES.map((r: { id: string }) => r.id)).size, 10);
+  // each rule at its boundary: in at the threshold, out just past it
+  assert.ok(hit('near-high', { from_high: -2 }) && !hit('near-high', { from_high: -2.01 }));
+  assert.ok(hit('aligned', {}) && !hit('aligned', { sma20: 101 }) && !hit('aligned', { sma50: 89 }));
+  assert.ok(hit('pullback', { price: 97, r1w: -1 }) && !hit('pullback', { price: 97, r1w: 0 }) && !hit('pullback', { price: 94, r1w: -1 }) && !hit('pullback', { price: 100, r1w: -1 }));
+  assert.ok(hit('surge-up', { vol_spike: 2, r1d: 2 }) && !hit('surge-up', { vol_spike: 1.99, r1d: 2 }) && !hit('surge-up', { vol_spike: 2, r1d: 1.99 }));
+  assert.ok(hit('surge-down', { vol_spike: 2, r1d: -2 }) && !hit('surge-down', { vol_spike: 2, r1d: -1.99 }));
+  assert.ok(hit('oversold', { rsi: 30 }) && !hit('oversold', { rsi: 30.1 }));
+  assert.ok(hit('hot', { rsi: 70 }) && !hit('hot', { rsi: 69.9 }));
+  assert.ok(hit('near-low', { price: 73.5 }) && !hit('near-low', { price: 73.6 }));
+  assert.ok(hit('big-move', { r1d: -5 }) && hit('big-move', { r1d: 5 }) && !hit('big-move', { r1d: 4.9 }));
+  assert.ok(hit('rs-leader', { rs3m: 15 }) && !hit('rs-leader', { rs3m: 14.9 }));
+  // missing data: the stock is unmeasured for that rule, never a hit and never a miss
+  const miss = runRules([row('A', { rsi: null }), row('B', { rsi: 25 })]).results.find((x: { rule: { id: string } }) => x.rule.id === 'oversold')!;
+  assert.deepEqual([miss.hits.length, miss.eligible, miss.unmeasured, miss.share], [1, 1, 1, 1]);
+  assert.equal(runRules([row('A', { vol_spike: undefined })]).results.find((x: { rule: { id: string } }) => x.rule.id === 'surge-up')!.hits.length, 0);
+  // illiquid stocks are out of every rule
+  const il = runRules([row('A', { liquid: false, rsi: 10 }), row('B', { liquid: undefined, rsi: 10 }), row('C', { rsi: 10 })]);
+  assert.equal(il.liquid, 1);
+  assert.deepEqual(il.results.find((x: { rule: { id: string } }) => x.rule.id === 'oversold')!.hits.map((h: { sym: string }) => h.sym), ['C']);
+  // order: most notable first; ties break by symbol
+  const ord = runRules([row('B', { rsi: 20 }), row('A', { rsi: 20 }), row('C', { rsi: 10 })]).results.find((x: { rule: { id: string } }) => x.rule.id === 'oversold')!;
+  assert.deepEqual(ord.hits.map((h: { sym: string }) => h.sym), ['C', 'A', 'B']);
+  // a rule on a quarter of the market or more is flagged as describing the market
+  const wide = runRules([...Array.from({ length: 3 }, (_, i) => row(`W${i}`, { rsi: 20 })), ...Array.from({ length: 9 }, (_, i) => row(`N${i}`, {}))]).results.find((x: { rule: { id: string } }) => x.rule.id === 'oversold')!;
+  assert.equal(WIDE_SHARE, 0.25);
+  assert.equal(wide.share, 0.25);
+  assert.equal(wide.wide, true);
+  assert.equal(runRules([row('W', { rsi: 20 }), ...Array.from({ length: 9 }, (_, i) => row(`N${i}`, {}))]).results.find((x: { rule: { id: string } }) => x.rule.id === 'oversold')!.wide, false);
+  assert.equal(runRules([]).results[0].share, null);                            // nothing measured: no share, not 0
+  // printing: signs, units, minus sign
+  assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'near-high')!, -1.5), '−1.5%');
+  assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'surge-up')!, 2.44), '2.4x');
+  assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'oversold')!, 27.4), '27');
+  assert.equal(printValue(RULES.find((r: { id: string }) => r.id === 'rs-leader')!, 21.04), '+21.0 pts');
+});

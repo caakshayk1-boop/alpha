@@ -9,6 +9,7 @@ import { Chg, Flash, LazyMount, Skel } from '@/components/ui';
 import { FreshnessPill, useDatasetStatus } from '@/components/DataStamp';
 import { EvidenceDigest } from '@/components/EvidenceDigest';
 import { DotGauge } from '@/components/DotGauge';
+import { RulesToday } from '@/components/signals/RuleBoard';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, useToday } from '@/components/widgets/DayContext';
 import { IndexStrip } from '@/components/widgets/IndexStrip';
@@ -246,10 +247,17 @@ function ComingBody() {
 /** 6. One row of previews, each a doorway to the page that owns the detail. */
 export function Previews() {
   return (
-    <div className="grid-2 previews">
-      <SignalsStatus />
-      <RotationPreview />
-    </div>
+    <>
+      <section className="card" aria-labelledby="rt-h" style={{ marginBottom: 'var(--sp-5, 24px)' }}>
+        <div className="card-h"><h2 id="rt-h">Signals by rule</h2><Link className="more" href="/engines/">All ten rules →</Link></div>
+        <RulesToday />
+        <p className="card-foot">Counts of liquid stocks meeting each fixed rule at the last close. Observations, not recommendations.</p>
+      </section>
+      <div className="grid-2 previews">
+        <SignalsStatus />
+        <RotationPreview />
+      </div>
+    </>
   );
 }
 
