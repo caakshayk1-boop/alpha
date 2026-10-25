@@ -62,6 +62,8 @@ jobs:
           python tests/test_v3.py
           python tests/test_ai.py
           python tests/test_registry.py
+          python tests/test_sessions.py
+          python tests/test_brief.py
       - name: Static export has every page
         run: |
           for p in index brief/index markets/index screen/index company/index map/index rotation/index engines/index trades/index reads/index ipo/index funds/index news/index about/index tools/index compare/index calendar/index watchlist/index journal/index research/index desk/index privacy/index; do
