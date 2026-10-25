@@ -1,0 +1,35 @@
+name: brief
+# The morning signal brief, 07:30 IST on weekdays and the weekly review on Sunday, rebuilt from the committed feed so the stale
+# check runs at send time. It sends to Telegram ONLY when the owner has set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID as secrets
+# and the repository variable BRIEF_SEND to 1. Without all three it builds the brief, prints it, and says delivery is off.
+# It commits nothing and places no order.
+on:
+  schedule:
+    - cron: '0 2 * * 1-5'        # 07:30 IST
+    - cron: '0 2 * * 0'          # 07:30 IST Sunday: the weekly review
+  workflow_dispatch:
+concurrency:
+  group: brief
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r engines/requirements.txt
+      - name: Build the brief
+        working-directory: engines
+        run: |
+          if [ "$(date -u +%u)" = "7" ]; then python brief.py --weekly; else python brief.py; fi
+      - name: Send (off until the owner sets the secrets)
+        working-directory: engines
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BRIEF_SEND: ${{ vars.BRIEF_SEND }}
+        run: python brief.py --send
