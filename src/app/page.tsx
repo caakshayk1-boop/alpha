@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { TodayProvider } from '@/components/widgets/DayContext';
 import { TodayProgress } from '@/components/today/Progress';
-import { ComingUp, Masthead, MarketRead, MarketStrip, Previews, WorthInvestigating, YourNames } from '@/components/today/Today';
+import { ComingUp, EvidenceOnNames, Masthead, MarketRead, MarketStrip, Previews, WorthInvestigating, YourNames } from '@/components/today/Today';
 
 /** Today: what matters right now, in about a minute. The detail lives on the pages each block links to (brief §3: one
  *  canonical view per dataset; Today shows previews). */
@@ -16,7 +16,7 @@ export default function Home() {
       <Masthead />
       <section className="wrap grid-lead today-lead">
         <div className="today-main"><MarketRead /><TodayProgress /></div>
-        <div className="today-side"><YourNames /><ComingUp /></div>
+        <div className="today-side"><YourNames /><EvidenceOnNames /><ComingUp /></div>
       </section>
       <div className="section2"><MarketStrip /></div>
       <WorthInvestigating />

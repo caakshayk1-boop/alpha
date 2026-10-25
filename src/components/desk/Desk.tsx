@@ -19,6 +19,7 @@ const CardPanel = dynamic(() => import('@/components/CardPanel'), { loading: wai
 const JournalTab = dynamic(() => import('@/components/desk/JournalTab').then((m) => m.JournalTab), { loading: wait });
 const ConditionsTab = dynamic(() => import('@/components/desk/ConditionsTab').then((m) => m.ConditionsTab), { loading: wait });
 import { QuickAdd, istToday, type DeskTab } from '@/components/desk/common';
+import { EvidenceDigest, useEvidence } from '@/components/EvidenceDigest';
 import { reviewDue, type CurrentCompany } from '@/lib/card';
 import { useFeed, useLive, usePx, useSignals } from '@/lib/data';
 import { parseJournal } from '@/lib/journal';
@@ -31,11 +32,12 @@ import type { Row } from '@/lib/types';
 
 const TABS: { id: DeskTab; label: string }[] = [
   { id: 'following', label: 'Following' },
+  { id: 'digest', label: 'Digest' },
   { id: 'cards', label: 'Research cards' },
   { id: 'journal', label: 'Journal' },
   { id: 'conditions', label: 'Conditions' },
 ];
-const ALIAS: Record<string, DeskTab> = { following: 'following', watchlist: 'following', cards: 'cards', research: 'cards', journal: 'journal', conditions: 'conditions', alerts: 'conditions' };
+const ALIAS: Record<string, DeskTab> = { following: 'following', digest: 'digest', evidence: 'digest', watchlist: 'following', cards: 'cards', research: 'cards', journal: 'journal', conditions: 'conditions', alerts: 'conditions' };
 const tabFromHash = (h: string): DeskTab | null => ALIAS[h.replace(/^#/, '').toLowerCase()] ?? null;
 
 export default function Desk({ start = 'following' }: { start?: DeskTab }) {
@@ -93,7 +95,8 @@ export default function Desk({ start = 'following' }: { start?: DeskTab }) {
   const today = istToday();
   const due = useMemo(() => lib.cards.map((c) => ({ c, why: reviewDue(c, today, current) })).filter((x) => x.why.length), [lib.cards, current, today]);
 
-  const counts: Record<DeskTab, number> = { following: watch.length, cards: lib.cards.length, journal: journal.length, conditions: conditions.length };
+  const evidence = useEvidence();
+  const counts: Record<DeskTab, number> = { following: watch.length, digest: evidence.total, cards: lib.cards.length, journal: journal.length, conditions: conditions.length };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = TABS.findIndex((t) => t.id === tab);
     const n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
@@ -122,7 +125,7 @@ export default function Desk({ start = 'following' }: { start?: DeskTab }) {
       </nav>
 
       <section className="wrap desk-panel" id="desk-panel" role="tabpanel" aria-labelledby={`desk-tab-${tab}`} tabIndex={-1}>
-        {focus && tab !== 'following' && tab !== 'conditions' && (
+        {focus && tab !== 'following' && tab !== 'digest' && tab !== 'conditions' && (
           <div className="desk-focus" role="status">
             <span>Showing <b>{focus}</b> only.</span>
             <Link className="link" href={companyHref(focus)}>Company page</Link>
@@ -132,6 +135,12 @@ export default function Desk({ start = 'following' }: { start?: DeskTab }) {
         {tab === 'following' && (
           <Following watch={watch} onAdd={addWatch} onRemove={removeWatch} storeError={watchErr} rows={rows ?? null} loading={s.loading} error={s.error} bySym={bySym} snap={lv.snap} quotes={px.quotes}
             snaps={snaps} cards={lib.cards} journal={journal} due={due} screens={screens} go={go} closeOn={s.data?.breadth.as_of ?? null} />
+        )}
+        {tab === 'digest' && (
+          <section className="card" aria-labelledby="dg-h">
+            <div className="card-h"><h2 id="dg-h">Evidence on the companies you follow</h2></div>
+            <EvidenceDigest state={evidence} />
+          </section>
         )}
         {tab === 'cards' && <CardPanel cards={lib.cards} ok={lib.ok} current={current} today={today} focus={focus} journal={journal} watch={watch} onUpdate={lib.update} onRemove={lib.remove} go={go} />}
         {tab === 'journal' && <JournalTab list={journal} setList={setJournal} ready={journalReady} storeError={journalErr} rows={rows ?? null} loading={s.loading} error={s.error} snap={lv.snap} focus={focus} cards={lib.cards} go={go} />}

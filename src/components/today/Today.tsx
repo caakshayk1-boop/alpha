@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Chg, Flash, LazyMount, Skel } from '@/components/ui';
 import { FreshnessPill, useDatasetStatus } from '@/components/DataStamp';
+import { EvidenceDigest } from '@/components/EvidenceDigest';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, useToday } from '@/components/widgets/DayContext';
 import { IndexStrip } from '@/components/widgets/IndexStrip';
@@ -279,6 +280,16 @@ function RotationPreview() {
           <p className="card-foot">{st?.note ? `Week in progress; through ${st.asOf ? dateLabel(st.asOf) : 'the latest session'}. ` : st?.asOf ? `Through ${dateLabel(st.asOf)}. ` : ''}Relative strength against the Nifty, refreshed weekly. NSE indices and Alpha baskets are different universes and can disagree.</p>
         </>
       )}
+    </section>
+  );
+}
+
+/** What the feeds recorded lately for the names you follow, newest first; the full digest is a tab on My Desk. */
+export function EvidenceOnNames() {
+  return (
+    <section className="card" aria-labelledby="ev-h">
+      <div className="card-h"><h2 id="ev-h">Evidence on your names</h2><Link className="more" href="/desk/#digest">Digest →</Link></div>
+      <EvidenceDigest compact />
     </section>
   );
 }

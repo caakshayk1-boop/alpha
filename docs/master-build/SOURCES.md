@@ -59,4 +59,4 @@ Greps find phrases only; where a phrase was absent I read the code before writin
 | Departures-board list with live minutes left | Not done; `MarketClock` covers the session clock |
 | Rhythm / energy curve | Declined: nothing Alpha measures fits it |
 | Quant-desk prompt and daily-analysis tweet | Signal brief built on branch `signal-brief`. The "search for 10 strategies a night, keep the 18-of-25" loop is declined as data-snooping; an LLM buy/hold/sell score is declined (no measured meaning, advice) |
-| A nightly evidence digest per followed name (news, results date, rank change, with source and time) | **Not built.** Today's "Your names" shows changes since review, not a news and filings digest |
+| A nightly evidence digest per followed name (news, results date, moves, with source and time) | Done (this pass): `lib/evidence.ts`, a Digest tab on My Desk and a card on Today. Built in the browser from the feeds that refresh each evening. It does not see filings or exchange announcements, and says so |
