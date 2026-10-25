@@ -3,7 +3,7 @@ import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { useBars, useLedger, useSignals } from '../data.ts';
 import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
-import { Failed, Head, Loading, PageBar } from './common.tsx';
+import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
 import { ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
@@ -53,7 +53,7 @@ function Picks() {
         <details className="ev" style={{ marginTop: 10 }}><summary>How it picks<span className="chev">▾</span></summary><div className="body"><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
           <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>
       {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
-        <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
+        <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
         <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
         <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}</div></details>
         <button className={`btn ${have.has(p.sym) ? '' : 'pri'}`} style={{ width: '100%', marginTop: 10 }} disabled={have.has(p.sym)} onClick={() => take(p)}>{have.has(p.sym) ? 'In your paper book' : 'Paper trade this'}</button></div>)

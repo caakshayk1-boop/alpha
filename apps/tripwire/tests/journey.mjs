@@ -30,9 +30,15 @@ ok(/pick/i.test(await text()) && /engines? tonight/i.test(await text()), 'Today 
 // Discover → follow → compare → research
 await pg.getByRole('link', { name: 'Discover' }).click();
 await pg.waitForSelector('.li');
+await pg.getByRole('button', { name: 'Uptrend', exact: true }).click(); await pg.waitForTimeout(250);
+const rowsUp = await pg.locator('.li').count(), tagsUp = await pg.locator('.li .tag', { hasText: 'Uptrend' }).count();
+ok(rowsUp > 5 && rowsUp === tagsUp, `the Uptrend filter keeps only uptrends and every row is tagged (${rowsUp} rows)`);
+await pg.getByRole('button', { name: 'Downtrend', exact: true }).click(); await pg.waitForTimeout(250);
+ok(await pg.locator('.li .tag', { hasText: 'Uptrend' }).count() === 0 && await pg.locator('.li .tag', { hasText: 'Downtrend' }).count() > 0, 'the Downtrend filter shows downtrends only');
+await pg.getByRole('button', { name: 'Downtrend', exact: true }).click();
 await pg.getByLabel('Search companies').fill('tata consultancy');
 await pg.waitForTimeout(200);
-ok((await pg.locator('.li .sym').first().innerText()) === 'TCS', 'Discover search finds TCS by name');
+ok((await pg.locator('.li .sym').first().innerText()).startsWith('TCS'), 'Discover search finds TCS by name');
 await shot('02-discover');
 await pg.getByRole('button', { name: /^Follow Tata Consultancy/ }).first().click();
 ok(/Following TCS/.test(await text()), 'follow gives a clear confirmation');
@@ -55,6 +61,7 @@ ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
 ok(/Case and countercase/i.test(t) && /Countercase/.test(t), 'company page has case and countercase');
+ok(/(Uptrend|Downtrend|Mixed)/.test(t) && /50-day/.test(t), 'the company page tags its trend and shows the averages behind it');
 ok(/Not a live quote/.test(t), 'company price is labelled as a dated close, not live');
 ok(/Close of /.test(t), 'company price carries its date');
 

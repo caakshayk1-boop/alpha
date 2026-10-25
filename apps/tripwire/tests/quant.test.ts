@@ -208,3 +208,21 @@ test('worker: the Nifty is matched to the stock by Indian calendar day, never fi
   const p = parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } }, nifty)!; assert.equal(p.n!.length, 40); assert.equal(p.n![7], null); assert.equal(p.n![8], 10007);
   assert.equal(parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } }, undefined)!.n, null);
 });
+
+import { trendOf, filterRows, NO_FILTER, type Row } from '../src/screen.ts';
+test('trend tag: Alpha\'s uptrend rule, its mirror for down, mixed otherwise, untagged when a figure is missing', () => {
+  assert.equal(trendOf({ price: 120, sma50: 110, sma200: 100 }).trend, 'up');
+  assert.equal(trendOf({ price: 80, sma50: 90, sma200: 100 }).trend, 'down');
+  assert.equal(trendOf({ price: 105, sma50: 110, sma200: 100 }).trend, 'mixed');     // below the 50-day but the averages are rising
+  assert.equal(trendOf({ price: 110, sma50: 110, sma200: 100 }).trend, 'mixed');     // strict inequalities, as on the site
+  assert.equal(trendOf({ price: 100, sma50: 90, sma200: 95 }).trend, 'mixed');
+  assert.equal(trendOf({ price: 120, sma50: null, sma200: 100 }).trend, null); assert.equal(trendOf({ price: NaN, sma50: 1, sma200: 1 }).trend, null);
+  assert.match(trendOf({ price: 120, sma50: 110, sma200: 100 }).detail, /50-day above the 200-day/);
+});
+test('trend filter: matches the tag, and a name with no averages is counted as unmeasured, not as mixed', () => {
+  const rows: Row[] = [{ sym: 'U', name: 'U', price: 120, sma50: 110, sma200: 100 }, { sym: 'D', name: 'D', price: 80, sma50: 90, sma200: 100 }, { sym: 'M', name: 'M', price: 105, sma50: 110, sma200: 100 }, { sym: 'X', name: 'X', price: 5 }];
+  assert.deepEqual(filterRows(rows, { ...NO_FILTER, trend: 'up' }).rows.map((r) => r.sym), ['U']);
+  assert.deepEqual(filterRows(rows, { ...NO_FILTER, trend: 'down' }).rows.map((r) => r.sym), ['D']);
+  const mixed = filterRows(rows, { ...NO_FILTER, trend: 'mixed' }); assert.deepEqual(mixed.rows.map((r) => r.sym), ['M']); assert.equal(mixed.unmeasured, 1);
+  assert.equal(filterRows(rows, { ...NO_FILTER, trend: undefined } as never).rows.length, 4);        // a saved screen from before the tag still works
+});

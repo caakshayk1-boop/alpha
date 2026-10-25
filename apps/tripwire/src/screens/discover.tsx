@@ -30,8 +30,8 @@ export function Discover() {
     <div className="search"><Icon n="search" /><input className="field" type="search" placeholder="Company or symbol" value={f.q} onChange={(e) => set({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
     <div className="chips" style={{ marginTop: 10 }} role="group" aria-label="Quick filters">
       <button className="chip" onClick={() => setSheet(true)}><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
-      {([['value', 'cheap', 'PE 15 or less'], ['quality', 'high', 'High ROCE'], ['momentum', 'strong', 'Ahead of Nifty'], ['momentum', 'near-high', 'Near 52w high']] as const).map(([k, v, l]) =>
-        <button key={l} className="chip" aria-pressed={f[k] === v} onClick={() => set({ [k]: f[k] === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
+      {([['trend', 'up', 'Uptrend'], ['trend', 'down', 'Downtrend'], ['value', 'cheap', 'PE 15 or less'], ['quality', 'high', 'High ROCE'], ['momentum', 'strong', 'Ahead of Nifty'], ['momentum', 'near-high', 'Near 52w high']] as const).map(([k, v, l]) =>
+        <button key={l} className="chip" aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
     {s.screens.length > 0 && <div className="chips" aria-label="Saved screens">{s.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setF(x.f); setLimit(PAGE); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
     <div className="row between" style={{ margin: '12px 0 4px' }}>
@@ -54,6 +54,8 @@ export function Discover() {
       <select id="f-val" className="field" value={f.value} onChange={(e) => set({ value: e.target.value as Filters['value'] })}><option value="">Any</option><option value="cheap">PE 15 or less</option><option value="rich">PE 40 or more</option></select>
       <label className="l" htmlFor="f-q">Quality</label>
       <select id="f-q" className="field" value={f.quality} onChange={(e) => set({ quality: e.target.value as Filters['quality'] })}><option value="">Any</option><option value="high">Median ROCE 20%+ (lenders excluded)</option></select>
+      <label className="l" htmlFor="f-t">Trend</label>
+      <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (price above the 50-day, 50-day above the 200-day)</option><option value="down">Downtrend (the mirror of that)</option><option value="mixed">Mixed</option></select>
       <label className="l" htmlFor="f-m">Momentum</label>
       <select id="f-m" className="field" value={f.momentum} onChange={(e) => set({ momentum: e.target.value as Filters['momentum'] })}><option value="">Any</option><option value="strong">Ahead of the Nifty, 3 months</option><option value="weak">Behind the Nifty, 3 months</option><option value="near-high">Within 5% of the 52-week high</option></select>
       <p className="small dim">Every figure: Alpha screen, last close. PE is trailing and absent for loss-makers. ROCE is the median of up to four fiscal years.</p>

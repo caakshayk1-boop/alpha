@@ -2,9 +2,16 @@ import type { ReactNode } from 'react';
 import { Icon, useUi } from '../ui.tsx';
 import { back, go, setState, useAppState, useSheets } from '../app.tsx';
 import { toggleFollow } from '../store.ts';
-import type { Row } from '../screen.ts';
+import { trendOf, TREND_WORD, type Row } from '../screen.ts';
 import { initials, inr, pct, tone } from '../fmt.ts';
 
+/** Up, down or mixed, by the Alpha site's own uptrend rule (and its mirror for down). Untagged when a figure is missing. */
+export function TrendTag({ r, compact = false }: { r: Pick<Row, 'price' | 'sma50' | 'sma200'>; compact?: boolean }) {
+  const { trend, detail } = trendOf(r); if (!trend) return null;
+  const glyph = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'; const cls = trend === 'up' ? 'lime' : trend === 'down' ? 'peach' : '';
+  if (compact) return <span className={`tag ${cls}`} title={detail} style={{ width: 20, height: 20, padding: 0, justifyContent: 'center', fontSize: 13, flex: 'none' }}><span aria-hidden="true">{glyph}</span><span className="sr">{TREND_WORD[trend]}</span></span>;
+  return <span className={`tag ${cls}`} title={detail} style={{ padding: '1px 7px', fontSize: 10.5, flex: 'none', whiteSpace: 'nowrap' }}>{glyph} {TREND_WORD[trend]}</span>;
+}
 export function PageBar({ title, sub, onBack, right }: { title: string; sub?: ReactNode; onBack?: boolean; right?: ReactNode }) {
   const { open } = useSheets();
   return <header className="bar">
@@ -27,8 +34,8 @@ export function CompanyRow({ r, extra, compare }: { r: Row; extra?: ReactNode; c
   return <div className="li">
     <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }}>
       <span className="avatar" aria-hidden="true">{initials(r.sym)}</span>
-      <span className="grow" style={{ minWidth: 0 }}><span className="sym">{r.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{r.name}</span></span>
-      <span className="px num"><b>{inr(r.price)}</b><span className={tone(r.r1d)}>{pct(r.r1d)}</span></span>
+      <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact /><span className="dim small trunc">{r.name}</span></span></span>
+      <span className="px num" style={{ flex: 'none' }}><b>{inr(r.price)}</b><span className={tone(r.r1d)}>{pct(r.r1d)}</span></span>
     </a>
     {extra}
     {compare && <button className="icon-btn" aria-pressed={compare.on} disabled={compare.disabled && !compare.on} aria-label={`${compare.on ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={compare.toggle}><Icon n="compare" /></button>}

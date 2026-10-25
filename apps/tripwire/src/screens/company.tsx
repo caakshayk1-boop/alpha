@@ -3,7 +3,7 @@ import { go, useAppState, useSheets, setState } from '../app.tsx';
 import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
-import { isLender } from '../screen.ts';
+import { isLender, trendOf, TREND_WORD } from '../screen.ts';
 import { ENGINES, evaluate, type Q } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
@@ -35,6 +35,7 @@ export function Company({ sym }: { sym: string }) {
     <section className="card glass">
       <div className="row between"><div><div className="num" style={{ font: '600 38px/1 var(--sans)', letterSpacing: '-1px' }}>{inr(px)}</div><div className={`num ${tone(row.r1d)}`} style={{ marginTop: 4 }}>{pct(row.r1d)} on the day</div></div>
         <div style={{ textAlign: 'right' }}><span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span><div className="mute small" style={{ marginTop: 6 }}>Not a live quote</div></div></div>
+      {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
         {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }}><i>{l}</i></span>; })}
