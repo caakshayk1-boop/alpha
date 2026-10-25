@@ -14,6 +14,8 @@ const problems = []; const b = await chromium.launch(); let n = 0;
 for (const [w, h, tag] of [[390, 844, 'phone'], [1280, 900, 'desktop']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, bypassCSP: true });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, state);
+  const mockSeries = (() => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 3000; i++) { d += 86400; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(px); } return JSON.stringify({ ok: true, sym: 'X', t, c }); })();
+  await ctx.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: mockSeries }));
   const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 120)));
   for (const r of ROUTES) {
     await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(1400); n++;

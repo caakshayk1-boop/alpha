@@ -1,4 +1,4 @@
-// Tripwire Worker: static assets plus ONE read-only route, /api/bars, for the paper tracker.
+// Tripwire Worker: static assets plus two read-only routes: /api/bars (paper tracker) and /api/chart (price history).
 //   GET /api/bars?s=TCS,INFY   (up to 12 NSE symbols)
 //   -> { ok, fetched_at, bars: { TCS: { t:[epoch s], o:[], h:[], l:[], c:[], forming: bool, live: { px, t } | null } }, missing: [] }
 // Daily bars for six months from Yahoo Finance. A bar missing any of open, high, low or close is dropped, never filled. The last bar
@@ -28,6 +28,33 @@ export function parseYahoo(res, nowMs = Date.now()) {
   return out;
 }
 
+/** Pure: Yahoo's long daily history reduced to epoch seconds and closes. A day missing its close is dropped, never filled. */
+export function parseChart(res) {
+  const ts = res?.timestamp; const cl = res?.indicators?.quote?.[0]?.close;
+  if (!Array.isArray(ts) || !Array.isArray(cl)) return null;
+  const t = [], c = [];
+  ts.forEach((x, i) => { if (cl[i] > 0 && x > 0) { t.push(x); c.push(Math.round(cl[i] * 100) / 100); } });
+  return t.length >= 30 ? { t, c } : null;
+}
+// GET /api/chart?s=TCS  ->  { ok, sym, t:[epoch s], c:[close] } : every daily close Yahoo holds (up to the whole listing), split-adjusted, dividends not included.
+// The page makes its own ranges and its monthly view from this one series. Cached six hours: a close does not change after the session.
+async function chart(url, ctx) {
+  const sym = (url.searchParams.get('s') || '').toUpperCase().trim();
+  if (!SYM.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const key = new Request(`https://tripwire.internal/__chart_v1/${sym}`);
+  try {
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=1800, s-maxage=21600' } });
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=max&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+    if (!r.ok) return json({ ok: false, error: r.status === 404 ? 'no price history for this symbol' : 'the price source did not answer' }, r.status === 404 ? 404 : 502);
+    const p = parseChart((await r.json())?.chart?.result?.[0]);
+    if (!p) return json({ ok: false, error: 'too little history' }, 404);
+    const res = json({ ok: true, sym, ...p }, 200, { 'cache-control': 'public, max-age=1800, s-maxage=21600' });
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, error: 'the price source did not answer' }, 502); }
+}
+
 async function bars(url, ctx) {
   const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
   if (!list.length || list.length > MAX || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give 1 to ${MAX} valid symbols` }, 400);
@@ -54,6 +81,10 @@ export default {
     if (url.pathname === '/api/bars' || url.pathname === '/api/bars/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return bars(url, ctx);
+    }
+    if (url.pathname === '/api/chart' || url.pathname === '/api/chart/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return chart(url, ctx);
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
     return env.ASSETS.fetch(request);
