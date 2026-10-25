@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { Async, PageHead } from '@/components/ui';
 import { useDatasetStatus } from '@/components/DataStamp';
-import { EnginesV3 } from '@/components/EnginesV3';
 import { GatePanel } from '@/components/Gate';
 import { useEnginesV3 } from '@/lib/data';
+import { RuleBoard } from './RuleBoard';
 import { sessionLabel } from '@/lib/price';
 import { LIFECYCLE_TONE, istStamp, setupReasons, swingLifecycle, type Lag } from '@/lib/signalsView';
 import type { SignalsFeed } from '@/lib/types';
@@ -21,7 +21,7 @@ const MethodView = dynamic(() => import('./Method').then((m) => m.MethodView), {
 import { SetupCard } from './SetupCard';
 
 export type SignalsTab = 'setups' | 'record' | 'method';
-const TABS: [SignalsTab, string][] = [['setups', 'Setups'], ['record', 'Paper record'], ['method', 'Method and validation']];
+const TABS: [SignalsTab, string][] = [['setups', 'Signals'], ['record', 'Paper record'], ['method', 'Method and validation']];
 const isTab = (h: string): h is SignalsTab => TABS.some(([k]) => k === h);
 
 export function SignalsWorkspace({ initial }: { initial: SignalsTab }) {
@@ -53,8 +53,8 @@ export function SignalsWorkspace({ initial }: { initial: SignalsTab }) {
 
   return (
     <>
-      <PageHead method={initial === 'record' ? 'trades' : 'engines'} eyebrow="Signals · Swing v2 rulebook sandbox · v3 research" title="Signals," em="only when the rules allow."
-        lede={feed ? `Swing v2 is a rulebook sandbox: a paper rule-verification log, not a model portfolio, ${swingLifecycle(feed) === 'Validated' ? 'validated' : 'not validated'}, with alerts ${feed.alertable ? 'on' : 'off'}. The v3 engines are research${v3Published ? '' : ' and not published'}. Nothing here is advice or an order.` : 'A paper rule-verification log, not a model portfolio. Nothing here is advice or an order.'} />
+      <PageHead method={initial === 'record' ? 'trades' : 'engines'} eyebrow="Signals" title="Signals," em="rule by rule."
+        lede="Ten plain rules run on every liquid stock at the last close; each shows who meets it and the figure behind it. Observations, not advice. Swing v2's paper setups, below, are a paper rule-verification log, not a model portfolio." />
       <nav className="secnav sg-tabs" aria-label="Signals views">
         <div className="wrap" role="tablist" aria-label="Signals views" onKeyDown={onKey}>
           {TABS.map(([k, l]) => <button key={k} id={`sg-tab-${k}`} type="button" role="tab" aria-selected={tab === k} aria-controls={`sg-panel-${k}`} tabIndex={tab === k ? 0 : -1} onClick={() => pick(k)}>{l}</button>)}
@@ -88,47 +88,43 @@ function SetupsView({ feed, rows, lag, v3Published, onPick }: { feed: SignalsFee
   const active = rows.filter((r) => r.s.status === 'open' || r.s.status === 'pending');
   const reasons = useMemo(() => setupReasons(feed, lag, v3Published), [feed, lag, v3Published]);
   const issued = feed.signals.length;
+  const lc = swingLifecycle(feed);
   return (
     <>
       <LagNotice feed={feed} lag={lag} />
+      <RuleBoard />
+
       <section className="section2 sg-sec" aria-labelledby="sg-setups-h">
-        <FamilyHead feed={feed} />
-        <h3 id="sg-setups-h" className="sr">Published setups</h3>
-        {active.length ? (
+        <div className="sg-family">
+          <div style={{ minWidth: 0 }}>
+            <h2 id="sg-setups-h" className="sec-title">Paper setups</h2>
+            <p className="sec-sub">{active.length ? `${active.length} from the ${sessionLabel(feed.data_through)} close, filed under Swing v2's tested rulebook. Paper only.` : `None for the ${sessionLabel(feed.data_through)} session. ${feed.gate.on ? 'No stock passed every rule.' : `The market gate is off (${feed.gate.passed} of ${feed.gate.checks.length} rules pass), so none is filed.`}`}</p>
+          </div>
+          <span className={`pill ${LIFECYCLE_TONE[lc]}`} title="Lifecycle: Research, Paper, Validated, Paused, Retired or Blocked (data)">{lc}{feed.alertable ? '' : ' · alerts off'}</span>
+        </div>
+        {active.length > 0 && (
           <>
             <div className="grid-2 sg-cards">{active.map((r) => <SetupCard key={r.s.id} row={r} feed={feed} />)}</div>
-            <p className="dim sg-note">Paper setups from the {sessionLabel(feed.data_through)} close. A price touching a stop or target during the session is a provisional mark, not an execution event; the evening run books what happened from the day&apos;s full high and low.</p>
+            <p className="dim sg-note">A price touching a stop or target during the session is a provisional mark, not an execution event; the evening run books it from the day&apos;s full range.</p>
           </>
-        ) : (
-          <div className="card sg-empty">
-            <div className="card-h"><h3>No setup qualifies for the {sessionLabel(feed.data_through)} session</h3><span className="dim sg-h-note">Evaluated {istStamp(new Date(feed.generated))}</span></div>
-            <ul className="rows">
-              {reasons.map((x) => (
-                <li key={x.key} className="row kvrow sg-reason">
-                  <span className="row-s">{x.label}</span>
-                  <span><span className={`pill ${x.tone} nodot`}>{x.blocking ? 'Stops new setups' : x.tone === 'ok' ? 'OK' : 'Note'}</span> {x.text}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="state sg-next">
-              <b>{feed.gate.on ? 'No stock passed every rule at this close.' : 'Nothing is issued while the gate is off. That is the rule working, not a gap.'}</b>
-              <p>No opportunity is filled in to take its place. Review the names you saved, or the screen, where the same prices are ranked without a trading rule.</p>
-              <div className="acts">
-                <Link className="act primary" href="/desk/">Review saved candidates</Link>
-                <Link className="act" href="/screen/">Open the screen</Link>
-                <button type="button" className="act quiet" onClick={() => onPick('method')}>How the rules were tested</button>
-              </div>
-            </div>
-          </div>
         )}
+        <details className="wk sg-why">
+          <summary>Why {active.length ? 'these, and where the gate stands' : 'none, and where the gate stands'}</summary>
+          <ul className="rows">
+            {reasons.map((x) => (
+              <li key={x.key} className="row kvrow sg-reason">
+                <span className="row-s">{x.label}</span>
+                <span><span className={`pill ${x.tone} nodot`}>{x.blocking ? 'Stops new setups' : x.tone === 'ok' ? 'OK' : 'Note'}</span> {x.text}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="grid-lead sg-gate-grid">
+            <GatePanel feed={feed} />
+            <Funnel feed={feed} issued={issued} />
+          </div>
+          <p className="dim sg-note">Evaluated {istStamp(new Date(feed.generated))}. <button type="button" className="link sg-linkbtn" onClick={() => onPick('method')}>How the rules were tested and what each research engine is</button>.</p>
+        </details>
       </section>
-
-      <section className="section2 sg-sec grid-lead" aria-label="The market gate and where the book stopped">
-        <GatePanel feed={feed} />
-        <Funnel feed={feed} issued={issued} />
-      </section>
-
-      <EnginesV3 mode="compact" onMethod={() => onPick('method')} />
     </>
   );
 }

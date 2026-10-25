@@ -8,6 +8,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Chg, Flash, LazyMount, Skel } from '@/components/ui';
 import { FreshnessPill, useDatasetStatus } from '@/components/DataStamp';
 import { EvidenceDigest } from '@/components/EvidenceDigest';
+import { DotGauge } from '@/components/DotGauge';
+import { RulesToday } from '@/components/signals/RuleBoard';
 import { MarketClock } from '@/components/MarketClock';
 import { dayLabel, useToday } from '@/components/widgets/DayContext';
 import { IndexStrip } from '@/components/widgets/IndexStrip';
@@ -24,6 +26,7 @@ import { useStoredList } from '@/lib/store';
 import { takeaway } from '@/lib/takeaway';
 import { istHM } from '@/lib/today';
 import { useBarometer } from '@/lib/useBarometer';
+import { useFirstPlay } from '@/lib/useFirstPlay';
 
 const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
@@ -34,7 +37,8 @@ export function Masthead() {
   const day = today?.day ?? null;
   // one authoritative session state, rendered once: nothing is stated until the live snapshot has answered (or failed)
   const head = baro.settled ? sessionHead(day?.session ?? baro.view?.session ?? null, today?.live.snap ?? null) : null;
-  const [date, ...state] = (head ?? '').split(' · ');
+  const [date, ...rawState] = (head ?? '').split(' · ');
+  const state = rawState.filter((x) => !x.startsWith('NSE '));      // the market clock beside it already says when NSE opens
   return (
     <div className="wrap mast">
       <div className="mast-date" aria-busy={!baro.settled}>{head ? <>{date}{state.length > 0 && <span> · {state.join(' · ')}</span>}</> : <span className="skel" style={{ display: 'inline-block', width: 280, height: 16, verticalAlign: 'middle' }} aria-hidden />}</div>
@@ -43,11 +47,14 @@ export function Masthead() {
   );
 }
 
-/** 2a. The market read: one sentence, what drives it, and how it moved since the previous published reading (H01, H02, H04). */
+/** 2a. The market read. One sentence, then ONE gauge for the Barometer with its change since the previous reading, the five
+ *  drivers as bars, and the working (each driver's evidence, the changes since the last reading, the basis) folded under a
+ *  disclosure: every figure stays, each appears once. The day's breadth is its own small bar below. */
 export function MarketRead() {
   const baro = useBarometer();
   const sum = useSummary();
   const today = useToday();
+  const play = useFirstPlay('alpha-played-market');
   const v = baro.view, r = v?.reading ?? null;
   const b200 = sum.data?.above200 ?? null;
   const prev = v?.previous ?? null;
@@ -56,6 +63,7 @@ export function MarketRead() {
   const stamp = v ? (v.source === 'live' && v.at ? `live ${istHM(v.at)} IST` : `${dateLabel(v.session)} close`) : null;
   const [lead, ...rest] = (tk?.headline ?? '').replace(/\.$/, '').split(', ');
   const delta = (a: number | null | undefined, b: number | null | undefined, unit: string, dp = 1) => (typeof a === 'number' && typeof b === 'number' ? `${b > a ? '+' : b < a ? '−' : '±'}${num(Math.abs(b - a), dp)}${unit}` : null);
+  const move = r && prev ? r.score - prev.score : null;
   return (
     <div className="mread">
       {tk?.available ? (
@@ -63,32 +71,44 @@ export function MarketRead() {
       ) : baro.error ? <h1 className="lead-h">The market read is not available right now.</h1> : (
         <div role="status" aria-busy="true" aria-label="Loading the market read"><h1 className="lead-h"><span className="sr">Today: the market read</span><span className="skel" style={{ display: 'block', height: '1.1em', width: '82%' }} aria-hidden /></h1></div>
       )}
-      <p className="lead-sub">{tk?.available ? tk.sub : baro.error ? 'The Barometer could not be loaded. Nothing is estimated in its place.' : ' '}</p>
 
-      <section className="card" aria-labelledby="baro-h">
-        <div className="card-h">
-          <h2 id="baro-h">Market barometer{r && baro.settled ? <> · <span className="num">{r.score}</span><span className="dim" style={{ fontWeight: 500 }}> / 100</span></> : null}</h2>
-          <Link className="more" href="/brief/">The brief →</Link>
-        </div>
+      <section className="card mh" aria-labelledby="baro-h" data-play={play ? '' : undefined}>
+        <div className="card-h"><h2 id="baro-h">Market barometer</h2><Link className="more" href="/brief/">The brief →</Link></div>
         {r && baro.settled ? (
           <>
-            <p className="dim" style={{ margin: '-4px 0 14px', fontSize: 13 }}>{r.band.t}{prev ? `, ${r.score > prev.score ? 'up' : r.score < prev.score ? 'down' : 'unchanged'} from ${prev.score} on ${dateLabel(prev.date)}` : ''} · {stamp}{r.stage ? ` · price stage: ${stageWords(r.stage.k)}` : ''}</p>
+            <div className="mh-top">
+              <DotGauge value={r.score} play={play}>
+                <b className="num dg-n">{r.score}</b>
+                <span className="dg-u">of 100 · {r.band.t}</span>
+              </DotGauge>
+              <div className="mh-side">
+                <p className={`mh-chip ${move === null || move === 0 ? '' : move > 0 ? 'up' : 'down'}`}>
+                  <span aria-hidden>{move === null ? '' : move > 0 ? '▲' : move < 0 ? '▼' : '•'}</span>
+                  {prev && move !== null ? (move === 0 ? `Unchanged from ${dateLabel(prev.date)}` : `${move > 0 ? 'Up' : 'Down'} ${num(Math.abs(move))} ${Math.abs(move) === 1 ? 'point' : 'points'} from ${dateLabel(prev.date)}`) : 'No earlier reading to compare'}
+                </p>
+                <p className="dim mh-note">A composite research measure, not a probability. {stamp}.</p>
+              </div>
+            </div>
             {r.parts.length > 0 ? (
-              <ul className="fx-list" aria-label="What makes up the reading">
-                {r.parts.map((p) => (
-                  <li key={p.key}>
-                    <span className="f-l"><b>{p.label} <em className="f-w">weight {p.weight}</em></b><span title={p.detail}>{p.detail}</span></span>
+              <ul className="mh-parts" aria-label="What makes up the reading">
+                {r.parts.map((p, i) => (
+                  <li key={p.key} style={{ '--n': i } as React.CSSProperties}>
+                    <span className="mh-l">{p.label}</span>
                     <span className="f-bar" aria-hidden><i style={{ width: `${Math.max(0, Math.min(100, p.score))}%` }} /></span>
-                    <span className="f-v">{Math.round(p.score)}</span>
+                    <span className="f-v num">{Math.round(p.score)}</span>
                   </li>
                 ))}
               </ul>
             ) : <p className="dim" style={{ margin: 0 }}>The factor breakdown is not in this reading.</p>}
-            {prev && (prev.drawdownPct !== undefined || prev.vix !== undefined) && (
-              <p className="card-foot">Since {dateLabel(prev.date)}: Nifty drawdown {delta(prev.drawdownPct, r.drawdownPct, ' pts') ?? 'n/a'}, India VIX {delta(prev.vix, r.vix, '') ?? 'n/a'}, stocks above their 200-day {delta(prev.above200Pct, r.above200Pct, ' pts') ?? 'n/a'}.</p>
-            )}
+            <details className="wk">
+              <summary>Show the working</summary>
+              <ul className="wk-list">
+                {r.parts.map((p) => <li key={p.key}><b>{p.label} <em className="f-w">weight {p.weight}</em></b><span>{p.detail}</span></li>)}
+              </ul>
+              <p className="dim wk-note">{r.stage ? `Price stage: ${stageWords(r.stage.k)}. ` : ''}{prev && (prev.drawdownPct !== undefined || prev.vix !== undefined) ? `Since ${dateLabel(prev.date)}: Nifty drawdown ${delta(prev.drawdownPct, r.drawdownPct, ' pts') ?? 'n/a'}, India VIX ${delta(prev.vix, r.vix, '') ?? 'n/a'}, stocks above their 200-day ${delta(prev.above200Pct, r.above200Pct, ' pts') ?? 'n/a'}. ` : ''}{b200 && <>At the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of the {num(b200.withHistory)} names with a 200-day history sat above it (the screen&apos;s count; the Barometer&apos;s own job counts every priced name, so the two can differ).</>}</p>
+            </details>
           </>
-        ) : baro.error ? <div className="state"><b>The Barometer did not load.</b><p>Nothing is estimated in its place. The market strip below has the index levels.</p></div> : <Skel h={180} />}
+        ) : baro.error ? <div className="state"><b>The Barometer did not load.</b><p>Nothing is estimated in its place. The market strip below has the index levels.</p></div> : <Skel h={220} />}
       </section>
 
       {day && day.counted > 0 ? (
@@ -99,7 +119,7 @@ export function MarketRead() {
             <div className="bx-bar" aria-hidden><i className="u" style={{ width: `${(day.up / day.counted) * 100}%` }} /><i className="f" style={{ width: `${(day.flat / day.counted) * 100}%` }} /><i className="d" style={{ width: `${(day.down / day.counted) * 100}%` }} /></div>
             <div className="n down"><Flash value={day.down}>{num(day.down)}</Flash><small>fell</small></div>
           </div>
-          <p className="dim bx-key"><span>{Math.round((day.up / day.counted) * 100)}% rose</span> · <span>{num(day.flat)} unchanged</span>{b200 && <> · at the {sum.data?.as_of ? dateLabel(sum.data.as_of) : 'last'} close, {num(b200.above)} of the {num(b200.withHistory)} with a 200-day history sat above it (the screen&apos;s count; the Barometer&apos;s own job counts every priced name, so the two can differ)</>}</p>
+          <p className="dim bx-key">{Math.round((day.up / day.counted) * 100)}% rose · {num(day.flat)} unchanged</p>
         </section>
       ) : today && !today.live.loading && !!today.summaryError ? <div className="state" style={{ marginTop: 16 }}><b>The day&apos;s breadth could not be loaded.</b><p>Nothing is estimated in its place.</p></div> : null}
     </div>
@@ -227,10 +247,17 @@ function ComingBody() {
 /** 6. One row of previews, each a doorway to the page that owns the detail. */
 export function Previews() {
   return (
-    <div className="grid-2 previews">
-      <SignalsStatus />
-      <RotationPreview />
-    </div>
+    <>
+      <section className="card" aria-labelledby="rt-h" style={{ marginBottom: 'var(--sp-5, 24px)' }}>
+        <div className="card-h"><h2 id="rt-h">Signals by rule</h2><Link className="more" href="/engines/">All ten rules →</Link></div>
+        <RulesToday />
+        <p className="card-foot">Counts of liquid stocks meeting each fixed rule at the last close. Observations, not recommendations.</p>
+      </section>
+      <div className="grid-2 previews">
+        <SignalsStatus />
+        <RotationPreview />
+      </div>
+    </>
   );
 }
 
