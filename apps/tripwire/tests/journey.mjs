@@ -29,7 +29,7 @@ ok(/pick/i.test(await text()) && /engines? tonight/i.test(await text()), 'Today 
 
 // Discover → follow → compare → research
 await pg.getByRole('link', { name: 'Discover' }).click();
-await pg.waitForSelector('.li');
+await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li');
 const fs = await pg.evaluate(() => ({ field: parseFloat(getComputedStyle(document.querySelector('input.field')).fontSize), body: parseFloat(getComputedStyle(document.body).fontSize), touch: getComputedStyle(document.querySelector('button')).touchAction, vp: document.querySelector('meta[name=viewport]').content }));
 ok(fs.field >= 16, `text fields are 16px or more, so iPhone Safari does not zoom the page in on focus (${fs.field}px)`);
 ok(fs.body <= 14.5 && fs.touch === 'manipulation', `compact type (${fs.body}px) and no double-tap zoom on controls`);

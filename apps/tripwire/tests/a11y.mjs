@@ -20,6 +20,8 @@ for (const [w, h, tag] of [[390, 844, 'phone'], [360, 740, 'small'], [320, 640, 
   const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 120)));
   for (const r of ROUTES) {
     await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(1400); n++;
+    // the worst case on a small screen: a wider fallback font than the one the design was drawn in (CI runners and some phones have no Inter or SF)
+    if (tag === 'tiny' || tag === 'small') await pg.addStyleTag({ content: '*{font-family:"DejaVu Sans",Verdana,sans-serif !important}' });
     await pg.addScriptTag({ content: axe });
     const res = await pg.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0].html.slice(0, 90)}`));
     for (const v of res) problems.push(`${tag} ${r}: ${v}`);

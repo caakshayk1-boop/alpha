@@ -194,3 +194,9 @@ html.fx .c-area{opacity:0;animation:fade .8s ease .35s forwards}
 
 /* small phones: a little tighter again, and the desktop rail keeps its own spacing */
 @media(max-width:359px){:root{--gut:12px}body{font-size:13.5px}.lead{font-size:17px}.chart-big{font-size:25px}.gauge .big{font-size:38px}.btn{padding:0 12px}}
+
+/* a runner or a phone without our preferred font falls back to a wider one: cells wrap and shorten instead of pushing the page sideways */
+.tbl td,.tbl th{overflow-wrap:anywhere;min-width:0}
+.cmp th.s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmp td:first-child{overflow-wrap:break-word;hyphens:auto}
+@media(max-width:359px){.tbl{font-size:11.5px}.tbl td,.tbl th{padding-left:3px;padding-right:3px}.cmp th.s{font-size:12px}}
