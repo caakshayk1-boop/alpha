@@ -17,7 +17,7 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 | 1 | Notification permission at the right moment | NOT BUILT | No delivery service exists; nothing is asked or promised |
 | 2 | Today: session state and freshness, brief with sources, followed-name changes from stored snapshots, confirmed/estimated events, review tasks, at most three candidates with reason and risk, one next action | PASS | Journey; `changesSince` and `freshness` unit-tested. "Since you last looked" shows nothing on a first visit by design |
 | 3 | Discover: search, sector/size/valuation/quality/momentum filters, chips, saved screens, reset, sorting with nulls last, follow, compare, loading/empty/failure states | PASS | Unit tests for filter and sort; journey. Quality filter excludes lenders. Only the Nifty 500 screen (988 names) is covered, and the page says so |
-| 4 | Company research: identity, dated close, case and countercase, 52-week range with averages, statements, business-appropriate ratios, rules that fired, timeline, review checklist, thesis, four actions | PASS with gaps | **No price-history chart** (the data files carry no price series; the website's chart needs a live API Tripwire does not have): NOT BUILT. No ownership or announcements/corporate actions timeline: NOT BUILT (no verified source in the data) |
+| 4 | Company research: identity, dated close, case and countercase, 52-week range with averages, statements, business-appropriate ratios, rules that fired, timeline, review checklist, thesis, four actions | PASS with gaps | Price history chart (daily or monthly, 1Y/3Y/5Y/10Y/Max, linear or log, scrub by touch, mouse or arrow keys): PASS with mocked data, **live Yahoo NOT RUN** (see below). No ownership or announcements/corporate actions timeline: NOT BUILT (no verified source in the data) |
 | 5 | Compare up to three, six views, sticky headings, missing and non-comparable values named, saved comparisons, no winner | PASS | Journey; lender rule |
 | 6 | Signals: three factor engines (Momentum, Quality at a fair price, Steady uptrend), picks with criteria and funnel, paper tracker | PASS (code and tests), NOT RUN (live Yahoo) | `docs/tripwire/ENGINES.md`. Replaced the E1-E6 lifecycle chooser and the market-gate message, which are gone. **No backtest on Indian prices exists**; the repository's earlier engines failed walk-forward. A server-side nightly forward ledger of every pick: NOT BUILT |
 | 7 | Paper planner | PASS | `sizePlan` unit-tested (each cap, each refusal); journey. Versioned plan edits (`rev`), expiry, saved ≠ paper fill ≠ holding. Trailing-stop policy, time exit and three-target plans: NOT BUILT (two conditional targets at +2R and +4R) |
@@ -48,6 +48,9 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 - Toasts covered the action bar; moved to the top.
 - The dial's caption overlapped its end dots.
 - Axe: `aria-prohibited-attr` on the lifecycle bar and a focusless scroll region on the statements table.
+
+## Price chart
+`/api/chart` (Worker) returns every daily close Yahoo holds for a symbol, split-adjusted and **not** dividend-adjusted; the page cuts the ranges and builds the monthly view (last close of each month) in the browser. Log scale shows percentage moves evenly. A range longer than the history says so and shows all of it. Pure maths (`src/chart.ts`) is unit-tested: windows, monthly, peak-preserving downsampling, return/CAGR, geometry, scrubbing. A 10-year window needs about 2,500 daily points, drawn as at most about 700. Not built: a Nifty comparison line, volume bars, dividend-adjusted returns.
 
 ## Known limits
 

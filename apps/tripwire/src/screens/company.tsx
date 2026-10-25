@@ -10,6 +10,7 @@ import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
 import { checklistFor } from '../insight.ts';
 import { istDay, current, toggleFollow } from '../store.ts';
 import { freshness } from '../fresh.ts';
+import { PriceChart } from './PriceChart.tsx';
 
 export function Company({ sym }: { sym: string }) {
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
@@ -40,6 +41,9 @@ export function Company({ sym }: { sym: string }) {
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
         <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(row.from_high)} from high {inr(hi, 0)}</span></div></> : <p className="dim small">52-week range not available.</p>}
     </section>
+
+    <Head>Price history</Head>
+    <PriceChart sym={sym} />
 
     <Head>Case and countercase</Head>
     <details className="ev" open><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">

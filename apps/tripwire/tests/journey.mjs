@@ -11,7 +11,7 @@ const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 const pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
-const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars')) bad.push(r.status() + ' ' + r.url()); });
+const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/chart')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
 const text = () => pg.locator('body').innerText();
 
@@ -57,6 +57,36 @@ const t = await text();
 ok(/Case and countercase/i.test(t) && /Countercase/.test(t), 'company page has case and countercase');
 ok(/Not a live quote/.test(t), 'company price is labelled as a dated close, not live');
 ok(/Close of /.test(t), 'company price carries its date');
+
+// price chart: ten years of mocked daily closes
+const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 4300; i++) { d += 86400; const wd = new Date(d * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(Math.round(px * 100) / 100); } return { ok: true, sym: 'TCS', t, c }; };
+const feedBody = JSON.stringify(series());
+await pg.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: feedBody }));
+await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
+ok(/Last 10 years/i.test(await text()) && /a year/.test(await text()), 'chart opens on ten years and states the period return and the yearly rate');
+const d0 = await pg.locator('path.c-line').getAttribute('d');
+await pg.getByRole('button', { name: 'Max', exact: true }).click();
+ok(/Since listing in this data/i.test(await text()), 'Max shows everything held and says it starts at listing');
+await pg.getByRole('button', { name: '1Y', exact: true }).click();
+ok(/Last year/i.test(await text()) && (await pg.locator('path.c-line').getAttribute('d')) !== d0, 'switching range redraws the line');
+await pg.getByRole('button', { name: '10Y', exact: true }).click();
+const daily = await pg.locator('path.c-line').getAttribute('d');
+await pg.getByRole('button', { name: 'Monthly' }).click();
+ok((await pg.locator('path.c-line').getAttribute('d')) !== daily && /[A-Z][a-z]{2} 20\d\d/.test(await pg.locator('.chart').innerText()), 'monthly view uses month-end closes and month labels');
+await pg.getByRole('button', { name: 'Log' }).click();
+ok(await pg.getByRole('button', { name: 'Log' }).getAttribute('aria-pressed') === 'true', 'log scale can be switched on');
+const box = await pg.locator('.chart-plot').boundingBox();
+await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2);
+const mid = await pg.locator('.chart-head').innerText();
+ok(/since the start of this window/.test(mid) && await pg.locator('.c-dot').count() === 1, 'hovering reads out the date, price and move since the start');
+await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home');
+const homeTxt = await pg.locator('.chart-head').innerText(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight');
+ok(homeTxt !== (await pg.locator('.chart-head').innerText()) && Number(await pg.locator('.chart-plot').getAttribute('aria-valuenow')) === 2, 'the arrow keys move along the line');
+await shot('04b-chart');
+await pg.unroute('**/api/chart*'); await pg.route('**/api/chart*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
+await pg.reload(); await pg.waitForSelector('text=Nothing is drawn in its place', { timeout: 15000 });
+ok(await pg.locator('.chart-plot').count() === 0, 'a failed price service draws nothing rather than a guess');
+await pg.unroute('**/api/chart*');
 
 // paper plan
 await pg.getByRole('button', { name: /Paper plan/ }).click();

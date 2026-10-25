@@ -104,3 +104,51 @@ test('worker: bars with a missing field are dropped, a live session is marked fo
   assert.equal(parseYahoo({ timestamp: [1], indicators: { quote: [{}] } }), null);
   assert.equal(parseYahoo(null), null);
 });
+
+import { sliceRange, monthly, downsample, stats, geometry, nearest, dateLabel, type Pt } from '../src/chart.ts';
+const DAYS = 86400; const START = Date.UTC(2014, 0, 1, 4) / 1000;
+const series = (n: number, f: (i: number) => number): Pt[] => Array.from({ length: n }, (_, i) => ({ t: START + i * DAYS, c: f(i) }));
+test('chart: a range is the window ending at the last point, and says when the history is shorter', () => {
+  const s = series(4000, (i) => 100 + i); const y1 = sliceRange(s, '1Y'); assert.ok(y1.pts.length >= 365 && y1.pts.length <= 367); assert.ok(y1.covers);
+  assert.equal(sliceRange(s, 'Max').pts.length, 4000);
+  const short = series(800, (i) => 100 + i); assert.equal(sliceRange(short, '10Y').covers, false); assert.equal(sliceRange(short, '10Y').pts.length, 800);
+  assert.deepEqual(sliceRange([], '1Y'), { pts: [], covers: false });
+});
+test('chart: monthly keeps the last close of each calendar month, including the unfinished one', () => {
+  const m = monthly(series(90, (i) => i)); assert.equal(m.length, 3);
+  assert.equal(m[0].c, 30);                            // 1 Jan + 30 days = 31 Jan
+  assert.equal(m[2].c, 89);
+});
+test('chart: downsampling keeps the endpoints and never loses a peak or a trough', () => {
+  const s = series(5000, (i) => 100 + Math.sin(i / 40) * 10); s[2503] = { ...s[2503], c: 500 }; s[1201] = { ...s[1201], c: 1 };
+  const d = downsample(s, 600); assert.ok(d.length <= 800); assert.equal(d[0], s[0]); assert.equal(d[d.length - 1], s[4999]);
+  assert.equal(Math.max(...d.map((p) => p.c)), 500); assert.equal(Math.min(...d.map((p) => p.c)), 1);
+  assert.ok(d.every((p, i) => !i || p.t > d[i - 1].t));      // still in time order
+  assert.equal(downsample(s.slice(0, 10), 600).length, 10);
+});
+test('chart: the period return, high, low and CAGR are exact', () => {
+  const s = series(3653, (i) => 100 * Math.pow(2, i / 3652.5)); const st = stats(s)!;
+  assert.ok(Math.abs(st.ret - 100) < 0.2); assert.ok(Math.abs(st.cagr! - 7.18) < 0.1); assert.equal(st.hi.c, s[3652].c); assert.equal(st.lo.c, 100);
+  assert.equal(stats(series(400, (i) => i + 1))!.cagr, null);   // under two years: no annualised figure
+  assert.equal(stats(series(1, () => 1)), null);
+});
+test('chart: geometry is time-proportional, stays inside its box, and log differs from linear', () => {
+  const s = series(2000, (i) => 100 * Math.pow(1.001, i)); const lin = geometry(s, false)!, log = geometry(s, true)!;
+  assert.ok(lin.ys.every((y) => y >= 12 - 1e-9 && y <= 288 + 1e-9)); assert.equal(lin.xs[0], 0); assert.ok(Math.abs(lin.xs[lin.xs.length - 1] - 1000) < 1e-9);
+  assert.ok(Math.abs(log.ys[1000] - (12 + 276 / 2)) < 1);                // exponential growth is a straight line on a log scale: the midpoint sits mid-height
+  assert.ok(Math.abs(lin.ys[1000] - log.ys[1000]) > 20);
+  const flat = geometry(series(10, () => 50), false)!; assert.ok(flat.ys.every((y) => Number.isFinite(y)));
+  assert.equal(geometry(series(1, () => 1), false), null);
+  const gap: Pt[] = [{ t: 0, c: 1 }, { t: 100, c: 2 }, { t: 1000, c: 3 }]; assert.ok(Math.abs(geometry(gap, false)!.xs[1] - 100) < 1e-9);   // a gap in time is a gap on the page
+});
+test('chart: scrubbing finds the closest point and clamps at the edges', () => {
+  const s = series(11, (i) => i); assert.equal(nearest(s, 0), 0); assert.equal(nearest(s, 1), 10); assert.equal(nearest(s, 0.5), 5); assert.equal(nearest(s, -3), 0); assert.equal(nearest(s, 9), 10); assert.equal(nearest([], 0.5), -1);
+  assert.equal(dateLabel(Date.UTC(2026, 9, 23, 4) / 1000), '23 Oct 2026'); assert.equal(dateLabel(Date.UTC(2026, 9, 23, 4) / 1000, true), 'Oct 2026');
+});
+
+import { parseChart } from '../worker.js';
+test('worker: a long history keeps only days with a real close, and refuses a thin one', () => {
+  const ts = Array.from({ length: 60 }, (_, i) => 1_500_000_000 + i * 86400); const cl = ts.map((_, i) => (i === 5 ? null : 100 + i));
+  const p = parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } })!; assert.equal(p.t.length, 59); assert.ok(!p.c.includes(0));
+  assert.equal(parseChart({ timestamp: ts.slice(0, 10), indicators: { quote: [{ close: cl.slice(0, 10) }] } }), null); assert.equal(parseChart(undefined), null);
+});
