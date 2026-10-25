@@ -10,7 +10,7 @@ import { Drawer } from '@/components/company/Parts';
 import { QuickAdd, plural, stampLabel, type Go } from '@/components/desk/common';
 import type { ResearchCard } from '@/lib/card';
 import { dateLabel, num } from '@/lib/format';
-import { ACTIONS, MIN_ENTRIES, makeEntry, outcome, regimeMatrix, summarise, type JournalAction, type JournalEntry, type JournalRegime } from '@/lib/journal';
+import { ACTIONS, MIN_ENTRIES, makeEntry, outcome, reviewDue, regimeMatrix, summarise, type JournalAction, type JournalEntry, type JournalRegime } from '@/lib/journal';
 import { useBarometer } from '@/lib/useBarometer';
 import { useSignals } from '@/lib/data';
 import type { LiveSnap } from '@/lib/live';
@@ -112,6 +112,9 @@ function EntryRow({ e, q, loading, cards, onEdit, onDelete, go }: { e: JournalEn
         <span className="dim">{dateLabel(e.date)}{e.updatedAt ? ` · edited ${stampLabel(e.updatedAt)}` : ''}</span>
       </div>
       <p className="jrow-why">{e.why}</p>
+      {e.wrong && <p className="jrow-why"><b>Wrong if:</b> {e.wrong}</p>}
+      {e.reviewBy && <p className="jrow-note"><span className={`pill nodot${reviewDue(e, localToday()) ? ' warn' : ''}`}>{reviewDue(e, localToday()) ? 'Review due' : 'Review by'} {dateLabel(e.reviewBy)}</span></p>}
+      {e.lesson && <p className="jrow-why"><b>Looking back:</b> {e.lesson}</p>}
       <div className="jrow-fig">
         <span><small>Then</small>{e.price !== null ? `₹${num(e.price, 2)}` : 'not written down'}</span>
         <span><small>Now</small>{q?.price != null ? <>₹{num(q.price, 2)} <span className="dim">{q.label}</span></> : loading ? 'loading…' : 'no price on file'}</span>
@@ -145,7 +148,7 @@ function Money({ id, label, value, set }: { id: string; label: string; value: st
 
 /** A new entry. A link from a signal or a company page pre-fills the company, price, stop and target (?s=&p=&sl=&t=). */
 function NewEntry({ formRef, focus, onSave }: { formRef: React.RefObject<HTMLFormElement>; focus: string | null; onSave: (e: JournalEntry) => boolean }) {
-  const [f, setF] = useState({ sym: '', action: 'took' as JournalAction, date: '', why: '', price: '', stop: '', target: '' });
+  const [f, setF] = useState({ sym: '', action: 'took' as JournalAction, date: '', why: '', price: '', stop: '', target: '', wrong: '', reviewBy: '' });
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   useEffect(() => {
     const next = { ...f, date: localToday() };
@@ -163,7 +166,7 @@ function NewEntry({ formRef, focus, onSave }: { formRef: React.RefObject<HTMLFor
     if ('error' in made) { setMsg({ ok: false, t: made.error }); return; }
     if (!onSave(made.entry)) { setMsg({ ok: false, t: 'Could not save in this browser (storage is blocked or full).' }); return; }
     setMsg({ ok: true, t: `Saved the ${made.entry.sym} entry in this browser.` });
-    setF({ ...f, sym: '', why: '', price: '', stop: '', target: '' });
+    setF({ ...f, sym: '', why: '', price: '', stop: '', target: '', wrong: '', reviewBy: '' });
   };
   return (
     <form ref={formRef} className="note-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
@@ -176,7 +179,9 @@ function NewEntry({ formRef, focus, onSave }: { formRef: React.RefObject<HTMLFor
         <Money id="jn-sl" label="Stop (optional)" value={f.stop} set={(v) => setF({ ...f, stop: v })} />
         <Money id="jn-t" label="Target (optional)" value={f.target} set={(v) => setF({ ...f, target: v })} />
       </div>
-      <div className="desk-formacts"><button type="submit" className="act primary">Save entry</button></div>
+      <label htmlFor="jn-wrong"><span>What would make me wrong (optional)</span><textarea id="jn-wrong" className="field" rows={2} maxLength={600} value={f.wrong} onChange={(e) => setF({ ...f, wrong: e.target.value })} /></label>
+      <label htmlFor="jn-rev"><span>Look again on (optional)</span><input id="jn-rev" className="field" type="date" value={f.reviewBy} onChange={(e) => setF({ ...f, reviewBy: e.target.value })} /></label>
+      <div className="desk-formacts"><button type="submit" className="act primary">Save entry</button><Link className="link desk-small" href="/tools/">Size the position first</Link></div>
       {msg && <p className={msg.ok ? 'dim desk-small' : 'desk-err'} role={msg.ok ? 'status' : 'alert'}>{msg.t}</p>}
     </form>
   );
@@ -184,7 +189,7 @@ function NewEntry({ formRef, focus, onSave }: { formRef: React.RefObject<HTMLFor
 
 function EntryEditor({ e, onSave }: { e: JournalEntry; onSave: (e: JournalEntry) => boolean }) {
   const s = (n: number | null) => (n === null ? '' : String(n));
-  const [f, setF] = useState({ action: e.action, date: e.date, why: e.why, price: s(e.price), stop: s(e.stop), target: s(e.target) });
+  const [f, setF] = useState({ action: e.action, date: e.date, why: e.why, price: s(e.price), stop: s(e.stop), target: s(e.target), wrong: e.wrong ?? '', reviewBy: e.reviewBy ?? '', lesson: e.lesson ?? '' });
   const [err, setErr] = useState<string | null>(null);
   const save = () => {
     const made = makeEntry({ ...f, sym: e.sym }, e.id);
@@ -201,6 +206,9 @@ function EntryEditor({ e, onSave }: { e: JournalEntry; onSave: (e: JournalEntry)
         <Money id="je-sl" label="Stop" value={f.stop} set={(v) => setF({ ...f, stop: v })} />
         <Money id="je-t" label="Target" value={f.target} set={(v) => setF({ ...f, target: v })} />
       </div>
+      <label htmlFor="je-wrong"><span>What would make me wrong</span><textarea id="je-wrong" className="field" rows={2} maxLength={600} value={f.wrong} onChange={(ev) => setF({ ...f, wrong: ev.target.value })} /></label>
+      <label htmlFor="je-rev"><span>Look again on</span><input id="je-rev" className="field" type="date" value={f.reviewBy} onChange={(ev) => setF({ ...f, reviewBy: ev.target.value })} /></label>
+      <label htmlFor="je-lesson"><span>Looking back (kept apart from the original reason)</span><textarea id="je-lesson" className="field" rows={3} maxLength={2000} value={f.lesson} onChange={(ev) => setF({ ...f, lesson: ev.target.value })} placeholder="What happened, and what would you do differently?" /></label>
       <div className="desk-formacts"><button type="submit" className="act primary">Save changes</button></div>
       {err && <p className="desk-err" role="alert">{err}</p>}
       <p className="dim desk-small">The edit date is recorded, so a later backup import keeps the newer copy of this entry.</p>

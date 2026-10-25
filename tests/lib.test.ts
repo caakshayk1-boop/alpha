@@ -1101,3 +1101,23 @@ test('E09 rotation: a week ending after the newest bar is a week in progress, th
   assert.deepEqual(weekStatus('2026-10-16', '2026-10-21'), { inProgress: false, through: '2026-10-16' });
   assert.deepEqual(weekStatus('2026-10-23', null), { inProgress: false, through: '2026-10-23' });
 });
+
+test('journal: invalidation, review date and retrospective are optional, validated and survive a round trip', async () => {
+  const { makeEntry, parseJournal, serializeJournal, reviewDue } = await import('../src/lib/journal.ts');
+  const base = { date: '2026-10-20', sym: 'tcs', action: 'watching', why: 'Margins recovered for two quarters.', price: '4000', stop: '3800', target: '' };
+  const ok = makeEntry({ ...base, wrong: ' Margin falls again ', reviewBy: '2026-11-20' }, 'a');
+  assert.ok('entry' in ok);
+  if ('entry' in ok) {
+    assert.equal(ok.entry.wrong, 'Margin falls again');
+    assert.equal(ok.entry.reviewBy, '2026-11-20');
+    assert.equal(reviewDue(ok.entry, '2026-11-19'), false);
+    assert.equal(reviewDue(ok.entry, '2026-11-20'), true);
+    assert.equal(reviewDue({ ...ok.entry, lesson: 'Held; margin held.' }, '2026-12-01'), false);   // a retrospective closes the review
+    const back = parseJournal(serializeJournal([ok.entry]));
+    assert.deepEqual(back[0], ok.entry);
+  }
+  assert.ok('error' in makeEntry({ ...base, reviewBy: '2026-10-01' }, 'b'));   // before the decision
+  assert.ok('error' in makeEntry({ ...base, reviewBy: '2026-02-31' }, 'c'));   // not a date
+  const plain = makeEntry(base, 'd');
+  assert.ok('entry' in plain && !('wrong' in plain.entry) && !('reviewBy' in plain.entry));   // older entries stay unchanged
+});
