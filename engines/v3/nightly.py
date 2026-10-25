@@ -22,7 +22,7 @@ import pandas as pd
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from v3 import config, costs as C, engines as EN, ind, ledger as L, publish as PB, regime as RG, setups as S  # noqa: E402
+from v3 import config, costs as C, engines as EN, ind, jobs, ledger as L, provenance as PV, publish as PB, regime as RG, setups as S  # noqa: E402
 from v3.execsim import simulate  # noqa: E402
 from v3.run import complete_sessions  # noqa: E402
 
@@ -93,6 +93,17 @@ def forming(engine: str, sym: str, df: pd.DataFrame, ctx: dict) -> dict | None:
     return None
 
 
+def day_funnel(fn: dict, wm: pd.Timestamp, n_candidates: int) -> dict:
+    """The exclusion funnel for ONE session: universe -> clean -> liquid -> setup -> context. `executable` and `portfolio_selected`
+    are None: whether an order can be filled is decided at the next open by the simulator, and portfolio limits apply to the book,
+    not to a night's candidates; neither is guessed here."""
+    at = lambda k: int(fn[k].get(wm, 0)) if k in fn else None                                    # noqa: E731
+    out = {"available": at("available"), "clean": at("clean"), "liquid": at("liquid"), "setup": at("setup"), "context": at("context"),
+           "executable": None, "portfolio_selected": None}
+    out["candidates"] = n_candidates
+    return out
+
+
 def main() -> None:
     cfgs = config.all_configs()
     snap = complete_sessions(fetch())
@@ -110,81 +121,102 @@ def main() -> None:
     if prev.get("watermark") == state["watermark"]:
         print(f"{wm.date()} already recorded; nothing to do")
         return
-    results = json.loads((OUT / "results.json").read_text()) if (OUT / "results.json").exists() else {"engines": {}}
-    st = {e: PB.bound_state(results.get("engines", {}).get(e, {}).get("state", "RESEARCH"), results.get("engines", {}).get(e, {}).get("evidence"), cfgs["evidence"]) for e in config.ENGINES}
-    life = PB.lifecycle()                                   # configs/engines/states.yaml: retired and paused engines
-    why = {e: results.get("engines", {}).get(e, {}).get("why") for e in config.ENGINES}
-    for e in config.ENGINES:
-        if cfgs["engines"][e].get("evidence_basis") == "forward_only":
-            why[e] = f"forward-only since {cfgs['engines'][e].get('version')}: judged on this paper record alone (DECISIONS #15)"
-    for e, d in life.get("retired", {}).items():
-        st[e], why[e] = "RETIRED", f"retired {d['date']}: {d['why']}"
-    for e, d in (life.get("paused") or {}).items():
-        st[e], why[e] = "PAUSED", f"paused {d['date']}: {d['why']}"
-    adj = pd.DataFrame({s: snap["adj"][s]["Close"] for s in bars if s in snap["adj"]})
-    sector_of = {u["sym"]: u.get("sector") for u in snap["universe"]}
-    ctx = S.context(adj, sector_of)
-    regime = RG.regime(nifty, vix, cfgs["regime"]["hysteresis_sessions"])
-    cost = C.CostModel.from_config(cfgs["costs"])
-    mret = nifty.pct_change(fill_method=None)
-    paper, form = [], []
-    for e in EN.ENGINES:
-        if st[e] in ("RETIRED", "PAUSED"):
-            continue                                        # a retired engine records nothing new; its past stays in the ledger
-        cfg = cfgs["engines"][e]
-        for c in EN.candidates(e, "baseline", bars, ctx, cfg, regime, sector_of, mret, cost, wm, wm + pd.Timedelta(days=1)):
-            sig = {"id": f"{e}:{c.sym}:{c.date.date()}", "kind": "signal", "engine": e, "version": cfg["version"], "state": st[e], "symbol": c.sym,
-                   "exchange": "NSE", "as_of": str(c.date.date()), "earliest_entry": "next session open", "expiry": "end of the next session",
-                   "regime": c.regime, "regime_status": c.status,
-                   "entry_rule": f"next open, cancelled at or below {c.stop:.2f} or above {c.ref + 0.5 * c.atr:.2f}",
-                   "invalidation": round(c.stop, 2), "chase": round(c.ref + 0.5 * c.atr, 2), "target_policy": TARGET_POLICY[e],
-                   "initial_risk_pct": round((c.ref - c.stop) / c.ref * 100, 2), "ref_close": round(c.ref, 2), "rank_score": round(c.score, 4),
-                   "rank_components": [None if f is None or f != f else round(float(f), 4) for f in getattr(c, "feats", [])],
-                   "data_watermark": str(wm.date()), "sources": ["Yahoo Finance daily bars (exchange prices)", "NSE screen universe"],
-                   "evidence": cfgs["evidence"], "reason_codes": [e, c.regime], "recorded": state["ran"]}
-            paper.append(sig)
-            L.append(LEDGER, sig)
-        if e in ("E1", "E2", "E5"):
-            for sym, df in bars.items():
-                if df.index[-1] != wm or len(df) < 260:
-                    continue
-                f = forming(e, sym, df, ctx)
-                if f:
-                    form.append({"engine": e, "symbol": sym, "as_of": str(wm.date()), "state": st[e], **f})
-    # closed record: walk every ledger signal without an outcome through the same simulator
-    rows = L.read(LEDGER)
-    outcomes = {r["body"]["id"][:-6] for r in rows if r["body"]["id"].endswith(":close")}
-    closed = []
-    for r in rows:
-        b = r["body"]
-        if b.get("kind") != "signal" or b["id"] in outcomes or b["symbol"] not in bars:
-            continue
-        df = bars[b["symbol"]]
-        d = pd.Timestamp(b["as_of"])
-        if d not in df.index:
-            continue
-        t = df.index.get_loc(d)
-        fr = EN.setup_frame(b["engine"], b["symbol"], df, ctx, cfgs["engines"][b["engine"]], mret, cost)
-        # the plan as RECORDED: the ledger's stop and chase, never levels recomputed from revised bars (review finding 10)
-        plan = EN._plan(b["engine"], "baseline", b["symbol"], df, fr, t, cfgs["engines"][b["engine"]], float(fr["tv"].iloc[t]), 1, stop_override=float(b["invalidation"]))
-        if b.get("chase") is not None:
-            plan.chase = float(b["chase"])
-        fl = simulate(df, plan, cost)
-        if fl.status in ("filled", "cancelled_gap", "cancelled_chase", "cancelled_risk"):
-            out = {"id": f"{b['id']}:close", "kind": "outcome", "of": b["id"], "status": fl.status, "r_net": None if fl.r_net is None else round(fl.r_net, 4),
-                   "r_gross": None if fl.r_gross is None else round(fl.r_gross, 4), "exit_reason": fl.reason, "ambiguous_bar": fl.ambiguous_bar,
-                   "exit_date": None if fl.exit_i is None else str(df.index[fl.exit_i].date()), "recorded": state["ran"]}
-            L.append(LEDGER, out)
-            closed.append({**b, **{k: out[k] for k in ("status", "r_net", "exit_reason", "exit_date")}})
-    ok, why = L.verify(LEDGER)
-    feed = PB.build_feed({"engines": {e: {"state": st[e], "evidence": cfgs["evidence"], "version": "v1.0.0", "why": why[e]} for e in config.ENGINES}},
-                         form, paper, closed, str(wm.date()))
-    # published only by the scheduled job on main (V3_PUBLISH=1, DECISIONS #14); every other run is a dry run
-    print(PB.publish(feed, HERE.parent.parent / "public" / "engines_v3.json", dry_run=os.environ.get("V3_PUBLISH") != "1"))
-    (OUT / "feed_nightly.json").write_text(json.dumps(feed, indent=1, default=str))
-    state.update({"status": "recorded", "signals": len(paper), "forming": len(form), "closed": len(closed), "ledger_ok": ok, "ledger_check": why, "states": st})
-    STATE.write_text(json.dumps(state, indent=1))
-    print(json.dumps(state, indent=1))
+    dv = PV.dataset_version(bars)
+    ing = state["ran"]
+    prov = lambda sym=None: PV.provenance(str(wm.date()), ing, dv, sym)                         # noqa: E731
+    import sessions as SESS
+    expected = SESS.last_finished_session()
+
+    def record() -> dict:
+        results = json.loads((OUT / "results.json").read_text()) if (OUT / "results.json").exists() else {"engines": {}}
+        st = {e: PB.bound_state(results.get("engines", {}).get(e, {}).get("state", "RESEARCH"), results.get("engines", {}).get(e, {}).get("evidence"), cfgs["evidence"]) for e in config.ENGINES}
+        life = PB.lifecycle()                                   # configs/engines/states.yaml: retired and paused engines
+        why = {e: results.get("engines", {}).get(e, {}).get("why") for e in config.ENGINES}
+        for e in config.ENGINES:
+            if cfgs["engines"][e].get("evidence_basis") == "forward_only":
+                why[e] = f"forward-only since {cfgs['engines'][e].get('version')}: judged on this paper record alone (DECISIONS #15)"
+        for e, d in life.get("retired", {}).items():
+            st[e], why[e] = "RETIRED", f"retired {d['date']}: {d['why']}"
+        for e, d in (life.get("paused") or {}).items():
+            st[e], why[e] = "PAUSED", f"paused {d['date']}: {d['why']}"
+        adj = pd.DataFrame({s: snap["adj"][s]["Close"] for s in bars if s in snap["adj"]})
+        sector_of = {u["sym"]: u.get("sector") for u in snap["universe"]}
+        ctx = S.context(adj, sector_of)
+        regime = RG.regime(nifty, vix, cfgs["regime"]["hysteresis_sessions"])
+        cost = C.CostModel.from_config(cfgs["costs"])
+        mret = nifty.pct_change(fill_method=None)
+        paper, form, funnel = [], [], {}
+        for e in EN.ENGINES:
+            if st[e] in ("RETIRED", "PAUSED"):
+                continue                                        # a retired engine records nothing new; its past stays in the ledger
+            cfg = cfgs["engines"][e]
+            fn: dict = {}
+            cands = EN.candidates(e, "baseline", bars, ctx, cfg, regime, sector_of, mret, cost, wm, wm + pd.Timedelta(days=1), funnel=fn)
+            funnel[e] = day_funnel(fn, wm, len(cands))
+            for c in cands:
+                sig = {"id": f"{e}:{c.sym}:{c.date.date()}", "kind": "signal", "engine": e, "version": cfg["version"], "state": st[e], "symbol": c.sym,
+                       "exchange": "NSE", "as_of": str(c.date.date()), "earliest_entry": "next session open", "expiry": "end of the next session",
+                       "regime": c.regime, "regime_status": c.status,
+                       "entry_rule": f"next open, cancelled at or below {c.stop:.2f} or above {c.ref + 0.5 * c.atr:.2f}",
+                       "invalidation": round(c.stop, 2), "chase": round(c.ref + 0.5 * c.atr, 2), "target_policy": TARGET_POLICY[e],
+                       "initial_risk_pct": round((c.ref - c.stop) / c.ref * 100, 2), "ref_close": round(c.ref, 2), "rank_score": round(c.score, 4),
+                       "rank_components": [None if f is None or f != f else round(float(f), 4) for f in getattr(c, "feats", [])],
+                       "data_watermark": str(wm.date()), "sources": ["Yahoo Finance daily bars (exchange prices)", "NSE screen universe"],
+                       "evidence": cfgs["evidence"], "reason_codes": [e, c.regime], "recorded": state["ran"], "provenance": prov(c.sym)}
+                paper.append(sig)
+                L.append(LEDGER, sig)
+            if e in ("E1", "E2", "E5"):
+                for sym, df in bars.items():
+                    if df.index[-1] != wm or len(df) < 260:
+                        continue
+                    f = forming(e, sym, df, ctx)
+                    if f:
+                        form.append({"id": f"{e}:{sym}:{wm.date()}:forming", "engine": e, "symbol": sym, "as_of": str(wm.date()), "state": st[e], "provenance": prov(sym), **f})
+        # closed record: walk every ledger signal without an outcome through the same simulator
+        rows = L.read(LEDGER)
+        outcomes = {r["body"]["id"][:-6] for r in rows if r["body"]["id"].endswith(":close")}
+        closed = []
+        for r in rows:
+            b = r["body"]
+            if b.get("kind") != "signal" or b["id"] in outcomes or b["symbol"] not in bars:
+                continue
+            df = bars[b["symbol"]]
+            d = pd.Timestamp(b["as_of"])
+            if d not in df.index:
+                continue
+            t = df.index.get_loc(d)
+            fr = EN.setup_frame(b["engine"], b["symbol"], df, ctx, cfgs["engines"][b["engine"]], mret, cost)
+            # the plan as RECORDED: the ledger's stop and chase, never levels recomputed from revised bars (review finding 10)
+            plan = EN._plan(b["engine"], "baseline", b["symbol"], df, fr, t, cfgs["engines"][b["engine"]], float(fr["tv"].iloc[t]), 1, stop_override=float(b["invalidation"]))
+            if b.get("chase") is not None:
+                plan.chase = float(b["chase"])
+            fl = simulate(df, plan, cost)
+            if fl.status in ("filled", "cancelled_gap", "cancelled_chase", "cancelled_risk"):
+                out = {"id": f"{b['id']}:close", "kind": "outcome", "of": b["id"], "status": fl.status, "r_net": None if fl.r_net is None else round(fl.r_net, 4),
+                       "r_gross": None if fl.r_gross is None else round(fl.r_gross, 4), "exit_reason": fl.reason, "ambiguous_bar": fl.ambiguous_bar,
+                       "exit_date": None if fl.exit_i is None else str(df.index[fl.exit_i].date()), "recorded": state["ran"], "provenance": prov(b["symbol"])}
+                L.append(LEDGER, out)
+                closed.append({**b, **{k: out[k] for k in ("status", "r_net", "exit_reason", "exit_date")}})
+        ok, why = L.verify(LEDGER)
+        feed = PB.build_feed({"engines": {e: {"state": st[e], "evidence": cfgs["evidence"], "version": "v1.0.0", "why": why[e]} for e in config.ENGINES}},
+                             form, paper, closed, str(wm.date()),
+                         extra={"funnel": funnel, "health": jobs.health(str(wm.date()), expected), "provenance": prov(), "job_key": key_of()})
+        # published only by the scheduled job on main (V3_PUBLISH=1, DECISIONS #14); every other run is a dry run
+        print(PB.publish(feed, HERE.parent.parent / "public" / "engines_v3.json", dry_run=os.environ.get("V3_PUBLISH") != "1"))
+        (OUT / "feed_nightly.json").write_text(json.dumps(feed, indent=1, default=str))
+        state.update({"status": "recorded", "signals": len(paper), "forming": len(form), "closed": len(closed), "ledger_ok": ok, "ledger_check": why, "states": st})
+        STATE.write_text(json.dumps(state, indent=1))
+        print(json.dumps(state, indent=1))
+
+    return None
+
+    key_of = lambda: key                                                                         # noqa: E731
+    key = jobs.job_key("NSE", str(wm.date()), {e: cfgs["engines"][e]["version"] for e in config.ENGINES}, dv)
+    res = jobs.run_once(key, record, OUT / "jobs")
+    if res["status"] != "done":
+        print(f"job {key}: {res['status']}" + (f" ({res.get('error')})" if res.get("error") else ""))
+        if res["status"] == "failed":
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

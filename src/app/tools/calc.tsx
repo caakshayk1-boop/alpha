@@ -111,6 +111,15 @@ export function Position() {
   const [riskPct, setRiskPct] = useState('1');
   const [entry, setEntry] = useState('500');
   const [stop, setStop] = useState('470');
+  // a link from a paper signal fills the reference close, the invalidation and the paper risk (?p=&sl=&rk=); nothing else is set
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const n = (k: string) => { const v = Number(q.get(k)); return Number.isFinite(v) && v > 0 ? String(v) : null; };
+      const p = n('p'), sl = n('sl'), rk = n('rk');
+      if (p && sl) { setEntry(p); setStop(sl); if (rk && Number(rk) <= 100) setRiskPct(rk); }
+    } catch { /* no query string */ }
+  }, []);
   const cap = toNum(capital), rp = toNum(riskPct), e = toNum(entry), s = toNum(stop);
   const plan = positionPlan(cap, rp, e, s);
   const pe = plan.ok ? {} : plan.errors;

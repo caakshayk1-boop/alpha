@@ -29,6 +29,12 @@ Updated 2026-10-22 at the v3 validation run of record: engines-v3 run 3971226469
 | G22 | Paper ledger hash-chain verified | PASS | test_v3.py ledger; v3/nightly.py verifies the chain each night | `python tests/test_v3.py` | chain verifies; one edited line breaks it |
 | G23 | Clean-checkout reproduction | PASS | fresh clone of engines-phase0 @ e0ef600 | `git clone … && sha256sum -c configs/engines/FROZEN.sha256 && python tests/test_*.py && npm ci && npm test` | 10 of 10 frozen hashes OK; 60, 17, 33, 19, 50 and 141 tests pass at e0ef600 (impl 1.0.1 since: test_v3 70 of 70, re-run locally); re-running v3.run from the archived snapshot NOT RUN here (artifact host blocked from the dev container) |
 | G24 | Owner authorisation for production/alerts | BLOCKED | Owner action | — | — |
+| G25 | Provenance on every record; publisher refuses a gap | PASS | engines/v3/provenance.py · publish.py `MissingProvenance` | `python tests/test_ops.py` | 8 of 8 provenance and publisher checks |
+| G26 | Job keys, locks, bounded retries, health | PASS | engines/v3/jobs.py | `python tests/test_ops.py` | 11 of 11; cross-run idempotence is the watermark and the ledger id, the lock covers overlapping runs on one workspace |
+| G27 | Alert outbox deduplicates and refuses unqualified engines | PASS | engines/v3/outbox.py | `python tests/test_ops.py` | 9 of 9; no sender exists |
+| G28 | E6 collector interface fails closed without a source | PASS | engines/v3/e6.py | `python tests/test_ops.py` | 20 of 20; E6 stays BLOCKED_DATA (G04 rows 1–2) |
+| G29 | App shows health and the exclusion funnel; setups link onward | PASS | src/lib/enginesV3.ts · EnginesV3.tsx | `npm test` | view-model states, links, copy-lint on the new strings; visual baselines NOT RUN on this branch |
+| G30 | Evidence policy reachable | FAIL | docs/engines/BRIEF_TRACE.md "The sample-size problem" | n/a | 891 independent observations would take about 12 to 30 years at the walk-forward trade rate; an owner decision |
 
 ## Engine qualification
 | Engine | Rules version | State | Evidence hash | Reason |

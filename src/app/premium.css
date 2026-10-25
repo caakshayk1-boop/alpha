@@ -365,3 +365,9 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .bx-key { font-size: var(--fs-sm); margin: var(--sp-2) 0 0; line-height: 1.5; }
 .eq-row { align-items: start; }
 .eq-row .row-r { display: grid; justify-items: end; gap: 4px; }
+.sg-v3links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; font: 500 13px/1.4 var(--f-ui); }
+.sg-table-wrap { overflow-x: auto; }
+.sg-table { width: 100%; border-collapse: collapse; font: 400 13px/1.4 var(--f-ui); }
+.sg-table th, .sg-table td { padding: 6px 8px; text-align: right; white-space: nowrap; border-top: 1px solid var(--line); }
+.sg-table th:first-child { text-align: left; }
+.sg-table thead th { font-weight: 600; color: var(--dim); border-top: 0; }

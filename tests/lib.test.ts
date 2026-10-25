@@ -1101,3 +1101,29 @@ test('E09 rotation: a week ending after the newest bar is a week in progress, th
   assert.deepEqual(weekStatus('2026-10-16', '2026-10-21'), { inProgress: false, through: '2026-10-16' });
   assert.deepEqual(weekStatus('2026-10-23', null), { inProgress: false, through: '2026-10-23' });
 });
+
+test('engines v3: setups link to research, sizing and the journal; health and exclusion states are honest', async () => {
+  const { linksFor, healthModel, viewModel, copyViolations, FUNNEL_STAGES } = await import('../src/lib/enginesV3.ts');
+  const l = linksFor('TCS', 4000.126, 3800);
+  assert.deepEqual(l.map((x: { label: string }) => x.label), ['Research and follow', 'Size a paper position', 'Write it in the journal']);
+  assert.equal(l[1].href, '/tools/?p=4000.13&sl=3800&rk=0.25');
+  assert.match(l[2].href, /^\/journal\/\?s=TCS&p=4000\.13&sl=3800/);
+  assert.deepEqual(linksFor('TCS').map((x: { label: string }) => x.label), ['Research and follow']);                    // no levels on record: no sizing link
+  assert.deepEqual(linksFor('TCS', 100, 120).map((x: { label: string }) => x.label), ['Research and follow']);               // a stop above the price is not a long plan
+  const now = new Date('2026-10-26T06:00:00Z');
+  const base = { schema: 'alpha-engines/3', generated: 'x', data_watermark: '2026-10-23', evidence: 'h', alerts_enabled: false, engines: { E1: { state: 'RESEARCH' as const } }, forming: [], paper: [{ id: 'E1:AAA:2026-10-23', engine: 'E1', symbol: 'AAA', as_of: '2026-10-23', state: 'RESEARCH' as const, ref_close: 100, invalidation: 95 }], validated: [], closed: [] };
+  const vm = viewModel(base, now);
+  assert.equal(vm.views[1].cards[0].links.length, 3);
+  assert.equal(healthModel(null, now).status, 'missing');
+  const hm = healthModel({ ...base, funnel: { E1: { available: 900, clean: 890, liquid: 500, setup: 4, context: 3, executable: null, portfolio_selected: null, candidates: 3 } }, health: { status: 'ok', watermark: '2026-10-23', expected: '2026-10-23', days_behind: 0 },
+    provenance: { source: 'Yahoo Finance daily bars via yfinance', ingested_at: '2026-10-25T12:00:00Z', dataset_version: 'abcd', adjustment_policy: { levels: 'split-adjusted', returns: 'dividend-adjusted' } } }, now);
+  assert.equal(hm.rows[0].stages.length, FUNNEL_STAGES.length);
+  assert.deepEqual(hm.rows[0].stages, [900, 890, 500, 4, 3, null, null]);       // an undecided stage is null, never 0
+  assert.match(hm.line, /current/);
+  assert.ok(hm.detail.some((d: string) => d.startsWith('Dataset abcd')));
+  const stale = healthModel({ ...base, health: { status: 'stale', watermark: '2026-10-22', expected: '2026-10-23', days_behind: 1 } }, now);
+  assert.equal(stale.status, 'stale');
+  assert.match(stale.line, /1 day behind/);
+  assert.equal(healthModel(base, now).rows.length, 0);                          // no funnel in the feed: no rows, not a row of zeros
+  for (const t of [hm.line, stale.line, ...hm.detail, ...FUNNEL_STAGES.map((s: { why: string }) => s.why)]) assert.deepEqual(copyViolations(t), []);
+});
