@@ -22,3 +22,5 @@ tests/visual/diff/
 __pycache__/
 *.pyc
 /apps/tripwire/dist/
+/out-app/
+/out-app-build/
