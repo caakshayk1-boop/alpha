@@ -47,8 +47,8 @@ export function Compare({ syms }: { syms: string[] }) {
     {syms.length < 2 ? <Empty title="Pick at least two companies" action={<button className="btn pri" onClick={() => go('/discover')}>Choose in Discover</button>}>Use the compare button on any row in Discover. Up to three.</Empty> : <>
       {Object.entries(errs).filter(([, e]) => e).map(([k, e]) => <Failed key={k} what={k} err={e!} retry={() => location.reload()} />)}
       <div className="chips" role="group" aria-label="Comparison view" style={{ marginBottom: 10 }}>{(Object.keys(VIEWS) as View[]).map((id) => <button key={id} className="chip" aria-pressed={view === id} onClick={() => setView(id)}>{VIEWS[id].label}</button>)}</div>
-      {!ready ? <div className="card"><div className="sk" style={{ height: 120 }} /></div> : <div className="card cmp" style={{ padding: '0 14px 6px' }}><table className="tbl" style={{ tableLayout: 'fixed' }}>
-        <thead><tr><th className="s" scope="col" style={{ width: '38%' }}><span className="sr">Measure</span></th>{cs.map((c) => <th key={c!.sym} className="s" scope="col"><a href={`#/c/${c!.sym}`}>{c!.sym}</a></th>)}</tr></thead>
+      {!ready ? <div className="card"><div className="sk" style={{ height: 120 }} /></div> : <div className="card cmp" style={{ padding: '0 14px 6px' }}><table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+        <thead><tr><th className="s" scope="col" style={{ width: '34%' }}><span className="sr">Measure</span></th>{cs.map((c) => <th key={c!.sym} className="s" scope="col"><a href={`#/c/${c!.sym}`}>{c!.sym}</a></th>)}</tr></thead>
         <tbody>{VIEWS[view].lines.map((ln) => {
           const vals = cs.map((c) => { if (ln.lender && isLender(c!.row)) return { v: null as null, why: 'not meaningful for a lender' }; const v = ln.get(c!); return { v: v === undefined || v === '' ? null : v, why: 'not reported' }; });
           const nums = vals.map((x) => (isNum(x.v) ? x.v : null)); const meas = nums.filter(isNum);

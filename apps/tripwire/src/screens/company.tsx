@@ -33,7 +33,7 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<FollowButton sym={sym} name={row.name} />} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass">
-      <div className="row between"><div><div className="num" style={{ font: '600 38px/1 var(--sans)', letterSpacing: '-1px' }}>{inr(px)}</div><div className={`num ${tone(row.r1d)}`} style={{ marginTop: 4 }}>{pct(row.r1d)} on the day</div></div>
+      <div className="row between"><div><div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}>{inr(px)}</div><div className={`num ${tone(row.r1d)}`} style={{ marginTop: 4 }}>{pct(row.r1d)} on the day</div></div>
         <div style={{ textAlign: 'right' }}><span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span><div className="mute small" style={{ marginTop: 6 }}>Not a live quote</div></div></div>
       {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>

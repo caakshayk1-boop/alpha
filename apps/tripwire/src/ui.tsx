@@ -81,6 +81,6 @@ export function Skeleton({ lines = 3 }: { lines?: number }) {
   return <div aria-busy="true" aria-label="Loading">{Array.from({ length: lines }, (_, i) => <div key={i} className="sk" style={{ height: i === 0 ? 28 : 16, width: `${100 - i * 14}%`, marginBottom: 10 }} />)}</div>;
 }
 export function Empty({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
-  return <div className="card" style={{ textAlign: 'center', padding: '28px 18px' }}><div className="lead" style={{ fontSize: 19 }}>{title}</div>{children && <p className="dim" style={{ margin: '8px 0 0' }}>{children}</p>}{action && <div style={{ marginTop: 14 }}>{action}</div>}</div>;
+  return <div className="card" style={{ textAlign: 'center', padding: '22px 16px' }}><div className="lead" style={{ fontSize: 17 }}>{title}</div>{children && <p className="dim" style={{ margin: '8px 0 0' }}>{children}</p>}{action && <div style={{ marginTop: 14 }}>{action}</div>}</div>;
 }
 export function useEscape(fn: () => void) { useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && fn(); document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [fn]); }

@@ -9,7 +9,7 @@ export function Welcome() {
     <div className="k">Tripwire</div>
     {step === 0 ? <>
       <h1>See what <em className="ed">fired</em>.<br />Decide what matters.</h1>
-      <p className="dim" style={{ fontSize: 17, margin: 0 }}>Public rules, run on the last close. The case and the countercase side by side. Your own decisions, with the date you promised to review them.</p>
+      <p className="dim" style={{ fontSize: 15.5, margin: 0 }}>Public rules, run on the last close. The case and the countercase side by side. Your own decisions, with the date you promised to review them.</p>
       <div className="pts">
         <div><Icon n="signals" /><span>Ten plain rules over Nifty 500 names, with the figure that tripped each one.</span></div>
         <div><Icon n="note" /><span>A journal that keeps every version of your thinking, and reminds you to revisit it.</span></div>
