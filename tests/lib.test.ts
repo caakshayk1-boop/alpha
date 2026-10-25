@@ -1127,3 +1127,75 @@ test('engines v3: setups link to research, sizing and the journal; health and ex
   assert.equal(healthModel(base, now).rows.length, 0);                          // no funnel in the feed: no rows, not a row of zeros
   for (const t of [hm.line, stale.line, ...hm.detail, ...FUNNEL_STAGES.map((s: { why: string }) => s.why)]) assert.deepEqual(copyViolations(t), []);
 });
+
+test('journal: invalidation, review date and retrospective are optional, validated and survive a round trip', async () => {
+  const { makeEntry, parseJournal, serializeJournal, reviewDue } = await import('../src/lib/journal.ts');
+  const base = { date: '2026-10-20', sym: 'tcs', action: 'watching', why: 'Margins recovered for two quarters.', price: '4000', stop: '3800', target: '' };
+  const ok = makeEntry({ ...base, wrong: ' Margin falls again ', reviewBy: '2026-11-20' }, 'a');
+  assert.ok('entry' in ok);
+  if ('entry' in ok) {
+    assert.equal(ok.entry.wrong, 'Margin falls again');
+    assert.equal(ok.entry.reviewBy, '2026-11-20');
+    assert.equal(reviewDue(ok.entry, '2026-11-19'), false);
+    assert.equal(reviewDue(ok.entry, '2026-11-20'), true);
+    assert.equal(reviewDue({ ...ok.entry, lesson: 'Held; margin held.' }, '2026-12-01'), false);   // a retrospective closes the review
+    const back = parseJournal(serializeJournal([ok.entry]));
+    assert.deepEqual(back[0], ok.entry);
+  }
+  assert.ok('error' in makeEntry({ ...base, reviewBy: '2026-10-01' }, 'b'));   // before the decision
+  assert.ok('error' in makeEntry({ ...base, reviewBy: '2026-02-31' }, 'c'));   // not a date
+  const plain = makeEntry(base, 'd');
+  assert.ok('entry' in plain && !('wrong' in plain.entry) && !('reviewBy' in plain.entry));   // older entries stay unchanged
+});
+
+test('progress: reviewed-today counts followed names saved on the IST day, and an empty list is not 0%', async () => {
+  const { reviewedToday, filledDots, arcDots, reviewsDue } = await import('../src/lib/progress.ts');
+  const snaps = { TCS: { at: '2026-10-25T20:00:00Z' }, INFY: { at: '2026-10-25T10:00:00Z' }, OLD: { at: '2026-10-25T10:00:00Z' }, BAD: { at: 'nonsense' } };
+  // 20:00Z on the 25th is 01:30 IST on the 26th: another IST day
+  assert.deepEqual(reviewedToday(['TCS', 'INFY', 'BAD', 'TCS'], snaps, '2026-10-25'), { done: 1, total: 3 });
+  assert.deepEqual(reviewedToday(['TCS'], snaps, '2026-10-26'), { done: 1, total: 1 });
+  assert.deepEqual(reviewedToday([], snaps, '2026-10-25'), { done: 0, total: 0 });
+  assert.equal(filledDots(0, 5, 24), 0);
+  assert.equal(filledDots(0, 0, 24), 0);
+  assert.equal(filledDots(1, 100, 24), 1);       // a start is visible
+  assert.equal(filledDots(5, 5, 24), 24);
+  assert.equal(filledDots(9, 5, 24), 24);        // never more than the whole
+  assert.equal(filledDots(2, 5, 24), 9);         // floor(9.6)
+  const d = arcDots(5, 100);
+  assert.equal(d.length, 5);
+  assert.deepEqual([d[0], d[2], d[4]], [{ x: 0, y: 100 }, { x: 100, y: 0 }, { x: 200, y: 100 }]);
+  const j = (id: string, reviewBy?: string, lesson?: string) => ({ id, date: '2026-10-01', sym: 'X', action: 'watching' as const, why: 'a long enough reason', price: null, stop: null, target: null, reviewBy, lesson });
+  assert.equal(reviewsDue([j('a', '2026-10-25'), j('b', '2026-10-26'), j('c', '2026-10-01', 'done'), j('d')], '2026-10-25'), 1);
+});
+
+test('evidence digest: every item names its source and time; thresholds and windows; absence is not an item', async () => {
+  const { evidenceFor, newestFirst } = await import('../src/lib/evidence.ts');
+  const now = Date.parse('2026-10-25T06:00:00Z');
+  const row = { sym: 'AAA', name: 'Aaa Ltd', last_date: '2026-10-23', r1d: -6.2, vol_spike: 2.4, brk52w: true, next_earnings: '2026-10-30', price: 10 } as never;
+  const stories = [
+    { story: { title: 'Aaa wins order', source: 'Mint', link: 'https://x/1', published: '2026-10-24T10:00:00Z' }, basis: 'ticker AAA' },
+    { story: { title: 'Aaa old news', source: 'Mint', link: 'https://x/2', published: '2026-10-20T10:00:00Z' }, basis: 'ticker AAA' },
+    { story: { title: 'Aaa no time', source: 'Mint', link: 'https://x/3', published: null }, basis: 'ticker AAA' },
+    { story: { title: 'Aaa from the future', source: 'Mint', link: 'https://x/4', published: '2026-10-26T10:00:00Z' }, basis: 'ticker AAA' },
+  ];
+  const sigs = [{ sym: 'AAA', status: 'pending', date: '2026-10-23' }, { sym: 'AAA', status: 'closed', date: '2026-09-01' }, { sym: 'ZZZ', status: 'open', date: '2026-10-23' }] as never;
+  const ev = evidenceFor({ sym: 'AAA', row, snap: null, signals: sigs, stories, todayIso: '2026-10-25', nowMs: now });
+  assert.deepEqual(ev.map((e) => e.kind), ['paper', 'results', 'news', 'move', 'volume', 'high']);
+  assert.ok(ev.every((e) => e.source && e.text), 'every item carries a source and text');
+  assert.ok(ev.filter((e) => e.kind !== 'paper').every((e) => e.at), 'every sourced item carries a time');
+  assert.equal(ev.find((e) => e.kind === 'news')!.text, 'Aaa wins order');       // old, untimed and future stories are not "lately"
+  assert.match(ev.find((e) => e.kind === 'results')!.text, /no exchange has confirmed/);
+  assert.match(ev.find((e) => e.kind === 'move')!.text, /^Fell 6\.2%/);
+  // boundaries: 5% move and 2x volume count, just under do not; results 14 days out count, 15 do not; a past date does not
+  const edge = (o: object) => evidenceFor({ sym: 'AAA', row: { sym: 'AAA', name: 'A', price: 1, last_date: '2026-10-23', ...o } as never, snap: null, signals: [], stories: [], todayIso: '2026-10-25', nowMs: now }).map((e) => e.kind);
+  assert.deepEqual(edge({ r1d: 5, vol_spike: 2 }), ['move', 'volume']);
+  assert.deepEqual(edge({ r1d: 4.9, vol_spike: 1.99 }), []);
+  assert.deepEqual(edge({ next_earnings: '2026-11-08' }), ['results']);
+  assert.deepEqual(edge({ next_earnings: '2026-11-09' }), []);
+  assert.deepEqual(edge({ next_earnings: '2026-10-20' }), []);
+  // a missing field is no item, and no row at all is no item (not a zero)
+  assert.deepEqual(edge({ r1d: null, vol_spike: undefined, brk52w: undefined }), []);
+  assert.deepEqual(evidenceFor({ sym: 'AAA', row: null, snap: null, signals: [], stories: [], todayIso: '2026-10-25', nowMs: now }), []);
+  assert.deepEqual(newestFirst(ev, 3).map((e) => e.at), ['2026-10-30', '2026-10-24T10:00:00Z', '2026-10-23']);   // newest first across kinds
+  assert.equal(newestFirst(ev, 2).length, 2);
+});

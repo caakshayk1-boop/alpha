@@ -378,7 +378,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
       </div>
       <Drawer open={ask} onClose={() => setAsk(false)} title={`Ask about ${r.sym}`}>
         <p className="dim" style={{ fontSize: 14, margin: '0 0 12px' }}>Questions are answered from the figures on this page, with each figure cited and dated. The mode of every answer is shown: Rules, Glossary or AI-assisted.</p>
-        <AskAI subject="move" sym={r.sym} title={`Why did ${r.sym} move?`} compact />
+        <AskAI subject="move" sym={r.sym} title={`Ask about the available evidence on ${r.sym}`} compact />
         <div style={{ height: 16 }} />
         <AskCompany sym={r.sym} />
       </Drawer>

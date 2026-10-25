@@ -26,13 +26,13 @@ export default function Research() {
   const open = (sig.data?.signals ?? []).filter((s) => s.status === 'open').length;
   const pending = (sig.data?.signals ?? []).filter((s) => s.status === 'pending').length;
   const g = sig.data?.gate;
-  const entries: { href: string; t: string; s: string; tag?: string }[] = [
-    { href: '/screen/', t: 'Screen', s: 'Every company on four separate scores, with the data each one rests on.' },
-    { href: '/compare/', t: 'Compare', s: 'Two to four companies on the same measures; “not comparable” where a measure does not apply.' },
-    { href: '/reads/', t: 'Weekly case studies', s: ed ? `Week of ${dateLabel(ed.week)}: ${ed.studies.length} quantitative case ${ed.studies.length === 1 ? 'study' : 'studies'}, machine-written from the figures.` : reads.error ? 'The weekly studies did not load.' : 'Loading the latest edition…', tag: underReview > 0 ? `${underReview} under review, all editions` : undefined },
-    { href: '/engines/', t: 'Signals and method', s: sig.data ? `${sig.data.alertable ? 'Alerts on.' : 'Research only: the engine has not passed its holdout test.'} Market gate ${g?.on ? 'on' : 'off'} (${g?.passed ?? '—'} of 4 checks).` : sig.error ? 'The signal book did not load.' : 'Loading…', tag: 'Experimental' },
-    { href: '/trades/', t: 'Paper trades', s: sig.data ? (open + pending === 0 ? 'No paper trade is open or pending.' : `${num(open)} open, ${num(pending)} pending, marked to the latest price. Paper only.`) : 'Loading…' },
-    { href: '/tools/', t: 'Tools', s: 'Position size, a plan’s arithmetic, a reverse DCF and a holdings X-ray. Arithmetic on your assumptions.' },
+  const entries: { href: string; t: string; s: string; cta: string; tag?: string }[] = [
+    { href: '/screen/', t: 'Screen', cta: 'Find companies', s: 'Every company on four separate scores, with the data each one rests on.' },
+    { href: '/compare/', t: 'Compare', cta: 'Compare companies', s: 'Two to four companies on the same measures; “not comparable” where a measure does not apply.' },
+    { href: '/reads/', t: 'Weekly case studies', cta: 'Read studies', s: ed ? `Week of ${dateLabel(ed.week)}: ${ed.studies.length} quantitative case ${ed.studies.length === 1 ? 'study' : 'studies'}, machine-written from the figures.` : reads.error ? 'The weekly studies did not load.' : 'Loading the latest edition…', tag: underReview > 0 ? `${underReview} under review, all editions` : undefined },
+    { href: '/engines/', t: 'Signals and method', cta: 'Inspect signal rules', s: sig.data ? `${sig.data.alertable ? 'Alerts on.' : 'Research only: the engine has not passed its holdout test.'} Market gate ${g?.on ? 'on' : 'off'} (${g?.passed ?? '—'} of 4 checks).` : sig.error ? 'The signal book did not load.' : 'Loading…', tag: 'Experimental' },
+    { href: '/trades/', t: 'Paper trades', cta: 'Open paper book', s: sig.data ? (open + pending === 0 ? 'No paper trade is open or pending.' : `${num(open)} open, ${num(pending)} pending, marked to the latest price. Paper only.`) : 'Loading…' },
+    { href: '/tools/', t: 'Tools', cta: 'Open calculators', s: 'Position size, a plan’s arithmetic, a reverse DCF and a holdings X-ray. Arithmetic on your assumptions.' },
   ];
   return (
     <div className="sp">
@@ -55,7 +55,7 @@ export default function Research() {
           <ul className="rows card rs-list">
             {entries.map((e) => (
               <li key={e.href}>
-                <Link href={e.href} className="row rs-row"><span className="rs-id"><span className="row-t">{e.t}{e.tag && <span className="pill warn nodot rs-tag">{e.tag}</span>}</span><span className="row-s">{e.s}</span></span><span className="row-r link" aria-hidden>Open →</span></Link>
+                <Link href={e.href} className="row rs-row"><span className="rs-id"><span className="row-t">{e.t}{e.tag && <span className="pill warn nodot rs-tag">{e.tag}</span>}</span><span className="row-s">{e.s}</span></span><span className="row-r link">{e.cta} →</span></Link>
               </li>
             ))}
           </ul>
