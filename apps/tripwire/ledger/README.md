@@ -1,0 +1,1 @@
+`ledger.json` is written by `.github/workflows/tripwire_ledger.yml` (nightly) and by nothing else. It is append-only: a night's picks are never edited, a night is recorded once, and an outcome is final once a trade closes or is skipped. Do not edit it by hand. It is the forward record the engines are judged on (docs/tripwire/ENGINES.md).

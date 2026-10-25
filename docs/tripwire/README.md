@@ -14,12 +14,14 @@ npm run tripwire:check   # starts the Worker, runs the browser journeys and the 
 ```
 
 ## Engines and the paper tracker
-See `docs/tripwire/ENGINES.md`. The Worker has two read-only routes, `/api/bars` (daily bars and a delayed live price for the tracker) and `/api/chart` (full daily history for the price chart), both from Yahoo Finance. It has no secrets and stores nothing.
+See `docs/tripwire/ENGINES.md`. The Worker has three read-only routes: `/api/bars` (daily bars and a delayed live price for the tracker) and `/api/chart` (full daily history and the Nifty, for the price chart), both from Yahoo Finance, and `/api/ledger` (the nightly forward record, read from the repository). It has no secrets and stores nothing.
 
 ## Data ("the same database")
 `build.mjs` reads `public/c/*.json`, `public/universe.json` and `public/signals.json` (and `public/engines_v3.json` when it exists) and writes a compact `dist/data/screen.json` plus one small file per company. It is a snapshot: Tripwire is only as fresh as its last build, and every screen states the data date. Rebuild and redeploy after the website's data refresh, or schedule the build. There is no live data connection.
 
 ## Deploy (owner actions)
+The `tripwire` workflow also redeploys on a schedule (23:45 and 04:15 IST, Monday to Saturday) so the data does not go stale; remove its `schedule` block for manual-only deploys.
+
 Nothing is deployed from here. `wrangler.tripwire.jsonc` is an assets-only Worker with no secrets and no route.
 1. Choose the address (a custom domain or route in Cloudflare).
 2. `npm run tripwire:build && npx wrangler deploy --config wrangler.tripwire.jsonc`, or run the `tripwire` workflow by hand with `deploy=true`.
@@ -27,4 +29,4 @@ Nothing is deployed from here. `wrangler.tripwire.jsonc` is an assets-only Worke
 4. Roll back by deleting the route or redeploying the previous Worker version.
 
 ## What is not here yet
-A server-side nightly ledger of every engine pick, accounts and sync, notifications, billing, the AI assistant, portfolio import and share links all need a credential, a provider or a decision. See `docs/BUILD_STATUS.md` for each, with its exact dependency.
+Accounts and sync, notifications, billing, the AI assistant, portfolio import and share links all need a credential, a provider or a decision. See `docs/BUILD_STATUS.md` for each, with its exact dependency.

@@ -152,3 +152,59 @@ test('worker: a long history keeps only days with a real close, and refuses a th
   const p = parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } })!; assert.equal(p.t.length, 59); assert.ok(!p.c.includes(0));
   assert.equal(parseChart({ timestamp: ts.slice(0, 10), indicators: { quote: [{ close: cl.slice(0, 10) }] } }), null); assert.equal(parseChart(undefined), null);
 });
+
+import { emptyLedger, record, evaluateLedger, summarizeLedger, takenAtFor, pickId, MIN_TRADES } from '../src/ledger.ts';
+import type { Run } from '../src/quant.ts';
+const run = (id: string, syms: string[]): Run => ({ id: id as never, picks: syms.map((s, i) => ({ engine: id as never, sym: s, name: s, sector: 'T', asOf: '2026-10-23', ref: 100, stop: 95, stopPct: 5, horizon: 3, score: 90 - i, rank: i + 1, why: [] })), funnel: { universe: 988, eligible: 750, passed: 30, skippedWideStop: 1, picked: syms.length } });
+test('ledger: a night is recorded once, in order, with its empty engines too', () => {
+  let l = emptyLedger('2026-10-23T18:00:00Z'); const a = record(l, [run('MOM', ['A', 'B']), run('QLT', [])], '2026-10-23', 'n1'); l = a.ledger;
+  assert.equal(a.added, 2); assert.equal(l.days.length, 1); assert.equal(l.days[0].engines.QLT.picked, 0);        // a night with no pick is still a record
+  assert.equal(record(l, [run('MOM', ['A', 'B'])], '2026-10-23', 'n2').skipped, 'already recorded');
+  assert.equal(record(l, [run('MOM', ['C'])], '2026-10-22', 'n2').skipped, 'stale data'); assert.equal(record(l, [], 'garbage', 'n').skipped, 'stale data');
+  const b = record(l, [run('MOM', ['C'])], '2026-10-26', 'n3'); assert.equal(b.ledger.picks.length, 3); assert.equal(l.picks.length, 2);   // the old ledger is not mutated
+});
+test('ledger: picks are filled after the close of their day, and a final outcome is never recomputed', () => {
+  const l0 = record(emptyLedger('x'), [run('MOM', ['A', 'B', 'C'])], '2026-10-23', 'n').ledger; const t0 = takenAtFor('2026-10-23');
+  assert.equal(new Date(t0 * 1000).toISOString(), '2026-10-23T10:00:00.000Z');
+  const D = 86400; const bar = (i: number, o: number, h: number, lo: number, c: number): Bar => ({ t: t0 + i * D - 6 * 3600, o, h, l: lo, c });   // 09:15 IST each following day
+  const bars = { A: [bar(1, 100, 104, 99, 103), bar(2, 103, 105, 101, 104), bar(3, 104, 108, 103, 107)], B: [bar(1, 100, 101, 90, 92)], C: null };
+  const nifty = [bar(1, 1000, 1010, 995, 1005), bar(2, 1005, 1012, 1000, 1010), bar(3, 1010, 1020, 1008, 1015)];
+  const l1 = evaluateLedger(l0, bars, nifty, 'n1');
+  assert.equal(l1.outcomes[pickId('2026-10-23', 'MOM', 'A')].status, 'closed'); assert.equal(l1.outcomes[pickId('2026-10-23', 'MOM', 'A')].reason, 'Time exit after 3 sessions');
+  assert.equal(l1.outcomes[pickId('2026-10-23', 'MOM', 'B')].reason, 'Stop'); assert.equal(l1.outcomes[pickId('2026-10-23', 'MOM', 'C')].status, 'pending');
+  const a = l1.outcomes[pickId('2026-10-23', 'MOM', 'A')]; assert.equal(a.niftyPct, Math.round(((1015 / 1000) - 1) * 10000) / 100); assert.equal(a.final, true);
+  const l2 = evaluateLedger(l1, { A: [bar(1, 1, 1, 1, 1)], B: null, C: bars.A }, null, 'n2');
+  assert.deepEqual(l2.outcomes[pickId('2026-10-23', 'MOM', 'A')], a);           // final outcomes are never rewritten
+  assert.equal(l2.outcomes[pickId('2026-10-23', 'MOM', 'C')].status, 'closed');  // a pending one is filled once its bars arrive
+});
+test('ledger: the summary withholds average R, win rate and excess until thirty trades have closed', () => {
+  let l = emptyLedger('x');
+  const picks = Array.from({ length: 31 }, (_, i) => ({ id: 'p' + i, engine: 'MOM', sym: 'S' + i, asOf: 'd', ref: 100, stop: 95, horizon: 3, score: 1, rank: 1 }));
+  l = { ...l, days: [{ asOf: 'd', recorded: 'n', engines: {} }], picks, outcomes: Object.fromEntries(picks.slice(0, 29).map((p, i) => [p.id, { status: 'closed', final: true, r: i % 2 ? -1 : 1.5, pct: 2, niftyPct: 1 } as never])) };
+  let s = summarizeLedger(l); assert.equal(s.all.closed, 29); assert.equal(s.all.avgR, null); assert.equal(s.all.winRate, null); assert.equal(s.all.avgExcess, null); assert.equal(s.all.pending, 2);
+  l.outcomes[picks[29].id] = { status: 'closed', final: true, r: 1, pct: 2, niftyPct: 1 } as never; s = summarizeLedger(l);
+  assert.equal(s.all.closed, MIN_TRADES); assert.ok(s.all.avgR !== null && s.all.winRate !== null && s.all.avgExcess === 1);
+  assert.equal(s.engines.find((e) => e.engine === 'QLT')!.picks, 0);
+});
+
+import { compareSeries, geometryPair } from '../src/chart.ts';
+test('compare: both lines are indexed to 100 at the first Nifty day, a holiday carries forward, early days are reported', () => {
+  const pts: Pt[] = [{ t: 0, c: 50, n: null }, { t: 1, c: 100, n: 1000 }, { t: 2, c: 120, n: null }, { t: 3, c: 150, n: 1100 }];
+  const c = compareSeries(pts)!; assert.equal(c.trimmed, true); assert.equal(c.a[0].c, 100); assert.equal(c.b[0].c, 100); assert.equal(c.a.length, 3);
+  assert.equal(c.b[1].c, 100);                         // no Nifty figure on day 2: the previous close is carried, not zero
+  assert.ok(Math.abs(c.stock - 50) < 1e-9 && Math.abs(c.nifty - 10) < 1e-9 && Math.abs(c.diff - 40) < 1e-9);
+  assert.equal(compareSeries([{ t: 0, c: 1 }, { t: 1, c: 2 }]), null);       // no Nifty at all: nothing to compare
+  assert.equal(compareSeries([{ t: 0, c: 1, n: 5 }]), null);
+});
+test('compare: the pair shares one scale and one time axis', () => {
+  const a: Pt[] = [{ t: 0, c: 100 }, { t: 10, c: 300 }], b: Pt[] = [{ t: 0, c: 100 }, { t: 10, c: 150 }];
+  const g = geometryPair(a, b, false)!; assert.ok(g.ysA[1] < g.ysB[1]);         // 300 plots higher (smaller y) than 150
+  assert.equal(g.ysA[0], g.ysB[0]); assert.equal(g.xs[1], 1000); assert.ok(g.ysA.every((y) => y >= 12 - 1e-9 && y <= 288 + 1e-9));
+  assert.equal(geometryPair(a, b.slice(0, 1), false), null);
+});
+test('worker: the Nifty is matched to the stock by Indian calendar day, never filled from another day', () => {
+  const ts = Array.from({ length: 40 }, (_, i) => 1_600_000_000 + i * 86400); const cl = ts.map((_, i) => 100 + i);
+  const nifty = { timestamp: ts.filter((_, i) => i !== 7).map((x) => x + 3600), indicators: { quote: [{ close: ts.filter((_, i) => i !== 7).map((_, i) => 10000 + i) }] } };
+  const p = parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } }, nifty)!; assert.equal(p.n!.length, 40); assert.equal(p.n![7], null); assert.equal(p.n![8], 10007);
+  assert.equal(parseChart({ timestamp: ts, indicators: { quote: [{ close: cl }] } }, undefined)!.n, null);
+});

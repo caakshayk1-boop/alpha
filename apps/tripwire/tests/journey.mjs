@@ -11,7 +11,7 @@ const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 const pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
-const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/chart')) bad.push(r.status() + ' ' + r.url()); });
+const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
 const text = () => pg.locator('body').innerText();
 
@@ -59,7 +59,7 @@ ok(/Not a live quote/.test(t), 'company price is labelled as a dated close, not 
 ok(/Close of /.test(t), 'company price carries its date');
 
 // price chart: ten years of mocked daily closes
-const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 4300; i++) { d += 86400; const wd = new Date(d * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(Math.round(px * 100) / 100); } return { ok: true, sym: 'TCS', t, c }; };
+const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 4300; i++) { d += 86400; const wd = new Date(d * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(Math.round(px * 100) / 100); } const n = c.map((_, i) => (i % 40 === 5 ? null : Math.round(10000 * (1 + i * 0.0003) * 100) / 100)); return { ok: true, sym: 'TCS', t, c, n }; };
 const feedBody = JSON.stringify(series());
 await pg.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: feedBody }));
 await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
@@ -75,6 +75,12 @@ await pg.getByRole('button', { name: 'Monthly' }).click();
 ok((await pg.locator('path.c-line').getAttribute('d')) !== daily && /[A-Z][a-z]{2} 20\d\d/.test(await pg.locator('.chart').innerText()), 'monthly view uses month-end closes and month labels');
 await pg.getByRole('button', { name: 'Log' }).click();
 ok(await pg.getByRole('button', { name: 'Log' }).getAttribute('aria-pressed') === 'true', 'log scale can be switched on');
+await pg.getByRole('button', { name: 'vs Nifty' }).click();
+ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
+ok(/both indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
+const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2);
+ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');
+await pg.getByRole('button', { name: 'Price', exact: true }).click();
 const box = await pg.locator('.chart-plot').boundingBox();
 await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2);
 const mid = await pg.locator('.chart-head').innerText();
@@ -149,7 +155,7 @@ const mock = (route) => {
 await pg.route('**/api/bars*', mock);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Paper trade this' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
-await pg.getByRole('tab', { name: /Paper tracker/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: /My paper/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /Updated \d\d:\d\d IST/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/Prices from Yahoo Finance, delayed/.test(await text()), 'tracker says its prices are delayed and where they come from');
@@ -164,6 +170,21 @@ await pg.reload(); await pg.waitForSelector('text=Prices unavailable', { timeout
 ok(/Nothing is estimated in their place/.test(await text()), 'price outage is stated and nothing is estimated');
 await pg.unroute('**/api/bars*');
 await pg.goto(base + '/#/signals'); await pg.getByRole('button', { name: /Paper-trade all/ }).click().catch(() => {});
+
+// the forward record: empty, then populated
+await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
+await pg.goto(base + '/#/signals?v=record'); await pg.reload(); await pg.waitForSelector('text=The record has not started', { timeout: 15000 });
+ok(/Nothing before that night counts/.test(await text()), 'before the first night the record says it has not started');
+await pg.unroute('**/api/ledger*');
+const led = (() => { const picks = [], outcomes = {}; for (let i = 0; i < 12; i++) { const id = `2026-10-2${i % 8}|MOM|S${i}`; picks.push({ id, engine: 'MOM', sym: 'S' + i, asOf: '2026-10-23', ref: 100, stop: 95, horizon: 20, score: 90, rank: 1 }); outcomes[id] = i < 9 ? { status: 'closed', final: true, r: i % 3 ? 1.2 : -1, pct: 3, niftyPct: 1, reason: 'Time exit after 20 sessions', sessions: 20, exitDay: '2026-11-20' } : { status: 'open', final: false }; }
+  return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: 'x', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
+await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
+await pg.reload(); await pg.waitForSelector('text=of 30 trades closed', { timeout: 15000 }); await shot('09b-record');
+ok(/9 of 30 trades closed/.test(await text()), 'the record counts closed trades against the 30 needed');
+ok(/stay hidden until 30 trades have closed/.test(await text()) && !/Average R \+|won \d+%/.test(await text()), 'average R and win rate are withheld below thirty trades');
+ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
+ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
+await pg.unroute('**/api/ledger*');
 
 // search
 await pg.getByRole('button', { name: 'Search' }).click();

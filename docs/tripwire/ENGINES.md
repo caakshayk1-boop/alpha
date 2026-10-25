@@ -13,7 +13,7 @@ Common to all: liquid, priced, measured ATR, not a micro cap. At most 5 picks pe
 ## What is and is not known
 - The evidence for these factors comes from other markets and periods. **Tripwire has not backtested them on Indian prices.** The repository's earlier engines (v3 E1-E7) failed their own walk-forward tests; nothing here is claimed to do better. The paper tracker is the test, and it stays a test until at least 30 trades have closed (average R is withheld below that, and 30 is still a small sample).
 - The thresholds (top fifth, 7 of 9, 15%, calmest quarter, ATR multiples) are starting hypotheses, not tuned values.
-- Picks are produced when the page loads, from the latest published close. There is no server-side forward ledger yet: a pick only enters the record when you take it. A nightly job that records every pick for every engine is the next step, and the only way to get an unbiased forward record.
+- Picks are produced when the page loads, from the latest published close.
 
 ## Paper tracker (`tracker.ts`, `worker.js`)
 A paper trade is created when you take a pick, sized by the planner from your own defaults. The Worker route `/api/bars` serves six months of daily bars and a delayed live price from Yahoo Finance (cached 5 minutes). The tracker replays them:
@@ -24,3 +24,14 @@ A paper trade is created when you take a pick, sized by the planner from your ow
 - **Live mark**: the delayed price when it is newer than the last bar, otherwise the last close. Prices unavailable is stated; nothing is estimated in its place.
 
 Tested: `tests/quant.test.ts` (engine rules, eligibility, sector caps, the tracker's fills, gaps, stops, time exits, costs, live marks, the forming bar, the Worker's bar parsing) and the browser journey with mocked bars. **Not run: the Worker against the real Yahoo endpoint** (the build sandbox has no route to it), so the first live check is on the deployed address.
+
+## The forward record (the test the engines are judged on)
+`.github/workflows/tripwire_ledger.yml` runs after each trading day (00:00 IST, retry 04:00 IST). It runs the three engines on the latest published screen and writes down **every pick, once per data day, whether or not anyone took it**, plus the nights an engine had no pick. It then replays every unfinished pick against real daily bars (fetched through yfinance, because a raw request to Yahoo from a CI runner is refused) and the Nifty, with the same `evaluatePaper` rules as your own paper trades. The result is `apps/tripwire/ledger/ledger.json`, append-only, committed by the bot (`[skip ci]`) and read live by the app through `/api/ledger`, so a new night needs no deploy.
+- A night is recorded once; a stale data day is refused; a closed or skipped outcome is final and never rewritten.
+- If most prices cannot be fetched the run turns red after recording the picks; unfinished picks wait, they never count as zero.
+- The Record tab shows nights recorded, picks, open/closed/skipped/waiting, total R by engine, nights with no pick, and the latest closed trades. **Average R, win rate and the comparison with the Nifty stay hidden until 30 trades have closed.** 30 is a minimum, not proof.
+- Nothing before the first recorded night counts. The ledger grows about 1.5 MB a year; summarise it before it reaches the Worker's practical size.
+- **Not run:** the workflow itself (it needs the real Yahoo feed through yfinance). First proof is the first scheduled run; check the Actions log and `ledger.json` the next morning.
+
+## Scheduled refresh
+`tripwire.yml` also runs at 23:45 IST and 04:15 IST, Monday to Saturday: build, run every check, deploy. Without it the app's data stops at its last deploy. Delete the `schedule` block to return to manual deploys.

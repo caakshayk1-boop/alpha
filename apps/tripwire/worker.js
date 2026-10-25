@@ -1,4 +1,4 @@
-// Tripwire Worker: static assets plus two read-only routes: /api/bars (paper tracker) and /api/chart (price history).
+// Tripwire Worker: static assets plus three read-only routes: /api/bars (paper tracker), /api/chart (price history), /api/ledger (the nightly forward record).
 //   GET /api/bars?s=TCS,INFY   (up to 12 NSE symbols)
 //   -> { ok, fetched_at, bars: { TCS: { t:[epoch s], o:[], h:[], l:[], c:[], forming: bool, live: { px, t } | null } }, missing: [] }
 // Daily bars for six months from Yahoo Finance. A bar missing any of open, high, low or close is dropped, never filled. The last bar
@@ -29,14 +29,20 @@ export function parseYahoo(res, nowMs = Date.now()) {
 }
 
 /** Pure: Yahoo's long daily history reduced to epoch seconds and closes. A day missing its close is dropped, never filled. */
-export function parseChart(res) {
+export function parseChart(res, niftyRes) {
   const ts = res?.timestamp; const cl = res?.indicators?.quote?.[0]?.close;
   if (!Array.isArray(ts) || !Array.isArray(cl)) return null;
   const t = [], c = [];
   ts.forEach((x, i) => { if (cl[i] > 0 && x > 0) { t.push(x); c.push(Math.round(cl[i] * 100) / 100); } });
-  return t.length >= 30 ? { t, c } : null;
+  if (t.length < 30) return null;
+  // the Nifty close on the same Indian calendar day; null where the index has no figure (never filled from another day)
+  const day = (x) => Math.floor((x + 19800) / 86400); const nm = new Map();
+  const nt = niftyRes?.timestamp, nc = niftyRes?.indicators?.quote?.[0]?.close;
+  if (Array.isArray(nt) && Array.isArray(nc)) nt.forEach((x, i) => { if (nc[i] > 0) nm.set(day(x), Math.round(nc[i] * 100) / 100); });
+  const n = t.map((x) => (nm.has(day(x)) ? nm.get(day(x)) : null));
+  return { t, c, n: n.some((v) => v !== null) ? n : null };
 }
-// GET /api/chart?s=TCS  ->  { ok, sym, t:[epoch s], c:[close] } : every daily close Yahoo holds (up to the whole listing), split-adjusted, dividends not included.
+// GET /api/chart?s=TCS  ->  { ok, sym, t:[epoch s], c:[close] } : every daily close Yahoo holds (up to the whole listing), split-adjusted, dividends not included, with the Nifty 50 close of the same day in `n` (null where absent; the whole field is null if the index could not be read).
 // The page makes its own ranges and its monthly view from this one series. Cached six hours: a close does not change after the session.
 async function chart(url, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase().trim();
@@ -45,14 +51,33 @@ async function chart(url, ctx) {
   const key = new Request(`https://tripwire.internal/__chart_v1/${sym}`);
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=1800, s-maxage=21600' } });
-    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=max&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+    const get = (s) => fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=max&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+    const [r, nr] = await Promise.all([get(`${sym}.NS`), get('^NSEI').catch(() => null)]);
     if (!r.ok) return json({ ok: false, error: r.status === 404 ? 'no price history for this symbol' : 'the price source did not answer' }, r.status === 404 ? 404 : 502);
-    const p = parseChart((await r.json())?.chart?.result?.[0]);
+    const niftyRes = nr && nr.ok ? (await nr.json().catch(() => null))?.chart?.result?.[0] : null;
+    const p = parseChart((await r.json())?.chart?.result?.[0], niftyRes);
     if (!p) return json({ ok: false, error: 'too little history' }, 404);
     const res = json({ ok: true, sym, ...p }, 200, { 'cache-control': 'public, max-age=1800, s-maxage=21600' });
     if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
     return res;
   } catch { return json({ ok: false, error: 'the price source did not answer' }, 502); }
+}
+
+// GET /api/ledger -> the nightly forward record, read live from the repository (public) so a new night needs no deploy. Cached ten minutes.
+const LEDGER = 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/main/apps/tripwire/ledger/ledger.json';
+async function ledger(ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__ledger_v1');
+  try {
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=300, s-maxage=600' } });
+    const r = await fetch(LEDGER, { signal: AbortSignal.timeout(12000) });
+    if (r.status === 404) return json({ ok: false, error: 'the first nightly run has not happened yet' }, 404);
+    if (!r.ok) return json({ ok: false, error: 'the record could not be read' }, 502);
+    const d = await r.json();
+    if (d?.schema !== 'tripwire-ledger/1' || !Array.isArray(d.picks) || !Array.isArray(d.days)) return json({ ok: false, error: 'the record is not in the expected shape' }, 502);
+    const res = json({ ok: true, ledger: d }, 200, { 'cache-control': 'public, max-age=300, s-maxage=600' });
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, error: 'the record could not be read' }, 502); }
 }
 
 async function bars(url, ctx) {
@@ -85,6 +110,10 @@ export default {
     if (url.pathname === '/api/chart' || url.pathname === '/api/chart/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return chart(url, ctx);
+    }
+    if (url.pathname === '/api/ledger' || url.pathname === '/api/ledger/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return ledger(ctx);
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
     return env.ASSETS.fetch(request);

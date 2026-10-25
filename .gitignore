@@ -24,3 +24,5 @@ __pycache__/
 /apps/tripwire/dist/
 /out-app/
 /out-app-build/
+/apps/tripwire/ledger/need.json
+/apps/tripwire/ledger/bars.json
