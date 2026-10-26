@@ -39,6 +39,11 @@ await pg.locator('a.contrib').first().click(); await pg.waitForSelector('input.f
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.rangebar');
 
+// the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
+const scr = await (await fetch(base + '/data/screen.json')).json();
+const grades = scr.rows.reduce((a, r) => { a[String(r.risk_lvl)] = (a[String(r.risk_lvl)] ?? 0) + 1; return a; }, {});
+ok(Object.keys(grades).every((g) => ['LOW', 'MEDIUM', 'HIGH', 'undefined'].includes(g)) && grades.LOW > 0 && grades.MEDIUM > 0 && grades.HIGH > 0, `every risk grade is LOW, MEDIUM or HIGH (${JSON.stringify(grades)})`);
+
 // Discover → follow → compare → research
 await pg.locator('nav.tabs a[href="#/discover"]').click();
 await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li');

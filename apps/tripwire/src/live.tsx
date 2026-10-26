@@ -5,7 +5,11 @@ import { tvUrl } from './tv.ts';
 /** A small price line. `refs` are horizontal guides (previous close, entry, stop) drawn only when they fall inside the range. */
 export function Spark({ c, refs = [], up, h = 34, label }: { c: number[]; refs?: { v: number; kind: 'prev' | 'entry' | 'stop' }[]; up: boolean; h?: number; label: string }) {
   if (c.length < 2) return null;
-  const all = [...c, ...refs.map((r) => r.v)]; let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
+  // the scale follows the price line, the previous close and the entry; a stop far below is not allowed to flatten the line (it is drawn only when it is near)
+  const near = [...c, ...refs.filter((r) => r.kind !== 'stop').map((r) => r.v)]; let lo = Math.min(...near), hi = Math.max(...near); if (hi === lo) { hi += 1; lo -= 1; }
+  const span = hi - lo; const stop = refs.find((r) => r.kind === 'stop');
+  if (stop && stop.v >= lo - span * 1.5 && stop.v <= hi + span * 1.5) { lo = Math.min(lo, stop.v); hi = Math.max(hi, stop.v); }
+  refs = refs.filter((r) => r.v >= lo && r.v <= hi);
   const W = 100, y = (v: number) => 3 + (1 - (v - lo) / (hi - lo)) * (h - 6); const pts = c.map((v, i) => `${i ? 'L' : 'M'}${((i / (c.length - 1)) * W).toFixed(1)} ${y(v).toFixed(1)}`).join('');
   const col = up ? 'var(--lime)' : 'var(--peach)';
   return <svg viewBox={`0 0 ${W} ${h}`} preserveAspectRatio="none" role="img" aria-label={label} style={{ width: '100%', height: h, display: 'block', overflow: 'visible' }}>

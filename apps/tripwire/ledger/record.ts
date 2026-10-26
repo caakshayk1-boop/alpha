@@ -7,7 +7,7 @@
 //        python apps/tripwire/ledger/bars.py && node --experimental-strip-types apps/tripwire/ledger/record.ts evaluate
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { runAll, type Q } from '../src/quant.ts';
-import { emptyLedger, evaluateLedger, record, summarizeLedger, type Ledger } from '../src/ledger.ts';
+import { applyCorrections, emptyLedger, evaluateLedger, record, summarizeLedger, type Correction, type Ledger } from '../src/ledger.ts';
 import type { Bar } from '../src/tracker.ts';
 
 const here = (f: string) => new URL(f, import.meta.url);
@@ -15,7 +15,9 @@ const mode = process.argv[2];
 const now = new Date().toISOString();
 const cost = (() => { try { return JSON.parse(readFileSync(here('../dist/data/signals.json'), 'utf8')).cost_round_trip_pct ?? 0.25; } catch { return 0.25; } })();
 let ledger: Ledger = existsSync(here('./ledger.json')) ? JSON.parse(readFileSync(here('./ledger.json'), 'utf8')) : emptyLedger(now, cost);
-const unfinished = () => [...new Set(ledger.picks.filter((p) => !ledger.outcomes[p.id]?.final).map((p) => p.sym))];
+const fixes: Correction[] = existsSync(here('./corrections.json')) ? JSON.parse(readFileSync(here('./corrections.json'), 'utf8')) : [];
+ledger = applyCorrections(ledger, fixes);
+const unfinished = () => [...new Set(ledger.picks.filter((p) => !ledger.outcomes[p.id]?.final && !ledger.voided?.[p.id]).map((p) => p.sym))];
 
 if (mode === 'record') {
   const screen = JSON.parse(readFileSync(here('../dist/data/screen.json'), 'utf8')) as { as_of: string; rows: Q[] };

@@ -25,6 +25,10 @@ for (const f of files) {
   const r = d.row ?? {}; const o = {};
   for (const k of KEEP) if (r[k] !== undefined) o[k] = r[k];
   const flag = (r.risk?.flags ?? []).find((x) => x.s === 'high') ?? (r.risk?.flags ?? [])[0];
+  // the published grade is a number (0 low, 1 medium, 2 high) beside a word in risk.level: carry the word, and refuse anything else, because code
+  // that compares the grade to 'HIGH' silently gets it backwards when handed a number
+  const WORD = ['LOW', 'MEDIUM', 'HIGH'];
+  if (r.risk_lvl !== undefined && r.risk_lvl !== null) { o.risk_lvl = typeof r.risk_lvl === 'number' ? WORD[r.risk_lvl] : String(r.risk_lvl).toUpperCase(); if (!WORD.includes(o.risk_lvl)) throw new Error(`${d.sym}: risk grade ${JSON.stringify(r.risk_lvl)} is not LOW, MEDIUM or HIGH`); }
   if (flag) o.risk_top = flag.t;
   if (r.mf && Number.isFinite(r.mf.rank)) o.mf = { rank: r.mf.rank, of: r.mf.of };
   rows.push(o);

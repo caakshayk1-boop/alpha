@@ -265,3 +265,14 @@ test('what-if: the slider arithmetic equals the tracker headline, and the ladder
   assert.ok(pnlAt(p, 100, 110, 0.25).pnl < 1000);                                        // costs always reduce it
   assert.equal(rLevel(95, 100, 95), -1); assert.equal(rLevel(100, 100, 95), 0); assert.equal(rLevel(105, 100, 95), 1); assert.equal(rLevel(100, 95, 95), null);
 });
+
+import { applyCorrections } from '../src/ledger.ts';
+test('ledger corrections: a voided pick stays in the record with its reason and is left out of every total', () => {
+  let l = record(emptyLedger('x'), [run('MOM', ['A']), run('LVT', ['L1', 'L2'])], '2026-10-23', 'n').ledger;
+  const fixes = [{ engine: 'LVT', asOf: '2026-10-23', reason: 'rule bug' }];
+  l = applyCorrections(l, fixes);
+  assert.deepEqual(Object.keys(l.voided!).sort(), ['2026-10-23|LVT|L1', '2026-10-23|LVT|L2']); assert.equal(l.picks.length, 3);     // nothing removed
+  assert.equal(applyCorrections(l, fixes), l);                                                                                    // idempotent
+  const s = summarizeLedger(l); assert.equal(s.all.picks, 1); assert.equal(s.engines.find((e) => e.engine === 'LVT')!.picks, 0); assert.equal(s.engines.find((e) => e.engine === 'MOM')!.picks, 1);
+  assert.equal(applyCorrections(record(emptyLedger('x'), [run('MOM', ['A'])], '2026-10-23', 'n').ledger, fixes).voided, undefined);   // a correction that matches nothing changes nothing
+});

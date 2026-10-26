@@ -29,7 +29,8 @@ html.fx .view{animation:in .38s var(--ease) both}
 @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;margin:-8px calc(var(--gut) * -1) 8px;padding:calc(env(safe-area-inset-top) + 8px) var(--gut) 8px;background:linear-gradient(var(--bg) 70%,transparent)}
 .bar h1{margin:0;font:600 17px/1.2 var(--sans);letter-spacing:-.2px;flex:1}
-.bar .sub{font-size:11.5px;color:var(--dim)}
+.bar .sub{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .grow{min-width:0}
 .icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--s1);border:1px solid var(--line);transition:background .2s,transform .15s}
 .icon-btn:active{transform:scale(.94)}
 .icon-btn[aria-pressed=true]{background:var(--lime);color:var(--ink);border-color:var(--lime)}
@@ -228,7 +229,7 @@ input[type=range].slider{width:100%;accent-color:#c8f23c;height:32px;background:
 .contrib{display:grid;grid-template-columns:64px 1fr auto;gap:8px;align-items:center;font-size:12px;margin-top:6px}
 .contrib .bar2{height:8px;border-radius:5px;background:var(--s3);position:relative;overflow:hidden}
 .contrib .bar2 i{position:absolute;top:0;bottom:0;border-radius:5px;transition:width .8s var(--ease)}
-.strip{display:flex;gap:8px;overflow-x:auto;margin:0 calc(var(--gut) * -1);padding:2px var(--gut) 4px;scrollbar-width:none;scroll-snap-type:x proximity}
+.strip{display:flex;gap:8px;overflow-x:auto;margin:0 calc(var(--gut) * -1);padding:2px var(--gut) 4px;scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding:0 var(--gut)}
 .strip::-webkit-scrollbar{display:none}
 .tile{flex:none;scroll-snap-align:start;min-width:132px;padding:10px 12px;border-radius:14px;background:var(--s1);border:1px solid var(--line);display:block}
 .tile .nm{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:650}
@@ -241,3 +242,5 @@ input[type=range].slider{width:100%;accent-color:#c8f23c;height:32px;background:
 
 /* a scrolling row must be the containing block of the screen-reader-only text inside it, or that text escapes the clip and widens the whole page */
 .strip,.chips,.scroll-x,.tile,.contrib,.card{position:relative}
+
+.ladder + .small{margin-top:16px}
