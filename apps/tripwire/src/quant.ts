@@ -1,4 +1,4 @@
-/** Three factor engines, each a published idea turned into fixed, pre-stated rules over the screen. They rank; they do not predict.
+/** Two active factor engines (and one retired), each a published idea turned into fixed, pre-stated rules over the screen. They rank; they do not predict.
  *
  *  MOM  Momentum. Twelve-month return skipping the latest month (Jegadeesh and Titman 1993), with nearness to the 52-week
  *       high (George and Hwang 2004), only above the 200-day average and ahead of the Nifty.
@@ -17,7 +17,7 @@ export type EngineId = 'MOM' | 'QLT' | 'LVT';
 export type Q = Row & { r6m?: number | null; r1y?: number | null; sd1y?: number | null; atr_pct?: number | null; piotroski?: number | null; mf?: { rank?: number; of?: number } | null };
 const n = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-export interface EngineDef { id: EngineId; name: string; line: string; theory: string; horizon: number; atrMult: number; maxStopPct: number; top: number; perSector: number; how: string[] }
+export interface EngineDef { /** set when an engine has stopped making picks: its record stays, its rules stay, nothing new is written */ retired?: string; id: EngineId; name: string; line: string; theory: string; horizon: number; atrMult: number; maxStopPct: number; top: number; perSector: number; how: string[] }
 export const ENGINES: EngineDef[] = [
   { id: 'MOM', name: 'Momentum', line: 'Twelve-month winners, ignoring the last month', horizon: 20, atrMult: 2.5, maxStopPct: 12, top: 5, perSector: 2,
     theory: 'Jegadeesh and Titman (1993); George and Hwang (2004)',
@@ -25,10 +25,12 @@ export const ENGINES: EngineDef[] = [
   { id: 'QLT', name: 'Quality at a fair price', line: 'Profitable, cheap on earnings, not falling', horizon: 60, atrMult: 3, maxStopPct: 15, top: 5, perSector: 2,
     theory: 'Greenblatt (2005); Piotroski (2000); Novy-Marx (2013)',
     how: ['Score: 50% Magic Formula rank, 30% Piotroski score, 20% median return on capital.', 'Must have a Piotroski score of 7 or more, median ROCE of 15% or more, debt to equity of 1 or less, and close above its 200-day average. Lenders are left out, as the Magic Formula leaves them out.', 'Held up to 60 sessions. Stop 3 ATR below the signal close; skipped if that is more than 15% away.'] },
-  { id: 'LVT', name: 'Steady uptrend', line: 'Calm stocks that are still rising', horizon: 40, atrMult: 2, maxStopPct: 10, top: 5, perSector: 2,
+  { id: 'LVT', retired: '2026-10-26', name: 'Steady uptrend', line: 'Calm stocks that are still rising', horizon: 40, atrMult: 2, maxStopPct: 10, top: 5, perSector: 2,
     theory: 'Ang, Hodrick, Xing and Zhang (2006); Frazzini and Pedersen (2014); Faber (2007)',
     how: ['Score: 60% calmness (lowest one-year volatility) and 40% rank of the 6-month return.', 'Must sit in the calmest quarter, close above its 200-day average, have a positive 6-month return and a risk grade below HIGH.', 'Held up to 40 sessions. Stop 2 ATR below the signal close; skipped if that is more than 10% away.'] },
 ];
+/** The engines still making picks. Steady uptrend was retired on 26 Oct 2026: negative in all three test periods, and its first night of picks was voided for a rule bug. */
+export const ACTIVE = ENGINES.filter((e) => !e.retired);
 export const engineDef = (id: EngineId) => ENGINES.find((e) => e.id === id)!;
 
 /** Names the engines may consider at all: liquid, priced, with a measured ATR, and not a micro cap (fills there are not credible). */
@@ -112,6 +114,6 @@ export function runEngine(id: EngineId, rows: readonly Q[], ctx: Ctx, asOf: stri
   return { id, picks, funnel: { universe: rows.length, eligible: ctx.elig.length, passed: passed.length, skippedWideStop: wide, picked: picks.length } };
 }
 export function runAll(rows: readonly Q[], asOf: string): { runs: Run[]; ctx: Ctx; picks: Pick[] } {
-  const ctx = buildCtx(rows); const runs = ENGINES.map((e) => runEngine(e.id, rows, ctx, asOf));
+  const ctx = buildCtx(rows); const runs = ACTIVE.map((e) => runEngine(e.id, rows, ctx, asOf));
   return { runs, ctx, picks: runs.flatMap((r) => r.picks) };
 }

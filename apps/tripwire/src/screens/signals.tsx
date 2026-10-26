@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { go, setState, useAppState } from '../app.tsx';
 import { useLedger } from '../data.ts';
 import { Tracker } from './Tracker.tsx';
+import { AutoBook } from './AutoBook.tsx';
 import { TvButton } from '../live.tsx';
 import { Evidence } from './Evidence.tsx';
 import { useBacktest } from '../data.ts';
@@ -18,12 +19,12 @@ import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
 
 export function Signals({ seg }: { seg: string }) {
-  const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : seg === 'evidence' ? 'evidence' : 'picks';
+  const v = seg === 'tracker' ? 'tracker' : seg === 'auto' ? 'auto' : seg === 'record' ? 'record' : seg === 'evidence' ? 'evidence' : 'picks';
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `My paper${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Evidence' }]} />
-    {v === 'picks' ? <Picks /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: `Mine${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Proof' }]} />
+    {v === 'picks' ? <Picks /> : v === 'auto' ? <AutoBook /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
   </div>;
 }
 
@@ -47,7 +48,7 @@ function Picks() {
   const have = new Set(s.paper.filter((p) => !p.closedByUser).map((p) => p.sym));
   const all = out.picks;
   return <>
-    <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Three engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {bt.data ? 'In a ten-year back-test none beat the whole market after costs.' : 'The historical test has not been published yet.'} The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
+    <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {bt.data ? 'In a ten-year back-test none beat the whole market after costs.' : 'The historical test has not been published yet.'} The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
     {all.length > 0 && <button className="btn" style={{ width: '100%', marginBottom: 6 }} onClick={() => { let n = 0; for (const p of all) if (!have.has(p.sym) && take(p, true)) { n++; have.add(p.sym); } toast(n ? `${n} paper trade${n > 1 ? 's' : ''} taken. They enter at the next open.` : 'Nothing new to take'); }}><Icon n="plan" />Paper-trade all {all.length} picks</button>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
@@ -66,7 +67,7 @@ function Picks() {
   </>;
 }
 
-/** The engines' forward record: every pick of every night, taken by anyone or not. The only unbiased test of the three engines. */
+/** The engines' forward record: every pick of every night, taken by anyone or not. The only unbiased test of the engines. */
 function RecordView() {
   const feed = useLedger();
   const sum = useMemo(() => (feed.data?.ledger ? summarizeLedger(feed.data.ledger) : null), [feed.data]);
@@ -86,7 +87,7 @@ function RecordView() {
     {sum.engines.map((e) => { const def = ENGINES.find((x) => x.id === e.engine)!; const idle = l.days.filter((d) => (d.engines[e.engine]?.picked ?? 0) === 0).length; return <div key={e.engine} className="card">
       <div className="row between"><b>{def.name}</b><span className="tag num">{e.picks} picks</span></div>
       <div className="num small dim" style={{ margin: '8px 0 0' }}>{e.closed} closed · {e.open} open · {e.skipped} skipped · {e.pending} pending · total <b style={{ color: 'var(--tx)' }}>{fmtR(e.closed ? e.totalR : null)}</b>{e.enough ? ` · average ${fmtR(e.avgR)}` : ''}</div>
-      <div className="small mute" style={{ marginTop: 4 }}>{idle} of {l.days.length} night{l.days.length === 1 ? '' : 's'} with no pick.</div></div>; })}
+      <div className="small mute" style={{ marginTop: 4 }}>{def.retired ? `Retired ${dayWord(def.retired)}. Its record stays; it makes no new picks.` : `${idle} of ${l.days.length} night${l.days.length === 1 ? '' : 's'} with no pick.`}</div></div>; })}
     {recent.length > 0 && <><Head>Latest closed</Head><div className="card" style={{ padding: '2px 14px' }}><div className="list">{recent.map(({ p, o }) => <a key={p.id} className="li" href={`#/c/${p.sym}`}><span className="grow"><span className="sym">{p.sym}</span> <span className="tag">{p.engine}</span><span className="dim small" style={{ display: 'block' }}>{o!.reason} · {o!.sessions} session{o!.sessions === 1 ? '' : 's'} · {dayWord(o!.exitDay)}</span></span><span className={`num ${(o!.r ?? 0) > 0 ? 'up' : 'down'}`} style={{ fontWeight: 650 }}>{fmtR(o!.r)}</span></a>)}</div></div></>}
     {l.voided && Object.keys(l.voided).length > 0 && <div className="note" style={{ marginTop: 12 }}><b>{Object.keys(l.voided).length} pick{Object.keys(l.voided).length === 1 ? '' : 's'} voided.</b> They are kept in the record, left out of every total, and the reason is stated: {[...new Set(Object.values(l.voided))][0]}</div>}
     <div className="note info" style={{ marginTop: 12 }}><b>How to read this.</b> Every night, each engine's picks are written down before anyone knows how they turn out, whether or not you took them, and replayed with the same rules as your own paper trades (next-open fill, stop first, time exit, costs). It is a forward record: nothing before the first night counts, and 30 trades is a minimum, not proof. Prices come from Yahoo Finance through a nightly job; if a night's prices could not be fetched, those picks wait rather than count as zero.</div>

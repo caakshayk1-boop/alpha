@@ -4,7 +4,7 @@ import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
 import { isLender, trendOf, TREND_WORD } from '../screen.ts';
-import { ENGINES, evaluate, type Q } from '../quant.ts';
+import { ACTIVE, evaluate, type Q } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
 import { checklistFor } from '../insight.ts';
@@ -13,20 +13,23 @@ import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
 import { TvButton, TvIcon } from '../live.tsx';
 import { Intel } from './Intel.tsx';
+import { CompanyNews } from './News.tsx';
+import { asOfTime, livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 
 export function Company({ sym }: { sym: string }) {
+  useWatchQuotes([sym]); const quote = useQuote(sym);
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
   const row = c.data?.row; const lender = row ? isLender(row) : false;
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
   const { out: eng } = useEngines();
-  const evals = useMemo(() => (row && eng ? ENGINES.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
+  const evals = useMemo(() => (row && eng ? ACTIVE.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
   if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack />{c.err === 'not published' ? <Empty title={`${sym} is not in the screen`}>Tripwire covers the Nifty 500 screen. Check the symbol, or search by name.</Empty> : <Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} />}</div>;
   const fr = freshness(row.last_date ?? day);
-  const lo = row.low52, hi = row.high52, px = row.price;
+  const lp = livePrice(row, quote); const lo = row.low52, hi = row.high52, px = lp.px;
   const at = (v?: number | null) => (isNum(v) && isNum(lo) && isNum(hi) && hi > lo ? Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100)) : null);
   const pxAt = at(px);
   const swot = c.data.swot; const flags = c.data.risk?.flags ?? [];
@@ -35,9 +38,9 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass">
-      <div className="row between"><div><div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}>{inr(px)}</div><div className={`num ${tone(row.r1d)}`} style={{ marginTop: 4 }}>{pct(row.r1d)} on the day</div></div>
-        <div style={{ textAlign: 'right' }}><span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span><div className="mute small" style={{ marginTop: 6 }}>Not a live quote</div></div></div>
-      {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
+      <div className="row between"><div><div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}>{inr(px)}</div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
+        <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`}>{lp.live ? 'Live' : 'Last price'} · {asOfTime(lp.t)} IST</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
+      {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
         {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }}><i>{l}</i></span>; })}
@@ -60,6 +63,9 @@ export function Company({ sym }: { sym: string }) {
       <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }} aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
         {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
     {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
+
+    <Head>News</Head>
+    <CompanyNews name={row.name} />
 
     <Head>Scrip intelligence</Head>
     <Intel c={c.data} rows={scr.data?.rows ?? []} />

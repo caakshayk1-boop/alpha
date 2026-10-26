@@ -13,6 +13,12 @@ const now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 await ctx.route('**/api/pulse*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, missing: [] }) }));
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
+const mq = (prev, px) => quote(prev, px);
+await ctx.route('**/api/macro*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, missing: [] }) }));
+const nowS = Math.floor(Date.now() / 1000);
+await ctx.route('**/api/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }));
+await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
+await ctx.route('**/api/intraday*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
 const pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
 const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/intraday') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
@@ -34,6 +40,10 @@ ok(await pg.locator('.tile[target=_blank][rel*=noopener]').count() >= 3, 'outbou
 ok(/Open|closed|Pre-open|No live/i.test(await pg.locator('header.bar .sub').innerText()), 'the header states the trading session');
 ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await text()), 'Today shows the trend map');
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
+await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
+ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
+await pg.waitForSelector('.news'); ok(/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · refreshes every hour/.test(await text()) && /Q2 results|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes every hour');
+ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 ok(/Engine picks/i.test(await text()) && (await pg.locator('.tile', { hasText: 'Paper trade' }).count()) >= 3, 'Today shows swipeable engine pick cards');
 await pg.locator('a.contrib').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
@@ -82,14 +92,20 @@ ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
 ok(/Case and countercase/i.test(t) && /Countercase/.test(t), 'company page has case and countercase');
-ok(/(Uptrend|Downtrend|Mixed)/.test(t) && /50-day/.test(t), 'the company page tags its trend and shows the averages behind it');
+ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(t), 'the company page tags its trend and shows the averages behind it');
 ok(/Who owns it/i.test(t) && /Seasonality/i.test(t) && /Risk map/i.test(t), 'the company page carries ownership, seasonality and a risk map');
 await pg.waitForSelector('text=Indicator fingerprint', { timeout: 10000 });
 await pg.locator('summary', { hasText: 'Indicator fingerprint' }).click();
 ok(/did not pass the study/.test(await text()) && /description, not as a signal/.test(await text()), 'the indicator fingerprint says which indicators failed the study');
 ok((await pg.locator('a[href*="tradingview.com/chart"]').count()) >= 2, 'the company page links to TradingView');
-ok(/Not a live quote/.test(t), 'company price is labelled as a dated close, not live');
+ok(!/Not a live quote|delayed/i.test(t) && /Live price not available|Live|Last price/.test(t), 'the company price does not call itself delayed or not live: it is live, or says a live price is not available');
+await pg.waitForSelector('.news'); ok(/Checked \d\d:\d\d/.test(await text()), 'the company page carries its own news');
 ok(/Close of /.test(t), 'company price carries its date');
+// a live quote from today replaces the published close, and says when it printed
+await pg.route('**/api/intraday*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes: { TCS: quote(2500, 2600) }, missing: [] }) }));
+await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 15000 });
+ok(/₹2,600\.00/.test(await text()) && /\+4\.0% today/.test(await text()), 'a live quote replaces the published close on the company page, with its time and the day\'s change');
+await pg.unroute('**/api/intraday*');
 
 // price chart: ten years of mocked daily closes
 const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 4300; i++) { d += 86400; const wd = new Date(d * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(Math.round(px * 100) / 100); } const n = c.map((_, i) => (i % 40 === 5 ? null : Math.round(10000 * (1 + i * 0.0003) * 100) / 100)); return { ok: true, sym: 'TCS', t, c, n }; };
@@ -122,8 +138,20 @@ await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home');
 const homeTxt = await pg.locator('.chart-head').innerText(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight');
 ok(homeTxt !== (await pg.locator('.chart-head').innerText()) && Number(await pg.locator('.chart-plot').getAttribute('aria-valuenow')) === 2, 'the arrow keys move along the line');
 await shot('04b-chart');
+// an instrument's own page: its chart, no Nifty line, and the scale explained
+await pg.goto(base + '/#/m/GOLD'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
+ok(/Gold/.test(await pg.locator('h1').innerText()) && await pg.getByRole('button', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
+await pg.getByRole('button', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
+ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
+// compare starting from a single company: it asks for the second one instead of dead-ending
+await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
+await pg.waitForSelector('#cmp-add'); ok(/Compare TCS with/.test(await text()), 'Compare from a company page asks which company to put beside it');
+await pg.locator('#cmp-add').fill('infosys'); await pg.locator('.pick-row', { hasText: 'INFY' }).first().click();
+await pg.waitForSelector('table.tbl'); await pg.waitForSelector('.cchart svg path');
+ok(await pg.locator('.cchip').count() === 2 && await pg.locator('.cchart svg path').count() >= 2 && /indexed to 100/.test(await text()), 'the comparison draws both stocks on one indexed chart with a table beneath');
+await pg.getByRole('button', { name: 'Remove INFY from the comparison' }).click(); await pg.waitForSelector('text=Add one more to compare with TCS'); ok(true, 'a name can be removed from the comparison');
 await pg.unroute('**/api/chart*'); await pg.route('**/api/chart*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
-await pg.reload(); await pg.waitForSelector('text=Nothing is drawn in its place', { timeout: 15000 });
+await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('text=Nothing is drawn in its place', { timeout: 15000 });
 ok(await pg.locator('.chart-plot').count() === 0, 'a failed price service draws nothing rather than a guess');
 await pg.unroute('**/api/chart*');
 
@@ -165,9 +193,9 @@ await shot('07-journal');
 
 // signals: three engines, picks, paper tracker with mocked bars
 await pg.goto(base + '/#/signals'); await pg.waitForSelector('section[aria-label]'); await shot('08-signals');
-ok((await pg.locator('section[aria-label]').count()) === 3, 'signals shows exactly three engines');
+ok((await pg.locator('section[aria-label]').count()) === 2, 'signals shows the two active engines (Steady uptrend is retired)');
 ok(!/E[1-6]\b|Blocked: data|Alerts are off|lifecycle/i.test(await text()), 'no engine-selection or lifecycle chooser remains');
-ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && /Steady uptrend/i.test(await text()), 'the three engines are named');
+ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && !/Steady uptrend/i.test(await pg.locator('section[aria-label]').first().innerText()) && !(await pg.locator('section[aria-label]').allInnerTexts()).some((x) => /Steady uptrend/i.test(x)), 'the two active engines are named and the retired one makes no picks');
 const firstPick = await pg.locator('section[aria-label] a .sym').first().innerText().then((s) => s.replace(/^\d+\.\s*/, ''));
 await pg.locator('section[aria-label]').first().getByText('How it picks').click();
 ok(/Funnel tonight/.test(await text()), 'each engine explains its funnel');
@@ -189,7 +217,7 @@ await pg.route('**/api/bars*', mock);
 await pg.route('**/api/intraday*', (route) => { const syms = (new URL(route.request().url()).searchParams.get('s') || '').split(',').filter(Boolean); const quotes = {}; for (const s of syms) quotes[s] = quote(ref * 1.0, ref * 1.03); route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes, missing: [] }) }); });
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Paper trade this' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
-await pg.getByRole('tab', { name: /My paper/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /updated \d+[sm] ago/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
@@ -198,10 +226,10 @@ ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[aria-l
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));
 ok(/Back to live/.test(await text()) && await pg.locator('.ladder .wi').count() === 1, 'the what-if slider moves a marker and states the P&L at that price');
 const tvl = pg.locator('a[href*="tradingview.com/chart"]').first(); ok((await tvl.getAttribute('href')).includes('NSE%3A') && (await tvl.getAttribute('target')) === '_blank' && /noopener/.test(await tvl.getAttribute('rel')), 'the trade links to its TradingView chart in a new tab');
-ok(/delayed/i.test(await text()), 'tracker says its prices are delayed');
+ok(!/delayed/i.test(await text()), 'the tracker does not call its prices delayed');
 await shot('09-tracker');
 ok(/\bOpen\b/.test(await pg.locator('.card .tag').allInnerTexts().then((x) => x.join(' '))), 'the trade opens at the first open after it was taken');
-ok(/Live \(delayed\)/i.test(await text()) && /session 4 of/i.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
+ok(/\blive\b/i.test(await text()) && /session 4 of/i.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
 ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
 // a failed price service shows an honest error, not a guess
@@ -224,6 +252,11 @@ ok(/9 of 30 trades closed/.test(await text()), 'the record counts closed trades 
 ok(/stay hidden until 30 trades have closed/.test(await text()) && !/Average R \+|won \d+%/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
+// the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
+await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('.slots', { timeout: 15000 });
+ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
+ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
+await shot('09c-autobook');
 await pg.unroute('**/api/ledger*');
 
 // search

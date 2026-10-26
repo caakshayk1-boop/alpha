@@ -276,3 +276,10 @@ test('ledger corrections: a voided pick stays in the record with its reason and 
   const s = summarizeLedger(l); assert.equal(s.all.picks, 1); assert.equal(s.engines.find((e) => e.engine === 'LVT')!.picks, 0); assert.equal(s.engines.find((e) => e.engine === 'MOM')!.picks, 1);
   assert.equal(applyCorrections(record(emptyLedger('x'), [run('MOM', ['A'])], '2026-10-23', 'n').ledger, fixes).voided, undefined);   // a correction that matches nothing changes nothing
 });
+
+import { ACTIVE } from '../src/quant.ts';
+test('a retired engine keeps its definition and its record but makes no new picks', () => {
+  assert.deepEqual(ACTIVE.map((e) => e.id), ['MOM', 'QLT']); assert.ok(ENGINES.find((e) => e.id === 'LVT')!.retired);
+  const rows = [{ sym: 'A', name: 'A', price: 100, liquid: true, atr_pct: 1, tier: 'large' }] as unknown as Q[];
+  assert.deepEqual(runAll(rows, 'd').runs.map((r) => r.id), ['MOM', 'QLT']);
+});

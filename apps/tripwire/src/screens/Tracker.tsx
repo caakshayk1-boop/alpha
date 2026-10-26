@@ -7,6 +7,8 @@ import { SLIPPAGE_PCT, pnlAt, rLevel } from '../tracker.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 import { useLiveBook, type BookRow } from '../book.ts';
 import { Ago, LiveBadge, Spark, Tick, TvButton } from '../live.tsx';
+import { useScreen } from '../data.ts';
+import { TrendTag } from './common.tsx';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const R = (v: number | null | undefined) => sgn(v, (n) => n.toFixed(2) + 'R');
@@ -21,7 +23,7 @@ export function Tracker() {
   const hidden = s.paper.filter((p) => p.closedByUser).length;
   return <>
     <div className="card glass">
-      <div className="row between"><LiveBadge live={live} label={live ? 'LIVE · delayed about 15 min' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
+      <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
         <div><div className="k">Open P&L (paper)</div>
           <div className={`num ${totalOpen > 0 ? 'up' : totalOpen < 0 ? 'down' : ''}`} style={{ font: '600 32px/1.1 var(--sans)' }}><Tick v={openRows.length ? totalOpen : null}>{openRows.length ? money(totalOpen) : '—'}</Tick></div></div>
@@ -39,12 +41,13 @@ export function Tracker() {
     {b.rows.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => setOpenId(openId === r.p.id ? null : r.p.id)} live={live}
       onHide={() => { setState((x) => archivePaper(x, r.p.id)); toast('Taken off the active list. The record is kept.'); }} />)}
     {hidden > 0 && <p className="mute small">{hidden} hidden by you. They stay in your backup.</p>}
-    <div className="note info" style={{ marginTop: 12 }}><b>How a trade is followed.</b> Entry: the open of the first session after you took it, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), or the close of the last session of the horizon. Costs {b.cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Live prices are delayed; real fills differ.</div>
+    <div className="note info" style={{ marginTop: 12 }}><b>How a trade is followed.</b> Entry: the open of the first session after you took it, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), or the close of the last session of the horizon. Costs {b.cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Real fills differ.</div>
     <button className="btn" style={{ width: '100%', marginTop: 10 }} onClick={() => open({ k: 'plan' })}>Open the position sizer</button>
   </>;
 }
 
-function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; cost: number; expanded: boolean; onToggle: () => void; onHide: () => void; live: boolean }) {
+export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; cost: number; expanded: boolean; onToggle: () => void; onHide?: () => void; live: boolean }) {
+  const scr = useScreen(); const row = scr.data?.rows.find((x) => x.sym === r.p.sym);
   const { p, v, q } = r; const eng = ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine;
   const W = { waiting: 'Waiting for prices', pending: 'Enters at the next open', open: 'Open', closed: 'Closed', skipped: 'Skipped' } as const;
   const isOpen = v.status === 'open'; const done = v.status === 'closed';
@@ -56,9 +59,9 @@ function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; 
   const spark = q && q.c.length > 1 ? q.c : null;
   return <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
     <button className="tcard-head" aria-expanded={expanded} onClick={onToggle} style={{ width: '100%', textAlign: 'left', padding: 13 }}>
-      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span></span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
+      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
       {(isOpen || done) ? <div className="row between" style={{ marginTop: 8, alignItems: 'flex-end' }}>
-        <div><div className="k">{isOpen ? (v.markKind === 'live' ? 'Live (delayed)' : 'Last close') : 'Exit'}</div><div className="num" style={{ font: '600 20px/1.2 var(--sans)' }}><Tick v={isOpen ? v.mark : v.exit}>{inr(isOpen ? v.mark : v.exit)}</Tick></div>
+        <div><div className="k">{isOpen ? (v.markKind === 'live' ? 'Live' : 'Last close') : 'Exit'}</div><div className="num" style={{ font: '600 20px/1.2 var(--sans)' }}><Tick v={isOpen ? v.mark : v.exit}>{inr(isOpen ? v.mark : v.exit)}</Tick></div>
           {isOpen && q && <div className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</div>}</div>
         <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 20px/1.2 var(--sans)' }}><Tick v={v.pnl}>{money(v.pnl)}</Tick></div><div className="small dim num">{R(v.r)} · {pct(v.pct)}</div></div></div>
         : <p className="small dim num" style={{ margin: '8px 0 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit{v.status === 'skipped' ? '' : ''}</p>}
@@ -78,8 +81,8 @@ function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; 
         <div className="row between num" style={{ fontSize: 13 }}><span>{inr(price)}</span><span className={(w!.pnl) >= 0 ? 'up' : 'down'}>{money(w!.pnl)} · {R(w!.r)} · {pct(w!.pct)}</span></div>
         <div className="small mute">After costs and slippage. {wi != null ? <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => setWi(null)}>Back to live</button> : 'Drag to see any price.'}</div></>}
       {done && <p className="small dim num" style={{ margin: '8px 0 0' }}>{v.reason} · {v.sessions} session{v.sessions === 1 ? '' : 's'} held{v.exitT ? ` · ${dayWord(new Date((v.exitT + 19800) * 1000).toISOString())}` : ''}</p>}
-      <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{(done || v.status === 'skipped') && <button className="btn sm" onClick={onHide}>Hide</button>}</div>
+      <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{(done || v.status === 'skipped') && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div>
     </div>}
-    {expanded && !isOpen && !done && <div style={{ padding: '0 13px 13px' }}><div className="row" style={{ gap: 8 }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{v.status === 'skipped' && <button className="btn sm" onClick={onHide}>Hide</button>}</div></div>}
+    {expanded && !isOpen && !done && <div style={{ padding: '0 13px 13px' }}><div className="row" style={{ gap: 8 }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{v.status === 'skipped' && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div></div>}
   </div>;
 }

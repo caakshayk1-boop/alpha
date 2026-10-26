@@ -5,12 +5,13 @@ import { inr, pct } from '../fmt.ts';
 
 /** Price history: simple on purpose. One line, five ranges, daily or monthly, linear or log. Hover, touch or arrow keys scrub it.
  *  The line draws itself once per change (and not at all with reduced motion). Numbers never count up. */
-export function PriceChart({ sym }: { sym: string }) {
+export function PriceChart({ sym, fmt, name }: { sym: string; fmt?: (v: number) => string; name?: string }) {
+  const f = fmt ?? ((v: number) => inr(v)); const instrument = !!fmt;      // an index, metal, currency or coin: no Nifty line, no adjustment note
   const feed = useChart(sym); const gid = useId().replace(/:/g, '');
   const [range, setRange] = useState<RangeId>('10Y'); const [view, setView] = useState<'daily' | 'monthly'>('daily'); const [log, setLog] = useState(false); const [vs, setVs] = useState(false);
   const [cur, setCur] = useState<number | null>(null); const box = useRef<HTMLDivElement>(null);
   const all: Pt[] = useMemo(() => (feed.data ? feed.data.t.map((t, i) => ({ t, c: feed.data!.c[i], n: feed.data!.n ? feed.data!.n[i] : null })) : []), [feed.data]);
-  const hasNifty = !!feed.data?.n;
+  const hasNifty = !!feed.data?.n && !instrument;
   const win = useMemo(() => sliceRange(all, range), [all, range]);
   // monthly keeps the window's true first day as its start, so the return in the header is the return the line shows
   const shown = useMemo(() => (view === 'monthly' ? (win.pts.length ? [win.pts[0], ...monthly(win.pts).filter((p) => p.t > win.pts[0].t)] : []) : downsample(win.pts, 700)), [win, view]);
@@ -23,7 +24,7 @@ export function PriceChart({ sym }: { sym: string }) {
   const i = cur == null ? null : Math.min(cur, plot.length - 1); const p = i == null ? null : shown[(cmp ? shown.length - plot.length : 0) + i];
   const fromStart = p && st ? (p.c / st.first.c - 1) * 100 : null;
   const cmpA = cmp && i != null ? cmp.a[i].c - 100 : null, cmpB = cmp && i != null ? cmp.b[i].c - 100 : null;
-  const text = p ? (cmp ? `${dateLabel(p.t, view === 'monthly')}, ${sym} ${pct(cmpA)}, Nifty ${pct(cmpB)} since the start` : `${dateLabel(p.t, view === 'monthly')}, ${inr(p.c)}, ${pct(fromStart)} from the start of the window`) : '';
+  const text = p ? (cmp ? `${dateLabel(p.t, view === 'monthly')}, ${sym} ${pct(cmpA)}, Nifty ${pct(cmpB)} since the start` : `${dateLabel(p.t, view === 'monthly')}, ${f(p.c)}, ${pct(fromStart)} from the start of the window`) : '';
   const at = (e: PointerEvent) => { const r = box.current!.getBoundingClientRect(); setCur(nearest(plot, (e.clientX - r.left) / r.width)); };
   const key = (e: KeyboardEvent) => {
     const step = e.shiftKey ? 10 : 1; const cc = i ?? plot.length - 1;
@@ -36,7 +37,7 @@ export function PriceChart({ sym }: { sym: string }) {
   return <section className="card chart" aria-label="Price history">
     <div className="chart-head" aria-live="off">
       {p && cmp ? <><div className="k">{dateLabel(p.t, view === 'monthly')}</div><div className="num chart-big"><span className={(cmpA ?? 0) >= 0 ? 'up' : 'down'}>{pct(cmpA)}</span></div><div className="small num dim">{sym} · Nifty <b style={{ color: 'var(--tx)' }}>{pct(cmpB)}</b> over the same days</div></>
-        : p ? <><div className="k">{dateLabel(p.t, view === 'monthly')}</div><div className="num chart-big">{inr(p.c)}</div><div className={`num small ${fromStart != null && fromStart >= 0 ? 'up' : 'down'}`}>{pct(fromStart)} since the start of this window</div></>
+        : p ? <><div className="k">{dateLabel(p.t, view === 'monthly')}</div><div className="num chart-big">{f(p.c)}</div><div className={`num small ${fromStart != null && fromStart >= 0 ? 'up' : 'down'}`}>{pct(fromStart)} since the start of this window</div></>
         : cmp ? <><div className="k">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`} · against the Nifty</div><div className={`num chart-big ${cmp.diff >= 0 ? 'up' : 'down'}`}>{cmp.diff >= 0 ? '+' : '−'}{Math.abs(cmp.diff).toFixed(1)} pts</div><div className="small dim num">{sym} {pct(cmp.stock)} · Nifty {pct(cmp.nifty)}</div></>
         : st ? <><div className="k">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`}</div><div className={`num chart-big ${up ? 'up' : 'down'}`}>{pct(st.ret, 1)}</div>
           <div className="small dim num">{yrs}{st.cagr != null ? ` · ${pct(st.cagr, 1)} a year` : ''}</div></> : null}
@@ -65,13 +66,16 @@ export function PriceChart({ sym }: { sym: string }) {
     <div className="chips" style={{ marginTop: 10 }} role="group" aria-label="Range">{RANGES.map((r) => <button key={r.id} className="chip" aria-pressed={range === r.id} onClick={() => { setRange(r.id); setCur(null); }}>{r.id}</button>)}</div>
     <div className="row" style={{ marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
       <div className="mini-seg" role="group" aria-label="Detail">{(['daily', 'monthly'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setCur(null); }}>{v === 'daily' ? 'Daily' : 'Monthly'}</button>)}</div>
-      <div className="mini-seg" role="group" aria-label="Compare">{([false, true] as const).map((v) => <button key={String(v)} aria-pressed={vs === v} disabled={v && !hasNifty} title={v && !hasNifty ? 'The Nifty could not be read' : undefined} onClick={() => { setVs(v); setCur(null); }}>{v ? 'vs Nifty' : 'Price'}</button>)}</div>
+      {!instrument && <div className="mini-seg" role="group" aria-label="Compare">{([false, true] as const).map((v) => <button key={String(v)} aria-pressed={vs === v} disabled={v && !hasNifty} title={v && !hasNifty ? 'The Nifty could not be read' : undefined} onClick={() => { setVs(v); setCur(null); }}>{v ? 'vs Nifty' : 'Price'}</button>)}</div>}
       <div className="mini-seg" role="group" aria-label="Scale">{([false, true] as const).map((l) => <button key={String(l)} aria-pressed={log === l} onClick={() => setLog(l)}>{l ? 'Log' : 'Linear'}</button>)}</div>
     </div>
+    <p className="small dim" style={{ margin: '8px 0 0' }}>{log
+      ? 'Log scale: equal steps are equal percentage moves, so 100 to 200 looks the same as 200 to 400. Best for long ranges, where a rise from 20 to 100 would otherwise squash everything before it flat.'
+      : `Linear scale: equal steps are equal amounts of price. Best for short ranges.${st && st.hi.c / Math.max(st.lo.c, 1e-9) >= 3 ? ' This window moved more than threefold, so older moves look small here; Log shows them in proportion.' : ''}`}</p>
     {cmp && <div className="row small" style={{ gap: 14, marginTop: 8, flexWrap: 'wrap' }}><span><span className="c-key" style={{ background: color }} />{sym}</span><span><span className="c-key dashed" />Nifty 50</span><span className="mute">both indexed to 100</span></div>}
     {cmp?.trimmed && <p className="small down" style={{ margin: '8px 0 0' }}>Nifty data starts {dateLabel(cmp.from.t)}, so the comparison starts there.</p>}
-    {st && !cmp && <div className="row between small num" style={{ marginTop: 10 }}><span className="dim">Low <b style={{ color: 'var(--tx)' }}>{inr(st.lo.c)}</b> · {dateLabel(st.lo.t, true)}</span><span className="dim">High <b style={{ color: 'var(--tx)' }}>{inr(st.hi.c)}</b> · {dateLabel(st.hi.t, true)}</span></div>}
+    {st && !cmp && <div className="row between small num" style={{ marginTop: 10 }}><span className="dim">Low <b style={{ color: 'var(--tx)' }}>{f(st.lo.c)}</b> · {dateLabel(st.lo.t, true)}</span><span className="dim">High <b style={{ color: 'var(--tx)' }}>{f(st.hi.c)}</b> · {dateLabel(st.hi.t, true)}</span></div>}
     {!win.covers && range !== 'Max' && <p className="small down" style={{ margin: '8px 0 0' }}>History in this data starts {dateLabel(all[0].t)}, so {range} shows all of it.</p>}
-    <p className="mute small" style={{ margin: '8px 0 0' }}>Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. Log scale shows percentage moves evenly. The Nifty line is the index price, without dividends, like the stock. Past prices say nothing certain about future ones.</p>
+    <p className="mute small" style={{ margin: '8px 0 0' }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock.'} Past prices say nothing certain about future ones.</p>
   </section>;
 }

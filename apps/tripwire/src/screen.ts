@@ -20,9 +20,13 @@ export function trendOf(r: Pick<Row, 'price' | 'sma50' | 'sma200'>): { trend: Tr
   const d = `price ${r.price.toFixed(2)}, 50-day ${r.sma50.toFixed(2)}, 200-day ${r.sma200.toFixed(2)}`;
   if (r.price > r.sma50 && r.sma50 > r.sma200) return { trend: 'up', detail: `Uptrend: price above the 50-day, and the 50-day above the 200-day (${d}).` };
   if (r.price < r.sma50 && r.sma50 < r.sma200) return { trend: 'down', detail: `Downtrend: price below the 50-day, and the 50-day below the 200-day (${d}).` };
-  return { trend: 'mixed', detail: `Mixed: the price and the two averages are not in one order (${d}).` };
+  return { trend: 'mixed', detail: `Sideways: the price and the two averages are not in one order, so there is no clear trend (${d}).` };
 }
-export const TREND_WORD: Record<Trend, string> = { up: 'Uptrend', down: 'Downtrend', mixed: 'Mixed' };
+/** "Sideways" is the plain word for the third state: the price and the two averages are not in one order, so there is no clear trend either way. */
+export const TREND_WORD: Record<Trend, string> = { up: 'Uptrend', down: 'Downtrend', mixed: 'Sideways' };
+const sma = (c: readonly number[], n: number) => (c.length >= n ? c.slice(-n).reduce((a, b) => a + b, 0) / n : null);
+/** The same tag for anything with a daily close series (an index, gold, a currency): the last close against its own 50 and 200-day averages. */
+export const trendOfCloses = (c: readonly number[]) => trendOf({ price: c.length ? c[c.length - 1] : null, sma50: sma(c, 50), sma200: sma(c, 200) });
 /** Banks and other lenders carry no meaningful debt-to-equity or capital-employed return; the screen's own rule. */
 export const isLender = (r: Pick<Row, 'sector'>) => r.sector === 'Financial Services';
 
