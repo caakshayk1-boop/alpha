@@ -17,7 +17,7 @@ const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: 
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
 
 const nowS = Math.floor(Date.now() / 1000);
-await ctx.route('**/api/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }));
+await ctx.route('**/api/news*', (r) => { const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('q') || ''); const own = /Tata Consultancy/i.test(q); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: own ? [{ title: 'Tata Consultancy Services Q2 profit rises 5%', source: 'Mint', url: 'https://example.com/t1', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint'] }, { title: 'Tata Consultancy Services wins large deal', source: 'ET', url: 'https://example.com/t2', t: nowS - 7200, tags: ['Deal'], also: 0, sources: ['ET'] }] : [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }); });
 await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
 
 const pg = await ctx.newPage();
@@ -45,7 +45,9 @@ await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
 await pg.waitForSelector('.news'); ok(/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Q2 results|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
-ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.strip[aria-label="Engine picks"] .tile').count()) >= 3, 'Today shows the night\'s picks as swipeable tiles (no duplicate buttons: the auto book takes them)');
+ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');
+T.stock = () => quote(100, 102); await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
+ok(true, 'each pick draws its own live line once its quotes arrive');
 await pg.waitForSelector('.dot-live', { timeout: 15000 });
 ok(/live ·/i.test(await text()) && /Needs you|Tonight's picks/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
@@ -223,7 +225,7 @@ await pg.route('**/api/bars*', mock);
 T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Take it myself' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
-await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: /^My trades/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /updated \d+[sm] ago/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
@@ -327,3 +329,4 @@ ok(bad.length === 0, `no failed requests${bad.length ? ': ' + bad[0] : ''}`);
 await b.close();
 console.log(fails ? `\njourney: ${fails} failed` : '\njourney: all passed');
 process.exit(fails ? 1 : 0);
+

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ago, companyQ, MARKET_Q, mergeNews, useNews, useNewsMany, type NewsItem } from '../news.ts';
+import { ago, companyQ, companyStories, MARKET_Q, mergeNews, useNews, useNewsMany, type NewsItem } from '../news.ts';
 import { useScreen } from '../data.ts';
 import { Empty } from '../ui.tsx';
 const TAGC: Record<string, string> = { Results: 'amber', IPO: 'violet', Deal: 'aqua', Order: 'blue', Rating: 'pink', Payout: 'lime', Regulator: 'peach', People: '' };
@@ -10,7 +10,7 @@ export function NewsRow({ it, sym }: { it: NewsItem; sym?: string }) {
     <span className="nt">{it.title}<span className="sr"> (opens in a new tab)</span></span>
     <span className="small dim" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 3, alignItems: 'center' }}>
       {sym && <span className="tag lime" style={{ fontSize: '0.625rem' }}>{sym}</span>}
-      <span>{it.source}{it.also > 0 ? ` +${it.also} more` : ''}</span><span aria-hidden="true">·</span><span>{ago(it.t)}</span>
+      <span>{it.source}{it.also > 0 ? ` +${it.also} ${it.also === 1 ? 'outlet' : 'outlets'}` : ''}</span><span aria-hidden="true">·</span><span>{ago(it.t)}</span>
       {it.tags.map((t) => <span key={t} className={`tag ${TAGC[t] ?? ''}`} style={{ fontSize: '0.625rem' }}>{t}</span>)}
     </span></a>;
 }
@@ -23,10 +23,10 @@ const NOTE = 'Headlines are collected from Google News (or Bing News when Google
 
 /** News for one company, from its own name. */
 export function CompanyNews({ name }: { name: string }) {
-  const n = useNews(companyQ(name));
+  const n = useNews(companyQ(name)); const stories = useMemo(() => companyStories(name, n.data?.items ?? [], 3), [name, n.data]);
   return <div className="card" style={{ padding: '2px 14px 12px' }}>
     {n.loading && !n.data ? <div style={{ padding: '12px 0' }}><div className="sk" style={{ height: 14, width: '90%', marginBottom: 8 }} /><div className="sk" style={{ height: 14, width: '70%' }} /></div>
-      : n.data && n.data.items.length ? <div className="list">{n.data.items.slice(0, 5).map((it) => <NewsRow key={it.url} it={it} />)}</div>
+      : stories.length ? <div className="list">{stories.map((it) => <NewsRow key={it.url} it={it} />)}</div>
       : n.data ? <div style={{ padding: '12px 0' }}><Empty title="Nothing in the last 7 days">No English headline matched this name in the past week.</Empty></div>
       : <p className="small down" style={{ margin: '12px 0 0' }}>News could not be loaded ({n.err}). Nothing is shown in its place.</p>}
     <Footer at={n.at} err={n.data ? null : n.err} refresh={n.refresh} loading={n.loading} />
@@ -38,7 +38,7 @@ export function TodayNews({ syms }: { syms: string[] }) {
   const scr = useScreen(); const [all, setAll] = useState(false);
   const names = useMemo(() => syms.slice(0, 6).map((s) => ({ s, name: scr.data?.rows.find((r) => r.sym === s)?.name ?? '' })).filter((x) => x.name), [syms.join(), scr.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const n = useNewsMany([MARKET_Q, ...names.map((x) => companyQ(x.name))]);
-  const merged = useMemo(() => mergeNews(n.feeds.map((f, i) => ({ sym: i === 0 ? undefined : names[i - 1]?.s, items: f?.items ?? [] })), 12), [n.feeds, names]);
+  const merged = useMemo(() => mergeNews(n.feeds.map((f, i) => ({ sym: i === 0 ? undefined : names[i - 1]?.s, items: i === 0 ? f?.items ?? [] : companyStories(names[i - 1]?.name ?? '', f?.items ?? [], 2) })), 12), [n.feeds, names]);
   const shown = all ? merged : merged.slice(0, 5);
   return <div className="card" style={{ padding: '2px 14px 10px' }}>
     {merged.length ? <div className="list">{shown.map((it) => <NewsRow key={it.url} it={it} sym={it.sym} />)}</div>

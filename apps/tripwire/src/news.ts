@@ -70,3 +70,19 @@ export function useNewsMany(qs: string[]) {
   }, [run]);
   return { ...st, refresh: () => run(true) };
 }
+
+/** Pure. A company's own feed, cut to what is about THAT company and told once. The headline must name it; and the many outlets that cover one event
+ *  (a results night is printed by five) become one line: stories with the same topic tag inside 72 hours are one story, kept as the most
+ *  corroborated and then the newest, and the rest are counted ("+4 outlets"), never listed. Untagged stories fold only on shared words. */
+export function companyStories(name: string, items: NewsItem[], limit = 3): NewsItem[] {
+  const core = name.replace(/\b(ltd|limited|inc|corp|corporation|pvt|private|india|industries|the)\b\.?/gi, ' ').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3)[0]?.toLowerCase();
+  const about = items.filter((it) => !core || it.title.toLowerCase().includes(core));
+  const out: { it: NewsItem; w: Set<string>; n: number }[] = [];
+  for (const it of [...about].sort((a, b) => b.t - a.t)) {
+    const w = words(it.title); const tag = it.tags[0];
+    const hit = out.find((o) => (tag && o.it.tags[0] === tag && Math.abs(o.it.t - it.t) < 72 * 3600) || same(o.w, w));
+    if (hit) { hit.n += 1 + it.also; if (it.also > hit.it.also && it.t > hit.it.t - 24 * 3600) { hit.it = { ...it }; hit.w = w; } continue; }
+    out.push({ it: { ...it }, w, n: it.also });
+  }
+  return out.slice(0, limit).map((o) => ({ ...o.it, also: o.n }));
+}

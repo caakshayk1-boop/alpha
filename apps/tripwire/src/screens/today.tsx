@@ -1,10 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Empty } from '../ui.tsx';
 import { Head, Loading, Failed, PageBar, CompanyRow } from './common.tsx';
 import { freshness } from '../fresh.ts';
 import { changesSince, istDay, recordSnap, reviewDue, current } from '../store.ts';
-import { dayWord, isNum, pct, tone } from '../fmt.ts';
+import { dayWord, initials, inr0, isNum, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ENGINES } from '../quant.ts';
 import { trendOf, TREND_WORD, type Row } from '../screen.ts';
@@ -15,12 +15,12 @@ import { MacroStrip } from './Macro.tsx';
 import { TodayNews } from './News.tsx';
 import { Ago, LiveBadge, Spark, Tick } from '../live.tsx';
 import { Aurora } from '../aurora.tsx';
-import { Heat, Ring } from '../widgets.tsx';
+import { Heat, Ring, avatarStyle } from '../widgets.tsx';
 import { mood } from '../mood.ts';
 import { Icon } from '../ui.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
-import { inr0 } from '../fmt.ts';
+
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 
@@ -66,6 +66,9 @@ export function Today() {
   const newsSyms = [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...ownRows.map((r) => r.p.sym), ...s.follows])];
   const needs = reviews.length > 0 || events.length > 0;
   const live = sess.phase === 'open' && !!anyLive;
+  const [showAllPicks, setAllPicks] = useState(false);
+  const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score);
+  const shownPicks = showAllPicks ? allPicks : allPicks.slice(0, 5);
 
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
@@ -84,33 +87,34 @@ export function Today() {
     <Head>Commodities, currencies, Bitcoin</Head>
     <MacroStrip />
 
-    {/* the paper book, once. The auto book holds every engine pick; hand-taken trades appear only where they are a different pick */}
-    {showAuto ? <a className="card glass" href="#/signals?v=auto" style={{ display: 'block', marginTop: 10 }}>
-      <div className="row between"><span className="k">Paper book</span><span className="tag lime">Auto · open</span></div>
-      <div className="row" style={{ gap: 14, marginTop: 8 }}>
-        <Ring value={auto.slots} max={auto.cfg.maxOpen} label={`${auto.slots} of ${auto.cfg.maxOpen} positions in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick><small>of {auto.cfg.maxOpen}</small></Ring>
-        <div className="grow">
-          <div className={`num amt ${tone(auto.sum.openPnl)}`} style={{ font: '600 1.75rem/1.1 var(--sans)' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></div>
-          <div className="small dim">{auto.sum.open} open · {auto.sum.waiting} waiting{auto.dayTotal != null ? <> · today <b className={`num amt ${tone(auto.dayTotal)}`}>{money(auto.dayTotal)}</b></> : null}{auto.sum.closed ? <> · realised <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b></> : null}</div></div></div>
-      {ownRows.length > 0 && <div className="small dim" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>Plus {ownRows.length} trade{ownRows.length === 1 ? '' : 's'} you took that the auto book does not hold{ownOpen.length ? <> · <b className={`num amt ${tone(ownPnl)}`}>{money(ownPnl)}</b> open</> : null}</div>}
-    </a> : ownRows.length > 0 ? <a className="card glass" href="#/signals?v=tracker" style={{ display: 'block', marginTop: 10 }}>
-      <div className="row between"><span className="k">Your paper trades</span><span className="tag lime">Open tracker</span></div>
-      <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
-        <div className={`num amt ${tone(ownPnl)}`} style={{ font: '600 1.75rem/1.1 var(--sans)' }}><Tick v={ownOpen.length ? ownPnl : null}>{ownOpen.length ? money(ownPnl) : '—'}</Tick></div>
-        <div className="small dim" style={{ textAlign: 'right' }}>{ownOpen.length} open · {ownRows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').length} waiting</div></div>
-    </a> : null}
+    {/* the paper book, once, with its two parts named: what the auto book holds and what you took by hand */}
+    {(showAuto || ownRows.length > 0) && <section className="card glass" aria-label="Paper book" style={{ marginTop: 10 }}>
+      <div className="row between"><span className="k">Paper book</span><span className="small mute">{showAuto && ownRows.length ? 'two parts, added up' : 'paper money only'}</span></div>
+      {showAuto && ownRows.length > 0 && <div className={`num amt ${tone(auto.sum.openPnl + ownPnl)}`} style={{ font: '600 1.75rem/1.1 var(--sans)', margin: '6px 0 2px' }}><Tick v={auto.sum.openPnl + ownPnl}>{money(auto.sum.openPnl + ownPnl)}</Tick> <span className="small dim" style={{ font: 'inherit', fontSize: '0.75rem' }}>open now</span></div>}
+      {showAuto && <a className="bookrow" href="#/signals?v=auto">
+        <Ring value={auto.slots} max={auto.cfg.maxOpen} size={54} stroke={6} label={`${auto.slots} of ${auto.cfg.maxOpen} positions in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick></Ring>
+        <span className="grow"><b>Auto book</b><span className="small dim" style={{ display: 'block' }}>Every engine pick, ₹1,00,000 each · {auto.sum.open} open{auto.sum.waiting ? ` · ${auto.sum.waiting} waiting` : ''} of {auto.cfg.maxOpen} places</span></span>
+        <span style={{ textAlign: 'right' }}><span className={`num amt ${tone(auto.sum.openPnl)}`} style={{ font: '600 1.125rem/1.2 var(--sans)', display: 'block' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></span>{auto.dayTotal != null && <span className={`small num amt ${tone(auto.dayTotal)}`}>today {money(auto.dayTotal)}</span>}</span></a>}
+      {ownRows.length > 0 && <a className="bookrow" href="#/signals?v=tracker">
+        <span className="bookdot" aria-hidden="true">{ownRows.length}</span>
+        <span className="grow"><b>My trades</b><span className="small dim" style={{ display: 'block' }}>Taken by you · {ownOpen.length} open{ownRows.length - ownOpen.length ? ` · ${ownRows.length - ownOpen.length} waiting` : ''}{showAuto ? ' · not in the auto book' : ''}</span></span>
+        <span className={`num amt ${tone(ownPnl)}`} style={{ font: '600 1.125rem/1.2 var(--sans)', textAlign: 'right' }}><Tick v={ownOpen.length ? ownPnl : null}>{ownOpen.length ? money(ownPnl) : '—'}</Tick></span></a>}
+      {showAuto && auto.sum.closed > 0 && <div className="small dim" style={{ marginTop: 6 }}>Realised so far: <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b> over {auto.sum.closed} closed</div>}
+    </section>}
 
     {scr.loading && <Loading what="the market read" />}
     {scr.err && <Failed what="the market data" err={scr.err} retry={scr.retry} />}
     {scr.data && <>
-      {/* tonight's picks: names and their live move; the auto book takes them, so there is nothing to tap here */}
-      {total > 0 && <><Head aside={<a className="small" href="#/signals" style={{ textDecoration: 'underline' }}>All {total}</a>}>Tonight's picks</Head>
-        <div className="strip" aria-label="Engine picks">{out!.runs.flatMap((r) => r.picks).map((p) => { const row = rows.find((x) => x.sym === p.sym); const lp = row ? livePrice(row, pickQ.data?.quotes[p.sym] ?? null) : null; const st = autoState(p);
-          return <a key={p.engine + p.sym} className="tile" href={`#/c/${p.sym}`} style={{ minWidth: 118 }}>
-            <div className="nm">{ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine}</div>
-            <div className="vv">{p.sym}</div>
-            <div className={`small num ${tone(lp?.ch)}`}>{lp?.ch != null ? pct(lp.ch) : '—'}</div>
-            <div className="small dim">{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'}</div></a>; })}</div></>}
+      {/* tonight's picks: ranked, each with its own live line, price and move, and where it stands in the auto book */}
+      {total > 0 && <><Head aside={<span className="small mute">{total} · {out!.runs.filter((r) => r.picks.length).length} engines</span>}>Tonight's picks</Head>
+        <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
+          return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
+            <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
+            <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
+              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · stop −{p.stopPct}%</span></span>
+            <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
+            <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
+          {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
 
       {/* the trend map, live */}
       <Head aside={<span className="small mute">{liveMap ? <><i className="dot-live" aria-hidden="true" /> live · <Ago at={breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
