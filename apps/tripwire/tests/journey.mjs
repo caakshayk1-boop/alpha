@@ -10,7 +10,7 @@ const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fail
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 const now0 = Math.floor(Date.now() / 1000);
-const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 - 60, prev, live: true });
+const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 await ctx.route('**/api/pulse*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, missing: [] }) }));
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
 const pg = await ctx.newPage();
@@ -187,7 +187,7 @@ ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says 
 await pg.getByRole('tab', { name: /My paper/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /updated \d+[sm] ago/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
-ok(/LIVE/.test(await text()) && /Today/.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
+ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
 ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[aria-label*="today"]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));
@@ -200,10 +200,10 @@ ok(/Live \(delayed\)/i.test(await text()) && /Session 4 of/.test(await text()), 
 ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
 // a failed price service shows an honest error, not a guess
-await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
-await pg.reload(); await pg.waitForSelector('text=Prices unavailable', { timeout: 15000 });
+await pg.unroute('**/api/bars*'); await pg.unroute('**/api/intraday*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.route('**/api/intraday*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
+await pg.reload(); await pg.waitForSelector('text=Live prices are unavailable', { timeout: 15000 });
 ok(/Nothing is estimated in their place/.test(await text()), 'price outage is stated and nothing is estimated');
-await pg.unroute('**/api/bars*');
+await pg.unroute('**/api/bars*'); await pg.unroute('**/api/intraday*');
 await pg.goto(base + '/#/signals'); await pg.getByRole('button', { name: /Paper-trade all/ }).click().catch(() => {});
 
 // the forward record: empty, then populated
