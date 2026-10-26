@@ -4,9 +4,10 @@
  *  daily bars with the same rules the in-app tracker uses (`evaluatePaper`), so the two can never disagree. */
 import { evaluatePaper, type Bar, type Paper } from './tracker.ts';
 import type { Run } from './quant.ts';
+import { targetsFor } from './exits.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null }
-export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string }
+export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean }
 export interface Day { asOf: string; recorded: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
 export interface Ledger { schema: 'tripwire-ledger/1'; started: string; updated: string; cost: number; days: Day[]; picks: LedgerPick[]; outcomes: Record<string, Outcome>;
   /** picks struck from the record, with the reason. A pick is never deleted or edited: it is voided in the open and left out of every total. */
@@ -43,10 +44,11 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
   for (const p of l.picks) {
     if (outcomes[p.id]?.final) continue;
     const b = bars[p.sym]; if (!b) { outcomes[p.id] = outcomes[p.id] ?? { status: 'pending', final: false }; continue; }
-    const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf) };
+    const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf), targets: targetsFor(p) };
     const v = evaluatePaper(paper, b, null, l.cost);
     const o: Outcome = { status: v.status === 'waiting' || v.status === 'pending' ? 'pending' : v.status, final: v.status === 'closed' || v.status === 'skipped' };
     if (v.status === 'skipped') o.skipReason = v.skipReason;
+    if (v.ladder) { o.t1Hit = v.ladder.t1Hit; o.t2Hit = v.ladder.t2Hit; }
     if (v.status === 'open' || v.status === 'closed') {
       Object.assign(o, { entry: v.entry, entryDay: isoOf(v.entryT!), sessions: v.sessions, r: v.r, pct: v.pct });
       if (v.status === 'closed') Object.assign(o, { exit: v.exit, exitDay: isoOf(v.exitT!), reason: v.reason }); else o.mark = v.mark ?? undefined;

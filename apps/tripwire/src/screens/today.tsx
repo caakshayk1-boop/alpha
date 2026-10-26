@@ -7,7 +7,7 @@ import { changesSince, istDay, recordSnap, reviewDue, current } from '../store.t
 import { dayWord, initials, inr0, isNum, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
-import { trendOf, TREND_WORD, type Row } from '../screen.ts';
+import { trendOf, TREND_WORD, TREND_RULE_TEXT, type Row } from '../screen.ts';
 import { useBacktest, useBreadth, usePulse } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { journeyOf } from '../journey.ts';
@@ -16,6 +16,7 @@ import { useAutoBook, useLiveBook } from '../book.ts';
 import { MacroStrip } from './Macro.tsx';
 import { TodayNews } from './News.tsx';
 import { Ago, LiveBadge, Observed, Spark, Tick } from '../live.tsx';
+import { LivePositions } from './LivePositions.tsx';
 import { Aurora } from '../aurora.tsx';
 import { Heat, Ring, avatarStyle } from '../widgets.tsx';
 import { mood } from '../mood.ts';
@@ -85,7 +86,7 @@ export function Today() {
     {/* the market, once: the mood, the Nifty, and the two figures that colour it, with one live label */}
     <section className="moodhero card glass" aria-label="Market mood">
       <Aurora ch={niftyCh} vix={vixCh} still={!live} />
-      <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : 'Last prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
+      <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
       {md ? <div className="word grad-text" style={{ margin: '6px 0 2px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '8px 0' }} />}
       <div className="big num">{pulse.data?.quotes.NIFTY ? <><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick> <span className={tone(niftyCh)}>{pct(niftyCh)}</span> <a className="dim small" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer">Nifty 50<span className="sr"> on TradingView, opens in a new tab</span></a></> : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}</div>
       <div className="row small num" style={{ gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
@@ -119,7 +120,7 @@ export function Today() {
       <div className="card">
         <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.down / map.n) * 100) : '—'}% in a downtrend</span></div>
         <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.up} are in an uptrend, ${map.mixed} sideways and ${map.down} in a downtrend`}><i style={{ flexGrow: map.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.down || .01, background: 'var(--down)' }} /></div>
-        <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} of {rows.filter((r) => r.liquid).length} liquid names: the rest have no 200-day average yet. Uptrend: price above the 50-day average, the 50-day above the 200-day.{liveMap ? ` Today's price used for the ${liveMap.repriced} names near a trend line; the rest use the close of ${dayWord(day)}.` : breadth.err ? ' Live update unavailable; showing the close.' : ''}</div>
+        <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} of {rows.filter((r) => r.liquid).length} liquid names: the rest have no 200-day average yet. Uptrend needs all four: {TREND_RULE_TEXT.up}. Downtrend is the mirror; anything else is sideways.{liveMap ? ` Today's price used for the ${liveMap.repriced} names near a trend line; the rest use the close of ${dayWord(day)}.` : breadth.err ? ' Live update unavailable; showing the close.' : ''}</div>
         {map.sectors.length > 0 && <Heat cells={map.sectors.slice(0, 9).map((x) => ({ k: x.k, n: x.n, up: x.up, down: x.down }))} href={(c) => `#/discover?sector=${encodeURIComponent(c.k)}&trend=${c.up >= c.down ? 'up' : 'down'}`} />}
       </div>
 
@@ -139,6 +140,7 @@ export function Today() {
         <span className="bookdot" aria-hidden="true">{ownRows.length}</span>
         <span className="grow"><b>My trades</b><span className="small dim" style={{ display: 'block' }}>Taken by you · {ownOpen.length} open{ownRows.length - ownOpen.length ? ` · ${ownRows.length - ownOpen.length} waiting` : ''}{showAuto ? ' · not in the auto book' : ''}</span></span>
         <span className={`num amt ${tone(ownPnl)}`} style={{ font: '600 1.125rem/1.2 var(--sans)', textAlign: 'right' }}><Tick v={ownOpen.length ? ownPnl : null}>{ownOpen.length ? money(ownPnl) : '—'}</Tick></span></a>}
+      <LivePositions rows={[...(showAuto ? auto.rows : []), ...ownRows]} live={live} />
       {showAuto && auto.sum.closed > 0 && <div className="small dim" style={{ marginTop: 6 }}>Realised so far: <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b> over {auto.sum.closed} closed</div>}
     </section>}
 

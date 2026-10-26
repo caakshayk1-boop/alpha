@@ -31,3 +31,6 @@ Tripwire did not change any engine rule to make the written spec and the data ag
 | D2 | The spec says liquid means a 20-session median traded value of at least ₹10 crore. The code uses the screen's liquid flag. | 145 of 960 flagged-liquid names show under ₹10 crore a day (lowest ₹0.7 crore); 4 unflagged names show ₹50 crore or more. The flag's definition is not published. | Publish the flag's definition, or replace it with the written threshold. |
 | D3 | The spec says priced at ₹50 or more. No floor is applied. | 45 flagged-liquid names trade under ₹50. | Apply the floor, or correct the spec. |
 The forward record has one night (23 Oct) and no closed trade; it was written under the current code. If any of D1 to D3 changes, record the version beside the night it takes effect.
+
+## D4. Target multiples and sleeve sizes are unvalidated
+The T1/T2 ladder (1/2R, 1.5/3R, 2/4R) and the 10/10/10 split are the owner's brief turned into numbers, not findings. Review once 30 trades have closed per sleeve. The short-term sleeve has no engine.

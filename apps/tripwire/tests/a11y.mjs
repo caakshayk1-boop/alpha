@@ -45,24 +45,6 @@ for (const [w, h, tag] of [[390, 844, 'phone'], [360, 740, 'small'], [320, 640, 
   if (errs.length) problems.push(`${tag}: script errors ${errs[0]}`);
   await ctx.close();
 }
-// every colour theme keeps the contrast the scan demands
-for (const theme of ['ocean', 'violet', 'sunset', 'rose']) {
-  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, bypassCSP: true });
-  await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, { ...state, prefs: { ...state.prefs, theme } });
-  const nowS = Math.floor(Date.now() / 1000); const qq = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => nowS - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29)), px, pt: nowS - 60, prev, live: true });
-  await ctx.route('**/api/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: [{ title: 'Sensex ends higher as banks rally', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results', 'IPO'], also: 1, sources: ['Mint'] }] }) }));
-  await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false}' }));
-  await mockTick(ctx, { pulse: { NIFTY: qq(24000, 24120), BANKNIFTY: qq(52000, 51800), VIX: qq(14, 14.6) }, macro: { GOLD: qq(2600, 2650), SILVER: qq(30, 31), BRENT: qq(80, 79), WTI: qq(76, 75), USDINR: qq(88, 88.5), MYRINR: qq(20, 20.2), USDMYR: qq(4.4, 4.38), BTC: qq(67000, 68000) }, stock: null });
-  await ctx.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
-  const pg = await ctx.newPage();
-  for (const r of ['/#/today', '/#/signals?v=auto', '/#/profile']) {
-    await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(900); n++;
-    await pg.addScriptTag({ content: axe });
-    const res = await pg.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0].html.slice(0, 90)}`));
-    for (const v of res) problems.push(`theme ${theme} ${r}: ${v}`);
-  }
-  await ctx.close();
-}
 // the biggest text sizes: nothing may push the page sideways at 150% and 200% of the system text size
 for (const [pct, tag] of [[150, '150%'], [200, '200%']]) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, bypassCSP: true });

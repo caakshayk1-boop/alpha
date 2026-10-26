@@ -9,6 +9,7 @@ import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
+import { styleDef, styleOf } from '../exits.ts';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const R = (v: number | null | undefined) => sgn(v, (n) => n.toFixed(2) + 'R');
@@ -70,7 +71,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
   const spark = q && q.c.length > 1 ? q.c : null;
   return <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
     <button className="tcard-head" aria-expanded={expanded} onClick={onToggle} style={{ width: '100%', textAlign: 'left', padding: 13 }}>
-      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
+      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> <span className="tag">{styleDef(styleOf(p.horizon)).label}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
       {(isOpen || done) ? <div className="row between" style={{ marginTop: 8, alignItems: 'flex-end' }}>
         <div><div className="k">{isOpen ? (v.markKind === 'live' ? 'Live' : 'Last close') : 'Exit'}</div><div className="num" style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={isOpen ? v.mark : v.exit}>{inr(isOpen ? v.mark : v.exit)}</Tick></div>
           {isOpen && q && <div className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</div>}</div>
@@ -80,6 +81,12 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
     </button>
     {expanded && (isOpen || done) && <div style={{ padding: '0 13px 13px' }}>
       {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today, five-minute' : 'Last session, five-minute'}</div><Spark c={q!.c} up={q!.px >= q!.prev} refs={[{ v: q!.prev, kind: 'prev' }, ...(v.entry ? [{ v: v.entry, kind: 'entry' as const }] : []), { v: p.stop, kind: 'stop' }]} label={`${p.sym} today, with the previous close, your entry and your stop`} h={48} /><div className="small mute">dashed: previous close, your entry, your stop</div></div>}
+      {v.ladder && <div className="small num" style={{ marginTop: 10 }}>
+        <div className="k">Profit booking · {styleDef(styleOf(p.horizon)).label}</div>
+        <div>Target 1 {inr(v.ladder.t1)} · {v.ladder.t1Hit ? 'filled, half sold, stop moved to the fill' : 'not reached'}</div>
+        <div>Target 2 {inr(v.ladder.t2)} · {v.ladder.t2Hit ? 'filled, the rest sold' : 'not reached'}</div>
+        <div className="dim">Banked {money(v.ladder.booked)} before costs · {Math.round(v.ladder.qtyLeft * 100) / 100} of {Math.round(p.qty * 100) / 100} shares still held · stop {inr(v.ladder.stop)}</div>
+        <div className="mute">These targets are a chosen rule, not a tested one: the back-test never used targets.</div></div>}
       <div className="k" style={{ marginTop: 12 }}>Risk ladder</div>
       <div className="ladder" role="img" aria-label={`${p.sym} is at ${R(rl(mark))} of risk relative to your entry; the stop is at minus 1R`}>
         <div className="rail" />
@@ -93,7 +100,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         <p style={{ margin: 0 }}><b>P&L basis</b>: fill to {done ? 'exit' : 'latest'}, times {Math.round(p.qty * 100) / 100} shares, minus {cost}% of the entry value (costs) and {SLIPPAGE_PCT}% of the exit value (slippage). Dividends are not received.</p>
         {adj && <p style={{ margin: '6px 0 0' }}>A split or bonus was found since the signal (the price history is now quoted ×{adj.toFixed(3)}). The stop and the share count were moved to match, so value and risk are unchanged.</p>}
         {v.basis === 'unverified' && <p className="down" style={{ margin: '6px 0 0' }}>The signal day's bar was not available, so a split since the signal could not be checked.</p>}</div></details>
-      {isOpen && <><div className="small dim num">Stop {inr(p.stop)} is {pct(((p.stop / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
+      {isOpen && <><div className="small dim num">Stop {inr(v.ladder?.stop ?? p.stop)} is {pct((((v.ladder?.stop ?? p.stop) / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
         <label className="l" htmlFor={`wi-${p.id}`}>What if it trades at…</label>
         <input id={`wi-${p.id}`} className="slider" type="range" min={lo} max={hi} step={step} value={price} onChange={(e) => setWi(Number(e.target.value))} />
         <div className="row between num" style={{ fontSize: '0.8125rem' }}><span>{inr(price)}</span><span className={(w!.pnl) >= 0 ? 'up' : 'down'}>{money(w!.pnl)} · {R(w!.r)} · {pct(w!.pct)}</span></div>

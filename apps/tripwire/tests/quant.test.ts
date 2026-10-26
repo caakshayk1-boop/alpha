@@ -210,17 +210,30 @@ test('worker: the Nifty is matched to the stock by Indian calendar day, never fi
 });
 
 import { trendOf, filterRows, NO_FILTER, type Row } from '../src/screen.ts';
-test('trend tag: Alpha\'s uptrend rule, its mirror for down, mixed otherwise, untagged when a figure is missing', () => {
-  assert.equal(trendOf({ price: 120, sma50: 110, sma200: 100 }).trend, 'up');
-  assert.equal(trendOf({ price: 80, sma50: 90, sma200: 100 }).trend, 'down');
-  assert.equal(trendOf({ price: 105, sma50: 110, sma200: 100 }).trend, 'mixed');     // below the 50-day but the averages are rising
-  assert.equal(trendOf({ price: 110, sma50: 110, sma200: 100 }).trend, 'mixed');     // strict inequalities, as on the site
-  assert.equal(trendOf({ price: 100, sma50: 90, sma200: 95 }).trend, 'mixed');
-  assert.equal(trendOf({ price: 120, sma50: null, sma200: 100 }).trend, null); assert.equal(trendOf({ price: NaN, sma50: 1, sma200: 1 }).trend, null);
-  assert.match(trendOf({ price: 120, sma50: 110, sma200: 100 }).detail, /50-day above the 200-day/);
+test('trend tag: four conditions for an uptrend, their exact mirror for a downtrend, sideways otherwise, untagged when a figure is missing', () => {
+  const U = { price: 120, sma20: 115, sma50: 110, sma200: 100, r3m: 12 }; const D = { price: 80, sma20: 85, sma50: 90, sma200: 100, r3m: -12 };
+  assert.equal(trendOf(U).trend, 'up'); assert.equal(trendOf(D).trend, 'down');
+  assert.equal(trendOf({ ...U, price: 112 }).trend, 'mixed', 'a pullback through the 20-day is not an uptrend');
+  assert.equal(trendOf({ ...U, sma20: 108 }).trend, 'mixed', 'the 20-day must be above the 50-day');
+  assert.equal(trendOf({ ...U, sma50: 100.5 }).trend, 'mixed', 'a 50-day only 0.5% above the 200-day is a tangle, not a trend');
+  assert.equal(trendOf({ ...U, sma50: 101 }).trend, 'up', 'a gap of exactly 1% passes');
+  assert.equal(trendOf({ ...U, r3m: 0 }).trend, 'mixed', 'a flat 3-month return is not rising'); assert.equal(trendOf({ ...U, r3m: -1 }).trend, 'mixed');
+  assert.equal(trendOf({ ...D, price: 88 }).trend, 'mixed'); assert.equal(trendOf({ ...D, r3m: 3 }).trend, 'mixed'); assert.equal(trendOf({ ...D, sma50: 99.5 }).trend, 'mixed');
+  assert.equal(trendOf({ price: 110, sma20: 110, sma50: 110, sma200: 100, r3m: 5 }).trend, 'mixed', 'strict inequalities');
+  assert.equal(trendOf({ ...U, sma20: null }).trend, null); assert.equal(trendOf({ ...U, r3m: null }).trend, null); assert.equal(trendOf({ price: NaN, sma20: 1, sma50: 1, sma200: 1, r3m: 1 }).trend, null);
+  assert.match(trendOf(U).detail, /all four hold/); assert.match(trendOf(D).detail, /mirrored/);
+  const near = trendOf({ ...U, price: 112 }).detail; assert.match(near, /Closest to an uptrend/); assert.match(near, /the price is above the 20-day average is not so/);
+});
+test('trend rule: it is stricter than the old two-average rule, never looser', () => {
+  let strictlyFewer = 0;
+  for (const price of [90, 100, 105, 110, 120]) for (const s20 of [95, 105, 112]) for (const s50 of [95, 100, 110]) for (const s200 of [85, 100, 105]) for (const r3m of [-10, 0, 10]) {
+    const old = price > s50 && s50 > s200 ? 'up' : price < s50 && s50 < s200 ? 'down' : 'mixed'; const now = trendOf({ price, sma20: s20, sma50: s50, sma200: s200, r3m }).trend;
+    if (now === 'up') assert.equal(old, 'up'); if (now === 'down') assert.equal(old, 'down'); if (old !== 'mixed' && now === 'mixed') strictlyFewer++;
+  }
+  assert.ok(strictlyFewer > 0);
 });
 test('trend filter: matches the tag, and a name with no averages is counted as unmeasured, not as mixed', () => {
-  const rows: Row[] = [{ sym: 'U', name: 'U', price: 120, sma50: 110, sma200: 100 }, { sym: 'D', name: 'D', price: 80, sma50: 90, sma200: 100 }, { sym: 'M', name: 'M', price: 105, sma50: 110, sma200: 100 }, { sym: 'X', name: 'X', price: 5 }];
+  const rows: Row[] = [{ sym: 'U', name: 'U', price: 120, sma20: 115, sma50: 110, sma200: 100, r3m: 12 }, { sym: 'D', name: 'D', price: 80, sma20: 85, sma50: 90, sma200: 100, r3m: -12 }, { sym: 'M', name: 'M', price: 105, sma20: 108, sma50: 110, sma200: 100, r3m: 2 }, { sym: 'X', name: 'X', price: 5 }];
   assert.deepEqual(filterRows(rows, { ...NO_FILTER, trend: 'up' }).rows.map((r) => r.sym), ['U']);
   assert.deepEqual(filterRows(rows, { ...NO_FILTER, trend: 'down' }).rows.map((r) => r.sym), ['D']);
   const mixed = filterRows(rows, { ...NO_FILTER, trend: 'mixed' }); assert.deepEqual(mixed.rows.map((r) => r.sym), ['M']); assert.equal(mixed.unmeasured, 1);

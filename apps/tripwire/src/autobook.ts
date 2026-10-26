@@ -11,11 +11,12 @@
 import type { Ledger, LedgerPick, Outcome } from './ledger.ts';
 import { takenAtFor } from './ledger.ts';
 import { ENGINES } from './quant.ts';
+import { STYLES, styleOf, styleDef, type Style } from './exits.ts';
 
 export const MAX_OPEN = 30;
 export const TICKET = 100000;
-export interface AutoCfg { maxOpen: number; ticket: number }
-export const DEFAULT_CFG: AutoCfg = { maxOpen: MAX_OPEN, ticket: TICKET };
+export interface AutoCfg { maxOpen: number; ticket: number; /** positions allowed per style: 30 = 10 short term + 10 swing + 10 long term */ perStyle: number }
+export const DEFAULT_CFG: AutoCfg = { maxOpen: MAX_OPEN, ticket: TICKET, perStyle: Math.floor(MAX_OPEN / STYLES.length) };
 export interface AutoPos { pick: LedgerPick; qty: number; takenAt: number }
 export interface Refusal { pick: LedgerPick; why: string }
 export type EventKind = 'taken' | 'refused' | 'entered' | 'closed' | 'skipped';
@@ -49,6 +50,8 @@ export function planAutoBook(l: Ledger, cfg: AutoCfg = DEFAULT_CFG): AutoPlan {
       if (held.some((t) => t.pick.sym === p.sym)) { no('The same name is already held.'); continue; }
       const qty = Math.floor(cfg.ticket / p.ref);
       if (!(p.ref > 0) || qty < 1) { no(`One share costs more than the ${inr0(cfg.ticket)} ticket.`); continue; }
+      const st: Style = styleOf(p.horizon);
+      if (held.filter((t) => styleOf(t.pick.horizon) === st).length >= cfg.perStyle) { no(`The ${styleDef(st).label} sleeve is full: ${cfg.perStyle} positions are running.`); continue; }
       if (held.length >= cfg.maxOpen) { no(`The book is full: ${cfg.maxOpen} positions are running.`); continue; }
       taken.push({ pick: p, qty, takenAt: takenAtFor(night) });
       log.push({ day: night, kind: 'taken', sym: p.sym, engine: p.engine, id: p.id, text: `Taken: ${p.sym} (${p.engine}), ${qty} shares, about ${inr0(qty * p.ref)} at the signal close of ${inr0(p.ref)}, stop ${inr0(p.stop)}. Enters at the next open.` });

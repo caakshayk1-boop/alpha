@@ -25,3 +25,19 @@ Every figure below is pinned by `apps/tripwire/tests/paper.test.ts`, with the ar
 - A fill at the open plus slippage can sit 0.1% above that day's high when the open was the high.
 - Costs are one assumed percentage, not an itemised schedule.
 - The one rounding change made in this work: the fill is now rounded to the paisa (it was unrounded), so the headline P&L and the what-if slider use one number. The effect is under half a paisa a share.
+
+## Profit booking and trading styles (from picks written on 2026-10-27)
+
+The 30 positions are three sleeves of 10: short term (horizon up to 10 sessions), swing (11 to 30) and long term (over 30). A pick lands in the sleeve its own horizon names. A full sleeve refuses its picks with that reason; it never borrows another sleeve's slots. No active engine writes a short-term pick, so that sleeve is empty today and its 10 places stay idle (stated, not hidden).
+
+| Style | Target 1 | Target 2 |
+|---|---|---|
+| Short term | 1R | 2R |
+| Swing | 1.5R | 3R |
+| Long term | 2R | 4R |
+
+R is fill minus stop. Half the shares are sold at Target 1 (a gap above it fills at the open); the stop on the rest moves to the fill. The rest is sold at Target 2. The stop and the time exit still end whatever is left.
+
+Intra-bar order is unknowable from a daily bar, so the cautious reading is used: the stop is tested first; Target 2 cannot fill in the bar that filled Target 1 unless that bar opened at or above it. Targets are limit orders (no slippage); stop and time exits are market orders (0.1% slippage on their value). The round-trip cost is charged on the whole entry.
+
+These multiples are chosen, not tested: the back-test never used targets. Picks written before 2026-10-27 keep the stop-and-time rule they were filed under, so no result already in the record changes. Hand-worked numbers: `tests/exits.test.ts`.

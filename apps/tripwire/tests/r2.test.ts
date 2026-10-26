@@ -11,6 +11,8 @@ import { fmtMacro, MACRO } from '../src/macro.ts';
 import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
 
 const pick = (night: string, sym: string, ref = 100, o: Partial<LedgerPick> = {}): LedgerPick => ({ id: `${night}|MOM|${sym}`, engine: 'MOM', sym, asOf: night, ref, stop: ref * 0.9, horizon: 20, score: 80, rank: 1, ...o });
+/** thirty picks spread over the three sleeves (5, 20 and 60 sessions) so the 30 cap is the binding limit, not one sleeve */
+const H = [5, 20, 60];
 const ledger = (picks: LedgerPick[], outcomes: Record<string, Outcome> = {}, voided?: Record<string, string>): Ledger => ({ schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-26', cost: 0.25, days: [], picks, outcomes, voided });
 
 test('auto book: a pick is taken the night it is written, sized to the ticket, rounded down', () => {
@@ -19,14 +21,14 @@ test('auto book: a pick is taken the night it is written, sized to the ticket, r
   assert.equal(p.log[0].kind, 'taken');
 });
 test('auto book: never more than 30 positions at a time, and the refusals say why', () => {
-  const picks = Array.from({ length: 35 }, (_, i) => pick('2026-10-23', `S${i}`, 100, { score: 90 - i }));
+  const picks = Array.from({ length: 35 }, (_, i) => pick('2026-10-23', `S${i}`, 100, { score: 90 - i, horizon: H[i % 3] }));
   const p = planAutoBook(ledger(picks));
   assert.equal(p.taken.length, MAX_OPEN); assert.equal(p.refused.length, 5);
-  assert.ok(p.refused.every((r) => /book is full/.test(r.why)));
+  assert.ok(p.refused.every((r) => /sleeve is full: 10 positions/.test(r.why)));
   assert.deepEqual(p.refused.map((r) => r.pick.sym), ['S30', 'S31', 'S32', 'S33', 'S34']);        // best scores were taken first
 });
 test('auto book: a closed position frees its slot only for nights after it closed', () => {
-  const night1 = Array.from({ length: 30 }, (_, i) => pick('2026-10-23', `A${i}`));
+  const night1 = Array.from({ length: 30 }, (_, i) => pick('2026-10-23', `A${i}`, 100, { horizon: H[i % 3] }));
   const closeOn = (day: string): Outcome => ({ status: 'closed', final: true, entry: 100, entryDay: '2026-10-26', exit: 95, exitDay: day, reason: 'Stop', r: -0.5, pct: -5, sessions: 1 });
   const out: Record<string, Outcome> = {}; for (const p of night1) out[p.id] = closeOn('2026-10-27');
   const same = planAutoBook(ledger([...night1, pick('2026-10-27', 'NEW')], out));          // closes on the 27th: still holds its slot at the close of the 27th? No: it closed that day
@@ -34,13 +36,14 @@ test('auto book: a closed position frees its slot only for nights after it close
   const early = planAutoBook(ledger([...night1, pick('2026-10-26', 'NEW')], out));         // night of the 26th: they close on the 27th, so all 30 still run
   assert.equal(early.taken.some((t) => t.pick.sym === 'NEW'), false);
   assert.match(early.refused[0].why, /full/);
+  assert.equal(early.taken.length, 30);
 });
 test('auto book: a pick skipped at the open frees its slot; pending and open ones hold it', () => {
-  const night1 = Array.from({ length: 30 }, (_, i) => pick('2026-10-23', `A${i}`));
+  const night1 = Array.from({ length: 30 }, (_, i) => pick('2026-10-23', `A${i}`, 100, { horizon: H[i % 3] }));
   const out: Record<string, Outcome> = {}; for (const p of night1) out[p.id] = { status: 'open', final: false, entry: 100, entryDay: '2026-10-26', sessions: 1 };
   assert.equal(planAutoBook(ledger([...night1, pick('2026-10-27', 'N')], out)).taken.some((t) => t.pick.sym === 'N'), false);
-  out[night1[0].id] = { status: 'skipped', final: true, skipReason: 'Opened 3% above' };
-  assert.equal(planAutoBook(ledger([...night1, pick('2026-10-27', 'N')], out)).taken.some((t) => t.pick.sym === 'N'), true);
+  out[night1[0].id] = { status: 'skipped', final: true, skipReason: 'Opened 3% above' };   // A0 is a short-term pick, so it frees a short-term slot
+  assert.equal(planAutoBook(ledger([...night1, pick('2026-10-27', 'N', 100, { horizon: 5 })], out)).taken.some((t) => t.pick.sym === 'N'), true);
 });
 test('auto book: the same name is not held twice; a voided pick and a share dearer than the ticket are refused with reasons', () => {
   const p = planAutoBook(ledger([pick('2026-10-23', 'X'), pick('2026-10-24', 'X'), pick('2026-10-24', 'BIG', 250000), pick('2026-10-24', 'V')], {}, { '2026-10-24|MOM|V': 'risk-grade bug' }));
@@ -78,7 +81,7 @@ test('live price: a quote from today replaces the published close; an older one 
   assert.equal(livePrice(row, null).fromQuote, false);
 });
 test('trend of any close series: its own 50 and 200-day averages; sideways is the word for no clear order', () => {
-  const up = Array.from({ length: 250 }, (_, i) => 100 + i), down = [...up].reverse(), flat = Array.from({ length: 250 }, (_, i) => 100 + (i % 2));
+  const up = Array.from({ length: 250 }, (_, i) => 100 + i * 2), down = [...up].reverse(), flat = Array.from({ length: 250 }, (_, i) => 100 + (i % 2));
   assert.equal(trendOfCloses(up).trend, 'up'); assert.equal(trendOfCloses(down).trend, 'down'); assert.equal(trendOfCloses(flat).trend, 'mixed');
   assert.equal(trendOfCloses(up.slice(0, 120)).trend, null);                              // fewer than 200 closes: untagged, not sideways
   assert.equal(TREND_WORD.mixed, 'Sideways');
@@ -154,10 +157,10 @@ test('a symbol keeps one colour; haptics match the message; text size scales the
   assert.equal(kindOf('Following TCS. Kept on this device.'), 'success'); assert.equal(kindOf('GCSL is already in your paper book'), 'error'); assert.equal(kindOf('That file is too large for a backup'), 'error');
   assert.equal(rootScale(17), 1); assert.equal(rootScale(34), 2); assert.equal(rootScale(100), 2); assert.equal(rootScale(5), 0.85);
 });
-test('lock ids survive storage, and every theme has a name, a swatch and a bar colour', () => {
+test('lock ids survive storage, and there is one fixed look (no options)', () => {
   const id = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]); assert.deepEqual([...decodeId(encodeId(id))], [...id]);
   assert.ok(!/[+/=]/.test(encodeId(new Uint8Array(64).fill(251))));
-  assert.equal(themeOf('nope').id, 'aurora'); assert.equal(THEMES.length, 5); assert.ok(THEMES.every((t) => t.label && t.swatch && /^#/.test(t.bar)));
+  assert.equal(themeOf('ocean').id, 'aurora', 'any saved theme from before resolves to the one look'); assert.equal(THEMES.length, 1); assert.ok(THEMES.every((t) => t.label && t.swatch && /^#/.test(t.bar)));
 });
 
 // ---- live feed, live breadth, one list of news, no signed zero -----------------------------------------------------------------------
@@ -170,16 +173,18 @@ test('spark: a quote carries its own previous close, the last print, and is live
   assert.equal(parseSpark(null, now), null);
 });
 test('breadth: the Worker\'s trend rule is the app\'s trend rule, on every combination', () => {
-  const vals = [90, 100, 110, null, 0];
-  for (const price of vals) for (const sma50 of vals) for (const sma200 of vals) assert.equal(trendOfRow(price, sma50, sma200), trendOf({ price, sma50, sma200 } as never).trend, `${price}/${sma50}/${sma200}`);
+  const vals = [90, 100, 101, 110, null, 0]; const r3 = [-5, 0, 5, null];
+  let n = 0;
+  for (const price of vals) for (const sma20 of vals) for (const sma50 of vals) for (const sma200 of vals) for (const r3m of r3) { n++; assert.equal(trendOfRow(price, sma20, sma50, sma200, r3m), trendOf({ price, sma20, sma50, sma200, r3m }).trend, `${price}/${sma20}/${sma50}/${sma200}/${r3m}`); }
+  assert.ok(n > 5000, `the grid is large enough to mean something (${n})`);
 });
 test('breadth: counts use the live price where one is given, the close otherwise, and skip illiquid or incomplete names', () => {
   const rows = [
-    { sym: 'A', liquid: true, price: 99, sma50: 100, sma200: 90, sector: 'Banks' },          // close: sideways; live 101: uptrend
-    { sym: 'B', liquid: true, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },
-    { sym: 'C', liquid: true, price: 80, sma50: 100, sma200: 110, sector: 'Banks' },
-    { sym: 'D', liquid: false, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },        // not liquid: out
-    { sym: 'E', liquid: true, price: 120, sma50: null, sma200: 90, sector: 'Banks' },        // no average: out, never a zero
+    { sym: 'A', liquid: true, price: 99, sma20: 100, sma50: 95, sma200: 90, r3m: 3, sector: 'Banks' },          // close: below its 20-day, sideways; live 101: uptrend (the 3-month return moves with the price)
+    { sym: 'B', liquid: true, price: 120, sma20: 110, sma50: 100, sma200: 90, r3m: 20, sector: 'Banks' },
+    { sym: 'C', liquid: true, price: 80, sma20: 90, sma50: 100, sma200: 110, r3m: -20, sector: 'Banks' },
+    { sym: 'D', liquid: false, price: 120, sma20: 110, sma50: 100, sma200: 90, r3m: 20, sector: 'Banks' },        // not liquid: out
+    { sym: 'E', liquid: true, price: 120, sma20: 110, sma50: null, sma200: 90, r3m: 20, sector: 'Banks' },        // no average: out, never a zero
   ];
   const close = aggregateBreadth(rows); assert.deepEqual([close.n, close.up, close.mixed, close.down], [3, 1, 1, 1]);
   const live = aggregateBreadth(rows, { A: 101 }); assert.deepEqual([live.n, live.up, live.mixed, live.down], [3, 2, 0, 1]);
@@ -214,4 +219,13 @@ test('news: five outlets reporting one results night are one line, and a headlin
   assert.equal(s.length, 2);                                                     // the results night once, the rating once; the unrelated line is gone
   assert.deepEqual(s.map((x) => x.tags[0]), ['Results', 'Rating']);
   assert.ok(s[0].also >= 2, 'the folded outlets are counted');
+});
+
+test('auto book: 30 = 10 short term + 10 swing + 10 long term; one style cannot use the others\' slots', () => {
+  const swing = Array.from({ length: 12 }, (_, i) => pick('2026-10-23', `W${i}`, 100, { score: 90 - i, horizon: 20 }));
+  const p = planAutoBook(ledger(swing));
+  assert.equal(p.taken.length, 10); assert.equal(p.refused.length, 2);
+  assert.ok(p.refused.every((r) => /Swing sleeve is full: 10 positions/.test(r.why)));
+  const mixed = planAutoBook(ledger([...swing, pick('2026-10-23', 'LONGER', 100, { score: 10, horizon: 60 }), pick('2026-10-23', 'QUICK', 100, { score: 5, horizon: 5 })]));
+  assert.ok(mixed.taken.some((t) => t.pick.sym === 'LONGER') && mixed.taken.some((t) => t.pick.sym === 'QUICK'), 'an empty sleeve still takes its own picks');
 });
