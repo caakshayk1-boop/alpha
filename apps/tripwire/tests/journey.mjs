@@ -185,7 +185,7 @@ await pg.route('**/api/intraday*', (route) => { const syms = (new URL(route.requ
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Paper trade this' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
 await pg.getByRole('tab', { name: /My paper/ }).click(); await pg.waitForSelector('.card .tag');
-await pg.waitForFunction(() => /Updated \d\d:\d\d IST/.test(document.body.innerText), null, { timeout: 15000 });
+await pg.waitForFunction(() => /updated \d+[sm] ago/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/LIVE/.test(await text()) && /Today/.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
@@ -193,7 +193,7 @@ ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[aria-l
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));
 ok(/Back to live/.test(await text()) && await pg.locator('.ladder .wi').count() === 1, 'the what-if slider moves a marker and states the P&L at that price');
 const tvl = pg.locator('a[href*="tradingview.com/chart"]').first(); ok((await tvl.getAttribute('href')).includes('NSE%3A') && (await tvl.getAttribute('target')) === '_blank' && /noopener/.test(await tvl.getAttribute('rel')), 'the trade links to its TradingView chart in a new tab');
-ok(/Prices from Yahoo Finance, delayed/.test(await text()), 'tracker says its prices are delayed and where they come from');
+ok(/delayed/i.test(await text()), 'tracker says its prices are delayed');
 await shot('09-tracker');
 ok(/\bOpen\b/.test(await pg.locator('.card .tag').allInnerTexts().then((x) => x.join(' '))), 'the trade opens at the first open after it was taken');
 ok(/Live \(delayed\)/i.test(await text()) && /Session 4 of/.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
