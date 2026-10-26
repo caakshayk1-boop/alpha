@@ -12,6 +12,7 @@ import { istDay, current, toggleFollow } from '../store.ts';
 import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
 import { TvButton, TvIcon } from '../live.tsx';
+import { Intel } from './Intel.tsx';
 
 export function Company({ sym }: { sym: string }) {
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
@@ -59,6 +60,9 @@ export function Company({ sym }: { sym: string }) {
       <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }} aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
         {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
     {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
+
+    <Head>Scrip intelligence</Head>
+    <Intel c={c.data} rows={scr.data?.rows ?? []} />
 
     <Head>Business</Head>
     {yrs.length > 0 ? <div className="card"><div className="k">Revenue, ₹ crore, fiscal years</div>

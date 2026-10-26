@@ -235,3 +235,6 @@ input[type=range].slider{width:100%;accent-color:#c8f23c;height:32px;background:
 .tile .vv{font:600 17px/1.2 var(--sans);margin-top:3px}
 .rangebar{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px;margin-top:8px}
 .rangebar i{display:block;height:100%;transition:flex-grow .8s var(--ease)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cell{padding:9px 10px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}

@@ -4,6 +4,7 @@ export interface Row {
   sym: string; name: string; sector?: string | null; tier?: string | null; price?: number | null; r1d?: number | null; r1w?: number | null; r1m?: number | null; r3m?: number | null; rs3m?: number | null;
   from_high?: number | null; high52?: number | null; low52?: number | null; sma20?: number | null; sma50?: number | null; sma200?: number | null; rsi?: number | null; vol_spike?: number | null;
   liquid?: boolean | null; turnover_cr?: number | null; pe?: number | null; pb?: number | null; roce_med?: number | null; rev_cagr?: number | null; eps_cagr?: number | null; de?: number | null;
+  comp?: number | null; q?: number | null; g?: number | null; v?: number | null; tech?: number | null; pe_pctile?: number | null; roe?: number | null; icover?: number | null; cfo_pat?: number | null; fcf_margin?: number | null; margin_delta?: number | null; em_label?: string | null; rank_move?: number | null; insiders?: number | null; instis?: number | null; shares_changed?: boolean | null; atr_pct?: number | null; sd1y?: number | null; r6m?: number | null; r1y?: number | null; piotroski?: number | null;
   net_margin?: number | null; ebit_margin?: number | null; div_yield?: number | null; risk_lvl?: string | null; risk_top?: string | null; next_earnings?: string | null; last_date?: string | null; fy?: string | null; has_stmts?: boolean | null;
 }
 export type Trend = 'up' | 'down' | 'mixed';

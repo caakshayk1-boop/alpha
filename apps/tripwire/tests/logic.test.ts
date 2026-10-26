@@ -135,3 +135,54 @@ test('insight: breadth counts measured liquid rows only; checklist cites its own
   assert.ok(c.some((t) => /RSI is 74/.test(t)) && c.some((t) => /2\.5x/.test(t)) && c.some((t) => /PE is 45/.test(t)) && c.some((t) => /No financial statements/.test(t)));
   assert.ok(c[0].startsWith('Write what would make you wrong'));
 });
+
+import { holders, ownershipRead, seasonRead, peerLadder, earningsQuality, riskMap } from '../src/intel.ts';
+test('intel: ownership and its read, with partial data left out, never zeroed', () => {
+  const i = { quality: 'complete', fii: 27.4, dii: 42.8, mf: 22.9, insurance: 16, promoter: 13.9, publicHold: 85.9, fii_pp: 0.35, dii_pp: -0.11, period: 'Q2 FY27', prev_period: 'Q1 FY27' } as never;
+  assert.equal(holders(i).length, 6); assert.equal(holders({ quality: 'partial', fii: 5 } as never).length, 1);
+  assert.match(ownershipRead(i)!, /Q1 FY27 to Q2 FY27: foreign institutions up 0\.35 points, domestic institutions down 0\.11 points/);
+  assert.match(ownershipRead({ ...(i as object), fii_pp: 0.02 } as never)!, /foreign institutions unchanged/);
+  assert.equal(ownershipRead(null), null); assert.equal(ownershipRead({ quality: 'partial' } as never), null);
+});
+test('intel: seasonality names the month, its hit rate and the extremes, and flags a thin sample', () => {
+  const m = Array.from({ length: 12 }, (_, k) => [50 + k, k - 5, 11]) as [number, number, number][];
+  const r = seasonRead({ m, y: 11 }, 9)!; assert.equal(r.month, 'October'); assert.equal(r.hit, 59); assert.equal(r.avg, 4); assert.equal(r.best.month, 'December'); assert.equal(r.worst.month, 'January'); assert.equal(r.thin, false);
+  assert.equal(seasonRead({ m: m.map((x) => [x[0], x[1], 6] as [number, number, number]), y: 6 }, 0)!.thin, true);
+  assert.equal(seasonRead(null, 1), null); assert.equal(seasonRead({ m: m.slice(0, 5), y: 5 }, 1), null);
+});
+test('intel: the peer ladder ranks inside the sector, needs five peers, skips lenders for ROCE and non-positive PE', () => {
+  const mk = (i: number, o: object = {}) => ({ sym: 'P' + i, name: 'P' + i, sector: 'Tech', liquid: true, roce_med: 10 + i, pe: 10 + i, rev_cagr: i, rs3m: i - 3, comp: 50 + i, ...o });
+  const rows = Array.from({ length: 8 }, (_, i) => mk(i)); const me = rows[6];
+  const l = peerLadder(me, rows); assert.equal(l.peers, 8);
+  const roce = l.lines.find((x) => /Return on capital/.test(x.label))!; assert.equal(roce.rank, 2); assert.equal(roce.of, 8);
+  const pe = l.lines.find((x) => /PE/.test(x.label))!; assert.equal(pe.rank, 7);                                // PE 16 is the second most expensive of eight
+  assert.equal(peerLadder({ ...me, pe: -4 }, rows).lines.some((x) => /PE/.test(x.label)), false);               // a loss-maker has no PE rank
+  assert.equal(peerLadder({ ...me, sector: 'Financial Services' }, rows.map((r) => ({ ...r, sector: 'Financial Services' }))).lines.some((x) => /Return on capital/.test(x.label)), false);
+  assert.equal(peerLadder(me, rows.slice(0, 3)).lines.length, 0);
+});
+test('intel: earnings quality reads cash conversion and skips lenders', () => {
+  const q = earningsQuality({ sym: 'X', name: 'X', sector: 'Technology', cfo_pat: 1.1, fcf_margin: 18, icover: 96, margin_delta: -0.7 });
+  assert.equal(q.length, 4); assert.equal(q[0].tone, 'good'); assert.match(q[0].read, /turning into cash/); assert.equal(q[3].tone, 'warn'); assert.match(q[3].read, /narrowing/); assert.match(earningsQuality({ sym: 'X', name: 'X', margin_delta: 0.2 })[0].read, /about flat/);
+  assert.equal(earningsQuality({ sym: 'B', name: 'B', sector: 'Financial Services', cfo_pat: 0.1 }).length, 0);
+  assert.match(earningsQuality({ sym: 'X', name: 'X', cfo_pat: 0.2 })[0].read, /Little of the reported profit/);
+});
+test('intel: the risk map sizes a position against the day\'s trading', () => {
+  const r = riskMap({ sym: 'X', name: 'X', atr_pct: 3, turnover_cr: 1735, price: 120, low52: 100, from_high: -10, sd1y: 30 });
+  assert.ok(Math.abs(r.swing20! - 3 * Math.sqrt(20)) < 1e-9); assert.equal(Math.round(r.fromLow!), 20); assert.ok(r.tenLakhPct! < 0.01); assert.match(r.liquidity, /Deep/);
+  assert.match(riskMap({ sym: 'X', name: 'X', turnover_cr: 5 }).liquidity, /noticeable|Thin|Comfortable/); assert.equal(riskMap({ sym: 'X', name: 'X' }).tenLakhPct, null);
+});
+
+import { engineEvidence, studySummary } from '../src/evidence.ts';
+test('evidence: each engine is labelled from the back-test, and quality is never claimed either way', () => {
+  const bt = { meta: { when: 'x', symbols: 660, dates: ['2015-10-23', '2026-10-23'] }, engines: {
+    MOM: { horizon: 20, picked: 1, skipped: 0, label: 'no historical support', periods: { train: { excess_vs_universe: 0.006, excess_t: 0.634 }, validation: { excess_vs_universe: 0.0006, excess_t: 0.067 }, holdout: { excess_vs_universe: -0.011, excess_t: -0.954 } } },
+    OKE: { horizon: 20, picked: 1, skipped: 0, label: 'not rejected', periods: { train: { excess_vs_universe: 0.01, excess_t: 2 }, validation: { excess_vs_universe: 0.01, excess_t: 1 }, holdout: { excess_vs_universe: 0.012, excess_t: 1.1 } } } } } as never;
+  const m = engineEvidence('MOM', bt); assert.equal(m.label, 'no historical support'); assert.equal(m.tone, 'bad'); assert.match(m.line, /2015 to 2026, 660 stocks/); assert.match(m.line, /\+0\.6% a trade.*t 0\.6.*\+0\.1% in the middle.*−1\.1% in the latest \(t −1\.0\)/);
+  assert.equal(engineEvidence('OKE', bt).tone, 'ok'); assert.equal(engineEvidence('QLT', bt).label, 'cannot be back-tested'); assert.equal(engineEvidence('LVT', bt).label, 'not yet tested'); assert.equal(engineEvidence('MOM', null).label, 'not yet tested');
+  assert.match(m.line, /Survivorship/);
+});
+test('evidence: the study summary counts candidates, not baselines or controls, and names the best one with what it failed', () => {
+  const f = (t: number) => ({ train: { ic: 0.05, t, months: 60, top_quintile_excess_net: 0.001 }, validation: { ic: 0.03, t: 1, months: 24, top_quintile_excess_net: 0.001 }, holdout: { ic: 0.03, t: 1, months: 30, top_quintile_excess_net: -0.001 } });
+  const s = { meta: { when: 'x', symbols: 1, dates: ['a', 'b'] }, features: { mom12_1: f(2.4), a: f(2.58), b: f(1.0), noise: f(-0.7) }, verdict: { mom12_1: { kind: 'common baseline', adopt: false, steps: {} }, a: { kind: 'candidate', adopt: false, steps: { x: true, 'holdout net': false } }, b: { kind: 'candidate', adopt: false, steps: {} }, noise: { kind: 'control', adopt: false, steps: {} } } } as never;
+  const r = studySummary(s)!; assert.equal(r.tested, 4); assert.equal(r.candidates, 2); assert.equal(r.passed, 0); assert.equal(r.best!.name, 'a'); assert.deepEqual(r.best!.failed, ['holdout net']); assert.equal(studySummary(null), null);
+});

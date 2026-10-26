@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { go, setState, useAppState } from '../app.tsx';
+import { go, setState, useAppState, useLoc } from '../app.tsx';
 import { useScreen } from '../data.ts';
 import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
 import { CompanyRow, Failed, Head, Loading, PageBar } from './common.tsx';
@@ -13,7 +13,9 @@ const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
 const PAGE = 40;
 export function Discover() {
   const scr = useScreen(); const s = useAppState(); const { toast, tick } = useUi();
-  const [f, setF] = useState<Filters>(NO_FILTER);
+  const loc = useLoc();
+  // a link from Today (a sector, a trend) opens Discover already filtered
+  const [f, setF] = useState<Filters>(() => ({ ...NO_FILTER, sector: loc.q.get('sector') ?? '', trend: (['up', 'down', 'mixed'].includes(loc.q.get('trend') ?? '') ? loc.q.get('trend') : '') as Filters['trend'] }));
   const [sort, setSort] = useState(0);
   const [limit, setLimit] = useState(PAGE);
   const [sheet, setSheet] = useState(false);

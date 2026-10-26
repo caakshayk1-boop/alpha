@@ -92,3 +92,13 @@ assert abs(net2 - exp) < 1e-9 and R2 > 0, (net2, exp)
 C3 = np.full((100, 1), 100.0); C3[13:, 0] = 90.0; O3 = C3.copy(); L3 = C3 * 0.999; pt3 = panel(C3, O=O3, H=C3 * 1.001, L=L3)
 n3, R3 = bt.trade(pt3, 10, 0, 5.0, 20); assert n3 < -0.09 and R3 < -1.5, (n3, R3)   # a gap through the stop loses more than 1R
 print("engines back-test: harness checks passed")
+
+# ---- the factor sheet ----
+import factors as fx
+sh = fx.sheet(w, "2026-10-23", {"eff_ratio60": {"adopt": False, "kind": "candidate"}})
+assert sh["schema"] == "tripwire-factors/1" and 100 < sh["universe"] <= w.C.shape[1] and len(sh["rows"]) <= sh["universe"]
+vals = [v for r in sh["rows"].values() for v in r.values()]
+assert vals and min(vals) >= 0 and max(vals) <= 100, (min(vals), max(vals))
+assert sh["study"]["eff_ratio60"] == {"adopt": False, "kind": "candidate"} and "noise" not in sh["rows"][next(iter(sh["rows"]))]
+assert fx.sheet(w, "x")["rows"] == sh["rows"], "the sheet is deterministic"
+print("factor sheet: checks passed")

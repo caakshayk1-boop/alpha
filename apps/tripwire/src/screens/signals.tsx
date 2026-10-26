@@ -3,6 +3,9 @@ import { go, setState, useAppState } from '../app.tsx';
 import { useLedger } from '../data.ts';
 import { Tracker } from './Tracker.tsx';
 import { TvButton } from '../live.tsx';
+import { Evidence } from './Evidence.tsx';
+import { useBacktest } from '../data.ts';
+import { engineEvidence } from '../evidence.ts';
 import { DEFAULT_COST } from '../book.ts';
 import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
@@ -15,12 +18,12 @@ import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
 
 export function Signals({ seg }: { seg: string }) {
-  const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : 'picks';
+  const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : seg === 'evidence' ? 'evidence' : 'picks';
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `My paper${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }]} />
-    {v === 'picks' ? <Picks /> : v === 'tracker' ? <Tracker /> : <RecordView />}
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `My paper${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Evidence' }]} />
+    {v === 'picks' ? <Picks /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
   </div>;
 }
 
@@ -38,17 +41,17 @@ export function usePaperTake() {
 }
 
 function Picks() {
-  const { scr, out } = useEngines(); const s = useAppState(); const take = usePaperTake(); const { toast } = useUi();
+  const { scr, out } = useEngines(); const s = useAppState(); const take = usePaperTake(); const { toast } = useUi(); const bt = useBacktest();
   if (scr.loading) return <Loading what="the engines" />;
   if (scr.err || !out) return <Failed what="the engines" err={scr.err ?? 'no data'} retry={scr.retry} />;
   const have = new Set(s.paper.filter((p) => !p.closedByUser).map((p) => p.sym));
   const all = out.picks;
   return <>
-    <p className="dim" style={{ margin: '0 0 12px' }}>Three engines, each a published factor idea with fixed rules, run on the close of <b>{dayWord(scr.data!.as_of)}</b>. They rank. They do not predict, and none has been backtested on Indian prices.</p>
+    <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Three engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {bt.data ? 'In a ten-year back-test none beat the whole market after costs.' : 'The historical test has not been published yet.'} The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
     {all.length > 0 && <button className="btn" style={{ width: '100%', marginBottom: 6 }} onClick={() => { let n = 0; for (const p of all) if (!have.has(p.sym) && take(p, true)) { n++; have.add(p.sym); } toast(n ? `${n} paper trade${n > 1 ? 's' : ''} taken. They enter at the next open.` : 'Nothing new to take'); }}><Icon n="plan" />Paper-trade all {all.length} picks</button>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
-      <div className="card"><div className="row between"><span className="dim small">{def.line}</span></div>
+      <div className="card"><div className="row between"><span className="dim small">{def.line}</span><span className={`tag ${engineEvidence(def.id, bt.data).tone === 'bad' ? 'peach' : ''}`}>{engineEvidence(def.id, bt.data).short}</span></div>
         <p className="mute small" style={{ margin: '6px 0 0' }}>{def.theory}</p>
         <details className="ev" style={{ marginTop: 10 }}><summary>How it picks<span className="chev">▾</span></summary><div className="body"><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
           <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>

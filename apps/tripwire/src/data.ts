@@ -6,7 +6,9 @@ export interface Gate { date: string; on: boolean; passed: number; checks: { rul
 export interface SignalsFeed { schema: string; generated: string; data_through: string; launched: string; gate: Gate; alertable: boolean; alert_why: string; record: { closed: number; avg_r: number | null }; signals: unknown[]; cost_round_trip_pct?: number; rules?: { gate?: string[] } }
 export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null }
 export interface Flag { s: string; t: string; k: string }
-export interface Company { sym: string; built_on: string; row: Row & { risk_top?: string }; years: Year[]; swot: { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] } | null; risk: { level: string; score: number; flags: Flag[] } | null }
+export interface Inst { quality: string; reason?: string | null; fii?: number; dii?: number; mf?: number; insurance?: number; promoter?: number; publicHold?: number; fii_pp?: number; dii_pp?: number; insti_pp?: number; fii_streak?: number; dii_streak?: number; signal?: string; signal_label?: string; period?: string; prev_period?: string; quarters?: number; series?: { p: string; f: number; d: number }[] }
+export interface Season { m: [number, number, number][]; y: number }
+export interface Company { sym: string; built_on: string; row: Row & { risk_top?: string }; inst?: Inst | null; season?: Season | null; years: Year[]; swot: { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] } | null; risk: { level: string; score: number; flags: Flag[] } | null }
 
 const memo = new Map<string, Promise<unknown>>();
 export function getJson<T>(url: string, timeout = 20000): Promise<T> {
@@ -99,3 +101,6 @@ function usePoll<T extends { ok: boolean }>(url: string | null, every: number): 
 export const useIntraday = (syms: string[], on: boolean) => { const key = [...new Set(syms)].sort().join(','); return usePoll<QuotesFeed>(on && key ? `/api/intraday?s=${encodeURIComponent(key)}` : null, 30000); };
 /** Nifty 50, Bank Nifty and India VIX. */
 export const usePulse = (on: boolean) => usePoll<QuotesFeed>(on ? '/api/pulse' : null, 30000);
+
+export const useBacktest = () => useJson<import('./evidence.ts').Backtest>('/data/research/engines_backtest.json');
+export const useStudy = () => useJson<import('./evidence.ts').Study>('/data/research/factor_study.json');
