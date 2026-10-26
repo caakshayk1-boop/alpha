@@ -48,8 +48,10 @@ export interface Ctx { elig: Q[]; pct: Record<string, Map<string, number>> }
 /** Percentile of each name among those measured: share strictly below plus half the ties. Unmeasured names get no entry. */
 export function pctMap(rows: readonly Q[], f: (r: Q) => number | null | undefined): Map<string, number> {
   const v = rows.map((r) => ({ s: r.sym, x: f(r) })).filter((a): a is { s: string; x: number } => n(a.x));
-  const out = new Map<string, number>(); const N = v.length;
-  for (const a of v) { let lt = 0, eq = 0; for (const b of v) { if (b.x < a.x) lt++; else if (b.x === a.x) eq++; } out.set(a.s, ((lt + 0.5 * eq) / N) * 100); }
+  const out = new Map<string, number>(); const N = v.length; const xs = v.map((a) => a.x).sort((p, q) => p - q);
+  const lower = (t: number) => { let lo = 0, hi = N; while (lo < hi) { const m = (lo + hi) >> 1; if (xs[m] < t) lo = m + 1; else hi = m; } return lo; };
+  const upper = (t: number) => { let lo = 0, hi = N; while (lo < hi) { const m = (lo + hi) >> 1; if (xs[m] <= t) lo = m + 1; else hi = m; } return lo; };
+  for (const a of v) { const lt = lower(a.x); const eq = upper(a.x) - lt; out.set(a.s, ((lt + 0.5 * eq) / N) * 100); }   // O(n log n): the same number as counting pairs, without n squared work on every screen
   return out;
 }
 export const mom12_1 = (r: Q): number | null => (n(r.r1y) && n(r.r1m) && r.r1m > -100 ? ((1 + r.r1y / 100) / (1 + r.r1m / 100) - 1) * 100 : null);

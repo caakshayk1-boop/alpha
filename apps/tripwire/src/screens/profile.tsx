@@ -1,3 +1,4 @@
+import { support } from '../haptic.ts';
 import { useRef, useState } from 'react';
 import { setState, useAppState } from '../app.tsx';
 import { Icon, useUi } from '../ui.tsx';
@@ -28,7 +29,7 @@ export function Profile() {
       <select id="p-h" className="field" value={p.horizon} onChange={(e) => set({ horizon: e.target.value })}><option value="">Not set</option><option>Days to weeks</option><option>Months</option><option>Years</option></select>
       <label className="l" htmlFor="p-e">Experience</label>
       <select id="p-e" className="field" value={p.experience} onChange={(e) => set({ experience: e.target.value })}><option value="">Not set</option><option>New to markets</option><option>A few years</option><option>Experienced</option></select>
-      <div className="l">Sectors you care about (shapes “Worth a look”)</div>
+      <div className="l">Sectors you care about (they become one-tap filters in Discover)</div>
       <div className="chips wrap" role="group" aria-label="Sectors">{SECTORS.map((x) => <button key={x} className="chip" aria-pressed={p.interests.includes(x)} onClick={() => set({ interests: p.interests.includes(x) ? p.interests.filter((y) => y !== x) : [...p.interests, x] })}>{x}</button>)}</div>
     </div>
 
@@ -54,7 +55,7 @@ export function Profile() {
     <Head>Feel</Head>
     <div className="card">
       <label className="row between" style={{ minHeight: 44 }}><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} style={{ width: 24, height: 24, accentColor: '#c8f23c' }} /></label>
-      <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{'vibrate' in navigator ? 'A light tap on buttons and on success or error messages.' : 'Not supported on this device.'}</span></span><input type="checkbox" role="switch" checked={p.haptics} disabled={!('vibrate' in navigator)} onChange={(e) => set({ haptics: e.target.checked })} style={{ width: 24, height: 24, accentColor: '#c8f23c' }} /></label>
+      <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{{ vibrate: 'A light tap on buttons and on success or error messages (this device vibrates).', 'ios-switch': 'A light tap on buttons and on success or error messages (the iPhone system tap).', none: 'Not supported on this browser or device, so this switch does nothing.' }[support()]}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} style={{ width: 24, height: 24, accentColor: '#c8f23c' }} /></label>
     </div>
 
     <Head>Notifications</Head>

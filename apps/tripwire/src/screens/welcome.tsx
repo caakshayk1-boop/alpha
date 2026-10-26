@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { setState } from '../app.tsx';
 import { Icon } from '../ui.tsx';
 
-export function Welcome() {
+export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const [step, setStep] = useState(0);
   const finish = (h?: string) => setState((x) => ({ ...x, onboarded: true, prefs: { ...x.prefs, horizon: h ?? x.prefs.horizon } }));
   return <div className="welcome">
+    {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore as a guest, then import a backup from Profile to restore your notes.</div>}
     <div className="k">Tripwire</div>
     {step === 0 ? <>
       <h1>See what <em className="ed">fired</em>.<br />Decide what matters.</h1>

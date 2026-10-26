@@ -6,7 +6,7 @@ import { sessionNow, type Session } from './market.ts';
 import { istDay } from './store.ts';
 import { planAutoBook, realised, DEFAULT_CFG, type AutoPos } from './autobook.ts';
 import type { Outcome } from './ledger.ts';
-import { celebrate, hasCelebrated, markCelebrated } from './celebrate.ts';
+import { hasCelebrated, markCelebrated } from './celebrate.ts';
 import { useUi } from './ui.tsx';
 import { isLiveQuote } from './stamp.ts';
 
@@ -40,14 +40,14 @@ function useLivePapers(active: Paper[], on: boolean) {
   return { rows, sum, dayTotal, session, bars, intra, cost, anyLive };
 }
 
-/** The biggest moment: the first time a trade is seen closed at +1R or better. One celebration, then every win seen so far is remembered,
+/** The first time a trade is seen closed at +1R or better it is noted once, in words. Then every win seen so far is remembered,
  *  so it never repeats and a first visit with old wins gives one, not twenty. */
 function useWinCelebration(rows: BookRow[]) {
   const { toast } = useUi();
   useEffect(() => {
     const wins = rows.filter((r) => r.v.status === 'closed' && (r.v.r ?? 0) >= 1 && !hasCelebrated(r.p.id)); if (!wins.length) return;
     const best = [...wins].sort((a, b) => (b.v.r ?? 0) - (a.v.r ?? 0))[0]; markCelebrated(wins.map((w) => w.p.id));
-    celebrate(); toast(`${best.p.sym} closed at +${(best.v.r ?? 0).toFixed(2)}R`);
+    toast(`${best.p.sym} closed at +${(best.v.r ?? 0).toFixed(2)}R on paper. One result is a data point, not a record.`);
   }, [rows]);   // eslint-disable-line react-hooks/exhaustive-deps
 }
 

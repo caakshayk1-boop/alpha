@@ -67,7 +67,7 @@ await pg.locator('nav.tabs a[href="#/discover"]').click();
 await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li');
 const fs = await pg.evaluate(() => ({ field: parseFloat(getComputedStyle(document.querySelector('input.field')).fontSize), body: parseFloat(getComputedStyle(document.body).fontSize), touch: getComputedStyle(document.querySelector('button')).touchAction, vp: document.querySelector('meta[name=viewport]').content }));
 ok(fs.field >= 16, `text fields are 16px or more, so iPhone Safari does not zoom the page in on focus (${fs.field}px)`);
-ok(fs.body <= 14.5 && fs.touch === 'manipulation', `compact type (${fs.body}px) and no double-tap zoom on controls`);
+ok(fs.body <= 15.2 && fs.body >= 14.5 && fs.touch === 'manipulation', `readable type (${fs.body}px) and no double-tap zoom on controls`);
 ok(!/maximum-scale|user-scalable=no/.test(fs.vp), 'pinch zoom stays available (accessibility)');
 await pg.getByRole('button', { name: 'Uptrend', exact: true }).click(); await pg.waitForTimeout(250);
 const rowsUp = await pg.locator('.li').count(), tagsUp = await pg.locator('.li .tag', { hasText: 'Uptrend' }).count();
@@ -262,7 +262,7 @@ ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an 
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
 await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('.slots', { timeout: 15000 });
-ok(await pg.locator('canvas.confetti').count() === 1 || await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen gets one celebration');
+ok(await pg.locator('canvas.confetti').count() === 0 && await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen is noted once, in words, with no reward effect');
 ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
 ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
 await shot('09c-autobook');
@@ -273,7 +273,7 @@ ok(await pg.locator('.heat a').count() >= 3, 'Today has a sector heat map (the t
 await pg.evaluate(() => document.documentElement.classList.remove('fx')); await pg.waitForFunction(() => document.querySelector('canvas.aurora')?.dataset.running === 'false', null, { timeout: 4000 });
 ok(true, 'the live water stops when motion is turned off'); await pg.evaluate(() => document.documentElement.classList.add('fx'));
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
-await pg.reload(); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the celebration does not repeat on the next visit');
+await pg.reload(); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the note does not repeat on the next visit');
 await pg.getByRole('button', { name: 'Hide my amounts' }).click();
 await pg.waitForSelector('html.priv'); const blur = await pg.locator('.amt').first().evaluate((el) => getComputedStyle(el).filter);
 ok(/blur/.test(blur), 'one tap on the eye blurs every amount of yours'); await pg.getByRole('button', { name: 'Show my amounts' }).click(); ok(await pg.locator('html.priv').count() === 0, 'and one tap shows them again');

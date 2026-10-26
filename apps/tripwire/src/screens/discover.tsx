@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { go, setState, useAppState, useLoc } from '../app.tsx';
 import { useScreen } from '../data.ts';
 import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
@@ -44,8 +44,10 @@ export function Discover() {
   const [pick, setPick] = useState<string[]>([]);
   const rows = scr.data?.rows ?? [];
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
-  const res = useMemo(() => filterRows(rows, f), [rows, f]);
-  const list = useMemo(() => sortRows(res.rows, SORTS[sort].id, SORTS[sort].dir), [res.rows, sort]);
+  // the pressed state of a chip answers at once; the list under it catches up a moment later, so a tap never waits for forty rows to be drawn
+  const df = useDeferredValue(f); const dsort = useDeferredValue(sort);
+  const res = useMemo(() => filterRows(rows, df), [rows, df]);
+  const list = useMemo(() => sortRows(res.rows, SORTS[dsort].id, SORTS[dsort].dir), [res.rows, dsort]);
   useWatchQuotes(list.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
   const active = describeFilters(f);
   const chosen = ([['q', f.q && `“${f.q}”`], ['sector', f.sector], ['tier', f.tier && `${f.tier} cap`], ['trend', f.trend && TREND_WORD[f.trend]], ['value', f.value === 'cheap' ? 'PE 15 or less' : f.value === 'rich' ? 'PE 40 or more' : ''], ['quality', f.quality && 'ROCE 20%+'], ['momentum', f.momentum === 'strong' ? 'Ahead of Nifty' : f.momentum === 'weak' ? 'Behind Nifty' : f.momentum === 'near-high' ? 'Near 52w high' : '']] as [string, string | undefined][]).filter(([, l]) => l).map(([k, label]) => ({ k, label: label as string }));
@@ -62,6 +64,7 @@ export function Discover() {
         <span className="lt">{l.title}</span><span className="ln num">{n == null ? '…' : n}<small> names</small></span><span className="ll">{l.line}</span></button>; })}</div>
     <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Quick filters">
       <button className="chip" onClick={() => setSheet(true)}><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
+      {s.prefs.interests.map((x) => <button key={x} className="chip cc" style={{ '--cc': 'var(--a6)' } as React.CSSProperties} aria-pressed={f.sector === x} onClick={() => set({ sector: f.sector === x ? '' : x })}>{x}</button>)}
       {([['trend', 'up', 'Uptrend', 'var(--up)'], ['trend', 'down', 'Downtrend', 'var(--down)'], ['trend', 'mixed', 'Sideways', 'var(--dim)'], ['quality', 'high', 'High ROCE', 'var(--a3)'], ['momentum', 'strong', 'Ahead of Nifty', 'var(--a4)']] as const).map(([k, v, l, c]) =>
         <button key={l} className="chip cc" style={{ '--cc': c } as React.CSSProperties} aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
@@ -74,7 +77,7 @@ export function Discover() {
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
     {scr.data && (list.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">
-      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[sort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
+      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[dsort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
     </div></div> : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Filters are exact. A name with no figure for a filter is left out, never counted as a match.</Empty>)}
     {list.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, list.length - limit)} more</button>}
     {pick.length >= 2 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => setPick([])}>Clear {pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} onClick={() => go(`/compare?s=${pick.join(',')}`)}><Icon n="compare" />Compare {pick.length}</button></div>}

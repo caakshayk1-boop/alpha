@@ -32,3 +32,13 @@ test('stamp: times are Indian time and say so; dates appear only for another day
   assert.equal(nseClockOpen(MON_1432), true); assert.equal(nseClockOpen(Date.UTC(2026, 9, 25, 9, 0)), false);
   assert.deepEqual([ageWord(12), ageWord(90), ageWord(7200), ageWord(200000)], ['12 s', '2 min', '2 h', '2 d']);
 });
+
+import { detect } from '../src/haptic.ts';
+test('haptics are capability-tested: vibration where it exists, the iPhone system tap only on 17.4+ that renders the switch, nothing otherwise', () => {
+  const ua = (v: string) => `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 Version/17 Mobile/15E148 Safari/604.1`;
+  assert.equal(detect({ vibrate: true, ua: 'Android', switchAppearance: false }), 'vibrate');
+  assert.equal(detect({ vibrate: false, ua: ua('17_4'), switchAppearance: true }), 'ios-switch'); assert.equal(detect({ vibrate: false, ua: ua('18_0'), switchAppearance: true }), 'ios-switch');
+  assert.equal(detect({ vibrate: false, ua: ua('17_3'), switchAppearance: true }), 'none', 'before 17.4 there is no route');
+  assert.equal(detect({ vibrate: false, ua: ua('18_0'), switchAppearance: false }), 'none', 'the browser must say it renders the switch');
+  assert.equal(detect({ vibrate: false, ua: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/130', switchAppearance: false }), 'none');
+});

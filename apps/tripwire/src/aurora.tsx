@@ -3,12 +3,13 @@ import { useEffect, useRef } from 'react';
 /** The live water behind the market-mood card: a few slow waves drawn on a small canvas, tinted by how the Nifty is moving (greens and aqua
  *  when it rises, coral and violet when it falls) and choppier when the VIX is rising. Drawn at half resolution and 30 frames a second. It
  *  stops when the page is hidden or scrolled away, when motion is off or reduced, and it steps itself down if the device cannot keep up. */
-export function Aurora({ ch, vix }: { ch: number | null; vix: number | null }) {
-  const ref = useRef<HTMLCanvasElement>(null); const live = useRef({ ch, vix }); live.current = { ch, vix };
+export function Aurora({ ch, vix, still = false }: { ch: number | null; vix: number | null; /** true when the figures are not printing now (market shut, or no recent print): one still frame, so the water never moves for prices that are not */ still?: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null); const live = useRef({ ch, vix, still }); live.current = { ch, vix, still }; const kickRef = useRef<() => void>(() => {});
+  useEffect(() => { kickRef.current(); }, [still]);      // prices start or stop printing: start or stop the water with them
   useEffect(() => {
     const cv = ref.current; const g = cv?.getContext('2d'); if (!cv || !g) return;
     const cs = getComputedStyle(document.documentElement);
-    const motion = () => document.documentElement.classList.contains('fx') && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
+    const motion = () => !live.current.still && document.documentElement.classList.contains('fx') && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
     let raf = 0, last = 0, seen = true, slow = 0, fps = 30; let hue = 80, amp = 0.08, chop = 0.3; let frames = 0;
     const size = () => { cv.width = Math.max(2, Math.round(cv.clientWidth * 0.5)); cv.height = Math.max(2, Math.round(cv.clientHeight * 0.5)); };
     size(); const ro = new ResizeObserver(() => { size(); paint(performance.now()); }); ro.observe(cv);
@@ -40,7 +41,7 @@ export function Aurora({ ch, vix }: { ch: number | null; vix: number | null }) {
     const vis = () => kick(); document.addEventListener('visibilitychange', vis);
     const mq = matchMedia('(prefers-reduced-motion: reduce)'); mq.addEventListener?.('change', vis);
     const cls = new MutationObserver(vis); cls.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    kick(); void cs;
+    kickRef.current = kick; kick(); void cs;
     return () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); cls.disconnect(); document.removeEventListener('visibilitychange', vis); mq.removeEventListener?.('change', vis); };
   }, []);
   return <canvas ref={ref} className="aurora" aria-hidden="true" data-running="false" />;

@@ -40,6 +40,7 @@ export function Company({ sym }: { sym: string }) {
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
+    <div className="split"><div className="col">
     <section className="card glass">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
         <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.live ? 'Live' : 'Last price'} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
@@ -70,6 +71,7 @@ export function Company({ sym }: { sym: string }) {
         {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
     {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
 
+    </div><div className="col">
     <Head>News</Head>
     <CompanyNews name={row.name} />
 
@@ -112,6 +114,7 @@ export function Company({ sym }: { sym: string }) {
     {notes.length ? notes.map((e) => <button key={e.id} className="card" style={{ width: '100%', textAlign: 'left' }} onClick={() => open({ k: 'thesis', sym, id: e.id })}><div className="k">Saved {dayWord(current(e).at)}{e.versions.length > 1 ? ` · ${e.versions.length} versions` : ''}</div><p style={{ margin: '6px 0 0' }}>{current(e).thesis}</p></button>)
       : <div className="card dim">You have written nothing on {sym}. A thesis with its invalidation is the part that protects you.</div>}
 
+    </div></div>
     <div className="fab-row" role="group" aria-label="Actions">
       <FollowText sym={sym} />
       <button className="btn" onClick={() => { const cur = s.follows.includes(sym) ? s.follows.filter((x) => x !== sym).slice(0, 1) : []; go(`/compare?s=${[sym, ...cur].join(',')}`); }}><Icon n="compare" />Compare</button>

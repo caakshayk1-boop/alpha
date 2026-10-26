@@ -117,7 +117,9 @@ export function parseState(text: string): State | null {
   try {
     const d = JSON.parse(text);
     if (!d || typeof d !== 'object' || d.v !== VERSION || !Array.isArray(d.follows) || !Array.isArray(d.entries) || !Array.isArray(d.plans)) return null;
-    return { ...DEFAULTS, ...d, paper: Array.isArray(d.paper) ? d.paper : [], prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) }, snaps: d.snaps ?? {} };
+    // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
+    return { v: VERSION, follows: d.follows, entries: d.entries, plans: d.plans, compares: Array.isArray(d.compares) ? d.compares : [], screens: Array.isArray(d.screens) ? d.screens : [], snaps: d.snaps && typeof d.snaps === 'object' ? d.snaps : {},
+      onboarded: !!d.onboarded, reviews: Array.isArray(d.reviews) ? d.reviews : [], paper: Array.isArray(d.paper) ? d.paper : [], prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) } };
   } catch { return null; }
 }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
@@ -128,5 +130,16 @@ export function mergeStates(a: State, b: State): State {
     plans: byId(a.plans, b.plans, (p, q) => (q.rev > p.rev ? q : p)),
     compares: [...a.compares, ...b.compares.filter((c) => !a.compares.some((d) => d.join() === c.join()))],
     screens: [...a.screens, ...b.screens.filter((c) => !a.screens.some((d) => d.name === c.name))],
-    paper: byId(a.paper ?? [], b.paper ?? [], (p) => p) };
+    paper: byId(a.paper ?? [], b.paper ?? [], (p) => p),
+    // weekly reviews: one per week, the longer note wins. Since-you-last-looked baselines: the union by day, so a restored device does not lose its history.
+    reviews: (() => { const m = new Map((a.reviews ?? []).map((r) => [r.week, r])); for (const r of b.reviews ?? []) { const o = m.get(r.week); if (!o || r.note.length > o.note.length) m.set(r.week, r); } return [...m.values()]; })(),
+    snaps: (() => { const out: State['snaps'] = { ...a.snaps }; for (const [sym, list] of Object.entries(b.snaps ?? {})) { const m = new Map((out[sym] ?? []).map((x) => [x.day, x])); for (const x of list) if (!m.has(x.day)) m.set(x.day, x); out[sym] = [...m.values()].sort((p, q) => p.day.localeCompare(q.day)); } return out; })(),
+    // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
+    prefs: JSON.stringify(a.prefs) === JSON.stringify(DEFAULTS.prefs) || JSON.stringify({ ...a.prefs, haptics: true }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
+}
+/** What is on this device, read defensively. Nothing readable is "no data yet"; something there that cannot be read is NOT the same, and the caller keeps a copy of it
+ *  before anything is written over it. */
+export function readSaved(text: string | null): { state: State; unreadable: boolean } {
+  if (text == null || text === '') return { state: DEFAULTS, unreadable: false };
+  const p = parseState(text); return p ? { state: p, unreadable: false } : { state: DEFAULTS, unreadable: true };
 }
