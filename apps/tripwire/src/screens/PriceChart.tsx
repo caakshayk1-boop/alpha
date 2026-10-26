@@ -1,6 +1,6 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useChart } from '../data.ts';
-import { RANGES, compareSeries, dateLabel, downsample, geometry, geometryPair, monthly, nearest, sliceRange, stats, type Pt, type RangeId } from '../chart.ts';
+import { RANGES, compareSeries, dateLabel, downsample, geometry, geometryPair, monthly, nearest, sliceRange, stats, xTicks, yTicks, type Pt, type RangeId } from '../chart.ts';
 import { inr, pct } from '../fmt.ts';
 
 /** Price history: simple on purpose. One line, five ranges, daily or monthly, linear or log. Hover, touch or arrow keys scrub it.
@@ -44,39 +44,50 @@ export function PriceChart({ sym, fmt, name }: { sym: string; fmt?: (v: number) 
     </div>
     <div ref={box} className="chart-plot" tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || 'Latest close'}
       onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCur(null); }} onKeyDown={key} onBlur={() => setCur(null)} style={{ touchAction: 'pan-y' }}>
-      {pair && <svg viewBox={`0 0 ${pair.W} ${pair.H}`} preserveAspectRatio="none" aria-hidden="true">
-        <g key={`${sym}${range}${view}${log}vs`}>
-          <path className="c-line" d={pair.lineB} pathLength={1} fill="none" stroke="var(--dim)" strokeWidth="1.8" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" style={{ strokeDasharray: '5 5', animation: 'none', strokeDashoffset: 0 }} />
-          <path className="c-line" d={pair.lineA} pathLength={1} fill="none" stroke={color} strokeWidth="2.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-        </g>
-        {i != null && <line x1={pair.xs[i]} x2={pair.xs[i]} y1="0" y2={pair.H} stroke="var(--tx)" strokeOpacity=".35" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-      </svg>}
-      {pair && i != null && <><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysA[i] / pair.H) * 100}%`, background: color }} /><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysB[i] / pair.H) * 100}%`, background: 'var(--dim)' }} /></>}
-      {geo && <svg viewBox={`0 0 ${geo.W} ${geo.H}`} preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id={`g${gid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={up ? '#c8f23c' : '#ff9a6c'} stopOpacity=".28" /><stop offset="1" stopColor={up ? '#c8f23c' : '#ff9a6c'} stopOpacity="0" /></linearGradient></defs>
-        <g key={`${sym}${range}${view}${log}`}>
-          <path className="c-area" d={geo.area} fill={`url(#g${gid})`} />
-          <path className="c-line" d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth="2.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-        </g>
-        {i != null && <line x1={geo.xs[i]} x2={geo.xs[i]} y1="0" y2={geo.H} stroke="var(--tx)" strokeOpacity=".35" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-      </svg>}
+      {(geo || pair) && (() => {
+        const W = (geo ?? pair)!.W, H = (geo ?? pair)!.H;
+        // the axis: round values inside the data, and the grid lines they sit on. In the two-line view the axis is the index (100 = the start).
+        const lo = geo ? geo.min : Math.min(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c)), hi = geo ? geo.max : Math.max(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c));
+        const yOf = (c: number) => { const g = (v: number) => (log ? Math.log(v) : v); const l = g(lo), h = g(hi); return 12 + (1 - (g(c) - l) / ((h - l) || 1)) * (H - 24); };
+        const ticks = yTicks(lo, hi, log, 4).map((v) => ({ v, y: yOf(v) }));
+        return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+          {ticks.map((t) => <line key={t.v} x1="0" x2={W} y1={t.y} y2={t.y} stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+          {pair && <g key={`${sym}${range}${view}${log}vs`}>
+            <path className="c-line" d={pair.lineB} pathLength={1} fill="none" stroke="var(--mute)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" style={{ strokeDasharray: '4 3', animation: 'none', strokeDashoffset: 0 }} />
+            <path className="c-line" d={pair.lineA} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          </g>}
+          {geo && <g key={`${sym}${range}${view}${log}`}><path className="c-line" d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></g>}
+          {geo && <line x1="0" x2={W} y1={geo.ys[geo.ys.length - 1]} y2={geo.ys[geo.ys.length - 1]} stroke={color} strokeOpacity=".55" strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
+          {i != null && <line x1={(geo ?? pair)!.xs[i]} x2={(geo ?? pair)!.xs[i]} y1="0" y2={H} stroke="var(--tx)" strokeOpacity=".4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+        </svg>;
+      })()}
+      {(geo || pair) && (() => {
+        const H = (geo ?? pair)!.H; const lo = geo ? geo.min : 0, hi = geo ? geo.max : 0; void lo; void hi;
+        const g = (v: number) => (log ? Math.log(v) : v); const mn = geo ? geo.min : 0, mx = geo ? geo.max : 0;
+        const yPct = (c: number) => ((12 + (1 - (g(c) - g(mn)) / ((g(mx) - g(mn)) || 1)) * (H - 24)) / H) * 100;
+        const ys = geo ? yTicks(mn, mx, log, 4) : []; const lastY = geo ? yPct(geo.max === geo.min ? geo.min : shown[shown.length - 1].c) : 0;
+        return geo ? <>
+          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 11 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
+          <span className="c-last" style={{ top: `${lastY}%`, background: color }}>{f(shown[shown.length - 1].c)}</span>
+        </> : null;
+      })()}
+      {pair && i != null && <><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysA[i] / pair.H) * 100}%`, background: color }} /><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysB[i] / pair.H) * 100}%`, background: 'var(--mute)' }} /></>}
       {geo && i != null && <span className="c-dot" style={{ left: `${(geo.xs[i] / geo.W) * 100}%`, top: `${(geo.ys[i] / geo.H) * 100}%`, background: color }} />}
     </div>
-    {st && <div className="row between small dim num" style={{ marginTop: 6 }}><span>{dateLabel(st.first.t, view === 'monthly')}</span><span>{dateLabel(st.last.t, view === 'monthly')}</span></div>}
-    <div className="chips" style={{ marginTop: 10 }} role="group" aria-label="Range">{RANGES.map((r) => <button key={r.id} className="chip" aria-pressed={range === r.id} onClick={() => { setRange(r.id); setCur(null); }}>{r.id}</button>)}</div>
-    <div className="row" style={{ marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
-      <div className="mini-seg" role="group" aria-label="Detail">{(['daily', 'monthly'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setCur(null); }}>{v === 'daily' ? 'Daily' : 'Monthly'}</button>)}</div>
-      {!instrument && <div className="mini-seg" role="group" aria-label="Compare">{([false, true] as const).map((v) => <button key={String(v)} aria-pressed={vs === v} disabled={v && !hasNifty} title={v && !hasNifty ? 'The Nifty could not be read' : undefined} onClick={() => { setVs(v); setCur(null); }}>{v ? 'vs Nifty' : 'Price'}</button>)}</div>}
-      <div className="mini-seg" role="group" aria-label="Scale">{([false, true] as const).map((l) => <button key={String(l)} aria-pressed={log === l} onClick={() => setLog(l)}>{l ? 'Log' : 'Linear'}</button>)}</div>
+    {st && <div className="c-xaxis" aria-hidden="true">{xTicks(plot[0].t, plot[plot.length - 1].t, 5).map((x) => { const fr = (x.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t); return <span key={x.t} style={{ left: `${fr * 100}%` }}>{x.label}</span>; })}</div>}
+    <div className="c-bar" role="group" aria-label="Chart controls">
+      <div className="mini-seg" role="group" aria-label="Range">{RANGES.map((r) => <button key={r.id} aria-pressed={range === r.id} onClick={() => { setRange(r.id); setCur(null); }}>{r.id === 'Max' ? 'MAX' : r.id}</button>)}</div>
+      <div className="mini-seg" role="group" aria-label="Detail">{(['daily', 'monthly'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setCur(null); }}>{v === 'daily' ? 'D' : 'M'}<span className="sr">{v === 'daily' ? 'Daily' : 'Monthly'}</span></button>)}</div>
+      <div className="mini-seg" role="group" aria-label="Scale">{([false, true] as const).map((l) => <button key={String(l)} aria-pressed={log === l} onClick={() => setLog(l)}>{l ? 'LOG' : 'LIN'}<span className="sr">{l ? 'Log' : 'Linear'}</span></button>)}</div>
+      {!instrument && <div className="mini-seg" role="group" aria-label="Compare">{([false, true] as const).map((v) => <button key={String(v)} aria-pressed={vs === v} disabled={v && !hasNifty} title={v && !hasNifty ? 'The Nifty could not be read' : undefined} onClick={() => { setVs(v); setCur(null); }}>{v ? 'VS NIFTY' : 'PRICE'}</button>)}</div>}
     </div>
-    <p className="small dim" style={{ margin: '8px 0 0' }}>{log
-      ? 'Log scale: equal steps are equal percentage moves, so 100 to 200 looks the same as 200 to 400. Best for long ranges, where a rise from 20 to 100 would otherwise squash everything before it flat.'
-      : `Linear scale: equal steps are equal amounts of price. Best for short ranges.${st && st.hi.c / Math.max(st.lo.c, 1e-9) >= 3 ? ' This window moved more than threefold, so older moves look small here; Log shows them in proportion.' : ''}`}</p>
     {cmp && <div className="row small" style={{ gap: 14, marginTop: 8, flexWrap: 'wrap' }}><span><span className="c-key" style={{ background: color }} />{sym}</span><span><span className="c-key dashed" />Nifty 50</span><span className="mute">both indexed to 100</span></div>}
-    {cmp?.trimmed && <p className="small down" style={{ margin: '8px 0 0' }}>Nifty data starts {dateLabel(cmp.from.t)}, so the comparison starts there.</p>}
-    {st && !cmp && <div className="row between small num" style={{ marginTop: 10 }}><span className="dim">Low <b style={{ color: 'var(--tx)' }}>{f(st.lo.c)}</b> · {dateLabel(st.lo.t, true)}</span><span className="dim">High <b style={{ color: 'var(--tx)' }}>{f(st.hi.c)}</b> · {dateLabel(st.hi.t, true)}</span></div>}
-    {!win.covers && range !== 'Max' && <p className="small down" style={{ margin: '8px 0 0' }}>History in this data starts {dateLabel(all[0].t)}, so {range} shows all of it.</p>}
-    <p className="mute small" style={{ margin: '8px 0 0' }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock.'} Past prices say nothing certain about future ones.</p>
+    {cmp?.trimmed && <p className="small mute" style={{ margin: '8px 0 0' }}>Nifty data starts {dateLabel(cmp.from.t)}, so the comparison starts there.</p>}
+    {st && !cmp && <div className="c-hl num"><span>LOW <b>{f(st.lo.c)}</b> <i>{dateLabel(st.lo.t, true)}</i></span><span>HIGH <b>{f(st.hi.c)}</b> <i>{dateLabel(st.hi.t, true)}</i></span></div>}
+    {!win.covers && range !== 'Max' && <p className="small mute" style={{ margin: '6px 0 0' }}>Data starts {dateLabel(all[0].t)}: {range} shows all of it.</p>}
+    <details className="ev" style={{ marginTop: 8 }}><summary>About this chart<span className="chev">▾</span></summary><div className="body small dim">
+      <p style={{ margin: '0 0 6px' }}>{log ? 'Log scale: equal steps are equal percentage moves, so 100 to 200 looks the same as 200 to 400. Best for long ranges.' : `Linear scale: equal steps are equal amounts of price. Best for short ranges.${st && st.hi.c / Math.max(st.lo.c, 1e-9) >= 3 ? ' This window moved more than threefold, so older moves look small; LOG shows them in proportion.' : ''}`}</p>
+      <p style={{ margin: 0 }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock. Past prices say nothing certain about future ones.'}</p></div></details>
     {shown.length > 1 && (() => { const hi = shown.reduce((a, b) => (b.c > a.c ? b : a)), lo = shown.reduce((a, b) => (b.c < a.c ? b : a)), a0 = shown[0], z = shown[shown.length - 1];
       return <details className="ev" style={{ marginTop: 8 }}><summary>The same chart as a table<span className="chev">▾</span></summary><div className="body"><table className="tbl" style={{ width: '100%' }}><caption className="sr">Key points of the {range} {view} chart for {sym}</caption><thead><tr><th scope="col" style={{ textAlign: 'left' }}>Point</th><th scope="col" style={{ textAlign: 'left' }}>Date</th><th scope="col" style={{ textAlign: 'right' }}>Price</th></tr></thead><tbody>
         <tr><th scope="row" style={{ textAlign: 'left' }}>First in window</th><td>{dateLabel(a0.t, view === 'monthly')}</td><td className="num" style={{ textAlign: 'right' }}>{f(a0.c)}</td></tr>

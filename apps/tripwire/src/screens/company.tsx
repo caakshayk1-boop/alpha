@@ -47,9 +47,10 @@ export function Company({ sym }: { sym: string }) {
       {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
-        {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }}><i>{l}</i></span>; })}
+        {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }} title={`${l} average ${inr(v!)}`} />; })}
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
-        <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(row.from_high)} from high {inr(hi, 0)}</span></div></> : <p className="dim small">52-week range not available.</p>}
+        <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(row.from_high)} from high {inr(hi, 0)}</span></div>
+        <div className="small num mute" style={{ marginTop: 4 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ')}</div></> : <p className="dim small">52-week range not available.</p>}
     </section>
 
     <DecisionCard c={c.data} lp={lp} />

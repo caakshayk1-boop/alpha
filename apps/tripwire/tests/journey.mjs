@@ -269,11 +269,9 @@ ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,
 ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
-await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('canvas.aurora');
-await pg.waitForFunction(() => document.querySelector('canvas.aurora')?.dataset.running === 'true', null, { timeout: 8000 });
+await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.moodhero .idx');
 ok(await pg.locator('.heat a').count() >= 3, 'Today has a sector heat map (the ticker tape that repeated the strip is gone)');
-await pg.evaluate(() => document.documentElement.classList.remove('fx')); await pg.waitForFunction(() => document.querySelector('canvas.aurora')?.dataset.running === 'false', null, { timeout: 4000 });
-ok(true, 'the live water stops when motion is turned off'); await pg.evaluate(() => document.documentElement.classList.add('fx'));
+ok(await pg.locator('canvas').count() === 0, 'the mood card is a plain data panel: no canvas, no moving water');
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
 await pg.reload(); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the note does not repeat on the next visit');
 await pg.getByRole('button', { name: 'Hide my amounts' }).click();

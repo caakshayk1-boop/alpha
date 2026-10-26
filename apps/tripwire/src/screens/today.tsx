@@ -17,7 +17,6 @@ import { MacroStrip } from './Macro.tsx';
 import { TodayNews } from './News.tsx';
 import { Ago, LiveBadge, Observed, Spark, Tick } from '../live.tsx';
 import { LivePositions } from './LivePositions.tsx';
-import { Aurora } from '../aurora.tsx';
 import { Heat, Ring, avatarStyle } from '../widgets.tsx';
 import { mood } from '../mood.ts';
 import { Icon } from '../ui.tsx';
@@ -84,15 +83,16 @@ export function Today() {
     <div className="col">
       <div style={{ '--o': 1 } as React.CSSProperties}>
     {/* the market, once: the mood, the Nifty, and the two figures that colour it, with one live label */}
-    <section className="moodhero card glass" aria-label="Market mood">
-      <Aurora ch={niftyCh} vix={vixCh} still={!live} />
+    <section className="moodhero card" aria-label="Market mood">
       <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
-      {md ? <div className="word grad-text" style={{ margin: '6px 0 2px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '8px 0' }} />}
-      <div className="big num">{pulse.data?.quotes.NIFTY ? <><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick> <span className={tone(niftyCh)}>{pct(niftyCh)}</span> <a className="dim small" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer">Nifty 50<span className="sr"> on TradingView, opens in a new tab</span></a></> : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}</div>
-      <div className="row small num" style={{ gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
-        <a href={tvIndexUrl('BANKNIFTY')} target="_blank" rel="noopener noreferrer"><span className="dim">Bank Nifty </span><Tick v={pulse.data?.quotes.BANKNIFTY?.px}>{pulse.data?.quotes.BANKNIFTY ? pulse.data.quotes.BANKNIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '—'}</Tick> <span className={tone(bankCh)}>{pct(bankCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
-        <a href={tvIndexUrl('VIX')} target="_blank" rel="noopener noreferrer"><span className="dim">India VIX </span><Tick v={pulse.data?.quotes.VIX?.px}>{pulse.data?.quotes.VIX ? pulse.data.quotes.VIX.px.toFixed(2) : '—'}</Tick> <span className={vixCh == null ? '' : vixCh > 0 ? 'down' : vixCh < 0 ? 'up' : ''}>{pct(vixCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a></div>
-      {pulse.data?.quotes.NIFTY && <div style={{ marginTop: 8 }}><Spark c={pulse.data.quotes.NIFTY.c} up={(niftyCh ?? 0) >= 0} refs={[{ v: pulse.data.quotes.NIFTY.prev, kind: 'prev' }]} h={34} label="Nifty 50 today" /></div>}
+      {md ? <div className="word" style={{ margin: '8px 0 10px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '10px 0' }} />}
+      <div className="idx" role="list" aria-label="Indices">
+        {pulse.data?.quotes.NIFTY ? <a role="listitem" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Nifty 50</span><span className="px num"><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick></span><span className={`ch num ${tone(niftyCh)}`}>{pct(niftyCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
+          : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}
+        <a role="listitem" href={tvIndexUrl('BANKNIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Bank Nifty</span><span className="px num"><Tick v={pulse.data?.quotes.BANKNIFTY?.px}>{pulse.data?.quotes.BANKNIFTY ? pulse.data.quotes.BANKNIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '—'}</Tick></span><span className={`ch num ${tone(bankCh)}`}>{pct(bankCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
+        <a role="listitem" href={tvIndexUrl('VIX')} target="_blank" rel="noopener noreferrer"><span className="nm">India VIX</span><span className="px num"><Tick v={pulse.data?.quotes.VIX?.px}>{pulse.data?.quotes.VIX ? pulse.data.quotes.VIX.px.toFixed(2) : '—'}</Tick></span><span className={`ch num ${vixCh == null ? '' : vixCh > 0 ? 'down' : vixCh < 0 ? 'up' : ''}`}>{pct(vixCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
+      </div>
+      {pulse.data?.quotes.NIFTY && <div style={{ marginTop: 10 }}><Spark c={pulse.data.quotes.NIFTY.c} up={(niftyCh ?? 0) >= 0} refs={[{ v: pulse.data.quotes.NIFTY.prev, kind: 'prev' }]} h={44} label="Nifty 50 today" /></div>}
     </section>
       </div>
       <div style={{ '--o': 2 } as React.CSSProperties}>
