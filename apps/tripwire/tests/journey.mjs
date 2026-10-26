@@ -128,6 +128,10 @@ ok(/Since listing in this data/i.test(await text()), 'Max shows everything held 
 await pg.getByRole('button', { name: '1Y', exact: true }).click();
 ok(/Last year/i.test(await text()) && (await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== d0, 'switching range redraws the line');
 await pg.getByRole('button', { name: '10Y', exact: true }).click();
+await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
+ok(await pg.locator('.chart-plot path.c-ma').count() === 2 && /Drawdown from the running peak/i.test(await pg.locator('.chart').innerText()) && /50-day/.test(await pg.locator('.chart').innerText()), 'the chart can overlay the 50 and 200-day averages and a drawdown panel, with a key');
+await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
+ok(await pg.locator('.chart-plot path.c-ma').count() === 0, 'the overlays switch off again');
 const daily = await pg.locator('.chart-plot path.c-line').getAttribute('d');
 await pg.getByRole('button', { name: 'Monthly' }).click();
 ok((await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== daily && /[A-Z][a-z]{2} 20\d\d/.test(await pg.locator('.chart').innerText()), 'monthly view uses month-end closes and month labels');

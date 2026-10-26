@@ -140,6 +140,7 @@ export function Today() {
         <span className="bookdot" aria-hidden="true">{ownRows.length}</span>
         <span className="grow"><b>My trades</b><span className="small dim" style={{ display: 'block' }}>Taken by you · {ownOpen.length} open{ownRows.length - ownOpen.length ? ` · ${ownRows.length - ownOpen.length} waiting` : ''}{showAuto ? ' · not in the auto book' : ''}</span></span>
         <span className={`num amt ${tone(ownPnl)}`} style={{ font: '600 1.125rem/1.2 var(--sans)', textAlign: 'right' }}><Tick v={ownOpen.length ? ownPnl : null}>{ownOpen.length ? money(ownPnl) : '—'}</Tick></span></a>}
+      {(auto.sum.open > 0 || ownOpen.length > 0) && <a className="btn sm" href="#/live" style={{ marginTop: 8, width: '100%' }}>Open the live blotter</a>}
       <LivePositions rows={[...(showAuto ? auto.rows : []), ...ownRows]} live={live} />
       {showAuto && auto.sum.closed > 0 && <div className="small dim" style={{ marginTop: 6 }}>Realised so far: <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b> over {auto.sum.closed} closed</div>}
     </section>}
