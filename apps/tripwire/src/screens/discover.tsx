@@ -87,7 +87,7 @@ export function Discover() {
     {s.screens.length > 0 && <div className="chips" aria-label="Saved screens">{s.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setF(x.f); setLimit(PAGE); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
     <div className="row between" style={{ margin: '12px 0 4px' }}>
       <span className="small dim num">{scr.data ? `${list.length} of ${rows.length}` : ''}{res.unmeasured ? ` · ${res.unmeasured} lacked a figure for a filter` : ''}{res.notApplicable ? ` · ${res.notApplicable} financial-sector or not-meaningful names left out of the ROCE filter` : ''}</span>
-      <label className="small dim row" style={{ minWidth: 0, flex: '1 1 11rem', justifyContent: 'flex-end' }}><span className="sr">Sort by</span><select className="field" style={{ minHeight: 36, padding: '4px 10px', width: 'auto', maxWidth: '100%' }} value={sort} onChange={(e) => setSort(Number(e.target.value))} aria-label="Sort by">{SORTS.map((x, i) => <option key={x.id} value={i}>{x.label}</option>)}</select></label>
+      {view === 'list' && <label className="small dim row" style={{ minWidth: 0, flex: '1 1 11rem', justifyContent: 'flex-end' }}><span className="sr">Sort by</span><select className="field" style={{ minHeight: 36, padding: '4px 10px', width: 'auto', maxWidth: '100%' }} value={sort} onChange={(e) => setSort(Number(e.target.value))} aria-label="Sort by">{SORTS.map((x, i) => <option key={x.id} value={i}>{x.label}</option>)}</select></label>}
     </div>
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}

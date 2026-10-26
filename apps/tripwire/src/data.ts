@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Row } from './screen.ts';
 import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
 import { nseClockOpen } from './stamp.ts';
@@ -110,7 +110,12 @@ export const useIntraday = (syms: string[], on: boolean) => useLiveSymbols([...n
 /** Nifty 50, Bank Nifty and India VIX. */
 export const usePulse = (on: boolean) => useLivePulse(on);
 
-export const useBacktest = () => useJson<import('./evidence.ts').Backtest>('/data/research/engines_backtest.json');
+/** The back-test, with the walk-forward test attached when it has been published (it is optional: its absence changes the wording, never the state). */
+export function useBacktest() {
+  const a = useJson<import('./evidence.ts').Backtest>('/data/research/engines_backtest.json'); const w = useJson<{ walk_forward: import('./evidence.ts').WalkForward }>('/data/research/engines_walkforward.json');
+  const data = useMemo(() => (a.data ? { ...a.data, walk_forward: w.data?.walk_forward ?? null } : null), [a.data, w.data]);
+  return { ...a, data };
+}
 export const useStudy = () => useJson<import('./evidence.ts').Study>('/data/research/factor_study.json');
 
 export interface BreadthFeed { ok: boolean; t: number; as_of: string; n: number; up: number; mixed: number; down: number; sectors: { k: string; n: number; up: number; down: number }[]; repriced: number; near: number }
