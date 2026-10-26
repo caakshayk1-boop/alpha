@@ -10,6 +10,7 @@ const P: Record<string, string> = {
   plus: 'M12 5v14M5 12h14', check: 'm5 12.5 4.5 4.5L19 7.5', x: 'M6 6l12 12M18 6 6 18', back: 'm15 5-7 7 7 7',
   star: 'm12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z',
   compare: 'M8 4v16M16 4v16M4 8h8M12 16h8', plan: 'M5 19 19 5M7 5h12v12', note: 'M6 4h9l3 3v13H6zM9 12h6M9 16h4',
+  chart: 'M4 19h16M6 15l4-5 3 3 5-7', ext: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   chev: 'm6 9 6 6 6-6', share: 'M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6', bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
   info: 'M12 8h.01M11 12h1v5h1M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z',
   print: 'M7 9V4h10v5M7 17H5v-6h14v6h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13', filter: 'M4 6h16M7 12h10M10 18h4',

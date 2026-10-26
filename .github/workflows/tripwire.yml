@@ -28,6 +28,13 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: pip, cache-dependency-path: engines/requirements.txt }
+      - run: pip install -r engines/requirements.txt
+      - name: Research harness and ledger tests (indicator maths, a random walk adopts nothing, a planted effect is found)
+        run: |
+          python apps/tripwire/research/test_research.py
+          python apps/tripwire/ledger/test_bars.py
       - run: npx playwright install --with-deps chromium
       - run: npm run tripwire:types
       - run: npm run tripwire:test

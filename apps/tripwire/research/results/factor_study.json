@@ -1,0 +1,714 @@
+{
+ "meta": {
+  "when": "2026-10-26 03:12 UTC",
+  "symbols": 660,
+  "dates": [
+   "2015-10-23",
+   "2026-10-23"
+  ]
+ },
+ "features": {
+  "mom12_1": {
+   "train": {
+    "ic": 0.045,
+    "t": 2.369,
+    "months": 62,
+    "top_quintile_excess_net": 0.0035
+   },
+   "validation": {
+    "ic": 0.042,
+    "t": 1.898,
+    "months": 24,
+    "top_quintile_excess_net": 0.004
+   },
+   "holdout": {
+    "ic": 0.033,
+    "t": 1.701,
+    "months": 33,
+    "top_quintile_excess_net": 0.0023
+   }
+  },
+  "near_high": {
+   "train": {
+    "ic": 0.028,
+    "t": 1.248,
+    "months": 62,
+    "top_quintile_excess_net": -0.002
+   },
+   "validation": {
+    "ic": 0.034,
+    "t": 3.397,
+    "months": 24,
+    "top_quintile_excess_net": -0.0022
+   },
+   "holdout": {
+    "ic": 0.038,
+    "t": 1.854,
+    "months": 33,
+    "top_quintile_excess_net": -0.0006
+   }
+  },
+  "rev21": {
+   "train": {
+    "ic": 0.02,
+    "t": 1.497,
+    "months": 62,
+    "top_quintile_excess_net": -0.0044
+   },
+   "validation": {
+    "ic": -0.002,
+    "t": -0.148,
+    "months": 24,
+    "top_quintile_excess_net": -0.0041
+   },
+   "holdout": {
+    "ic": -0.005,
+    "t": -0.353,
+    "months": 33,
+    "top_quintile_excess_net": -0.0058
+   }
+  },
+  "smooth_fip": {
+   "train": {
+    "ic": 0.029,
+    "t": 2.34,
+    "months": 62,
+    "top_quintile_excess_net": 0.0014
+   },
+   "validation": {
+    "ic": 0.003,
+    "t": 0.227,
+    "months": 24,
+    "top_quintile_excess_net": -0.0077
+   },
+   "holdout": {
+    "ic": 0.028,
+    "t": 1.919,
+    "months": 33,
+    "top_quintile_excess_net": -0.0045
+   }
+  },
+  "eff_ratio60": {
+   "train": {
+    "ic": 0.027,
+    "t": 2.211,
+    "months": 62,
+    "top_quintile_excess_net": 0.0016
+   },
+   "validation": {
+    "ic": 0.006,
+    "t": 0.5,
+    "months": 24,
+    "top_quintile_excess_net": -0.002
+   },
+   "holdout": {
+    "ic": 0.04,
+    "t": 3.516,
+    "months": 33,
+    "top_quintile_excess_net": 0.0026
+   }
+  },
+  "resid_mom": {
+   "train": {
+    "ic": 0.05,
+    "t": 2.581,
+    "months": 62,
+    "top_quintile_excess_net": 0.0027
+   },
+   "validation": {
+    "ic": 0.038,
+    "t": 1.72,
+    "months": 24,
+    "top_quintile_excess_net": 0.0017
+   },
+   "holdout": {
+    "ic": 0.036,
+    "t": 2.148,
+    "months": 33,
+    "top_quintile_excess_net": -0.0006
+   }
+  },
+  "max5": {
+   "train": {
+    "ic": 0.029,
+    "t": 2.452,
+    "months": 62,
+    "top_quintile_excess_net": -0.0047
+   },
+   "validation": {
+    "ic": -0.027,
+    "t": -1.495,
+    "months": 24,
+    "top_quintile_excess_net": -0.0114
+   },
+   "holdout": {
+    "ic": 0.005,
+    "t": 0.295,
+    "months": 33,
+    "top_quintile_excess_net": -0.0083
+   }
+  },
+  "overnight60": {
+   "train": {
+    "ic": -0.022,
+    "t": -1.688,
+    "months": 62,
+    "top_quintile_excess_net": -0.0037
+   },
+   "validation": {
+    "ic": 0.016,
+    "t": 0.863,
+    "months": 24,
+    "top_quintile_excess_net": 0.0021
+   },
+   "holdout": {
+    "ic": -0.012,
+    "t": -0.669,
+    "months": 33,
+    "top_quintile_excess_net": 0.001
+   }
+  },
+  "vol_shock": {
+   "train": {
+    "ic": -0.004,
+    "t": -0.388,
+    "months": 62,
+    "top_quintile_excess_net": -0.0019
+   },
+   "validation": {
+    "ic": 0.033,
+    "t": 2.901,
+    "months": 24,
+    "top_quintile_excess_net": 0.0036
+   },
+   "holdout": {
+    "ic": 0.006,
+    "t": 0.545,
+    "months": 33,
+    "top_quintile_excess_net": -0.0003
+   }
+  },
+  "ud_vol": {
+   "train": {
+    "ic": -0.012,
+    "t": -1.222,
+    "months": 62,
+    "top_quintile_excess_net": -0.0036
+   },
+   "validation": {
+    "ic": -0.006,
+    "t": -0.431,
+    "months": 24,
+    "top_quintile_excess_net": -0.0022
+   },
+   "holdout": {
+    "ic": -0.01,
+    "t": -0.816,
+    "months": 33,
+    "top_quintile_excess_net": -0.0024
+   }
+  },
+  "clv20": {
+   "train": {
+    "ic": 0.015,
+    "t": 1.222,
+    "months": 62,
+    "top_quintile_excess_net": -0.0043
+   },
+   "validation": {
+    "ic": -0.009,
+    "t": -0.497,
+    "months": 24,
+    "top_quintile_excess_net": -0.0097
+   },
+   "holdout": {
+    "ic": 0.03,
+    "t": 2.03,
+    "months": 33,
+    "top_quintile_excess_net": -0.0045
+   }
+  },
+  "coil": {
+   "train": {
+    "ic": 0.011,
+    "t": 0.772,
+    "months": 62,
+    "top_quintile_excess_net": -0.0039
+   },
+   "validation": {
+    "ic": -0.024,
+    "t": -2.068,
+    "months": 24,
+    "top_quintile_excess_net": -0.0098
+   },
+   "holdout": {
+    "ic": 0.003,
+    "t": 0.269,
+    "months": 33,
+    "top_quintile_excess_net": -0.0037
+   }
+  },
+  "skew60": {
+   "train": {
+    "ic": -0.001,
+    "t": -0.051,
+    "months": 62,
+    "top_quintile_excess_net": -0.0054
+   },
+   "validation": {
+    "ic": -0.024,
+    "t": -2.543,
+    "months": 24,
+    "top_quintile_excess_net": -0.0097
+   },
+   "holdout": {
+    "ic": -0.003,
+    "t": -0.206,
+    "months": 33,
+    "top_quintile_excess_net": -0.0069
+   }
+  },
+  "amihud": {
+   "train": {
+    "ic": 0.007,
+    "t": 0.603,
+    "months": 62,
+    "top_quintile_excess_net": 0.0005
+   },
+   "validation": {
+    "ic": 0.027,
+    "t": 1.683,
+    "months": 24,
+    "top_quintile_excess_net": 0.0051
+   },
+   "holdout": {
+    "ic": -0.001,
+    "t": -0.052,
+    "months": 33,
+    "top_quintile_excess_net": 0.0016
+   }
+  },
+  "noise": {
+   "train": {
+    "ic": -0.003,
+    "t": -0.731,
+    "months": 62,
+    "top_quintile_excess_net": -0.0061
+   },
+   "validation": {
+    "ic": 0.002,
+    "t": 0.271,
+    "months": 24,
+    "top_quintile_excess_net": -0.006
+   },
+   "holdout": {
+    "ic": 0.007,
+    "t": 1.524,
+    "months": 33,
+    "top_quintile_excess_net": -0.0038
+   }
+  }
+ },
+ "modifiers": {
+  "smooth_fip": {
+   "train": {
+    "diff": 0.0041,
+    "t": 1.021,
+    "months": 62
+   },
+   "validation": {
+    "diff": -0.0096,
+    "t": -2.096,
+    "months": 24
+   },
+   "holdout": {
+    "diff": -0.0093,
+    "t": -2.607,
+    "months": 33
+   }
+  },
+  "eff_ratio60": {
+   "train": {
+    "diff": 0.0069,
+    "t": 2.096,
+    "months": 62
+   },
+   "validation": {
+    "diff": -0.0031,
+    "t": -0.841,
+    "months": 24
+   },
+   "holdout": {
+    "diff": 0.0073,
+    "t": 2.395,
+    "months": 33
+   }
+  },
+  "resid_mom": {
+   "train": {
+    "diff": 0.0012,
+    "t": 0.288,
+    "months": 62
+   },
+   "validation": {
+    "diff": 0.0008,
+    "t": 0.286,
+    "months": 24
+   },
+   "holdout": {
+    "diff": -0.0075,
+    "t": -2.589,
+    "months": 33
+   }
+  },
+  "max5": {
+   "train": {
+    "diff": -0.0097,
+    "t": -2.866,
+    "months": 62
+   },
+   "validation": {
+    "diff": -0.0063,
+    "t": -1.117,
+    "months": 24
+   },
+   "holdout": {
+    "diff": -0.008,
+    "t": -2.414,
+    "months": 33
+   }
+  },
+  "overnight60": {
+   "train": {
+    "diff": 0.0066,
+    "t": 1.523,
+    "months": 62
+   },
+   "validation": {
+    "diff": 0.0102,
+    "t": 1.595,
+    "months": 24
+   },
+   "holdout": {
+    "diff": 0.0008,
+    "t": 0.184,
+    "months": 33
+   }
+  },
+  "clv20": {
+   "train": {
+    "diff": 0.0018,
+    "t": 0.538,
+    "months": 62
+   },
+   "validation": {
+    "diff": -0.0094,
+    "t": -1.761,
+    "months": 24
+   },
+   "holdout": {
+    "diff": 0.0028,
+    "t": 0.798,
+    "months": 33
+   }
+  }
+ },
+ "winner_profile": {
+  "mom12_1": {
+   "train": 0.067,
+   "validation": 0.038,
+   "holdout": 0.026
+  },
+  "near_high": {
+   "train": 0.033,
+   "validation": 0.039,
+   "holdout": 0.016
+  },
+  "rev21": {
+   "train": 0.017,
+   "validation": -0.013,
+   "holdout": 0.005
+  },
+  "smooth_fip": {
+   "train": 0.049,
+   "validation": -0.028,
+   "holdout": -0.005
+  },
+  "eff_ratio60": {
+   "train": 0.033,
+   "validation": 0.017,
+   "holdout": 0.019
+  },
+  "resid_mom": {
+   "train": 0.065,
+   "validation": 0.03,
+   "holdout": 0.025
+  },
+  "max5": {
+   "train": 0.016,
+   "validation": -0.047,
+   "holdout": -0.014
+  },
+  "overnight60": {
+   "train": -0.014,
+   "validation": 0.06,
+   "holdout": 0.007
+  },
+  "vol_shock": {
+   "train": -0.011,
+   "validation": 0.063,
+   "holdout": 0.018
+  },
+  "ud_vol": {
+   "train": -0.008,
+   "validation": 0.005,
+   "holdout": -0.005
+  },
+  "clv20": {
+   "train": 0.001,
+   "validation": -0.052,
+   "holdout": -0.015
+  },
+  "coil": {
+   "train": 0.01,
+   "validation": -0.04,
+   "holdout": -0.001
+  },
+  "skew60": {
+   "train": -0.002,
+   "validation": -0.035,
+   "holdout": -0.028
+  },
+  "amihud": {
+   "train": 0.037,
+   "validation": 0.078,
+   "holdout": 0.047
+  },
+  "noise": {
+   "train": -0.01,
+   "validation": -0.011,
+   "holdout": 0.0
+  }
+ },
+ "verdict": {
+  "mom12_1": {
+   "kind": "common baseline",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": true,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": true
+   },
+   "adopt": false
+  },
+  "near_high": {
+   "kind": "common baseline",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "rev21": {
+   "kind": "common baseline",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": false,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "smooth_fip": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "eff_ratio60": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": true
+   },
+   "adopt": false
+  },
+  "resid_mom": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": true,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": true,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "max5": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "overnight60": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": true,
+    "holdout IC > 0": false,
+    "holdout top quintile beats the universe net of costs": true
+   },
+   "adopt": false
+  },
+  "vol_shock": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": true,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "ud_vol": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": false,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "clv20": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "coil": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "skew60": {
+   "kind": "candidate",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": false,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": false,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "amihud": {
+   "kind": "control",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": true,
+    "holdout IC > 0": false,
+    "holdout top quintile beats the universe net of costs": true
+   },
+   "adopt": false
+  },
+  "noise": {
+   "kind": "control",
+   "steps": {
+    "train IC > 0 and t >= 2.5": false,
+    "validation IC > 0 and >= half of train": true,
+    "validation top quintile beats the universe net of costs": false,
+    "holdout IC > 0": true,
+    "holdout top quintile beats the universe net of costs": false
+   },
+   "adopt": false
+  },
+  "mod:smooth_fip": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": false,
+    "holdout diff > 0": false
+   },
+   "adopt": false
+  },
+  "mod:eff_ratio60": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": false,
+    "holdout diff > 0": true
+   },
+   "adopt": false
+  },
+  "mod:resid_mom": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": true,
+    "holdout diff > 0": false
+   },
+   "adopt": false
+  },
+  "mod:max5": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": false,
+    "holdout diff > 0": false
+   },
+   "adopt": false
+  },
+  "mod:overnight60": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": true,
+    "holdout diff > 0": true
+   },
+   "adopt": false
+  },
+  "mod:clv20": {
+   "kind": "modifier",
+   "steps": {
+    "train diff > 0 and t >= 2.5": false,
+    "validation diff > 0": false,
+    "holdout diff > 0": true
+   },
+   "adopt": false
+  }
+ }
+}

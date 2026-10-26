@@ -11,7 +11,7 @@ Three engines, each a published factor idea with fixed, pre-stated rules over th
 Common to all: liquid, priced, measured ATR, not a micro cap. At most 5 picks per engine and 2 per sector. A pick whose stop would be wider than the engine's cap (12%, 15%, 10%) is skipped and counted. Missing data is never a pass. Percentile ranks are inside the eligible set (about 750 names).
 
 ## What is and is not known
-- The evidence for these factors comes from other markets and periods. **Tripwire has not backtested them on Indian prices.** The repository's earlier engines (v3 E1-E7) failed their own walk-forward tests; nothing here is claimed to do better. The paper tracker is the test, and it stays a test until at least 30 trades have closed (average R is withheld below that, and 30 is still a small sample).
+- The evidence for these factors comes from other markets and periods. **Back-tested on 660 Indian stocks over ten years (26 Oct 2026), none of the three engines beat the whole universe after costs** (Momentum: latest period −1.1% a trade; Steady uptrend negative in every period; Quality cannot be back-tested). See `ENGINE_SPECS.md` and the Evidence tab. They stay in the app as experiments, labelled as such, judged on the forward record, which stays a test until at least 30 trades have closed (average R is withheld below that, and 30 is still a small sample).
 - The thresholds (top fifth, 7 of 9, 15%, calmest quarter, ATR multiples) are starting hypotheses, not tuned values.
 - Picks are produced when the page loads, from the latest published close.
 

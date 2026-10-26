@@ -49,6 +49,14 @@ Starting state: branch `tripwire` from `main` at c8d15a8, with the website uncha
 - The dial's caption overlapped its end dots.
 - Axe: `aria-prohibited-attr` on the lifecycle bar and a focusless scroll region on the statements table.
 
+## Live P&L, Today, scrip intelligence, evidence (26 Oct 2026)
+- **Live paper P&L** (`Tracker.tsx`, `book.ts`): the delayed live mark from a five-minute feed, today's P&L (from the entry on the entry day, from the previous close after), contribution by trade, a risk ladder (−1R to +3R), the day's five-minute line with previous close, entry and stop, and a what-if slider that uses the tracker's own arithmetic (tested equal). Refreshes every 30 seconds while the page is visible. **The Worker routes `/api/intraday` and `/api/pulse` are tested with mocked Yahoo responses; against the real feed: NOT RUN until deployed.**
+- **Today** is a live market strip (Nifty, Bank Nifty, VIX), a session clock from the Indian time (exchange holidays are not modelled; live prints override the clock), the live paper book, swipeable engine picks, and a trend map by sector linking into Discover.
+- **TradingView**: stocks and indices open `tradingview.com/chart` in a new tab (`rel=noopener`). `&` and `-` in an NSE symbol are written `_`; other oddities may exist.
+- **Scrip intelligence**: ownership by quarter with changes, seasonality, PE against its own history, earnings quality, a peer ladder inside the sector, a risk map, and a fingerprint of unusual indicators, each with the study's verdict. All but the fingerprint use data already in the published screen.
+- **Studies** (`apps/tripwire/research`, `docs/tripwire/ENGINE_SPECS.md`): 13 unusual indicators and 3 baselines tested with the rule fixed first: none passed. The engines back-tested as built: no historical support (Quality untestable). Both reports and the harness tests run in CI.
+- **Evidence tab** states all of this inside the app.
+
 ## Trend tag
 Every company carries an Uptrend, Downtrend or Mixed tag, taken from the Alpha site's own uptrend rule (price above its 50-day average and the 50-day above the 200-day, strict, at the latest close). **Alpha publishes no downtrend, so Downtrend here is the exact mirror** (price below the 50-day, the 50-day below the 200-day); everything else is Mixed, and a name missing an average is untagged, never Mixed. It appears on Discover rows (compact arrow), company pages (with the figures behind it), Compare and the picks; Discover can filter by it, and saved screens from before the tag still work. A descriptive label of where price sits against two averages, not a forecast; it feeds no engine score.
 

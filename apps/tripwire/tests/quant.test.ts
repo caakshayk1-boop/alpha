@@ -226,3 +226,53 @@ test('trend filter: matches the tag, and a name with no averages is counted as u
   const mixed = filterRows(rows, { ...NO_FILTER, trend: 'mixed' }); assert.deepEqual(mixed.rows.map((r) => r.sym), ['M']); assert.equal(mixed.unmeasured, 1);
   assert.equal(filterRows(rows, { ...NO_FILTER, trend: undefined } as never).rows.length, 4);        // a saved screen from before the tag still works
 });
+
+import { parseIntraday } from '../worker.js';
+test('worker: an intraday print is live only when it is under 25 minutes old; thin or priceless data is refused', () => {
+  const base = 1_761_000_000; const ts = Array.from({ length: 10 }, (_, i) => base + i * 300);
+  const res = { timestamp: ts, indicators: { quote: [{ close: ts.map((_, i) => (i === 3 ? null : 100 + i)) }] }, meta: { regularMarketPrice: 109.456, regularMarketTime: ts[9], chartPreviousClose: 99.5 } };
+  const live = parseIntraday(res, (ts[9] + 600) * 1000)!; assert.equal(live.live, true); assert.equal(live.px, 109.46); assert.equal(live.prev, 99.5); assert.equal(live.t.length, 9);
+  assert.equal(parseIntraday(res, (ts[9] + 3600) * 1000)!.live, false);          // an hour old: the market is not trading
+  assert.equal(parseIntraday({ ...res, meta: { regularMarketPrice: 5 } }, 0), null);   // no previous close: no day change can be stated
+  assert.equal(parseIntraday({ timestamp: [1], indicators: { quote: [{ close: [1] }] }, meta: res.meta }, 0), null); assert.equal(parseIntraday(undefined), null);
+});
+
+import { tvUrl, tvSymbol, tvIndexUrl } from '../src/tv.ts';
+import { sessionNow } from '../src/market.ts';
+import { pnlAt, rLevel } from '../src/tracker.ts';
+test('tradingview: NSE symbols, the & and - spellings, and the index links', () => {
+  assert.equal(tvUrl('TCS'), 'https://www.tradingview.com/chart/?symbol=NSE%3ATCS');
+  assert.equal(tvSymbol('M&M'), 'M_M'); assert.equal(tvSymbol('bajaj-auto'), 'BAJAJ_AUTO');
+  assert.ok(tvUrl('M&M').includes('NSE%3AM_M') && !tvUrl('M&M').includes('&M'));
+  assert.ok(tvIndexUrl('NIFTY').includes('NSE%3ANIFTY') && tvIndexUrl('VIX').includes('INDIAVIX'));
+});
+test('session: the Indian clock, weekends and the next open; live prints override the clock', () => {
+  const at = (iso: string) => Date.parse(iso);            // times below are UTC; IST = UTC + 5:30
+  assert.equal(sessionNow(at('2026-10-26T05:00:00Z')).phase, 'open');                    // Mon 10:30 IST
+  assert.match(sessionNow(at('2026-10-26T05:00:00Z')).detail, /closes in 5h 00m/);
+  assert.equal(sessionNow(at('2026-10-26T03:40:00Z')).phase, 'pre');                     // Mon 09:10 IST
+  const sat = sessionNow(at('2026-10-24T06:00:00Z')); assert.equal(sat.phase, 'closed'); assert.match(sat.detail, /Mon 9:15/);
+  assert.match(sessionNow(at('2026-10-26T11:00:00Z')).detail, /tomorrow 9:15/);          // Mon 16:30 IST
+  assert.match(sessionNow(at('2026-10-26T01:00:00Z')).detail, /opens today 9:15/);       // Mon 06:30 IST
+  assert.equal(sessionNow(at('2026-10-26T05:00:00Z'), false).label, 'No live prints');    // clock says open, the feed says quiet: a holiday
+  assert.equal(sessionNow(at('2026-10-24T06:00:00Z'), true).phase, 'open');
+});
+test('what-if: the slider arithmetic equals the tracker headline, and the ladder is in risk units', () => {
+  const p: Paper = { id: 'a', sym: 'X', engine: 'MOM', asOf: 'd', ref: 100, stop: 95, horizon: 20, qty: 100, takenAt: T0 + 0.5 * D };
+  const v = evaluatePaper(p, [bar(1, 100, 104, 99, 102), bar(2, 102, 106, 101, 105)], null, 0.25);
+  const w = pnlAt(p, v.entry!, v.mark!, 0.25); assert.equal(w.pnl, v.pnl); assert.equal(w.r, v.r); assert.equal(w.pct, v.pct);
+  assert.equal(pnlAt(p, 100, 95, 0).r, -1.02);                                           // at the stop: -1R plus the 0.1 percent slippage on the way out
+  assert.ok(pnlAt(p, 100, 110, 0.25).pnl < 1000);                                        // costs always reduce it
+  assert.equal(rLevel(95, 100, 95), -1); assert.equal(rLevel(100, 100, 95), 0); assert.equal(rLevel(105, 100, 95), 1); assert.equal(rLevel(100, 95, 95), null);
+});
+
+import { applyCorrections } from '../src/ledger.ts';
+test('ledger corrections: a voided pick stays in the record with its reason and is left out of every total', () => {
+  let l = record(emptyLedger('x'), [run('MOM', ['A']), run('LVT', ['L1', 'L2'])], '2026-10-23', 'n').ledger;
+  const fixes = [{ engine: 'LVT', asOf: '2026-10-23', reason: 'rule bug' }];
+  l = applyCorrections(l, fixes);
+  assert.deepEqual(Object.keys(l.voided!).sort(), ['2026-10-23|LVT|L1', '2026-10-23|LVT|L2']); assert.equal(l.picks.length, 3);     // nothing removed
+  assert.equal(applyCorrections(l, fixes), l);                                                                                    // idempotent
+  const s = summarizeLedger(l); assert.equal(s.all.picks, 1); assert.equal(s.engines.find((e) => e.engine === 'LVT')!.picks, 0); assert.equal(s.engines.find((e) => e.engine === 'MOM')!.picks, 1);
+  assert.equal(applyCorrections(record(emptyLedger('x'), [run('MOM', ['A'])], '2026-10-23', 'n').ledger, fixes).voided, undefined);   // a correction that matches nothing changes nothing
+});

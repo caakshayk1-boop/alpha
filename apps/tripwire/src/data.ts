@@ -6,7 +6,9 @@ export interface Gate { date: string; on: boolean; passed: number; checks: { rul
 export interface SignalsFeed { schema: string; generated: string; data_through: string; launched: string; gate: Gate; alertable: boolean; alert_why: string; record: { closed: number; avg_r: number | null }; signals: unknown[]; cost_round_trip_pct?: number; rules?: { gate?: string[] } }
 export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null }
 export interface Flag { s: string; t: string; k: string }
-export interface Company { sym: string; built_on: string; row: Row & { risk_top?: string }; years: Year[]; swot: { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] } | null; risk: { level: string; score: number; flags: Flag[] } | null }
+export interface Inst { quality: string; reason?: string | null; fii?: number; dii?: number; mf?: number; insurance?: number; promoter?: number; publicHold?: number; fii_pp?: number; dii_pp?: number; insti_pp?: number; fii_streak?: number; dii_streak?: number; signal?: string; signal_label?: string; period?: string; prev_period?: string; quarters?: number; series?: { p: string; f: number; d: number }[] }
+export interface Season { m: [number, number, number][]; y: number }
+export interface Company { sym: string; built_on: string; row: Row & { risk_top?: string }; inst?: Inst | null; season?: Season | null; years: Year[]; swot: { s: { t: string; k: string }[]; w: { t: string; k: string }[]; o: { t: string; k: string }[]; t: { t: string; k: string }[] } | null; risk: { level: string; score: number; flags: Flag[] } | null }
 
 const memo = new Map<string, Promise<unknown>>();
 export function getJson<T>(url: string, timeout = 20000): Promise<T> {
@@ -66,3 +68,39 @@ export const useChart = (sym: string) => useJson<ChartFeed>(`/api/chart?s=${enco
 
 export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger }
 export const useLedger = () => useJson<LedgerFeed>('/api/ledger');
+
+export interface Quote { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean }
+export interface QuotesFeed { ok: boolean; fetched_at: string; quotes: Record<string, Quote>; missing: string[] }
+export interface FactorSheet { ok: boolean; schema: string; as_of: string; universe: number; rows: Record<string, Record<string, number>>; study?: Record<string, { adopt: boolean; kind: string }> }
+export const useFactors = () => useJson<FactorSheet>('/api/factors');
+
+/** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
+function usePoll<T extends { ok: boolean }>(url: string | null, every: number): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
+  const [st, set] = useState<{ data: T | null; err: string | null; at: number | null; loading: boolean; tick: number }>({ data: null, err: null, at: null, loading: false, tick: 0 });
+  useEffect(() => {
+    if (!url) { set({ data: null, err: null, at: null, loading: false, tick: 0 }); return; }
+    let live = true; let timer: number | undefined;
+    const load = async () => {
+      if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, every); return; }
+      set((s) => ({ ...s, loading: true }));
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json()) as T;
+        if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no prices returned');
+        set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
+      } catch (e) { if (live) set((s) => ({ ...s, err: (e as Error).message || 'unreachable', loading: false })); }
+      if (live) timer = window.setTimeout(load, every);
+    };
+    void load();
+    const vis = () => { if (document.visibilityState === 'visible' && live) { window.clearTimeout(timer); void load(); } };
+    document.addEventListener('visibilitychange', vis);
+    return () => { live = false; window.clearTimeout(timer); document.removeEventListener('visibilitychange', vis); };
+  }, [url, every]);
+  return st;
+}
+/** Five-minute prices and the delayed live price for symbols (the paper book). */
+export const useIntraday = (syms: string[], on: boolean) => { const key = [...new Set(syms)].sort().join(','); return usePoll<QuotesFeed>(on && key ? `/api/intraday?s=${encodeURIComponent(key)}` : null, 30000); };
+/** Nifty 50, Bank Nifty and India VIX. */
+export const usePulse = (on: boolean) => usePoll<QuotesFeed>(on ? '/api/pulse' : null, 30000);
+
+export const useBacktest = () => useJson<import('./evidence.ts').Backtest>('/data/research/engines_backtest.json');
+export const useStudy = () => useJson<import('./evidence.ts').Study>('/data/research/factor_study.json');
