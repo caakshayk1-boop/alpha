@@ -3,7 +3,7 @@
 One page per engine: the hypothesis, the rule, how it is traded, what it is measured against, how it can fail, and when it is switched off. Thresholds are starting hypotheses, not tuned values. Evidence status is as of 26 Oct 2026.
 
 ## Common to all three
-- **Universe:** the published Nifty 500 screen, liquid (20-session median traded value of at least ₹10 crore), priced at ₹50 or more, not a micro cap, ATR measured.
+- **Universe (as the code applies it, corrected 26 Oct 2026):** every company in the published screen (988 on 23 Oct), not the Nifty 500 index, that the screen flags liquid, has a price, has a measured ATR and is not classed micro cap. An unpublished size class counts as not micro. There is no ₹50 price floor and the liquid flag is the screen's own, not a ₹10 crore test. The earlier text here said otherwise; the code never did. The three disagreements are open decisions D1 to D3 in OPEN_ITEMS.md, and the live counts are on the Data screen (`#/data`).
 - **Selection:** a score among eligible names, a set of filters, at most 5 picks, at most 2 per sector, no pick whose stop would be wider than the engine's cap. Missing data is never a pass.
 - **Trade:** next-session open plus 0.1% slippage; skipped if it opens more than 2% above the signal close or at or below the stop. Stop fixed at the signal; a gap exits at the open; a bar spanning the stop counts as stopped. Time exit at the close of the horizon. Costs 0.25% round trip plus 0.1% slippage on exit.
 - **Benchmark:** the equal-weight average of all eligible names over the same sessions (the engine's *excess*), because beating the index with a high-beta tilt is not skill.

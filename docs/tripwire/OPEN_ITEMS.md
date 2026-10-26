@@ -21,3 +21,13 @@ Waitlist mail secrets; Cloudflare Browser Cache TTL; T09 contact; Telegram secre
 
 ## Known limits
 Yahoo is unofficial and can throttle; `/api/breadth` falls back to the close and says so. Breadth uses the published averages, so a name far from its 50-day line is not re-priced (it cannot change class in one session).
+
+
+## Beta decisions that belong to the owner (26 Oct 2026)
+Tripwire did not change any engine rule to make the written spec and the data agree. A rule change alters every percentile rank and the forward record, so each is a versioned decision. Live counts are on the Data screen.
+| # | Disagreement | What the data shows | Options |
+|---|---|---|---|
+| D1 | The spec says the Nifty 500 and no micro caps. The code lets an unpublished size class pass. | 293 of 988 names carry no size class; 266 of them are flagged liquid and eligible. Two of the five Momentum picks on 23 Oct (GCSL, SBC) are among them. | Exclude unpublished size (cuts about 266 names), keep as is and document, or publish a size class for all names. |
+| D2 | The spec says liquid means a 20-session median traded value of at least ₹10 crore. The code uses the screen's liquid flag. | 145 of 960 flagged-liquid names show under ₹10 crore a day (lowest ₹0.7 crore); 4 unflagged names show ₹50 crore or more. The flag's definition is not published. | Publish the flag's definition, or replace it with the written threshold. |
+| D3 | The spec says priced at ₹50 or more. No floor is applied. | 45 flagged-liquid names trade under ₹50. | Apply the floor, or correct the spec. |
+The forward record has one night (23 Oct) and no closed trade; it was written under the current code. If any of D1 to D3 changes, record the version beside the night it takes effect.
