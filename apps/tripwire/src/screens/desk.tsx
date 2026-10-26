@@ -29,7 +29,7 @@ function Journal() {
   return <>
     <div className="card glass"><div className="k">Process review, last 7 days</div>
       <div className="row" style={{ marginTop: 10, gap: 18, flexWrap: 'wrap' }}>
-        {([['Reviewed', w.decisionsTouched], ['Changed', w.thesesChanged], ['No invalidation', w.entriesWithoutInvalidation], ['Overdue', w.overdue]] as const).map(([l, n]) => <div key={l}><div className="num" style={{ font: '600 28px/1 var(--sans)' }}>{n}</div><div className="small dim">{l}</div></div>)}</div>
+        {([['Reviewed', w.decisionsTouched], ['Changed', w.thesesChanged], ['No invalidation', w.entriesWithoutInvalidation], ['Overdue', w.overdue]] as const).map(([l, n]) => <div key={l}><div className="num" style={{ font: '600 1.75rem/1 var(--sans)' }}>{n}</div><div className="small dim">{l}</div></div>)}</div>
       <p className="small dim" style={{ margin: '10px 0 0' }}>Counts your process. A decision is not graded by what the price did next.</p></div>
     <div className="row" style={{ margin: '12px 0' }}><input className="field" type="search" placeholder="Search your notes" aria-label="Search notes" value={q} onChange={(e) => setQ(e.target.value)} />
       <button className="btn" onClick={() => setArch((a) => !a)} aria-pressed={arch}>{arch ? 'Active' : 'Archived'}</button></div>

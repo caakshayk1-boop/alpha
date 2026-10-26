@@ -4,10 +4,11 @@ import { planAutoBook, realised, MAX_OPEN, TICKET } from '../src/autobook.ts';
 import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
-import { trendOfCloses, TREND_WORD } from '../src/screen.ts';
-import { companyQ } from '../src/news.ts';
+import { trendOfCloses, trendOf, TREND_WORD } from '../src/screen.ts';
+import { companyQ, mergeNews, type NewsItem } from '../src/news.ts';
+import { pct, tone } from '../src/fmt.ts';
 import { fmtMacro, MACRO } from '../src/macro.ts';
-import { parseNews, MACRO as WORKER_MACRO } from '../worker.js';
+import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
 
 const pick = (night: string, sym: string, ref = 100, o: Partial<LedgerPick> = {}): LedgerPick => ({ id: `${night}|MOM|${sym}`, engine: 'MOM', sym, asOf: night, ref, stop: ref * 0.9, horizon: 20, score: 80, rank: 1, ...o });
 const ledger = (picks: LedgerPick[], outcomes: Record<string, Outcome> = {}, voided?: Record<string, string>): Ledger => ({ schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-26', cost: 0.25, days: [], picks, outcomes, voided });
@@ -128,4 +129,74 @@ test('auto book: picks from a retired engine are not taken, and the log says why
   const lvt = pick('2026-10-23', 'TORNTPHARM', 4524, { engine: 'LVT', id: '2026-10-23|LVT|TORNTPHARM' });
   const p = planAutoBook(ledger([lvt, pick('2026-10-23', 'AAA', 100)]));
   assert.deepEqual(p.taken.map((t) => t.pick.sym), ['AAA']); assert.match(p.refused[0].why, /Steady uptrend is retired/);
+});
+
+import { rollDiff } from '../src/roll.ts';
+import { mood, hueOf } from '../src/mood.ts';
+import { kindOf } from '../src/haptic.ts';
+import { rootScale } from '../src/dyntype.ts';
+import { encodeId, decodeId } from '../src/lock.ts';
+import { themeOf, THEMES } from '../src/theme.ts';
+test('rolling digits: only changed digits roll, counted from the right, and up or down by the digit', () => {
+  assert.deepEqual(rollDiff('₹1,24,356', '₹1,24,358'), [{ fromEnd: 0, from: '6', to: '8', dir: 'u' }]);
+  assert.deepEqual(rollDiff('₹999', '₹1,000').map((c) => c.fromEnd), [0, 1, 2].filter((k) => k < 3 && ['9', '9', '9'][k] !== ['0', '0', '0'][k]));   // 3 units digits changed; the new leading 1 has nothing to roll from
+  assert.deepEqual(rollDiff('+₹1,244', '−₹1,244'), []);                               // a sign changes in place; no digit moved
+  assert.equal(rollDiff('12.5', '12.5').length, 0); assert.equal(rollDiff('', '5').length, 0); assert.equal(rollDiff('9', '1')[0].dir, 'd');
+});
+test('market mood: a description from three live moves, never a forecast; missing Nifty gives none', () => {
+  assert.equal(mood(null, 1, 1), null);
+  assert.equal(mood(1.8, 1.5, -4)!.word, 'Strong'); assert.equal(mood(0.1, 0, 0)!.word, 'Mixed'); assert.equal(mood(-2.2, -2, 12)!.word, 'Under pressure');
+  assert.equal(mood(0.9, null, null)!.tone, 'up'); assert.ok(mood(-0.7, -0.6, 3)!.score < 0);
+  assert.ok(mood(1, 1, 8)!.score < mood(1, 1, -8)!.score);                            // a rising VIX takes away from the same move
+});
+test('a symbol keeps one colour; haptics match the message; text size scales the root but is capped', () => {
+  assert.equal(hueOf('TCS'), hueOf('TCS')); assert.notEqual(hueOf('TCS'), hueOf('INFY')); assert.ok(hueOf('RELIANCE') >= 0 && hueOf('RELIANCE') < 360);
+  assert.equal(kindOf('Following TCS. Kept on this device.'), 'success'); assert.equal(kindOf('GCSL is already in your paper book'), 'error'); assert.equal(kindOf('That file is too large for a backup'), 'error');
+  assert.equal(rootScale(17), 1); assert.equal(rootScale(34), 2); assert.equal(rootScale(100), 2); assert.equal(rootScale(5), 0.85);
+});
+test('lock ids survive storage, and every theme has a name, a swatch and a bar colour', () => {
+  const id = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]); assert.deepEqual([...decodeId(encodeId(id))], [...id]);
+  assert.ok(!/[+/=]/.test(encodeId(new Uint8Array(64).fill(251))));
+  assert.equal(themeOf('nope').id, 'aurora'); assert.equal(THEMES.length, 5); assert.ok(THEMES.every((t) => t.label && t.swatch && /^#/.test(t.bar)));
+});
+
+// ---- live feed, live breadth, one list of news, no signed zero -----------------------------------------------------------------------
+test('spark: a quote carries its own previous close, the last print, and is live only if the print is under 25 minutes old', () => {
+  const now = 1_800_000_000_000; const t = (m: number) => now / 1000 - m * 60;
+  const q = parseSpark({ timestamp: [t(10), t(5), t(1)], close: [100, null, 102], chartPreviousClose: 99 }, now)!;
+  assert.deepEqual([q.px, q.prev, q.live, q.t.length], [102, 99, true, 2]);               // the null close is dropped, not zero-filled
+  assert.equal(parseSpark({ timestamp: [t(300), t(200)], close: [100, 101], chartPreviousClose: 99 }, now)!.live, false);
+  assert.equal(parseSpark({ timestamp: [t(5), t(1)], close: [100, 101] }, now), null);       // no previous close: no change can be stated, so no quote
+  assert.equal(parseSpark(null, now), null);
+});
+test('breadth: the Worker\'s trend rule is the app\'s trend rule, on every combination', () => {
+  const vals = [90, 100, 110, null, 0];
+  for (const price of vals) for (const sma50 of vals) for (const sma200 of vals) assert.equal(trendOfRow(price, sma50, sma200), trendOf({ price, sma50, sma200 } as never).trend, `${price}/${sma50}/${sma200}`);
+});
+test('breadth: counts use the live price where one is given, the close otherwise, and skip illiquid or incomplete names', () => {
+  const rows = [
+    { sym: 'A', liquid: true, price: 99, sma50: 100, sma200: 90, sector: 'Banks' },          // close: sideways; live 101: uptrend
+    { sym: 'B', liquid: true, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },
+    { sym: 'C', liquid: true, price: 80, sma50: 100, sma200: 110, sector: 'Banks' },
+    { sym: 'D', liquid: false, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },        // not liquid: out
+    { sym: 'E', liquid: true, price: 120, sma50: null, sma200: 90, sector: 'Banks' },        // no average: out, never a zero
+  ];
+  const close = aggregateBreadth(rows); assert.deepEqual([close.n, close.up, close.mixed, close.down], [3, 1, 1, 1]);
+  const live = aggregateBreadth(rows, { A: 101 }); assert.deepEqual([live.n, live.up, live.mixed, live.down], [3, 2, 0, 1]);
+  assert.equal(live.sectors.length, 0);                                                      // a sector under eight names is not reported
+});
+const hl = (title: string, o: Partial<NewsItem> = {}): NewsItem => ({ title, source: 'Mint', url: 'https://x/' + title.length + title.slice(0, 5), t: 1_800_000_000 - 3600, tags: [], also: 0, sources: ['Mint'], ...o });
+test('news: the same story from two queries is one line, and a named holding is ranked ahead of a general one', () => {
+  const now = 1_800_000_000_000;
+  const market = { items: [hl('Sensex ends higher as banks rally on strong earnings'), hl('Gold steadies near record ahead of Fed meeting')] };
+  const name = { sym: 'HDFCBANK', items: [hl('Banks rally as Sensex ends higher on strong earnings', { url: 'https://y/1' }), hl('HDFC Bank Q2 profit rises 12%', { tags: ['Results'], url: 'https://y/2' })] };
+  const m = mergeNews([market, name], 10, now);
+  assert.equal(m.length, 3);                                                                   // the rally story folded into one
+  assert.equal(m[0].sym, 'HDFCBANK'); assert.ok(m.some((x) => x.sym === 'HDFCBANK' && /rally/i.test(x.title)), 'the folded story is credited to the name that carried it');
+  assert.equal(mergeNews([market, name], 2, now).length, 2);
+});
+test('numbers: a value that rounds to zero carries no sign and no colour', () => {
+  assert.equal(pct(-0.04), '0.0%'); assert.equal(pct(0.04), '0.0%'); assert.equal(pct(0), '0.0%');
+  assert.equal(pct(-0.06), '−0.1%'); assert.equal(pct(1.26), '+1.3%'); assert.equal(pct(null), '—');
+  assert.equal(tone(-0.04), ''); assert.equal(tone(0.2), 'up'); assert.equal(tone(-0.2), 'down');
 });

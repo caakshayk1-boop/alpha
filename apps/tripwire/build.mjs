@@ -52,6 +52,7 @@ writeFileSync(join(DIST, 'index.html'), html);
 writeFileSync(join(DIST, '404.html'), html);
 for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
+cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp);
 writeFileSync(join(DIST, 'sw.js'), sw);
 writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nDisallow: /\n');

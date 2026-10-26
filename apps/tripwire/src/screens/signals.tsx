@@ -7,7 +7,7 @@ import { TvButton } from '../live.tsx';
 import { Evidence } from './Evidence.tsx';
 import { useBacktest } from '../data.ts';
 import { engineEvidence } from '../evidence.ts';
-import { DEFAULT_COST } from '../book.ts';
+import { DEFAULT_COST, useAutoBook } from '../book.ts';
 import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
@@ -42,14 +42,14 @@ export function usePaperTake() {
 }
 
 function Picks() {
-  const { scr, out } = useEngines(); const s = useAppState(); const take = usePaperTake(); const { toast } = useUi(); const bt = useBacktest();
+  const { scr, out } = useEngines(); const bt = useBacktest(); const auto = useAutoBook(true); const take = usePaperTake(); const mine = useAppState().paper;
   if (scr.loading) return <Loading what="the engines" />;
   if (scr.err || !out) return <Failed what="the engines" err={scr.err ?? 'no data'} retry={scr.retry} />;
-  const have = new Set(s.paper.filter((p) => !p.closedByUser).map((p) => p.sym));
   const all = out.picks;
+  const state = (p: Pick) => { if (!auto.plan) return { k: 'no' as const, text: 'The record could not be read, so the auto book cannot take it yet' }; const t = auto.plan?.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); if (t) return { k: 'in' as const, text: 'In the auto book' }; const r = auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); return r ? { k: 'no' as const, text: `Not taken: ${r.why}` } : { k: 'wait' as const, text: 'Taken automatically when tonight is written to the record' }; };
   return <>
     <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {bt.data ? 'In a ten-year back-test none beat the whole market after costs.' : 'The historical test has not been published yet.'} The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
-    {all.length > 0 && <button className="btn" style={{ width: '100%', marginBottom: 6 }} onClick={() => { let n = 0; for (const p of all) if (!have.has(p.sym) && take(p, true)) { n++; have.add(p.sym); } toast(n ? `${n} paper trade${n > 1 ? 's' : ''} taken. They enter at the next open.` : 'Nothing new to take'); }}><Icon n="plan" />Paper-trade all {all.length} picks</button>}
+    {all.length > 0 && <p className="small dim" style={{ margin: '0 0 6px' }}>Every pick below is taken on paper automatically (up to 30 positions, ₹1,00,000 each). A pick the auto book refuses can be taken by hand. <a href="#/signals?v=auto" style={{ textDecoration: 'underline' }}>See the auto book</a></p>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
       <div className="card"><div className="row between"><span className="dim small">{def.line}</span><span className={`tag ${engineEvidence(def.id, bt.data).tone === 'bad' ? 'peach' : ''}`}>{engineEvidence(def.id, bt.data).short}</span></div>
@@ -60,7 +60,8 @@ function Picks() {
         <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
         <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
         <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}</div></details>
-        <div className="row" style={{ marginTop: 10, gap: 8 }}><button className={`btn grow ${have.has(p.sym) ? '' : 'pri'}`} disabled={have.has(p.sym)} onClick={() => take(p)}>{have.has(p.sym) ? 'In your paper book' : 'Paper trade this'}</button><TvButton sym={p.sym} className="btn" label="Chart" /></div></div>)
+        <div className="row" style={{ marginTop: 10, gap: 8 }}>{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);
+          return <><span className={`tag grow ${st.k === 'in' ? 'lime' : st.k === 'no' ? 'peach' : ''}`} style={{ whiteSpace: 'normal', justifyContent: 'center', textAlign: 'center' }}>{st.text}</span>{st.k === 'no' && <button className="btn sm" disabled={own} onClick={() => take(p)}>{own ? 'In your book' : 'Take it myself'}</button>}</>; })()}<TvButton sym={p.sym} className="btn" label="Chart" /></div></div>)
         : <Empty title="No pick tonight">{run.funnel.passed ? `${run.funnel.passed} names passed, but each needed a stop wider than the engine allows.` : 'No name passed every filter. Rules are never loosened to fill this list.'}</Empty>}
     </section>; })}
     <p className="mute small" style={{ marginTop: 14 }}>A pick is a starting point for your own research, never an instruction. Entry in the tracker is the open of the next session, so a pick published after the close is never filled at that close.</p>

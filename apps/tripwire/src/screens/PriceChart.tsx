@@ -20,7 +20,7 @@ export function PriceChart({ sym, fmt, name }: { sym: string; fmt?: (v: number) 
   const geo = useMemo(() => (cmp ? null : geometry(shown, log)), [cmp, shown, log]);
   const pair = useMemo(() => (cmp ? geometryPair(cmp.a, cmp.b, log) : null), [cmp, log]);
   const st = useMemo(() => stats(win.pts), [win]);
-  const up = !st || st.ret >= 0; const color = up ? 'var(--lime)' : 'var(--peach)';
+  const up = !st || st.ret >= 0; const color = up ? 'var(--up)' : 'var(--down)';
   const i = cur == null ? null : Math.min(cur, plot.length - 1); const p = i == null ? null : shown[(cmp ? shown.length - plot.length : 0) + i];
   const fromStart = p && st ? (p.c / st.first.c - 1) * 100 : null;
   const cmpA = cmp && i != null ? cmp.a[i].c - 100 : null, cmpB = cmp && i != null ? cmp.b[i].c - 100 : null;

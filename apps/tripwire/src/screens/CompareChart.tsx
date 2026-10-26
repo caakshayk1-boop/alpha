@@ -34,7 +34,7 @@ export function CompareChart({ syms }: { syms: string[] }) {
   const order = al.lines.map((l, k) => ({ id: l.id, k, r: ret(l.v, i) })).sort((a, b) => b.r - a.r);
   return <section className="card chart" aria-label="Price comparison">
     <div className="k">{cur == null ? `Since ${dateLabel(al.t[0])}` : dateLabel(al.t[i])} · each indexed to 100</div>
-    <div className="num" style={{ font: '600 20px/1.3 var(--sans)', marginTop: 4 }}>{order.map((o, n) => <span key={o.id}>{n ? <span className="dim"> · </span> : null}<span style={{ color: COLORS[o.k] }}>{o.id}</span> <span className={o.r >= 0 ? 'up' : 'down'}>{pct(o.r)}</span></span>)}</div>
+    <div className="num" style={{ font: '600 1.25rem/1.3 var(--sans)', marginTop: 4 }}>{order.map((o, n) => <span key={o.id}>{n ? <span className="dim"> · </span> : null}<span style={{ color: COLORS[o.k] }}>{o.id}</span> <span className={o.r >= 0 ? 'up' : 'down'}>{pct(o.r)}</span></span>)}</div>
     {al.nifty && <div className="small dim num">Nifty 50 {pct(ret(al.nifty, i))} over the same days</div>}
     <div ref={box} className="cchart" style={{ marginTop: 8 }} role="img" aria-label={`${syms.join(', ')} since ${dateLabel(al.t[0])}: ${order.map((o) => `${o.id} ${pct(o.r)}`).join(', ')}`} onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCur(null); }}>
       <svg viewBox={`0 0 ${geo.W} ${geo.H}`} preserveAspectRatio="none" aria-hidden="true">

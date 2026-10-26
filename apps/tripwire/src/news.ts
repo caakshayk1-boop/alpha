@@ -37,3 +37,36 @@ export function useNews(q: string | null) {
   return { ...st, refresh: () => run(true) };
 }
 export const ago = (sec: number, nowMs = Date.now()) => { const m = Math.max(0, Math.round((nowMs / 1000 - sec) / 60)); return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+
+export interface Merged extends NewsItem { sym?: string; score: number }
+const STOP = new Set(['the', 'a', 'an', 'of', 'to', 'in', 'on', 'for', 'and', 'as', 'at', 'by', 'with', 'is', 'are', 'its', 'from', 'after', 'over', 'amid']);
+const words = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
+const same = (a: Set<string>, b: Set<string>) => { if (!a.size || !b.size) return false; let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.7; };
+const TAG_WEIGHT: Record<string, number> = { Results: 3, Regulator: 3, Deal: 2, Order: 2, Rating: 1.5, Payout: 1.5, IPO: 1, People: 0.5 };
+/** Pure. Several feeds into one short list: the same story once (by URL, or by most of its words), a story about a name you hold ahead of a general one,
+ *  a material tag ahead of none, newer ahead of older. The score is ordering only; it is not shown and says nothing about good or bad news. */
+export function mergeNews(feeds: { sym?: string; items: NewsItem[] }[], limit: number, nowMs = Date.now()): Merged[] {
+  const out: { m: Merged; w: Set<string> }[] = [];
+  for (const f of feeds) for (const it of f.items) {
+    const w = words(it.title); const hit = out.find((o) => o.m.url === it.url || same(o.w, w));
+    const ageH = Math.max(0, (nowMs / 1000 - it.t) / 3600);
+    const score = (f.sym ? 4 : 0) + Math.max(0, ...it.tags.map((t) => TAG_WEIGHT[t] ?? 0)) + Math.min(2, it.also * 0.5) - Math.min(6, ageH / 8);
+    if (hit) { if (f.sym && !hit.m.sym) hit.m.sym = f.sym; hit.m.score = Math.max(hit.m.score, score); if (it.t > hit.m.t) { hit.m.t = it.t; hit.m.title = it.title; hit.m.url = it.url; hit.m.source = it.source; } hit.m.also = Math.max(hit.m.also, it.also + 1); continue; }
+    out.push({ m: { ...it, sym: f.sym, score }, w });
+  }
+  return out.map((o) => o.m).sort((a, b) => b.score - a.score || b.t - a.t).slice(0, limit);
+}
+/** Several queries, each loaded once and refreshed hourly, sharing the module cache with useNews. */
+export function useNewsMany(qs: string[]) {
+  const key = qs.join('\n'); const [st, set] = useState<{ feeds: (NewsFeed | null)[]; at: number | null; loading: boolean; failed: number }>({ feeds: [], at: null, loading: qs.length > 0, failed: 0 });
+  const run = useCallback((force: boolean) => {
+    const list = key ? key.split('\n') : []; let live = true; if (!list.length) return () => {}; set((s) => ({ ...s, loading: true }));
+    Promise.allSettled(list.map((q) => load(q, force))).then((rs) => { if (live) set({ feeds: rs.map((r) => (r.status === 'fulfilled' ? r.value : null)), at: Date.now(), loading: false, failed: rs.filter((r) => r.status === 'rejected').length }); });
+    return () => { live = false; };
+  }, [key]);
+  useEffect(() => {
+    const stop = run(false); const i = window.setInterval(() => { if (document.visibilityState === 'visible') run(true); }, NEWS_EVERY);
+    return () => { stop(); window.clearInterval(i); };
+  }, [run]);
+  return { ...st, refresh: () => run(true) };
+}
