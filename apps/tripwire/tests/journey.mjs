@@ -18,6 +18,7 @@ await ctx.route('**/api/macro*', (r) => r.fulfill({ status: 200, contentType: 'a
 const nowS = Math.floor(Date.now() / 1000);
 await ctx.route('**/api/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }));
 await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
+await ctx.route('**/api/intraday*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
 const pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
 const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/intraday') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
@@ -100,6 +101,11 @@ ok((await pg.locator('a[href*="tradingview.com/chart"]').count()) >= 2, 'the com
 ok(!/Not a live quote|delayed/i.test(t) && /Live price not available|Live|Last price/.test(t), 'the company price does not call itself delayed or not live: it is live, or says a live price is not available');
 await pg.waitForSelector('.news'); ok(/Checked \d\d:\d\d/.test(await text()), 'the company page carries its own news');
 ok(/Close of /.test(t), 'company price carries its date');
+// a live quote from today replaces the published close, and says when it printed
+await pg.route('**/api/intraday*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', quotes: { TCS: quote(2500, 2600) }, missing: [] }) }));
+await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 15000 });
+ok(/₹2,600\.00/.test(await text()) && /\+4\.0% today/.test(await text()), 'a live quote replaces the published close on the company page, with its time and the day\'s change');
+await pg.unroute('**/api/intraday*');
 
 // price chart: ten years of mocked daily closes
 const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1000, px = 100; for (let i = 0; i < 4300; i++) { d += 86400; const wd = new Date(d * 1000).getUTCDay(); if (wd === 0 || wd === 6) continue; px *= 1 + 0.0004 + Math.sin(i / 17) * 0.004; t.push(d); c.push(Math.round(px * 100) / 100); } const n = c.map((_, i) => (i % 40 === 5 ? null : Math.round(10000 * (1 + i * 0.0003) * 100) / 100)); return { ok: true, sym: 'TCS', t, c, n }; };
