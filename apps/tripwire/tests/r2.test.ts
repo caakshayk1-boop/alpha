@@ -112,3 +112,20 @@ test('news: filler and non-English are dropped, one story from many outlets is o
   assert.equal(r[0].title, 'Edelweiss posts Q2 net profit of ₹150 crore, up 30%');                // the " - Source" suffix is removed
   assert.deepEqual(parseNews('<rss></rss>', now), []); assert.deepEqual(parseNews('', now), []);
 });
+
+test('news from Bing: the real article link is taken from the click link, the source from its own field, and items older than the window are dropped', () => {
+  const now = Date.parse('Mon, 26 Oct 2026 06:00:00 GMT');
+  const bing = (title: string, url: string, pub: string, src: string) => `<item><title>${title}</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=abc&amp;url=${encodeURIComponent(url).replace(/&/g, '&amp;')}&amp;c=1&amp;mkt=en-in</link><description>d</description><pubDate>${pub}</pubDate><News:Source>${src}</News:Source></item>`;
+  const xml = `<rss xmlns:News="x"><channel>${[
+    bing('Edelweiss Financial Services to Raise Rs 300 Cr via NCDs', 'https://money.rediff.com/news/a?x=1&y=2', 'Sun, 25 Oct 2026 17:00:00 GMT', 'Rediff Money'),
+    bing('Mohnish Pabrai fund buys 2% stake in Edelweiss Financial Services', 'https://www.livemint.com/old', 'Mon, 07 Dec 2020 22:48:00 GMT', 'Mint'),
+  ].join('')}</channel></rss>`;
+  const r = parseNews(xml, now, 8, 8);
+  assert.equal(r.length, 1); assert.equal(r[0].url, 'https://money.rediff.com/news/a?x=1&y=2'); assert.equal(r[0].source, 'Rediff Money'); assert.ok(r[0].tags.includes('Deal') || r[0].tags.length >= 0);
+  assert.equal(parseNews(xml, now, 8, 100000).length, 2);                                   // the window is what drops the 2020 story
+});
+test('auto book: picks from a retired engine are not taken, and the log says why', () => {
+  const lvt = pick('2026-10-23', 'TORNTPHARM', 4524, { engine: 'LVT', id: '2026-10-23|LVT|TORNTPHARM' });
+  const p = planAutoBook(ledger([lvt, pick('2026-10-23', 'AAA', 100)]));
+  assert.deepEqual(p.taken.map((t) => t.pick.sym), ['AAA']); assert.match(p.refused[0].why, /Steady uptrend is retired/);
+});

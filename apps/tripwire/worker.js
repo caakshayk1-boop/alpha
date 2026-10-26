@@ -158,15 +158,17 @@ const words = (t) => new Set(t.toLowerCase().replace(/[^a-z0-9₹ ]+/g, ' ').spl
 const sameStory = (a, b) => { let i = 0; for (const x of a) if (b.has(x)) i++; return i >= 4 && i / Math.min(a.size, b.size) >= 0.7; };
 
 /** Pure: Google News RSS text to cleaned items, newest and most material first. Exported for the tests. */
-export function parseNews(xml, nowMs = Date.now(), max = 8) {
+export function parseNews(xml, nowMs = Date.now(), max = 8, maxAgeDays = 14) {
   const raw = [];
   for (const m of String(xml).matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-    const b = m[1]; let title = tag(b, 'title'); const source = tag(b, 'source'); const link = tag(b, 'link'); const t = Math.floor(Date.parse(tag(b, 'pubDate')) / 1000);
+    const b = m[1]; let title = tag(b, 'title'); const source = tag(b, 'source') || tag(b, 'News:Source'); let link = tag(b, 'link'); const t = Math.floor(Date.parse(tag(b, 'pubDate')) / 1000);
+    const direct = link.match(/^https?:\/\/(?:www\.)?bing\.com\/news\/apiclick\.aspx\?.*?[?&]url=([^&]+)/); if (direct) { try { link = decodeURIComponent(direct[1]); } catch { /* keep the click link */ } }
     if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3)).trim();
     if (!title || !/^https:\/\//.test(link) || !(t > 0)) continue;
     if (latinShare(title) < 0.8) continue;                       // not English: not shown rather than shown unreadable
     if (FILLER.test(title)) continue;                            // search-engine filler, not news
     if (t * 1000 > nowMs + 3600e3) continue;                     // dated in the future: a bad feed
+    if (t * 1000 < nowMs - maxAgeDays * 86400e3) continue;       // older than the window asked for (Bing does not honour when:)
     raw.push({ title, source: source || 'Unknown', url: link, t, w: words(title) });
   }
   raw.sort((a, b) => b.t - a.t);
@@ -192,12 +194,21 @@ async function news(url, ctx) {
   const H1 = { 'cache-control': 'public, max-age=900, s-maxage=3600' };
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, ...H1 } });
-    const r = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/rss+xml,text/xml' }, signal: AbortSignal.timeout(10000) });
-    if (!r.ok) return json({ ok: false, error: 'the news source did not answer' }, 502);
-    const items = parseNews(await r.text());
-    const res = json({ ok: true, fetched_at: new Date().toISOString(), q, items }, 200, H1);
-    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
-    return res;
+    // Google News first; if it refuses or fails (it may refuse a datacentre address), Bing News with the same words.
+    const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 14); const plain = q.replace(/\s*when:\d+d/g, '').trim(); const tried = [];
+    const sources = [['google', `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`], ['bing', `https://www.bing.com/news/search?q=${encodeURIComponent(plain)}&format=rss&setmkt=en-IN`]];
+    for (const [via, u] of sources) {
+      try {
+        const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/rss+xml,text/xml' }, signal: AbortSignal.timeout(9000) });
+        if (!r.ok) { tried.push(`${via} ${r.status}`); continue; }
+        const items = parseNews(await r.text(), Date.now(), 8, days + 1);
+        if (!items.length && via === 'google') { tried.push('google no items'); continue; }
+        const res = json({ ok: true, fetched_at: new Date().toISOString(), q, via, items }, 200, H1);
+        if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+        return res;
+      } catch { tried.push(`${via} failed`); }
+    }
+    return json({ ok: false, error: `the news sources did not answer (${tried.join(', ')})` }, 502);
   } catch { return json({ ok: false, error: 'the news source did not answer' }, 502); }
 }
 

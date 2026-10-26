@@ -10,6 +10,7 @@
  *  Size is the ticket divided by the signal close, rounded down. Entry, stop, time exit and costs are the tracker's, unchanged. */
 import type { Ledger, LedgerPick, Outcome } from './ledger.ts';
 import { takenAtFor } from './ledger.ts';
+import { ENGINES } from './quant.ts';
 
 export const MAX_OPEN = 30;
 export const TICKET = 100000;
@@ -41,6 +42,8 @@ export function planAutoBook(l: Ledger, cfg: AutoCfg = DEFAULT_CFG): AutoPlan {
     const picks = l.picks.filter((p) => p.asOf === night).sort((a, b) => b.score - a.score || (ENGINE_ORDER[a.engine] ?? 9) - (ENGINE_ORDER[b.engine] ?? 9) || a.sym.localeCompare(b.sym));
     for (const p of picks) {
       const no = (why: string) => { refused.push({ pick: p, why }); log.push({ day: night, kind: 'refused', sym: p.sym, engine: p.engine, id: p.id, text: `Not taken: ${p.sym} (${p.engine}). ${why}` }); };
+      const gone = ENGINES.find((e) => e.id === p.engine && e.retired);
+      if (gone) { no(`${gone.name} is retired, and the picks it wrote before it was retired came from a rule bug.`); continue; }
       const voidWhy = l.voided?.[p.id]; if (voidWhy) { no(`Voided in the record: ${voidWhy}`); continue; }
       const held = taken.filter((t) => holdsSlot(l.outcomes[t.pick.id], night));
       if (held.some((t) => t.pick.sym === p.sym)) { no('The same name is already held.'); continue; }
