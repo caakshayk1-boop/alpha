@@ -135,11 +135,12 @@ ok(await pg.getByRole('button', { name: 'Log' }).getAttribute('aria-pressed') ==
 await pg.getByRole('button', { name: 'vs Nifty' }).click();
 ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.chart-plot path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
 ok(/both indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
-const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2);
+await pg.locator('.chart-plot').scrollIntoViewIfNeeded(); const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2); await pg.waitForTimeout(150);
 ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');
 await pg.getByRole('button', { name: 'Price', exact: true }).click();
+await pg.locator('.chart-plot').scrollIntoViewIfNeeded();
 const box = await pg.locator('.chart-plot').boundingBox();
-await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2);
+await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2); await pg.waitForTimeout(150);
 const mid = await pg.locator('.chart-head').innerText();
 ok(/since the start of this window/.test(mid) && await pg.locator('.c-dot').count() === 1, 'hovering reads out the date, price and move since the start');
 await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home');
