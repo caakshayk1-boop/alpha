@@ -129,3 +129,32 @@ test('auto book: picks from a retired engine are not taken, and the log says why
   const p = planAutoBook(ledger([lvt, pick('2026-10-23', 'AAA', 100)]));
   assert.deepEqual(p.taken.map((t) => t.pick.sym), ['AAA']); assert.match(p.refused[0].why, /Steady uptrend is retired/);
 });
+
+import { rollDiff } from '../src/roll.ts';
+import { mood, hueOf } from '../src/mood.ts';
+import { kindOf } from '../src/haptic.ts';
+import { rootScale } from '../src/dyntype.ts';
+import { encodeId, decodeId } from '../src/lock.ts';
+import { themeOf, THEMES } from '../src/theme.ts';
+test('rolling digits: only changed digits roll, counted from the right, and up or down by the digit', () => {
+  assert.deepEqual(rollDiff('₹1,24,356', '₹1,24,358'), [{ fromEnd: 0, from: '6', to: '8', dir: 'u' }]);
+  assert.deepEqual(rollDiff('₹999', '₹1,000').map((c) => c.fromEnd), [0, 1, 2].filter((k) => k < 3 && ['9', '9', '9'][k] !== ['0', '0', '0'][k]));   // 3 units digits changed; the new leading 1 has nothing to roll from
+  assert.deepEqual(rollDiff('+₹1,244', '−₹1,244'), []);                               // a sign changes in place; no digit moved
+  assert.equal(rollDiff('12.5', '12.5').length, 0); assert.equal(rollDiff('', '5').length, 0); assert.equal(rollDiff('9', '1')[0].dir, 'd');
+});
+test('market mood: a description from three live moves, never a forecast; missing Nifty gives none', () => {
+  assert.equal(mood(null, 1, 1), null);
+  assert.equal(mood(1.8, 1.5, -4)!.word, 'Strong'); assert.equal(mood(0.1, 0, 0)!.word, 'Mixed'); assert.equal(mood(-2.2, -2, 12)!.word, 'Under pressure');
+  assert.equal(mood(0.9, null, null)!.tone, 'up'); assert.ok(mood(-0.7, -0.6, 3)!.score < 0);
+  assert.ok(mood(1, 1, 8)!.score < mood(1, 1, -8)!.score);                            // a rising VIX takes away from the same move
+});
+test('a symbol keeps one colour; haptics match the message; text size scales the root but is capped', () => {
+  assert.equal(hueOf('TCS'), hueOf('TCS')); assert.notEqual(hueOf('TCS'), hueOf('INFY')); assert.ok(hueOf('RELIANCE') >= 0 && hueOf('RELIANCE') < 360);
+  assert.equal(kindOf('Following TCS. Kept on this device.'), 'success'); assert.equal(kindOf('GCSL is already in your paper book'), 'error'); assert.equal(kindOf('That file is too large for a backup'), 'error');
+  assert.equal(rootScale(17), 1); assert.equal(rootScale(34), 2); assert.equal(rootScale(100), 2); assert.equal(rootScale(5), 0.85);
+});
+test('lock ids survive storage, and every theme has a name, a swatch and a bar colour', () => {
+  const id = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]); assert.deepEqual([...decodeId(encodeId(id))], [...id]);
+  assert.ok(!/[+/=]/.test(encodeId(new Uint8Array(64).fill(251))));
+  assert.equal(themeOf('nope').id, 'aurora'); assert.equal(THEMES.length, 5); assert.ok(THEMES.every((t) => t.label && t.swatch && /^#/.test(t.bar)));
+});

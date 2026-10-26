@@ -14,6 +14,11 @@ import { useAutoBook, useLiveBook } from '../book.ts';
 import { MacroStrip } from './Macro.tsx';
 import { TodayNews } from './News.tsx';
 import { Ago, LiveBadge, Spark, Tick, TvButton } from '../live.tsx';
+import { Aurora } from '../aurora.tsx';
+import { Heat, Ring, Tape, type TapeItem } from '../widgets.tsx';
+import { mood } from '../mood.ts';
+import { MACRO, fmtMacro, useMacro } from '../macro.ts';
+import { Icon } from '../ui.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
 import { usePaperTake } from './signals.tsx';
@@ -50,6 +55,13 @@ export function Today() {
     const sectors = [...by.entries()].filter(([, e]) => e.n >= 8).map(([k, e]) => ({ k, n: e.n, up: (e.up / e.n) * 100, down: (e.down / e.n) * 100 })).sort((a, b) => b.up - a.up);
     return { c, n, sectors };
   }, [rows]);
+  const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
+  const niftyCh = chOf('NIFTY'), bankCh = chOf('BANKNIFTY'), vixCh = chOf('VIX'); const md = mood(niftyCh, bankCh, vixCh);
+  const macro = useMacro(true);
+  const tape: TapeItem[] = [
+    ...NAMES.map(({ k, label }) => { const q = pulse.data?.quotes[k]; return q ? { k, label, text: q.px.toLocaleString('en-IN', { maximumFractionDigits: 2 }), ch: chOf(k) } : null; }),
+    ...MACRO.map((d) => { const q = macro.data?.quotes[d.key]; return q ? { k: d.key, label: d.label, text: fmtMacro(d, q.px), ch: (q.px / q.prev - 1) * 100 } : null; }),
+  ].filter((x): x is TapeItem => !!x);
   const total = out?.picks.length ?? 0; const bookN = book.active.length;
   const next = reviews.length ? { t: `Review ${reviews[0].sym}: your date has come.`, go: () => open({ k: 'thesis', sym: reviews[0].sym, id: reviews[0].id }), cta: 'Open review' }
     : total && !bookN && !auto.rows.length ? { t: 'The engines have picks. Take one on paper and Tripwire follows it live.', go: () => go('/signals'), cta: 'See the picks' }
@@ -62,11 +74,20 @@ export function Today() {
   const newsSyms = [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...book.active.map((p) => p.sym), ...s.follows])];
 
   return <div>
-    <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} />
+    <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
+    {/* 0. the market mood, on live water */}
+    <section className="moodhero card glass" aria-label="Market mood">
+      <Aurora ch={niftyCh} vix={vixCh} />
+      <div className="row between"><span className="k">Market mood</span><LiveBadge live={sess.phase === 'open' && !!anyLive} label={sess.phase === 'open' && anyLive ? 'LIVE' : 'Last prices'} /></div>
+      {md ? <div className="word grad-text" style={{ margin: '6px 0 2px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '8px 0' }} />}
+      <div className="big num">{pulse.data?.quotes.NIFTY ? <><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick> <span className={niftyCh != null && niftyCh >= 0 ? 'up' : 'down'}>{pct(niftyCh)}</span> <span className="dim small">Nifty 50</span></> : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}</div>
+      <p className="small dim" style={{ margin: '6px 0 0' }}>A description of today's move in the Nifty, Bank Nifty and VIX. Not a forecast.</p>
+    </section>
+    <div style={{ marginTop: 10 }}><Tape items={tape} /></div>
     {/* 1. the live market strip */}
     <div className="strip" role="list" aria-label="Indices">
       {NAMES.map(({ k, label, invert }) => { const q = pulse.data?.quotes[k]; const ch = q ? (q.px / q.prev - 1) * 100 : null; const good = ch == null ? null : invert ? ch < 0 : ch >= 0;
-        return <a key={k} role="listitem" className="tile" href={tvIndexUrl(k)} target="_blank" rel="noopener noreferrer" >
+        return <a key={k} role="listitem" className={`tile ${good == null ? '' : good ? 'upc' : 'dn'}`} href={tvIndexUrl(k)} target="_blank" rel="noopener noreferrer" >
           <div className="nm">{label}<span className="sr"> on TradingView, opens in a new tab</span></div>
           <div className="vv num"><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}</Tick></div>
           <div className={`small num ${good == null ? 'dim' : good ? 'up' : 'down'}`}>{ch == null ? (pulse.err ? 'unavailable' : '…') : pct(ch)}</div>
@@ -79,16 +100,20 @@ export function Today() {
 
     {/* 2. the paper books, live */}
     {auto.rows.length > 0 && <a className="card glass" href="#/signals?v=auto" style={{ display: 'block', marginTop: 10 }}>
-      <div className="row between"><span className="k">Auto paper book</span><span className="tag lime">{auto.slots} of {auto.cfg.maxOpen} positions</span></div>
-      <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
-        <div className={`num ${auto.sum.openPnl > 0 ? 'up' : auto.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 28px/1.1 var(--sans)' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></div>
-        <div className="small dim" style={{ textAlign: 'right' }}>{auto.sum.open} open · {auto.sum.waiting} waiting{auto.dayTotal != null ? <> · today <b className={`num ${auto.dayTotal >= 0 ? 'up' : 'down'}`}>{money(auto.dayTotal)}</b></> : null}{auto.sum.closed ? <> · realised <b className={`num ${auto.sum.closedPnl >= 0 ? 'up' : 'down'}`}>{money(auto.sum.closedPnl)}</b></> : null}</div></div>
+      <div className="row between"><span className="k">Auto paper book</span><span className="tag lime">Open</span></div>
+      <div className="row" style={{ gap: 14, marginTop: 8 }}>
+        <Ring value={auto.slots} max={auto.cfg.maxOpen} label={`${auto.slots} of ${auto.cfg.maxOpen} positions in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick><small>of {auto.cfg.maxOpen}</small></Ring>
+        <div className="grow">
+          <div className={`num amt ${auto.sum.openPnl > 0 ? 'up' : auto.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 1.75rem/1.1 var(--sans)' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></div>
+          <div className="small dim">{auto.sum.open} open · {auto.sum.waiting} waiting{auto.dayTotal != null ? <> · today <b className={`num amt ${auto.dayTotal >= 0 ? 'up' : 'down'}`}>{money(auto.dayTotal)}</b></> : null}{auto.sum.closed ? <> · realised <b className={`num amt ${auto.sum.closedPnl >= 0 ? 'up' : 'down'}`}>{money(auto.sum.closedPnl)}</b></> : null}</div></div></div>
     </a>}
+
+    {/* 2b. your own paper trades */}
     {bookN > 0 && <a className="card glass" href="#/signals?v=tracker" style={{ display: 'block', marginTop: 10 }}>
       <div className="row between"><span className="k">Your paper trades</span><span className="tag lime">Open tracker</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
-        <div className={`num ${book.sum.openPnl > 0 ? 'up' : book.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 28px/1.1 var(--sans)' }}><Tick v={openRows.length ? book.sum.openPnl : null}>{openRows.length ? money(book.sum.openPnl) : '—'}</Tick></div>
-        <div className="small dim" style={{ textAlign: 'right' }}>{book.sum.open} open · {book.sum.waiting} waiting{book.dayTotal != null ? <> · today <b className={`num ${book.dayTotal >= 0 ? 'up' : 'down'}`}>{money(book.dayTotal)}</b></> : null}</div></div>
+        <div className={`num amt ${book.sum.openPnl > 0 ? 'up' : book.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 1.75rem/1.1 var(--sans)' }}><Tick v={openRows.length ? book.sum.openPnl : null}>{openRows.length ? money(book.sum.openPnl) : '—'}</Tick></div>
+        <div className="small dim" style={{ textAlign: 'right' }}>{book.sum.open} open · {book.sum.waiting} waiting{book.dayTotal != null ? <> · today <b className={`num amt ${book.dayTotal >= 0 ? 'up' : 'down'}`}>{money(book.dayTotal)}</b></> : null}</div></div>
     </a>}
 
     {scr.loading && <Loading what="the market read" />}
@@ -98,7 +123,7 @@ export function Today() {
       <Head aside={<span className="tag num">{total}</span>}>Engine picks (experiments)</Head>
       {total ? <div className="strip" aria-label="Engine picks">{out!.runs.flatMap((r) => r.picks.slice(0, 3)).map((p) => { const row = rows.find((x) => x.sym === p.sym); const def = ENGINES.find((e) => e.id === p.engine)!; const have = s.paper.some((x) => x.sym === p.sym && !x.closedByUser);
         return <div key={p.engine + p.sym} className="tile" style={{ minWidth: 200 }}>
-          <div className="nm">{def.name}</div><div style={{ margin: '3px 0' }}><span className={`tag ${engineEvidence(def.id, bt.data).tone === 'bad' ? 'peach' : ''}`} style={{ fontSize: 10 }}>{engineEvidence(def.id, bt.data).short}</span></div>
+          <div className="nm">{def.name}</div><div style={{ margin: '3px 0' }}><span className={`tag ${engineEvidence(def.id, bt.data).tone === 'bad' ? 'peach' : ''}`} style={{ fontSize: '0.625rem' }}>{engineEvidence(def.id, bt.data).short}</span></div>
           <a href={`#/c/${p.sym}`} style={{ display: 'block' }}><div className="vv">{p.sym} <span className="tag lime num" style={{ verticalAlign: 'middle' }}>{p.score}</span></div>
             <div className="small dim trunc" style={{ maxWidth: 176 }}>{p.name}</div>
             <div className="small num" style={{ marginTop: 4 }}>{inr0(p.ref)} · stop {p.stopPct}% below{row ? <> · {TREND_WORD[trendOf(row).trend ?? 'mixed']}</> : null}</div></a>
@@ -110,15 +135,14 @@ export function Today() {
       <Head>Trend map</Head>
       <div className="card">
         <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.c.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.c.down / map.n) * 100) : '—'}% in a downtrend</span></div>
-        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.c.up} are in an uptrend, ${map.c.mixed} sideways and ${map.c.down} in a downtrend`}><i style={{ flexGrow: map.c.up || .01, background: 'var(--lime)' }} /><i style={{ flexGrow: map.c.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.c.down || .01, background: 'var(--peach)' }} /></div>
+        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.c.up} are in an uptrend, ${map.c.mixed} sideways and ${map.c.down} in a downtrend`}><i style={{ flexGrow: map.c.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.c.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.c.down || .01, background: 'var(--down)' }} /></div>
         <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} liquid names at the close of {dayWord(day)}. Uptrend: price above the 50-day average, the 50-day above the 200-day.</div>
-        {map.sectors.slice(0, 5).map((x) => <a key={x.k} className="contrib" href={`#/discover?sector=${encodeURIComponent(x.k)}&trend=up`} style={{ gridTemplateColumns: '1fr 80px 38px' }}><span className="trunc">{x.k}</span><span className="bar2"><i style={{ width: `${x.up}%`, left: 0, background: 'var(--lime)' }} /></span><span className="num up" style={{ textAlign: 'right' }}>{Math.round(x.up)}%<span className="sr"> of {x.n} {x.k} names are in an uptrend. Opens Discover.</span></span></a>)}
-        {map.sectors.length > 5 && <details className="ev" style={{ marginTop: 8 }}><summary>Weakest sectors<span className="chev">▾</span></summary><div className="body">{[...map.sectors].reverse().slice(0, 4).map((x) => <a key={x.k} className="contrib" href={`#/discover?sector=${encodeURIComponent(x.k)}&trend=down`} style={{ gridTemplateColumns: '1fr 80px 38px' }}><span className="trunc">{x.k}</span><span className="bar2"><i style={{ width: `${x.down}%`, left: 0, background: 'var(--peach)' }} /></span><span className="num down" style={{ textAlign: 'right' }}>{Math.round(x.down)}%</span></a>)}<p className="small mute" style={{ margin: '6px 0 0' }}>Share of each sector in a downtrend.</p></div></details>}
+        {map.sectors.length > 0 && <Heat cells={map.sectors.slice(0, 9).map((x) => ({ k: x.k, n: x.n, up: x.up, down: x.down }))} href={(c) => `#/discover?sector=${encodeURIComponent(c.k)}&trend=${c.up >= c.down ? 'up' : 'down'}`} />}
       </div>
 
       <div className="card" style={{ marginTop: 10, borderColor: 'var(--line2)' }}>
         <div className="k">One thing to do</div>
-        <p style={{ margin: '6px 0 10px', fontSize: 14.5 }}>{next.t}</p>
+        <p style={{ margin: '6px 0 10px', fontSize: '0.9062rem' }}>{next.t}</p>
         <button className="btn pri" onClick={next.go}>{next.cta}</button>
       </div>
 

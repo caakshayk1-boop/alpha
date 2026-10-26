@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { useChart } from '../data.ts';
 import { fmtMacro, macroDef, macroTv, MACRO, useMacro } from '../macro.ts';
 import { trendOfCloses, TREND_WORD } from '../screen.ts';
@@ -14,7 +14,7 @@ export function MacroStrip() {
   return <>
     <div className="strip" role="list" aria-label="Commodities, currencies and Bitcoin">
       {MACRO.map((d) => { const q = m.data?.quotes[d.key]; const ch = q ? (q.px / q.prev - 1) * 100 : null;
-        return <a key={d.key} role="listitem" className="tile" href={`#/m/${d.key}`}>
+        return <a key={d.key} role="listitem" className="tile" style={{ '--tt': d.tint } as CSSProperties} href={`#/m/${d.key}`}>
           <div className="nm">{d.label}<span className="sr">, chart</span></div>
           <div className="vv num"><Tick v={q?.px}>{q ? fmtMacro(d, q.px) : '—'}</Tick></div>
           <div className={`small num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? (m.err ? 'unavailable' : '…') : pct(ch, 2)}</div>
@@ -33,7 +33,7 @@ export function MacroPage({ k }: { k: string }) {
     <section className="card glass">
       <div className="row between"><LiveBadge live={!!q?.live} label={q ? (q.live ? 'LIVE' : 'Last price') : 'Loading'} /><span className="small mute">{m.at ? <>updated <Ago at={m.at} /></> : ''}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
-        <div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={q?.px}>{q ? fmt(q.px) : '—'}</Tick></div>
+        <div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={q?.px}>{q ? fmt(q.px) : '—'}</Tick></div>
         <div className={`num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? '' : pct(ch, 2)} <span className="small dim">{q?.live ? 'today' : 'last session'}</span></div></div>
       {q && <div style={{ marginTop: 10 }}><Spark c={q.c} up={ch == null || ch >= 0} refs={[{ v: q.prev, kind: 'prev' }]} h={56} label={`${d.label} over the last session, with the previous close`} /></div>}
       {m.err && !q && <Failed what={d.label} err={m.err} retry={() => location.reload()} />}

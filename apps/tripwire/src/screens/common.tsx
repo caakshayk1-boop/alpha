@@ -4,14 +4,15 @@ import { back, go, setState, useAppState, useSheets } from '../app.tsx';
 import { toggleFollow } from '../store.ts';
 import { trendOf, TREND_WORD, type Row } from '../screen.ts';
 import { initials, inr, pct, tone } from '../fmt.ts';
+import { avatarStyle } from '../widgets.tsx';
 import { asOfTime, useLivePrice } from '../quotes.ts';
 
 /** Up, down or sideways, by the Alpha site's own uptrend rule (and its mirror for down). Untagged when a figure is missing. */
 export function TrendTag({ r, compact = false }: { r: Pick<Row, 'price' | 'sma50' | 'sma200'>; compact?: boolean }) {
   const { trend, detail } = trendOf(r); if (!trend) return null;
   const glyph = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'; const cls = trend === 'up' ? 'lime' : trend === 'down' ? 'peach' : '';
-  if (compact) return <span className={`tag ${cls}`} title={detail} style={{ width: 20, height: 20, padding: 0, justifyContent: 'center', fontSize: 13, flex: 'none' }}><span aria-hidden="true">{glyph}</span><span className="sr">{TREND_WORD[trend]}</span></span>;
-  return <span className={`tag ${cls}`} title={detail} style={{ padding: '1px 7px', fontSize: 10.5, flex: 'none', whiteSpace: 'nowrap' }}>{glyph} {TREND_WORD[trend]}</span>;
+  if (compact) return <span className={`tag ${cls}`} title={detail} style={{ width: 20, height: 20, padding: 0, justifyContent: 'center', fontSize: '0.8125rem', flex: 'none' }}><span aria-hidden="true">{glyph}</span><span className="sr">{TREND_WORD[trend]}</span></span>;
+  return <span className={`tag ${cls}`} title={detail} style={{ padding: '1px 7px', fontSize: '0.6562rem', flex: 'none', whiteSpace: 'nowrap' }}>{glyph} {TREND_WORD[trend]}</span>;
 }
 export function PageBar({ title, sub, onBack, right }: { title: string; sub?: ReactNode; onBack?: boolean; right?: ReactNode }) {
   const { open } = useSheets();
@@ -35,7 +36,7 @@ export function CompanyRow({ r, extra, compare }: { r: Row; extra?: ReactNode; c
   const lp = useLivePrice(r);          // the live price when the Worker has one from today, otherwise the published close
   return <div className="li">
     <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }}>
-      <span className="avatar" aria-hidden="true">{initials(r.sym)}</span>
+      <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
       <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact /><span className="dim small trunc">{r.name}</span></span></span>
       <span className="px num" style={{ flex: 'none' }} title={lp.fromQuote ? `${lp.live ? 'Live' : 'Last price'}, as of ${asOfTime(lp.t)} IST` : 'Close of the last session in the published data'}><b>{inr(lp.px)}</b><span className={tone(lp.ch)}>{pct(lp.ch)}</span></span>
     </a>

@@ -14,6 +14,10 @@ import { MacroPage } from './screens/Macro.tsx';
 import { Welcome } from './screens/welcome.tsx';
 import { SearchSheet, PlannerSheet, ThesisSheet, ExplainSheet } from './sheets.tsx';
 import { freshness } from './fresh.ts';
+import { applyTheme } from './theme.ts';
+import { haptic } from './haptic.ts';
+import { lockId } from './lock.ts';
+import { LockScreen } from './screens/LockScreen.tsx';
 
 /* ---- state: this device only, until an identity provider is configured ---- */
 const KEY = 'tripwire:v1';
@@ -43,7 +47,7 @@ type Sheet = { k: 'search' } | { k: 'plan'; sym?: string; entry?: number; stop?:
 const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} });
 export const useSheets = () => useContext(SheetCtx);
 
-const TABS = [{ id: 'today', label: 'Today' }, { id: 'discover', label: 'Discover' }, { id: 'signals', label: 'Signals' }, { id: 'desk', label: 'My Desk' }, { id: 'profile', label: 'Profile' }];
+const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'profile', label: 'Profile', c: 'var(--a5)' }];
 const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' ? 'today' : p[0] === 'report' ? 'desk' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
 
 export function App(): ReactNode {
@@ -61,10 +65,18 @@ export function App(): ReactNode {
   }, [s.prefs.motion]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSheet({ k: 'search' }); } }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
   const ctx = useMemo(() => ({ open: setSheet }), []);
+  // look: theme, hidden amounts; a tap on a control gives a light tap (never on a link that only scrolls)
+  useEffect(() => { applyTheme(s.prefs.theme); }, [s.prefs.theme]);
+  useEffect(() => { document.documentElement.classList.toggle('priv', !!s.prefs.hideAmounts); }, [s.prefs.hideAmounts]);
+  useEffect(() => { const h = (e: Event) => { const t = e.target as HTMLElement | null; if (t?.closest('.btn,.chip,.icon-btn,.seg button,.mini-seg button,.tabs a,.pick-row,.swatch')) haptic('tap'); }; document.addEventListener('click', h, true); return () => document.removeEventListener('click', h, true); }, []);
+  // the lock: on at launch if it is set, and again after a minute in the background
+  const [locked, setLocked] = useState(() => !!lockId());
+  useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   useEffect(() => { window.scrollTo(0, 0); document.title = `${TABS[ti].label} · Tripwire`; }, [loc.raw, ti]);
 
+  if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
   if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Welcome /></UiProvider>;
   const head = loc.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   let view: ReactNode;
@@ -85,9 +97,9 @@ export function App(): ReactNode {
         {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
         <div className="view" key={loc.path.slice(0, 2).join('/')}>{view}</div>
       </main>
-      <nav className="tabs" aria-label="Primary">
+      <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c } as React.CSSProperties}>
         <span className="pill" style={{ transform: `translate${matchMedia('(min-width:900px)').matches ? 'Y' : 'X'}(${ti * 100}%)` }} aria-hidden="true" />
-        {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} aria-current={t.id === tab ? 'page' : undefined}><Icon n={t.id} /><span>{t.label}</span></a>)}
+        {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined}><Icon n={t.id} /><span>{t.label}</span></a>)}
       </nav>
     </div>
     {sheet?.k === 'search' && <SearchSheet onClose={close} />}

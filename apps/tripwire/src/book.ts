@@ -6,6 +6,8 @@ import { sessionNow, type Session } from './market.ts';
 import { istDay } from './store.ts';
 import { planAutoBook, realised, DEFAULT_CFG, type AutoPos } from './autobook.ts';
 import type { Outcome } from './ledger.ts';
+import { celebrate, hasCelebrated, markCelebrated } from './celebrate.ts';
+import { useUi } from './ui.tsx';
 
 export const DEFAULT_COST = 0.25;
 export function useCost(): number { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
@@ -36,11 +38,23 @@ function useLivePapers(active: Paper[], on: boolean) {
   return { rows, sum, dayTotal, session, bars, intra, cost, anyLive };
 }
 
+/** The biggest moment: the first time a trade is seen closed at +1R or better. One celebration, then every win seen so far is remembered,
+ *  so it never repeats and a first visit with old wins gives one, not twenty. */
+function useWinCelebration(rows: BookRow[]) {
+  const { toast } = useUi();
+  useEffect(() => {
+    const wins = rows.filter((r) => r.v.status === 'closed' && (r.v.r ?? 0) >= 1 && !hasCelebrated(r.p.id)); if (!wins.length) return;
+    const best = [...wins].sort((a, b) => (b.v.r ?? 0) - (a.v.r ?? 0))[0]; markCelebrated(wins.map((w) => w.p.id));
+    celebrate(); toast(`${best.p.sym} closed at +${(best.v.r ?? 0).toFixed(2)}R`);
+  }, [rows]);   // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 /** The paper book the user took by hand. */
 export function useLiveBook(on = true) {
   const s = useAppState();
   const active = useMemo(() => s.paper.filter((p) => !p.closedByUser), [s.paper]);
-  return { ...useLivePapers(active, on), active, today: istDay() };
+  const live = useLivePapers(active, on); useWinCelebration(live.rows);
+  return { ...live, active, today: istDay() };
 }
 
 /** A closed or skipped position from the ledger's own finished outcome, shaped like a live one so the same card can show it. */
@@ -61,7 +75,7 @@ export function useAutoBook(on = true) {
   const papers = useMemo(() => liveSet.map(paperOf), [liveSet]);
   const live = useLivePapers(papers, on);
   const done: BookRow[] = useMemo(() => (plan ? plan.taken.filter((t) => outcomes?.[t.pick.id]?.final).map((t) => ({ p: paperOf(t), v: viewFromOutcome(t, outcomes![t.pick.id]), q: null, dayPnl: null })) : []), [plan, outcomes]);
-  const rows = useMemo(() => [...live.rows, ...done], [live.rows, done]);
+  const rows = useMemo(() => [...live.rows, ...done], [live.rows, done]); useWinCelebration(rows);
   const sum = summarize(rows.map((r) => r.v));
   const slots = rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').length;
   const deployed = rows.filter((r) => r.v.status === 'open').reduce((a, r) => a + (r.v.entry ?? r.p.ref) * r.p.qty, 0);

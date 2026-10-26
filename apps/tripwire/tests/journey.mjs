@@ -45,7 +45,7 @@ ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await 
 await pg.waitForSelector('.news'); ok(/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · refreshes every hour/.test(await text()) && /Q2 results|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes every hour');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 ok(/Engine picks/i.test(await text()) && (await pg.locator('.tile', { hasText: 'Paper trade' }).count()) >= 3, 'Today shows swipeable engine pick cards');
-await pg.locator('a.contrib').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
+await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.rangebar');
 
@@ -254,9 +254,38 @@ ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an 
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
 await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('.slots', { timeout: 15000 });
+ok(await pg.locator('canvas.confetti').count() === 1 || await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen gets one celebration');
 ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
 ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
 await shot('09c-autobook');
+// the look: live water, a ticker, privacy, themes, the biggest moment, the lock
+await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('canvas.aurora');
+await pg.waitForFunction(() => document.querySelector('canvas.aurora')?.dataset.running === 'true', null, { timeout: 8000 });
+ok(await pg.locator('.tape[aria-hidden=true] .it').count() >= 6 && await pg.locator('.heat a').count() >= 3, 'Today has a live ticker tape and a sector heat map');
+await pg.evaluate(() => document.documentElement.classList.remove('fx')); await pg.waitForFunction(() => document.querySelector('canvas.aurora')?.dataset.running === 'false', null, { timeout: 4000 });
+ok(true, 'the live water stops when motion is turned off'); await pg.evaluate(() => document.documentElement.classList.add('fx'));
+ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
+await pg.reload(); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the celebration does not repeat on the next visit');
+await pg.getByRole('button', { name: 'Hide my amounts' }).click();
+await pg.waitForSelector('html.priv'); const blur = await pg.locator('.amt').first().evaluate((el) => getComputedStyle(el).filter);
+ok(/blur/.test(blur), 'one tap on the eye blurs every amount of yours'); await pg.getByRole('button', { name: 'Show my amounts' }).click(); ok(await pg.locator('html.priv').count() === 0, 'and one tap shows them again');
+await pg.goto(base + '/#/profile'); await pg.waitForSelector('.swatches');
+await pg.getByRole('button', { name: 'Ocean' }).click();
+ok(await pg.evaluate(() => document.documentElement.dataset.theme === 'ocean' && document.querySelector('meta[name=theme-color]').content === '#070d0e' && document.querySelector('link[rel=apple-touch-icon]').getAttribute('href') === '/icons/ocean-180.png'), 'a colour theme changes the app, the browser bar and the icon the page offers');
+const ic = await fetch(base + '/icons/ocean-180.png'); ok(ic.ok && /png/.test(ic.headers.get('content-type') ?? ''), 'the themed icon exists');
+await pg.getByRole('button', { name: 'Aurora' }).click();
+// the lock, with a virtual phone unlock (Chromium's WebAuthn test authenticator)
+const cdp = await ctx.newCDPSession(pg); await cdp.send('WebAuthn.enable');
+const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: false, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+await pg.reload(); await pg.waitForSelector('.swatches'); await pg.getByLabel(/^Lock with Face ID/).click(); await pg.waitForSelector('text=Lock is on');
+ok(await pg.evaluate(() => !!localStorage.getItem('tripwire:lock')), 'the lock registers the phone\'s own unlock and keeps only an id');
+await pg.reload(); await pg.waitForSelector('nav.tabs', { timeout: 15000 }); ok(true, 'with a good unlock the app opens');
+await cdp.send('WebAuthn.setUserVerified', { authenticatorId, isUserVerified: false });
+await pg.reload(); await pg.waitForSelector('[aria-label="Tripwire is locked"]'); await pg.waitForSelector('text=That did not unlock it');
+ok(await pg.locator('nav.tabs').count() === 0, 'with a failed unlock the app stays shut and says so');
+await pg.getByRole('button', { name: "Can't unlock?" }).click(); ok(/erases everything Tripwire holds/.test(await text()), 'the only way past a failed unlock is stated: erase this device');
+await pg.getByRole('button', { name: 'Erase and open' }).click(); await pg.waitForSelector('.welcome, nav.tabs');
+ok(await pg.evaluate(() => !localStorage.getItem('tripwire:lock')), 'erasing removes the lock too'); await cdp.send('WebAuthn.disable');
 await pg.unroute('**/api/ledger*');
 
 // search

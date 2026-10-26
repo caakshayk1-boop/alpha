@@ -2,15 +2,16 @@ import { useMemo } from 'react';
 import { ago, companyQ, MARKET_Q, useNews, type NewsItem } from '../news.ts';
 import { useScreen } from '../data.ts';
 import { Empty } from '../ui.tsx';
+const TAGC: Record<string, string> = { Results: 'amber', IPO: 'violet', Deal: 'aqua', Order: 'blue', Rating: 'pink', Payout: 'lime', Regulator: 'peach', People: '' };
 
 /** One headline: the story once, who carried it, what it is about (a keyword match, never a verdict on whether it is good news). */
 export function NewsRow({ it, sym }: { it: NewsItem; sym?: string }) {
   return <a className="li news" href={it.url} target="_blank" rel="noopener noreferrer" style={{ alignItems: 'flex-start', display: 'block' }}>
     <span className="nt">{it.title}<span className="sr"> (opens in a new tab)</span></span>
     <span className="small dim" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 3, alignItems: 'center' }}>
-      {sym && <span className="tag lime" style={{ fontSize: 10 }}>{sym}</span>}
+      {sym && <span className="tag lime" style={{ fontSize: '0.625rem' }}>{sym}</span>}
       <span>{it.source}{it.also > 0 ? ` +${it.also} more` : ''}</span><span aria-hidden="true">·</span><span>{ago(it.t)}</span>
-      {it.tags.map((t) => <span key={t} className="tag" style={{ fontSize: 10 }}>{t}</span>)}
+      {it.tags.map((t) => <span key={t} className={`tag ${TAGC[t] ?? ''}`} style={{ fontSize: '0.625rem' }}>{t}</span>)}
     </span></a>;
 }
 function Footer({ at, err, refresh, loading }: { at: number | null; err: string | null; refresh: () => void; loading: boolean }) {

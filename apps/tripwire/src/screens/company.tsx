@@ -11,7 +11,7 @@ import { checklistFor } from '../insight.ts';
 import { istDay, current, toggleFollow } from '../store.ts';
 import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
-import { TvButton, TvIcon } from '../live.tsx';
+import { Tick, TvButton, TvIcon } from '../live.tsx';
 import { Intel } from './Intel.tsx';
 import { CompanyNews } from './News.tsx';
 import { asOfTime, livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
@@ -38,7 +38,7 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass">
-      <div className="row between"><div><div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}>{inr(px)}</div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
+      <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
         <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`}>{lp.live ? 'Live' : 'Last price'} · {asOfTime(lp.t)} IST</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
       {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
