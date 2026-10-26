@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 export interface NewsItem { title: string; source: string; url: string; t: number; tags: string[]; also: number; sources: string[] }
 export interface NewsFeed { ok: boolean; fetched_at: string; q: string; items: NewsItem[] }
 export const NEWS_EVERY = 60 * 60 * 1000;
-export const MARKET_Q = 'Nifty OR Sensex OR "stock market" OR RBI when:1d';
+export const MARKET_Q = 'Sensex Nifty today when:1d';      // plain words: Bing returns nothing for an OR query
 /** A search phrase from a company name: the legal suffix goes (it only adds noise), the rest is quoted so the name stays together. */
 export const companyQ = (name: string) => `"${name.replace(/\b(ltd|limited|inc|corp|corporation|pvt|private)\b\.?/gi, '').replace(/[^A-Za-z0-9 &.'\-]/g, ' ').replace(/\s+/g, ' ').trim()}" when:7d`;
 
