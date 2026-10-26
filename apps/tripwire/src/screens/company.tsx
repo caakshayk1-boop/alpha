@@ -11,6 +11,7 @@ import { checklistFor } from '../insight.ts';
 import { istDay, current, toggleFollow } from '../store.ts';
 import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
+import { TvButton, TvIcon } from '../live.tsx';
 
 export function Company({ sym }: { sym: string }) {
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
@@ -31,7 +32,7 @@ export function Company({ sym }: { sym: string }) {
   const cases = swot?.s ?? []; const counters = [...flags.map((f) => ({ t: f.t, k: f.k })), ...(swot?.w ?? [])];
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   return <div>
-    <PageBar title={row.name} onBack right={<FollowButton sym={sym} name={row.name} />} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
+    <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass">
       <div className="row between"><div><div className="num" style={{ font: '600 30px/1 var(--sans)', letterSpacing: '-.8px' }}>{inr(px)}</div><div className={`num ${tone(row.r1d)}`} style={{ marginTop: 4 }}>{pct(row.r1d)} on the day</div></div>
         <div style={{ textAlign: 'right' }}><span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span><div className="mute small" style={{ marginTop: 6 }}>Not a live quote</div></div></div>
@@ -101,7 +102,7 @@ export function Company({ sym }: { sym: string }) {
       <button className="btn" onClick={() => open({ k: 'thesis', sym })}><Icon n="note" />Thesis</button>
       <button className="btn pri" onClick={() => open({ k: 'plan', sym })}><Icon n="plan" />Paper plan</button>
     </div>
-    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><a href={`#/report/${sym}`} style={{ textDecoration: 'underline' }}>Report for printing or saving as PDF</a></p>
+    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><TvButton sym={sym} label="Full chart on TradingView" /> <a href={`#/report/${sym}`} style={{ textDecoration: 'underline' }}>Report for printing or saving as PDF</a></p>
   </div>;
   function FollowText({ sym }: { sym: string }) {
     const on = s.follows.includes(sym);

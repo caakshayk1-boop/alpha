@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { go, setState, useAppState, useSheets } from '../app.tsx';
-import { useBars, useLedger, useSignals } from '../data.ts';
+import { useMemo, useState } from 'react';
+import { go, setState, useAppState } from '../app.tsx';
+import { useLedger } from '../data.ts';
+import { Tracker } from './Tracker.tsx';
+import { TvButton } from '../live.tsx';
+import { DEFAULT_COST } from '../book.ts';
 import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
 import { ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
-import { archivePaper, removePaper, takePaper } from '../store.ts';
-import { evaluatePaper, summarize, SLIPPAGE_PCT, type Bar, type View } from '../tracker.ts';
+import { takePaper } from '../store.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
-const DEFAULT_COST = 0.25;
-export function useCost() { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
 
 export function Signals({ seg }: { seg: string }) {
   const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : 'picks';
@@ -56,56 +56,12 @@ function Picks() {
         <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
         <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
         <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}</div></details>
-        <button className={`btn ${have.has(p.sym) ? '' : 'pri'}`} style={{ width: '100%', marginTop: 10 }} disabled={have.has(p.sym)} onClick={() => take(p)}>{have.has(p.sym) ? 'In your paper book' : 'Paper trade this'}</button></div>)
+        <div className="row" style={{ marginTop: 10, gap: 8 }}><button className={`btn grow ${have.has(p.sym) ? '' : 'pri'}`} disabled={have.has(p.sym)} onClick={() => take(p)}>{have.has(p.sym) ? 'In your paper book' : 'Paper trade this'}</button><TvButton sym={p.sym} className="btn" label="Chart" /></div></div>)
         : <Empty title="No pick tonight">{run.funnel.passed ? `${run.funnel.passed} names passed, but each needed a stop wider than the engine allows.` : 'No name passed every filter. Rules are never loosened to fill this list.'}</Empty>}
     </section>; })}
     <p className="mute small" style={{ marginTop: 14 }}>A pick is a starting point for your own research, never an instruction. Entry in the tracker is the open of the next session, so a pick published after the close is never filled at that close.</p>
   </>;
 }
-
-const hm = (ms: number) => new Date(ms + 330 * 60000).toISOString().slice(11, 16);
-export function Tracker() {
-  const s = useAppState(); const cost = useCost(); const { open } = useSheets(); const { toast } = useUi();
-  const [visible, setVisible] = useState(true);
-  useEffect(() => { const f = () => setVisible(document.visibilityState === 'visible'); document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
-  const active = s.paper.filter((p) => !p.closedByUser); const syms = active.map((p) => p.sym);
-  const feed = useBars(syms, visible);
-  const views = useMemo(() => active.map((p) => {
-    const b = feed.data?.bars[p.sym]; const bars: Bar[] | null = b ? b.t.map((t, i) => ({ t, o: b.o[i], h: b.h[i], l: b.l[i], c: b.c[i], forming: b.forming && i === b.t.length - 1 })) : null;
-    return { p, v: evaluatePaper(p, bars, b?.live ?? null, cost) as View };
-  }), [active, feed.data, cost]);
-  const sum = summarize(views.map((x) => x.v));
-  if (!s.paper.length) return <Empty title="Your paper book is empty" action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>Take a pick and Tripwire follows it with real daily prices: the next open fills it, the stop and the time limit close it. Nothing is real money.</Empty>;
-  return <>
-    <div className="card glass">
-      <div className="row between"><div><div className="k">Open P&L (paper)</div><div className={`num ${sum.openPnl > 0 ? 'up' : sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 28px/1.1 var(--sans)' }}>{feed.data || sum.open ? `${sum.openPnl >= 0 ? '+' : '−'}${inr0(Math.abs(sum.openPnl))}` : '—'}</div></div>
-        <div style={{ textAlign: 'right' }}><div className="k">Closed</div><div className="num" style={{ font: '600 19px/1.2 var(--sans)' }}>{sum.closed ? `${sum.totalR > 0 ? '+' : sum.totalR < 0 ? '−' : ''}${Math.abs(sum.totalR).toFixed(2)}R` : '—'}</div><div className="small dim">{sum.closed} trade{sum.closed === 1 ? '' : 's'}</div></div></div>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 10 }}><span className="tag">{sum.open} open</span><span className="tag">{sum.waiting} waiting for an open</span><span className="tag">{sum.skipped} skipped</span></div>
-      <p className="small dim" style={{ margin: '10px 0 0' }}>{feed.err ? <span className="down">Prices unavailable: {feed.err}. Nothing is estimated in their place.</span> : feed.data ? <>Prices from Yahoo Finance, delayed. Updated {feed.at ? hm(feed.at) : ''} IST{feed.loading ? ', refreshing' : ''}. Refreshes every minute while this page is open.</> : feed.loading ? 'Loading prices…' : 'No prices yet.'}</p>
-      {!sum.enough && sum.closed > 0 && <p className="small dim" style={{ margin: '6px 0 0' }}>Average R is withheld until 30 trades have closed. {sum.closed} is too few to say anything.</p>}
-    </div>
-    {views.map(({ p, v }) => <TradeCard key={p.id} p={p} v={v} onArchive={() => { setState((x) => archivePaper(x, p.id)); toast('Taken off the active list. The record is kept.'); }} />)}
-    {s.paper.filter((p) => p.closedByUser).length > 0 && <p className="mute small">{s.paper.filter((p) => p.closedByUser).length} hidden by you. They stay in your backup.</p>}
-    <div className="note info" style={{ marginTop: 12 }}><b>How a trade is followed.</b> Entry: the open of the first session after you took it, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), or the close of the last session of the horizon. Costs {cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Real fills differ.</div>
-    <button className="btn" style={{ width: '100%', marginTop: 10 }} onClick={() => open({ k: 'plan' })}>Open the position sizer</button>
-  </>;
-}
-function TradeCard({ p, v, onArchive }: { p: { sym: string; engine: string; ref: number; stop: number; horizon: number; qty: number; asOf: string; id: string }; v: View; onArchive: () => void }) {
-  const eng = ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine;
-  const W: Record<View['status'], string> = { waiting: 'Waiting for prices', pending: 'Enters at the next open', open: 'Open', closed: 'Closed', skipped: 'Skipped' };
-  return <div className="card">
-    <div className="row between"><a href={`#/c/${p.sym}`}><span className="sym">{p.sym}</span> <span className="tag">{eng}</span></a><span className={`tag ${v.status === 'open' ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
-    <div className="num small dim" style={{ margin: '8px 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</div>
-    {(v.status === 'open' || v.status === 'closed') && <>
-      <div className="row between"><div><div className="k">{v.status === 'open' ? (v.markKind === 'live' ? 'Live (delayed)' : 'Last close') : 'Exit'}</div><div className="num" style={{ fontWeight: 650, fontSize: 18 }}>{inr(v.status === 'open' ? v.mark : v.exit)}</div></div>
-        <div style={{ textAlign: 'center' }}><div className="k">Entry</div><div className="num">{inr(v.entry)}</div></div>
-        <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ fontWeight: 650, fontSize: 18 }}>{v.pnl == null ? '—' : `${v.pnl >= 0 ? '+' : '−'}${inr0(Math.abs(v.pnl))}`}</div><div className="small dim num">{v.r == null ? '' : `${v.r > 0 ? '+' : v.r < 0 ? '−' : ''}${Math.abs(v.r).toFixed(2)}R · ${pct(v.pct)}`}</div></div></div>
-      <p className="small dim num" style={{ margin: '8px 0 0' }}>{v.status === 'open' ? `Session ${v.sessions} of ${p.horizon} · ${v.left} left · stop ${pct(((p.stop / (v.mark ?? p.stop)) - 1) * 100)} from the mark` : `${v.reason} · ${v.sessions} session${v.sessions === 1 ? '' : 's'} held${v.exitT ? ` · ${dayWord(new Date((v.exitT + 19800) * 1000).toISOString())}` : ''}`}</p></>}
-    {v.status === 'skipped' && <p className="small down" style={{ margin: 0 }}>{v.skipReason}. No trade was opened, and none is counted.</p>}
-    {(v.status === 'closed' || v.status === 'skipped') && <button className="btn sm" style={{ marginTop: 10 }} onClick={onArchive}>Hide from the active list</button>}
-  </div>;
-}
-void removePaper;
 
 /** The engines' forward record: every pick of every night, taken by anyone or not. The only unbiased test of the three engines. */
 function RecordView() {

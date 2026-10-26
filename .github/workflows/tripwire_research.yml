@@ -31,6 +31,9 @@ jobs:
       - name: The study
         working-directory: apps/tripwire/research
         run: python study.py ../dist/data/screen.json results
+      - name: The engines, back-tested as built
+        working-directory: apps/tripwire/research
+        run: python engines_backtest.py ../dist/data/screen.json results
       - name: Commit the report
         run: |
           git config user.name 'github-actions[bot]'

@@ -72,3 +72,23 @@ print("planted: eff_ratio60 found", hit["features"]["eff_ratio60"]["train"], "| 
 md = study.to_markdown(hit, {"when": "x", "symbols": 260, "dates": ["2016-01-01", "2025-06-01"]})
 assert "eff_ratio60" in md and "**YES**" in md
 print("research: all checks passed")
+
+# ---- the engine back-test harness: nothing in a random walk, and a hand-checked trade ----
+import engines_backtest as bt
+sector = np.array([f"S{i % 9}" for i in range(w.C.shape[1])])
+rb = bt.run(w, sector, engines=("MOM", "LVT"))
+for eng, r in rb.items():
+    ho = r["periods"]["holdout"]; assert abs((ho.get("excess_vs_universe") or 0)) < 0.03, (eng, ho)    # no large edge appears from noise
+    assert r["periods"]["train"]["trades"] > 20, (eng, r["periods"]["train"])
+# a hand-built trade: gap-free, rises 10 percent, exits on time with costs
+C = np.full((100, 1), 100.0); C[11:, 0] = 110.0; O = C.copy(); H = C * 1.001; L = C * 0.999
+pt = panel(C, O=O, H=H, L=L)
+# the next open is already 110: a +10 percent gap, so the 2 percent rule SKIPS it
+assert bt.trade(pt, 10, 0, 5.0, 20) is None
+C2 = np.full((100, 1), 100.0); C2[12:, 0] = 108.0; O2 = C2.copy(); pt2 = panel(C2, O=O2, H=C2 * 1.001, L=C2 * 0.999)
+net2, R2 = bt.trade(pt2, 10, 0, 5.0, 20)
+exp = (108.0 / (100.0 * 1.001) - 1) - 0.0025 - 0.001 * 108.0 / (100.0 * 1.001)
+assert abs(net2 - exp) < 1e-9 and R2 > 0, (net2, exp)
+C3 = np.full((100, 1), 100.0); C3[13:, 0] = 90.0; O3 = C3.copy(); L3 = C3 * 0.999; pt3 = panel(C3, O=O3, H=C3 * 1.001, L=L3)
+n3, R3 = bt.trade(pt3, 10, 0, 5.0, 20); assert n3 < -0.09 and R3 < -1.5, (n3, R3)   # a gap through the stop loses more than 1R
+print("engines back-test: harness checks passed")

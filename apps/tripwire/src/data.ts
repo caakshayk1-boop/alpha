@@ -66,3 +66,36 @@ export const useChart = (sym: string) => useJson<ChartFeed>(`/api/chart?s=${enco
 
 export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger }
 export const useLedger = () => useJson<LedgerFeed>('/api/ledger');
+
+export interface Quote { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean }
+export interface QuotesFeed { ok: boolean; fetched_at: string; quotes: Record<string, Quote>; missing: string[] }
+export interface FactorSheet { ok: boolean; schema: string; as_of: string; universe: number; rows: Record<string, Record<string, number>>; study?: Record<string, { adopt: boolean; kind: string }> }
+export const useFactors = () => useJson<FactorSheet>('/api/factors');
+
+/** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
+function usePoll<T extends { ok: boolean }>(url: string | null, every: number): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
+  const [st, set] = useState<{ data: T | null; err: string | null; at: number | null; loading: boolean; tick: number }>({ data: null, err: null, at: null, loading: false, tick: 0 });
+  useEffect(() => {
+    if (!url) { set({ data: null, err: null, at: null, loading: false, tick: 0 }); return; }
+    let live = true; let timer: number | undefined;
+    const load = async () => {
+      if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, every); return; }
+      set((s) => ({ ...s, loading: true }));
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json()) as T;
+        if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no prices returned');
+        set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
+      } catch (e) { if (live) set((s) => ({ ...s, err: (e as Error).message || 'unreachable', loading: false })); }
+      if (live) timer = window.setTimeout(load, every);
+    };
+    void load();
+    const vis = () => { if (document.visibilityState === 'visible' && live) { window.clearTimeout(timer); void load(); } };
+    document.addEventListener('visibilitychange', vis);
+    return () => { live = false; window.clearTimeout(timer); document.removeEventListener('visibilitychange', vis); };
+  }, [url, every]);
+  return st;
+}
+/** Five-minute prices and the delayed live price for symbols (the paper book). */
+export const useIntraday = (syms: string[], on: boolean) => { const key = [...new Set(syms)].sort().join(','); return usePoll<QuotesFeed>(on && key ? `/api/intraday?s=${encodeURIComponent(key)}` : null, 30000); };
+/** Nifty 50, Bank Nifty and India VIX. */
+export const usePulse = (on: boolean) => usePoll<QuotesFeed>(on ? '/api/pulse' : null, 30000);

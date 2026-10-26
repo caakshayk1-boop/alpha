@@ -58,3 +58,12 @@ export function summarize(views: readonly View[]) {
     openPnl: open.reduce((s, v) => s + (v.pnl ?? 0), 0), closedPnl: closed.reduce((s, v) => s + (v.pnl ?? 0), 0), totalR: r2(totalR), wins,
     avgR: closed.length >= 30 ? r2(totalR / closed.length) : null, enough: closed.length >= 30 };
 }
+
+/** What a position would be worth at any price, by exactly the arithmetic evaluatePaper uses (so the slider and the headline never disagree). */
+export function pnlAt(p: Pick<Paper, 'qty' | 'stop'>, entry: number, price: number, costRoundTripPct: number): { pnl: number; r: number | null; pct: number } {
+  const pnl = (price - entry) * p.qty - (costRoundTripPct / 100) * entry * p.qty - (SLIPPAGE_PCT / 100) * price * p.qty;
+  const risk = entry - p.stop;
+  return { pnl: r2(pnl), r: risk > 0 ? r2(pnl / (risk * p.qty)) : null, pct: r2((pnl / (entry * p.qty)) * 100) };
+}
+/** Where a price sits on the risk ladder: -1 at the stop, 0 at the entry, +1 at one risk unit up. */
+export const rLevel = (price: number, entry: number, stop: number): number | null => (entry - stop > 0 ? (price - entry) / (entry - stop) : null);
