@@ -18,7 +18,7 @@ function Footer({ at, err, refresh, loading }: { at: number | null; err: string 
     <span>{err ? <span className="down">{err}</span> : at ? `Checked ${new Date(at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} · refreshes every hour` : 'Loading…'}</span>
     <button className="btn sm" onClick={refresh} disabled={loading}>{loading ? 'Checking…' : 'Check now'}</button></div>;
 }
-const NOTE = 'Headlines are collected from Google News, English only, with filler removed and the same story from several outlets folded into one line. Tags are keyword matches on the headline. Nothing here is read for sentiment, and nothing is a recommendation.';
+const NOTE = 'Headlines are collected from Google News (or Bing News when Google does not answer), English only, with filler removed and the same story from several outlets folded into one line. Tags are keyword matches on the headline. Nothing here is read for sentiment, and nothing is a recommendation.';
 
 /** News for one company, from its own name. */
 export function CompanyNews({ name }: { name: string }) {

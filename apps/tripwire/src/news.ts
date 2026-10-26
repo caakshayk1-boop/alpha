@@ -12,8 +12,8 @@ async function load(q: string, force: boolean): Promise<NewsFeed> {
   const hit = cache.get(q); if (hit && !force && Date.now() - hit.at < NEWS_EVERY) return hit.data;
   const f = flight.get(q); if (f) return f;
   const p = (async () => {
-    const r = await fetch(`/api/news?q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(15000) }); const d = (await r.json()) as NewsFeed;
-    if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the news service is not available here' : 'the news source did not answer');
+    const r = await fetch(`/api/news?q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(20000) }); const d = (await r.json().catch(() => null)) as (NewsFeed & { error?: string }) | null;
+    if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the news service is not available here' : d?.error ?? 'the news source did not answer');
     cache.set(q, { at: Date.now(), data: d }); return d;
   })();
   flight.set(q, p); try { return await p; } finally { flight.delete(q); }
