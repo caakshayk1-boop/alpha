@@ -29,7 +29,7 @@ export function Profile() {
       <label className="l" htmlFor="p-e">Experience</label>
       <select id="p-e" className="field" value={p.experience} onChange={(e) => set({ experience: e.target.value })}><option value="">Not set</option><option>New to markets</option><option>A few years</option><option>Experienced</option></select>
       <div className="l">Sectors you care about (shapes “Worth a look”)</div>
-      <div className="chips" style={{ flexWrap: 'wrap', overflow: 'visible' }} role="group" aria-label="Sectors">{SECTORS.map((x) => <button key={x} className="chip" aria-pressed={p.interests.includes(x)} onClick={() => set({ interests: p.interests.includes(x) ? p.interests.filter((y) => y !== x) : [...p.interests, x] })}>{x}</button>)}</div>
+      <div className="chips wrap" role="group" aria-label="Sectors">{SECTORS.map((x) => <button key={x} className="chip" aria-pressed={p.interests.includes(x)} onClick={() => set({ interests: p.interests.includes(x) ? p.interests.filter((y) => y !== x) : [...p.interests, x] })}>{x}</button>)}</div>
     </div>
 
     <Head>Paper planner defaults</Head>

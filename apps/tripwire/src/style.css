@@ -79,8 +79,8 @@ h2.h .rule{flex:1;height:1px;background:var(--line)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:2rem;padding:0 12px;border-radius:99px;border:1px solid var(--line2);background:var(--s1);font-size:0.8125rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:background .2s,color .2s}
 .chip[aria-pressed=true],.chip.on{background:var(--lime);color:var(--ink);border-color:var(--lime)}
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:relative;padding:3px;border-radius:14px;background:var(--s1);border:1px solid var(--line);margin-bottom:14px}
-.seg button{position:relative;z-index:1;min-height:2.125rem;border-radius:11px;font-size:0.8125rem;font-weight:650;color:var(--dim);transition:color .2s}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);position:relative;padding:3px;border-radius:14px;background:var(--s1);border:1px solid var(--line);margin-bottom:14px}
+.seg button{position:relative;z-index:1;min-width:0;padding:2px 3px;line-height:1.15;overflow-wrap:anywhere;min-height:2.125rem;border-radius:11px;font-size:0.8125rem;font-weight:650;color:var(--dim);transition:color .2s}
 .seg button[aria-selected=true]{color:var(--ink)}
 .seg .thumb{position:absolute;top:3px;bottom:3px;border-radius:11px;background:var(--lime);transition:transform .34s var(--ease)}
 html:not(.fx) .seg .thumb{transition:none}
@@ -395,3 +395,6 @@ label.row.between>span{flex:1;min-width:0}
 .btn.pri[disabled]{opacity:.75}
 .dot-live{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--lime);vertical-align:middle;margin-right:2px}
 html.fx .dot-live{animation:pulse 1.8s ease-in-out infinite}
+
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.chips.wrap .chip{flex:0 1 auto;max-width:100%;white-space:normal;text-align:left;line-height:1.2;padding-block:5px}
