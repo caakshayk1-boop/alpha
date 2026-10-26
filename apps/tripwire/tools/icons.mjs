@@ -7,23 +7,15 @@ import { fileURLToPath } from 'node:url';
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'static');
 mkdirSync(join(OUT, 'icons'), { recursive: true });
 const THEMES = {
-  aurora: { bar: '#0b0d07', hi: '#c8f23c', lo: '#35e0d0', dot: '#ff6fa8', bg2: '#16200a' },
-  ocean: { bar: '#070d0e', hi: '#35e0d0', lo: '#58a8ff', dot: '#a98bff', bg2: '#0a1c1f' },
-  violet: { bar: '#0b0911', hi: '#b39bff', lo: '#ff6fa8', dot: '#58a8ff', bg2: '#1a1230' },
-  sunset: { bar: '#0f0b07', hi: '#ffb02e', lo: '#ff6fa8', dot: '#a98bff', bg2: '#2a1706' },
-  rose: { bar: '#100912', hi: '#ff7eb3', lo: '#b39bff', dot: '#35e0d0', bg2: '#2a0f1f' },
+  aurora: { bar: '#0a0a0a', hi: '#b8ef43', dot: '#b8ef43' },   // one flat look: near-black ground, the lime of the Daily Signal mark
 };
 // scale 1 = glyph at full size; the maskable and single-colour versions shrink it into the safe zone
 const svg = (t, { round = true, scale = 1, mono = false } = {}) => {
   const c = THEMES[t]; const g = `translate(256 256) scale(${scale}) translate(-256 -256)`;
-  const line = mono ? '#fff' : 'url(#ln)'; const dot = mono ? '#fff' : c.dot;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.bg2}"/><stop offset="1" stop-color="${c.bar}"/></linearGradient>
-<linearGradient id="ln" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${c.lo}"/><stop offset="1" stop-color="${c.hi}"/></linearGradient>
-<radialGradient id="gl"><stop offset="0" stop-color="${c.dot}" stop-opacity=".6"/><stop offset="1" stop-color="${c.dot}" stop-opacity="0"/></radialGradient></defs>
-${mono ? '' : `<rect width="512" height="512" ${round ? 'rx="112"' : ''} fill="url(#bg)"/>`}
-<g transform="${g}">${mono ? '' : '<circle cx="256" cy="150" r="104" fill="url(#gl)"/>'}
-<path d="M96 330 L200 330 L256 150 L312 330 L416 330" fill="none" stroke="${line}" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><circle cx="256" cy="150" r="26" fill="${dot}"/></g></svg>`;
+  const line = mono ? '#fff' : c.hi; const dot = mono ? '#fff' : c.dot;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+${mono ? '' : `<rect width="512" height="512" ${round ? 'rx="112"' : ''} fill="${c.bar}"/>`}
+<g transform="${g}"><path d="M96 330 L200 330 L256 150 L312 330 L416 330" fill="none" stroke="${line}" stroke-width="30" stroke-linecap="square" stroke-linejoin="miter"/><rect x="232" y="126" width="48" height="48" fill="${dot}"/></g></svg>`;
 };
 const b = await chromium.launch(); const pg = await b.newPage();
 const png = async (markup, size, file, transparent = false) => {
