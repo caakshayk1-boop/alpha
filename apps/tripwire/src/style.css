@@ -68,7 +68,7 @@ h2.h .rule{flex:1;height:1px;background:var(--line)}
 .tag.lime{background:var(--lime-bg);color:var(--lime)} .tag.peach{background:var(--peach-bg);color:var(--peach)}
 .note{border-left:2px solid var(--peach);background:var(--peach-bg);padding:9px 11px;border-radius:0 10px 10px 0;font-size:12.5px}
 .note.info{border-color:var(--lime);background:var(--lime-bg)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;padding:0 16px;border-radius:13px;font-size:14px;font-weight:650;background:var(--s2);border:1px solid var(--line2);transition:transform .15s,background .2s}
+.btn{color:var(--tx);display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;padding:0 16px;border-radius:13px;font-size:14px;font-weight:650;background:var(--s2);border:1px solid var(--line2);transition:transform .15s,background .2s}
 .btn:active{transform:scale(.97)}
 .btn.pri{background:var(--lime);color:var(--ink);border-color:var(--lime)}
 .btn.warn{color:var(--peach);border-color:rgba(255,154,108,.4)}

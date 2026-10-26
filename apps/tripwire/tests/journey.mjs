@@ -37,7 +37,7 @@ ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today sh
 ok(/Engine picks/i.test(await text()) && (await pg.locator('.tile', { hasText: 'Paper trade' }).count()) >= 3, 'Today shows swipeable engine pick cards');
 await pg.locator('a.contrib').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
-await pg.getByRole('link', { name: 'Today' }).click(); await pg.waitForSelector('.rangebar');
+await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.rangebar');
 
 // Discover → follow → compare → research
 await pg.getByRole('link', { name: 'Discover' }).click();

@@ -33,9 +33,9 @@ export function Ago({ at }: { at: number | null }) {
 }
 
 export function TvButton({ sym, className = 'btn sm', label = 'TradingView' }: { sym: string; className?: string; label?: string }) {
-  return <a className={className} href={tvUrl(sym)} target="_blank" rel="noopener noreferrer" aria-label={`Open ${sym} on TradingView, in a new tab`}><Icon n="chart" />{label}</a>;
+  return <a className={className} href={tvUrl(sym)} target="_blank" rel="noopener noreferrer"><Icon n="chart" />{label}<span className="sr">{label ? ` (${sym} on TradingView, opens in a new tab)` : `${sym} on TradingView, opens in a new tab`}</span></a>;
 }
 
 export function TvIcon({ sym }: { sym: string }) {
-  return <a className="icon-btn" href={tvUrl(sym)} target="_blank" rel="noopener noreferrer" aria-label={`Open ${sym} on TradingView, in a new tab`} title="Open on TradingView"><Icon n="chart" /></a>;
+  return <a className="icon-btn" href={tvUrl(sym)} target="_blank" rel="noopener noreferrer" title="Open on TradingView"><Icon n="chart" /><span className="sr">{sym} on TradingView, opens in a new tab</span></a>;
 }
