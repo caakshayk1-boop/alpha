@@ -238,3 +238,6 @@ input[type=range].slider{width:100%;accent-color:#c8f23c;height:32px;background:
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .cell{padding:9px 10px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}
+
+/* a scrolling row must be the containing block of the screen-reader-only text inside it, or that text escapes the clip and widens the whole page */
+.strip,.chips,.scroll-x,.tile,.contrib,.card{position:relative}

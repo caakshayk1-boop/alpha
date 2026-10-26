@@ -40,7 +40,7 @@ ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) >
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.rangebar');
 
 // Discover → follow → compare → research
-await pg.getByRole('link', { name: 'Discover' }).click();
+await pg.locator('nav.tabs a[href="#/discover"]').click();
 await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li');
 const fs = await pg.evaluate(() => ({ field: parseFloat(getComputedStyle(document.querySelector('input.field')).fontSize), body: parseFloat(getComputedStyle(document.body).fontSize), touch: getComputedStyle(document.querySelector('button')).touchAction, vp: document.querySelector('meta[name=viewport]').content }));
 ok(fs.field >= 16, `text fields are 16px or more, so iPhone Safari does not zoom the page in on focus (${fs.field}px)`);
