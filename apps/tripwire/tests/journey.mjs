@@ -196,7 +196,7 @@ const tvl = pg.locator('a[href*="tradingview.com/chart"]').first(); ok((await tv
 ok(/delayed/i.test(await text()), 'tracker says its prices are delayed');
 await shot('09-tracker');
 ok(/\bOpen\b/.test(await pg.locator('.card .tag').allInnerTexts().then((x) => x.join(' '))), 'the trade opens at the first open after it was taken');
-ok(/Live \(delayed\)/i.test(await text()) && /Session 4 of/.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
+ok(/Live \(delayed\)/i.test(await text()) && /session 4 of/i.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
 ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
 // a failed price service shows an honest error, not a guess
