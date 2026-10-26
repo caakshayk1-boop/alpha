@@ -16,7 +16,7 @@ const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinit
  *  Alpha publishes no downtrend, so DOWN is its exact mirror (price below the 50-day, the 50-day below the 200-day). Anything else is MIXED.
  *  A name missing a figure is untagged (null), never "mixed": unmeasured is not a finding. */
 export function trendOf(r: Pick<Row, 'price' | 'sma50' | 'sma200'>): { trend: Trend | null; detail: string } {
-  if (!num(r.price) || !num(r.sma50) || !num(r.sma200)) return { trend: null, detail: 'Needs the price and both averages; one is missing.' };
+  if (!(num(r.price) && r.price > 0) || !(num(r.sma50) && r.sma50 > 0) || !(num(r.sma200) && r.sma200 > 0)) return { trend: null, detail: 'Needs the price and both averages; one is missing.' };
   const d = `price ${r.price.toFixed(2)}, 50-day ${r.sma50.toFixed(2)}, 200-day ${r.sma200.toFixed(2)}`;
   if (r.price > r.sma50 && r.sma50 > r.sma200) return { trend: 'up', detail: `Uptrend: price above the 50-day, and the 50-day above the 200-day (${d}).` };
   if (r.price < r.sma50 && r.sma50 < r.sma200) return { trend: 'down', detail: `Downtrend: price below the 50-day, and the 50-day below the 200-day (${d}).` };

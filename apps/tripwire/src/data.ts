@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Row } from './screen.ts';
+import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
+export { useLiveMacro };
 
 export interface ScreenFeed { built_on: string; as_of: string; count: number; rows: Row[] }
 export interface Gate { date: string; on: boolean; passed: number; checks: { rule: string; ok: boolean; value?: string }[] }
@@ -98,9 +100,13 @@ export function usePoll<T extends { ok: boolean }>(url: string | null, every: nu
   return st;
 }
 /** Five-minute prices and the delayed live price for symbols (the paper book). */
-export const useIntraday = (syms: string[], on: boolean) => { const key = [...new Set(syms)].sort().join(','); return usePoll<QuotesFeed>(on && key ? `/api/intraday?s=${encodeURIComponent(key)}` : null, 30000); };
+export const useIntraday = (syms: string[], on: boolean) => useLiveSymbols([...new Set(syms)], on);
 /** Nifty 50, Bank Nifty and India VIX. */
-export const usePulse = (on: boolean) => usePoll<QuotesFeed>(on ? '/api/pulse' : null, 30000);
+export const usePulse = (on: boolean) => useLivePulse(on);
 
 export const useBacktest = () => useJson<import('./evidence.ts').Backtest>('/data/research/engines_backtest.json');
 export const useStudy = () => useJson<import('./evidence.ts').Study>('/data/research/factor_study.json');
+
+export interface BreadthFeed { ok: boolean; t: number; as_of: string; n: number; up: number; mixed: number; down: number; sectors: { k: string; n: number; up: number; down: number }[]; repriced: number; near: number }
+/** The trend map with today's prices: the Worker re-prices only the names close enough to a trend line to change class, and shares the answer for 60 s. */
+export const useBreadth = (on = true) => usePoll<BreadthFeed>(on ? '/api/breadth' : null, 60000);

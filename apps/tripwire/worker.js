@@ -1,4 +1,4 @@
-// Tripwire Worker: static assets plus read-only routes: /api/bars and /api/intraday (paper tracker, live P&L, list quotes), /api/pulse (index strip), /api/macro (gold, silver, oil, FX, Bitcoin), /api/news (cleaned headlines, cached an hour), /api/chart (price history), /api/ledger (forward record), /api/factors (nightly factor sheet).
+// Tripwire Worker: static assets plus read-only routes: /api/bars and /api/intraday (paper tracker, live P&L, list quotes), /api/tick (everything on screen in one request, every 8 s), /api/breadth (live trend map), /api/pulse (index strip), /api/macro (gold, silver, oil, FX, Bitcoin), /api/news (cleaned headlines, cached an hour), /api/chart (price history), /api/ledger (forward record), /api/factors (nightly factor sheet).
 //   GET /api/bars?s=TCS,INFY   (up to 30 NSE symbols)
 //   -> { ok, fetched_at, bars: { TCS: { t:[epoch s], o:[], h:[], l:[], c:[], forming: bool, live: { px, t } | null } }, missing: [] }
 // Daily bars for six months from Yahoo Finance. A bar missing any of open, high, low or close is dropped, never filled. The last bar
@@ -98,22 +98,98 @@ export function parseIntraday(res, nowMs = Date.now()) {
   return { t, c, px, pt, prev: r2(prev), live: nowMs / 1000 - pt < 25 * 60 };
 }
 async function fetchIntraday(yahooSymbol, cache, ctx) {
-  const key = new Request(`https://tripwire.internal/__intra_v1/${yahooSymbol}`);
+  const key = new Request(`https://tripwire.internal/__intra_v2/${yahooSymbol}`);
   const hit = cache && await cache.match(key); if (hit) return hit.json();
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
   if (!r.ok) return null;
   const p = parseIntraday((await r.json())?.chart?.result?.[0]); if (!p) return null;
-  if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(p), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })));
+  if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(p), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=6' } })));
   return p;
+}
+/** Pure: one symbol's entry from Yahoo's spark endpoint (twenty symbols a call) in the same shape as `parseIntraday`. */
+export function parseSpark(e, nowMs = Date.now()) {
+  const ts = e?.timestamp, cl = e?.close; if (!Array.isArray(ts) || !Array.isArray(cl)) return null;
+  const t = [], c = []; ts.forEach((x, i) => { if (cl[i] > 0) { t.push(x); c.push(r2(cl[i])); } });
+  const prev = Number(e.chartPreviousClose ?? e.previousClose); const px = c[c.length - 1]; const pt = t[t.length - 1];
+  if (!(px > 0) || !(prev > 0) || t.length < 2) return null;
+  return { t, c, px, pt, prev: r2(prev), live: nowMs / 1000 - pt < 25 * 60 };
+}
+const SPARK = 20;
+/** Live quotes for many symbols with few requests: Yahoo's spark endpoint takes twenty at a time, and each batch is cached for six seconds so
+ *  every open copy of the app shares it. A batch that fails falls back to one request per symbol. `pairs` is [[ourKey, yahooSymbol], ...]. */
+async function sparkMany(pairs, ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const out = {}; const missing = [];
+  const chunks = []; for (let i = 0; i < pairs.length; i += SPARK) chunks.push(pairs.slice(i, i + SPARK));
+  await Promise.all(chunks.map(async (ch) => {
+    const key = new Request(`https://tripwire.internal/__spark_v1/${ch.map((p) => p[1]).sort().join(',')}`);
+    try {
+      let body = null; const hit = cache && await cache.match(key); if (hit) body = await hit.json();
+      if (!body) {
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(ch.map((p) => p[1]).join(','))}&range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
+        if (!r.ok) throw new Error('spark ' + r.status); body = await r.json();
+        if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=6' } })));
+      }
+      for (const [k, y] of ch) { const p = parseSpark(body?.[y]); if (p) out[k] = p; else missing.push(k); }
+    } catch {
+      await Promise.all(ch.map(async ([k, y]) => { try { const p = await fetchIntraday(y, cache, ctx); if (p) out[k] = p; else missing.push(k); } catch { missing.push(k); } }));
+    }
+  }));
+  return { out, missing };
 }
 // GET /api/intraday?s=TCS,INFY -> { ok, quotes: { TCS: { t, c, px, pt, prev, live } }, missing }   (up to 30 symbols, one session of 5-minute closes)
 // GET /api/pulse            -> the same for Nifty 50, Bank Nifty and India VIX, under their own names
 // GET /api/macro            -> the same for gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin
+// GET /api/tick?s=A,B&i=1&m=1 -> everything the screen needs in ONE request: { ok, fetched_at, quotes, pulse?, macro?, missing }   (the app asks every 8 seconds)
 const INDICES = { NIFTY: '^NSEI', BANKNIFTY: '^NSEBANK', VIX: '^INDIAVIX' };
+const LIVE_H = { 'cache-control': 'public, max-age=4, s-maxage=6' };
 async function quotes(list, map, ctx) {
-  const cache = typeof caches !== 'undefined' ? caches.default : null; const out = {}; const missing = [];
-  await Promise.all(list.map(async (s) => { try { const p = await fetchIntraday(map(s), cache, ctx); if (p) out[s] = p; else missing.push(s); } catch { missing.push(s); } }));
-  return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), quotes: out, missing }, 200, { 'cache-control': 'public, max-age=30, s-maxage=60' });
+  const { out, missing } = await sparkMany(list.map((s) => [s, map(s)]), ctx);
+  return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), quotes: out, missing }, 200, LIVE_H);
+}
+const TICK_MAX = 60;
+async function tick(url, ctx) {
+  const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
+  if (list.length > TICK_MAX || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give up to ${TICK_MAX} valid symbols` }, 400);
+  const wantI = url.searchParams.get('i') === '1', wantM = url.searchParams.get('m') === '1';
+  const pairs = [...list.map((s) => ['s:' + s, `${s}.NS`]), ...(wantI ? Object.entries(INDICES).map(([k, y]) => ['i:' + k, y]) : []), ...(wantM ? Object.entries(MACRO).map(([k, y]) => ['m:' + k, y]) : [])];
+  const { out, missing } = await sparkMany(pairs, ctx); const pick = (pre) => Object.fromEntries(Object.entries(out).filter(([k]) => k.startsWith(pre)).map(([k, v]) => [k.slice(2), v]));
+  const body = { ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), quotes: pick('s:'), missing: missing.map((k) => k.slice(2)) }; if (wantI) body.pulse = pick('i:'); if (wantM) body.macro = pick('m:');
+  return json(body, 200, LIVE_H);
+}
+
+// ---- Breadth: how much of the market is in an uptrend, with today's prices ------------------------------------------------------------
+/** Pure. The trend rule, the same as the app's: UP is price above its 50-day and the 50-day above the 200-day, DOWN is the mirror, else mixed. */
+export function trendOfRow(price, sma50, sma200) {
+  if (!(price > 0) || !(sma50 > 0) || !(sma200 > 0)) return null;
+  return price > sma50 && sma50 > sma200 ? 'up' : price < sma50 && sma50 < sma200 ? 'down' : 'mixed';
+}
+/** Pure. Counts and sector splits over the liquid names, using a live price where one is given and the published close otherwise. */
+export function aggregateBreadth(rows, live = {}) {
+  const c = { up: 0, mixed: 0, down: 0 }; const by = new Map();
+  for (const r of rows) {
+    if (!r.liquid) continue; const t = trendOfRow(live[r.sym] ?? r.price, r.sma50, r.sma200); if (!t) continue;
+    c[t]++; const k = r.sector || 'Other'; const e = by.get(k) ?? { n: 0, up: 0, down: 0 }; e.n++; if (t === 'up') e.up++; if (t === 'down') e.down++; by.set(k, e);
+  }
+  const n = c.up + c.mixed + c.down;
+  const sectors = [...by.entries()].filter(([, e]) => e.n >= 8).map(([k, e]) => ({ k, n: e.n, up: Math.round((e.up / e.n) * 1000) / 10, down: Math.round((e.down / e.n) * 1000) / 10 })).sort((a, b) => b.n - a.n);
+  return { n, ...c, sectors };
+}
+// GET /api/breadth -> { ok, t, as_of, n, up, mixed, down, sectors:[{k,n,up,down}], repriced, near }. Only a name within 8% of its 50-day average can change class in a
+// day, so only those are re-priced (about twenty requests); the rest keep the published close. Cached 60 s and shared by every open copy of the app.
+async function breadth(request, env, ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__breadth_v1');
+  try {
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=30, s-maxage=60' } });
+    const scr = await (await env.ASSETS.fetch(new Request(new URL('/data/screen.json', request.url)))).json();
+    const rows = (scr.rows || []).filter((r) => r.liquid && r.price > 0 && r.sma50 > 0 && r.sma200 > 0);
+    const near = rows.filter((r) => Math.abs(r.price / r.sma50 - 1) <= 0.08).slice(0, 400);
+    const { out } = await sparkMany(near.map((r) => [r.sym, `${r.sym}.NS`]), ctx);
+    // a quote is used only if it printed within two days of now; an old one (a halted name) is ignored, never blended
+    const live = {}; for (const [k, q] of Object.entries(out)) if (Date.now() / 1000 - q.pt < 2 * 86400) live[k] = q.px;
+    const res = json({ ok: true, t: Date.now(), as_of: scr.as_of, ...aggregateBreadth(rows, live), repriced: Object.keys(live).length, near: near.length }, 200, { 'cache-control': 'public, max-age=30, s-maxage=60' });
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, error: 'the market breadth could not be computed' }, 502); }
 }
 // GET /api/factors -> the nightly factor sheet (percentiles of the less common indicators), read from the repository like the ledger
 const FACTORS = 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/main/apps/tripwire/ledger/factors.json';
@@ -256,6 +332,14 @@ export default {
     if (url.pathname === '/api/pulse' || url.pathname === '/api/pulse/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return quotes(Object.keys(INDICES), (s) => INDICES[s], ctx);
+    }
+    if (url.pathname === '/api/tick' || url.pathname === '/api/tick/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return tick(url, ctx);
+    }
+    if (url.pathname === '/api/breadth' || url.pathname === '/api/breadth/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return breadth(request, env, ctx);
     }
     if (url.pathname === '/api/macro' || url.pathname === '/api/macro/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);

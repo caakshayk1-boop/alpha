@@ -5,7 +5,7 @@ import { archivePaper } from '../store.ts';
 import { ENGINES } from '../quant.ts';
 import { SLIPPAGE_PCT, pnlAt, rLevel } from '../tracker.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
-import { useLiveBook, type BookRow } from '../book.ts';
+import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { Ago, LiveBadge, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
@@ -16,11 +16,14 @@ const money = (v: number | null | undefined) => sgn(v, (n) => inr0(n));
 
 export function Tracker() {
   const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
-  const b = useLiveBook(); const [openId, setOpenId] = useState<string | null>(null);
+  const b = useLiveBook(); const auto = useAutoBook(false); const [openId, setOpenId] = useState<string | null>(null);
   if (!s.paper.length) return <Empty title="Your paper book is empty" action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>Take a pick and Tripwire follows it with real prices: the next open fills it, the stop and the time limit close it. Nothing is real money.</Empty>;
   const openRows = b.rows.filter((r) => r.v.status === 'open'); const maxAbs = Math.max(1, ...openRows.map((r) => Math.abs(r.v.pnl ?? 0)));
   const live = b.session.phase === 'open'; const totalOpen = b.sum.openPnl;
   const hidden = s.paper.filter((p) => p.closedByUser).length;
+  // the same pick held twice (once by the auto book, once by a tap) shows the same trade with a different rupee size; say so, and offer to hide the copy
+  const dups = s.paper.filter((p) => !p.closedByUser && auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf));
+  const retired = s.paper.filter((p) => !p.closedByUser && ENGINES.some((e) => e.id === p.engine && e.retired));
   return <>
     <div className="card glass">
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
@@ -38,6 +41,11 @@ export function Tracker() {
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
       {b.sum.closed > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Closed: <b className="num">{R(b.sum.totalR)}</b> over {b.sum.closed} trade{b.sum.closed === 1 ? '' : 's'}.{!b.sum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}
     </div>
+    {(dups.length > 0 || retired.length > 0) && <div className="note" style={{ marginTop: 10 }}>
+      {dups.length > 0 && <p style={{ margin: 0 }}><b>{dups.length} of these {dups.length === 1 ? 'is' : 'are'} also in the auto book.</b> Same pick, different rupee size: here the planner sizes by your risk setting, there every position is ₹1,00,000. Their P&L differs only for that reason, so adding both counts the pick twice.</p>}
+      {retired.length > 0 && <p style={{ margin: dups.length ? '8px 0 0' : 0 }}><b>{retired.length} come from a retired engine.</b> Its picks before retirement came from a rule bug. They stay in your record but the auto book refuses them.</p>}
+      {dups.length > 0 && <button className="btn sm" style={{ marginTop: 8 }} onClick={() => { setState((x) => dups.reduce((acc, p) => archivePaper(acc, p.id), x)); toast(`${dups.length} duplicate${dups.length === 1 ? '' : 's'} taken off the list. The record is kept.`); }}>Hide the {dups.length} duplicate{dups.length === 1 ? '' : 's'}</button>}
+    </div>}
     {b.rows.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => setOpenId(openId === r.p.id ? null : r.p.id)} live={live}
       onHide={() => { setState((x) => archivePaper(x, r.p.id)); toast('Taken off the active list. The record is kept.'); }} />)}
     {hidden > 0 && <p className="mute small">{hidden} hidden by you. They stay in your backup.</p>}

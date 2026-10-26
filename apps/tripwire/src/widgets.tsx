@@ -14,14 +14,6 @@ export function Ring({ value, max, size = 74, stroke = 8, label, children, color
     </svg><span className="mid">{children}</span></span>;
 }
 
-export interface TapeItem { k: string; label: string; text: string; ch: number | null; href?: string }
-/** A slow ticker of everything that is moving: decorative (every figure is on the page below it), paused by a press, still when motion is off. */
-export function Tape({ items }: { items: TapeItem[] }) {
-  if (!items.length) return null;
-  const row = (suffix: string) => items.map((t) => <span className="it" key={t.k + suffix}><b>{t.label}</b><span className="num">{t.text}</span><span className={`num ${t.ch == null ? 'dim' : t.ch >= 0 ? 'up' : 'down'}`}>{t.ch == null ? '' : `${t.ch >= 0 ? '▲' : '▼'} ${Math.abs(t.ch).toFixed(2)}%`}</span></span>);
-  return <div className="tape" aria-hidden="true"><div className="run">{row('a')}{row('b')}</div></div>;
-}
-
 export interface HeatCell { k: string; n: number; up: number; down: number }
 /** Sectors as coloured tiles: green where more of the sector is in an uptrend than a downtrend, coral where it is the other way round. The
  *  depth of colour is how lopsided it is, so a sector split evenly stays neutral. */

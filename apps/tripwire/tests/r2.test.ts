@@ -4,10 +4,11 @@ import { planAutoBook, realised, MAX_OPEN, TICKET } from '../src/autobook.ts';
 import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
-import { trendOfCloses, TREND_WORD } from '../src/screen.ts';
-import { companyQ } from '../src/news.ts';
+import { trendOfCloses, trendOf, TREND_WORD } from '../src/screen.ts';
+import { companyQ, mergeNews, type NewsItem } from '../src/news.ts';
+import { pct, tone } from '../src/fmt.ts';
 import { fmtMacro, MACRO } from '../src/macro.ts';
-import { parseNews, MACRO as WORKER_MACRO } from '../worker.js';
+import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
 
 const pick = (night: string, sym: string, ref = 100, o: Partial<LedgerPick> = {}): LedgerPick => ({ id: `${night}|MOM|${sym}`, engine: 'MOM', sym, asOf: night, ref, stop: ref * 0.9, horizon: 20, score: 80, rank: 1, ...o });
 const ledger = (picks: LedgerPick[], outcomes: Record<string, Outcome> = {}, voided?: Record<string, string>): Ledger => ({ schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-26', cost: 0.25, days: [], picks, outcomes, voided });
@@ -157,4 +158,45 @@ test('lock ids survive storage, and every theme has a name, a swatch and a bar c
   const id = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]); assert.deepEqual([...decodeId(encodeId(id))], [...id]);
   assert.ok(!/[+/=]/.test(encodeId(new Uint8Array(64).fill(251))));
   assert.equal(themeOf('nope').id, 'aurora'); assert.equal(THEMES.length, 5); assert.ok(THEMES.every((t) => t.label && t.swatch && /^#/.test(t.bar)));
+});
+
+// ---- live feed, live breadth, one list of news, no signed zero -----------------------------------------------------------------------
+test('spark: a quote carries its own previous close, the last print, and is live only if the print is under 25 minutes old', () => {
+  const now = 1_800_000_000_000; const t = (m: number) => now / 1000 - m * 60;
+  const q = parseSpark({ timestamp: [t(10), t(5), t(1)], close: [100, null, 102], chartPreviousClose: 99 }, now)!;
+  assert.deepEqual([q.px, q.prev, q.live, q.t.length], [102, 99, true, 2]);               // the null close is dropped, not zero-filled
+  assert.equal(parseSpark({ timestamp: [t(300), t(200)], close: [100, 101], chartPreviousClose: 99 }, now)!.live, false);
+  assert.equal(parseSpark({ timestamp: [t(5), t(1)], close: [100, 101] }, now), null);       // no previous close: no change can be stated, so no quote
+  assert.equal(parseSpark(null, now), null);
+});
+test('breadth: the Worker\'s trend rule is the app\'s trend rule, on every combination', () => {
+  const vals = [90, 100, 110, null, 0];
+  for (const price of vals) for (const sma50 of vals) for (const sma200 of vals) assert.equal(trendOfRow(price, sma50, sma200), trendOf({ price, sma50, sma200 } as never).trend, `${price}/${sma50}/${sma200}`);
+});
+test('breadth: counts use the live price where one is given, the close otherwise, and skip illiquid or incomplete names', () => {
+  const rows = [
+    { sym: 'A', liquid: true, price: 99, sma50: 100, sma200: 90, sector: 'Banks' },          // close: sideways; live 101: uptrend
+    { sym: 'B', liquid: true, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },
+    { sym: 'C', liquid: true, price: 80, sma50: 100, sma200: 110, sector: 'Banks' },
+    { sym: 'D', liquid: false, price: 120, sma50: 100, sma200: 90, sector: 'Banks' },        // not liquid: out
+    { sym: 'E', liquid: true, price: 120, sma50: null, sma200: 90, sector: 'Banks' },        // no average: out, never a zero
+  ];
+  const close = aggregateBreadth(rows); assert.deepEqual([close.n, close.up, close.mixed, close.down], [3, 1, 1, 1]);
+  const live = aggregateBreadth(rows, { A: 101 }); assert.deepEqual([live.n, live.up, live.mixed, live.down], [3, 2, 0, 1]);
+  assert.equal(live.sectors.length, 0);                                                      // a sector under eight names is not reported
+});
+const hl = (title: string, o: Partial<NewsItem> = {}): NewsItem => ({ title, source: 'Mint', url: 'https://x/' + title.length + title.slice(0, 5), t: 1_800_000_000 - 3600, tags: [], also: 0, sources: ['Mint'], ...o });
+test('news: the same story from two queries is one line, and a named holding is ranked ahead of a general one', () => {
+  const now = 1_800_000_000_000;
+  const market = { items: [hl('Sensex ends higher as banks rally on strong earnings'), hl('Gold steadies near record ahead of Fed meeting')] };
+  const name = { sym: 'HDFCBANK', items: [hl('Banks rally as Sensex ends higher on strong earnings', { url: 'https://y/1' }), hl('HDFC Bank Q2 profit rises 12%', { tags: ['Results'], url: 'https://y/2' })] };
+  const m = mergeNews([market, name], 10, now);
+  assert.equal(m.length, 3);                                                                   // the rally story folded into one
+  assert.equal(m[0].sym, 'HDFCBANK'); assert.ok(m.some((x) => x.sym === 'HDFCBANK' && /rally/i.test(x.title)), 'the folded story is credited to the name that carried it');
+  assert.equal(mergeNews([market, name], 2, now).length, 2);
+});
+test('numbers: a value that rounds to zero carries no sign and no colour', () => {
+  assert.equal(pct(-0.04), '0.0%'); assert.equal(pct(0.04), '0.0%'); assert.equal(pct(0), '0.0%');
+  assert.equal(pct(-0.06), '−0.1%'); assert.equal(pct(1.26), '+1.3%'); assert.equal(pct(null), '—');
+  assert.equal(tone(-0.04), ''); assert.equal(tone(0.2), 'up'); assert.equal(tone(-0.2), 'down');
 });
