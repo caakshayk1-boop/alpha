@@ -13,7 +13,7 @@ const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
   { id: 'name', label: 'Name A to Z', dir: 'asc' }, { id: 'r1d', label: 'Biggest day gain', dir: 'desc' }, { id: 'rs3m', label: 'Ahead of the Nifty, 3 months', dir: 'desc' },
   { id: 'roce_med', label: 'Highest ROCE', dir: 'desc' }, { id: 'pe', label: 'Lowest PE', dir: 'asc' }, { id: 'from_high', label: 'Closest to 52-week high', dir: 'desc' }, { id: 'turnover_cr', label: 'Most traded', dir: 'desc' },
 ];
-const PAGE = 40;
+const PAGE = 24;
 /** One tap, one idea: each lens is a fixed combination of the screen's own filters, with the number of names that pass it today. The colour says what kind of idea it is. */
 const LENSES: { id: string; title: string; line: string; f: Partial<Filters>; c: string }[] = [
   { id: 'leaders', title: 'Leaders', line: 'Uptrend and ahead of the Nifty', f: { trend: 'up', momentum: 'strong' }, c: 'var(--up)' },

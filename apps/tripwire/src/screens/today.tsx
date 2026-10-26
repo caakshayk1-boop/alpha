@@ -62,7 +62,7 @@ export function Today() {
   const total = out?.picks.length ?? 0;
   // one book, once: the auto book carries every engine pick; a hand-taken trade is shown only where it is NOT the same pick
   const dupOf = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
-  const ownRows = book.rows.filter((r) => !dupOf(r.p)); const ownOpen = ownRows.filter((r) => r.v.status === 'open');
+  const ownRows = book.rows.filter((r) => !dupOf(r.p) && !ENGINES.some((e) => e.id === r.p.engine && e.retired)); const ownOpen = ownRows.filter((r) => r.v.status === 'open');
   const ownPnl = ownOpen.reduce((a, r) => a + (r.v.pnl ?? 0), 0);
   const showAuto = auto.rows.length > 0;
   const autoState = (p: { sym: string; engine: string; asOf: string }) => dupOf(p) ? 'in' : auto.plan?.refused.find((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf)?.why ? 'no' : 'wait';

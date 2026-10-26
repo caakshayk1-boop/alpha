@@ -43,7 +43,7 @@ ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await tex
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
-await pg.waitForSelector('.news'); ok(/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Q2 results|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
+await pg.waitForSelector('.news'); ok(/RBI keeps rates unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Regulator|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');
 T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
@@ -227,7 +227,7 @@ await pg.route('**/api/bars*', mock);
 T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Take it myself' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
-await pg.getByRole('tab', { name: /^My trades/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /\d\d:\d\d IST · \d+ (s|min) old/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');

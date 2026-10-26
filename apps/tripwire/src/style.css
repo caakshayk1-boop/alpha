@@ -566,3 +566,18 @@ input[role=switch]:checked::after{background:#000}
 .livepos{margin-top:4px}
 .posrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
 .posrow:first-of-type{border-top:0}
+
+/* sector tiles: neutral unless clearly lopsided, with the three-way split drawn */
+.heat{grid-template-columns:repeat(2,1fr)}
+@media(min-width:420px){.heat{grid-template-columns:repeat(3,1fr)}}
+.heat a{background:var(--s1)!important;border:1px solid var(--line);border-left:3px solid var(--line2);gap:3px;min-height:0;justify-content:flex-start}
+.heat a.pos{border-left-color:var(--up)}.heat a.neg{border-left-color:var(--down)}
+.heat a .v{font:700 1.125rem/1.1 var(--mono)}.heat a.pos .v{color:var(--up)}.heat a.neg .v{color:var(--down)}
+.heat a .v small{font:500 .625rem var(--mono);color:var(--mute)}
+.heat .tri{display:flex;gap:2px;height:5px;margin:2px 0}.heat .tri i{display:block;min-width:2px}
+.heat a .s{font-size:.625rem;line-height:1.25;color:var(--dim)}
+.contrib{grid-template-columns:minmax(5.5rem,9.5rem) minmax(0,1fr) auto}
+.contrib .sym{font-size:.75rem;letter-spacing:0}
+.contrib .bar2{border-radius:1px}.contrib .bar2 i{border-radius:1px}
+.note{border-left-color:var(--lime);background:var(--lime-bg)}
+.note.bad{border-left-color:var(--down);background:var(--peach-bg)}

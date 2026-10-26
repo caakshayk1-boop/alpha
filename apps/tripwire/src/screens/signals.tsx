@@ -9,7 +9,7 @@ import { useBacktest } from '../data.ts';
 import { engineEvidence, evidenceHeadline } from '../evidence.ts';
 import { RANK_NOTE } from '../decision.ts';
 import { DEFAULT_COST, useAutoBook } from '../book.ts';
-import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
+import { MIN_TRADES, RETIRED, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
 import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
@@ -24,7 +24,7 @@ export function Signals({ seg }: { seg: string }) {
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: `My trades${s.paper.filter((p) => !p.closedByUser).length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Proof' }]} />
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: 'Mine' }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Proof' }]} />
     {v === 'picks' ? <Picks /> : v === 'auto' ? <AutoBook /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
   </div>;
 }
@@ -82,7 +82,7 @@ function RecordView() {
   const sum = useMemo(() => (feed.data?.ledger ? summarizeLedger(feed.data.ledger) : null), [feed.data]);
   if (feed.loading) return <Loading what="the record" />;
   if (feed.err || !sum || !feed.data) return <Empty title="The record has not started" action={<button className="btn" onClick={feed.retry}>Check again</button>}>{feed.err === 'the first nightly run has not happened yet' || feed.err === 'not published' ? 'It starts with the first nightly run, which writes down every pick after each trading day. Nothing before that night counts.' : `The record could not be read (${feed.err ?? 'no data'}). Nothing is shown in its place.`}</Empty>;
-  const l = feed.data.ledger; const a = sum.all; const recent = l.picks.map((p) => ({ p, o: l.outcomes[p.id] })).filter((x) => x.o?.status === 'closed').sort((x, y) => (y.o!.exitDay ?? '').localeCompare(x.o!.exitDay ?? '')).slice(0, 8);
+  const l = feed.data.ledger; const a = sum.all; const recent = l.picks.map((p) => ({ p, o: l.outcomes[p.id] })).filter((x) => x.o?.status === 'closed' && !RETIRED.has(x.p.engine)).sort((x, y) => (y.o!.exitDay ?? '').localeCompare(x.o!.exitDay ?? '')).slice(0, 8);
   const fmtR = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
   return <>
     <div className="card glass">

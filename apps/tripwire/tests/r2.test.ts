@@ -5,7 +5,7 @@ import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
 import { trendOfCloses, trendOf, TREND_WORD } from '../src/screen.ts';
-import { companyQ, companyStories, mergeNews, type NewsItem } from '../src/news.ts';
+import { companyQ, companyStories, decisionNews, mergeNews, type NewsItem } from '../src/news.ts';
 import { pct, tone } from '../src/fmt.ts';
 import { fmtMacro, MACRO } from '../src/macro.ts';
 import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
@@ -226,4 +226,21 @@ test('auto book: the 30 places are shared by every style, with no sleeves', () =
   assert.equal(planAutoBook(ledger(swing)).taken.length, 12, 'twelve swing picks all fit: one style may use any free place');
   const many = Array.from({ length: 33 }, (_, i) => pick('2026-10-23', `M${i}`, 100, { score: 90 - i, horizon: 20 }));
   const p = planAutoBook(ledger(many)); assert.equal(p.taken.length, 30); assert.ok(p.refused.every((r) => /book is full/.test(r.why)));
+});
+
+test('decision news: one line per held name, material and recent only; no recaps, no previews, no mixed-language filler', () => {
+  const NOW = Date.UTC(2026, 9, 26, 12) ; const h = (x: number) => Math.floor(NOW / 1000) - x * 3600;
+  const it = (title: string, t: number, tags: string[] = [], also = 0): NewsItem => ({ title, source: 'S', url: 'u:' + title, t, tags, also, sources: [] });
+  const castrol = [it('Castrol India Q3 Results: how rising costs hit margins', h(14), ['Results'], 7), it('Castrol India retains 21-24% margin guidance despite cost surge', h(9)), it('Castrol India shares: technical view and price target', h(5), ['Rating'])];
+  const laurus = [it('Laurus Labs ne maari entry! Share ke All-Time High par, pehle tezi', h(24 * 7), ['Results']), it('What Laurus Labs buyers were betting on before a 118% rally', h(96)), it('Laurus Labs gets USFDA approval for new plant', h(30), ['Regulator'])];
+  const market = [it('Gift Nifty today: Sensex, Nifty likely to open flat as crude tops $115', h(16)), it('RBI keeps repo rate unchanged, signals pause', h(6)), it('Sensex ends higher as banks rally', h(3)), it('Tariff talks: government weighs duty cut', h(40))];
+  const out = decisionNews(market, [{ sym: 'CASTROLIND', name: 'Castrol India Ltd', items: castrol }, { sym: 'LAURUSLABS', name: 'Laurus Labs Ltd', items: laurus }], NOW, 5);
+  const titles = out.map((x) => x.title);
+  assert.equal(out.filter((x) => x.sym === 'CASTROLIND').length, 1, 'two stories about one results night are one line');
+  assert.match(titles.join('|'), /Q3 Results/); assert.doesNotMatch(titles.join('|'), /technical view|margin guidance/);
+  assert.equal(out.filter((x) => x.sym === 'LAURUSLABS').length, 1); assert.match(titles.join('|'), /USFDA/);
+  assert.doesNotMatch(titles.join('|'), /Gift Nifty|Sensex ends|ne maari|betting on/, 'recaps, previews, filler and mixed-language headlines are out');
+  assert.match(titles.join('|'), /RBI keeps repo rate/); assert.doesNotMatch(titles.join('|'), /Tariff talks/, 'a market story older than a day is out');
+  assert.equal(new Set(titles).size, titles.length);
+  assert.deepEqual(decisionNews(market.slice(0, 1), [], NOW), [], 'nothing qualifying means nothing shown');
 });

@@ -286,7 +286,7 @@ test('ledger corrections: a voided pick stays in the record with its reason and 
   l = applyCorrections(l, fixes);
   assert.deepEqual(Object.keys(l.voided!).sort(), ['2026-10-23|LVT|L1', '2026-10-23|LVT|L2']); assert.equal(l.picks.length, 3);     // nothing removed
   assert.equal(applyCorrections(l, fixes), l);                                                                                    // idempotent
-  const s = summarizeLedger(l); assert.equal(s.all.picks, 1); assert.equal(s.engines.find((e) => e.engine === 'LVT')!.picks, 0); assert.equal(s.engines.find((e) => e.engine === 'MOM')!.picks, 1);
+  const s = summarizeLedger(l); assert.equal(s.all.picks, 1); assert.equal(s.engines.find((e) => e.engine === 'LVT'), undefined, 'a retired engine is not listed'); assert.equal(s.engines.find((e) => e.engine === 'MOM')!.picks, 1);
   assert.equal(applyCorrections(record(emptyLedger('x'), [run('MOM', ['A'])], '2026-10-23', 'n').ledger, fixes).voided, undefined);   // a correction that matches nothing changes nothing
 });
 

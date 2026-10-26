@@ -86,3 +86,27 @@ export function companyStories(name: string, items: NewsItem[], limit = 3): News
   }
   return out.slice(0, limit).map((o) => ({ ...o.it, also: o.n }));
 }
+
+/* ---------- Today: only what could change a decision ---------- */
+const NOISE = /gift nifty|stocks? to (buy|watch|track)|live updates?|market (wrap|live|today|outlook)|top (gainers|losers)|price target|technical (view|outlook)|buy or sell|closing bell|opening bell|ends? (higher|lower|flat)|sensex (today|ends|jumps|falls)|nifty (today|ends)|horoscope|what .* (betting|buyers)|rally before/i;
+const HINGLISH = /\b(ne|ke|ki|ka|ko|par|pehle|baad|tezi|giravat|hai|hain|mein|kya|aaj|share|maari|entry)\b/gi;
+const MACRO = /\b(rbi|sebi|repo rate|rate (cut|hike)|inflation|gdp|budget|tariff|fed|fomc|fii|fpi|crude|brent|rupee|ipo)\b/i;
+/** Pure. The short list for Today. Every line has to be able to change something the reader is holding or following:
+ *  - company stories only for the names passed in (held or followed), only from the last 72 hours, only when the headline carries a material tag
+ *    (results, regulator, deal, order, rating, payout, people), and ONE line per name: a results story and a "margin guidance" story about the same
+ *    night are one event, so the most corroborated wins and the rest are counted as "+N outlets";
+ *  - market stories at most two, only from the last day, only when they name a macro driver (RBI, SEBI, rates, crude, tariffs, flows), never a
+ *    price-action recap or a "stocks to watch" list;
+ *  - promotional and mixed-language headlines are dropped; the same story is never shown twice. */
+export function decisionNews(market: NewsItem[], companies: { sym: string; name: string; items: NewsItem[] }[], nowMs = Date.now(), limit = 5): Merged[] {
+  const clean = (it: NewsItem) => !NOISE.test(it.title) && (it.title.match(HINGLISH) ?? []).length < 2;
+  const hours = (it: NewsItem) => (nowMs / 1000 - it.t) / 3600;
+  const feeds: { sym?: string; items: NewsItem[] }[] = [];
+  for (const c of companies) {
+    const one = companyStories(c.name, c.items.filter(clean).filter((it) => hours(it) <= 72 && it.tags.length > 0), 1);
+    if (one.length) feeds.push({ sym: c.sym, items: one });
+  }
+  const mk = market.filter(clean).filter((it) => hours(it) <= 24 && MACRO.test(it.title)).slice(0, 2);
+  if (mk.length) feeds.push({ items: mk });
+  return mergeNews(feeds, limit, nowMs);
+}
