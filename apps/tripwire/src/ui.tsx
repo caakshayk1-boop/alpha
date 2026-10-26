@@ -88,15 +88,11 @@ export function Empty({ title, children, action }: { title: string; children?: R
 }
 export function useEscape(fn: () => void) { useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && fn(); document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [fn]); }
 
-/** The brand mark: a rising line that peaks at a glowing point (the tripwire). Same mark as the app icon. */
+/** The brand mark: a rising line that peaks at a square point (the tripwire). Flat, one colour, the same as the app icon. */
 export function Mark({ size = 56, className = '' }: { size?: number; className?: string }) {
   return <svg className={`mark ${className}`} width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
-    <defs><linearGradient id="mk-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#141a0c" /><stop offset="1" stopColor="#0a0d07" /></linearGradient>
-      <linearGradient id="mk-ln" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="var(--a2)" /><stop offset="1" stopColor="var(--lime)" /></linearGradient>
-      <radialGradient id="mk-gl"><stop offset="0" stopColor="var(--a5)" stopOpacity=".55" /><stop offset="1" stopColor="var(--a5)" stopOpacity="0" /></radialGradient></defs>
-    <rect width="512" height="512" rx="112" fill="url(#mk-bg)" />
-    <circle cx="256" cy="150" r="96" fill="url(#mk-gl)" />
-    <path d="M96 330 L200 330 L256 150 L312 330 L416 330" fill="none" stroke="url(#mk-ln)" strokeWidth="30" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="256" cy="150" r="26" fill="var(--a5)" />
+    <rect width="512" height="512" rx="112" fill="#0a0a0a" />
+    <path d="M96 330 L200 330 L256 150 L312 330 L416 330" fill="none" stroke="#b8ef43" strokeWidth="30" strokeLinecap="square" strokeLinejoin="miter" />
+    <rect x="232" y="126" width="48" height="48" fill="#b8ef43" />
   </svg>;
 }

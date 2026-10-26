@@ -11,9 +11,10 @@ export function StatusBar({ asOf }: { asOf?: string | null }) {
   const ist = new Date(now + 330 * 60000); const hm = ist.toISOString().slice(11, 16); const wd = ist.getUTCDay(); const m = ist.getUTCHours() * 60 + ist.getUTCMinutes();
   const phase = open ? 'open' : wd >= 1 && wd <= 5 && m < 9 * 60 + 15 ? 'pre' : 'closed';
   return <div className="statusbar" role="status" aria-label="Market session">
+    <span className="brand"><i aria-hidden="true" />TRIPWIRE</span>
     <span>NSE <b className={phase === 'open' ? 'on' : phase === 'pre' ? 'pre' : 'off'}>{phase === 'open' ? 'OPEN' : phase === 'pre' ? 'PRE-OPEN' : 'CLOSED'}</b></span>
     <span>IST <b>{hm}</b></span>
     <span className="sp" />
-    {asOf ? <span>Data through <b>{asOf}</b></span> : null}
+    {asOf ? <span className="data">Data through <b>{asOf}</b></span> : null}
   </div>;
 }

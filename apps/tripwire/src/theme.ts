@@ -1,7 +1,7 @@
 /** One look, fixed: the terminal. No options. (The id stays 'aurora' because the home-screen icons are named for it.) */
 export interface Theme { id: string; label: string; swatch: string; bar: string }
 export const THEMES: Theme[] = [
-  { id: 'aurora', label: 'Terminal', swatch: '#ffb000', bar: '#000000' },
+  { id: 'aurora', label: 'Terminal', swatch: '#b8ef43', bar: '#0a0a0a' },
 ];
 export const themeOf = (id?: string) => THEMES.find((t) => t.id === id) ?? THEMES[0];
 export function applyTheme(id?: string) {

@@ -13,7 +13,7 @@ mkdirSync(join(DIST, 'data', 'c'), { recursive: true });
 const stamp = Date.now().toString(36);
 await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: true, sourcemap: false, target: 'es2020', format: 'iife', jsx: 'automatic',
   outfile: join(DIST, `app.${stamp}.js`), loader: { '.css': 'css' }, define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'warning' });
-await build({ entryPoints: [join(HERE, 'src/style.css')], bundle: true, minify: true, outfile: join(DIST, `app.${stamp}.css`), logLevel: 'warning' });
+await build({ entryPoints: [join(HERE, 'src/style.css')], bundle: true, minify: true, external: ['/fonts/*'], outfile: join(DIST, `app.${stamp}.css`), logLevel: 'warning' });
 
 // The screen rows: one compact file for Discover, the rules and Today. Fields not listed here are not shipped.
 const KEEP = ['sym', 'name', 'sector', 'tier', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'rs3m', 'from_high', 'high52', 'low52', 'sma20', 'sma50', 'sma200', 'rsi', 'vol_spike', 'liquid', 'turnover_cr', 'pe', 'pb', 'roce_med', 'rev_cagr', 'eps_cagr', 'de', 'net_margin', 'ebit_margin', 'div_yield', 'risk_lvl', 'next_earnings', 'last_date', 'fy', 'has_stmts', 'r6m', 'r1y', 'sd1y', 'atr_pct', 'piotroski', 'comp', 'q', 'g', 'v', 'tech', 'pe_pctile', 'roe', 'icover', 'cfo_pat', 'fcf_margin', 'margin_delta', 'em_label', 'rank_move', 'insiders', 'instis', 'shares_changed'];
@@ -53,6 +53,7 @@ writeFileSync(join(DIST, '404.html'), html);
 for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
+cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp);
 writeFileSync(join(DIST, 'sw.js'), sw);
 writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
