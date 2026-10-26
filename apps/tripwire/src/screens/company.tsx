@@ -12,6 +12,10 @@ import { checklistFor } from '../insight.ts';
 import { istDay, current, toggleFollow } from '../store.ts';
 import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
+import { similarTo } from '../similar.ts';
+import { metricOf } from '../screener.ts';
+import { levelsFor } from '../levels.ts';
+import { useAutoPicks } from '../book.ts';
 import { Tick, TvButton, TvIcon } from '../live.tsx';
 import { Intel } from './Intel.tsx';
 import { DecisionCard } from './DecisionCard.tsx';
@@ -25,7 +29,7 @@ export function Company({ sym }: { sym: string }) {
   const row = c.data?.row; const el = row ? eligibilityOf(row, c.data?.years ?? []) : null;
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
-  const { out: eng } = useEngines();
+  const { out: eng } = useEngines(); const picks = useAutoPicks();
   const evals = useMemo(() => (row && eng ? ACTIVE.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
@@ -56,7 +60,7 @@ export function Company({ sym }: { sym: string }) {
     <DecisionCard c={c.data} lp={lp} />
 
     <Head>Price history</Head>
-    <PriceChart sym={sym} />
+    <PriceChart sym={sym} levels={levelsFor(sym, picks)} />
 
     <Head>Case and countercase</Head>
     <details className="ev" open><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">
@@ -65,6 +69,10 @@ export function Company({ sym }: { sym: string }) {
       {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">No risk flag or weakness was raised. Read the filings anyway; the screen only sees ratios.</span>}</div></details>
     <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours. Risk grade: {grade.level ?? 'not shown'}.{grade.note ? ` ${grade.note}` : ''}</p>
     {(cur.hidden.length > 0 || cur.merged > 0 || el!.notes.length > 0) && <div className="note info" style={{ marginTop: 8 }}>{el!.notes.map((t) => <p key={t} style={{ margin: '0 0 6px' }}>{t}</p>)}{cur.hidden.length > 0 && <p style={{ margin: 0 }}>{cur.hidden.length} statement-based line{cur.hidden.length === 1 ? '' : 's'} hidden for that reason.{cur.merged > 0 ? ` ${cur.merged} repeat${cur.merged === 1 ? '' : 's'} folded into one.` : ''}</p>}{cur.hidden.length === 0 && cur.merged > 0 && <p style={{ margin: 0 }}>{cur.merged} repeated line{cur.merged === 1 ? '' : 's'} folded into one.</p>}</div>}
+
+    {(() => { const like = scr.data ? similarTo(sym, scr.data.rows, 5) : []; return like.length > 0 && <><Head>Stocks like this</Head>
+      <section className="card" aria-label="Stocks with the nearest figures">{like.map((l) => <a key={l.row.sym} className="li" href={`#/c/${encodeURIComponent(l.row.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{l.row.sym}</b> <span className="mute small">{l.row.name}</span><br /><span className="small mute">Nearest on {l.closest.map((k) => metricOf(k)?.short ?? k).join(', ')} · {l.shared} figures compared</span></span></a>)}
+        <p className="small mute" style={{ margin: '8px 0 0' }}>Closeness of today's measured figures only (median-scaled, a missing figure left out). It does not say the businesses are alike or will move together.</p></section></>; })()}
 
     <Head>Engine check</Head>
     {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>

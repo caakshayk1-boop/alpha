@@ -8,6 +8,7 @@ import { saveScreen } from '../store.ts';
 import { useWatchQuotes } from '../quotes.ts';
 import { inr0, pct } from '../fmt.ts';
 import type { Row } from '../screen.ts';
+import { askInWords, ASK_EXAMPLES } from '../ask.ts';
 import { COLUMN_SETS, METRICS, describeCond, fmtMetric, metricOf, sameCond, sortByMetric, toCsv, valueOf, type Cond, type MetricKey } from '../screener.ts';
 
 const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
@@ -60,6 +61,8 @@ export function Discover() {
   const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length ? filterRows(rows, { ...NO_FILTER, ...l.f }).rows.length : null])) as Record<string, number | null>, [rows]);
   const lensOn = (l: (typeof LENSES)[number]) => (Object.entries(l.f) as [keyof Filters, string][]).every(([k, v]) => (f[k] ?? '') === v);
   const applyLens = (l: (typeof LENSES)[number]) => { if (lensOn(l)) set(Object.fromEntries(Object.keys(l.f).map((k) => [k, ''])) as Partial<Filters>); else set({ trend: '', momentum: '', value: '', quality: '', ...l.f }); tick(); };
+  const [ask, setAsk] = useState(''); const [unread, setUnread] = useState<string[]>([]);
+  const runAsk = () => { const a = askInWords(ask); setUnread(a.unread); if (a.conds.length) { const have = f.cond ?? []; set({ cond: [...have.filter((x) => !a.conds.some((c) => c.m === x.m && c.op === x.op)), ...a.conds] }); setAsk(''); } };
   const set = (p: Partial<Filters>) => { setF((x) => ({ ...x, ...p })); setLimit(PAGE); };
   const toggle = (sym: string) => setPick((p) => (p.includes(sym) ? p.filter((x) => x !== sym) : p.length < 3 ? [...p, sym] : p));
   return <div>
@@ -75,6 +78,11 @@ export function Discover() {
         <button key={l} className="chip cc" style={{ '--cc': c } as React.CSSProperties} aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
     {chosen.length > 0 && <div className="chips chosen" role="group" aria-label="Active filters">{chosen.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={() => set({ [c.k]: '' } as Partial<Filters>)} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}<button className="chip" onClick={() => { setF(NO_FILTER); setLimit(PAGE); }}>Clear all</button></div>}
+    <form className="askbox" role="search" aria-label="Ask in words" onSubmit={(e) => { e.preventDefault(); runAsk(); }}>
+      <input className="field" value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Ask in words: debt free and roce above 15" aria-label="Describe the screen in words" enterKeyHint="search" />
+      <button className="btn sm" type="submit">Apply</button>
+    </form>
+    {unread.length > 0 && <p className="small mute" role="status" style={{ margin: '6px 0 0' }}>Not understood, so left out: {unread.map((u) => `“${u}”`).join(', ')}. Name a figure, a direction and a number, for example <em>{ASK_EXAMPLES[1]}</em>.</p>}
     <div className="chips chosen" role="group" aria-label="Conditions">
       {(f.cond ?? []).map((c) => <button key={`${c.m}${c.op}${c.v}`} className="chip cc on-x" onClick={() => set({ cond: (f.cond ?? []).filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
       <button className="chip" onClick={() => setCondSheet(true)}>+ Condition</button>

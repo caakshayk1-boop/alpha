@@ -84,3 +84,9 @@ export function useAutoBook(on = true) {
   const deployed = rows.filter((r) => r.v.status === 'open').reduce((a, r) => a + (r.v.entry ?? r.p.ref) * r.p.qty, 0);
   return { ledger, plan, rows, sum, slots, deployed, dayTotal: live.dayTotal, session: live.session, intra: live.intra, bars: live.bars, cost: live.cost, anyLive: live.anyLive, cfg: DEFAULT_CFG };
 }
+
+/** Every pick the record has filed, for drawing a name's levels on its chart. No price polling: it reads the ledger only. */
+export function useAutoPicks() {
+  const ledger = useLedger();
+  return useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG).taken.map((t) => t.pick) : []), [ledger.data]);
+}

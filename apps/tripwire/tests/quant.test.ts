@@ -307,3 +307,11 @@ test('chart axes: round price ticks inside the data range, log ticks per decade,
   assert.ok(x.length >= 3 && x.length <= 5); assert.ok(x.every((p) => p.t > t0 && p.t < t1)); assert.match(x[0].label, /^20\d\d$/);
   const m = xTicks(Date.UTC(2026, 3, 20) / 1000, Date.UTC(2026, 9, 23) / 1000, 5); assert.ok(m.length >= 2 && m.length <= 6); assert.ok(m.every((p) => /^[A-Z][a-z]{2}( \d{4})?$/.test(p.label)));
 });
+
+import { smaSeries, drawdownSeries, pathThrough } from '../src/chart.ts';
+test('chart overlays: moving average by hand, drawdown from the running peak, a path that lifts the pen over gaps', () => {
+  const p = [1, 2, 3, 4, 5, 3].map((c, i) => ({ t: i, c }));
+  assert.deepEqual(smaSeries(p, 3), [null, null, 2, 3, 4, 4]);            // (1+2+3)/3, (2+3+4)/3, (3+4+5)/3, (4+5+3)/3
+  const dd = drawdownSeries([100, 120, 90, 120, 130, 117].map((c, i) => ({ t: i, c }))); assert.deepEqual(dd.map((x) => Math.round(x * 100) / 100), [0, 0, -25, 0, 0, -10]);
+  assert.equal(pathThrough([0, 1, 2, 3], [5, null, 7, 8]), 'M0 5M2 7L3 8'); assert.equal(pathThrough([0], [null]), '');
+});

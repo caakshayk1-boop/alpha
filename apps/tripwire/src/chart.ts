@@ -138,3 +138,18 @@ export function xTicks(t0: number, t1: number, max = 5): { t: number; label: str
   }
   return out;
 }
+
+/** Simple moving average of the closes, one value per point, null until `n` closes exist. */
+export function smaSeries(pts: readonly Pt[], n: number): (number | null)[] {
+  const out: (number | null)[] = []; let sum = 0;
+  for (let i = 0; i < pts.length; i++) { sum += pts[i].c; if (i >= n) sum -= pts[i - n].c; out.push(i >= n - 1 ? sum / n : null); }
+  return out;
+}
+/** Percent below the running peak since the first point of the window (zero at a new high, never positive). */
+export function drawdownSeries(pts: readonly Pt[]): number[] {
+  let peak = -Infinity; return pts.map((p) => { peak = Math.max(peak, p.c); return peak > 0 ? (p.c / peak - 1) * 100 : 0; });
+}
+/** An SVG path through the non-null values at the given x and y positions; a gap (null) lifts the pen. */
+export function pathThrough(xs: readonly number[], ys: readonly (number | null)[]): string {
+  let d = '', pen = false; for (let i = 0; i < xs.length; i++) { const y = ys[i]; if (y === null || !Number.isFinite(y)) { pen = false; continue; } d += `${pen ? 'L' : 'M'}${Math.round(xs[i] * 10) / 10} ${Math.round(y * 10) / 10}`; pen = true; } return d;
+}
