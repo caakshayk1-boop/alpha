@@ -1,9 +1,9 @@
 {
  "schema": "alpha-brief/1",
  "version": "swing-2.0.1",
- "generated": "2026-10-25T06:36:50Z",
- "data_through": "2026-10-22",
- "stale_sessions_behind": 1,
+ "generated": "2026-10-26T18:52:32Z",
+ "data_through": "2026-10-26",
+ "stale_sessions_behind": null,
  "paper_only": true,
  "alerts": {
   "on": false,
@@ -16,15 +16,15 @@
   "failing": [
    {
     "rule": "Nifty above its 200-day average, and that average rising over 20 sessions",
-    "value": "Nifty 22,688 · 200-day 24,142"
+    "value": "Nifty 22,753 · 200-day 24,108"
    },
    {
     "rule": "Nifty above its 50-day average",
-    "value": "Nifty 22,688 · 50-day 23,441"
+    "value": "Nifty 22,753 · 50-day 23,370"
    },
    {
     "rule": "At least 50% of stocks above their own 50-day average",
-    "value": "15% above"
+    "value": "13% above"
    }
   ]
  },
@@ -35,15 +35,5 @@
   "closed": 0,
   "avg_r": null
  },
- "weekly": {
-  "gate_on_days": 0,
-  "of_days": 5,
-  "paper_closed": 0,
-  "paper_avg_r": null,
-  "backtest_holdout_avg_r": 0.015,
-  "holdout_trades": 46,
-  "compared": false,
-  "note": "0 of 30 closed paper trades: too few to compare with the backtest. No decay or survival is claimed."
- },
- "text": "Alpha signal brief · data through 22 Oct · paper only, not advice\n⚠ The data stops 1 day(s) before the last finished session. Treat everything below as old.\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (1 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 22,688 · 200-day 24,142)\n  not met: Nifty above its 50-day average (Nifty 22,688 · 50-day 23,441)\n  not met: At least 50% of stocks above their own 50-day average (15% above)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWeek: the gate was on 0 of the last 5 sessions. 0 of 30 closed paper trades: too few to compare with the backtest. No decay or survival is claimed.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
+ "text": "Alpha signal brief · data through 26 Oct · paper only, not advice\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (1 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 22,753 · 200-day 24,108)\n  not met: Nifty above its 50-day average (Nifty 22,753 · 50-day 23,370)\n  not met: At least 50% of stocks above their own 50-day average (13% above)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
 }
