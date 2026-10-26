@@ -1,18 +1,18 @@
 # Tripwire engines, back-tested as built
 
-Run 2026-10-26 03:12 UTC, 660 symbols, 2015-10-23 to 2026-10-23. Survivorship bias applies. Quality at a fair price cannot be back-tested (no point-in-time accounts); it is judged on the forward ledger.
+Run 2026-10-26 16:28 UTC, 660 symbols, 2015-10-26 to 2026-10-26. Survivorship bias applies. Quality at a fair price cannot be back-tested (no point-in-time accounts); it is judged on the forward ledger.
 
 | Engine | period | trades | mean net | hit rate | mean R | excess vs universe (t) |
 |---|---|---|---|---|---|---|
-| MOM | train | 303 | 0.0155 | 0.488 | 0.157 | 0.006 (0.634) |
-| MOM | validation | 111 | 0.0193 | 0.495 | 0.21 | 0.0006 (0.067) |
-| MOM | holdout | 162 | -0.0093 | 0.426 | -0.092 | -0.011 (-0.954) |
-| MOMR (challenger) | train | 279 | 0.0204 | 0.484 | 0.219 | 0.0137 (1.5) |
-| MOMR (challenger) | validation | 106 | 0.0153 | 0.538 | 0.201 | -0.0012 (-0.116) |
-| MOMR (challenger) | holdout | 153 | -0.0046 | 0.451 | -0.028 | -0.0104 (-1.08) |
-| LVT | train | 158 | -0.0003 | 0.367 | -0.017 | -0.031 (-2.206) |
-| LVT | validation | 60 | 0.0203 | 0.4 | 0.375 | -0.0182 (-0.943) |
-| LVT | holdout | 85 | -0.0142 | 0.271 | -0.265 | -0.0312 (-1.823) |
+| MOM | train | 301 | 0.013 | 0.468 | 0.155 | 0.0049 (0.586) |
+| MOM | validation | 117 | 0.0201 | 0.513 | 0.21 | 0.0018 (0.183) |
+| MOM | holdout | 164 | 0.0035 | 0.494 | 0.038 | -0.0022 (-0.185) |
+| MOMR (challenger) | train | 277 | 0.0168 | 0.469 | 0.193 | 0.0103 (1.143) |
+| MOMR (challenger) | validation | 112 | 0.0128 | 0.536 | 0.18 | -0.0074 (-0.664) |
+| MOMR (challenger) | holdout | 155 | -0.0039 | 0.458 | -0.052 | -0.0084 (-0.991) |
+| LVT | train | 160 | -0.0008 | 0.362 | -0.018 | -0.0302 (-2.282) |
+| LVT | validation | 60 | 0.0152 | 0.35 | 0.393 | -0.0233 (-1.254) |
+| LVT | holdout | 85 | -0.0142 | 0.294 | -0.252 | -0.0324 (-1.679) |
 
 | Engine | label |
 |---|---|
