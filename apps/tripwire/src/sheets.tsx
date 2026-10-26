@@ -3,6 +3,8 @@ import { go, setState, useAppState } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
 import { useScreen, useSignals } from './data.ts';
 import { sizePlan } from './planner.ts';
+import { useEngines } from './useEngines.ts';
+import { DEFAULT_COST, SLIPPAGE_PCT } from './tracker.ts';
 import { addEntry, current, editEntry, savePlan, istDay } from './store.ts';
 import { METRICS, glossarySearch, metric } from './metrics.ts';
 import { inr, inr0, isNum, dayWord } from './fmt.ts';
@@ -13,21 +15,24 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
   const st = useAppState(); const scr = useScreen(); const sig = useSignals(); const { toast, tick } = useUi();
   const [sym, setSym] = useState(s0 ?? '');
   const row = scr.data?.rows.find((r) => r.sym === sym.toUpperCase());
+  const eng = useEngines(); const pickNow = eng.out?.picks.find((p) => p.sym === sym.toUpperCase()) ?? null;
   const [entry, setEntry] = useState(e0 ? String(e0) : row?.price ? String(row.price) : '');
   const [stop, setStop] = useState(sl0 ? String(sl0) : '');
   const [touched, setTouched] = useState(!!e0);
   useEffect(() => { if (!touched && row?.price) setEntry(String(row.price)); }, [row?.price, touched]);   // the screen can arrive after the sheet opens
   const [risk, setRisk] = useState(String(st.prefs.riskPct)); const [maxp, setMaxp] = useState(String(st.prefs.maxPositionPct));
   const [expiry, setExpiry] = useState(''); const [note, setNote] = useState('');
-  const cost = sig.data?.cost_round_trip_pct ?? 0.4;
+  const cost = sig.data?.cost_round_trip_pct ?? DEFAULT_COST;
   const out = useMemo(() => sizePlan({ equity: st.prefs.equity, cash: st.prefs.cash, riskPct: Number(risk), entry: Number(entry), stop: Number(stop), maxPositionPct: Number(maxp), costRoundTripPct: cost, tradedValue: isNum(row?.turnover_cr) ? row!.turnover_cr! * 1e7 : null }), [st.prefs.equity, st.prefs.cash, risk, entry, stop, maxp, cost, row]);
   const have = entry !== '' && stop !== '';
   const BIND = { risk: 'your risk budget', cash: 'your cash', position: 'your position limit', liquidity: 'how thinly it trades' } as const;
   return <Sheet title="Paper plan" onClose={onClose}>
+    {pickNow && <div className="note" style={{ marginBottom: 8 }}><b>Experimental engine.</b> {sym.toUpperCase()} is tonight's {pickNow.engine === 'MOM' ? 'Momentum' : 'Quality'} pick, from an engine that has not passed its tests. A plan sizes your risk; it does not make the idea sound.</div>}
     <label className="l" htmlFor="pl-s">Symbol</label>
     <input id="pl-s" className="field" value={sym} onChange={(e) => { setSym(e.target.value.toUpperCase()); setTouched(false); }} placeholder="e.g. TCS" autoCapitalize="characters" />
-    <div className="row"><div className="grow"><label className="l" htmlFor="pl-e">Entry, ₹</label><input id="pl-e" className="field num" inputMode="decimal" value={entry} onChange={(e) => { setTouched(true); setEntry(e.target.value); }} /></div>
+    <div className="row"><div className="grow"><label className="l" htmlFor="pl-e">Entry, ₹ (the price you assume you pay)</label><input id="pl-e" className="field num" inputMode="decimal" value={entry} onChange={(e) => { setTouched(true); setEntry(e.target.value); }} /></div>
       <div className="grow"><label className="l" htmlFor="pl-x">Stop, ₹ (invalidation)</label><input id="pl-x" className="field num" inputMode="decimal" value={stop} onChange={(e) => setStop(e.target.value)} /></div></div>
+    <p className="small dim" style={{ margin: '6px 0 0' }}>It starts at the last close{row?.price ? ` (${inr(row.price)}, ${dayWord(row.last_date)})` : ''}. Nobody buys at a past close: the paper tracker fills at the NEXT open plus {SLIPPAGE_PCT}% slippage, and skips the trade if that open is more than 2% above the signal close. Type the price you expect to pay if it differs.</p>
     {row && isNum(row.sma50) && <button className="chip" style={{ marginTop: 8 }} onClick={() => setStop(String(Math.round(row.sma50! * 100) / 100))}>Use the 50-day average ({inr(row.sma50)}) as my stop</button>}
     <div className="row"><div className="grow"><label className="l" htmlFor="pl-r">Risk, % of equity</label><input id="pl-r" className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} /></div>
       <div className="grow"><label className="l" htmlFor="pl-m">Largest position, %</label><input id="pl-m" className="field num" inputMode="decimal" value={maxp} onChange={(e) => setMaxp(e.target.value)} /></div></div>
@@ -38,6 +43,7 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
       <p className="small dim" style={{ margin: '8px 0' }}>Sized by {BIND[out.binding]}. Caps: risk {out.caps.risk} · cash {out.caps.cash} · position {out.caps.position} · liquidity {out.caps.liquidity ?? 'unknown'}.</p>
       <div className="num small">Planned risk <b>{inr0(out.risk)}</b> ({inr(out.riskPerShare)} a share) · costs about <b>{inr0(out.costs)}</b></div>
       <table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>If it reaches</th><th>Price</th><th>After costs</th></tr></thead><tbody>{out.targets.map((t) => <tr key={t.r}><td>+{t.r}R</td><td className="num">{inr(t.price)}</td><td className="num up">{inr0(t.net)}</td></tr>)}</tbody></table>
+      {(() => { const hi = sizePlan({ equity: st.prefs.equity, cash: st.prefs.cash, riskPct: Number(risk), entry: Number(entry) * 1.02, stop: Number(stop), maxPositionPct: Number(maxp), costRoundTripPct: cost }); return hi.ok ? <p className="small dim" style={{ margin: '8px 0 0' }}>If it opens 2% higher (the most the tracker will accept), the same {out.qty} shares risk about <b>{inr0(out.qty * (Number(entry) * 1.02 - Number(stop)))}</b> to the stop, not {inr0(out.risk)}.</p> : null; })()}
       <p className="small down" style={{ margin: '10px 0 0' }}>{out.limits.join(' ')} Targets are conditional outcomes on the engine’s plan, not predictions.</p>
     </div>}
     <label className="l" htmlFor="pl-d">Expires (optional)</label><input id="pl-d" className="field" type="date" min={istDay()} value={expiry} onChange={(e) => setExpiry(e.target.value)} />

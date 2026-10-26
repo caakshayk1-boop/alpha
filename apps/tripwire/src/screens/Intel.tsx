@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useFactors, type Company } from '../data.ts';
 import type { Row } from '../screen.ts';
+import { eligibilityOf } from '../eligibility.ts';
 import { FACTOR_META, earningsQuality, holders, ownershipRead, peerLadder, riskMap, seasonRead } from '../intel.ts';
 import { Spark } from '../live.tsx';
 import { dayWord, pct } from '../fmt.ts';
@@ -14,7 +15,7 @@ const Sec = ({ title, head, children, open = false }: { title: string; head: str
 export function Intel({ c, rows }: { c: Company; rows: readonly Row[] }) {
   const r = c.row; const month = new Date(Date.now() + 330 * 60000).getUTCMonth();
   const own = holders(c.inst); const season = seasonRead(c.season, month); const ladder = useMemo(() => peerLadder(r, rows), [r, rows]);
-  const eq = earningsQuality(r); const rm = riskMap(r); const fac = useFactors(); const fr = fac.data?.rows[c.sym];
+  const eq = earningsQuality(r, eligibilityOf(r, c.years)); const rm = riskMap(r); const fac = useFactors(); const fr = fac.data?.rows[c.sym];
   const mx = Math.max(1, ...(c.season?.m ?? []).map((x) => Math.abs(x?.[1] ?? 0)));
   return <>
     {own.length > 0 && <Sec title="Who owns it" head={c.inst?.signal_label ?? 'Shareholding'} open>

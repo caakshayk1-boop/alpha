@@ -6,12 +6,13 @@ import { AutoBook } from './AutoBook.tsx';
 import { TvButton } from '../live.tsx';
 import { Evidence } from './Evidence.tsx';
 import { useBacktest } from '../data.ts';
-import { engineEvidence } from '../evidence.ts';
+import { engineEvidence, evidenceHeadline } from '../evidence.ts';
+import { RANK_NOTE } from '../decision.ts';
 import { DEFAULT_COST, useAutoBook } from '../book.ts';
 import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
 import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
-import { ENGINES, type Pick } from '../quant.ts';
+import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
 import { takePaper } from '../store.ts';
@@ -41,26 +42,33 @@ export function usePaperTake() {
   };
 }
 
+/** The engine's evidence state, always beside its picks and paper actions. A skeleton while the study loads; a neutral chip for untested, never red. */
+export function EvidenceChip({ id }: { id: string }) {
+  const bt = useBacktest(); const ev = engineEvidence(id, bt.data, bt.loading);
+  if (ev.state === 'loading') return <span className="sk" style={{ display: 'inline-block', height: 20, width: 96 }} aria-label="Loading the evidence" />;
+  return <span className={`tag ${ev.tone === 'bad' ? 'peach' : ev.tone === 'ok' ? 'lime' : ''}`} title={ev.line}>{ev.short}</span>;
+}
 function Picks() {
   const { scr, out } = useEngines(); const bt = useBacktest(); const auto = useAutoBook(true); const take = usePaperTake(); const mine = useAppState().paper;
   if (scr.loading) return <Loading what="the engines" />;
   if (scr.err || !out) return <Failed what="the engines" err={scr.err ?? 'no data'} retry={scr.retry} />;
-  const all = out.picks;
+  const all = out.picks; const headline = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   const state = (p: Pick) => { if (!auto.plan) return { k: 'no' as const, text: 'The record could not be read, so the auto book cannot take it yet' }; const t = auto.plan?.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); if (t) return { k: 'in' as const, text: 'In the auto book' }; const r = auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); return r ? { k: 'no' as const, text: `Not taken: ${r.why}` } : { k: 'wait' as const, text: 'Taken automatically when tonight is written to the record' }; };
   return <>
-    <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {bt.data ? 'In a ten-year back-test none beat the whole market after costs.' : 'The historical test has not been published yet.'} The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
+    <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {headline ? `${headline} ` : ''}The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
     {all.length > 0 && <p className="small dim" style={{ margin: '0 0 6px' }}>Every pick below is taken on paper automatically (up to 30 positions, ₹1,00,000 each). A pick the auto book refuses can be taken by hand. <a href="#/signals?v=auto" style={{ textDecoration: 'underline' }}>See the auto book</a></p>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
-      <div className="card"><div className="row between"><span className="dim small">{def.line}</span><span className={`tag ${engineEvidence(def.id, bt.data).tone === 'bad' ? 'peach' : ''}`}>{engineEvidence(def.id, bt.data).short}</span></div>
+      <div className="card"><div className="row between"><span className="dim small">{def.line}</span><EvidenceChip id={def.id} /></div>
         <p className="mute small" style={{ margin: '6px 0 0' }}>{def.theory}</p>
         <details className="ev" style={{ marginTop: 10 }}><summary>How it picks<span className="chev">▾</span></summary><div className="body"><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
           <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>
       {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
-        <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num">score {p.score}</span></div>
+        <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num" title={RANK_NOTE}>Rank {p.score} of 100</span></div>
         <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
-        <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}</div></details>
-        <div className="row" style={{ marginTop: 10, gap: 8 }}>{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);
+        {(p.flags ?? []).map((f) => <p key={f} className="small" style={{ margin: '0 0 6px', color: 'var(--a4)' }}>⚠ {f}</p>)}
+        <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}<p className="small dim" style={{ margin: '8px 0 0' }}>{RANK_NOTE}</p></div></details>
+        <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}><EvidenceChip id={p.engine} />{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);
           return <><span className={`tag grow ${st.k === 'in' ? 'lime' : st.k === 'no' ? 'peach' : ''}`} style={{ whiteSpace: 'normal', justifyContent: 'center', textAlign: 'center' }}>{st.text}</span>{st.k === 'no' && <button className="btn sm" disabled={own} onClick={() => take(p)}>{own ? 'In your book' : 'Take it myself'}</button>}</>; })()}<TvButton sym={p.sym} className="btn" label="Chart" /></div></div>)
         : <Empty title="No pick tonight">{run.funnel.passed ? `${run.funnel.passed} names passed, but each needed a stop wider than the engine allows.` : 'No name passed every filter. Rules are never loosened to fill this list.'}</Empty>}
     </section>; })}

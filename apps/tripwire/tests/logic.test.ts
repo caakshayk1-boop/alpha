@@ -172,14 +172,21 @@ test('intel: the risk map sizes a position against the day\'s trading', () => {
   assert.match(riskMap({ sym: 'X', name: 'X', turnover_cr: 5 }).liquidity, /noticeable|Thin|Comfortable/); assert.equal(riskMap({ sym: 'X', name: 'X' }).tenLakhPct, null);
 });
 
-import { engineEvidence, studySummary } from '../src/evidence.ts';
-test('evidence: each engine is labelled from the back-test, and quality is never claimed either way', () => {
+import { engineEvidence, evidenceHeadline, studySummary } from '../src/evidence.ts';
+test('evidence: untested, not supported, mixed and supported are four different states, and quality is never claimed either way', () => {
   const bt = { meta: { when: 'x', symbols: 660, dates: ['2015-10-23', '2026-10-23'] }, engines: {
     MOM: { horizon: 20, picked: 1, skipped: 0, label: 'no historical support', periods: { train: { excess_vs_universe: 0.006, excess_t: 0.634 }, validation: { excess_vs_universe: 0.0006, excess_t: 0.067 }, holdout: { excess_vs_universe: -0.011, excess_t: -0.954 } } },
-    OKE: { horizon: 20, picked: 1, skipped: 0, label: 'not rejected', periods: { train: { excess_vs_universe: 0.01, excess_t: 2 }, validation: { excess_vs_universe: 0.01, excess_t: 1 }, holdout: { excess_vs_universe: 0.012, excess_t: 1.1 } } } } } as never;
-  const m = engineEvidence('MOM', bt); assert.equal(m.label, 'no historical support'); assert.equal(m.tone, 'bad'); assert.match(m.line, /2015 to 2026, 660 stocks/); assert.match(m.line, /\+0\.6% a trade.*t 0\.6.*\+0\.1% in the middle.*−1\.1% in the latest \(t −1\.0\)/);
-  assert.equal(engineEvidence('OKE', bt).tone, 'ok'); assert.equal(engineEvidence('QLT', bt).label, 'cannot be back-tested'); assert.equal(engineEvidence('LVT', bt).label, 'not yet tested'); assert.equal(engineEvidence('MOM', null).label, 'not yet tested');
+    OKE: { horizon: 20, picked: 1, skipped: 0, label: 'not rejected', periods: { train: { excess_vs_universe: 0.01, excess_t: 2 }, validation: { excess_vs_universe: 0.01, excess_t: 1 }, holdout: { excess_vs_universe: 0.012, excess_t: 2.4 } } },
+    MIX: { horizon: 20, picked: 1, skipped: 0, label: 'not rejected', periods: { train: { excess_vs_universe: 0.01, excess_t: 2 }, validation: { excess_vs_universe: -0.01, excess_t: -1 }, holdout: { excess_vs_universe: 0.002, excess_t: 0.3 } } } } } as never;
+  const m = engineEvidence('MOM', bt); assert.equal(m.state, 'unsupported'); assert.equal(m.tone, 'bad'); assert.match(m.line, /2015 to 2026, 660 stocks/); assert.match(m.line, /\+0\.6% in the early years.*t 0\.6.*\+0\.1% in the middle.*−1\.1% in the latest \(t −1\.0\)/);
+  assert.match(m.line, /equal-weighted average of the 660 stocks.*not the Nifty 50/); assert.doesNotMatch(m.line, /whole market/);
+  assert.equal(engineEvidence('OKE', bt).state, 'supported'); assert.equal(engineEvidence('MIX', bt).state, 'mixed');
+  const q = engineEvidence('QLT', bt); assert.equal(q.state, 'untested'); assert.equal(q.tone, 'unknown'); assert.match(q.line, /says nothing about whether it works/);
+  assert.equal(engineEvidence('LVT', bt).state, 'untested', 'no test published is untested, not failed'); assert.equal(engineEvidence('MOM', null).state, 'untested');
+  assert.equal(engineEvidence('MOM', null, true).state, 'loading'); assert.equal(engineEvidence('MOM', null, true).line, '', 'while loading nothing is claimed');
   assert.match(m.line, /Survivorship/);
+  assert.equal(evidenceHeadline(['MOM', 'QLT'], bt), 'Of the 2 engines now making picks: 1 not supported by the back-test, 1 untested.');
+  assert.equal(evidenceHeadline(['MOM', 'QLT'], null, true), null);
 });
 test('evidence: the study summary counts candidates, not baselines or controls, and names the best one with what it failed', () => {
   const f = (t: number) => ({ train: { ic: 0.05, t, months: 60, top_quintile_excess_net: 0.001 }, validation: { ic: 0.03, t: 1, months: 24, top_quintile_excess_net: 0.001 }, holdout: { ic: 0.03, t: 1, months: 30, top_quintile_excess_net: -0.001 } });

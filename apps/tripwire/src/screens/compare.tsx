@@ -5,13 +5,14 @@ import { CompareChart } from './CompareChart.tsx';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
 import { Empty, useUi } from '../ui.tsx';
 import { Failed, PageBar } from './common.tsx';
-import { isLender, trendOf, TREND_WORD } from '../screen.ts';
+import { trendOf, TREND_WORD } from '../screen.ts';
+import { eligibilityOf, isFinancialSector, meaningful, type MetricId } from '../eligibility.ts';
 import { cr, dash, inr, initials, isNum, pct, x1 } from '../fmt.ts';
 import { saveCompare } from '../store.ts';
 import type { Company } from '../data.ts';
 
 type View = 'overview' | 'growth' | 'profit' | 'value' | 'balance' | 'risk';
-type Line = { live?: 'px' | 'ch'; label: string; get: (c: Company) => number | null | undefined | string; fmt: (v: never) => string; best?: 'high' | 'low'; lender?: boolean };
+type Line = { live?: 'px' | 'ch'; label: string; get: (c: Company) => number | null | undefined | string; fmt: (v: never) => string; best?: 'high' | 'low'; metric?: MetricId };
 const num = (f: (c: Company) => number | null | undefined) => f;
 const VIEWS: Record<View, { label: string; lines: Line[] }> = {
   overview: { label: 'Overview', lines: [
@@ -22,13 +23,13 @@ const VIEWS: Record<View, { label: string; lines: Line[] }> = {
   growth: { label: 'Growth', lines: [
     { label: 'Revenue growth, 3y', get: (c) => c.row.rev_cagr, fmt: pct as never, best: 'high' }, { label: 'EPS growth, 3y', get: (c) => c.row.eps_cagr, fmt: pct as never, best: 'high' } ] },
   profit: { label: 'Profit', lines: [
-    { label: 'ROCE (median)', get: (c) => c.row.roce_med, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', lender: true },
-    { label: 'EBIT margin', get: (c) => c.row.ebit_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', lender: true },
+    { label: 'ROCE (median)', get: (c) => c.row.roce_med, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', metric: 'roce' },
+    { label: 'EBIT margin', get: (c) => c.row.ebit_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', metric: 'margin' },
     { label: 'Net margin', get: (c) => c.row.net_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high' } ] },
   value: { label: 'Valuation', lines: [
     { label: 'PE (trailing)', get: (c) => c.row.pe, fmt: x1 as never }, { label: 'Price to book', get: (c) => c.row.pb, fmt: x1 as never }, { label: 'Dividend yield', get: (c) => c.row.div_yield, fmt: ((v: number) => pct(v, 2, false)) as never } ] },
   balance: { label: 'Balance sheet', lines: [
-    { label: 'Debt to equity', get: (c) => c.row.de, fmt: ((v: number) => v.toFixed(2)) as never, lender: true } ] },
+    { label: 'Debt to equity', get: (c) => c.row.de, fmt: ((v: number) => v.toFixed(2)) as never, metric: 'leverage' } ] },
   risk: { label: 'Risk', lines: [
     { label: 'Screen risk grade', get: (c) => c.row.risk_lvl, fmt: ((v: string) => v) as never }, { label: 'Flags raised', get: (c) => (c.risk ? c.risk.flags.length : null), fmt: ((v: number) => String(v)) as never },
     { label: 'Main flag', get: (c) => c.row.risk_top, fmt: ((v: string) => v) as never } ] },
@@ -83,7 +84,7 @@ export function Compare({ syms }: { syms: string[] }) {
       {!ready ? <div className="card"><div className="sk" style={{ height: 120 }} /></div> : <div className="card cmp" style={{ padding: '0 14px 6px' }}><table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
         <thead><tr><th className="s" scope="col" style={{ width: '34%' }}><span className="sr">Measure</span></th>{cs.map((c) => <th key={c!.sym} className="s" scope="col"><a href={`#/c/${c!.sym}`}>{c!.sym}</a></th>)}</tr></thead>
         <tbody>{VIEWS[view].lines.map((ln) => {
-          const vals = cs.map((c) => { if (ln.lender && isLender(c!.row)) return { v: null as null, why: 'not meaningful for a lender' }; const lp = ln.live ? livePrice(c!.row, quotes[c!.sym]) : null; const v = lp ? (ln.live === 'px' ? lp.px : lp.ch) : ln.get(c!); return { v: v === undefined || v === '' ? null : v, why: 'not reported' }; });
+          const vals = cs.map((c) => { if (ln.metric) { const e = eligibilityOf(c!.row, c!.years); if (!meaningful(e, ln.metric)) return { v: null as null, why: `not meaningful: ${e.metrics[ln.metric].reason}` }; } const lp = ln.live ? livePrice(c!.row, quotes[c!.sym]) : null; const v = lp ? (ln.live === 'px' ? lp.px : lp.ch) : ln.get(c!); return { v: v === undefined || v === '' ? null : v, why: 'not reported' }; });
           const nums = vals.map((x) => (isNum(x.v) ? x.v : null)); const meas = nums.filter(isNum);
           const top = ln.best && meas.length > 1 ? (ln.best === 'high' ? Math.max(...meas) : Math.min(...meas)) : null;
           return <tr key={ln.label}><td>{ln.label}</td>{vals.map((x, i) => <td key={i} className="num" style={isNum(top) && nums[i] === top ? { color: 'var(--lime)', fontWeight: 700 } : undefined}>{x.v === null ? <span className="mute small">{x.why}</span> : (ln.fmt as (v: unknown) => string)(x.v)}</td>)}</tr>;
@@ -96,7 +97,7 @@ export function Compare({ syms }: { syms: string[] }) {
 }
 function diffs(cs: Company[]): string {
   const best = (f: (c: Company) => number | null | undefined, hi = true) => { const m = cs.map((c) => ({ s: c.sym, v: f(c) })).filter((x) => isNum(x.v)) as { s: string; v: number }[]; if (m.length < 2) return null; return m.sort((a, b) => (hi ? b.v - a.v : a.v - b.v))[0]; };
-  const roce = best((c) => (isLender(c.row) ? null : c.row.roce_med)), pe = best((c) => (isNum(c.row.pe) && c.row.pe > 0 ? c.row.pe : null), false), g = best((c) => c.row.rev_cagr);
+  const roce = best((c) => (isFinancialSector(c.row) ? null : c.row.roce_med)), pe = best((c) => (isNum(c.row.pe) && c.row.pe > 0 ? c.row.pe : null), false), g = best((c) => c.row.rev_cagr);
   return [roce && `${roce.s} has the highest median ROCE (${roce.v.toFixed(1)}%).`, pe && `${pe.s} has the lowest PE (${pe.v.toFixed(1)}).`, g && `${g.s} has the fastest 3-year revenue growth (${g.v.toFixed(1)}%).`].filter(Boolean).join(' ') || 'Not enough measured figures to say how they differ.';
 }
 void cr; void dash;

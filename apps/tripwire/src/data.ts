@@ -6,7 +6,7 @@ export { useLiveMacro };
 export interface ScreenFeed { built_on: string; as_of: string; count: number; rows: Row[] }
 export interface Gate { date: string; on: boolean; passed: number; checks: { rule: string; ok: boolean; value?: string }[] }
 export interface SignalsFeed { schema: string; generated: string; data_through: string; launched: string; gate: Gate; alertable: boolean; alert_why: string; record: { closed: number; avg_r: number | null }; signals: unknown[]; cost_round_trip_pct?: number; rules?: { gate?: string[] } }
-export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null }
+export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null; cfo_pat?: number | null; fcf_cr?: number | null }
 export interface Flag { s: string; t: string; k: string }
 export interface Inst { quality: string; reason?: string | null; fii?: number; dii?: number; mf?: number; insurance?: number; promoter?: number; publicHold?: number; fii_pp?: number; dii_pp?: number; insti_pp?: number; fii_streak?: number; dii_streak?: number; signal?: string; signal_label?: string; period?: string; prev_period?: string; quarters?: number; series?: { p: string; f: number; d: number }[] }
 export interface Season { m: [number, number, number][]; y: number }

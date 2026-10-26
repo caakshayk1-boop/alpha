@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useAutoBook } from '../book.ts';
 import { TradeCard } from './Tracker.tsx';
-import { Ago, LiveBadge, Tick } from '../live.tsx';
+import { LiveBadge, Observed, Tick } from '../live.tsx';
+import { useBacktest } from '../data.ts';
+import { ACTIVE } from '../quant.ts';
+import { evidenceHeadline } from '../evidence.ts';
 import { Empty } from '../ui.tsx';
 import { Head, Loading } from './common.tsx';
 import { inr0 } from '../fmt.ts';
@@ -13,6 +16,7 @@ const R = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFix
 /** The automatic paper book: every pick of the nightly record, taken that night, 30 at a time at most and ₹1,00,000 each at most. */
 export function AutoBook() {
   const b = useAutoBook(); const [openId, setOpenId] = useState<string | null>(null); const [allClosed, setAllClosed] = useState(false); const [allLog, setAllLog] = useState(false);
+  const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);   // hooks first: nothing above may return early
   if (b.ledger.loading && !b.plan) return <Loading what="the automatic book" />;
   if (!b.plan) return <Empty title="The automatic book has not started" action={<button className="btn" onClick={b.ledger.retry}>Check again</button>}>It follows the nightly record, which starts with the first nightly run. {b.ledger.err && b.ledger.err !== 'not published' ? `The record could not be read (${b.ledger.err}).` : ''}</Empty>;
   const live = b.session.phase === 'open';
@@ -25,6 +29,7 @@ export function AutoBook() {
   const total = openPnl + b.sum.closedPnl;
   const toggle = (id: string) => setOpenId(openId === id ? null : id);
   return <>
+    <div className="note" style={{ margin: '0 0 10px' }}><b>Experimental.</b> This book takes every pick of engines that have not passed their tests. {evHead ? `${evHead} ` : ''}Its P&L is a record of an experiment, not a track record.</div>
     <div className="card glass">
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
@@ -39,7 +44,7 @@ export function AutoBook() {
         <div className="slots" role="img" aria-label={`${b.slots} of ${b.cfg.maxOpen} positions in use`}>{Array.from({ length: b.cfg.maxOpen }, (_, i) => <i key={i} className={i < b.slots ? 'on' : ''} />)}</div></div>
       <div className="row between small dim" style={{ marginTop: 10 }}>
         <span>{open.length} open · {wait.length} waiting for an open · <span className="amt">{inr0(b.deployed)}</span> invested</span>
-        <span>{b.intra.err ? <span className="down">prices unavailable</span> : b.intra.at ? <>updated <Ago at={b.intra.at} /></> : ''}</span></div>
+        <span><Observed sec={b.intra.obs} err={b.intra.err} /></span></div>
       {open.length > 1 && <div style={{ marginTop: 10 }} aria-label="Contribution to open P&L by position">{open.slice(0, 8).map((r) => { const w = (Math.abs(r.v.pnl ?? 0) / maxAbs) * 50; const pos = (r.v.pnl ?? 0) >= 0; return <div key={r.p.id} className="contrib" style={{ gridTemplateColumns: '104px 1fr auto' }}><span className="sym trunc">{r.p.sym}</span><span className="bar2"><i style={{ width: `${w}%`, left: pos ? '50%' : `${50 - w}%`, background: pos ? 'var(--up)' : 'var(--down)' }} /></span><span className={`num amt ${pos ? 'up' : 'down'}`}>{sgn(r.v.pnl)}</span></div>; })}{open.length > 8 && <div className="small mute">Largest 8 of {open.length} shown.</div>}</div>}
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </div>

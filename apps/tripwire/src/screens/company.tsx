@@ -3,7 +3,8 @@ import { go, useAppState, useSheets, setState } from '../app.tsx';
 import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
-import { isLender, trendOf, TREND_WORD } from '../screen.ts';
+import { trendOf, TREND_WORD } from '../screen.ts';
+import { curateCase, eligibilityOf, meaningful, riskGradeOf } from '../eligibility.ts';
 import { ACTIVE, evaluate, type Q } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
@@ -13,13 +14,15 @@ import { freshness } from '../fresh.ts';
 import { PriceChart } from './PriceChart.tsx';
 import { Tick, TvButton, TvIcon } from '../live.tsx';
 import { Intel } from './Intel.tsx';
+import { DecisionCard } from './DecisionCard.tsx';
 import { CompanyNews } from './News.tsx';
-import { asOfTime, livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
+import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
+import { fmtIst } from '../stamp.ts';
 
 export function Company({ sym }: { sym: string }) {
   useWatchQuotes([sym]); const quote = useQuote(sym);
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
-  const row = c.data?.row; const lender = row ? isLender(row) : false;
+  const row = c.data?.row; const el = row ? eligibilityOf(row, c.data?.years ?? []) : null;
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
   const { out: eng } = useEngines();
@@ -27,19 +30,19 @@ export function Company({ sym }: { sym: string }) {
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
-  if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack />{c.err === 'not published' ? <Empty title={`${sym} is not in the screen`}>Tripwire covers the Nifty 500 screen. Check the symbol, or search by name.</Empty> : <Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} />}</div>;
+  if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack />{c.err === 'not published' ? <Empty title={`${sym} is not in the screen`}>It is not among the {scr.data?.count ?? 'published'} companies in this screen. Check the symbol, or search by name.</Empty> : <Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} />}</div>;
   const fr = freshness(row.last_date ?? day);
   const lp = livePrice(row, quote); const lo = row.low52, hi = row.high52, px = lp.px;
   const at = (v?: number | null) => (isNum(v) && isNum(lo) && isNum(hi) && hi > lo ? Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100)) : null);
   const pxAt = at(px);
   const swot = c.data.swot; const flags = c.data.risk?.flags ?? [];
-  const cases = swot?.s ?? []; const counters = [...flags.map((f) => ({ t: f.t, k: f.k })), ...(swot?.w ?? [])];
+  const cur = curateCase({ strengths: swot?.s ?? [], flags, weaknesses: swot?.w ?? [] }, el!); const cases = cur.strengths; const counters = cur.counters; const grade = riskGradeOf(row, el!);
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
-        <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`}>{lp.live ? 'Live' : 'Last price'} · {asOfTime(lp.t)} IST</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
+        <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.live ? 'Live' : 'Last price'} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
       {(() => { const tr = trendOf(row); return tr.trend ? <p className="small" style={{ margin: '12px 0 0' }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{tr.detail.replace(/^[A-Za-z]+: /, '')}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p> : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
@@ -47,6 +50,8 @@ export function Company({ sym }: { sym: string }) {
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
         <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(row.from_high)} from high {inr(hi, 0)}</span></div></> : <p className="dim small">52-week range not available.</p>}
     </section>
+
+    <DecisionCard c={c.data} lp={lp} />
 
     <Head>Price history</Head>
     <PriceChart sym={sym} />
@@ -56,7 +61,8 @@ export function Company({ sym }: { sym: string }) {
       {cases.length ? cases.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">The screen found no strengths clear enough to list. That is not a negative finding.</span>}</div></details>
     <details className="ev" open><summary><span className="down">●</span> Countercase ({counters.length})<span className="chev">▾</span></summary><div className="body">
       {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">No risk flag or weakness was raised. Read the filings anyway; the screen only sees ratios.</span>}</div></details>
-    <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours. Risk grade: {row.risk_lvl ?? 'not graded'}.</p>
+    <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours. Risk grade: {grade.level ?? 'not shown'}.{grade.note ? ` ${grade.note}` : ''}</p>
+    {(cur.hidden.length > 0 || cur.merged > 0 || el!.notes.length > 0) && <div className="note info" style={{ marginTop: 8 }}>{el!.notes.map((t) => <p key={t} style={{ margin: '0 0 6px' }}>{t}</p>)}{cur.hidden.length > 0 && <p style={{ margin: 0 }}>{cur.hidden.length} statement-based line{cur.hidden.length === 1 ? '' : 's'} hidden for that reason.{cur.merged > 0 ? ` ${cur.merged} repeat${cur.merged === 1 ? '' : 's'} folded into one.` : ''}</p>}{cur.hidden.length === 0 && cur.merged > 0 && <p style={{ margin: 0 }}>{cur.merged} repeated line{cur.merged === 1 ? '' : 's'} folded into one.</p>}</div>}
 
     <Head>Engine check</Head>
     {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>
@@ -76,15 +82,15 @@ export function Company({ sym }: { sym: string }) {
       <div className="scroll-x" style={{ marginTop: 12 }} tabIndex={0} role="region" aria-label="Financial statements, scrolls sideways"><table className="tbl"><thead><tr><th>₹ crore</th>{yrs.map((y) => <th key={y.fy}>{y.fy}</th>)}</tr></thead><tbody>
         <tr><td>Revenue</td>{yrs.map((y) => <td key={y.fy} className="num">{isNum(y.rev_cr) ? Math.round(y.rev_cr).toLocaleString('en-IN') : dash}</td>)}</tr>
         <tr><td>Profit after tax</td>{yrs.map((y) => <td key={y.fy} className="num">{isNum(y.pat_cr) ? Math.round(y.pat_cr).toLocaleString('en-IN') : dash}</td>)}</tr>
-        {!lender && <tr><td>EBIT margin</td>{yrs.map((y) => <td key={y.fy} className="num">{pct(y.ebit_margin, 1, false)}</td>)}</tr>}
-        {!lender && <tr><td>ROCE</td>{yrs.map((y) => <td key={y.fy} className="num">{pct(y.roce, 1, false)}</td>)}</tr>}
+        {meaningful(el!, 'margin') && <tr><td>EBIT margin</td>{yrs.map((y) => <td key={y.fy} className="num">{pct(y.ebit_margin, 1, false)}</td>)}</tr>}
+        {meaningful(el!, 'roce') && <tr><td>ROCE</td>{yrs.map((y) => <td key={y.fy} className="num">{pct(y.roce, 1, false)}</td>)}</tr>}
         <tr><td>EPS ₹</td>{yrs.map((y) => <td key={y.fy} className="num">{isNum(y.eps) ? y.eps.toFixed(1) : dash}</td>)}</tr></tbody></table></div>
-      {lender && <p className="small dim" style={{ margin: '10px 0 0' }}>A lender: margin, ROCE and debt-to-equity are not meaningful here, so they are not shown or judged.</p>}
+      {el!.notes.length > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Margin, ROCE and debt-to-equity are withheld for this company (reason above), not shown as zero.</p>}
     </div> : <div className="card dim">No financial statements are held for this name. Every ratio below that depends on them is missing, not zero.</div>}
     <div className="card" style={{ padding: '2px 14px', marginTop: 10 }}><div className="list">
       <Metric id="pe" label="PE (trailing)" v={x1(row.pe)} />
-      {!lender && <Metric id="roce" label="ROCE (median)" v={pct(row.roce_med, 1, false)} />}
-      {!lender && <Metric id="de" label="Debt to equity" v={x1(row.de, 2)} />}
+      {meaningful(el!, 'roce') && <Metric id="roce" label="ROCE (median)" v={pct(row.roce_med, 1, false)} />}
+      {meaningful(el!, 'leverage') && <Metric id="de" label="Debt to equity" v={x1(row.de, 2)} />}
       <Metric id="net_margin" label="Net margin" v={pct(row.net_margin, 1, false)} />
       <Metric id="rev_cagr" label="Revenue growth, 3y" v={pct(row.rev_cagr, 1)} />
       <Metric id="rsi" label="RSI (14)" v={x1(row.rsi, 0)} />
