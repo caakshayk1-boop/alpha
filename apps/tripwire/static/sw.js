@@ -1,7 +1,7 @@
 // Tripwire service worker. The shell is cached for offline use; data is network-first so a recent copy is never served as live,
 // and falls back to the last copy (the page labels it by its own data date). Nothing user-written is ever sent or cached here.
 const V = 'tw-__STAMP__';
-const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/fonts/jetbrains-mono-latin-wght-normal.woff2', '/fonts/inter-tight-latin-wght-normal.woff2'];
+const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/fonts/jetbrains-mono-latin-wght-normal.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V && k !== 'tw-data').map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {

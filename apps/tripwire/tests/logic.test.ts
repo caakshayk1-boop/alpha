@@ -181,15 +181,23 @@ test('evidence: untested, not supported, mixed and supported are four different 
   const m = engineEvidence('MOM', bt); assert.equal(m.state, 'unsupported'); assert.equal(m.tone, 'bad'); assert.match(m.line, /2015 to 2026, 660 stocks/); assert.match(m.line, /\+0\.6% in the early years.*t 0\.6.*\+0\.1% in the middle.*−1\.1% in the latest \(t −1\.0\)/);
   assert.match(m.line, /equal-weighted average of the 660 stocks.*not the Nifty 50/); assert.doesNotMatch(m.line, /whole market/);
   assert.equal(engineEvidence('OKE', bt).state, 'supported'); assert.equal(engineEvidence('MIX', bt).state, 'mixed');
-  const q = engineEvidence('QLT', bt); assert.equal(q.state, 'untested'); assert.equal(q.tone, 'unknown'); assert.match(q.line, /says nothing about whether it works/);
+  const q = engineEvidence('QLT', bt); assert.equal(q.state, 'forward'); assert.equal(q.tone, 'unknown'); assert.match(q.line, /Thirty closed trades are needed/); assert.match(q.line, /neither a pass nor a fail/);
   assert.equal(engineEvidence('LVT', bt).state, 'untested', 'no test published is untested, not failed'); assert.equal(engineEvidence('MOM', null).state, 'untested');
   assert.equal(engineEvidence('MOM', null, true).state, 'loading'); assert.equal(engineEvidence('MOM', null, true).line, '', 'while loading nothing is claimed');
   assert.match(m.line, /Survivorship/);
-  assert.equal(evidenceHeadline(['MOM', 'QLT'], bt), 'Of the 2 engines now making picks: 1 not supported by the back-test, 1 untested.');
+  assert.equal(evidenceHeadline(['MOM', 'QLT'], bt), 'Of the 2 engines now making picks: 1 not supported by the back-test, 1 in forward test.');
   assert.equal(evidenceHeadline(['MOM', 'QLT'], null, true), null);
 });
 test('evidence: the study summary counts candidates, not baselines or controls, and names the best one with what it failed', () => {
   const f = (t: number) => ({ train: { ic: 0.05, t, months: 60, top_quintile_excess_net: 0.001 }, validation: { ic: 0.03, t: 1, months: 24, top_quintile_excess_net: 0.001 }, holdout: { ic: 0.03, t: 1, months: 30, top_quintile_excess_net: -0.001 } });
   const s = { meta: { when: 'x', symbols: 1, dates: ['a', 'b'] }, features: { mom12_1: f(2.4), a: f(2.58), b: f(1.0), noise: f(-0.7) }, verdict: { mom12_1: { kind: 'common baseline', adopt: false, steps: {} }, a: { kind: 'candidate', adopt: false, steps: { x: true, 'holdout net': false } }, b: { kind: 'candidate', adopt: false, steps: {} }, noise: { kind: 'control', adopt: false, steps: {} } } } as never;
   const r = studySummary(s)!; assert.equal(r.tested, 4); assert.equal(r.candidates, 2); assert.equal(r.passed, 0); assert.equal(r.best!.name, 'a'); assert.deepEqual(r.best!.failed, ['holdout net']); assert.equal(studySummary(null), null);
+});
+
+test('evidence: the walk-forward sentence reports both numbers against the bar set in advance, and never adopts a rule on a miss', () => {
+  const bt = { meta: { when: 'x', symbols: 660, dates: ['2015-10-23', '2026-10-23'] }, engines: { MOM: { horizon: 20, picked: 1, skipped: 0, label: 'x', periods: { train: { excess_vs_universe: 0.006, excess_t: 0.6 }, validation: { excess_vs_universe: 0.0006, excess_t: 0.1 }, holdout: { excess_vs_universe: -0.011, excess_t: -0.95 } } } },
+    walk_forward: { test_years: [2019, 2026], procedure: { mean_excess: 0.0057, t: 0.663, supported: false }, as_built: { mean_excess: 0.0038, t: 0.558 }, variants: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`v${i}`, { supported: false }])) } } as never;
+  const m = engineEvidence('MOM', bt); assert.equal(m.state, 'unsupported');
+  assert.match(m.line, /Walk-forward 2019 to 2026/); assert.match(m.line, /as built earned \+0\.4% a rebalance over that benchmark \(t 0\.6\)/); assert.match(m.line, /best of 8 pre-declared rules/); assert.match(m.line, /\+0\.6% \(t 0\.7\)/); assert.match(m.line, /It was not cleared, so no alternative rule is adopted/);
+  assert.doesNotMatch(engineEvidence('MOM', { ...(bt as object), walk_forward: null } as never).line, /Walk-forward/, 'no file, no sentence');
 });

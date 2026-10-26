@@ -39,3 +39,14 @@ Branch `tripwire-beta`, based on `main` at 1ea9b05. **Not deployed.** Evidence b
 - axe finds about a third of accessibility problems. No screen reader (VoiceOver, TalkBack, NVDA) was run by a person.
 - The size and stale-data checks use a controlled clock; real holidays are not modelled and the app says so.
 - Core Web Vitals above are synthetic. INP in particular needs field data from real use.
+
+## Momentum: tested forward through time (2026-10-26)
+`engines_walkforward.py` (pre-registered in its docstring, run on GitHub Actions, results in `apps/tripwire/research/results/engines_walkforward.md`). The holdout of the fixed-period back-test had been read twice, so it could no longer test a new rule. Instead the **procedure** "choose the best of eight pre-declared rules from the three years before, then trade it" was tested over every year from 2019, each year out of sample for the rule that traded it.
+
+| Rule | mean excess a rebalance | t | bar |
+|---|---|---|---|
+| Procedure (best of 8, chosen yearly) | +0.57% | 0.66 | 2.0 |
+| As built (12-1, no regime filter, q80) | +0.38% | 0.56 | 2.7 |
+| Best fixed variant (12-1, regime filter on, q80) | +0.94% | 1.14 | 2.7 |
+
+**Nothing clears its bar, so no rule was changed.** Replacing the engine's rule with the variant that happened to look best in a sample already read would fit the past, not find an edge. The regime filter variant is the only one worth watching and it is not promoted: it enters no ledger until the owner decides. All numbers are upper bounds (survivorship). Quality at a fair price cannot be tested this way (no point-in-time accounts), so it is shown as "In forward test", with thirty closed trades needed before any verdict.

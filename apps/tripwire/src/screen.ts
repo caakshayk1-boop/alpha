@@ -9,8 +9,9 @@ export interface Row {
   net_margin?: number | null; ebit_margin?: number | null; div_yield?: number | null; risk_lvl?: string | null; risk_top?: string | null; next_earnings?: string | null; last_date?: string | null; fy?: string | null; has_stmts?: boolean | null;
 }
 export type Trend = 'up' | 'down' | 'mixed';
-export interface Filters { q: string; sector: string; tier: string; value: '' | 'cheap' | 'rich'; quality: '' | 'high'; momentum: '' | 'strong' | 'weak' | 'near-high'; trend?: '' | Trend }
-export const NO_FILTER: Filters = { q: '', sector: '', tier: '', value: '', quality: '', momentum: '', trend: '' };
+import { applyConds, describeCond, type Cond } from './screener.ts';
+export interface Filters { /** numeric conditions from the screener: every one must hold, and a name with no figure for one does not pass */ cond?: Cond[]; q: string; sector: string; tier: string; value: '' | 'cheap' | 'rich'; quality: '' | 'high'; momentum: '' | 'strong' | 'weak' | 'near-high'; trend?: '' | Trend }
+export const NO_FILTER: Filters = { cond: [], q: '', sector: '', tier: '', value: '', quality: '', momentum: '', trend: '' };
 export type SortKey = 'name' | 'r1d' | 'r3m' | 'rs3m' | 'pe' | 'roce_med' | 'from_high' | 'turnover_cr';
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 /** The trend tag, with one rule used everywhere (the company page, Discover, the trend map, the Worker's live map).
@@ -69,7 +70,8 @@ export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unm
     if (f.momentum === 'near-high') { if (!need(r.from_high)) return false; if (!(r.from_high! >= -5)) return false; }
     return true;
   });
-  return { rows: out, unmeasured, notApplicable };
+  const c = applyConds(out, f.cond);
+  return { rows: c.rows, unmeasured: unmeasured + c.noFigure, notApplicable };
 }
 export function sortRows(rows: readonly Row[], key: SortKey, dir: 'asc' | 'desc'): Row[] {
   const s = dir === 'asc' ? 1 : -1;
@@ -87,4 +89,5 @@ export const describeFilters = (f: Filters): string[] => [
   f.value === 'cheap' && 'PE 15 or less', f.value === 'rich' && 'PE 40 or more', f.quality === 'high' && 'Median ROCE 20%+ (financial sector left out)',
   f.trend && `Trend: ${TREND_WORD[f.trend]}`,
   f.momentum === 'strong' && 'Ahead of the Nifty, 3 months', f.momentum === 'weak' && 'Behind the Nifty, 3 months', f.momentum === 'near-high' && 'Within 5% of the 52-week high',
+  ...(f.cond ?? []).map(describeCond),
 ].filter(Boolean) as string[];

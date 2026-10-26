@@ -41,7 +41,7 @@ export function stats(pts: readonly Pt[]): Stats | null {
   const years = (last.t - first.t) / (365.25 * DAY);
   return { first, last, ret: (last.c / first.c - 1) * 100, hi, lo, years, cagr: years >= 2 && first.c > 0 && last.c > 0 ? (Math.pow(last.c / first.c, 1 / years) - 1) * 100 : null };
 }
-export interface Geo { line: string; area: string; xs: number[]; ys: number[]; W: number; H: number; yOf: (c: number) => number; xOf: (t: number) => number }
+export interface Geo { min: number; max: number; line: string; area: string; xs: number[]; ys: number[]; W: number; H: number; yOf: (c: number) => number; xOf: (t: number) => number }
 /** SVG paths in a W by H box. x is proportional to TIME (a weekend is a gap, not a point). `log` plots the percentage move, which is the honest view over ten years. */
 export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12): Geo | null {
   if (pts.length < 2) return null;
@@ -53,7 +53,7 @@ export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pa
   const xs = pts.map((p) => xOf(p.t)), ys = pts.map((p) => yOf(p.c));
   const r = (v: number) => Math.round(v * 10) / 10;
   const line = xs.map((x, i) => `${i ? 'L' : 'M'}${r(x)} ${r(ys[i])}`).join('');
-  return { line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf };
+  return { min: Math.min(...pts.map((p) => p.c)), max: Math.max(...pts.map((p) => p.c)), line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf };
 }
 /** The point closest in time to a fraction (0..1) of the way across the window. */
 export function nearest(pts: readonly Pt[], frac: number): number {
@@ -108,4 +108,33 @@ export function alignIndexed(series: readonly Series[], id: RangeId): Aligned | 
   const nv = days.map((d) => maps[0].get(d)!.n); let nifty: number[] | null = null;
   if (typeof nv[0] === 'number' && nv[0] > 0) { let carry = nv[0]; const n0 = nv[0]; nifty = nv.map((v) => { if (typeof v === 'number' && v > 0) carry = v; return (carry / n0) * 100; }); }
   return { t: days.map((d) => maps[0].get(d)!.t), lines, nifty };
+}
+
+/** Round values for the price axis: about `n` of them, at 1, 2, 2.5 or 5 times a power of ten (linear), or at 1, 2 and 5 times a power of ten (log). */
+export function yTicks(lo: number, hi: number, log: boolean, n = 4): number[] {
+  if (!(hi > lo) || !Number.isFinite(lo) || !Number.isFinite(hi)) return [];
+  if (log) {
+    if (!(lo > 0)) return [];
+    for (const ms of [[1, 2, 5], [1, 3], [1]]) {
+      const out: number[] = []; for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) for (const m of ms) { const v = m * 10 ** e; if (v >= lo && v <= hi) out.push(v); }
+      if (out.length <= n + 1) return out;
+    }
+    return [];
+  }
+  const raw = (hi - lo) / n; const mag = 10 ** Math.floor(Math.log10(raw)); const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((x) => x >= raw)!;
+  const out: number[] = []; for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step) out.push(Math.round(v * 1e8) / 1e8);
+  return out;
+}
+/** Labels for the time axis, at positions proportional to time: years for a long window, months for a short one. At most `max` labels. */
+export function xTicks(t0: number, t1: number, max = 5): { t: number; label: string }[] {
+  if (!(t1 > t0)) return [];
+  const spanY = (t1 - t0) / (365.25 * DAY); const d0 = ist(t0); const out: { t: number; label: string }[] = [];
+  if (spanY >= 1.3) {
+    const y0 = d0.getUTCFullYear() + 1; const y1 = ist(t1).getUTCFullYear(); const step = Math.max(1, Math.ceil((y1 - y0 + 1) / max));
+    for (let y = y0; y <= y1; y += step) { const t = Date.UTC(y, 0, 1) / 1000 - 19800; if (t > t0 && t < t1) out.push({ t, label: String(y) }); }
+  } else {
+    const m = Math.max(1, Math.ceil((spanY * 12) / max)); let y = d0.getUTCFullYear(), mo = d0.getUTCMonth() + 1;
+    for (;;) { if (mo > 11) { mo -= 12; y++; } const t = Date.UTC(y, mo, 1) / 1000 - 19800; if (t >= t1) break; if (t > t0) out.push({ t, label: `${MON[mo]}${mo === 0 ? ` ${y}` : ''}` }); mo += m; }
+  }
+  return out;
 }

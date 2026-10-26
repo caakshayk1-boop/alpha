@@ -8,6 +8,7 @@ import { saveScreen } from '../store.ts';
 import { useWatchQuotes } from '../quotes.ts';
 import { inr0, pct } from '../fmt.ts';
 import type { Row } from '../screen.ts';
+import { COLUMN_SETS, METRICS, describeCond, fmtMetric, metricOf, sameCond, sortByMetric, toCsv, valueOf, type Cond, type MetricKey } from '../screener.ts';
 
 const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
   { id: 'name', label: 'Name A to Z', dir: 'asc' }, { id: 'r1d', label: 'Biggest day gain', dir: 'desc' }, { id: 'rs3m', label: 'Ahead of the Nifty, 3 months', dir: 'desc' },
@@ -42,13 +43,18 @@ export function Discover() {
   const [limit, setLimit] = useState(PAGE);
   const [sheet, setSheet] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
+  const [view, setView] = useState<'list' | 'table'>('list'); const [cset, setCset] = useState(COLUMN_SETS[0].id); const [tsort, setTsort] = useState<{ id: MetricKey | 'name'; dir: 'asc' | 'desc' }>({ id: 'comp', dir: 'desc' }); const [condSheet, setCondSheet] = useState(false);
   const rows = scr.data?.rows ?? [];
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
   // the pressed state of a chip answers at once; the list under it catches up a moment later, so a tap never waits for forty rows to be drawn
   const df = useDeferredValue(f); const dsort = useDeferredValue(sort);
   const res = useMemo(() => filterRows(rows, df), [rows, df]);
   const list = useMemo(() => sortRows(res.rows, SORTS[dsort].id, SORTS[dsort].dir), [res.rows, dsort]);
-  useWatchQuotes(list.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
+  const cols = COLUMN_SETS.find((c) => c.id === cset)!.cols; const dts = useDeferredValue(tsort);
+  const tlist = useMemo(() => (view === 'table' ? sortByMetric(res.rows, dts.id, dts.dir) : []), [view, res.rows, dts]);
+  const shownList = view === 'table' ? tlist : list;
+  const exportCsv = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCsv(shownList, cols)], { type: 'text/csv' })); a.download = `tripwire-screen-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast(`${shownList.length} rows exported`); };
+  useWatchQuotes(shownList.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
   const active = describeFilters(f);
   const chosen = ([['q', f.q && `“${f.q}”`], ['sector', f.sector], ['tier', f.tier && `${f.tier} cap`], ['trend', f.trend && TREND_WORD[f.trend]], ['value', f.value === 'cheap' ? 'PE 15 or less' : f.value === 'rich' ? 'PE 40 or more' : ''], ['quality', f.quality && 'ROCE 20%+'], ['momentum', f.momentum === 'strong' ? 'Ahead of Nifty' : f.momentum === 'weak' ? 'Behind Nifty' : f.momentum === 'near-high' ? 'Near 52w high' : '']] as [string, string | undefined][]).filter(([, l]) => l).map(([k, label]) => ({ k, label: label as string }));
   const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length ? filterRows(rows, { ...NO_FILTER, ...l.f }).rows.length : null])) as Record<string, number | null>, [rows]);
@@ -69,18 +75,33 @@ export function Discover() {
         <button key={l} className="chip cc" style={{ '--cc': c } as React.CSSProperties} aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
     {chosen.length > 0 && <div className="chips chosen" role="group" aria-label="Active filters">{chosen.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={() => set({ [c.k]: '' } as Partial<Filters>)} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}<button className="chip" onClick={() => { setF(NO_FILTER); setLimit(PAGE); }}>Clear all</button></div>}
+    <div className="chips chosen" role="group" aria-label="Conditions">
+      {(f.cond ?? []).map((c) => <button key={`${c.m}${c.op}${c.v}`} className="chip cc on-x" onClick={() => set({ cond: (f.cond ?? []).filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
+      <button className="chip" onClick={() => setCondSheet(true)}>+ Condition</button>
+    </div>
+    <div className="c-bar" role="group" aria-label="View" style={{ marginTop: 8 }}>
+      <div className="mini-seg">{(['list', 'table'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setLimit(PAGE); }}>{v === 'list' ? 'LIST' : 'TABLE'}</button>)}</div>
+      {view === 'table' && <div className="mini-seg" role="group" aria-label="Columns">{COLUMN_SETS.map((c) => <button key={c.id} aria-pressed={cset === c.id} onClick={() => setCset(c.id)}>{c.label.toUpperCase()}</button>)}</div>}
+      <button className="chip" onClick={exportCsv} disabled={!shownList.length}>CSV</button>
+    </div>
     {s.screens.length > 0 && <div className="chips" aria-label="Saved screens">{s.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setF(x.f); setLimit(PAGE); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
     <div className="row between" style={{ margin: '12px 0 4px' }}>
       <span className="small dim num">{scr.data ? `${list.length} of ${rows.length}` : ''}{res.unmeasured ? ` · ${res.unmeasured} lacked a figure for a filter` : ''}{res.notApplicable ? ` · ${res.notApplicable} financial-sector or not-meaningful names left out of the ROCE filter` : ''}</span>
-      <label className="small dim row" style={{ minWidth: 0, flex: '1 1 11rem', justifyContent: 'flex-end' }}><span className="sr">Sort by</span><select className="field" style={{ minHeight: 36, padding: '4px 10px', width: 'auto', maxWidth: '100%' }} value={sort} onChange={(e) => setSort(Number(e.target.value))} aria-label="Sort by">{SORTS.map((x, i) => <option key={x.id} value={i}>{x.label}</option>)}</select></label>
+      {view === 'list' && <label className="small dim row" style={{ minWidth: 0, flex: '1 1 11rem', justifyContent: 'flex-end' }}><span className="sr">Sort by</span><select className="field" style={{ minHeight: 36, padding: '4px 10px', width: 'auto', maxWidth: '100%' }} value={sort} onChange={(e) => setSort(Number(e.target.value))} aria-label="Sort by">{SORTS.map((x, i) => <option key={x.id} value={i}>{x.label}</option>)}</select></label>}
     </div>
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
-    {scr.data && (list.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">
+    {scr.data && view === 'list' && (list.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">
       {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[dsort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
     </div></div> : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Filters are exact. A name with no figure for a filter is left out, never counted as a match.</Empty>)}
-    {list.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, list.length - limit)} more</button>}
+    {scr.data && view === 'table' && (tlist.length ? <div className="stbl-wrap"><table className="stbl"><caption className="sr">Screen results, {tlist.length} companies. Tap a column heading to sort.</caption>
+      <thead><tr><th scope="col" className="sticky"><button onClick={() => setTsort({ id: 'name', dir: tsort.id === 'name' && tsort.dir === 'asc' ? 'desc' : 'asc' })} aria-label="Sort by symbol">SYMBOL{tsort.id === 'name' ? (tsort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
+        {cols.map((c) => { const m = metricOf(c)!; const on = tsort.id === c; return <th scope="col" key={c} aria-sort={on ? (tsort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button onClick={() => setTsort({ id: c, dir: on ? (tsort.dir === 'asc' ? 'desc' : 'asc') : m.id === 'pe' || m.id === 'pb' || m.id === 'de' || m.id === 'atr_pct' ? 'asc' : 'desc' })}>{m.short}{on ? (tsort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>; })}</tr></thead>
+      <tbody>{tlist.slice(0, limit).map((r) => <tr key={r.sym}><th scope="row" className="sticky"><a href={`#/c/${r.sym}`}>{r.sym}</a></th>{cols.map((c) => { const m = metricOf(c)!; const v = valueOf(r, c); return <td key={c} className={`num ${m.signed && v !== null ? (v > 0 ? 'up' : v < 0 ? 'down' : '') : ''}`}>{fmtMetric(m, v)}</td>; })}</tr>)}</tbody></table></div>
+      : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Conditions are exact. A name with no figure for a condition is left out, never counted as a match.</Empty>)}
+    {shownList.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, shownList.length - limit)} more</button>}
     {pick.length >= 2 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => setPick([])}>Clear {pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} onClick={() => go(`/compare?s=${pick.join(',')}`)}><Icon n="compare" />Compare {pick.length}</button></div>}
+    {condSheet && <CondSheet onClose={() => setCondSheet(false)} onAdd={(c) => { set({ cond: [...(f.cond ?? []).filter((x) => !(x.m === c.m && x.op === c.op)), c] }); setCondSheet(false); tick(); }} />}
     {sheet && <Sheet title="Filters" onClose={() => setSheet(false)}>
       <label className="l" htmlFor="f-sec">Sector</label>
       <select id="f-sec" className="field" value={f.sector} onChange={(e) => set({ sector: e.target.value })}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
@@ -107,4 +128,22 @@ function SaveScreen({ f, labels }: { f: Filters; labels: string[] }) {
   const [n, setN] = useState(''); const { toast } = useUi();
   return <div style={{ marginTop: 16 }}><Head>Save this screen</Head><p className="small dim" style={{ margin: '0 0 8px' }}>{labels.join(' · ')}</p>
     <div className="row"><input className="field" placeholder="Name it" value={n} maxLength={40} onChange={(e) => setN(e.target.value)} aria-label="Screen name" /><button className="btn pri" disabled={!n.trim()} onClick={() => { setState((x) => saveScreen(x, n, f)); toast(`Saved “${n.trim()}”`); setN(''); }}>Save</button></div></div>;
+}
+
+/** One numeric condition: a figure, at least or at most, a value. The figure's own unit and a few typical values are on the sheet, so there is nothing to look up. */
+function CondSheet({ onClose, onAdd }: { onClose: () => void; onAdd: (c: Cond) => void }) {
+  const [m, setM] = useState<MetricKey>('rsi'); const [op, setOp] = useState<'gte' | 'lte'>('gte'); const [v, setV] = useState('');
+  const met = metricOf(m)!; const n = Number(v); const ok = v.trim() !== '' && Number.isFinite(n);
+  return <Sheet title="Add a condition" onClose={onClose}>
+    <label className="l" htmlFor="c-m">Figure</label>
+    <select id="c-m" className="field" value={m} onChange={(e) => { setM(e.target.value as MetricKey); setV(''); }}>{METRICS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+    <p className="small mute" style={{ margin: '6px 0 0' }}>{met.hint || 'Last close.'}</p>
+    <label className="l" htmlFor="c-op">Is</label>
+    <select id="c-op" className="field" value={op} onChange={(e) => setOp(e.target.value as 'gte' | 'lte')}><option value="gte">at least</option><option value="lte">at most</option></select>
+    <label className="l" htmlFor="c-v">Value{met.unit.trim() ? ` (${met.unit.trim()})` : ''}</label>
+    <input id="c-v" className="field" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder={String(met.presets[1])} />
+    <div className="chips wrap" style={{ marginTop: 8 }} role="group" aria-label="Typical values">{met.presets.map((p) => <button key={p} className="chip" onClick={() => setV(String(p))}>{fmtMetric({ ...met, signed: false }, p)}</button>)}</div>
+    <p className="small dim">A company with no figure for this is left out, never counted as a match. For the financial sector, ratios built on capital employed are not defined and count as no figure.</p>
+    <div className="row" style={{ marginTop: 12 }}><button className="btn grow" onClick={onClose}>Cancel</button><button className="btn pri grow" disabled={!ok} onClick={() => onAdd({ m, op, v: n })}>Add</button></div>
+  </Sheet>;
 }

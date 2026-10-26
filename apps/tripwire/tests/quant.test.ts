@@ -296,3 +296,14 @@ test('a retired engine keeps its definition and its record but makes no new pick
   const rows = [{ sym: 'A', name: 'A', price: 100, liquid: true, atr_pct: 1, tier: 'large' }] as unknown as Q[];
   assert.deepEqual(runAll(rows, 'd').runs.map((r) => r.id), ['MOM', 'QLT']);
 });
+
+import { yTicks, xTicks } from '../src/chart.ts';
+test('chart axes: round price ticks inside the data range, log ticks per decade, year and month labels at the right place', () => {
+  assert.deepEqual(yTicks(100, 366.72, false, 4), [100, 200, 300]);
+  assert.ok(yTicks(0.5, 940, false, 4).every((v) => v >= 0.5 && v <= 940));
+  assert.deepEqual(yTicks(20, 1000, true), [30, 100, 300, 1000]);
+  assert.deepEqual(yTicks(5, 5, false), []); assert.deepEqual(yTicks(-1, 10, true), []);
+  const t0 = Date.UTC(2014, 0, 2) / 1000, t1 = Date.UTC(2022, 2, 20) / 1000; const x = xTicks(t0, t1, 5);
+  assert.ok(x.length >= 3 && x.length <= 5); assert.ok(x.every((p) => p.t > t0 && p.t < t1)); assert.match(x[0].label, /^20\d\d$/);
+  const m = xTicks(Date.UTC(2026, 3, 20) / 1000, Date.UTC(2026, 9, 23) / 1000, 5); assert.ok(m.length >= 2 && m.length <= 6); assert.ok(m.every((p) => /^[A-Z][a-z]{2}( \d{4})?$/.test(p.label)));
+});

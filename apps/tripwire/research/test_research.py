@@ -102,3 +102,30 @@ assert vals and min(vals) >= 0 and max(vals) <= 100, (min(vals), max(vals))
 assert sh["study"]["eff_ratio60"] == {"adopt": False, "kind": "candidate"} and "noise" not in sh["rows"][next(iter(sh["rows"]))]
 assert fx.sheet(w, "x")["rows"] == sh["rows"], "the sheet is deterministic"
 print("factor sheet: checks passed")
+
+# ---- walk-forward: the choice never reads the year it is for, a random walk is never 'supported', a planted effect in one variant is chosen and found ----
+import engines_walkforward as wfm
+def fake(effect_for=None, seed=1, years=range(2016, 2027)):
+    r = np.random.default_rng(seed); table = {}
+    for v in wfm.FAMILY:
+        k = wfm.vid(v); recs = []
+        for y in years:
+            for m in range(1, 13):
+                for half in (5, 20):
+                    ex = r.normal(0.0, 0.03) + (0.02 if effect_for == k else 0.0)
+                    recs.append({"d": f"{y}-{m:02d}-{half:02d}", "year": y, "net": ex, "excess": ex, "active": True})
+        table[k] = recs
+    return table
+t = fake()
+c0 = wfm.choose(t, 2020)
+for recs in t.values():
+    for rr in recs:
+        if rr["d"] >= "2019-12-01": rr["excess"] = 99.0; rr["net"] = 99.0                     # poison every record from December 2019 on
+assert wfm.choose(t, 2020) == c0, "the choice for a year read data from that year"
+nulls = [wfm.walk_forward(fake(seed=s)) for s in range(1, 9)]
+assert not any(w["procedure"]["supported"] for w in nulls[:8]) or sum(w["procedure"]["supported"] for w in nulls) <= 1, "noise was 'supported' too often"
+assert not any(v["supported"] for w in nulls for v in w["variants"].values() if v["t"] is not None and v["t"] < wfm.T_FIXED)
+planted_key = wfm.vid(wfm.FAMILY[2]); pl = wfm.walk_forward(fake(effect_for=planted_key))
+assert pl["variants"][planted_key]["supported"] and pl["procedure"]["supported"], pl["procedure"]
+assert sum(pl["chosen"][str(y)] == planted_key for y in pl["test_years"]) >= len(pl["test_years"]) - 2, "the planted variant was not chosen"
+print("walk-forward: choice reads no future data; noise not supported; a planted effect is chosen and found")

@@ -28,7 +28,7 @@ test('decision: GCSL: the strongest counterargument is one that applies (not a w
 test('decision: evidence separates untested from not supported, and an experiment is called one', () => {
   const d = decisionOf(base()); assert.deepEqual(d.evidence.chips.map((c) => c.state), ['unsupported']); assert.equal(d.evidence.experimental, true); assert.match(d.evidence.text, /Momentum: not supported/);
   const none = decisionOf(base({ pick: null, engines: [{ id: 'MOM', name: 'Momentum', pass: false, score: null, eligible: true }, { id: 'QLT', name: 'Quality at a fair price', pass: false, score: null, eligible: true }] }));
-  assert.deepEqual(none.evidence.chips.map((c) => c.state), ['unsupported', 'untested']); assert.match(none.why.text, /No engine surfaced it tonight/);
+  assert.deepEqual(none.evidence.chips.map((c) => c.state), ['unsupported', 'forward']); assert.match(none.why.text, /No engine surfaced it tonight/);
 });
 test('decision: invalidation comes from the pick, then the user\'s own thesis, else it says it is missing', () => {
   assert.match(decisionOf(base()).invalidation.text, /close below ₹675\.37 \(7% under the signal close\)/i);
