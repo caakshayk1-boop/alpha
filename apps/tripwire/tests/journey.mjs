@@ -123,7 +123,7 @@ await pg.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'ap
 await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
 ok(/Last 10 years/i.test(await text()) && /a year/.test(await text()), 'chart opens on ten years and states the period return and the yearly rate');
 const d0 = await pg.locator('.chart-plot path.c-line').getAttribute('d');
-await pg.getByRole('button', { name: 'Max', exact: true }).click();
+await pg.getByRole('button', { name: /^max$/i }).click();
 ok(/Since listing in this data/i.test(await text()), 'Max shows everything held and says it starts at listing');
 await pg.getByRole('button', { name: '1Y', exact: true }).click();
 ok(/Last year/i.test(await text()) && (await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== d0, 'switching range redraws the line');
@@ -138,7 +138,7 @@ ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pt
 ok(/both indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded(); const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2); await pg.waitForTimeout(150);
 ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');
-await pg.getByRole('button', { name: 'Price', exact: true }).click();
+await pg.getByRole('button', { name: /^price$/i }).click();
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded();
 const box = await pg.locator('.chart-plot').boundingBox();
 await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2); await pg.waitForTimeout(150);
