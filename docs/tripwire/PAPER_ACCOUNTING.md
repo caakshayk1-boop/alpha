@@ -28,7 +28,7 @@ Every figure below is pinned by `apps/tripwire/tests/paper.test.ts`, with the ar
 
 ## Profit booking and trading styles (from picks written on 2026-10-27)
 
-The 30 positions are three sleeves of 10: short term (horizon up to 10 sessions), swing (11 to 30) and long term (over 30). A pick lands in the sleeve its own horizon names. A full sleeve refuses its picks with that reason; it never borrows another sleeve's slots. No active engine writes a short-term pick, so that sleeve is empty today and its 10 places stay idle (stated, not hidden).
+The book holds at most 30 positions in total, shared by every style (no sleeves). Each pick is a style by its own horizon: short term (up to 10 sessions), swing (11 to 30), long term (over 30). No active engine writes short-term picks today.
 
 | Style | Target 1 | Target 2 |
 |---|---|---|

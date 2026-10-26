@@ -24,7 +24,7 @@ test('auto book: never more than 30 positions at a time, and the refusals say wh
   const picks = Array.from({ length: 35 }, (_, i) => pick('2026-10-23', `S${i}`, 100, { score: 90 - i, horizon: H[i % 3] }));
   const p = planAutoBook(ledger(picks));
   assert.equal(p.taken.length, MAX_OPEN); assert.equal(p.refused.length, 5);
-  assert.ok(p.refused.every((r) => /sleeve is full: 10 positions/.test(r.why)));
+  assert.ok(p.refused.every((r) => /book is full/.test(r.why)));
   assert.deepEqual(p.refused.map((r) => r.pick.sym), ['S30', 'S31', 'S32', 'S33', 'S34']);        // best scores were taken first
 });
 test('auto book: a closed position frees its slot only for nights after it closed', () => {
@@ -221,11 +221,9 @@ test('news: five outlets reporting one results night are one line, and a headlin
   assert.ok(s[0].also >= 2, 'the folded outlets are counted');
 });
 
-test('auto book: 30 = 10 short term + 10 swing + 10 long term; one style cannot use the others\' slots', () => {
+test('auto book: the 30 places are shared by every style, with no sleeves', () => {
   const swing = Array.from({ length: 12 }, (_, i) => pick('2026-10-23', `W${i}`, 100, { score: 90 - i, horizon: 20 }));
-  const p = planAutoBook(ledger(swing));
-  assert.equal(p.taken.length, 10); assert.equal(p.refused.length, 2);
-  assert.ok(p.refused.every((r) => /Swing sleeve is full: 10 positions/.test(r.why)));
-  const mixed = planAutoBook(ledger([...swing, pick('2026-10-23', 'LONGER', 100, { score: 10, horizon: 60 }), pick('2026-10-23', 'QUICK', 100, { score: 5, horizon: 5 })]));
-  assert.ok(mixed.taken.some((t) => t.pick.sym === 'LONGER') && mixed.taken.some((t) => t.pick.sym === 'QUICK'), 'an empty sleeve still takes its own picks');
+  assert.equal(planAutoBook(ledger(swing)).taken.length, 12, 'twelve swing picks all fit: one style may use any free place');
+  const many = Array.from({ length: 33 }, (_, i) => pick('2026-10-23', `M${i}`, 100, { score: 90 - i, horizon: 20 }));
+  const p = planAutoBook(ledger(many)); assert.equal(p.taken.length, 30); assert.ok(p.refused.every((r) => /book is full/.test(r.why)));
 });

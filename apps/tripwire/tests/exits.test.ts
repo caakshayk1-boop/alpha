@@ -57,5 +57,5 @@ test('styles: the holding period picks the sleeve and the ladder; picks filed be
   assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 20 }), { style: 'swing', t1R: 1.5, t2R: 3 });
   assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 60 }), { style: 'long', t1R: 2, t2R: 4 });
   assert.equal(targetsFor({ asOf: '2026-10-26', horizon: 20 }), null);
-  assert.equal(STYLES.reduce((a, s) => a + s.cap, 0), 30);
+  assert.equal(STYLES.length, 3);
 });
