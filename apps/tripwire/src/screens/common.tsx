@@ -32,12 +32,12 @@ export function FollowButton({ sym, name }: { sym: string; name?: string }) {
     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setState((x) => toggleFollow(x, sym)); tick(); toast(on ? `Stopped following ${sym}` : `Following ${sym}. Kept on this device.`); }}>
     <Icon n="star" /></button>;
 }
-export function CompanyRow({ r, extra, compare }: { r: Row; extra?: ReactNode; compare?: { on: boolean; toggle: () => void; disabled: boolean } }) {
+export function CompanyRow({ r, extra, meta, compare }: { r: Row; extra?: ReactNode; meta?: ReactNode; compare?: { on: boolean; toggle: () => void; disabled: boolean } }) {
   const lp = useLivePrice(r);          // the live price when the Worker has one from today, otherwise the published close
   return <div className="li">
     <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }}>
       <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
-      <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact /><span className="dim small trunc">{r.name}</span></span></span>
+      <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />{meta}<span className="dim small trunc">{r.name}</span></span></span>
       <span className="px num" style={{ flex: 'none' }} title={lp.fromQuote ? `${lp.live ? 'Live' : 'Last price'}, as of ${asOfTime(lp.t)} IST` : 'Close of the last session in the published data'}><b>{inr(lp.px)}</b><span className={tone(lp.ch)}>{pct(lp.ch)}</span></span>
     </a>
     {extra}

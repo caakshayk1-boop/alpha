@@ -5,7 +5,7 @@ import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
 import { trendOfCloses, trendOf, TREND_WORD } from '../src/screen.ts';
-import { companyQ, mergeNews, type NewsItem } from '../src/news.ts';
+import { companyQ, companyStories, mergeNews, type NewsItem } from '../src/news.ts';
 import { pct, tone } from '../src/fmt.ts';
 import { fmtMacro, MACRO } from '../src/macro.ts';
 import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
@@ -199,4 +199,19 @@ test('numbers: a value that rounds to zero carries no sign and no colour', () =>
   assert.equal(pct(-0.04), '0.0%'); assert.equal(pct(0.04), '0.0%'); assert.equal(pct(0), '0.0%');
   assert.equal(pct(-0.06), '−0.1%'); assert.equal(pct(1.26), '+1.3%'); assert.equal(pct(null), '—');
   assert.equal(tone(-0.04), ''); assert.equal(tone(0.2), 'up'); assert.equal(tone(-0.2), 'down');
+});
+
+test('news: five outlets reporting one results night are one line, and a headline that is not about the company is dropped', () => {
+  const now = 1_800_000_000;
+  const feed = [
+    hl('Castrol India Q3 Results: raw material costs hit margins', { tags: ['Results'], t: now - 3600, also: 1, url: 'https://a/1' }),
+    hl('Castrol India Q3 revenue rises 27% to Rs 1,735 crore', { tags: ['Results'], t: now - 90000, url: 'https://a/2' }),
+    hl('Castrol India Q3 net profit slumps 23%', { tags: ['Results'], t: now - 100000, url: 'https://a/3' }),
+    hl('Castrol India Ltd. declines 1.5% amid mixed technical signals', { tags: ['Rating'], t: now - 400000, url: 'https://a/4' }),
+    hl('Lubricant demand rises across Asia', { t: now - 5000, url: 'https://a/5' }),
+  ];
+  const s = companyStories('Castrol India Ltd.', feed, 5);
+  assert.equal(s.length, 2);                                                     // the results night once, the rating once; the unrelated line is gone
+  assert.deepEqual(s.map((x) => x.tags[0]), ['Results', 'Rating']);
+  assert.ok(s[0].also >= 2, 'the folded outlets are counted');
 });

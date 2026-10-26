@@ -25,6 +25,7 @@ export function Tracker() {
   const dups = s.paper.filter((p) => !p.closedByUser && auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf));
   const retired = s.paper.filter((p) => !p.closedByUser && ENGINES.some((e) => e.id === p.engine && e.retired));
   return <>
+    <p className="small dim" style={{ margin: '0 0 8px' }}>The {s.paper.filter((p) => !p.closedByUser).length} trade{s.paper.filter((p) => !p.closedByUser).length === 1 ? '' : 's'} you took yourself. The engines' own picks are in the Auto tab.</p>
     <div className="card glass">
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>

@@ -398,3 +398,27 @@ html.fx .dot-live{animation:pulse 1.8s ease-in-out infinite}
 
 .chips.wrap{flex-wrap:wrap;overflow:visible}
 .chips.wrap .chip{flex:0 1 auto;max-width:100%;white-space:normal;text-align:left;line-height:1.2;padding-block:5px}
+
+.bookrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.bookrow:first-of-type{border-top:0}
+.bookdot{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;flex:none;font:600 1.125rem var(--sans);color:var(--a4);background:color-mix(in srgb,var(--a4) 14%,var(--s2));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--a4) 45%,transparent)}
+.pickrow{gap:10px}
+.pickspark{width:58px;flex:none}
+
+/* discover: idea lenses, coloured filter chips, the sorted-by figure on every row */
+.lenses{gap:10px;margin-bottom:2px}
+.lens{flex:none;scroll-snap-align:start;width:9.5rem;min-height:5.6rem;padding:10px 12px;border-radius:16px;text-align:left;display:flex;flex-direction:column;gap:2px;border:1px solid color-mix(in srgb,var(--lc) 30%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--lc) 20%,var(--s1)),var(--s1) 70%);transition:transform .16s,border-color .2s,background .2s}
+.lens:active{transform:scale(.97)}
+.lens .lt{font-size:0.75rem;font-weight:700;color:var(--lc);letter-spacing:.01em}
+.lens .ln{font:650 1.5rem/1.1 var(--sans)}
+.lens .ln small{font-size:0.6875rem;font-weight:600;color:var(--dim)}
+.lens .ll{font-size:0.6875rem;line-height:1.25;color:var(--dim)}
+.lens.on{background:linear-gradient(160deg,var(--lc),color-mix(in srgb,var(--lc) 55%,var(--bg)));border-color:transparent}
+.lens.on .lt,.lens.on .ln,.lens.on .ln small,.lens.on .ll{color:var(--ink)}
+.chip.cc{--cc:var(--lime);border-color:color-mix(in srgb,var(--cc) 42%,transparent);color:var(--cc)}
+.chip.cc[aria-pressed=true]{background:var(--cc);color:var(--ink);border-color:transparent}
+.chip.cc.on-x{background:color-mix(in srgb,var(--cc) 16%,var(--s1));color:var(--tx);gap:8px}
+.chip.cc.on-x span{color:var(--cc);font-weight:800}
+.chips.chosen{margin-top:6px}
+.metatag{flex:none;max-width:7.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.625rem;font-weight:650;padding:1px 7px;border-radius:99px;color:var(--mc);background:color-mix(in srgb,var(--mc) 15%,transparent)}
+@media(prefers-reduced-motion:reduce){.lens{transition:none}}
