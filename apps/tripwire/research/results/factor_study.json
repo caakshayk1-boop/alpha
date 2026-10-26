@@ -1,6 +1,6 @@
 {
  "meta": {
-  "when": "2026-10-26 03:06 UTC",
+  "when": "2026-10-26 03:12 UTC",
   "symbols": 660,
   "dates": [
    "2015-10-23",
@@ -51,7 +51,7 @@
   "rev21": {
    "train": {
     "ic": 0.02,
-    "t": 1.498,
+    "t": 1.497,
     "months": 62,
     "top_quintile_excess_net": -0.0044
    },
@@ -71,13 +71,13 @@
   "smooth_fip": {
    "train": {
     "ic": 0.029,
-    "t": 2.339,
+    "t": 2.34,
     "months": 62,
     "top_quintile_excess_net": 0.0014
    },
    "validation": {
     "ic": 0.003,
-    "t": 0.225,
+    "t": 0.227,
     "months": 24,
     "top_quintile_excess_net": -0.0077
    },
@@ -137,7 +137,7 @@
    },
    "validation": {
     "ic": -0.027,
-    "t": -1.494,
+    "t": -1.495,
     "months": 24,
     "top_quintile_excess_net": -0.0114
    },
@@ -171,13 +171,13 @@
   "vol_shock": {
    "train": {
     "ic": -0.004,
-    "t": -0.389,
+    "t": -0.388,
     "months": 62,
     "top_quintile_excess_net": -0.0019
    },
    "validation": {
     "ic": 0.033,
-    "t": 2.9,
+    "t": 2.901,
     "months": 24,
     "top_quintile_excess_net": 0.0036
    },
@@ -191,13 +191,13 @@
   "ud_vol": {
    "train": {
     "ic": -0.012,
-    "t": -1.228,
+    "t": -1.222,
     "months": 62,
     "top_quintile_excess_net": -0.0036
    },
    "validation": {
     "ic": -0.006,
-    "t": -0.432,
+    "t": -0.431,
     "months": 24,
     "top_quintile_excess_net": -0.0022
    },
@@ -271,7 +271,7 @@
   "amihud": {
    "train": {
     "ic": 0.007,
-    "t": 0.604,
+    "t": 0.603,
     "months": 62,
     "top_quintile_excess_net": 0.0005
    },
@@ -313,7 +313,7 @@
   "smooth_fip": {
    "train": {
     "diff": 0.0041,
-    "t": 1.022,
+    "t": 1.021,
     "months": 62
    },
    "validation": {
@@ -322,8 +322,8 @@
     "months": 24
    },
    "holdout": {
-    "diff": -0.0092,
-    "t": -2.568,
+    "diff": -0.0093,
+    "t": -2.607,
     "months": 33
    }
   },
