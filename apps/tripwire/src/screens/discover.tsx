@@ -13,7 +13,7 @@ const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
   { id: 'name', label: 'Name A to Z', dir: 'asc' }, { id: 'r1d', label: 'Biggest day gain', dir: 'desc' }, { id: 'rs3m', label: 'Ahead of the Nifty, 3 months', dir: 'desc' },
   { id: 'roce_med', label: 'Highest ROCE', dir: 'desc' }, { id: 'pe', label: 'Lowest PE', dir: 'asc' }, { id: 'from_high', label: 'Closest to 52-week high', dir: 'desc' }, { id: 'turnover_cr', label: 'Most traded', dir: 'desc' },
 ];
-const PAGE = 40;
+const PAGE = 24;
 /** One tap, one idea: each lens is a fixed combination of the screen's own filters, with the number of names that pass it today. The colour says what kind of idea it is. */
 const LENSES: { id: string; title: string; line: string; f: Partial<Filters>; c: string }[] = [
   { id: 'leaders', title: 'Leaders', line: 'Uptrend and ahead of the Nifty', f: { trend: 'up', momentum: 'strong' }, c: 'var(--up)' },
@@ -91,7 +91,7 @@ export function Discover() {
       <label className="l" htmlFor="f-q">Quality</label>
       <select id="f-q" className="field" value={f.quality} onChange={(e) => set({ quality: e.target.value as Filters['quality'] })}><option value="">Any</option><option value="high">Median ROCE 20%+ (financial sector left out)</option></select>
       <label className="l" htmlFor="f-t">Trend</label>
-      <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (price above the 50-day, 50-day above the 200-day)</option><option value="down">Downtrend (the mirror of that)</option><option value="mixed">Sideways (no clear trend: the price and the averages are not in one order)</option></select>
+      <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (all four: above 20/50-day, 50-day 1% over 200-day, 3-month up)</option><option value="down">Downtrend (all four, mirrored)</option><option value="mixed">Sideways (meets neither rule)</option></select>
       <label className="l" htmlFor="f-m">Momentum</label>
       <select id="f-m" className="field" value={f.momentum} onChange={(e) => set({ momentum: e.target.value as Filters['momentum'] })}><option value="">Any</option><option value="strong">Ahead of the Nifty, 3 months</option><option value="weak">Behind the Nifty, 3 months</option><option value="near-high">Within 5% of the 52-week high</option></select>
       <p className="small dim">Every figure: Alpha screen, last close. PE is trailing and absent for loss-makers. ROCE is the median of up to four fiscal years.</p>

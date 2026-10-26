@@ -159,15 +159,17 @@ async function tick(url, ctx) {
 
 // ---- Breadth: how much of the market is in an uptrend, with today's prices ------------------------------------------------------------
 /** Pure. The trend rule, the same as the app's: UP is price above its 50-day and the 50-day above the 200-day, DOWN is the mirror, else mixed. */
-export function trendOfRow(price, sma50, sma200) {
-  if (!(price > 0) || !(sma50 > 0) || !(sma200 > 0)) return null;
-  return price > sma50 && sma50 > sma200 ? 'up' : price < sma50 && sma50 < sma200 ? 'down' : 'mixed';
+export function trendOfRow(price, sma20, sma50, sma200, r3m) {
+  if (!(price > 0) || !(sma20 > 0) || !(sma50 > 0) || !(sma200 > 0) || typeof r3m !== 'number' || !Number.isFinite(r3m)) return null;
+  if (price > sma20 && sma20 > sma50 && sma50 >= sma200 * 1.01 && r3m > 0) return 'up';
+  if (price < sma20 && sma20 < sma50 && sma200 >= sma50 * 1.01 && r3m < 0) return 'down';
+  return 'mixed';
 }
 /** Pure. Counts and sector splits over the liquid names, using a live price where one is given and the published close otherwise. */
 export function aggregateBreadth(rows, live = {}) {
   const c = { up: 0, mixed: 0, down: 0 }; const by = new Map();
   for (const r of rows) {
-    if (!r.liquid) continue; const t = trendOfRow(live[r.sym] ?? r.price, r.sma50, r.sma200); if (!t) continue;
+    if (!r.liquid) continue; const lp = live[r.sym]; const t = trendOfRow(lp ?? r.price, r.sma20, r.sma50, r.sma200, lp != null && r.price > 0 && typeof r.r3m === 'number' ? ((lp / r.price) * (1 + r.r3m / 100) - 1) * 100 : r.r3m); if (!t) continue;
     c[t]++; const k = r.sector || 'Other'; const e = by.get(k) ?? { n: 0, up: 0, down: 0 }; e.n++; if (t === 'up') e.up++; if (t === 'down') e.down++; by.set(k, e);
   }
   const n = c.up + c.mixed + c.down;
@@ -181,8 +183,9 @@ async function breadth(request, env, ctx) {
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=30, s-maxage=60' } });
     const scr = await (await env.ASSETS.fetch(new Request(new URL('/data/screen.json', request.url)))).json();
-    const rows = (scr.rows || []).filter((r) => r.liquid && r.price > 0 && r.sma50 > 0 && r.sma200 > 0);
-    const near = rows.filter((r) => Math.abs(r.price / r.sma50 - 1) <= 0.08).slice(0, 400);
+    const rows = (scr.rows || []).filter((r) => r.liquid && r.price > 0 && r.sma20 > 0 && r.sma50 > 0 && r.sma200 > 0 && typeof r.r3m === 'number');
+    // only a name close to one of the lines the rule reads (the 20-day, the 50-day, or a 3-month return near zero) can change class in a day
+    const near = rows.filter((r) => Math.abs(r.price / r.sma20 - 1) <= 0.06 || Math.abs(r.price / r.sma50 - 1) <= 0.08 || Math.abs(r.r3m) <= 6).slice(0, 400);
     const { out } = await sparkMany(near.map((r) => [r.sym, `${r.sym}.NS`]), ctx);
     // a quote is used only if it printed within two days of now; an old one (a halted name) is ignored, never blended
     const live = {}; for (const [k, q] of Object.entries(out)) if (Date.now() / 1000 - q.pt < 2 * 86400) live[k] = q.px;

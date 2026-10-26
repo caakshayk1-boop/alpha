@@ -1,3 +1,4 @@
+import { StatusBar } from './statusbar.tsx';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULTS, readSaved, type State } from './store.ts';
 import { useScreen } from './data.ts';
@@ -108,6 +109,7 @@ export function App(): ReactNode {
     <a className="sr" href="#/today">Skip to Today</a>
     <div className="app">
       <main className="main" id="main">
+        <StatusBar asOf={screen.data?.as_of} />
         {!health.persisted && <div className="banner" role="alert">This browser is not keeping Tripwire's data (private mode, or storage is full). Notes, plans and paper trades will be lost when this tab closes. Export a backup from Profile now.</div>}
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}

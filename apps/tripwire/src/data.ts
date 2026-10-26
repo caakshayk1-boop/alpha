@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Row } from './screen.ts';
 import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
+import { nseClockOpen } from './stamp.ts';
 export { useLiveMacro };
 
 export interface ScreenFeed { built_on: string; as_of: string; count: number; rows: Row[] }
@@ -46,7 +47,7 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
   const [st, set] = useState<{ data: BarsFeed | null; err: string | null; at: number | null; loading: boolean }>({ data: null, err: null, at: null, loading: false });
   useEffect(() => {
     if (!on || !key) { set({ data: null, err: null, at: null, loading: false }); return; }
-    let live = true; let timer: number | undefined;
+    let live = true; let timer: number | undefined; let got = false;
     const load = async () => {
       if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, 60000); return; }
       set((s) => ({ ...s, loading: true }));
@@ -54,10 +55,12 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
         const r = await fetch(`/api/bars?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20000) });
         const d = (await r.json()) as BarsFeed;
         if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no bars returned');
-        set({ data: d, err: null, at: Date.now(), loading: false });
+        set({ data: d, err: null, at: Date.now(), loading: false }); got = true;
       } catch (e) { if (live) set((s) => ({ data: s.data, err: (e as Error).message || 'unreachable', at: s.at, loading: false })); }
-      if (live) timer = window.setTimeout(load, 60000);
+      if (live) timer = window.setTimeout(wake, 60000);
     };
+    // with the exchange shut the daily bars cannot change: after one good load, wake once a minute to look at the clock and fetch nothing until it opens
+    const wake = () => { if (!live) return; if (got && !nseClockOpen(Date.now())) { timer = window.setTimeout(wake, 60000); return; } void load(); };
     void load();
     return () => { live = false; window.clearTimeout(timer); };
   }, [key, on]);
@@ -77,23 +80,26 @@ export interface FactorSheet { ok: boolean; schema: string; as_of: string; unive
 export const useFactors = () => useJson<FactorSheet>('/api/factors');
 
 /** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
-export function usePoll<T extends { ok: boolean }>(url: string | null, every: number): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
+export function usePoll<T extends { ok: boolean }>(url: string | null, every: number, nseOnly = false): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
   const [st, set] = useState<{ data: T | null; err: string | null; at: number | null; loading: boolean; tick: number }>({ data: null, err: null, at: null, loading: false, tick: 0 });
   useEffect(() => {
     if (!url) { set({ data: null, err: null, at: null, loading: false, tick: 0 }); return; }
-    let live = true; let timer: number | undefined;
+    let live = true; let timer: number | undefined; let got = false;
+    // an NSE-only feed is not asked again while the market is shut: the clock is looked at once a minute (no request), and the feed resumes when it opens
+    const idle = () => nseOnly && !nseClockOpen(Date.now());
+    const next = () => { if (!live) return; const waiting = idle(); timer = window.setTimeout(() => { if (waiting && idle()) next(); else void load(); }, waiting ? 60000 : every); };
     const load = async () => {
       if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, every); return; }
       set((s) => ({ ...s, loading: true }));
       try {
         const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json()) as T;
         if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no prices returned');
-        set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
+        got = true; set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
       } catch (e) { if (live) set((s) => ({ ...s, err: (e as Error).message || 'unreachable', loading: false })); }
-      if (live) timer = window.setTimeout(load, every);
+      next();
     };
     void load();
-    const vis = () => { if (document.visibilityState === 'visible' && live) { window.clearTimeout(timer); void load(); } };
+    const vis = () => { if (document.visibilityState === 'visible' && live && !(got && idle())) { window.clearTimeout(timer); void load(); } };
     document.addEventListener('visibilitychange', vis);
     return () => { live = false; window.clearTimeout(timer); document.removeEventListener('visibilitychange', vis); };
   }, [url, every]);
@@ -109,4 +115,4 @@ export const useStudy = () => useJson<import('./evidence.ts').Study>('/data/rese
 
 export interface BreadthFeed { ok: boolean; t: number; as_of: string; n: number; up: number; mixed: number; down: number; sectors: { k: string; n: number; up: number; down: number }[]; repriced: number; near: number }
 /** The trend map with today's prices: the Worker re-prices only the names close enough to a trend line to change class, and shares the answer for 60 s. */
-export const useBreadth = (on = true) => usePoll<BreadthFeed>(on ? '/api/breadth' : null, 60000);
+export const useBreadth = (on = true) => usePoll<BreadthFeed>(on ? '/api/breadth' : null, 60000, true);

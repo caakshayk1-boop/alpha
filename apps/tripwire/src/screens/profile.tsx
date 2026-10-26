@@ -4,9 +4,7 @@ import { setState, useAppState } from '../app.tsx';
 import { Icon, useUi } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
 import { DEFAULTS, exportJson, journalCsv, mergeStates, parseState } from '../store.ts';
-import { THEMES, themeOf } from '../theme.ts';
 import { disableLock, enableLock, lockId, lockSupported } from '../lock.ts';
-import { Mark } from '../ui.tsx';
 import { useEffect } from 'react';
 
 export function download(name: string, text: string, type: string) {
@@ -37,13 +35,6 @@ export function Profile() {
     <div className="card">{numf('equity', 'Hypothetical equity, ₹', 10000)}{numf('cash', 'Available cash, ₹', 10000)}{numf('riskPct', 'Risk per plan, % of equity', 0.1)}{numf('maxPositionPct', 'Largest position, % of equity', 1)}
       <p className="small dim" style={{ marginBottom: 0 }}>Hypothetical figures. They are not read from any broker or account.</p></div>
 
-    <Head>Look</Head>
-    <div className="card">
-      <div className="row" style={{ gap: 12 }}><Mark size={48} /><div className="grow"><b>{themeOf(p.theme).label}</b><div className="small dim">Pick a colour. The app, the browser bar and the icon follow it.</div></div></div>
-      <div className="swatches" role="group" aria-label="Colour theme" style={{ marginTop: 12 }}>{THEMES.map((t) => <button key={t.id} className="swatch" style={{ background: t.swatch }} aria-pressed={themeOf(p.theme).id === t.id} aria-label={t.label} onClick={() => set({ theme: t.id })} />)}</div>
-      <p className="small dim" style={{ margin: '10px 0 0' }}>A phone takes an app's icon when you add it to the home screen, and a web page cannot change an icon that is already there. To use a different icon, pick the colour, then remove Tripwire from the home screen and add it again.</p>
-    </div>
-
     <Head>Privacy</Head>
     <div className="card">
       <label className="row between" style={{ minHeight: 44 }}><span>Hide my amounts<span className="dim small" style={{ display: 'block' }}>Blurs profit and loss and the money in your paper books. Also on the eye button on Today.</span></span><input type="checkbox" role="switch" checked={!!p.hideAmounts} onChange={(e) => set({ hideAmounts: e.target.checked })} /></label>
@@ -54,8 +45,8 @@ export function Profile() {
 
     <Head>Feel</Head>
     <div className="card">
-      <label className="row between" style={{ minHeight: 44 }}><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} style={{ width: 24, height: 24, accentColor: '#c8f23c' }} /></label>
-      <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{{ vibrate: 'A light tap on buttons and on success or error messages (this device vibrates).', 'ios-switch': 'A light tap on buttons and on success or error messages (the iPhone system tap).', none: 'Not supported on this browser or device, so this switch does nothing.' }[support()]}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} style={{ width: 24, height: 24, accentColor: '#c8f23c' }} /></label>
+      <label className="row between" style={{ minHeight: 44 }}><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} /></label>
+      <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{{ vibrate: 'A light tap on buttons and on success or error messages (this device vibrates).', 'ios-switch': 'A light tap on buttons and on success or error messages (the iPhone system tap).', none: 'Not supported on this browser or device, so this switch does nothing.' }[support()]}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
     </div>
 
     <Head>Notifications</Head>

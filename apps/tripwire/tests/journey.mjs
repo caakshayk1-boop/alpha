@@ -31,7 +31,7 @@ ok(await pg.locator('.welcome h1').isVisible(), 'first run shows the welcome scr
 await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore as a guest' }).click();
 await pg.waitForSelector('nav.tabs');
-ok((await pg.locator('nav.tabs a').allInnerTexts()).map((s) => s.trim()).join('|') === 'Today|Discover|Signals|My Desk|Profile', 'five destinations: Today, Discover, Signals, My Desk, Profile');
+ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Discover|Signals|My Desk|Profile', 'five destinations: Today, Discover, Signals, My Desk, Profile');
 await pg.waitForSelector('.rangebar', { timeout: 15000 });
 await pg.waitForTimeout(600); await shot('01-today');
 ok(/Screen: close of/.test(await text()), 'Today states the data date');
@@ -43,10 +43,11 @@ ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await tex
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
-await pg.waitForSelector('.news'); ok(/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Q2 results|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
+await pg.waitForSelector('.news'); ok(/RBI keeps rates unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Regulator|Results/.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');
-T.stock = () => quote(100, 102); await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
+T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
+await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
 await pg.waitForSelector('.dot-live', { timeout: 15000 });
 ok(/live ·/i.test(await text()) && /Needs you|Tonight's picks/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
@@ -149,7 +150,7 @@ ok(homeTxt !== (await pg.locator('.chart-head').innerText()) && Number(await pg.
 await shot('04b-chart');
 // an instrument's own page: its chart, no Nifty line, and the scale explained
 await pg.goto(base + '/#/m/GOLD'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 }); await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
-ok(/Gold/.test(await pg.locator('h1').innerText()) && await pg.getByRole('button', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
+ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('button', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
 await pg.getByRole('button', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
 // compare starting from a single company: it asks for the second one instead of dead-ending
@@ -226,7 +227,7 @@ await pg.route('**/api/bars*', mock);
 T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Take it myself' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
-await pg.getByRole('tab', { name: /^My trades/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /\d\d:\d\d IST · \d+ (s|min) old/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
@@ -278,15 +279,14 @@ await pg.reload(); await pg.waitForSelector('.moodhero'); await pg.waitForTimeou
 await pg.getByRole('button', { name: 'Hide my amounts' }).click();
 await pg.waitForSelector('html.priv'); const blur = await pg.locator('.amt').first().evaluate((el) => getComputedStyle(el).filter);
 ok(/blur/.test(blur), 'one tap on the eye blurs every amount of yours'); await pg.getByRole('button', { name: 'Show my amounts' }).click(); ok(await pg.locator('html.priv').count() === 0, 'and one tap shows them again');
-await pg.goto(base + '/#/profile'); await pg.waitForSelector('.swatches');
-await pg.getByRole('button', { name: 'Ocean' }).click();
-ok(await pg.evaluate(() => document.documentElement.dataset.theme === 'ocean' && document.querySelector('meta[name=theme-color]').content === '#070d0e' && document.querySelector('link[rel=apple-touch-icon]').getAttribute('href') === '/icons/ocean-180.png'), 'a colour theme changes the app, the browser bar and the icon the page offers');
-const ic = await fetch(base + '/icons/ocean-180.png'); ok(ic.ok && /png/.test(ic.headers.get('content-type') ?? ''), 'the themed icon exists');
-await pg.getByRole('button', { name: 'Aurora' }).click();
+await pg.goto(base + '/#/profile'); await pg.waitForSelector('input[role=switch]');
+ok((await pg.locator('.swatches').count()) === 0 && !/Pick a colour/.test(await text()), 'there is one look and no theme options');
+const sw = await pg.locator('input[role=switch]').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(), c = e.closest('.card').getBoundingClientRect(); return r.width >= 50 && r.right <= c.right; }));
+ok(sw.length >= 3 && sw.every(Boolean), 'every switch on Profile is a full-size switch that sits inside its card');
 // the lock, with a virtual phone unlock (Chromium's WebAuthn test authenticator)
 const cdp = await ctx.newCDPSession(pg); await cdp.send('WebAuthn.enable');
 const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: false, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-await pg.reload(); await pg.waitForSelector('.swatches'); await pg.getByLabel(/^Lock with Face ID/).click(); await pg.waitForSelector('text=Lock is on');
+await pg.reload(); await pg.waitForSelector('input[role=switch]'); await pg.getByLabel(/^Lock with Face ID/).click(); await pg.waitForSelector('text=Lock is on');
 ok(await pg.evaluate(() => !!localStorage.getItem('tripwire:lock')), 'the lock registers the phone\'s own unlock and keeps only an id');
 await pg.reload(); await pg.waitForSelector('nav.tabs', { timeout: 15000 }); ok(true, 'with a good unlock the app opens');
 await cdp.send('WebAuthn.setUserVerified', { authenticatorId, isUserVerified: false });

@@ -13,21 +13,41 @@ export interface Filters { q: string; sector: string; tier: string; value: '' | 
 export const NO_FILTER: Filters = { q: '', sector: '', tier: '', value: '', quality: '', momentum: '', trend: '' };
 export type SortKey = 'name' | 'r1d' | 'r3m' | 'rs3m' | 'pe' | 'roce_med' | 'from_high' | 'turnover_cr';
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-/** The trend tag. UP is the Alpha site's own definition (price above its 50-day average and the 50-day above the 200-day, at the latest close).
- *  Alpha publishes no downtrend, so DOWN is its exact mirror (price below the 50-day, the 50-day below the 200-day). Anything else is MIXED.
- *  A name missing a figure is untagged (null), never "mixed": unmeasured is not a finding. */
-export function trendOf(r: Pick<Row, 'price' | 'sma50' | 'sma200'>): { trend: Trend | null; detail: string } {
-  if (!(num(r.price) && r.price > 0) || !(num(r.sma50) && r.sma50 > 0) || !(num(r.sma200) && r.sma200 > 0)) return { trend: null, detail: 'Needs the price and both averages; one is missing.' };
-  const d = `price ${r.price.toFixed(2)}, 50-day ${r.sma50.toFixed(2)}, 200-day ${r.sma200.toFixed(2)}`;
-  if (r.price > r.sma50 && r.sma50 > r.sma200) return { trend: 'up', detail: `Uptrend: price above the 50-day, and the 50-day above the 200-day (${d}).` };
-  if (r.price < r.sma50 && r.sma50 < r.sma200) return { trend: 'down', detail: `Downtrend: price below the 50-day, and the 50-day below the 200-day (${d}).` };
-  return { trend: 'mixed', detail: `Sideways: the price and the two averages are not in one order, so there is no clear trend (${d}).` };
+/** The trend tag, with one rule used everywhere (the company page, Discover, the trend map, the Worker's live map).
+ *  UPTREND needs all four: the price above its 20-day average, the 20-day above the 50-day, the 50-day at least 1% above the 200-day (a clear gap, not a tangle
+ *  of averages crossing), and a positive 3-month return. DOWNTREND is the exact mirror. Anything else is SIDEWAYS: it meets neither rule, and the page says
+ *  which condition it misses. This is stricter than "price above the 50-day above the 200-day": a pullback through the 20-day, or a stack that has only just
+ *  crossed, or a rally that has not yet lifted the 3-month return, is not called a trend. A name missing a figure is untagged (null), never "sideways". */
+export const TREND_GAP = 0.01;
+export interface TrendIn { price?: number | null; sma20?: number | null; sma50?: number | null; sma200?: number | null; r3m?: number | null }
+export function trendChecks(r: TrendIn): { up: [string, boolean][]; down: [string, boolean][] } | null {
+  const pos = (v: unknown): v is number => num(v) && v > 0;
+  if (!pos(r.price) || !pos(r.sma20) || !pos(r.sma50) || !pos(r.sma200) || !num(r.r3m)) return null;
+  const { price: p, sma20: a, sma50: b, sma200: c, r3m: m } = r as Required<{ [K in keyof TrendIn]: number }>;
+  return {
+    up: [['the price is above the 20-day average', p > a], ['the 20-day is above the 50-day', a > b], ['the 50-day is at least 1% above the 200-day', b >= c * (1 + TREND_GAP)], ['the 3-month return is positive', m > 0]],
+    down: [['the price is below the 20-day average', p < a], ['the 20-day is below the 50-day', a < b], ['the 50-day is at least 1% below the 200-day', c >= b * (1 + TREND_GAP)], ['the 3-month return is negative', m < 0]],
+  };
 }
+export function trendOf(r: TrendIn): { trend: Trend | null; detail: string } {
+  const k = trendChecks(r); if (!k) return { trend: null, detail: 'Needs the price, the 20, 50 and 200-day averages and the 3-month return; one is missing.' };
+  const d = `price ${r.price!.toFixed(2)}, 20-day ${r.sma20!.toFixed(2)}, 50-day ${r.sma50!.toFixed(2)}, 200-day ${r.sma200!.toFixed(2)}, 3-month ${r.r3m! > 0 ? '+' : r.r3m! < 0 ? '−' : ''}${Math.abs(r.r3m!).toFixed(1)}%`;
+  if (k.up.every(([, ok]) => ok)) return { trend: 'up', detail: `Uptrend: all four hold. The price is above the 20-day, the 20-day above the 50-day, the 50-day at least 1% above the 200-day, and the 3-month return is positive (${d}).` };
+  if (k.down.every(([, ok]) => ok)) return { trend: 'down', detail: `Downtrend: all four hold, mirrored. The price is below the 20-day, the 20-day below the 50-day, the 50-day at least 1% below the 200-day, and the 3-month return is negative (${d}).` };
+  const nUp = k.up.filter(([, ok]) => ok).length, nDown = k.down.filter(([, ok]) => ok).length; const side = nDown > nUp ? k.down : k.up; const miss = side.filter(([, ok]) => !ok).map(([t]) => t);
+  return { trend: 'mixed', detail: `Sideways: it meets neither rule. Closest to a${nDown > nUp ? ' downtrend' : 'n uptrend'}, but ${miss.join(' and ')} is not so (${d}).` };
+}
+/** The one description of the rule, printed wherever a trend is filtered or counted, so no screen paraphrases it. */
+export const TREND_RULE_TEXT = {
+  up: 'price above the 20-day, 20-day above the 50-day, 50-day at least 1% above the 200-day, 3-month return positive',
+  down: 'the mirror: price below the 20-day, 20-day below the 50-day, 50-day at least 1% below the 200-day, 3-month return negative',
+  mixed: 'meets neither rule (a name with any average or return missing is left out, not guessed)',
+};
 /** "Sideways" is the plain word for the third state: the price and the two averages are not in one order, so there is no clear trend either way. */
 export const TREND_WORD: Record<Trend, string> = { up: 'Uptrend', down: 'Downtrend', mixed: 'Sideways' };
 const sma = (c: readonly number[], n: number) => (c.length >= n ? c.slice(-n).reduce((a, b) => a + b, 0) / n : null);
-/** The same tag for anything with a daily close series (an index, gold, a currency): the last close against its own 50 and 200-day averages. */
-export const trendOfCloses = (c: readonly number[]) => trendOf({ price: c.length ? c[c.length - 1] : null, sma50: sma(c, 50), sma200: sma(c, 200) });
+/** The same tag for anything with a daily close series (an index, gold, a currency): the last close against its own 20, 50 and 200-day averages and its 63-session (about 3-month) return. */
+export const trendOfCloses = (c: readonly number[]) => trendOf({ price: c.length ? c[c.length - 1] : null, sma20: sma(c, 20), sma50: sma(c, 50), sma200: sma(c, 200), r3m: c.length > 63 ? (c[c.length - 1] / c[c.length - 64] - 1) * 100 : null });
 /** The financial sector (banks, lenders, brokers, advisers, insurers share one sector in the feed). Statement ratios built on capital employed do not compare across it.
  *  The single definition lives in eligibility.ts; this name is kept for the callers that still say lender. */
 export { isFinancialSector as isLender, isFinancialSector } from './eligibility.ts';

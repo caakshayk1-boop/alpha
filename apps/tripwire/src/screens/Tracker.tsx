@@ -6,9 +6,11 @@ import { ENGINES } from '../quant.ts';
 import { SLIPPAGE_PCT, pnlAt, rLevel } from '../tracker.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
+import { summarize } from '../tracker.ts';
 import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
+import { styleDef, styleOf } from '../exits.ts';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const R = (v: number | null | undefined) => sgn(v, (n) => n.toFixed(2) + 'R');
@@ -17,37 +19,37 @@ const money = (v: number | null | undefined) => sgn(v, (n) => inr0(n));
 export function Tracker() {
   const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
   const b = useLiveBook(); const auto = useAutoBook(false); const [openId, setOpenId] = useState<string | null>(null);
-  if (!s.paper.length) return <Empty title="Your paper book is empty" action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>Take a pick and Tripwire follows it with real prices: the next open fills it, the stop and the time limit close it. Nothing is real money.</Empty>;
-  const openRows = b.rows.filter((r) => r.v.status === 'open'); const maxAbs = Math.max(1, ...openRows.map((r) => Math.abs(r.v.pnl ?? 0)));
-  const live = b.session.phase === 'open'; const totalOpen = b.sum.openPnl;
+  // what this list never shows or counts: a copy of a pick the auto book already holds (the same trade at another rupee size, so adding both counts it twice) and anything
+  // a retired engine wrote. Both stay in the saved data and the backup; they are only kept out of the totals, and the count is stated once.
+  const isDup = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
+  const isGone = (p: { engine: string }) => ENGINES.some((e) => e.id === p.engine && e.retired);
+  const rows = b.rows.filter((r) => !isDup(r.p) && !isGone(r.p)); const sum = summarize(rows.map((r) => r.v));
+  const dayTotal = rows.some((r) => r.dayPnl != null) ? rows.reduce((a, r) => a + (r.dayPnl ?? 0), 0) : null;
+  const dups = b.rows.filter((r) => isDup(r.p) && !isGone(r.p)).length; const retired = b.rows.filter((r) => isGone(r.p)).length;
+  if (!rows.length) return <Empty title="You have taken no trade yourself" action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>Take a pick and Tripwire follows it with real prices: the next open fills it, the stop and the time limit close it. Nothing is real money.{dups + retired > 0 ? ` ${dups + retired} older ${dups + retired === 1 ? 'entry is' : 'entries are'} not shown (${[dups ? `${dups} duplicate${dups === 1 ? '' : 's'} of the auto book` : '', retired ? `${retired} from a retired engine` : ''].filter(Boolean).join(', ')}).` : ''}</Empty>;
+  const openRows = rows.filter((r) => r.v.status === 'open'); const maxAbs = Math.max(1, ...openRows.map((r) => Math.abs(r.v.pnl ?? 0)));
+  const live = b.session.phase === 'open'; const totalOpen = sum.openPnl;
   const hidden = s.paper.filter((p) => p.closedByUser).length;
-  // the same pick held twice (once by the auto book, once by a tap) shows the same trade with a different rupee size; say so, and offer to hide the copy
-  const dups = s.paper.filter((p) => !p.closedByUser && auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf));
-  const retired = s.paper.filter((p) => !p.closedByUser && ENGINES.some((e) => e.id === p.engine && e.retired));
   return <>
-    <p className="small dim" style={{ margin: '0 0 8px' }}>The {s.paper.filter((p) => !p.closedByUser).length} trade{s.paper.filter((p) => !p.closedByUser).length === 1 ? '' : 's'} you took yourself. The engines' own picks are in the Auto tab.</p>
+    <p className="small dim" style={{ margin: '0 0 8px' }}>The {rows.length} trade{rows.length === 1 ? '' : 's'} you took yourself. The engines' own picks are in the Auto tab.</p>
     <div className="card glass">
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
         <div><div className="k">Open P&L (paper)</div>
           <div className={`num amt ${totalOpen > 0 ? 'up' : totalOpen < 0 ? 'down' : ''}`} style={{ font: '600 2rem/1.1 var(--sans)' }}><Tick v={openRows.length ? totalOpen : null}>{openRows.length ? money(totalOpen) : '—'}</Tick></div></div>
         <div style={{ textAlign: 'right' }}><div className="k">{live ? 'Today' : 'Last session'}</div>
-          <div className={`num amt ${(b.dayTotal ?? 0) > 0 ? 'up' : (b.dayTotal ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={b.dayTotal}>{money(b.dayTotal)}</Tick></div></div>
+          <div className={`num amt ${(dayTotal ?? 0) > 0 ? 'up' : (dayTotal ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={dayTotal}>{money(dayTotal)}</Tick></div></div>
       </div>
       {openRows.length > 1 && <div style={{ marginTop: 10 }} aria-label="Contribution to open P&L by trade">{[...openRows].sort((x, y) => (y.v.pnl ?? 0) - (x.v.pnl ?? 0)).map((r) => { const w = (Math.abs(r.v.pnl ?? 0) / maxAbs) * 50; const pos = (r.v.pnl ?? 0) >= 0; return <div key={r.p.id} className="contrib"><span className="sym">{r.p.sym}</span><span className="bar2"><i style={{ width: `${w}%`, left: pos ? '50%' : `${50 - w}%`, background: pos ? 'var(--up)' : 'var(--down)' }} /></span><span className={`num amt ${pos ? 'up' : 'down'}`}>{money(r.v.pnl)}</span></div>; })}</div>}
       <div className="row between small dim" style={{ marginTop: 10 }}>
-        <span>{b.sum.open} open · {b.sum.waiting} waiting for an open · {b.sum.skipped} skipped</span>
+        <span>{sum.open} open · {sum.waiting} waiting for an open · {sum.skipped} skipped</span>
         <span><Observed sec={b.intra.obs} err={b.intra.err} loading={b.intra.loading} /></span></div>
       {b.intra.at && <div className="refresh" aria-hidden="true"><i key={b.intra.tick} /></div>}
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
-      {b.sum.closed > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Closed: <b className="num">{R(b.sum.totalR)}</b> over {b.sum.closed} trade{b.sum.closed === 1 ? '' : 's'}.{!b.sum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}
+      {sum.closed > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Closed: <b className="num">{R(sum.totalR)}</b> over {sum.closed} trade{sum.closed === 1 ? '' : 's'}.{!sum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}
     </div>
-    {(dups.length > 0 || retired.length > 0) && <div className="note" style={{ marginTop: 10 }}>
-      {dups.length > 0 && <p style={{ margin: 0 }}><b>{dups.length} of these {dups.length === 1 ? 'is' : 'are'} also in the auto book.</b> Same pick, different rupee size: here the planner sizes by your risk setting, there every position is ₹1,00,000. Their P&L differs only for that reason, so adding both counts the pick twice.</p>}
-      {retired.length > 0 && <p style={{ margin: dups.length ? '8px 0 0' : 0 }}><b>{retired.length} come from a retired engine.</b> Its picks before retirement came from a rule bug. They stay in your record but the auto book refuses them.</p>}
-      {dups.length > 0 && <button className="btn sm" style={{ marginTop: 8 }} onClick={() => { setState((x) => dups.reduce((acc, p) => archivePaper(acc, p.id), x)); toast(`${dups.length} duplicate${dups.length === 1 ? '' : 's'} taken off the list. The record is kept.`); }}>Hide the {dups.length} duplicate{dups.length === 1 ? '' : 's'}</button>}
-    </div>}
-    {b.rows.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => setOpenId(openId === r.p.id ? null : r.p.id)} live={live}
+    {dups + retired > 0 && <p className="small mute" style={{ margin: '8px 0 0' }}>{dups + retired} older {dups + retired === 1 ? 'entry is' : 'entries are'} not shown or counted: {[dups ? `${dups} duplicate${dups === 1 ? '' : 's'} of the auto book` : '', retired ? `${retired} from a retired engine` : ''].filter(Boolean).join(', ')}. They stay in your backup.</p>}
+    {rows.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => setOpenId(openId === r.p.id ? null : r.p.id)} live={live}
       onHide={() => { setState((x) => archivePaper(x, r.p.id)); toast('Taken off the active list. The record is kept.'); }} />)}
     {hidden > 0 && <p className="mute small">{hidden} hidden by you. They stay in your backup.</p>}
     <div className="note info" style={{ marginTop: 12 }}><b>How a trade is followed.</b> Entry: the open of the first session after you took it, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), or the close of the last session of the horizon. Costs {b.cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Real fills differ.</div>
@@ -70,7 +72,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
   const spark = q && q.c.length > 1 ? q.c : null;
   return <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
     <button className="tcard-head" aria-expanded={expanded} onClick={onToggle} style={{ width: '100%', textAlign: 'left', padding: 13 }}>
-      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
+      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> <span className="tag">{styleDef(styleOf(p.horizon)).label}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
       {(isOpen || done) ? <div className="row between" style={{ marginTop: 8, alignItems: 'flex-end' }}>
         <div><div className="k">{isOpen ? (v.markKind === 'live' ? 'Live' : 'Last close') : 'Exit'}</div><div className="num" style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={isOpen ? v.mark : v.exit}>{inr(isOpen ? v.mark : v.exit)}</Tick></div>
           {isOpen && q && <div className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</div>}</div>
@@ -80,6 +82,12 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
     </button>
     {expanded && (isOpen || done) && <div style={{ padding: '0 13px 13px' }}>
       {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today, five-minute' : 'Last session, five-minute'}</div><Spark c={q!.c} up={q!.px >= q!.prev} refs={[{ v: q!.prev, kind: 'prev' }, ...(v.entry ? [{ v: v.entry, kind: 'entry' as const }] : []), { v: p.stop, kind: 'stop' }]} label={`${p.sym} today, with the previous close, your entry and your stop`} h={48} /><div className="small mute">dashed: previous close, your entry, your stop</div></div>}
+      {v.ladder && <div className="small num" style={{ marginTop: 10 }}>
+        <div className="k">Profit booking · {styleDef(styleOf(p.horizon)).label}</div>
+        <div>Target 1 {inr(v.ladder.t1)} · {v.ladder.t1Hit ? 'filled, half sold, stop moved to the fill' : 'not reached'}</div>
+        <div>Target 2 {inr(v.ladder.t2)} · {v.ladder.t2Hit ? 'filled, the rest sold' : 'not reached'}</div>
+        <div className="dim">Banked {money(v.ladder.booked)} before costs · {Math.round(v.ladder.qtyLeft * 100) / 100} of {Math.round(p.qty * 100) / 100} shares still held · stop {inr(v.ladder.stop)}</div>
+        <div className="mute">These targets are a chosen rule, not a tested one: the back-test never used targets.</div></div>}
       <div className="k" style={{ marginTop: 12 }}>Risk ladder</div>
       <div className="ladder" role="img" aria-label={`${p.sym} is at ${R(rl(mark))} of risk relative to your entry; the stop is at minus 1R`}>
         <div className="rail" />
@@ -93,7 +101,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         <p style={{ margin: 0 }}><b>P&L basis</b>: fill to {done ? 'exit' : 'latest'}, times {Math.round(p.qty * 100) / 100} shares, minus {cost}% of the entry value (costs) and {SLIPPAGE_PCT}% of the exit value (slippage). Dividends are not received.</p>
         {adj && <p style={{ margin: '6px 0 0' }}>A split or bonus was found since the signal (the price history is now quoted ×{adj.toFixed(3)}). The stop and the share count were moved to match, so value and risk are unchanged.</p>}
         {v.basis === 'unverified' && <p className="down" style={{ margin: '6px 0 0' }}>The signal day's bar was not available, so a split since the signal could not be checked.</p>}</div></details>
-      {isOpen && <><div className="small dim num">Stop {inr(p.stop)} is {pct(((p.stop / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
+      {isOpen && <><div className="small dim num">Stop {inr(v.ladder?.stop ?? p.stop)} is {pct((((v.ladder?.stop ?? p.stop) / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
         <label className="l" htmlFor={`wi-${p.id}`}>What if it trades at…</label>
         <input id={`wi-${p.id}`} className="slider" type="range" min={lo} max={hi} step={step} value={price} onChange={(e) => setWi(Number(e.target.value))} />
         <div className="row between num" style={{ fontSize: '0.8125rem' }}><span>{inr(price)}</span><span className={(w!.pnl) >= 0 ? 'up' : 'down'}>{money(w!.pnl)} · {R(w!.r)} · {pct(w!.pct)}</span></div>

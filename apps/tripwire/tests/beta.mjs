@@ -111,6 +111,22 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   ok(/\d\d:\d\d IST · \d+ s old/.test(await text(pg)) || /IST · \d+ min old/.test(await text(pg)), 'a fresh print shows its time and its age'); await ctx.close();
 }
 {
+  // the exchange is shut (Saturday 13:30 IST): after the first load the app asks for no prices and no trend map, however long the page stays open, and it says "closed"
+  const { ctx, pg, T } = await mk(); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);
+  await ctx.clock.install({ time: new Date('2026-10-24T08:00:00Z') });
+  const fri = Math.floor(new Date('2026-10-23T09:59:00Z').getTime() / 1000); const shut = (prev, px) => ({ ...quoteOf(prev, px), pt: fri, live: false });   // Friday's last print
+  T.pulse = { NIFTY: shut(22600, 22700), BANKNIFTY: shut(54000, 54100), VIX: shut(16, 16.2) };
+  await ctx.route('**/api/bars*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"fetched_at":"x","bars":{},"missing":[]}' }));
+  const seen = []; pg.on('request', (r) => { const u = r.url(); if (/\/api\/(tick|breadth|bars)/.test(u)) seen.push(u); });
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero'); await pg.clock.runFor(5000); await pg.waitForTimeout(600);
+  const t0 = await text(pg); await pg.clock.runFor(2 * 60 * 1000); await pg.waitForTimeout(300); const n0 = seen.length;   // the first load may fetch names that mount a moment later (the paper book); that is the one fetch each name gets
+  ok(/Market closed/i.test(t0) && /NSE\s*CLOSED/i.test(t0.replace(/\s+/g, ' ')), 'Saturday: the page says the market is closed (header strip and mood card)');
+  await pg.clock.runFor(10 * 60 * 1000); await pg.waitForTimeout(400);
+  const fresh = seen.slice(n0).filter((u) => !/[?&]m=1/.test(u) || /[?&](i=1|s=[^&])/.test(u));
+  ok(fresh.length === 0, `Saturday: ten minutes open, no price, pulse, bars or trend-map request after the first load (${fresh.length} made${fresh.length ? ': ' + fresh[0].slice(0, 90) : ''})`);
+  await ctx.close();
+}
+{
   const { ctx, pg } = await mk(); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1200);
   await ctx.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.waitForTimeout(100);
@@ -135,19 +151,22 @@ for (const [w, h] of [[360, 740], [390, 844], [430, 932], [768, 1024], [1440, 90
 }
 
 /* ---- 6. lab Core Web Vitals on a throttled phone ---- */
-{
+const runs = [];   // a lab sample on a shared machine moves by tens of milliseconds, so the verdict is the median of three loads
+for (let rep = 0; rep < 3; rep++) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE); await mockApi(ctx);
   const pg = await ctx.newPage(); const cdp = await ctx.newCDPSession(pg);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 }); await cdp.send('Network.enable'); await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 });
   await pg.addInitScript(() => { window.__v = { lcp: 0, cls: 0, inp: 0 }; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__v.lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__v.cls += e.value; }).observe({ type: 'layout-shift', buffered: true });
-    new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__v.inp = Math.max(window.__v.inp, e.duration); }).observe({ type: 'event', durationThreshold: 16, buffered: true }); });
+    new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.duration > window.__v.inp) { window.__v.inp = e.duration; window.__v.what = `${e.name} on ${e.target?.nodeName ?? ''}.${e.target?.className ?? ''} ${e.target?.getAttribute?.('href') ?? ''}`; } }).observe({ type: 'event', durationThreshold: 16, buffered: true }); });
   await pg.goto(base + '/#/today', { waitUntil: 'load' }); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(4000);
   for (const sel of ['nav.tabs a[href="#/discover"]', '.lens', 'nav.tabs a[href="#/today"]']) { await pg.locator(sel).first().click(); await pg.waitForTimeout(600); }
   const v = await pg.evaluate(() => window.__v); const size = await pg.evaluate(() => performance.getEntriesByType('resource').reduce((a, r) => a + (r.transferSize || 0), 0));
-  console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms, transferred ${(size / 1024).toFixed(0)} kB`);
+  console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms (${v.what ?? 'none'}), transferred ${(size / 1024).toFixed(0)} kB`);
   mkdirSync('/tmp/tw', { recursive: true }); writeFileSync('/tmp/tw/vitals.json', JSON.stringify({ lcp: Math.round(v.lcp), cls: +v.cls.toFixed(3), inp: Math.round(v.inp), kB: Math.round(size / 1024) }));
-  ok(v.lcp < 4000, `LCP ${Math.round(v.lcp)} ms is under 4 s on a throttled phone (good is 2.5 s)`); ok(v.cls < 0.1, `CLS ${v.cls.toFixed(3)} is under 0.1`); ok(v.inp < 200, `slowest interaction ${Math.round(v.inp)} ms is under 200 ms (good)`);
+  runs.push(v);
   await ctx.close();
 }
+const med = (k) => runs.map((r) => r[k]).sort((x, y) => x - y)[1];
+ok(med('lcp') < 4000, `LCP ${Math.round(med('lcp'))} ms (median of 3) is under 4 s on a throttled phone (good is 2.5 s)`); ok(med('cls') < 0.1, `CLS ${med('cls').toFixed(3)} is under 0.1`); ok(med('inp') < 200, `slowest interaction ${Math.round(med('inp'))} ms (median of 3) is under 200 ms (good)`);
 await b.close(); console.log(fails ? `\nbeta: ${fails} failed` : '\nbeta: all passed'); process.exit(fails ? 1 : 0);

@@ -5,25 +5,34 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { Quote, QuotesFeed } from './data.ts';
 import type { Row } from './screen.ts';
-import { isLiveQuote } from './stamp.ts';
+import { isLiveQuote, nseClockOpen } from './stamp.ts';
 
 const store = new Map<string, Quote>(); let pulse: Record<string, Quote> = {}; let macro: Record<string, Quote> = {};
 const want = new Map<string, number>(); let wantI = 0, wantM = 0; const subs = new Set<() => void>();
+const asked = new Set<string>();   // names already requested while the exchange has been shut: one with no quote is not asked for every minute
 let version = 0, timer: number | undefined, busy = false, lastAt = 0, errMsg: string | null = null, okN = 0, started = false;
-const PER_CALL = 40, CAP = 160, FAST = 8000, SLOW = 45000;
+const PER_CALL = 40, CAP = 160, FAST = 8000, SLOW = 45000, MACRO_CLOSED = 60000, CLOCK = 60000;
 const emit = () => { version++; subs.forEach((f) => f()); };
 
 async function tick() {
   if (busy || document.visibilityState === 'hidden' || (!want.size && !wantI && !wantM)) return;
+  if (nseClockOpen(Date.now())) asked.clear();
+  const fresh = (x: string) => !store.has(x) && !asked.has(x);
+  if (!nseClockOpen(Date.now()) && !wantM && ![...want.keys()].some(fresh) && (!wantI || Object.keys(pulse).length)) { schedule(); return; }   // shut and nothing missing: no request
   busy = true;
   try {
-    const syms = [...want.keys()].slice(0, CAP); const calls: { s: string[]; i: boolean; m: boolean }[] = [];
-    for (let k = 0; k < Math.max(1, Math.ceil(syms.length / PER_CALL)); k++) calls.push({ s: syms.slice(k * PER_CALL, (k + 1) * PER_CALL), i: k === 0 && wantI > 0, m: k === 0 && wantM > 0 });
+    // When the Indian market is shut nothing on it is printing, so it is not asked again: what is on screen is the last print, and says so. Only what trades round the clock
+    // (gold, currencies, Bitcoin) keeps a slow refresh. A name or an index never fetched at all is still fetched once, so there is something to show.
+    const closed = !nseClockOpen(Date.now());
+    const syms = [...want.keys()].filter((x) => !closed || fresh(x)).slice(0, CAP); const calls: { s: string[]; i: boolean; m: boolean }[] = [];
+    const needI = wantI > 0 && (!closed || !Object.keys(pulse).length); const needM = wantM > 0;
+    for (let k = 0; k < Math.max(1, Math.ceil(syms.length / PER_CALL)); k++) calls.push({ s: syms.slice(k * PER_CALL, (k + 1) * PER_CALL), i: k === 0 && needI, m: k === 0 && needM });
     const got = await Promise.all(calls.map(async (c) => {
       if (!c.s.length && !c.i && !c.m) return null;
       try { const r = await fetch(`/api/tick?s=${encodeURIComponent(c.s.join(','))}${c.i ? '&i=1' : ''}${c.m ? '&m=1' : ''}`, { signal: AbortSignal.timeout(15000) }); const d = await r.json(); return r.ok && d.ok ? d : null; } catch { return null; }
     }));
     let any = false;
+    if (closed) got.forEach((d, k) => { if (d) calls[k].s.forEach((x) => asked.add(x)); });   // only an answer counts as asking: a failed request is tried again
     for (const d of got) if (d) { any = true; for (const [k, v] of Object.entries(d.quotes ?? {})) store.set(k, v as Quote); if (d.pulse) pulse = { ...pulse, ...d.pulse }; if (d.macro) macro = { ...macro, ...d.macro }; }
     if (any) { lastAt = Date.now(); errMsg = null; okN++; } else errMsg = 'the price service did not answer';
     emit();
@@ -32,12 +41,14 @@ async function tick() {
 const anyLive = () => [...store.values(), ...Object.values(pulse), ...Object.values(macro)].some((q) => isLiveQuote(q));
 function schedule() {
   window.clearTimeout(timer); timer = undefined; if (!want.size && !wantI && !wantM) return;
-  timer = window.setTimeout(() => { void tick(); }, anyLive() || !lastAt ? FAST : SLOW);
+  // open: fast while prints arrive, slow when none do (a holiday). Shut: look at the clock once a minute (no network) and fetch only round-the-clock markets.
+  const closed = !nseClockOpen(Date.now());
+  timer = window.setTimeout(() => { void tick(); }, closed ? (wantM > 0 ? MACRO_CLOSED : CLOCK) : anyLive() || !lastAt ? FAST : SLOW);
 }
 function kick() { window.setTimeout(() => { if (!busy) void tick(); }, 60); }
 function start() {
   if (started) return; started = true;
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (want.size || wantI || wantM) && Date.now() - lastAt > 3000) void tick(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') asked.clear(); if (document.visibilityState === 'visible' && (want.size || wantI || wantM) && Date.now() - lastAt > 3000) void tick(); });   // coming back to the page is a fresh look: a name with no quote is asked for once more
 }
 const sub = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
 const snap = () => version;

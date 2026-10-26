@@ -3,10 +3,11 @@
  *  Append-only. A night is recorded once; picks are never edited, and a stale data day is refused. Outcomes are replayed from real
  *  daily bars with the same rules the in-app tracker uses (`evaluatePaper`), so the two can never disagree. */
 import { evaluatePaper, type Bar, type Paper } from './tracker.ts';
-import type { Run } from './quant.ts';
+import { ENGINES, type Run } from './quant.ts';
+import { targetsFor } from './exits.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null }
-export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string }
+export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean }
 export interface Day { asOf: string; recorded: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
 export interface Ledger { schema: 'tripwire-ledger/1'; started: string; updated: string; cost: number; days: Day[]; picks: LedgerPick[]; outcomes: Record<string, Outcome>;
   /** picks struck from the record, with the reason. A pick is never deleted or edited: it is voided in the open and left out of every total. */
@@ -43,10 +44,11 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
   for (const p of l.picks) {
     if (outcomes[p.id]?.final) continue;
     const b = bars[p.sym]; if (!b) { outcomes[p.id] = outcomes[p.id] ?? { status: 'pending', final: false }; continue; }
-    const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf) };
+    const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf), targets: targetsFor(p) };
     const v = evaluatePaper(paper, b, null, l.cost);
     const o: Outcome = { status: v.status === 'waiting' || v.status === 'pending' ? 'pending' : v.status, final: v.status === 'closed' || v.status === 'skipped' };
     if (v.status === 'skipped') o.skipReason = v.skipReason;
+    if (v.ladder) { o.t1Hit = v.ladder.t1Hit; o.t2Hit = v.ladder.t2Hit; }
     if (v.status === 'open' || v.status === 'closed') {
       Object.assign(o, { entry: v.entry, entryDay: isoOf(v.entryT!), sessions: v.sessions, r: v.r, pct: v.pct });
       if (v.status === 'closed') Object.assign(o, { exit: v.exit, exitDay: isoOf(v.exitT!), reason: v.reason }); else o.mark = v.mark ?? undefined;
@@ -61,10 +63,12 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
   }
   return { ...l, updated: now, outcomes };
 }
+/** An engine that has been retired is not part of any total or list shown to the reader; its rows stay in the stored record. */
+export const RETIRED = new Set(ENGINES.filter((e) => e.retired).map((e) => e.id as string));
 export interface EngineRecord { engine: string; days: number; picks: number; closed: number; open: number; skipped: number; pending: number; totalR: number; avgR: number | null; winRate: number | null; avgExcess: number | null; enough: boolean }
 export function summarizeLedger(l: Ledger): { all: EngineRecord; engines: EngineRecord[]; first: string | null; last: string | null } {
   const one = (engine: string | null): EngineRecord => {
-    const ps = l.picks.filter((p) => (!engine || p.engine === engine) && !l.voided?.[p.id]); const os = ps.map((p) => l.outcomes[p.id]).filter(Boolean);
+    const ps = l.picks.filter((p) => (!engine || p.engine === engine) && !l.voided?.[p.id] && !RETIRED.has(p.engine)); const os = ps.map((p) => l.outcomes[p.id]).filter(Boolean);
     const closed = os.filter((o) => o.status === 'closed' && typeof o.r === 'number'); const totalR = closed.reduce((s, o) => s + o.r!, 0);
     const ex = closed.filter((o) => typeof o.pct === 'number' && typeof o.niftyPct === 'number'); const enough = closed.length >= MIN_TRADES;
     return { engine: engine ?? 'ALL', days: l.days.length, picks: ps.length, closed: closed.length, open: os.filter((o) => o.status === 'open').length, skipped: os.filter((o) => o.status === 'skipped').length,
@@ -72,5 +76,5 @@ export function summarizeLedger(l: Ledger): { all: EngineRecord; engines: Engine
       totalR: Math.round(totalR * 100) / 100, avgR: enough ? Math.round((totalR / closed.length) * 100) / 100 : null, winRate: enough ? Math.round((closed.filter((o) => o.r! > 0).length / closed.length) * 100) : null,
       avgExcess: ex.length >= MIN_TRADES ? Math.round((ex.reduce((s, o) => s + (o.pct! - o.niftyPct!), 0) / ex.length) * 100) / 100 : null, enough };
   };
-  return { all: one(null), engines: ['MOM', 'QLT', 'LVT'].map(one), first: l.days[0]?.asOf ?? null, last: l.days[l.days.length - 1]?.asOf ?? null };
+  return { all: one(null), engines: ENGINES.filter((e) => !e.retired).map((e) => e.id as string).map(one), first: l.days[0]?.asOf ?? null, last: l.days[l.days.length - 1]?.asOf ?? null };
 }

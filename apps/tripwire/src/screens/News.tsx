@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ago, companyQ, companyStories, MARKET_Q, mergeNews, useNews, useNewsMany, type NewsItem } from '../news.ts';
+import { ago, companyQ, companyStories, decisionNews, MARKET_Q, useNews, useNewsMany, type NewsItem } from '../news.ts';
 import { useScreen } from '../data.ts';
 import { Empty } from '../ui.tsx';
 const TAGC: Record<string, string> = { Results: 'amber', IPO: 'violet', Deal: 'aqua', Order: 'blue', Rating: 'pink', Payout: 'lime', Regulator: 'peach', People: '' };
@@ -38,12 +38,12 @@ export function TodayNews({ syms }: { syms: string[] }) {
   const scr = useScreen(); const [all, setAll] = useState(false);
   const names = useMemo(() => syms.slice(0, 6).map((s) => ({ s, name: scr.data?.rows.find((r) => r.sym === s)?.name ?? '' })).filter((x) => x.name), [syms.join(), scr.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const n = useNewsMany([MARKET_Q, ...names.map((x) => companyQ(x.name))]);
-  const merged = useMemo(() => mergeNews(n.feeds.map((f, i) => ({ sym: i === 0 ? undefined : names[i - 1]?.s, items: i === 0 ? f?.items ?? [] : companyStories(names[i - 1]?.name ?? '', f?.items ?? [], 2) })), 12), [n.feeds, names]);
+  const merged = useMemo(() => decisionNews(n.feeds[0]?.items ?? [], names.map((x, i) => ({ sym: x.s, name: x.name, items: n.feeds[i + 1]?.items ?? [] })), Date.now(), 8), [n.feeds, names]);
   const shown = all ? merged : merged.slice(0, 5);
   return <div className="card" style={{ padding: '2px 14px 10px' }}>
     {merged.length ? <div className="list">{shown.map((it) => <NewsRow key={it.url} it={it} sym={it.sym} />)}</div>
       : n.loading ? <div style={{ padding: '12px 0' }}><div className="sk" style={{ height: 14, width: '90%', marginBottom: 8 }} /><div className="sk" style={{ height: 14, width: '70%' }} /></div>
-      : <p className="small dim" style={{ margin: '12px 0 0' }}>{n.failed === n.feeds.length && n.feeds.length ? 'News could not be loaded. Nothing is shown in its place.' : 'No English headline in the last day.'}</p>}
+      : <p className="small dim" style={{ margin: '12px 0 0' }}>{n.failed === n.feeds.length && n.feeds.length ? 'News could not be loaded. Nothing is shown in its place.' : 'Nothing new that could change a decision on your names or the market.'}</p>}
     <div className="row between small mute" style={{ marginTop: 8 }}>
       <span>{n.at ? `Checked ${new Date(n.at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} · hourly` : 'Loading…'}</span>
       <span className="row" style={{ gap: 6 }}>{merged.length > 5 && <button className="btn sm" onClick={() => setAll(!all)}>{all ? 'Show less' : `Show ${merged.length - 5} more`}</button>}<button className="btn sm" onClick={n.refresh} disabled={n.loading}>{n.loading ? 'Checking…' : 'Check now'}</button></span></div>

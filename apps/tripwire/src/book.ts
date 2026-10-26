@@ -4,6 +4,7 @@ import { useBars, useIntraday, useLedger, useSignals, type Quote } from './data.
 import { evaluatePaper, summarize, type Bar, type Paper, type View } from './tracker.ts';
 import { sessionNow, type Session } from './market.ts';
 import { istDay } from './store.ts';
+import { targetsFor } from './exits.ts';
 import { planAutoBook, realised, DEFAULT_CFG, type AutoPos } from './autobook.ts';
 import type { Outcome } from './ledger.ts';
 import { hasCelebrated, markCelebrated } from './celebrate.ts';
@@ -65,7 +66,7 @@ function viewFromOutcome(pos: AutoPos, o: Outcome): View {
   if (o.status === 'skipped') return { id: pos.pick.id, status: 'skipped', sessions: 0, left: null, mark: null, markKind: null, pnl: null, r: null, pct: null, skipReason: o.skipReason };
   return { id: pos.pick.id, status: 'closed', entry: o.entry, entryT: t(o.entryDay), exit: o.exit, exitT: t(o.exitDay), reason: o.reason, sessions: o.sessions ?? 0, left: 0, mark: o.exit ?? null, markKind: 'close', pnl: realised(o, pos.qty), r: o.r ?? null, pct: o.pct ?? null };
 }
-const paperOf = (t: AutoPos): Paper => ({ id: t.pick.id, sym: t.pick.sym, engine: t.pick.engine, asOf: t.pick.asOf, ref: t.pick.ref, stop: t.pick.stop, horizon: t.pick.horizon, qty: t.qty, takenAt: t.takenAt });
+const paperOf = (t: AutoPos): Paper => ({ id: t.pick.id, sym: t.pick.sym, engine: t.pick.engine, asOf: t.pick.asOf, ref: t.pick.ref, stop: t.pick.stop, horizon: t.pick.horizon, qty: t.qty, takenAt: t.takenAt, targets: targetsFor(t.pick) });
 
 /** The automatic paper book: the nightly record's picks, 30 at a time at most, ₹1,00,000 each at most. Positions the record has already
  *  finished come from it; every other one is followed live with the same tracker the manual book uses. */
