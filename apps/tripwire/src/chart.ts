@@ -90,3 +90,22 @@ export function geometryPair(a: readonly Pt[], b: readonly Pt[], log: boolean, W
   const lineA = path(ysA);
   return { lineA, lineB: path(ysB), area: `${lineA}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ysA, ysB, W, H };
 }
+
+/** Several stocks on one axis, each indexed to 100 on the first day ALL of them traded in the window, with the Nifty (from the first stock's
+ *  feed) indexed the same day. Only days every stock has a close are kept, so no line is filled across a day it did not trade. */
+export interface Series { id: string; t: number[]; c: number[]; n?: (number | null)[] | null }
+export interface Aligned { t: number[]; lines: { id: string; v: number[] }[]; nifty: number[] | null }
+export function alignIndexed(series: readonly Series[], id: RangeId): Aligned | null {
+  if (series.length < 2) return null;
+  const day = (x: number) => Math.floor((x + 19800) / 86400);
+  const maps = series.map((s) => { const m = new Map<number, { t: number; c: number; n: number | null }>(); s.t.forEach((t, i) => { if (s.c[i] > 0) m.set(day(t), { t, c: s.c[i], n: s.n?.[i] ?? null }); }); return m; });
+  let days = [...maps[0].keys()].filter((d) => maps.every((m) => m.has(d))).sort((a, b) => a - b);
+  if (days.length < 2) return null;
+  const years = RANGES.find((r) => r.id === id)!.years;
+  if (years !== null) { const from = days[days.length - 1] - Math.round(years * 365.25); days = days.filter((d) => d >= from); }
+  if (days.length < 2) return null;
+  const lines = series.map((s, i) => { const base = maps[i].get(days[0])!.c; return { id: s.id, v: days.map((d) => (maps[i].get(d)!.c / base) * 100) }; });
+  const nv = days.map((d) => maps[0].get(d)!.n); let nifty: number[] | null = null;
+  if (typeof nv[0] === 'number' && nv[0] > 0) { let carry = nv[0]; const n0 = nv[0]; nifty = nv.map((v) => { if (typeof v === 'number' && v > 0) carry = v; return (carry / n0) * 100; }); }
+  return { t: days.map((d) => maps[0].get(d)!.t), lines, nifty };
+}

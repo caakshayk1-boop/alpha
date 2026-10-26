@@ -3,6 +3,7 @@ import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { useScreen } from '../data.ts';
 import { Seg, Empty, useUi } from '../ui.tsx';
 import { CompanyRow, Head, PageBar } from './common.tsx';
+import { useWatchQuotes } from '../quotes.ts';
 import { closePlan, current, istDay, journalCsv, markPaperFill, reviewDue, setArchived, weeklyReview } from '../store.ts';
 import { dayWord, inr } from '../fmt.ts';
 import { download } from './profile.tsx';
@@ -16,7 +17,7 @@ export function Desk({ seg }: { seg: string }) {
   </div>;
 }
 function Following() {
-  const s = useAppState(); const scr = useScreen();
+  const s = useAppState(); const scr = useScreen(); useWatchQuotes(s.follows);
   const rows = s.follows.map((x) => scr.data?.rows.find((r) => r.sym === x));
   if (!s.follows.length) return <Empty title="Nothing followed" action={<button className="btn pri" onClick={() => go('/discover')}>Find a company</button>}>Follow a name from Discover or its research page. Today then reports what changed in it.</Empty>;
   return <div className="card" style={{ padding: '2px 14px' }}><div className="list">{rows.map((r, i) => r ? <CompanyRow key={r.sym} r={r} /> : <div key={s.follows[i]} className="li"><span className="sym">{s.follows[i]}</span><span className="dim small">not in the current screen</span></div>)}</div></div>;

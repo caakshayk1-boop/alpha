@@ -75,7 +75,7 @@ export interface FactorSheet { ok: boolean; schema: string; as_of: string; unive
 export const useFactors = () => useJson<FactorSheet>('/api/factors');
 
 /** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
-function usePoll<T extends { ok: boolean }>(url: string | null, every: number): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
+export function usePoll<T extends { ok: boolean }>(url: string | null, every: number): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {
   const [st, set] = useState<{ data: T | null; err: string | null; at: number | null; loading: boolean; tick: number }>({ data: null, err: null, at: null, loading: false, tick: 0 });
   useEffect(() => {
     if (!url) { set({ data: null, err: null, at: null, loading: false, tick: 0 }); return; }

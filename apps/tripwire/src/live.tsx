@@ -14,7 +14,7 @@ export function Spark({ c, refs = [], up, h = 34, label }: { c: number[]; refs?:
   const col = up ? 'var(--lime)' : 'var(--peach)';
   return <svg viewBox={`0 0 ${W} ${h}`} preserveAspectRatio="none" role="img" aria-label={label} style={{ width: '100%', height: h, display: 'block', overflow: 'visible' }}>
     {refs.map((r) => <line key={r.kind} x1="0" x2={W} y1={y(r.v)} y2={y(r.v)} stroke={r.kind === 'stop' ? 'var(--peach)' : 'var(--dim)'} strokeOpacity={r.kind === 'stop' ? .7 : .45} strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />)}
-    <path className="c-line" d={pts} pathLength={1} fill="none" stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+    <path d={pts} fill="none" stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
   </svg>;
 }
 

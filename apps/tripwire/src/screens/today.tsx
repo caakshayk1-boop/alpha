@@ -10,7 +10,9 @@ import { ENGINES } from '../quant.ts';
 import { trendOf, TREND_WORD, type Row } from '../screen.ts';
 import { useBacktest, usePulse } from '../data.ts';
 import { engineEvidence } from '../evidence.ts';
-import { useLiveBook } from '../book.ts';
+import { useAutoBook, useLiveBook } from '../book.ts';
+import { MacroStrip } from './Macro.tsx';
+import { TodayNews } from './News.tsx';
 import { Ago, LiveBadge, Spark, Tick, TvButton } from '../live.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
@@ -24,7 +26,7 @@ export function Today() {
   const s = useAppState(); const { open } = useSheets(); const take = usePaperTake(); const bt = useBacktest();
   const { scr, out } = useEngines();
   const rows = scr.data?.rows ?? []; const day = scr.data?.as_of ?? null; const fr = freshness(day); const today = istDay();
-  const pulse = usePulse(true); const book = useLiveBook(true);
+  const pulse = usePulse(true); const book = useLiveBook(true); const auto = useAutoBook(true);
   const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => q.live) : null;
   const sess = sessionNow(Date.now(), anyLive);
   // one snapshot per data day for each followed name: this is what makes "since you last looked" honest
@@ -50,11 +52,14 @@ export function Today() {
   }, [rows]);
   const total = out?.picks.length ?? 0; const bookN = book.active.length;
   const next = reviews.length ? { t: `Review ${reviews[0].sym}: your date has come.`, go: () => open({ k: 'thesis', sym: reviews[0].sym, id: reviews[0].id }), cta: 'Open review' }
-    : total && !bookN ? { t: 'The engines have picks. Take one on paper and Tripwire follows it live.', go: () => go('/signals'), cta: 'See the picks' }
+    : total && !bookN && !auto.rows.length ? { t: 'The engines have picks. Take one on paper and Tripwire follows it live.', go: () => go('/signals'), cta: 'See the picks' }
     : !s.entries.length ? { t: 'Write your first thesis, in seven short fields.', go: () => go('/discover'), cta: 'Pick a name' }
     : !s.follows.length ? { t: 'Follow a name so Today can tell you what changed in it.', go: () => go('/discover'), cta: 'Find a name' }
     : { t: 'Nothing is due. Check the paper book against its stops.', go: () => go('/signals?v=tracker'), cta: 'Open the tracker' };
   const openRows = book.rows.filter((r) => r.v.status === 'open');
+  const autoTaken = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
+  const autoWhy = (p: { sym: string; engine: string; asOf: string }) => auto.plan?.refused.find((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf)?.why ?? null;
+  const newsSyms = [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...book.active.map((p) => p.sym), ...s.follows])];
 
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} />
@@ -67,11 +72,20 @@ export function Today() {
           <div className={`small num ${good == null ? 'dim' : good ? 'up' : 'down'}`}>{ch == null ? (pulse.err ? 'unavailable' : '…') : pct(ch)}</div>
           <div style={{ marginTop: 4 }}>{q ? <Spark c={q.c} up={good !== false} refs={[{ v: q.prev, kind: 'prev' }]} h={22} label={`${label} today`} /> : <div className="sk" style={{ height: 22 }} />}</div></a>; })}
     </div>
-    <div className="row between small mute" style={{ marginTop: 4 }}><LiveBadge live={sess.phase === 'open' && !!anyLive} label={sess.phase === 'open' && anyLive ? 'LIVE · delayed about 15 min' : 'Last prices'} /><span>{pulse.err ? <span className="down">index prices unavailable</span> : pulse.at ? <>updated <Ago at={pulse.at} /></> : ''}</span></div>
+    <div className="row between small mute" style={{ marginTop: 4 }}><LiveBadge live={sess.phase === 'open' && !!anyLive} label={sess.phase === 'open' && anyLive ? 'LIVE' : 'Last prices'} /><span>{pulse.err ? <span className="down">index prices unavailable</span> : pulse.at ? <>updated <Ago at={pulse.at} /></> : ''}</span></div>
 
-    {/* 2. the paper book, live */}
+    <Head>Commodities, currencies, Bitcoin</Head>
+    <MacroStrip />
+
+    {/* 2. the paper books, live */}
+    {auto.rows.length > 0 && <a className="card glass" href="#/signals?v=auto" style={{ display: 'block', marginTop: 10 }}>
+      <div className="row between"><span className="k">Auto paper book</span><span className="tag lime">{auto.slots} of {auto.cfg.maxOpen} positions</span></div>
+      <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
+        <div className={`num ${auto.sum.openPnl > 0 ? 'up' : auto.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 28px/1.1 var(--sans)' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></div>
+        <div className="small dim" style={{ textAlign: 'right' }}>{auto.sum.open} open · {auto.sum.waiting} waiting{auto.dayTotal != null ? <> · today <b className={`num ${auto.dayTotal >= 0 ? 'up' : 'down'}`}>{money(auto.dayTotal)}</b></> : null}{auto.sum.closed ? <> · realised <b className={`num ${auto.sum.closedPnl >= 0 ? 'up' : 'down'}`}>{money(auto.sum.closedPnl)}</b></> : null}</div></div>
+    </a>}
     {bookN > 0 && <a className="card glass" href="#/signals?v=tracker" style={{ display: 'block', marginTop: 10 }}>
-      <div className="row between"><span className="k">Paper book</span><span className="tag lime">Open tracker</span></div>
+      <div className="row between"><span className="k">Your paper trades</span><span className="tag lime">Open tracker</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
         <div className={`num ${book.sum.openPnl > 0 ? 'up' : book.sum.openPnl < 0 ? 'down' : ''}`} style={{ font: '600 28px/1.1 var(--sans)' }}><Tick v={openRows.length ? book.sum.openPnl : null}>{openRows.length ? money(book.sum.openPnl) : '—'}</Tick></div>
         <div className="small dim" style={{ textAlign: 'right' }}>{book.sum.open} open · {book.sum.waiting} waiting{book.dayTotal != null ? <> · today <b className={`num ${book.dayTotal >= 0 ? 'up' : 'down'}`}>{money(book.dayTotal)}</b></> : null}</div></div>
@@ -88,7 +102,7 @@ export function Today() {
           <a href={`#/c/${p.sym}`} style={{ display: 'block' }}><div className="vv">{p.sym} <span className="tag lime num" style={{ verticalAlign: 'middle' }}>{p.score}</span></div>
             <div className="small dim trunc" style={{ maxWidth: 176 }}>{p.name}</div>
             <div className="small num" style={{ marginTop: 4 }}>{inr0(p.ref)} · stop {p.stopPct}% below{row ? <> · {TREND_WORD[trendOf(row).trend ?? 'mixed']}</> : null}</div></a>
-          <div className="row" style={{ gap: 6, marginTop: 8 }}><button className={`btn sm grow ${have ? '' : 'pri'}`} disabled={have} onClick={() => take(p)}>{have ? 'In book' : 'Paper trade'}</button><TvButton sym={p.sym} className="btn sm" label="" /></div></div>; })}
+          <div className="row" style={{ gap: 6, marginTop: 8 }}>{autoTaken(p) ? <span className="tag lime grow" style={{ justifyContent: 'center' }}>In auto book</span> : autoWhy(p) ? <span className="tag peach grow" style={{ justifyContent: 'center', whiteSpace: 'normal', textAlign: 'center' }} title={autoWhy(p)!}>Not taken</span> : <button className={`btn sm grow ${have ? '' : 'pri'}`} disabled={have} onClick={() => take(p)}>{have ? 'In book' : 'Paper trade'}</button>}<TvButton sym={p.sym} className="btn sm" label="" /></div></div>; })}
         <a className="tile" href="#/signals" style={{ minWidth: 110, display: 'grid', placeItems: 'center', textAlign: 'center' }}><span className="small">All {total} picks →</span></a></div>
         : <Empty title="No pick tonight">Each engine publishes only names that pass every one of its filters. When none do, Tripwire shows none.</Empty>}
 
@@ -96,7 +110,7 @@ export function Today() {
       <Head>Trend map</Head>
       <div className="card">
         <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.c.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.c.down / map.n) * 100) : '—'}% in a downtrend</span></div>
-        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.c.up} are in an uptrend, ${map.c.mixed} mixed and ${map.c.down} in a downtrend`}><i style={{ flexGrow: map.c.up || .01, background: 'var(--lime)' }} /><i style={{ flexGrow: map.c.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.c.down || .01, background: 'var(--peach)' }} /></div>
+        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.c.up} are in an uptrend, ${map.c.mixed} sideways and ${map.c.down} in a downtrend`}><i style={{ flexGrow: map.c.up || .01, background: 'var(--lime)' }} /><i style={{ flexGrow: map.c.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.c.down || .01, background: 'var(--peach)' }} /></div>
         <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} liquid names at the close of {dayWord(day)}. Uptrend: price above the 50-day average, the 50-day above the 200-day.</div>
         {map.sectors.slice(0, 5).map((x) => <a key={x.k} className="contrib" href={`#/discover?sector=${encodeURIComponent(x.k)}&trend=up`} style={{ gridTemplateColumns: '1fr 80px 38px' }}><span className="trunc">{x.k}</span><span className="bar2"><i style={{ width: `${x.up}%`, left: 0, background: 'var(--lime)' }} /></span><span className="num up" style={{ textAlign: 'right' }}>{Math.round(x.up)}%<span className="sr"> of {x.n} {x.k} names are in an uptrend. Opens Discover.</span></span></a>)}
         {map.sectors.length > 5 && <details className="ev" style={{ marginTop: 8 }}><summary>Weakest sectors<span className="chev">▾</span></summary><div className="body">{[...map.sectors].reverse().slice(0, 4).map((x) => <a key={x.k} className="contrib" href={`#/discover?sector=${encodeURIComponent(x.k)}&trend=down`} style={{ gridTemplateColumns: '1fr 80px 38px' }}><span className="trunc">{x.k}</span><span className="bar2"><i style={{ width: `${x.down}%`, left: 0, background: 'var(--peach)' }} /></span><span className="num down" style={{ textAlign: 'right' }}>{Math.round(x.down)}%</span></a>)}<p className="small mute" style={{ margin: '6px 0 0' }}>Share of each sector in a downtrend.</p></div></details>}
@@ -118,6 +132,9 @@ export function Today() {
           {reviews.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left', width: '100%' }} onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="tag peach">{reviewDue(e) === 'overdue' ? 'Overdue' : 'Today'}</span><span className="grow"><span className="sym">{e.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>Review: {current(e).trigger || current(e).thesis}</span></span></button>)}
           {events.map((r) => <a key={r.sym} className="li" href={`#/c/${r.sym}`}><span className="tag">{dayWord(r.next_earnings)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="dim small" style={{ display: 'block' }}>Results, estimated date</span></span></a>)}
         </div></div></>}
+      <Head>News</Head>
+      <TodayNews syms={newsSyms} />
+
       <p className="mute small" style={{ marginTop: 10 }}>Screen data: close of {dayWord(day)} ({fr.word.toLowerCase()}). Picks are starting points to investigate, not recommendations.</p>
     </>}
   </div>;

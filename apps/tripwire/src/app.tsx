@@ -10,6 +10,7 @@ import { Profile } from './screens/profile.tsx';
 import { Company } from './screens/company.tsx';
 import { Compare } from './screens/compare.tsx';
 import { Report } from './screens/report.tsx';
+import { MacroPage } from './screens/Macro.tsx';
 import { Welcome } from './screens/welcome.tsx';
 import { SearchSheet, PlannerSheet, ThesisSheet, ExplainSheet } from './sheets.tsx';
 import { freshness } from './fresh.ts';
@@ -43,7 +44,7 @@ const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} })
 export const useSheets = () => useContext(SheetCtx);
 
 const TABS = [{ id: 'today', label: 'Today' }, { id: 'discover', label: 'Discover' }, { id: 'signals', label: 'Signals' }, { id: 'desk', label: 'My Desk' }, { id: 'profile', label: 'Profile' }];
-const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'report' ? 'desk' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
+const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' ? 'today' : p[0] === 'report' ? 'desk' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
 
 export function App(): ReactNode {
   const s = useAppState();
@@ -68,6 +69,7 @@ export function App(): ReactNode {
   const head = loc.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   let view: ReactNode;
   if (head === 'c' && loc.path[1]) view = <Company sym={decodeURIComponent(loc.path[1])} />;
+  else if (head === 'm' && loc.path[1]) view = <MacroPage k={decodeURIComponent(loc.path[1]).toUpperCase()} />;
   else if (head === 'compare') view = <Compare syms={(loc.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
   else if (tab === 'discover') view = <Discover />;

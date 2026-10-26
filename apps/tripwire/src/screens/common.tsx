@@ -4,8 +4,9 @@ import { back, go, setState, useAppState, useSheets } from '../app.tsx';
 import { toggleFollow } from '../store.ts';
 import { trendOf, TREND_WORD, type Row } from '../screen.ts';
 import { initials, inr, pct, tone } from '../fmt.ts';
+import { asOfTime, useLivePrice } from '../quotes.ts';
 
-/** Up, down or mixed, by the Alpha site's own uptrend rule (and its mirror for down). Untagged when a figure is missing. */
+/** Up, down or sideways, by the Alpha site's own uptrend rule (and its mirror for down). Untagged when a figure is missing. */
 export function TrendTag({ r, compact = false }: { r: Pick<Row, 'price' | 'sma50' | 'sma200'>; compact?: boolean }) {
   const { trend, detail } = trendOf(r); if (!trend) return null;
   const glyph = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'; const cls = trend === 'up' ? 'lime' : trend === 'down' ? 'peach' : '';
@@ -31,11 +32,12 @@ export function FollowButton({ sym, name }: { sym: string; name?: string }) {
     <Icon n="star" /></button>;
 }
 export function CompanyRow({ r, extra, compare }: { r: Row; extra?: ReactNode; compare?: { on: boolean; toggle: () => void; disabled: boolean } }) {
+  const lp = useLivePrice(r);          // the live price when the Worker has one from today, otherwise the published close
   return <div className="li">
     <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }}>
       <span className="avatar" aria-hidden="true">{initials(r.sym)}</span>
       <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact /><span className="dim small trunc">{r.name}</span></span></span>
-      <span className="px num" style={{ flex: 'none' }}><b>{inr(r.price)}</b><span className={tone(r.r1d)}>{pct(r.r1d)}</span></span>
+      <span className="px num" style={{ flex: 'none' }} title={lp.fromQuote ? `${lp.live ? 'Live' : 'Last price'}, as of ${asOfTime(lp.t)} IST` : 'Close of the last session in the published data'}><b>{inr(lp.px)}</b><span className={tone(lp.ch)}>{pct(lp.ch)}</span></span>
     </a>
     {extra}
     {compare && <button className="icon-btn" aria-pressed={compare.on} disabled={compare.disabled && !compare.on} aria-label={`${compare.on ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={compare.toggle}><Icon n="compare" /></button>}

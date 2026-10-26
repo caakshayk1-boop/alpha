@@ -5,6 +5,7 @@ import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
 import { CompanyRow, Failed, Head, Loading, PageBar } from './common.tsx';
 import { NO_FILTER, filterRows, sortRows, describeFilters, type Filters, type SortKey } from '../screen.ts';
 import { saveScreen } from '../store.ts';
+import { useWatchQuotes } from '../quotes.ts';
 
 const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
   { id: 'name', label: 'Name A to Z', dir: 'asc' }, { id: 'r1d', label: 'Biggest day gain', dir: 'desc' }, { id: 'rs3m', label: 'Ahead of the Nifty, 3 months', dir: 'desc' },
@@ -24,6 +25,7 @@ export function Discover() {
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
   const res = useMemo(() => filterRows(rows, f), [rows, f]);
   const list = useMemo(() => sortRows(res.rows, SORTS[sort].id, SORTS[sort].dir), [res.rows, sort]);
+  useWatchQuotes(list.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
   const active = describeFilters(f);
   const set = (p: Partial<Filters>) => { setF((x) => ({ ...x, ...p })); setLimit(PAGE); };
   const toggle = (sym: string) => setPick((p) => (p.includes(sym) ? p.filter((x) => x !== sym) : p.length < 3 ? [...p, sym] : p));
@@ -32,7 +34,7 @@ export function Discover() {
     <div className="search"><Icon n="search" /><input className="field" type="search" placeholder="Company or symbol" value={f.q} onChange={(e) => set({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
     <div className="chips" style={{ marginTop: 10 }} role="group" aria-label="Quick filters">
       <button className="chip" onClick={() => setSheet(true)}><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
-      {([['trend', 'up', 'Uptrend'], ['trend', 'down', 'Downtrend'], ['value', 'cheap', 'PE 15 or less'], ['quality', 'high', 'High ROCE'], ['momentum', 'strong', 'Ahead of Nifty'], ['momentum', 'near-high', 'Near 52w high']] as const).map(([k, v, l]) =>
+      {([['trend', 'up', 'Uptrend'], ['trend', 'down', 'Downtrend'], ['trend', 'mixed', 'Sideways'], ['value', 'cheap', 'PE 15 or less'], ['quality', 'high', 'High ROCE'], ['momentum', 'strong', 'Ahead of Nifty'], ['momentum', 'near-high', 'Near 52w high']] as const).map(([k, v, l]) =>
         <button key={l} className="chip" aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
     {s.screens.length > 0 && <div className="chips" aria-label="Saved screens">{s.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setF(x.f); setLimit(PAGE); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
@@ -57,7 +59,7 @@ export function Discover() {
       <label className="l" htmlFor="f-q">Quality</label>
       <select id="f-q" className="field" value={f.quality} onChange={(e) => set({ quality: e.target.value as Filters['quality'] })}><option value="">Any</option><option value="high">Median ROCE 20%+ (lenders excluded)</option></select>
       <label className="l" htmlFor="f-t">Trend</label>
-      <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (price above the 50-day, 50-day above the 200-day)</option><option value="down">Downtrend (the mirror of that)</option><option value="mixed">Mixed</option></select>
+      <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (price above the 50-day, 50-day above the 200-day)</option><option value="down">Downtrend (the mirror of that)</option><option value="mixed">Sideways (no clear trend: the price and the averages are not in one order)</option></select>
       <label className="l" htmlFor="f-m">Momentum</label>
       <select id="f-m" className="field" value={f.momentum} onChange={(e) => set({ momentum: e.target.value as Filters['momentum'] })}><option value="">Any</option><option value="strong">Ahead of the Nifty, 3 months</option><option value="weak">Behind the Nifty, 3 months</option><option value="near-high">Within 5% of the 52-week high</option></select>
       <p className="small dim">Every figure: Alpha screen, last close. PE is trailing and absent for loss-makers. ROCE is the median of up to four fiscal years.</p>

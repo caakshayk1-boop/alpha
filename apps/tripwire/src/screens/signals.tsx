@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { go, setState, useAppState } from '../app.tsx';
 import { useLedger } from '../data.ts';
 import { Tracker } from './Tracker.tsx';
+import { AutoBook } from './AutoBook.tsx';
 import { TvButton } from '../live.tsx';
 import { Evidence } from './Evidence.tsx';
 import { useBacktest } from '../data.ts';
@@ -18,12 +19,12 @@ import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
 
 export function Signals({ seg }: { seg: string }) {
-  const v = seg === 'tracker' ? 'tracker' : seg === 'record' ? 'record' : seg === 'evidence' ? 'evidence' : 'picks';
+  const v = seg === 'tracker' ? 'tracker' : seg === 'auto' ? 'auto' : seg === 'record' ? 'record' : seg === 'evidence' ? 'evidence' : 'picks';
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'tracker', label: `My paper${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Evidence' }]} />
-    {v === 'picks' ? <Picks /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: `Mine${s.paper.length ? ` · ${s.paper.filter((p) => !p.closedByUser).length}` : ''}` }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Proof' }]} />
+    {v === 'picks' ? <Picks /> : v === 'auto' ? <AutoBook /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordView /> : <Evidence />}
   </div>;
 }
 
