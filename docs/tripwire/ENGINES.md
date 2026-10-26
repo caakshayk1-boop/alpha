@@ -1,6 +1,6 @@
 # Tripwire engines and paper tracker
 
-Three engines, each a published factor idea with fixed, pre-stated rules over the daily screen (`apps/tripwire/src/quant.ts`). They rank names; they do not predict, and no probability is shown anywhere.
+Two active engines and one retired (see below), each a published factor idea with fixed, pre-stated rules over the daily screen (`apps/tripwire/src/quant.ts`). They rank names; they do not predict, and no probability is shown anywhere.
 
 | Engine | Idea (reference) | Score | Must also | Horizon, stop |
 |---|---|---|---|---|
@@ -35,3 +35,6 @@ Tested: `tests/quant.test.ts` (engine rules, eligibility, sector caps, the track
 
 ## Scheduled refresh
 `tripwire.yml` also runs at 23:45 IST and 04:15 IST, Monday to Saturday: build, run every check, deploy. Without it the app's data stops at its last deploy. Delete the `schedule` block to return to manual deploys.
+
+## Retired: Steady uptrend (26 Oct 2026)
+It was negative in all three test periods of the ten-year back-test, and its first night of picks (23 Oct) was voided because the risk grade was compared as a number with the word HIGH. It makes no new picks (`ACTIVE` in `quant.ts` excludes it; the nightly record stops writing it). Its definition, its voided picks and any outcomes already recorded stay in the ledger and on the Record and Evidence tabs, marked retired. Restoring it means removing `retired` from its definition and is a decision, not a default.

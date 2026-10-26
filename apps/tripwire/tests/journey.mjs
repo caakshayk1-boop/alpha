@@ -187,9 +187,9 @@ await shot('07-journal');
 
 // signals: three engines, picks, paper tracker with mocked bars
 await pg.goto(base + '/#/signals'); await pg.waitForSelector('section[aria-label]'); await shot('08-signals');
-ok((await pg.locator('section[aria-label]').count()) === 3, 'signals shows exactly three engines');
+ok((await pg.locator('section[aria-label]').count()) === 2, 'signals shows the two active engines (Steady uptrend is retired)');
 ok(!/E[1-6]\b|Blocked: data|Alerts are off|lifecycle/i.test(await text()), 'no engine-selection or lifecycle chooser remains');
-ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && /Steady uptrend/i.test(await text()), 'the three engines are named');
+ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && !/Steady uptrend/i.test(await pg.locator('section[aria-label]').first().innerText()) && !(await pg.locator('section[aria-label]').allInnerTexts()).some((x) => /Steady uptrend/i.test(x)), 'the two active engines are named and the retired one makes no picks');
 const firstPick = await pg.locator('section[aria-label] a .sym').first().innerText().then((s) => s.replace(/^\d+\.\s*/, ''));
 await pg.locator('section[aria-label]').first().getByText('How it picks').click();
 ok(/Funnel tonight/.test(await text()), 'each engine explains its funnel');

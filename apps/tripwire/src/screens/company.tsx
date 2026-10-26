@@ -4,7 +4,7 @@ import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
 import { isLender, trendOf, TREND_WORD } from '../screen.ts';
-import { ENGINES, evaluate, type Q } from '../quant.ts';
+import { ACTIVE, evaluate, type Q } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, tone, x1, dash } from '../fmt.ts';
 import { checklistFor } from '../insight.ts';
@@ -23,7 +23,7 @@ export function Company({ sym }: { sym: string }) {
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
   const { out: eng } = useEngines();
-  const evals = useMemo(() => (row && eng ? ENGINES.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
+  const evals = useMemo(() => (row && eng ? ACTIVE.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
