@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './ui.tsx';
 import { tvUrl } from './tv.ts';
 import { rollDiff, type RollChange } from './roll.ts';
+import { fmtIst, quoteAge } from './stamp.ts';
 
 /** A small price line. `refs` are horizontal guides (previous close, entry, stop) drawn only when they fall inside the range. */
 export function Spark({ c, refs = [], up, h = 34, label }: { c: number[]; refs?: { v: number; kind: 'prev' | 'entry' | 'stop' }[]; up: boolean; h?: number; label: string }) {
@@ -57,4 +58,14 @@ export function TvButton({ sym, className = 'btn sm', label = 'TradingView' }: {
 
 export function TvIcon({ sym }: { sym: string }) {
   return <a className="icon-btn" href={tvUrl(sym)} target="_blank" rel="noopener noreferrer" title="Open on TradingView"><Icon n="chart" /><span className="sr">{sym} on TradingView, opens in a new tab</span></a>;
+}
+
+/** When the exchange last printed, in Indian time, and how old that is NOW. Read from the quote's own timestamp, so a refresh that brings back the same print
+ *  does not look fresh. The source and the measured lag sit in the tooltip; a failed update is said beside the last good time, never instead of it. */
+export function Observed({ sec, err, nse = true, source = 'Yahoo Finance', loading = false }: { sec: number | null; err?: string | null; nse?: boolean; source?: string; loading?: boolean }) {
+  const [, force] = useState(0); useEffect(() => { const i = window.setInterval(() => force((x) => x + 1), 1000); return () => window.clearInterval(i); }, []);
+  if (sec == null) return <span className={err ? 'down' : 'mute'}>{err ? 'prices unavailable' : loading ? '' : ''}</span>;
+  const now = Date.now(); const a = quoteAge(sec, now, nse); if (!a) return null;
+  const tip = `Source: ${source}. Observed ${fmtIst(sec, now)} (exchange timestamp). Age now ${Math.round(a.lagSec)} s. Prices come through this app's Worker; the age is measured from the print, not from the last refresh.`;
+  return <span className={a.tone === 'bad' ? 'down' : a.tone === 'warn' ? 'warnc' : ''} title={tip} aria-label={a.text}>{a.text}{err ? <span className="down"> · update failed</span> : null}</span>;
 }

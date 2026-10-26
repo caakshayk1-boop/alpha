@@ -11,7 +11,7 @@
  *  repository's earlier engines failed their walk-forward tests, so nothing here is claimed to work. The paper tracker is the test.
  *  Missing data is never a pass. Ranks are percentiles inside the eligible set, not probabilities. */
 import type { Row } from './screen.ts';
-import { isLender } from './screen.ts';
+import { isFinancialSector, eligibilityOf, riskGradeOf, topicOf } from './eligibility.ts';
 
 export type EngineId = 'MOM' | 'QLT' | 'LVT';
 export type Q = Row & { r6m?: number | null; r1y?: number | null; sd1y?: number | null; atr_pct?: number | null; piotroski?: number | null; mf?: { rank?: number; of?: number } | null };
@@ -24,7 +24,7 @@ export const ENGINES: EngineDef[] = [
     how: ['Score: 70% rank of the 12-month return skipping the latest month, 30% rank of nearness to the 52-week high.', 'Must close above its 200-day average, be ahead of the Nifty over 3 months and score in the top fifth.', 'Held up to 20 sessions. Stop 2.5 ATR below the signal close; skipped if that is more than 12% away.'] },
   { id: 'QLT', name: 'Quality at a fair price', line: 'Profitable, cheap on earnings, not falling', horizon: 60, atrMult: 3, maxStopPct: 15, top: 5, perSector: 2,
     theory: 'Greenblatt (2005); Piotroski (2000); Novy-Marx (2013)',
-    how: ['Score: 50% Magic Formula rank, 30% Piotroski score, 20% median return on capital.', 'Must have a Piotroski score of 7 or more, median ROCE of 15% or more, debt to equity of 1 or less, and close above its 200-day average. Lenders are left out, as the Magic Formula leaves them out.', 'Held up to 60 sessions. Stop 3 ATR below the signal close; skipped if that is more than 15% away.'] },
+    how: ['Score: 50% Magic Formula rank, 30% Piotroski score, 20% median return on capital.', 'Must have a Piotroski score of 7 or more, median ROCE of 15% or more, debt to equity of 1 or less, and close above its 200-day average. The financial sector is left out, as the Magic Formula leaves it out.', 'Held up to 60 sessions. Stop 3 ATR below the signal close; skipped if that is more than 15% away.'] },
   { id: 'LVT', retired: '2026-10-26', name: 'Steady uptrend', line: 'Calm stocks that are still rising', horizon: 40, atrMult: 2, maxStopPct: 10, top: 5, perSector: 2,
     theory: 'Ang, Hodrick, Xing and Zhang (2006); Frazzini and Pedersen (2014); Faber (2007)',
     how: ['Score: 60% calmness (lowest one-year volatility) and 40% rank of the 6-month return.', 'Must sit in the calmest quarter, close above its 200-day average, have a positive 6-month return and a risk grade below HIGH.', 'Held up to 40 sessions. Stop 2 ATR below the signal close; skipped if that is more than 10% away.'] },
@@ -34,14 +34,24 @@ export const ACTIVE = ENGINES.filter((e) => !e.retired);
 export const engineDef = (id: EngineId) => ENGINES.find((e) => e.id === id)!;
 
 /** Names the engines may consider at all: liquid, priced, with a measured ATR, and not a micro cap (fills there are not credible). */
-export const eligible = (r: Q): boolean => r.liquid === true && n(r.price) && r.price > 0 && n(r.atr_pct) && r.atr_pct > 0 && r.tier !== 'micro';
+export interface EligStep { id: string; label: string; pass: (r: Q) => boolean }
+/** The eligibility rule as an ordered list, so the number on the Data screen is produced by the SAME predicates the engines use and cannot drift from them. */
+export const ELIG_STEPS: EligStep[] = [
+  { id: 'liquid', label: 'Flagged liquid by the screen', pass: (r) => r.liquid === true },
+  { id: 'priced', label: 'Has a price', pass: (r) => n(r.price) && r.price > 0 },
+  { id: 'atr', label: 'Daily range (ATR) measured', pass: (r) => n(r.atr_pct) && r.atr_pct > 0 },
+  { id: 'notmicro', label: 'Not classed micro cap (an unpublished size class passes)', pass: (r) => r.tier !== 'micro' },
+];
+export const eligible = (r: Q): boolean => ELIG_STEPS.every((s) => s.pass(r));
 
 export interface Ctx { elig: Q[]; pct: Record<string, Map<string, number>> }
 /** Percentile of each name among those measured: share strictly below plus half the ties. Unmeasured names get no entry. */
 export function pctMap(rows: readonly Q[], f: (r: Q) => number | null | undefined): Map<string, number> {
   const v = rows.map((r) => ({ s: r.sym, x: f(r) })).filter((a): a is { s: string; x: number } => n(a.x));
-  const out = new Map<string, number>(); const N = v.length;
-  for (const a of v) { let lt = 0, eq = 0; for (const b of v) { if (b.x < a.x) lt++; else if (b.x === a.x) eq++; } out.set(a.s, ((lt + 0.5 * eq) / N) * 100); }
+  const out = new Map<string, number>(); const N = v.length; const xs = v.map((a) => a.x).sort((p, q) => p - q);
+  const lower = (t: number) => { let lo = 0, hi = N; while (lo < hi) { const m = (lo + hi) >> 1; if (xs[m] < t) lo = m + 1; else hi = m; } return lo; };
+  const upper = (t: number) => { let lo = 0, hi = N; while (lo < hi) { const m = (lo + hi) >> 1; if (xs[m] <= t) lo = m + 1; else hi = m; } return lo; };
+  for (const a of v) { const lt = lower(a.x); const eq = upper(a.x) - lt; out.set(a.s, ((lt + 0.5 * eq) / N) * 100); }   // O(n log n): the same number as counting pairs, without n squared work on every screen
   return out;
 }
 export const mom12_1 = (r: Q): number | null => (n(r.r1y) && n(r.r1m) && r.r1m > -100 ? ((1 + r.r1y / 100) / (1 + r.r1m / 100) - 1) * 100 : null);
@@ -49,7 +59,7 @@ const mfPct = (r: Q): number | null => (r.mf && n(r.mf.rank) && n(r.mf.of) && r.
 export function buildCtx(rows: readonly Q[]): Ctx {
   const elig = rows.filter(eligible);
   return { elig, pct: {
-    mom: pctMap(elig, mom12_1), high: pctMap(elig, (r) => r.from_high), pio: pctMap(elig, (r) => r.piotroski), roce: pctMap(elig, (r) => (isLender(r) ? null : r.roce_med)),
+    mom: pctMap(elig, mom12_1), high: pctMap(elig, (r) => r.from_high), pio: pctMap(elig, (r) => r.piotroski), roce: pctMap(elig, (r) => (isFinancialSector(r) ? null : r.roce_med)),
     mf: pctMap(elig, mfPct), sd: pctMap(elig, (r) => r.sd1y), r6: pctMap(elig, (r) => r.r6m),
   } };
 }
@@ -75,7 +85,7 @@ export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
     c.push(test('Score in the top fifth', score, (x) => x >= 80, n(score) ? `${score.toFixed(0)} of 100` : 'not measured'));
   } else if (id === 'QLT') {
     const sc = n(g('mf')) && n(g('pio')) && n(g('roce')) ? 0.5 * g('mf')! + 0.3 * g('pio')! + 0.2 * g('roce')! : null; score = sc;
-    c.push({ label: 'Not a lender', pass: !isLender(r), value: isLender(r) ? 'lender' : 'no' });
+    c.push({ label: 'Not a financial-sector company (the Magic Formula leaves the sector out)', pass: !isFinancialSector(r), value: isFinancialSector(r) ? 'financial sector' : 'no' });
     c.push(test('Piotroski score 7 or more', r.piotroski, (x) => x >= 7, n(r.piotroski) ? `${r.piotroski} of 9` : 'not measured'));
     c.push(test('Median ROCE 15% or more', r.roce_med, (x) => x >= 15, n(r.roce_med) ? `${r.roce_med.toFixed(1)}%` : 'not measured'));
     c.push(test('Debt to equity 1 or less', r.de, (x) => x >= 0 && x <= 1, n(r.de) ? r.de.toFixed(2) : 'not measured'));
@@ -94,9 +104,22 @@ export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
   return { id, eligible: el, criteria: c, score, pass };
 }
 
-export interface Pick { engine: EngineId; sym: string; name: string; sector?: string | null; asOf: string; ref: number; stop: number; stopPct: number; horizon: number; score: number; rank: number; risk?: string | null; why: string[] }
+export interface Pick { engine: EngineId; sym: string; name: string; sector?: string | null; /** facts about the pick a reader should see beside it (size class unpublished, risk grade not applicable) */ flags?: string[]; asOf: string; ref: number; stop: number; stopPct: number; horizon: number; score: number; rank: number; risk?: string | null; why: string[] }
 export interface Run { id: EngineId; picks: Pick[]; funnel: { universe: number; eligible: number; passed: number; skippedWideStop: number; picked: number } }
 
+/** The main risk shown beside a pick, from the same eligibility layer as the company page: a flag about a figure that is not meaningful is never shown. */
+function pickRisk(r: Q): string | null {
+  const el = eligibilityOf(r); const g = riskGradeOf(r, el);
+  if (el.financial) return 'Risk grade not applied: it is built from ratios that do not apply to financial-sector companies.';
+  if (r.risk_top) { const tp = topicOf({ t: r.risk_top, k: '' }); if (!tp.metric || el.metrics[tp.metric].ok) return r.risk_top; }
+  return g.level ? `Screen risk grade ${g.level}.${g.note ? ` ${g.note}` : ''}` : null;
+}
+function pickFlags(r: Q): string[] {
+  const out: string[] = []; const el = eligibilityOf(r);
+  if (!el.size.known) out.push('Size class is not published for this name. The engine counts it as not micro; the feed cannot confirm that.');
+  if (el.financial) out.push('Financial-sector company: statement ratios are not judged.');
+  return out;
+}
 export function runEngine(id: EngineId, rows: readonly Q[], ctx: Ctx, asOf: string): Run {
   const def = engineDef(id);
   const passed = ctx.elig.map((r) => ({ r, e: evaluate(id, r, ctx) })).filter((x) => x.e.pass).sort((a, b) => b.e.score! - a.e.score! || a.r.sym.localeCompare(b.r.sym));
@@ -108,8 +131,8 @@ export function runEngine(id: EngineId, rows: readonly Q[], ctx: Ctx, asOf: stri
     if (picks.length >= def.top) break;
     perSector.set(sec, (perSector.get(sec) ?? 0) + 1);
     const ref = r.price!, stop = Math.round(ref * (1 - stopPct / 100) * 100) / 100;
-    picks.push({ engine: id, sym: r.sym, name: r.name, sector: r.sector, asOf, ref, stop, stopPct: Math.round(((ref - stop) / ref) * 1000) / 10, horizon: def.horizon, score: Math.round(e.score!), rank: picks.length + 1, risk: r.risk_top ?? (r.risk_lvl ? `Screen risk grade ${r.risk_lvl}` : null),
-      why: e.criteria.filter((x) => x.pass === true && x.label !== 'Liquid, priced, not a micro cap').map((x) => `${x.label}: ${x.value}`) });
+    picks.push({ engine: id, sym: r.sym, name: r.name, sector: r.sector, asOf, ref, stop, stopPct: Math.round(((ref - stop) / ref) * 1000) / 10, horizon: def.horizon, score: Math.round(e.score!), rank: picks.length + 1, risk: pickRisk(r), flags: pickFlags(r),
+      why: [...new Set(e.criteria.filter((x) => x.pass === true && x.label !== 'Liquid, priced, not a micro cap').map((x) => `${x.label}: ${x.value}`))] });
   }
   return { id, picks, funnel: { universe: rows.length, eligible: ctx.elig.length, passed: passed.length, skippedWideStop: wide, picked: picks.length } };
 }

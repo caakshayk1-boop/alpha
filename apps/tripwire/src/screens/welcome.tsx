@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { setState } from '../app.tsx';
 import { Icon } from '../ui.tsx';
 
-export function Welcome() {
+export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const [step, setStep] = useState(0);
   const finish = (h?: string) => setState((x) => ({ ...x, onboarded: true, prefs: { ...x.prefs, horizon: h ?? x.prefs.horizon } }));
   return <div className="welcome">
+    {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore as a guest, then import a backup from Profile to restore your notes.</div>}
     <div className="k">Tripwire</div>
     {step === 0 ? <>
       <h1>See what <em className="ed">fired</em>.<br />Decide what matters.</h1>
       <p className="dim" style={{ fontSize: '0.9688rem', margin: 0 }}>Public rules, run on the last close. The case and the countercase side by side. Your own decisions, with the date you promised to review them.</p>
       <div className="pts">
-        <div><Icon n="signals" /><span>Ten plain rules over Nifty 500 names, with the figure that tripped each one.</span></div>
-        <div><Icon n="note" /><span>A journal that keeps every version of your thinking, and reminds you to revisit it.</span></div>
+        <div><Icon n="signals" /><span>A screen over listed Indian companies, two experimental ranking engines, and the case and countercase for every name. Nothing here is a recommendation.</span></div>
+        <div><Icon n="note" /><span>Follow a name, write why and what would make you wrong, size a paper plan, set a date to look again. Your journal keeps every version.</span></div>
         <div><Icon n="lock" /><span>No account needed. Your notes stay on this device.</span></div>
       </div>
       <button className="btn pri" style={{ height: 54 }} onClick={() => setStep(1)}>Continue</button>

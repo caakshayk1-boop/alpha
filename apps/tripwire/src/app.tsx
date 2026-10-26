@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { DEFAULTS, parseState, type State } from './store.ts';
+import { DEFAULTS, readSaved, type State } from './store.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
 import { Today } from './screens/today.tsx';
@@ -9,6 +9,7 @@ import { Desk } from './screens/desk.tsx';
 import { Profile } from './screens/profile.tsx';
 import { Company } from './screens/company.tsx';
 import { Compare } from './screens/compare.tsx';
+import { DataPage } from './screens/Data.tsx';
 import { Report } from './screens/report.tsx';
 import { MacroPage } from './screens/Macro.tsx';
 import { Welcome } from './screens/welcome.tsx';
@@ -22,11 +23,17 @@ import { LockScreen } from './screens/LockScreen.tsx';
 /* ---- state: this device only, until an identity provider is configured ---- */
 const KEY = 'tripwire:v1';
 let mem: State | null = null;
-function load(): State { try { const t = localStorage.getItem(KEY); const p = t ? parseState(t) : null; return p ?? DEFAULTS; } catch { return DEFAULTS; } }
+/** Whether this browser is really keeping the data. Private modes and a full disk make setItem throw; saying nothing would let a person write notes that vanish. */
+const health = { persisted: true, unreadable: false };
+function load(): State {
+  try { const t = localStorage.getItem(KEY); const r = readSaved(t);
+    if (r.unreadable) { health.unreadable = true; try { localStorage.setItem(KEY + ':unreadable', t as string); } catch { /* nothing more can be done */ } }   // keep what could not be read before anything is written over it
+    return r.state; } catch { health.persisted = false; return DEFAULTS; }
+}
 const subs = new Set<() => void>();
 export function setState(fn: (s: State) => State) {
   mem = fn(mem ?? load());
-  try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* private mode: keep it in memory for this session */ }
+  try { localStorage.setItem(KEY, JSON.stringify(mem)); health.persisted = true; } catch { health.persisted = false; }   // kept in memory for this session, and said so on screen
   subs.forEach((f) => f());
 }
 export function useAppState(): State {
@@ -48,7 +55,7 @@ const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} })
 export const useSheets = () => useContext(SheetCtx);
 
 const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'profile', label: 'Profile', c: 'var(--a5)' }];
-const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' ? 'today' : p[0] === 'report' ? 'desk' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
+const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' ? 'today' : p[0] === 'report' ? 'desk' : p[0] === 'data' ? 'profile' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
 
 export function App(): ReactNode {
   const s = useAppState();
@@ -64,6 +71,13 @@ export function App(): ReactNode {
     root.classList.toggle('fx', s.prefs.motion === 'auto' && !reduced);
   }, [s.prefs.motion]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSheet({ k: 'search' }); } }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
+  // the on-screen keyboard: sticky bars step aside while a field is being typed in, and sheets size to what is actually visible
+  useEffect(() => {
+    const vv = window.visualViewport; if (!vv) return; const root = document.documentElement;
+    const f = () => { const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop); root.style.setProperty('--kb', `${Math.round(kb)}px`); root.style.setProperty('--vvh', `${Math.round(vv.height)}px`); root.classList.toggle('kb', kb > 120); };
+    vv.addEventListener('resize', f); vv.addEventListener('scroll', f); f();
+    return () => { vv.removeEventListener('resize', f); vv.removeEventListener('scroll', f); };
+  }, []);
   const ctx = useMemo(() => ({ open: setSheet }), []);
   // look: theme, hidden amounts; a tap on a control gives a light tap (never on a link that only scrolls)
   useEffect(() => { applyTheme(s.prefs.theme); }, [s.prefs.theme]);
@@ -77,13 +91,14 @@ export function App(): ReactNode {
   useEffect(() => { window.scrollTo(0, 0); document.title = `${TABS[ti].label} · Tripwire`; }, [loc.raw, ti]);
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
-  if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Welcome /></UiProvider>;
+  if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Welcome unreadable={health.unreadable} /></UiProvider>;
   const head = loc.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   let view: ReactNode;
   if (head === 'c' && loc.path[1]) view = <Company sym={decodeURIComponent(loc.path[1])} />;
   else if (head === 'm' && loc.path[1]) view = <MacroPage k={decodeURIComponent(loc.path[1]).toUpperCase()} />;
   else if (head === 'compare') view = <Compare syms={(loc.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
+  else if (head === 'data') view = <DataPage />;
   else if (tab === 'discover') view = <Discover />;
   else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'picks'} />;
   else if (tab === 'desk') view = <Desk seg={loc.q.get('v') ?? 'follow'} />;
@@ -93,6 +108,8 @@ export function App(): ReactNode {
     <a className="sr" href="#/today">Skip to Today</a>
     <div className="app">
       <main className="main" id="main">
+        {!health.persisted && <div className="banner" role="alert">This browser is not keeping Tripwire's data (private mode, or storage is full). Notes, plans and paper trades will be lost when this tab closes. Export a backup from Profile now.</div>}
+        {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
         <div className="view" key={loc.path.slice(0, 2).join('/')}>{view}</div>

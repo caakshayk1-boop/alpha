@@ -1,5 +1,6 @@
 /** Discover: filtering and sorting over the published screen rows. Missing is never zero: a row with no figure for a filter
  *  is excluded from that filter and counted, and sorts last in either direction. */
+import { eligibilityOf, isFinancialSector, meaningful } from './eligibility.ts';
 export interface Row {
   sym: string; name: string; sector?: string | null; tier?: string | null; price?: number | null; r1d?: number | null; r1w?: number | null; r1m?: number | null; r3m?: number | null; rs3m?: number | null;
   from_high?: number | null; high52?: number | null; low52?: number | null; sma20?: number | null; sma50?: number | null; sma200?: number | null; rsi?: number | null; vol_spike?: number | null;
@@ -27,12 +28,13 @@ export const TREND_WORD: Record<Trend, string> = { up: 'Uptrend', down: 'Downtre
 const sma = (c: readonly number[], n: number) => (c.length >= n ? c.slice(-n).reduce((a, b) => a + b, 0) / n : null);
 /** The same tag for anything with a daily close series (an index, gold, a currency): the last close against its own 50 and 200-day averages. */
 export const trendOfCloses = (c: readonly number[]) => trendOf({ price: c.length ? c[c.length - 1] : null, sma50: sma(c, 50), sma200: sma(c, 200) });
-/** Banks and other lenders carry no meaningful debt-to-equity or capital-employed return; the screen's own rule. */
-export const isLender = (r: Pick<Row, 'sector'>) => r.sector === 'Financial Services';
+/** The financial sector (banks, lenders, brokers, advisers, insurers share one sector in the feed). Statement ratios built on capital employed do not compare across it.
+ *  The single definition lives in eligibility.ts; this name is kept for the callers that still say lender. */
+export { isFinancialSector as isLender, isFinancialSector } from './eligibility.ts';
 
-export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unmeasured: number } {
+export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unmeasured: number; notApplicable: number } {
   const q = f.q.trim().toLowerCase();
-  let unmeasured = 0;
+  let unmeasured = 0, notApplicable = 0;
   const out = rows.filter((r) => {
     if (q && !(r.sym.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))) return false;
     if (f.sector && r.sector !== f.sector) return false;
@@ -40,14 +42,14 @@ export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unm
     const need = (v: unknown) => { if (!num(v)) { unmeasured++; return false; } return true; };
     if (f.value === 'cheap') { if (!need(r.pe)) return false; if (!(r.pe! > 0 && r.pe! <= 15)) return false; }
     if (f.value === 'rich') { if (!need(r.pe)) return false; if (!(r.pe! >= 40)) return false; }
-    if (f.quality === 'high') { if (isLender(r) || !need(r.roce_med)) return false; if (!(r.roce_med! >= 20)) return false; }
+    if (f.quality === 'high') { if (isFinancialSector(r)) { notApplicable++; return false; } if (!meaningful(eligibilityOf(r), 'roce')) { notApplicable++; return false; } if (!need(r.roce_med)) return false; if (!(r.roce_med! >= 20)) return false; }
     if (f.momentum === 'strong') { if (!need(r.rs3m)) return false; if (!(r.rs3m! > 0)) return false; }
     if (f.momentum === 'weak') { if (!need(r.rs3m)) return false; if (!(r.rs3m! < 0)) return false; }
     if (f.trend) { if (trendOf(r).trend === null) { unmeasured++; return false; } if (trendOf(r).trend !== f.trend) return false; }
     if (f.momentum === 'near-high') { if (!need(r.from_high)) return false; if (!(r.from_high! >= -5)) return false; }
     return true;
   });
-  return { rows: out, unmeasured };
+  return { rows: out, unmeasured, notApplicable };
 }
 export function sortRows(rows: readonly Row[], key: SortKey, dir: 'asc' | 'desc'): Row[] {
   const s = dir === 'asc' ? 1 : -1;
@@ -62,7 +64,7 @@ export function sortRows(rows: readonly Row[], key: SortKey, dir: 'asc' | 'desc'
 }
 export const describeFilters = (f: Filters): string[] => [
   f.sector && `Sector: ${f.sector}`, f.tier && `Size: ${f.tier}`,
-  f.value === 'cheap' && 'PE 15 or less', f.value === 'rich' && 'PE 40 or more', f.quality === 'high' && 'Median ROCE 20%+ (not lenders)',
+  f.value === 'cheap' && 'PE 15 or less', f.value === 'rich' && 'PE 40 or more', f.quality === 'high' && 'Median ROCE 20%+ (financial sector left out)',
   f.trend && `Trend: ${TREND_WORD[f.trend]}`,
   f.momentum === 'strong' && 'Ahead of the Nifty, 3 months', f.momentum === 'weak' && 'Behind the Nifty, 3 months', f.momentum === 'near-high' && 'Within 5% of the 52-week high',
 ].filter(Boolean) as string[];

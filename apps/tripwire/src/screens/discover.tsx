@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { go, setState, useAppState, useLoc } from '../app.tsx';
 import { useScreen } from '../data.ts';
 import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
@@ -44,8 +44,10 @@ export function Discover() {
   const [pick, setPick] = useState<string[]>([]);
   const rows = scr.data?.rows ?? [];
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
-  const res = useMemo(() => filterRows(rows, f), [rows, f]);
-  const list = useMemo(() => sortRows(res.rows, SORTS[sort].id, SORTS[sort].dir), [res.rows, sort]);
+  // the pressed state of a chip answers at once; the list under it catches up a moment later, so a tap never waits for forty rows to be drawn
+  const df = useDeferredValue(f); const dsort = useDeferredValue(sort);
+  const res = useMemo(() => filterRows(rows, df), [rows, df]);
+  const list = useMemo(() => sortRows(res.rows, SORTS[dsort].id, SORTS[dsort].dir), [res.rows, dsort]);
   useWatchQuotes(list.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
   const active = describeFilters(f);
   const chosen = ([['q', f.q && `“${f.q}”`], ['sector', f.sector], ['tier', f.tier && `${f.tier} cap`], ['trend', f.trend && TREND_WORD[f.trend]], ['value', f.value === 'cheap' ? 'PE 15 or less' : f.value === 'rich' ? 'PE 40 or more' : ''], ['quality', f.quality && 'ROCE 20%+'], ['momentum', f.momentum === 'strong' ? 'Ahead of Nifty' : f.momentum === 'weak' ? 'Behind Nifty' : f.momentum === 'near-high' ? 'Near 52w high' : '']] as [string, string | undefined][]).filter(([, l]) => l).map(([k, label]) => ({ k, label: label as string }));
@@ -55,26 +57,27 @@ export function Discover() {
   const set = (p: Partial<Filters>) => { setF((x) => ({ ...x, ...p })); setLimit(PAGE); };
   const toggle = (sym: string) => setPick((p) => (p.includes(sym) ? p.filter((x) => x !== sym) : p.length < 3 ? [...p, sym] : p));
   return <div>
-    <PageBar title="Discover" sub={scr.data ? `${scr.data.count} companies in the Nifty 500 screen` : undefined} />
+    <PageBar title="Discover" sub={scr.data ? <>{scr.data.count} companies in the published screen · <a href="#/data" style={{ textDecoration: 'underline' }}>coverage</a></> : undefined} />
     <div className="search"><Icon n="search" /><input className="field" type="search" placeholder="Company or symbol" value={f.q} onChange={(e) => set({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
     <div className="strip lenses" role="group" aria-label="Ideas" style={{ marginTop: 10 }}>{LENSES.map((l) => { const on = lensOn(l); const n = counts[l.id];
       return <button key={l.id} className={`lens ${on ? 'on' : ''}`} style={{ '--lc': l.c } as React.CSSProperties} aria-pressed={on} onClick={() => applyLens(l)}>
         <span className="lt">{l.title}</span><span className="ln num">{n == null ? '…' : n}<small> names</small></span><span className="ll">{l.line}</span></button>; })}</div>
     <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Quick filters">
       <button className="chip" onClick={() => setSheet(true)}><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
+      {s.prefs.interests.map((x) => <button key={x} className="chip cc" style={{ '--cc': 'var(--a6)' } as React.CSSProperties} aria-pressed={f.sector === x} onClick={() => set({ sector: f.sector === x ? '' : x })}>{x}</button>)}
       {([['trend', 'up', 'Uptrend', 'var(--up)'], ['trend', 'down', 'Downtrend', 'var(--down)'], ['trend', 'mixed', 'Sideways', 'var(--dim)'], ['quality', 'high', 'High ROCE', 'var(--a3)'], ['momentum', 'strong', 'Ahead of Nifty', 'var(--a4)']] as const).map(([k, v, l, c]) =>
         <button key={l} className="chip cc" style={{ '--cc': c } as React.CSSProperties} aria-pressed={(f[k] ?? '') === v} onClick={() => set({ [k]: (f[k] ?? '') === v ? '' : v } as Partial<Filters>)}>{l}</button>)}
     </div>
     {chosen.length > 0 && <div className="chips chosen" role="group" aria-label="Active filters">{chosen.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={() => set({ [c.k]: '' } as Partial<Filters>)} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}<button className="chip" onClick={() => { setF(NO_FILTER); setLimit(PAGE); }}>Clear all</button></div>}
     {s.screens.length > 0 && <div className="chips" aria-label="Saved screens">{s.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setF(x.f); setLimit(PAGE); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
     <div className="row between" style={{ margin: '12px 0 4px' }}>
-      <span className="small dim num">{scr.data ? `${list.length} of ${rows.length}` : ''}{res.unmeasured ? ` · ${res.unmeasured} lacked a figure for a filter` : ''}</span>
+      <span className="small dim num">{scr.data ? `${list.length} of ${rows.length}` : ''}{res.unmeasured ? ` · ${res.unmeasured} lacked a figure for a filter` : ''}{res.notApplicable ? ` · ${res.notApplicable} financial-sector or not-meaningful names left out of the ROCE filter` : ''}</span>
       <label className="small dim row" style={{ minWidth: 0, flex: '1 1 11rem', justifyContent: 'flex-end' }}><span className="sr">Sort by</span><select className="field" style={{ minHeight: 36, padding: '4px 10px', width: 'auto', maxWidth: '100%' }} value={sort} onChange={(e) => setSort(Number(e.target.value))} aria-label="Sort by">{SORTS.map((x, i) => <option key={x.id} value={i}>{x.label}</option>)}</select></label>
     </div>
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
     {scr.data && (list.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">
-      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[sort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
+      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[dsort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
     </div></div> : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Filters are exact. A name with no figure for a filter is left out, never counted as a match.</Empty>)}
     {list.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, list.length - limit)} more</button>}
     {pick.length >= 2 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => setPick([])}>Clear {pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} onClick={() => go(`/compare?s=${pick.join(',')}`)}><Icon n="compare" />Compare {pick.length}</button></div>}
@@ -86,7 +89,7 @@ export function Discover() {
       <label className="l" htmlFor="f-val">Valuation</label>
       <select id="f-val" className="field" value={f.value} onChange={(e) => set({ value: e.target.value as Filters['value'] })}><option value="">Any</option><option value="cheap">PE 15 or less</option><option value="rich">PE 40 or more</option></select>
       <label className="l" htmlFor="f-q">Quality</label>
-      <select id="f-q" className="field" value={f.quality} onChange={(e) => set({ quality: e.target.value as Filters['quality'] })}><option value="">Any</option><option value="high">Median ROCE 20%+ (lenders excluded)</option></select>
+      <select id="f-q" className="field" value={f.quality} onChange={(e) => set({ quality: e.target.value as Filters['quality'] })}><option value="">Any</option><option value="high">Median ROCE 20%+ (financial sector left out)</option></select>
       <label className="l" htmlFor="f-t">Trend</label>
       <select id="f-t" className="field" value={f.trend ?? ''} onChange={(e) => set({ trend: e.target.value as Filters['trend'] })}><option value="">Any</option><option value="up">Uptrend (price above the 50-day, 50-day above the 200-day)</option><option value="down">Downtrend (the mirror of that)</option><option value="mixed">Sideways (no clear trend: the price and the averages are not in one order)</option></select>
       <label className="l" htmlFor="f-m">Momentum</label>

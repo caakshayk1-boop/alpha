@@ -1,7 +1,7 @@
 /** The "scrip intelligence" read-outs. Pure functions over the published screen, so each sentence is testable. Nothing here predicts: every
  *  line says what the data shows, for which period, and what it cannot tell you. Missing is never zero. */
 import type { Row } from './screen.ts';
-import { isLender } from './screen.ts';
+import { eligibilityOf, meaningful, type Eligibility } from './eligibility.ts';
 import type { Inst, Season } from './data.ts';
 
 const n = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -39,9 +39,9 @@ export function peerLadder(row: Row, rows: readonly Row[]): { sector: string | n
   const sector = row.sector ?? null; if (!sector) return { sector, peers: 0, lines: [] };
   const peers = rows.filter((r) => r.sector === sector && r.liquid);
   const mk = (label: string, get: (r: Row) => number | null | undefined, better: 'high' | 'low', show: (v: number) => string, skipLender = false, positive = false): Ladder | null => {
-    if (skipLender && isLender(row)) return null;
+    if (skipLender && !meaningful(eligibilityOf(row), 'roce')) return null;
     const mine = get(row); if (!n(mine) || (positive && mine <= 0)) return null;
-    const pool = peers.filter((r) => !(skipLender && isLender(r))).map((r) => get(r)).filter((v): v is number => n(v) && (!positive || v > 0));
+    const pool = peers.filter((r) => !(skipLender && !meaningful(eligibilityOf(r), 'roce'))).map((r) => get(r)).filter((v): v is number => n(v) && (!positive || v > 0));
     if (pool.length < 5) return null;
     const rank = 1 + pool.filter((v) => (better === 'high' ? v > mine : v < mine)).length;
     return { label, rank, of: pool.length, value: show(mine), better };
@@ -52,14 +52,13 @@ export function peerLadder(row: Row, rows: readonly Row[]): { sector: string | n
   return { sector, peers: peers.length, lines };
 }
 export interface Quality { label: string; value: string; read: string; tone: 'good' | 'warn' | 'plain' }
-/** Earnings quality: does profit turn into cash, can it cover its interest, is it getting more or less profitable. Lenders are skipped (the screen's own rule). */
-export function earningsQuality(r: Row): Quality[] {
-  if (isLender(r)) return [];
+/** Earnings quality: does profit turn into cash, can it cover its interest, is it getting more or less profitable. A figure that is not meaningful for the company (eligibility.ts) is left out. */
+export function earningsQuality(r: Row, e: Eligibility = eligibilityOf(r)): Quality[] {
   const out: Quality[] = [];
-  if (n(r.cfo_pat)) out.push({ label: 'Cash from operations per ₹1 of profit', value: `₹${r.cfo_pat.toFixed(2)}`, read: r.cfo_pat >= 0.9 ? 'Profit is turning into cash.' : r.cfo_pat >= 0.5 ? 'Only part of reported profit is arriving as cash.' : 'Little of the reported profit is arriving as cash. Look at receivables and inventory.', tone: r.cfo_pat >= 0.9 ? 'good' : 'warn' });
-  if (n(r.fcf_margin)) out.push({ label: 'Free cash flow margin', value: `${fmt1(r.fcf_margin)}%`, read: r.fcf_margin > 10 ? 'Keeps a good share of revenue after spending on the business.' : r.fcf_margin > 0 ? 'Positive, but thin.' : 'Spends more than it earns in cash after capex.', tone: r.fcf_margin > 10 ? 'good' : r.fcf_margin > 0 ? 'plain' : 'warn' });
-  if (n(r.icover)) out.push({ label: 'Interest cover', value: `${r.icover >= 100 ? '100+' : fmt1(r.icover)}x`, read: r.icover >= 5 ? 'Profit covers interest comfortably.' : r.icover >= 2 ? 'Covers interest, with limited room.' : 'Interest takes most of operating profit.', tone: r.icover >= 5 ? 'good' : r.icover >= 2 ? 'plain' : 'warn' });
-  if (n(r.margin_delta)) out.push({ label: 'Operating margin change, latest year', value: `${r.margin_delta > 0 ? '+' : r.margin_delta < 0 ? '−' : ''}${fmt1(Math.abs(r.margin_delta))} pts`, read: r.margin_delta > 0.5 ? 'Margins are widening.' : r.margin_delta < -0.5 ? 'Margins are narrowing.' : 'Margins are about flat.', tone: r.margin_delta > 0.5 ? 'good' : r.margin_delta < -0.5 ? 'warn' : 'plain' });
+  if (meaningful(e, 'cash') && n(r.cfo_pat)) out.push({ label: 'Cash from operations per ₹1 of profit', value: `₹${r.cfo_pat.toFixed(2)}`, read: r.cfo_pat >= 0.9 ? 'Profit is turning into cash.' : r.cfo_pat >= 0.5 ? 'Only part of reported profit is arriving as cash.' : 'Little of the reported profit is arriving as cash. Look at receivables and inventory.', tone: r.cfo_pat >= 0.9 ? 'good' : 'warn' });
+  if (meaningful(e, 'cash') && n(r.fcf_margin)) out.push({ label: 'Free cash flow margin', value: `${fmt1(r.fcf_margin)}%`, read: r.fcf_margin > 10 ? 'Keeps a good share of revenue after spending on the business.' : r.fcf_margin > 0 ? 'Positive, but thin.' : 'Spends more than it earns in cash after capex.', tone: r.fcf_margin > 10 ? 'good' : r.fcf_margin > 0 ? 'plain' : 'warn' });
+  if (meaningful(e, 'cover') && n(r.icover)) out.push({ label: 'Interest cover', value: `${r.icover >= 100 ? '100+' : fmt1(r.icover)}x`, read: r.icover >= 5 ? 'Profit covers interest comfortably.' : r.icover >= 2 ? 'Covers interest, with limited room.' : 'Interest takes most of operating profit.', tone: r.icover >= 5 ? 'good' : r.icover >= 2 ? 'plain' : 'warn' });
+  if (meaningful(e, 'margin') && n(r.margin_delta)) out.push({ label: 'Operating margin change, latest year', value: `${r.margin_delta > 0 ? '+' : r.margin_delta < 0 ? '−' : ''}${fmt1(Math.abs(r.margin_delta))} pts`, read: r.margin_delta > 0.5 ? 'Margins are widening.' : r.margin_delta < -0.5 ? 'Margins are narrowing.' : 'Margins are about flat.', tone: r.margin_delta > 0.5 ? 'good' : r.margin_delta < -0.5 ? 'warn' : 'plain' });
   return out;
 }
 export interface RiskMap { daily: number | null; swing20: number | null; fromLow: number | null; fromHigh: number | null; volAnnual: number | null; tenLakhPct: number | null; liquidity: string }

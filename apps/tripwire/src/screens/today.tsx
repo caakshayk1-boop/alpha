@@ -6,20 +6,23 @@ import { freshness } from '../fresh.ts';
 import { changesSince, istDay, recordSnap, reviewDue, current } from '../store.ts';
 import { dayWord, initials, inr0, isNum, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
-import { ENGINES } from '../quant.ts';
+import { ACTIVE, ENGINES } from '../quant.ts';
 import { trendOf, TREND_WORD, type Row } from '../screen.ts';
-import { useBreadth, usePulse } from '../data.ts';
+import { useBacktest, useBreadth, usePulse } from '../data.ts';
+import { evidenceHeadline } from '../evidence.ts';
+import { journeyOf } from '../journey.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
 import { useAutoBook, useLiveBook } from '../book.ts';
 import { MacroStrip } from './Macro.tsx';
 import { TodayNews } from './News.tsx';
-import { Ago, LiveBadge, Spark, Tick } from '../live.tsx';
+import { Ago, LiveBadge, Observed, Spark, Tick } from '../live.tsx';
 import { Aurora } from '../aurora.tsx';
 import { Heat, Ring, avatarStyle } from '../widgets.tsx';
 import { mood } from '../mood.ts';
 import { Icon } from '../ui.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
+import { isLiveQuote } from '../stamp.ts';
 
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
@@ -29,7 +32,7 @@ export function Today() {
   const { scr, out } = useEngines();
   const rows = scr.data?.rows ?? []; const day = scr.data?.as_of ?? null; const fr = freshness(day); const today = istDay();
   const pulse = usePulse(true); const book = useLiveBook(true); const auto = useAutoBook(true);
-  const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => q.live) : null;
+  const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null;
   const sess = sessionNow(Date.now(), anyLive);
   // one snapshot per data day for each followed name: this is what makes "since you last looked" honest
   useEffect(() => {
@@ -67,15 +70,22 @@ export function Today() {
   const needs = reviews.length > 0 || events.length > 0;
   const live = sess.phase === 'open' && !!anyLive;
   const [showAllPicks, setAllPicks] = useState(false);
+  // the news and the trend map sit below the first screen: they are drawn one frame later so opening Today (and tapping its tab) paints at once
+  const [late, setLate] = useState(false); useEffect(() => { const t = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(t); }, []);
   const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score);
   const shownPicks = showAllPicks ? allPicks : allPicks.slice(0, 5);
+  const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
+  const jr = journeyOf(s, today);
 
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
+    <div className="split">
+    <div className="col">
+      <div style={{ '--o': 1 } as React.CSSProperties}>
     {/* the market, once: the mood, the Nifty, and the two figures that colour it, with one live label */}
     <section className="moodhero card glass" aria-label="Market mood">
-      <Aurora ch={niftyCh} vix={vixCh} />
-      <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : 'Last prices'} /><span className="mute">{pulse.err && !pulse.data ? 'unavailable' : pulse.at ? <Ago at={pulse.at} /> : ''}</span></span></div>
+      <Aurora ch={niftyCh} vix={vixCh} still={!live} />
+      <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : 'Last prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
       {md ? <div className="word grad-text" style={{ margin: '6px 0 2px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '8px 0' }} />}
       <div className="big num">{pulse.data?.quotes.NIFTY ? <><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick> <span className={tone(niftyCh)}>{pct(niftyCh)}</span> <a className="dim small" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer">Nifty 50<span className="sr"> on TradingView, opens in a new tab</span></a></> : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}</div>
       <div className="row small num" style={{ gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
@@ -83,10 +93,40 @@ export function Today() {
         <a href={tvIndexUrl('VIX')} target="_blank" rel="noopener noreferrer"><span className="dim">India VIX </span><Tick v={pulse.data?.quotes.VIX?.px}>{pulse.data?.quotes.VIX ? pulse.data.quotes.VIX.px.toFixed(2) : '—'}</Tick> <span className={vixCh == null ? '' : vixCh > 0 ? 'down' : vixCh < 0 ? 'up' : ''}>{pct(vixCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a></div>
       {pulse.data?.quotes.NIFTY && <div style={{ marginTop: 8 }}><Spark c={pulse.data.quotes.NIFTY.c} up={(niftyCh ?? 0) >= 0} refs={[{ v: pulse.data.quotes.NIFTY.prev, kind: 'prev' }]} h={34} label="Nifty 50 today" /></div>}
     </section>
-
+      </div>
+      <div style={{ '--o': 2 } as React.CSSProperties}>
     <Head>Commodities, currencies, Bitcoin</Head>
     <MacroStrip />
 
+      </div>
+      {scr.data && <div style={{ '--o': 5 } as React.CSSProperties}>
+      {/* tonight's picks: ranked, each with its own live line, price and move, and where it stands in the auto book */}
+      {total > 0 && <><Head aside={<span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span>}>Tonight's picks</Head>
+        <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
+          return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
+            <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
+            <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
+              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · stop −{p.stopPct}%</span></span>
+            <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
+            <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
+          <p className="small dim" style={{ margin: '4px 0 8px' }}>{evHead ? `${evHead} ` : ''}Ranked by each engine's own rank among eligible names, which is not a chance of winning.</p>
+          {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
+
+      </div>}
+      {scr.data && late && <div style={{ '--o': 6 } as React.CSSProperties}>
+      {/* the trend map, live */}
+      <Head aside={<span className="small mute">{liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · <Ago at={breadth.at} /></> : liveMap ? <>last prices · <Ago at={breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
+      <div className="card">
+        <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.down / map.n) * 100) : '—'}% in a downtrend</span></div>
+        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.up} are in an uptrend, ${map.mixed} sideways and ${map.down} in a downtrend`}><i style={{ flexGrow: map.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.down || .01, background: 'var(--down)' }} /></div>
+        <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} of {rows.filter((r) => r.liquid).length} liquid names: the rest have no 200-day average yet. Uptrend: price above the 50-day average, the 50-day above the 200-day.{liveMap ? ` Today's price used for the ${liveMap.repriced} names near a trend line; the rest use the close of ${dayWord(day)}.` : breadth.err ? ' Live update unavailable; showing the close.' : ''}</div>
+        {map.sectors.length > 0 && <Heat cells={map.sectors.slice(0, 9).map((x) => ({ k: x.k, n: x.n, up: x.up, down: x.down }))} href={(c) => `#/discover?sector=${encodeURIComponent(c.k)}&trend=${c.up >= c.down ? 'up' : 'down'}`} />}
+      </div>
+
+      </div>}
+    </div>
+    <div className="col">
+      <div style={{ '--o': 3 } as React.CSSProperties}>
     {/* the paper book, once, with its two parts named: what the auto book holds and what you took by hand */}
     {(showAuto || ownRows.length > 0) && <section className="card glass" aria-label="Paper book" style={{ marginTop: 10 }}>
       <div className="row between"><span className="k">Paper book</span><span className="small mute">{showAuto && ownRows.length ? 'two parts, added up' : 'paper money only'}</span></div>
@@ -102,47 +142,44 @@ export function Today() {
       {showAuto && auto.sum.closed > 0 && <div className="small dim" style={{ marginTop: 6 }}>Realised so far: <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b> over {auto.sum.closed} closed</div>}
     </section>}
 
+      </div>
+      <div style={{ '--o': 4 } as React.CSSProperties}>
     {scr.loading && <Loading what="the market read" />}
     {scr.err && <Failed what="the market data" err={scr.err} retry={scr.retry} />}
-    {scr.data && <>
-      {/* tonight's picks: ranked, each with its own live line, price and move, and where it stands in the auto book */}
-      {total > 0 && <><Head aside={<span className="small mute">{total} · {out!.runs.filter((r) => r.picks.length).length} engines</span>}>Tonight's picks</Head>
-        <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
-          return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
-            <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
-            <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
-              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · stop −{p.stopPct}%</span></span>
-            <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
-            <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
-
-      {/* the trend map, live */}
-      <Head aside={<span className="small mute">{liveMap ? <><i className="dot-live" aria-hidden="true" /> live · <Ago at={breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
-      <div className="card">
-        <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.down / map.n) * 100) : '—'}% in a downtrend</span></div>
-        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.up} are in an uptrend, ${map.mixed} sideways and ${map.down} in a downtrend`}><i style={{ flexGrow: map.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.down || .01, background: 'var(--down)' }} /></div>
-        <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} liquid names. Uptrend: price above the 50-day average, the 50-day above the 200-day.{liveMap ? ` Today's price used for the ${liveMap.repriced} names near a trend line; the rest use the close of ${dayWord(day)}.` : breadth.err ? ' Live update unavailable; showing the close.' : ''}</div>
-        {map.sectors.length > 0 && <Heat cells={map.sectors.slice(0, 9).map((x) => ({ k: x.k, n: x.n, up: x.up, down: x.down }))} href={(c) => `#/discover?sector=${encodeURIComponent(c.k)}&trend=${c.up >= c.down ? 'up' : 'down'}`} />}
       </div>
+      {scr.data && <div style={{ '--o': 4 } as React.CSSProperties}>
+      {jr.next && <section className="card journey" aria-label="Your first steps">
+        <div className="row between"><span className="k">Your path · {jr.done} of 4</span><span className="small mute">follow, think, size, review</span></div>
+        <ol className="jsteps">{jr.steps.map((x) => <li key={x.id} className={x.done ? 'done' : x.id === jr.next!.id ? 'now' : ''} aria-current={x.id === jr.next!.id ? 'step' : undefined}><span className="jn" aria-hidden="true">{x.done ? '✓' : x.n}</span><span className="jt">{x.title}</span></li>)}</ol>
+        <p className="small dim" style={{ margin: '8px 0 10px' }}>{jr.next.why}</p>
+        <button className="btn pri" onClick={() => { const n = jr.next!; if (n.id === 'follow' || !jr.sym) go('/discover'); else if (n.id === 'plan') open({ k: 'plan', sym: jr.sym }); else open({ k: 'thesis', sym: jr.sym, id: s.entries.find((e) => e.sym === jr.sym && !e.archived)?.id }); }}>{jr.next.id === 'follow' ? 'Find a name to follow' : jr.next.id === 'thesis' ? `Write why you like ${jr.sym ?? 'it'}` : jr.next.id === 'plan' ? `Size a plan for ${jr.sym}` : 'Set a review date'}</button></section>}
 
+      </div>}
+      {scr.data && <div style={{ '--o': 7 } as React.CSSProperties}>
       {/* only what needs you, and only when something does */}
-      {(needs || !s.entries.length) && <div className="card" style={{ marginTop: 10, borderColor: 'var(--line2)' }}>
+      {needs && <div className="card" style={{ marginTop: 10, borderColor: 'var(--line2)' }}>
         <div className="k">Needs you</div>
         <div className="list" style={{ marginTop: 4 }}>
           {reviews.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left', width: '100%' }} onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="tag peach">{reviewDue(e) === 'overdue' ? 'Overdue' : 'Today'}</span><span className="grow"><span className="sym">{e.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>Review: {current(e).trigger || current(e).thesis}</span></span></button>)}
           {events.map((r) => <a key={r.sym} className="li" href={`#/c/${r.sym}`}><span className="tag">{dayWord(r.next_earnings)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="dim small" style={{ display: 'block' }}>Results, estimated date</span></span></a>)}
-          {!s.entries.length && !needs && <a className="li" href="#/discover"><span className="grow">Write your first thesis, in seven short fields.</span><span className="tag lime">Pick a name</span></a>}
         </div></div>}
 
+      </div>}
+      {scr.data && <div style={{ '--o': 8 } as React.CSSProperties}>
       {changes.length > 0 && <><Head>Since you last looked</Head>
         <div className="card"><div className="list">{changes.map((c) => <a key={c.sym} className="li" href={`#/c/${c.sym}`}><span className="avatar">{c.sym.slice(0, 2)}</span><span className="grow"><span className="sym">{c.sym}</span><span className="dim small" style={{ display: 'block' }}>{[c.crossed.join(', '), isNum(c.pxPct) ? `${pct(c.pxPct)} since ${dayWord(c.since)}` : ''].filter(Boolean).join(' · ')}</span></span></a>)}</div></div></>}
-      {!s.follows.length && s.entries.length > 0 && <p className="small dim" style={{ margin: '10px 2px 0' }}>Follow a name and Today reports what changed in it. <a href="#/discover" style={{ textDecoration: 'underline' }}>Find a name</a></p>}
 
+      </div>}
+      {scr.data && late && <div style={{ '--o': 9 } as React.CSSProperties}>
       <Head>News</Head>
       <TodayNews syms={newsSyms} />
 
-      <p className="mute small" style={{ marginTop: 10 }}>Screen: close of {dayWord(day)} ({fr.word.toLowerCase()}). Picks are starting points, not recommendations.</p>
-    </>}
+      </div>}
+      {scr.data && <div style={{ '--o': 10 } as React.CSSProperties}>
+      <p className="mute small" style={{ marginTop: 10 }}>Screen: close of {dayWord(day)} ({fr.word.toLowerCase()}) · {scr.data.count} companies · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>. Picks are starting points, not recommendations.</p>
+      </div>}
+    </div>
+    </div>
   </div>;
 }
 function addDays(d: string, n: number) { return new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10); }

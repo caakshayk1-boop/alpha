@@ -7,25 +7,45 @@
  *  Time    exit at the close of the Nth session, the entry session being the first.
  *  Costs   a round-trip cost on the traded value plus a fixed slippage on each side, both stated on screen; real fills differ.
  *  Live    a forming bar can trigger the stop through its low, but never a time exit. Its last price is a mark, not a close.
- *  P&L is only ever computed from bars the Worker returned; a position with no bars is "waiting for data", never flat. */
+ *  P&L is only ever computed from bars the Worker returned; a position with no bars is "waiting for data", never flat.
+ *
+ *  Four different prices, never blurred: SIGNAL (the engine's close on the data day, where the stop is measured from), FILL (the next open plus slippage),
+ *  LATEST (the last close, or a live print while the session is on) and the P&L BASIS (fill to latest or exit, minus costs and exit slippage).
+ *  Sessions are the bars that exist: an exchange holiday has no bar, so it is never counted. Dividends are not received (bars are not dividend-adjusted, so
+ *  an ex-dividend drop is a real price move here and the payout is ignored: conservative). Splits and bonuses are handled by `rebase`. */
 export interface Bar { t: number; o: number; h: number; l: number; c: number; forming?: boolean }
 export interface Paper { id: string; sym: string; engine: string; asOf: string; ref: number; stop: number; horizon: number; qty: number; takenAt: number; note?: string; closedByUser?: boolean }
 export type Status = 'waiting' | 'pending' | 'open' | 'closed' | 'skipped';
 export interface View {
   id: string; status: Status; entry?: number; entryT?: number; exit?: number; exitT?: number; reason?: string; sessions: number; left: number | null;
   mark: number | null; markKind: 'live' | 'close' | null; pnl: number | null; r: number | null; pct: number | null; stopGap?: boolean; skipReason?: string;
+  /** the signal close on the basis the bars are quoted in, and the share-count change applied when the bars were re-quoted after a split or bonus (1 = none) */
+  signal?: number; adjFactor?: number; basis?: 'verified' | 'unverified';
 }
+/** The round-trip cost the planner and the tracker both assume until the published feed says otherwise. One number, so a plan and the trade that follows it agree. */
+export const DEFAULT_COST = 0.25;
 export const SLIPPAGE_PCT = 0.1;          // each side
 export const GAP_SKIP_PCT = 2;
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
-export function evaluatePaper(p: Paper, bars: readonly Bar[] | null, live: { px: number; t: number } | null, costRoundTripPct: number): View {
-  const base: View = { id: p.id, status: 'waiting', sessions: 0, left: p.horizon, mark: null, markKind: null, pnl: null, r: null, pct: null };
+const istDate = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
+/** Yahoo re-quotes the whole history after a split or bonus, so a signal close and stop stored in the old prices no longer line up with the bars: the stop would look
+ *  breached (or the entry skipped) on the day of the split. The bar of the signal day carries the signal close in TODAY'S quoting, so the ratio of the two is the
+ *  adjustment. Levels move to the bars' basis and the quantity moves the other way, so value, risk and P&L are what they were. A ratio within 0.6% is rounding. */
+export function rebase(p: Paper, bars: readonly Bar[]): { p: Paper; factor: number; verified: boolean } {
+  const day = bars.find((b) => istDate(b.t) === p.asOf);
+  if (!day || !(p.ref > 0)) return { p, factor: 1, verified: false };
+  const f = day.c / p.ref; if (Math.abs(f - 1) <= 0.006) return { p, factor: 1, verified: true };
+  return { p: { ...p, ref: r2(p.ref * f), stop: r2(p.stop * f), qty: p.qty / f }, factor: f, verified: true };
+}
+export function evaluatePaper(p0: Paper, bars: readonly Bar[] | null, live: { px: number; t: number } | null, costRoundTripPct: number): View {
+  const base: View = { id: p0.id, status: 'waiting', sessions: 0, left: p0.horizon, mark: null, markKind: null, pnl: null, r: null, pct: null };
   if (!bars || !bars.length) return base;
+  const rb = rebase(p0, bars); const p = rb.p; base.signal = p.ref; base.adjFactor = rb.factor; base.basis = rb.verified ? 'verified' : 'unverified';
   const i0 = bars.findIndex((b) => b.t > p.takenAt);
   if (i0 < 0) return { ...base, status: 'pending' };
   const first = bars[i0];
-  const fill = first.o * (1 + SLIPPAGE_PCT / 100);
+  const fill = r2(first.o * (1 + SLIPPAGE_PCT / 100));        // a fill has paise precision; every figure below, and the what-if slider, uses this one number
   if (first.o > p.ref * (1 + GAP_SKIP_PCT / 100)) return { ...base, status: 'skipped', skipReason: `Opened ${(((first.o / p.ref) - 1) * 100).toFixed(1)}% above the signal close (limit ${GAP_SKIP_PCT}%)` };
   if (first.o <= p.stop) return { ...base, status: 'skipped', skipReason: 'Opened at or below the stop' };
   const risk = fill - p.stop;

@@ -5,6 +5,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { Quote, QuotesFeed } from './data.ts';
 import type { Row } from './screen.ts';
+import { isLiveQuote } from './stamp.ts';
 
 const store = new Map<string, Quote>(); let pulse: Record<string, Quote> = {}; let macro: Record<string, Quote> = {};
 const want = new Map<string, number>(); let wantI = 0, wantM = 0; const subs = new Set<() => void>();
@@ -28,7 +29,7 @@ async function tick() {
     emit();
   } finally { busy = false; schedule(); }
 }
-const anyLive = () => [...store.values(), ...Object.values(pulse), ...Object.values(macro)].some((q) => q.live);
+const anyLive = () => [...store.values(), ...Object.values(pulse), ...Object.values(macro)].some((q) => isLiveQuote(q));
 function schedule() {
   window.clearTimeout(timer); timer = undefined; if (!want.size && !wantI && !wantM) return;
   timer = window.setTimeout(() => { void tick(); }, anyLive() || !lastAt ? FAST : SLOW);
@@ -60,13 +61,15 @@ function useWatchFlag(on: boolean, kind: 'i' | 'm') {
 export function useQuote(sym: string | undefined): Quote | null { useSyncExternalStore(sub, snap, () => 0); return sym ? store.get(sym) ?? null : null; }
 export function useQuotes(syms: readonly string[]): Record<string, Quote | null> { useSyncExternalStore(sub, snap, () => 0); return Object.fromEntries(syms.map((s) => [s, store.get(s) ?? null])); }
 
-export interface FeedState { data: QuotesFeed | null; err: string | null; at: number | null; loading: boolean; tick: number }
+/** `at` is when the app last HEARD from the Worker; `obs` is when the exchange last PRINTED (newest quote timestamp, epoch seconds). Freshness is read from `obs`, never `at`. */
+export interface FeedState { data: QuotesFeed | null; err: string | null; at: number | null; obs: number | null; loading: boolean; tick: number }
 let memo: { v: number; key: string; val: FeedState } | null = null;
 function feedOf(kind: 'i' | 'm' | 's', syms: string[]): FeedState {
   const key = kind + syms.join(','); if (memo && memo.v === version && memo.key === key) return memo.val;
   const src = kind === 'i' ? pulse : kind === 'm' ? macro : Object.fromEntries(syms.filter((s) => store.has(s)).map((s) => [s, store.get(s)!]));
   const has = Object.keys(src).length > 0;
-  const val: FeedState = { data: has ? { ok: true, fetched_at: new Date(lastAt).toISOString(), quotes: src, missing: [] } : null, err: has ? null : errMsg, at: has ? lastAt : null, loading: !has && !errMsg, tick: okN };
+  const obs = has ? Math.max(...Object.values(src).map((q) => q.pt)) : null;
+  const val: FeedState = { data: has ? { ok: true, fetched_at: new Date(lastAt).toISOString(), quotes: src, missing: [] } : null, err: errMsg, at: has ? lastAt : null, obs, loading: !has && !errMsg, tick: okN };
   memo = { v: version, key, val }; return val;
 }
 /** Nifty, Bank Nifty and the VIX. */
@@ -80,8 +83,8 @@ export const liveStatus = () => ({ lastAt, err: errMsg });
 export interface LivePx { px: number | null; prev: number | null; ch: number | null; live: boolean; t: number | null; fromQuote: boolean }
 const istDay = (sec: number) => new Date((sec + 19800) * 1000).toISOString().slice(0, 10);
 /** Pure. The quote replaces the published close only when it is from the same Indian day or later; an older quote is ignored, never blended. */
-export function livePrice(row: Pick<Row, 'price' | 'r1d' | 'last_date'>, q: Quote | null): LivePx {
-  if (q && q.px > 0 && q.prev > 0 && (!row.last_date || istDay(q.pt) >= row.last_date.slice(0, 10))) return { px: q.px, prev: q.prev, ch: (q.px / q.prev - 1) * 100, live: q.live, t: q.pt, fromQuote: true };
+export function livePrice(row: Pick<Row, 'price' | 'r1d' | 'last_date'>, q: Quote | null, nowMs = Date.now()): LivePx {
+  if (q && q.px > 0 && q.prev > 0 && (!row.last_date || istDay(q.pt) >= row.last_date.slice(0, 10))) return { px: q.px, prev: q.prev, ch: (q.px / q.prev - 1) * 100, live: isLiveQuote(q, nowMs), t: q.pt, fromQuote: true };
   return { px: row.price ?? null, prev: null, ch: row.r1d ?? null, live: false, t: null, fromQuote: false };
 }
 export const useLivePrice = (row: Pick<Row, 'sym' | 'price' | 'r1d' | 'last_date'>): LivePx => livePrice(row, useQuote(row.sym));

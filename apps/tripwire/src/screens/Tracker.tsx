@@ -6,7 +6,7 @@ import { ENGINES } from '../quant.ts';
 import { SLIPPAGE_PCT, pnlAt, rLevel } from '../tracker.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
-import { Ago, LiveBadge, Spark, Tick, TvButton } from '../live.tsx';
+import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
 
@@ -37,7 +37,7 @@ export function Tracker() {
       {openRows.length > 1 && <div style={{ marginTop: 10 }} aria-label="Contribution to open P&L by trade">{[...openRows].sort((x, y) => (y.v.pnl ?? 0) - (x.v.pnl ?? 0)).map((r) => { const w = (Math.abs(r.v.pnl ?? 0) / maxAbs) * 50; const pos = (r.v.pnl ?? 0) >= 0; return <div key={r.p.id} className="contrib"><span className="sym">{r.p.sym}</span><span className="bar2"><i style={{ width: `${w}%`, left: pos ? '50%' : `${50 - w}%`, background: pos ? 'var(--up)' : 'var(--down)' }} /></span><span className={`num amt ${pos ? 'up' : 'down'}`}>{money(r.v.pnl)}</span></div>; })}</div>}
       <div className="row between small dim" style={{ marginTop: 10 }}>
         <span>{b.sum.open} open · {b.sum.waiting} waiting for an open · {b.sum.skipped} skipped</span>
-        <span>{b.intra.err ? <span className="down">prices unavailable</span> : b.intra.at ? <>updated <Ago at={b.intra.at} /></> : b.intra.loading ? 'loading…' : ''}</span></div>
+        <span><Observed sec={b.intra.obs} err={b.intra.err} loading={b.intra.loading} /></span></div>
       {b.intra.at && <div className="refresh" aria-hidden="true"><i key={b.intra.tick} /></div>}
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
       {b.sum.closed > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Closed: <b className="num">{R(b.sum.totalR)}</b> over {b.sum.closed} trade{b.sum.closed === 1 ? '' : 's'}.{!b.sum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}
@@ -57,7 +57,9 @@ export function Tracker() {
 
 export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; cost: number; expanded: boolean; onToggle: () => void; onHide?: () => void; live: boolean }) {
   const scr = useScreen(); const row = scr.data?.rows.find((x) => x.sym === r.p.sym);
-  const { p, v, q } = r; const eng = ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine;
+  const { p: p0, v, q } = r; const adj = v.adjFactor && v.adjFactor !== 1 ? v.adjFactor : null;
+  /* after a split or bonus the bars are quoted on the new basis: the stop and the share count move with them, so every figure below is on one basis */
+  const p = adj ? { ...p0, ref: v.signal ?? p0.ref, stop: Math.round(p0.stop * adj * 100) / 100, qty: p0.qty / adj } : p0; const eng = ENGINES.find((e) => e.id === p.engine)?.name ?? p.engine;
   const W = { waiting: 'Waiting for prices', pending: 'Enters at the next open', open: 'Open', closed: 'Closed', skipped: 'Skipped' } as const;
   const isOpen = v.status === 'open'; const done = v.status === 'closed';
   const [wi, setWi] = useState<number | null>(null);
@@ -84,6 +86,13 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         {[-1, 0, 1, 2, 3].map((x) => <div key={x} className={`lv ${x === -1 ? 'stop' : ''}`} style={{ left: pos(x) }}><span>{x === -1 ? 'stop' : x === 0 ? 'entry' : `+${x}R`}</span></div>)}
         <div className="mk" style={{ left: pos(rl(mark)) }} />{wi != null && isOpen && <div className="wi" style={{ left: pos(rl(wi)) }} />}
       </div>
+      <details className="ev" style={{ marginTop: 10 }}><summary>Which price is which<span className="chev">▾</span></summary><div className="body small">
+        <p style={{ margin: '0 0 6px' }}><b>Signal</b> {inr(p.ref)}: the engine's close on {dayWord(p.asOf)}. The stop is measured from here.</p>
+        <p style={{ margin: '0 0 6px' }}><b>Fill</b> {v.entry != null ? inr(v.entry) : 'not yet'}: the next session's open plus {SLIPPAGE_PCT}% slippage. A paper fill is never at the signal close.</p>
+        <p style={{ margin: '0 0 6px' }}><b>{done ? 'Exit' : 'Latest'}</b> {inr(done ? v.exit : v.mark)}: {done ? v.reason?.toLowerCase() : v.markKind === 'live' ? 'the last live print' : 'the last close'}.</p>
+        <p style={{ margin: 0 }}><b>P&L basis</b>: fill to {done ? 'exit' : 'latest'}, times {Math.round(p.qty * 100) / 100} shares, minus {cost}% of the entry value (costs) and {SLIPPAGE_PCT}% of the exit value (slippage). Dividends are not received.</p>
+        {adj && <p style={{ margin: '6px 0 0' }}>A split or bonus was found since the signal (the price history is now quoted ×{adj.toFixed(3)}). The stop and the share count were moved to match, so value and risk are unchanged.</p>}
+        {v.basis === 'unverified' && <p className="down" style={{ margin: '6px 0 0' }}>The signal day's bar was not available, so a split since the signal could not be checked.</p>}</div></details>
       {isOpen && <><div className="small dim num">Stop {inr(p.stop)} is {pct(((p.stop / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
         <label className="l" htmlFor={`wi-${p.id}`}>What if it trades at…</label>
         <input id={`wi-${p.id}`} className="slider" type="range" min={lo} max={hi} step={step} value={price} onChange={(e) => setWi(Number(e.target.value))} />
