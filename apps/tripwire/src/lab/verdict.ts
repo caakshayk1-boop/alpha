@@ -17,15 +17,24 @@ export const tRequired = (variantsTried: number) => Math.max(2.0, Math.round(zQu
 
 export const MIN_TRADES = 30, MIN_HOLDOUT_TRADES = 10, HOLDOUT_FROM = '2023-01-01';
 export interface Slice { n: number; meanNet: number | null; meanExcess: number | null; t: number | null; months: number }
-export type Word = 'supported' | 'worked then stopped' | 'not supported' | 'too few trades';
+/** The rule against RANDOM picks with the same slots, exits and costs: what the choosing of names added. By calendar month of exit, t across months. */
+export interface Edge { n: number; mean: number | null; t: number | null; months: number }
+export type Word = 'supported' | 'beats random picks, not holding' | 'worked then stopped' | 'not supported' | 'too few trades';
 export interface Verdict { word: Word; tNeeded: number; why: string }
 
-export function judge(all: Slice, dev: Slice, hold: Slice, variantsTried: number): Verdict {
-  const need = tRequired(variantsTried); const fmt = (x: number | null) => (x === null ? 'none' : x.toFixed(2));
+/** Two separate questions, both pre-declared: (1) did choosing these names beat choosing at random, with the same exits? (2) did the whole package beat simply holding
+ *  every name equally over the same days? A rule can win the first and lose the second, because stops and a short hold give up return a buy-and-hold keeps; saying
+ *  "supported" for the first alone would send a reader into a worse deal than holding. 'supported' needs both, positive after costs, and still positive since the holdout date. */
+export function judge(all: Slice, dev: Slice, hold: Slice, edge: Edge, edgeHold: Edge, variantsTried: number): Verdict {
+  const need = tRequired(variantsTried); const f = (x: number | null) => (x === null ? 'none' : x.toFixed(2)); const pc = (x: number | null) => (x === null ? 'none' : `${(x * 100).toFixed(2)}%`);
+  const k = `${variantsTried} ${variantsTried === 1 ? 'variant' : 'variants'} tried`;
   if (all.n < MIN_TRADES) return { word: 'too few trades', tNeeded: need, why: `${all.n} trades; at least ${MIN_TRADES} are needed before any figure means anything.` };
-  const pass = (s: Slice) => s.meanExcess !== null && s.meanExcess > 0 && s.t !== null && s.t >= need;
-  const holdOk = hold.n >= MIN_HOLDOUT_TRADES && hold.meanExcess !== null && hold.meanExcess > 0 && (hold.meanNet ?? -1) > 0;
-  if (pass(all) && (all.meanNet ?? -1) > 0 && holdOk) return { word: 'supported', tNeeded: need, why: `Excess over the equal-weight universe is positive with t ${fmt(all.t)} (needed ${need} after ${variantsTried} ${variantsTried === 1 ? 'variant' : 'variants'} tried), net of costs, and still positive on the ${hold.n} trades from ${HOLDOUT_FROM}.` };
-  if (pass(dev) && !holdOk) return { word: 'worked then stopped', tNeeded: need, why: `It cleared the bar before ${HOLDOUT_FROM} (t ${fmt(dev.t)}) but not since (${hold.n} trades, mean excess ${fmt(hold.meanExcess === null ? null : hold.meanExcess * 100)}%). A rule that stopped working is the usual shape of an overfitted one.` };
-  return { word: 'not supported', tNeeded: need, why: `t ${fmt(all.t)} against the ${need} needed after ${variantsTried} ${variantsTried === 1 ? 'variant' : 'variants'} tried; mean excess ${all.meanExcess === null ? 'none' : (all.meanExcess * 100).toFixed(2) + '%'} a trade.` };
+  const beatsRandom = edge.mean !== null && edge.mean > 0 && edge.t !== null && edge.t >= need;
+  const beatsHolding = all.meanExcess !== null && all.meanExcess > 0 && all.t !== null && all.t >= need && (all.meanNet ?? -1) > 0;
+  const holdOk = hold.n >= MIN_HOLDOUT_TRADES && (hold.meanNet ?? -1) > 0 && hold.meanExcess !== null && hold.meanExcess > 0 && edgeHold.mean !== null && edgeHold.mean > 0;
+  const devPass = dev.meanExcess !== null && dev.meanExcess > 0 && dev.t !== null && dev.t >= need;
+  if (beatsRandom && beatsHolding && holdOk) return { word: 'supported', tNeeded: need, why: `It beat random picks by ${pc(edge.mean)} a trade (t ${f(edge.t)}) and holding every name by ${pc(all.meanExcess)} (t ${f(all.t)}), both above the ${need} needed after ${k}, net of costs, and both still held on the ${hold.n} trades from ${HOLDOUT_FROM}.` };
+  if (devPass && !holdOk) return { word: 'worked then stopped', tNeeded: need, why: `It cleared the bar before ${HOLDOUT_FROM} (t ${f(dev.t)}) but not since (${hold.n} trades, ${pc(hold.meanExcess)} against holding). A rule that stopped working is the usual shape of an overfitted one.` };
+  if (beatsRandom && !beatsHolding) return { word: 'beats random picks, not holding', tNeeded: need, why: `Choosing these names added ${pc(edge.mean)} a trade over random picks with the same exits (t ${f(edge.t)}, needed ${need}), but the whole package returned ${pc(all.meanExcess)} against simply holding every name over the same days. The names helped; the stops and the short hold gave more back.` };
+  return { word: 'not supported', tNeeded: need, why: `Against random picks: ${pc(edge.mean)} a trade, t ${f(edge.t)}. Against holding every name: ${pc(all.meanExcess)}, t ${f(all.t)}. The bar is ${need} after ${k}.` };
 }

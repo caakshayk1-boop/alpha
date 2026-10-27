@@ -4,9 +4,9 @@ import { CondSheet } from './discover.tsx';
 import { Empty } from '../ui.tsx';
 import { LAB_KEYS, feature, makeCtx } from '../lab/features.ts';
 import { loadPanel, type LabPanel } from '../lab/panel.ts';
-import { isHoldout, matchesNow, runStrategy, stats, STEP, type Result, type Stats, type Strategy } from '../lab/engine.ts';
+import { edgeStats, isHoldout, matchesNow, runStrategy, stats, STEP, type Result, type Stats, type Strategy } from '../lab/engine.ts';
 import { DEFAULT_STRATEGY, PRESETS, readLab, recordRun, writeLab, type LabState } from '../lab/store.ts';
-import { HOLDOUT_FROM, judge, type Verdict } from '../lab/verdict.ts';
+import { HOLDOUT_FROM, judge, type Edge, type Verdict } from '../lab/verdict.ts';
 import { applyConds, describeCond, metricOf, sameCond, type Cond } from '../screener.ts';
 import { styleDef } from '../exits.ts';
 import { styleOf } from '../exits.ts';
@@ -15,7 +15,7 @@ import type { Row } from '../screen.ts';
 const ls = (): Storage | null => { try { return localStorage; } catch { return null; } };
 const POS = [5, 10, 20, 30], HOR = [10, 20, 30, 60], STOP = [3, 5, 8, 12];
 const p1 = (x: number | null) => (x === null ? '—' : `${x >= 0 ? '+' : '−'}${Math.abs(x * 100).toFixed(2)}%`);
-interface Out { strat: Strategy; res: Result; all: Stats; dev: Stats; hold: Stats; verdict: Verdict; tried: number }
+interface Out { strat: Strategy; res: Result; all: Stats; dev: Stats; hold: Stats; ctl: Stats; edge: Edge; edgeHold: Edge; verdict: Verdict; tried: number }
 
 function Curve({ res, dates }: { res: Result; dates: string[] }) {
   const T = res.equity.length, a = res.from; const n = Math.min(260, T - a); const idx = Array.from({ length: n }, (_, k) => a + Math.round((k * (T - 1 - a)) / (n - 1)));
@@ -49,9 +49,11 @@ export function Lab() {
   const run = async () => {
     if (!ctx || prog !== null) return; setProg(0);
     try {
-      const res = await runStrategy(ctx, strat, (d, o) => setProg(d / o)); const rec = recordRun(state, strat); setState(rec.state); writeLab(ls(), rec.state);
-      const all = stats(res.trades), dev = stats(res.trades, (t) => !isHoldout(t)), hold = stats(res.trades, isHoldout);
-      setOut({ strat, res, all, dev, hold, verdict: judge(all, dev, hold, rec.tried), tried: rec.tried });
+      const res = await runStrategy(ctx, strat, (d, o) => setProg(d / o * 0.8)); const control = await runStrategy(ctx, { ...strat, random: true }, (d, o) => setProg(0.8 + (d / o) * 0.2));
+      const rec = recordRun(state, strat); setState(rec.state); writeLab(ls(), rec.state);
+      const all = stats(res.trades), dev = stats(res.trades, (t) => !isHoldout(t)), hold = stats(res.trades, isHoldout), ctl = stats(control.trades);
+      const edge = edgeStats(res.trades, control.trades), edgeHold = edgeStats(res.trades, control.trades, isHoldout);
+      setOut({ strat, res, all, dev, hold, ctl, edge, edgeHold, verdict: judge(all, dev, hold, edge, edgeHold, rec.tried), tried: rec.tried });
     } finally { setProg(null); }
   };
   const now = useMemo(() => (out && ctx ? matchesNow(ctx, out.strat).slice(0, 12) : []), [out, ctx]);
@@ -95,11 +97,12 @@ export function Lab() {
         <div className="k">Verdict</div><div className="word2">{out.verdict.word}</div><p className="small" style={{ margin: '6px 0 0' }}>{out.verdict.why}</p>
         <p className="small mute" style={{ margin: '8px 0 0' }}>Different rules tried on this device: <b>{out.tried}</b>. The t needed is <b>{out.verdict.tNeeded}</b>. The count rises with every new rule and cannot be reset here, because choosing the best of many tries is how every back-test ends up looking good.</p>
       </section>
-      <div className="stbl-wrap"><table className="stbl"><caption className="sr">Trades by period: count, mean net return, mean return above the equal-weight universe, t, win rate, average R.</caption>
+      <div className="stbl-wrap"><table className="stbl"><caption className="sr">Trades by period, and the same exits on random picks: count, mean net return, mean return above holding every name, t, win rate, average R.</caption>
         <thead><tr><th scope="col">PERIOD</th><th scope="col">TRADES</th><th scope="col">NET</th><th scope="col">VS ALL</th><th scope="col">T</th><th scope="col">WIN</th><th scope="col">AVG R</th></tr></thead>
-        <tbody><Row3 label="All" s={out.all} /><Row3 label={`Before ${HOLDOUT_FROM.slice(0, 4)}`} s={out.dev} /><Row3 label={`${HOLDOUT_FROM.slice(0, 4)} on`} s={out.hold} /></tbody></table></div>
+        <tbody><Row3 label="All" s={out.all} /><Row3 label={`Before ${HOLDOUT_FROM.slice(0, 4)}`} s={out.dev} /><Row3 label={`${HOLDOUT_FROM.slice(0, 4)} on`} s={out.hold} /><Row3 label="Random picks" s={out.ctl} /></tbody></table></div>
+      <p className="small mute" style={{ margin: '6px 0 0' }}>"Random picks" are the same slots, stops, holds and costs on names chosen by a fixed shuffle. Against them the rule added <b className={out.edge.mean === null ? '' : out.edge.mean >= 0 ? 'up' : 'down'}>{p1(out.edge.mean)}</b> a trade{out.edge.t === null ? '' : ` (t ${out.edge.t.toFixed(2)})`}: what choosing the names was worth.</p>
       <p className="small mute" style={{ margin: '6px 0 10px' }}>"Net" is per trade after costs; "vs all" is the same trade's return minus the equal-weight universe's over the same days. Average hold {out.all.avgDays?.toFixed(1) ?? '—'} sessions, worst fall of the whole book {(out.res.maxDrawdown * 100).toFixed(0)}%, about {Math.round(out.res.exposure * 100)}% of the book invested on average.</p>
-      <section className="card"><div className="k">The book against holding every name equally</div><Curve res={out.res} dates={panel.dates} /></section>
+      <section className="card"><div className="k">The book against holding every name equally</div><Curve res={out.res} dates={panel.dates} /><p className="small mute" style={{ margin: '8px 0 0' }}>Holding is a hard bar here: these are today's names, the ones that survived and, in this sample, rose. It is shown so you can see what a rule gives up by selling on stops and after a short hold.</p></section>
 
       <Head>Matching today</Head>
       {now.length ? <section className="card" aria-label="Names matching the rule at the latest close">{now.map((m) => <a key={m.sym} className="li" href={`#/c/${m.sym}`}><span className="grow"><b>{m.sym}</b></span><span className="num mute">{metricOf(out.strat.rankBy)?.short} {m.rank.toFixed(1)}</span></a>)}

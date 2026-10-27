@@ -13,9 +13,11 @@ export interface Ctx { p: LabPanel; ps: Float64Array; ew: Float64Array; ewCum: F
 export function makeCtx(p: LabPanel): Ctx {
   const { N, T, C } = p; const ps = new Float64Array(N * (T + 1)); const ew = new Float64Array(T), ewCum = new Float64Array(T); ewCum[0] = 1;
   for (let j = 0; j < N; j++) { let a = 0; for (let i = 0; i < T; i++) { const v = C[j * T + i]; a += Number.isNaN(v) ? 0 : v; ps[j * (T + 1) + i + 1] = a; } }
-  for (let i = 1; i < T; i++) {
-    let s = 0, n = 0; for (let j = 0; j < N; j++) { const a = C[j * T + i - 1], b = C[j * T + i]; if (a > 0 && b > 0) { s += b / a - 1; n++; } }
-    ew[i] = n ? s / n : 0; ewCum[i] = ewCum[i - 1] * (1 + ew[i]);
+  // the equal-weight universe, rebalanced every five sessions (a daily rebalance of a noisy universe pays a return nobody could collect)
+  let base = 0; for (let i = 1; i < T; i++) {
+    if ((i - 1) % 5 === 0) base = i - 1;
+    let s = 0, n = 0; for (let j = 0; j < N; j++) { const a = C[j * T + base], b = C[j * T + i], pv = C[j * T + i - 1]; if (a > 0 && b > 0) { s += b / a - 1; n++; } void pv; }
+    ewCum[i] = ewCum[base] * (1 + (n ? s / n : 0)); ew[i] = ewCum[i] / ewCum[i - 1] - 1;
   }
   return { p, ps, ew, ewCum };
 }

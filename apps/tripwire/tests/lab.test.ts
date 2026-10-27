@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { decodePanel, gunzip, type LabPanel } from '../src/lab/panel.ts';
 import { makeCtx, feature } from '../src/lab/features.ts';
-import { runStrategy, stats, strategyKey, matchesNow, isHoldout, STEP, SLIP, COST_RT, type Strategy } from '../src/lab/engine.ts';
+import { runStrategy, stats, strategyKey, matchesNow, isHoldout, edgeStats, STEP, SLIP, COST_RT, type Strategy } from '../src/lab/engine.ts';
 import { judge, tRequired, zQuantile } from '../src/lab/verdict.ts';
 
 const panelOf = (closes: (j: number, i: number) => number, N = 40, T = 900, first: (j: number) => number = () => 0): LabPanel => {
@@ -77,10 +77,14 @@ test('engine: never more positions than allowed, never the same name twice at on
 test('verdict: the bar rises with every variant tried (2.0, then 2.7 after eight), and a rule that worked then stopped is not called supported', () => {
   assert.ok(Math.abs(zQuantile(0.975) - 1.959964) < 1e-4); assert.equal(tRequired(1), 2); assert.equal(tRequired(8), 2.73); assert.ok(tRequired(50) > tRequired(8));
   const good = { n: 200, meanNet: 0.01, meanExcess: 0.012, t: 3.1, months: 80 }, weak = { n: 60, meanNet: -0.002, meanExcess: -0.003, t: -0.4, months: 30 };
-  assert.equal(judge(good, good, good, 1).word, 'supported');
-  assert.equal(judge(good, good, weak, 1).word, 'worked then stopped');
-  assert.equal(judge({ ...good, t: 2.2 }, good, good, 8).word, 'not supported', 't of 2.2 clears 2.0 but not the 2.73 needed after eight variants');
-  assert.equal(judge({ ...good, n: 12 }, good, good, 1).word, 'too few trades');
+  const eg = { n: 200, mean: 0.008, t: 3.0, months: 80 }, ew = { n: 60, mean: -0.004, t: -0.6, months: 30 }, en = { n: 200, mean: 0.001, t: 0.4, months: 80 };
+  assert.equal(judge(good, good, good, eg, eg, 1).word, 'supported');
+  assert.equal(judge(good, good, weak, eg, ew, 1).word, 'worked then stopped');
+  assert.equal(judge({ ...good, t: 2.2 }, good, good, { ...eg, t: 2.2 }, eg, 8).word, 'not supported', 't of 2.2 clears 2.0 but not the 2.73 needed after eight variants');
+  assert.equal(judge({ ...good, n: 12 }, good, good, eg, eg, 1).word, 'too few trades');
+  const lose = { n: 300, meanNet: 0.004, meanExcess: -0.012, t: -4, months: 90 };
+  assert.equal(judge(lose, lose, lose, eg, eg, 1).word, 'beats random picks, not holding', 'choosing helped but the package lost to holding: said so, not called supported');
+  assert.equal(judge(good, good, good, en, en, 1).word, 'not supported', 'beating holding with no edge over random picks is the market, not the rule');
 });
 
 test('lab honesty: random walks are not supported across seeds, even choosing the best of several variants honestly counted', async () => {
@@ -88,7 +92,8 @@ test('lab honesty: random walks are not supported across seeds, even choosing th
   for (const seed of [1, 2, 3, 4, 5, 6]) {
     const c = makeCtx(panelOf(walk(40, 1500, seed * 11), 40, 1500)); const r = await runStrategy(c, strat());
     const all = stats(r.trades), dev = stats(r.trades, (t) => !isHoldout(t)), hold = stats(r.trades, isHoldout);
-    if (judge(all, dev, hold, 1).word === 'supported') supported++;
+    const ctl = await runStrategy(c, { ...strat(), random: true }); const e = edgeStats(r.trades, ctl.trades), eh = edgeStats(r.trades, ctl.trades, isHoldout);
+    if (judge(all, dev, hold, e, eh, 1).word === 'supported') supported++;
   }
   assert.ok(supported <= 1, `${supported} of 6 random walks were called supported`);
 });
@@ -99,7 +104,13 @@ test('lab power: a planted momentum effect is found and called supported', async
   const p = panelOf((j, i) => tab[j][i], N, T); const c = makeCtx(p); const res = await runStrategy(c, strat({ horizon: 20, stopPct: 12 }));
   const all = stats(res.trades), dev = stats(res.trades, (t) => !isHoldout(t)), hold = stats(res.trades, isHoldout);
   assert.ok((all.meanExcess ?? 0) > 0 && (all.t ?? 0) > 2, `excess ${all.meanExcess} t ${all.t}`);
-  assert.equal(judge(all, dev, hold, 1).word, 'supported');
+  const ctl = await runStrategy(c, { ...strat({ horizon: 20, stopPct: 12 }), random: true }); const e = edgeStats(res.trades, ctl.trades), eh = edgeStats(res.trades, ctl.trades, isHoldout);
+  assert.ok((e.mean ?? 0) > 0 && (e.t ?? 0) > 2, `edge over random ${e.mean} t ${e.t}`); assert.equal(judge(all, dev, hold, e, eh, 1).word, 'supported');
+});
+
+test('control: the random picks are the same names on the same days every run, and ignore the rule', async () => {
+  const c = makeCtx(panelOf(walk(40, 900, 2), 40, 900)); const a = await runStrategy(c, { ...strat(), random: true }), b = await runStrategy(c, { ...strat({ conds: [{ m: 'r1y', op: 'gte', v: 9999 }] }), random: true });
+  assert.ok(a.trades.length > 20); assert.deepEqual(a.trades.map((t) => `${t.sym}:${t.entryI}`), b.trades.map((t) => `${t.sym}:${t.entryI}`), 'the control is not affected by the rule');
 });
 
 test('lab keys and matches: the same rule is one variant however its conditions are ordered, and today\'s matches obey the rule', async () => {
@@ -130,4 +141,14 @@ test('engine: the equity curve ends exactly where the trades say it should (the 
   const r = await runStrategy(makeCtx(panelOf(walk(40, 1200, 5, (j) => (j < 10 ? 0.001 : 0)), 40, 1200)), strat({ positions: 5 }));
   const want = 1 + r.trades.reduce((a, t) => a + t.ret, 0) / 5; const got = r.equity[r.equity.length - 1];
   assert.ok(Math.abs(got - want) < 1e-9, `${got} vs ${want}`);
+});
+
+import { benchOver } from '../src/lab/engine.ts';
+test('engine: buying everything with a wide stop earns about the average name minus costs, so the benchmark and the costs are on the same footing', async () => {
+  const r = noise(8); const N = 60, T = 1300; const tab = Array.from({ length: N }, (_, j) => { const a = [100]; for (let i = 1; i < T; i++) a.push(a[i - 1] * (1 + 0.0008 + r() * 0.018)); return a; });
+  const c = makeCtx(panelOf((j, i) => tab[j][i], N, T));
+  const res = await runStrategy(c, strat({ conds: [], rankBy: 'r1w', positions: 30, stopPct: 12, horizon: 20 }));
+  const s = stats(res.trades); assert.ok(s.n > 300);
+  const costs = COST_RT + 2 * SLIP; assert.ok(Math.abs((s.meanExcess ?? 9) + costs) < 0.006, `excess ${s.meanExcess} vs about ${-costs}`);
+  assert.ok(Math.abs(benchOver(c, 300, 300)) < 1e-12, 'no days, no return'); assert.ok(benchOver(c, 300, 320) > -0.5);
 });
