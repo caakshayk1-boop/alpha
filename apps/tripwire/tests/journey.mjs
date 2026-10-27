@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
+import { mockLab } from './labmock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
@@ -21,7 +22,7 @@ const nowS = Math.floor(Date.now() / 1000);
 await ctx.route('**/api/news*', (r) => { const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('q') || ''); const own = /Tata Consultancy/i.test(q); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: own ? [{ title: 'Tata Consultancy Services Q2 profit rises 5%', source: 'Mint', url: 'https://example.com/t1', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint'] }, { title: 'Tata Consultancy Services wins large deal', source: 'ET', url: 'https://example.com/t2', t: nowS - 7200, tags: ['Deal'], also: 0, sources: ['ET'] }] : [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }); });
 await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
 
-const pg = await ctx.newPage();
+let pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
 const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/tick') && !r.url().includes('/api/breadth') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
@@ -82,6 +83,22 @@ await pg.getByLabel('Search companies').fill('tata consultancy');
 await pg.waitForTimeout(200);
 ok((await pg.locator('.li .sym').first().innerText()).startsWith('TCS'), 'Discover search finds TCS by name');
 await shot('02-discover');
+// the Strategy Lab: a rule, a test on ten years of closes, a verdict that gets harder with every different rule tried
+const saved = await pg.evaluate(() => localStorage.getItem('tripwire:v1')); const lctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }); await lctx.addInitScript((v) => { if (v) localStorage.setItem('tripwire:v1', v); }, saved); await mockLab(lctx);   // the service worker would answer /data/ itself, past the mock
+const lp = await lctx.newPage(); const pgMain = pg; pg = lp;
+await pg.goto(base + '/#/lab'); await pg.reload(); await pg.getByRole('button', { name: 'Run the test' }).waitFor({ timeout: 20000 });
+ok(/Strategy Lab/.test(await text()) && /closes only/.test(await text()), 'the Lab opens on a price history and says it is closes only');
+await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.locator('.verdict .word2').waitFor({ timeout: 60000 });
+const w1 = (await pg.locator('.verdict .word2').innerText()).toLowerCase();
+ok(['supported', 'worked then stopped', 'not supported', 'too few trades'].includes(w1) && /Different rules tried on this device: 1/.test(await text()) && /The t needed is 2/.test(await text()), 'a run ends in one of four plain verdicts and counts the rule as the first tried');
+ok(await pg.locator('.stbl tbody tr').count() === 3 && await pg.locator('.chart svg path').count() >= 2, 'the result shows all, before and since 2023 side by side, and the book against holding every name equally');
+await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.getByRole('button', { name: /Testing/ }).waitFor({ timeout: 5000 }).catch(() => {}); await pg.getByRole('button', { name: 'Run the test' }).waitFor({ timeout: 60000 });
+ok(/Different rules tried on this device: 1/.test(await text()), 'the same rule again is not a new variant');
+await pg.getByRole('group', { name: 'Stop distance' }).getByRole('button', { name: '5', exact: true }).click(); await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.locator('.verdict .word2').waitFor({ timeout: 60000 });
+ok(/Different rules tried on this device: 2/.test(await text()), 'a changed rule is a second variant and the bar is told'); if (!/tried on this device: 2/.test(await text())) console.log((await text()).match(/Different rules tried[^.]*\./)?.[0]);
+await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
+ok(await pg.getByRole('button', { name: /Remove condition: RSI ≤ 45/ }).count() === 1, 'the Lab takes a condition built with the same sheet as Discover');
+pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
 await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
 await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'Around' }).click();

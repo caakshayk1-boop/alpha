@@ -129,3 +129,19 @@ planted_key = wfm.vid(wfm.FAMILY[2]); pl = wfm.walk_forward(fake(effect_for=plan
 assert pl["variants"][planted_key]["supported"] and pl["procedure"]["supported"], pl["procedure"]
 assert sum(pl["chosen"][str(y)] == planted_key for y in pl["test_years"]) >= len(pl["test_years"]) - 2, "the planted variant was not chosen"
 print("walk-forward: choice reads no future data; noise not supported; a planted effect is chosen and found")
+
+# ---- lab panel: the file round-trips exactly (to the paisa), a name is absent before it listed, a gap carries the last close, and the golden fixture the browser decodes is the one written here ----
+import json
+import lab_panel as lp
+rg2 = np.random.default_rng(4); Tn, Nn = 300, 5
+Cx = np.exp(np.cumsum(rg2.normal(0, 0.01, size=(Tn, Nn)), axis=0)) * 100; Cx[:40, 2] = np.nan; Cx[100:103, 1] = np.nan
+dts = [str(np.datetime64("2020-01-01") + k) for k in range(Tn)]
+meta, blob = lp.encode(dts, [f"S{k}" for k in range(Nn)], Cx); back = lp.decode(meta, blob)
+assert meta["first"] == [0, 0, 40, 0, 0], meta["first"]
+assert np.isnan(back[:40, 2]).all() and not np.isnan(back[40:, 2]).any(), "a name must be absent before it listed and present after"
+assert np.allclose(back[~np.isnan(Cx)], np.round(Cx[~np.isnan(Cx)] * 100) / 100, atol=0.0051), "the round trip lost more than a paisa"
+assert np.allclose(back[100:103, 1], back[99, 1]), "a gap must carry the last close, not read as a crash"
+gold = pathlib.Path(__file__).parent.parent / "tests" / "fixtures"
+tiny = np.array([[10.0, np.nan], [10.5, 20.25], [10.25, 20.5], [11.0, 20.5]]); tm, tb = lp.encode(["2026-01-01", "2026-01-02", "2026-01-05", "2026-01-06"], ["AAA", "BBB"], tiny)
+tm["built"] = "fixture"; (gold / "lab_panel_golden.json").write_text(json.dumps(tm, separators=(",", ":"))); (gold / "lab_panel_golden.bin.gz").write_bytes(tb)
+print("lab panel: round trip exact to the paisa; absent before listing; gaps carry; golden fixture written")

@@ -37,6 +37,9 @@ jobs:
       - name: Momentum walk-forward (the as-built rule and its pre-declared family, every year out of sample)
         working-directory: apps/tripwire/research
         run: python engines_walkforward.py ../dist/data/screen.json results
+      - name: Price panel for the Strategy Lab (ten years of adjusted closes, one small file)
+        working-directory: apps/tripwire/research
+        run: python lab_panel.py ../dist/data/screen.json results
       - name: Commit the report
         run: |
           git config user.name 'github-actions[bot]'

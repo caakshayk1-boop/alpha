@@ -86,6 +86,7 @@ export function Discover() {
     <div className="chips chosen" role="group" aria-label="Conditions">
       {(f.cond ?? []).map((c) => <button key={`${c.m}${c.op}${c.v}`} className="chip cc on-x" onClick={() => set({ cond: (f.cond ?? []).filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
       <button className="chip" onClick={() => setCondSheet(true)}>+ Condition</button>
+      <button className="chip" onClick={() => { try { sessionStorage.setItem('tripwire:lab:seed', JSON.stringify(f.cond ?? [])); } catch { /* the Lab then opens on its own starting rule */ } go('/lab'); }}>Test in the Lab</button>
     </div>
     <div className="c-bar" role="group" aria-label="View" style={{ marginTop: 8 }}>
       <div className="mini-seg">{(['list', 'table'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setLimit(PAGE); }}>{v === 'list' ? 'LIST' : 'TABLE'}</button>)}</div>
@@ -139,8 +140,8 @@ function SaveScreen({ f, labels }: { f: Filters; labels: string[] }) {
 }
 
 /** One numeric condition: a figure, at least or at most, a value. The figure's own unit and a few typical values are on the sheet, so there is nothing to look up. */
-function CondSheet({ onClose, onAdd, rows, count }: { onClose: () => void; onAdd: (c: Cond[]) => void; rows: Row[]; count: (c: Cond[]) => number }) {
-  const [m, setM] = useState<MetricKey>('rsi'); const [mode, setMode] = useState<RangeMode>('between'); const met = metricOf(m)!;
+export function CondSheet({ onClose, onAdd, rows, count, metrics }: { onClose: () => void; onAdd: (c: Cond[]) => void; rows: Row[]; count: (c: Cond[]) => number; metrics?: MetricKey[] }) {
+  const [m, setM] = useState<MetricKey>(metrics?.includes('rsi') || !metrics ? 'rsi' : metrics[0]); const [mode, setMode] = useState<RangeMode>('between'); const met = metricOf(m)!;
   const dist = useMemo(() => distribution(rows, m), [rows, m]);
   const step = Math.max(Math.pow(10, -met.dp), dist ? (dist.hi - dist.lo) / 400 : 1);
   const snap = (x: number) => Math.round(x / step) * step; const clean = (x: number) => Math.round(x * 1e4) / 1e4;
@@ -157,7 +158,7 @@ function CondSheet({ onClose, onAdd, rows, count }: { onClose: () => void; onAdd
   const set = (which: 'a' | 'b', v: string) => (which === 'a' ? setA(v) : setB(v));
   return <Sheet title="Add a condition" onClose={onClose}>
     <label className="l" htmlFor="c-m">Figure</label>
-    <select id="c-m" className="field" value={m} onChange={(e) => { setM(e.target.value as MetricKey); setA(''); setB(''); }}>{METRICS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+    <select id="c-m" className="field" value={m} onChange={(e) => { setM(e.target.value as MetricKey); setA(''); setB(''); }}>{METRICS.filter((x) => !metrics || metrics.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
     <p className="small mute" style={{ margin: '6px 0 0' }}>{met.hint || 'Last close.'}</p>
     <div className="c-bar" role="group" aria-label="How to compare" style={{ marginTop: 10 }}>{MODES.map(([k, l]) => <button key={k} className="seg" aria-pressed={mode === k} onClick={() => { setMode(k); setA(''); setB(''); }}>{l}</button>)}</div>
     {dist ? <>
