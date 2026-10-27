@@ -1,4 +1,7 @@
-import { useBacktest, useStudy } from '../data.ts';
+import { useBacktest, useLedger, useStudy } from '../data.ts';
+import { MIN_TRADES, summarizeLedger } from '../ledger.ts';
+import { TICKET, TICKET_WEIGHT } from '../autobook.ts';
+import { inr0 } from '../fmt.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import { benchmarkName, engineEvidence, evidenceHeadline, studySummary } from '../evidence.ts';
 import { FACTOR_META } from '../intel.ts';
@@ -11,7 +14,7 @@ const PRETTY: Record<string, string> = { mom12_1: '12-month momentum', near_high
 
 /** The page that tells you what the history says about every engine and indicator: the study, its rules, and what it found. */
 export function Evidence() {
-  const bt = useBacktest(); const st = useStudy();
+  const bt = useBacktest(); const st = useStudy(); const led = useLedger(); const fwd = led.data?.ledger ? summarizeLedger(led.data.ledger) : null;
   if (bt.loading || st.loading) return <Loading what="the evidence" />;
   const sum = studySummary(st.data); const headline = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   return <>
@@ -22,6 +25,7 @@ export function Evidence() {
     {ACTIVE.map((e) => { const ev = engineEvidence(e.id, bt.data, bt.loading); const per = bt.data?.engines?.[e.id]?.periods;
       return <div key={e.id} className="card"><div className="row between"><b>{e.name}{e.retired ? ' (retired)' : ''}</b>{ev.state === 'loading' ? <span className="sk" style={{ display: 'inline-block', height: 18, width: 90 }} /> : <span className={`tag ${ev.tone === 'bad' ? 'peach' : ev.tone === 'ok' ? 'lime' : ''}`}>{ev.short}</span>}</div>
         <p className="small dim" style={{ margin: '8px 0 0' }}>{ev.line}</p>
+        {(() => { const fe = fwd?.engines.find((x) => x.engine === e.id); return <p className="small num" style={{ margin: '8px 0 0' }}><span className="k">Forward record</span> {fe ? <>{fe.closed} of {MIN_TRADES} closed · {fe.open} open{fe.enough && fe.avgR != null ? ` · average ${fe.avgR > 0 ? '+' : fe.avgR < 0 ? '−' : ''}${Math.abs(fe.avgR).toFixed(2)}R` : ' · the average stays hidden until 30 have closed'}</> : 'not started'}<br /><span className="k">Paper ticket</span> {inr0(TICKET * (TICKET_WEIGHT[e.id] ?? 0.5))} of {inr0(TICKET)} from the 27 Oct night, set by the standing above; a new rule version, never a quiet change, would move it.</p>; })()}
         {per && <div className="scroll-x" style={{ marginTop: 8 }} tabIndex={0} role="region" aria-label={`${e.name} back-test by period, scrolls sideways`}><table className="tbl"><thead><tr><th>Period</th><th>Trades</th><th>Net a trade</th><th>Hit rate</th><th>Excess (t)</th></tr></thead><tbody>{(['train', 'validation', 'holdout'] as const).map((k) => <tr key={k}><td>{k === 'train' ? 'Early' : k === 'validation' ? 'Middle' : 'Latest'}</td><td className="num">{per[k].trades ?? '—'}</td><td className="num">{p1(per[k].mean_net)}</td><td className="num">{per[k].hit_rate != null ? `${Math.round(per[k].hit_rate! * 100)}%` : '—'}</td><td className="num">{p1(per[k].excess_vs_universe)} ({f2(per[k].excess_t)})</td></tr>)}</tbody></table></div>}</div>; })}
     {!bt.data && <Empty title="Back-test not published">It is produced by the research workflow and appears here once it has run.</Empty>}
     <p className="small mute">Excess is the engine's average trade, after costs and slippage, minus {benchmarkName(bt.data)}. The three periods are fixed in advance: the latest was read once. The list of stocks is today's, so those that fell out of the index are missing, which flatters every figure.</p>

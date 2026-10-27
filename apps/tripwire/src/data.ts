@@ -36,7 +36,16 @@ export function useJson<T>(url: string | null): Loaded<T> {
   }, [url, n]);
   return { ...st, retry: () => { if (url) memo.delete(url); setN((x) => x + 1); } };
 }
-export const useScreen = () => useJson<ScreenFeed>('/data/screen.json');
+export interface RsiSheet { ok: boolean; schema: string; as_of: string; order: string[]; rows: Record<string, (number | null)[]> }
+/** The published screen, with weekly and monthly RSI joined on from the nightly sheet when it is there. Without the sheet the screen is exactly what it was, and those two figures are simply absent (never zero). */
+export function useScreen(): Loaded<ScreenFeed> {
+  const s = useJson<ScreenFeed>('/data/screen.json'); const r = useJson<RsiSheet>('/api/rsi');
+  const data = useMemo(() => {
+    if (!s.data || !r.data?.ok || !r.data.rows) return s.data; const w = r.data.order.indexOf('weekly'), m = r.data.order.indexOf('monthly'); const rows = r.data.rows;
+    return { ...s.data, rows: s.data.rows.map((x) => { const v = rows[x.sym]; return v ? { ...x, rsi_w: w >= 0 ? v[w] ?? null : null, rsi_m: m >= 0 ? v[m] ?? null : null } : x; }) };
+  }, [s.data, r.data]);
+  return { ...s, data };
+}
 export const useSignals = () => useJson<SignalsFeed>('/data/signals.json');
 export const useCompany = (sym: string) => useJson<Company>(`/data/c/${encodeURIComponent(sym)}.json`);
 
@@ -67,7 +76,7 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
   return st;
 }
 
-export interface ChartFeed { ok: boolean; sym: string; t: number[]; c: number[]; n?: (number | null)[] | null }
+export interface ChartFeed { ok: boolean; sym: string; t: number[]; c: number[]; n?: (number | null)[] | null; /** open, high, low and volume of each day, null where Yahoo did not print one (never the close in its place) */ o?: (number | null)[] | null; h?: (number | null)[] | null; l?: (number | null)[] | null; v?: (number | null)[] | null }
 /** Every daily close Yahoo holds for a symbol, fetched once; the ranges and the monthly view are cut from it in the browser. */
 export const useChart = (sym: string) => useJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(sym)}`);
 

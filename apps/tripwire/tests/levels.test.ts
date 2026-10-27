@@ -12,8 +12,10 @@ test('a short-term pick uses 1R and 2R; a long one 2R and 4R', () => {
   assert.deepEqual(levelsFor('TCS', [pick({ horizon: 5 })]).filter((x) => x.kind === 'target').map((x) => x.v), [110, 120]);
   assert.deepEqual(levelsFor('TCS', [pick({ horizon: 60 })]).filter((x) => x.kind === 'target').map((x) => x.v), [120, 140]);
 });
-test('a pick written before the policy has no targets, only its close and stop', () => {
-  assert.deepEqual(levelsFor('TCS', [pick({ asOf: '2026-10-01' })]).map((x) => x.kind), ['signal', 'stop']);
+test('a pick written before the policy draws its two levels as REFERENCE (orientation only, never traded)', () => {
+  const l = levelsFor('TCS', [pick({ asOf: '2026-10-01' })]);
+  assert.deepEqual(l.map((x) => x.kind), ['signal', 'stop', 'target', 'target']);
+  assert.deepEqual(l.filter((x) => x.kind === 'target').map((x) => [x.label, x.v, x.ref]), [['T1 ref', 115, true], ['T2 ref', 130, true]]);
 });
 test('the newest pick for the name wins; other names and broken picks draw nothing', () => {
   assert.equal(levelsFor('TCS', [pick({ asOf: '2026-10-28', ref: 200, stop: 180 }), pick()])[0].v, 200);

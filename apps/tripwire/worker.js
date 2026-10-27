@@ -54,19 +54,22 @@ export function rebuildSessions(res5, days) {
   return out;
 }
 
-/** Pure: Yahoo's long daily history reduced to epoch seconds and closes. A day missing its close is dropped, never filled. */
+/** Pure: Yahoo's long daily history reduced to epoch seconds, closes and, where Yahoo prints them, the day's open, high, low and volume.
+ *  A day missing its close is dropped, never filled. A day missing an open, high, low or volume keeps the close and has null for the rest (never the close in their place). */
 export function parseChart(res, niftyRes) {
-  const ts = res?.timestamp; const cl = res?.indicators?.quote?.[0]?.close;
+  const ts = res?.timestamp; const q = res?.indicators?.quote?.[0]; const cl = q?.close;
   if (!Array.isArray(ts) || !Array.isArray(cl)) return null;
-  const t = [], c = [];
-  ts.forEach((x, i) => { if (cl[i] > 0 && x > 0) { t.push(x); c.push(Math.round(cl[i] * 100) / 100); } });
+  const t = [], c = [], o = [], h = [], l = [], v = [];
+  const pos = (x) => (x > 0 ? Math.round(x * 100) / 100 : null);
+  ts.forEach((x, i) => { if (cl[i] > 0 && x > 0) { t.push(x); c.push(Math.round(cl[i] * 100) / 100); o.push(pos(q.open?.[i])); h.push(pos(q.high?.[i])); l.push(pos(q.low?.[i])); v.push(q.volume?.[i] >= 0 && Number.isFinite(q.volume[i]) ? Math.round(q.volume[i]) : null); } });
   if (t.length < 30) return null;
   // the Nifty close on the same Indian calendar day; null where the index has no figure (never filled from another day)
   const day = (x) => Math.floor((x + 19800) / 86400); const nm = new Map();
   const nt = niftyRes?.timestamp, nc = niftyRes?.indicators?.quote?.[0]?.close;
   if (Array.isArray(nt) && Array.isArray(nc)) nt.forEach((x, i) => { if (nc[i] > 0) nm.set(day(x), Math.round(nc[i] * 100) / 100); });
   const n = t.map((x) => (nm.has(day(x)) ? nm.get(day(x)) : null));
-  return { t, c, n: n.some((v) => v !== null) ? n : null };
+  const some = (a) => a.some((x) => x !== null);
+  return { t, c, n: n.some((x) => x !== null) ? n : null, o: some(o) ? o : null, h: some(h) ? h : null, l: some(l) ? l : null, v: some(v) ? v : null };
 }
 // GET /api/chart?s=TCS  ->  { ok, sym, t:[epoch s], c:[close] } : every daily close Yahoo holds (up to the whole listing), split-adjusted, dividends not included, with the Nifty 50 close of the same day in `n` (null where absent; the whole field is null if the index could not be read).
 // The page makes its own ranges and its monthly view from this one series. Cached six hours: a close does not change after the session.
@@ -75,7 +78,7 @@ async function chart(url, ctx) {
   if (!SYM.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
   const macro = Object.prototype.hasOwnProperty.call(MACRO, sym);          // an instrument, not an NSE share: its own Yahoo symbol, and no Nifty line
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://tripwire.internal/__chart_v1/${sym}`);
+  const key = new Request(`https://tripwire.internal/__chart_v2/${sym}`);
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=1800, s-maxage=21600' } });
     const get = (s) => fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=max&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
@@ -234,6 +237,23 @@ async function factors(ctx) {
   } catch { return json({ ok: false, error: 'the factor sheet could not be read' }, 502); }
 }
 
+// GET /api/rsi -> RSI 14 on daily, weekly and monthly closes for every name in the nightly panel: { schema, as_of, order, rows: { SYM: [d, w, m] } }
+const RSI = 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/main/apps/tripwire/ledger/rsi.json';
+async function rsiSheet(ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__rsi_v1');
+  try {
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=300, s-maxage=1800' } });
+    const r = await fetch(RSI, { signal: AbortSignal.timeout(12000) });
+    if (r.status === 404) return json({ ok: false, error: 'the first nightly RSI run has not happened yet' });
+    if (!r.ok) return json({ ok: false, error: 'the RSI sheet could not be read' });
+    const d = await r.json();
+    if (d?.schema !== 'tripwire-rsi/1' || typeof d.rows !== 'object') return json({ ok: false, error: 'the RSI sheet is not in the expected shape' });
+    const res = json({ ok: true, ...d }, 200, { 'cache-control': 'public, max-age=300, s-maxage=1800' });
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, error: 'the RSI sheet could not be read' }); }
+}
+
 // ---- News -------------------------------------------------------------------------------------------------------------------------
 // GET /api/news?q=<search>  -> { ok, fetched_at, q, items: [{ title, source, url, t, tags, also }] }
 // Google News' public RSS for the query, cleaned by fixed rules (below), cached one hour at the edge. The rules are plain code, not a model:
@@ -293,9 +313,11 @@ async function news(url, ctx) {
   const q = (url.searchParams.get('q') || '').trim();
   if (!QOK.test(q)) return json({ ok: false, error: 'give a short search phrase' }, 400);
   const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_v1/${encodeURIComponent(q.toLowerCase())}`);
-  const H1 = { 'cache-control': 'public, max-age=900, s-maxage=3600' };
+  const H1 = { 'cache-control': 'public, max-age=60, s-maxage=300' };   // five minutes at the edge; a reader's "check now" may go past it once the copy is a minute old
+  const force = url.searchParams.get('force') === '1';
   try {
-    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, ...H1 } });
+    const hit = cache && await cache.match(key);
+    if (hit) { const body = await hit.text(); let age = Infinity; try { age = (Date.now() - Date.parse(JSON.parse(body).fetched_at)) / 1000; } catch { /* unreadable copy: treat as old */ } if (!(force && age >= 60)) return new Response(body, { headers: { ...H, ...H1 } }); }
     // Google News first; if it refuses or fails (it may refuse a datacentre address), Bing News with the same words.
     const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 14); const plain = q.replace(/\s*when:\d+d/g, '').trim(); const tried = [];
     const sources = [['google', `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`], ['bing', `https://www.bing.com/news/search?q=${encodeURIComponent(plain)}&format=rss&setmkt=en-IN`]];
@@ -343,6 +365,30 @@ async function bars(url, ctx) {
   return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), bars: out, missing }, 200);
 }
 
+/** Pure: the health answer, from the probe results and the NAMES of the bindings the Worker was given. A binding's value, and any secret's, never appears: only that it exists. */
+export function healthShape(probes, bindingNames, nowMs = Date.now()) {
+  const p = probes.prices ?? {}; const n = probes.news ?? {};
+  return { ok: !!(p.ok && n.ok), checked_at: new Date(nowMs).toISOString(),
+    prices: { ok: !!p.ok, ms: p.ms ?? null, last_print: p.printSec ? new Date(p.printSec * 1000).toISOString() : null, age_sec: p.printSec ? Math.max(0, Math.round(nowMs / 1000 - p.printSec)) : null, error: p.ok ? null : (p.error ?? 'no answer') },
+    news: { ok: !!n.ok, ms: n.ms ?? null, error: n.ok ? null : (n.error ?? 'no answer') },
+    bindings: [...bindingNames].sort(), secrets_configured: 0 };
+}
+async function probe(url, pick) {
+  const t0 = Date.now();
+  try { const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: '*/*' }, signal: AbortSignal.timeout(6000) }); if (!r.ok) return { ok: false, ms: Date.now() - t0, error: `HTTP ${r.status}` };
+    const extra = pick ? await pick(r) : {}; return { ok: true, ms: Date.now() - t0, ...extra }; } catch (e) { return { ok: false, ms: Date.now() - t0, error: String(e?.message ?? e).slice(0, 80) }; }
+}
+async function health(env, ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__health_v1');
+  const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: H });
+  const [prices, nws] = await Promise.all([
+    probe('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?range=1d&interval=5m', async (r) => { const j = await r.json(); return { printSec: Number(j?.chart?.result?.[0]?.meta?.regularMarketTime) || null }; }),
+    probe('https://news.google.com/rss/search?q=nifty&hl=en-IN&gl=IN&ceid=IN:en'),
+  ]);
+  const body = JSON.stringify(healthShape({ prices, news: nws }, Object.keys(env ?? {}))); const res = new Response(body, { headers: { ...H, 'cache-control': 'public, max-age=60' } });
+  if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -384,9 +430,17 @@ export default {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return news(url, ctx);
     }
+    if (url.pathname === '/api/health' || url.pathname === '/api/health/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return health(env, ctx);
+    }
     if (url.pathname === '/api/factors' || url.pathname === '/api/factors/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return factors(ctx);
+    }
+    if (url.pathname === '/api/rsi' || url.pathname === '/api/rsi/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return rsiSheet(ctx);
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
     return env.ASSETS.fetch(request);

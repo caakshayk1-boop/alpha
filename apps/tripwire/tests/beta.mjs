@@ -9,7 +9,7 @@ const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
 const mk = async (o = {}) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true, ...o }); const T = await mockApi(ctx); return { ctx, T, pg: await ctx.newPage() }; };
-const text = (pg) => pg.locator('body').innerText();
+const text = async (pg) => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };
 const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1') ?? 'null'));
 
 /* ---- 1. first use, then follow -> thesis -> plan -> review, with GCSL as the name ---- */
@@ -49,7 +49,23 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.getByRole('button', { name: 'Save plan' }).click(); await pg.waitForTimeout(500);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero');
   ok((await pg.locator('.journey').count()) === 0, 'all four steps done: the path card is gone from Today');
-  ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
+  ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : ''));
+  // closing the browser and opening it again: the saved state travels in the profile, and the journal, follow and plan are still there
+  const profile = await ctx.storageState(); await ctx.close();
+  const again = await mk({ storageState: profile }); await again.pg.goto(base + '/#/desk'); await again.pg.waitForSelector('nav.tabs', { timeout: 15000 }); await again.pg.waitForTimeout(600);
+  const st = await saved(again.pg);
+  ok(st && st.follows.includes('GCSL') && st.entries.length === 1 && st.entries[0].versions[0].invalidation === 'Close below 675' && st.plans.length >= 1, 'after closing and reopening the browser the follow, the thesis with its invalidation and the plan are all still there');
+  ok(/GCSL/.test(await text(again.pg)), 'and the Desk lists the followed name'); await again.pg.getByRole('tab', { name: 'Journal' }).or(again.pg.getByRole('button', { name: 'Journal' })).first().click(); await again.pg.waitForTimeout(400);
+  ok(/Close below 675/.test(await text(again.pg)) && /Momentum with a tiny base/.test(await text(again.pg)), 'and the Journal shows the thesis and what would make it wrong');
+  await again.ctx.close();
+}
+
+/* ---- 1b. a browser that will not keep data says so, before a person writes anything that vanishes ---- */
+{
+  const { ctx, pg } = await mk(); await ctx.addInitScript((s) => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; void s; }, 0);
+  await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore as a guest/ }).click(); await pg.waitForTimeout(800);
+  const banner = await pg.locator('.banner[role=alert]').innerText().catch(() => '');
+  ok(/not keeping Tripwire's data/.test(banner), 'when storage refuses to write, a banner says the data is not being kept: ' + banner.slice(0, 70)); await ctx.close();
 }
 
 /* ---- 2. backup round trip through the real screens ---- */
@@ -86,7 +102,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
 
 /* ---- 4. loading says nothing factual; slow and failing services say so ---- */
 {
-  const { ctx, pg } = await mk(); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);
+  const { ctx, pg } = await mk({ serviceWorkers: 'block' }); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);   // no service worker: it would answer the data requests itself, past the delay set below
   await ctx.route('**/data/research/engines_backtest.json', async (r) => { await new Promise((x) => setTimeout(x, 2500)); r.continue(); });
   await ctx.route('**/api/ledger*', async (r) => { await new Promise((x) => setTimeout(x, 2500)); r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false}' }); });
   await pg.goto(base + '/#/signals'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(500);
@@ -156,13 +172,13 @@ for (let rep = 0; rep < 3; rep++) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE); await mockApi(ctx);
   const pg = await ctx.newPage(); const cdp = await ctx.newCDPSession(pg);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 }); await cdp.send('Network.enable'); await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 });
-  await pg.addInitScript(() => { window.__v = { lcp: 0, cls: 0, inp: 0 }; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__v.lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
-    new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__v.cls += e.value; }).observe({ type: 'layout-shift', buffered: true });
+  await pg.addInitScript(() => { window.__v = { lcp: 0, cls: 0, inp: 0, src: [] }; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__v.lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
+    new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__v.cls += e.value; window.__v.src.push(`${e.value.toFixed(3)}@${Math.round(e.startTime)}ms ${(e.sources || []).map((x) => (x.node?.nodeName ?? '') + '.' + (x.node?.className ?? '')).join(' | ')}`); } }).observe({ type: 'layout-shift', buffered: true });
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.duration > window.__v.inp) { window.__v.inp = e.duration; window.__v.what = `${e.name} on ${e.target?.nodeName ?? ''}.${e.target?.className ?? ''} ${e.target?.getAttribute?.('href') ?? ''}`; } }).observe({ type: 'event', durationThreshold: 16, buffered: true }); });
   await pg.goto(base + '/#/today', { waitUntil: 'load' }); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(4000);
   for (const sel of ['nav.tabs a[href="#/discover"]', '.lens', 'nav.tabs a[href="#/today"]']) { await pg.locator(sel).first().click(); await pg.waitForTimeout(600); }
   const v = await pg.evaluate(() => window.__v); const size = await pg.evaluate(() => performance.getEntriesByType('resource').reduce((a, r) => a + (r.transferSize || 0), 0));
-  console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms (${v.what ?? 'none'}), transferred ${(size / 1024).toFixed(0)} kB`);
+  console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms (${v.what ?? 'none'}), transferred ${(size / 1024).toFixed(0)} kB`); if (v.cls >= 0.05) console.log('  shifts: ' + v.src.join(' ; '));
   mkdirSync('/tmp/tw', { recursive: true }); writeFileSync('/tmp/tw/vitals.json', JSON.stringify({ lcp: Math.round(v.lcp), cls: +v.cls.toFixed(3), inp: Math.round(v.inp), kB: Math.round(size / 1024) }));
   runs.push(v);
   await ctx.close();

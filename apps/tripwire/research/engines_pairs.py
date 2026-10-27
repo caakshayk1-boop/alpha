@@ -158,4 +158,5 @@ if __name__ == "__main__":
     p = load_real(screen_path); rows = {r["sym"]: r.get("sector") or "unknown" for r in json.loads(pathlib.Path(screen_path).read_text())["rows"]}
     sector = np.array([rows.get(s, "unknown") for s in p.syms]); res = dict(filtered=run(p, sector, True), control=run(p, sector, False))
     meta = {"when": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "symbols": len(p.syms), "dates": [str(p.dates[0])[:10], str(p.dates[-1])[:10]]}
+    import provenance; meta = provenance.stamp(meta, p, outdir / "engines_pairs.json", "engines_pairs", {'form': FORM, 'trade': TRADE, 'adf': ADF_5PCT, 'half_life': [HL_MIN, HL_MAX], 'corr_min': CORR_MIN, 'keep': KEEP, 'entry': ENTRY, 'exit': EXIT, 'stop': STOP, 'timeout': TIMEOUT, 'cost': COST}, [__file__, pathlib.Path(__file__).with_name('study.py'), pathlib.Path(__file__).with_name('indicators.py')])
     (outdir / "engines_pairs.json").write_text(json.dumps({"meta": meta, "pairs": res}, indent=1)); (outdir / "engines_pairs.md").write_text(markdown(res, meta)); print(markdown(res, meta))

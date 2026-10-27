@@ -1,18 +1,20 @@
 /** Headlines, cleaned by the Worker and refreshed hourly. Module-level cache so the same query on two screens is one request. */
 import { useCallback, useEffect, useState } from 'react';
+import { marketOpenNow } from './calendar.ts';
 export interface NewsItem { title: string; source: string; url: string; t: number; tags: string[]; also: number; sources: string[] }
 export interface NewsFeed { ok: boolean; fetched_at: string; q: string; items: NewsItem[] }
-export const NEWS_EVERY = 60 * 60 * 1000;
+/** How often the list is re-read: every 10 minutes while the exchange is open (news that can move a price arrives then), every 30 otherwise. The Worker's own copy is five minutes old at most. */
+export const newsEvery = (nowMs = Date.now()) => (marketOpenNow(nowMs) ? 10 : 30) * 60 * 1000;
 export const MARKET_Q = 'Sensex Nifty today when:1d';      // plain words: Bing returns nothing for an OR query
 /** A search phrase from a company name: the legal suffix goes (it only adds noise), the rest is quoted so the name stays together. */
 export const companyQ = (name: string) => `"${name.replace(/\b(ltd|limited|inc|corp|corporation|pvt|private)\b\.?/gi, '').replace(/[^A-Za-z0-9 &.'\-]/g, ' ').replace(/\s+/g, ' ').trim()}" when:7d`;
 
 const cache = new Map<string, { at: number; data: NewsFeed }>(); const flight = new Map<string, Promise<NewsFeed>>();
 async function load(q: string, force: boolean): Promise<NewsFeed> {
-  const hit = cache.get(q); if (hit && !force && Date.now() - hit.at < NEWS_EVERY) return hit.data;
+  const hit = cache.get(q); if (hit && !force && Date.now() - hit.at < newsEvery()) return hit.data;
   const f = flight.get(q); if (f) return f;
   const p = (async () => {
-    const r = await fetch(`/api/news?q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(20000) }); const d = (await r.json().catch(() => null)) as (NewsFeed & { error?: string }) | null;
+    const r = await fetch(`/api/news?q=${encodeURIComponent(q)}${force ? '&force=1' : ''}`, { signal: AbortSignal.timeout(20000), cache: force ? 'reload' : 'default' }); const d = (await r.json().catch(() => null)) as (NewsFeed & { error?: string }) | null;
     if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the news service is not available here' : d?.error ?? 'the news source did not answer');
     cache.set(q, { at: Date.now(), data: d }); return d;
   })();
@@ -29,8 +31,9 @@ export function useNews(q: string | null) {
   useEffect(() => {
     if (!q) { set({ data: null, at: null, err: null, loading: false }); return; }
     const stop = run(false);
-    const i = window.setInterval(() => { if (document.visibilityState === 'visible') run(true); }, NEWS_EVERY);
-    const vis = () => { if (document.visibilityState === 'visible' && Date.now() - (cache.get(q)?.at ?? 0) >= NEWS_EVERY) run(true); };
+    const due = () => document.visibilityState === 'visible' && Date.now() - (cache.get(q)?.at ?? 0) >= newsEvery();
+    const i = window.setInterval(() => { if (due()) run(true); }, 60 * 1000);
+    const vis = () => { if (due()) run(true); };
     document.addEventListener('visibilitychange', vis);
     return () => { stop(); window.clearInterval(i); document.removeEventListener('visibilitychange', vis); };
   }, [q, run]);
@@ -38,7 +41,7 @@ export function useNews(q: string | null) {
 }
 export const ago = (sec: number, nowMs = Date.now()) => { const m = Math.max(0, Math.round((nowMs / 1000 - sec) / 60)); return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 
-export interface Merged extends NewsItem { sym?: string; score: number }
+export interface Merged extends NewsItem { sym?: string; score: number; /** true when the line passed only the wider test (see decisionNews) */ broad?: boolean }
 const STOP = new Set(['the', 'a', 'an', 'of', 'to', 'in', 'on', 'for', 'and', 'as', 'at', 'by', 'with', 'is', 'are', 'its', 'from', 'after', 'over', 'amid']);
 const words = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
 const same = (a: Set<string>, b: Set<string>) => { if (!a.size || !b.size) return false; let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.7; };
@@ -65,8 +68,10 @@ export function useNewsMany(qs: string[]) {
     return () => { live = false; };
   }, [key]);
   useEffect(() => {
-    const stop = run(false); const i = window.setInterval(() => { if (document.visibilityState === 'visible') run(true); }, NEWS_EVERY);
-    return () => { stop(); window.clearInterval(i); };
+    const stop = run(false); const i = window.setInterval(() => { const l = key ? key.split('\n') : []; if (document.visibilityState === 'visible' && l.some((q) => Date.now() - (cache.get(q)?.at ?? 0) >= newsEvery())) run(true); }, 60 * 1000);
+    const vis = () => { if (document.visibilityState === 'visible') run(false); };
+    document.addEventListener('visibilitychange', vis);
+    return () => { stop(); window.clearInterval(i); document.removeEventListener('visibilitychange', vis); };
   }, [run]);
   return { ...st, refresh: () => run(true) };
 }
@@ -108,5 +113,20 @@ export function decisionNews(market: NewsItem[], companies: { sym: string; name:
   }
   const mk = market.filter(clean).filter((it) => hours(it) <= 24 && MACRO.test(it.title)).slice(0, 2);
   if (mk.length) feeds.push({ items: mk });
-  return mergeNews(feeds, limit, nowMs);
+  const strict = mergeNews(feeds, limit, nowMs);
+  if (strict.length >= MIN_LINES) return strict;
+  // A quiet day should not read as "no news": widen the test, and say on each widened line that it passed only the wider one.
+  // Names you hold or follow: their newest story of the last four days even with no material tag. The market: the last 36 hours, any clean headline.
+  const wide: { sym?: string; items: NewsItem[] }[] = [...feeds];
+  const has = new Set(feeds.map((f) => f.sym).filter(Boolean));   // a name that already has its line is not given a second
+  for (const c of companies) { if (has.has(c.sym)) continue; const one = companyStories(c.name, c.items.filter(clean).filter((it) => hours(it) <= 96), 1); if (one.length) wide.push({ sym: c.sym, items: one }); }
+  const mk2 = market.filter(clean).filter((it) => hours(it) <= 36).slice(0, 3); if (mk2.length && !mk.length) wide.push({ items: mk2 });
+  const kept = new Set(strict.map((x) => x.url));
+  return mergeNews(wide, limit, nowMs).map((x) => (kept.has(x.url) ? x : { ...x, broad: true }));
 }
+const MIN_LINES = 4;
+
+/** Which lines are new since the reader last looked: remembered per browser, never sent anywhere. */
+const SEEN_KEY = 'tripwire:newsSeen';
+export const newsSeenAt = (): number => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch { return 0; } };
+export const markNewsSeen = (nowSec = Math.floor(Date.now() / 1000)) => { try { localStorage.setItem(SEEN_KEY, String(nowSec)); } catch { /* private mode: every line then reads as seen */ } };

@@ -13,6 +13,17 @@ import { takenAtFor } from './ledger.ts';
 import { ENGINES } from './quant.ts';
 
 export const MAX_OPEN = 30;
+/** Book rules are versioned like the eligibility rules, and a pick is judged by the version in force on ITS night, so no earlier night is re-sized.
+ *  book-1 (before 27 Oct 2026): every pick takes the full ticket. book-2: a pick's ticket is the full ticket times its engine's weight, and no more than SECTOR_CAP positions may run in one sector.
+ *  The weights follow what the back-test said on the day book-2 began and change only by a new version: Momentum, which the back-test did not support, takes a quarter ticket; Quality, which cannot be back-tested
+ *  and is therefore on forward test, takes half. Results are kept in R (a multiple of the risk taken), which does not depend on ticket size, so the forward record that will judge the engines is untouched; only the rupee headline is smaller. */
+export const BOOK_POLICY_FROM = '2026-10-27';
+export const TICKET_WEIGHT: Record<string, number> = { MOM: 0.25, QLT: 0.5 };
+export const SECTOR_CAP = 4;
+export type BookRules = 'book-1' | 'book-2';
+export const bookRulesOf = (asOf: string): BookRules => (asOf >= BOOK_POLICY_FROM ? 'book-2' : 'book-1');
+/** The rupees put into one pick under the rules of its night. */
+export const ticketFor = (p: { asOf: string; engine: string }, full: number): number => (bookRulesOf(p.asOf) === 'book-2' ? full * (TICKET_WEIGHT[p.engine] ?? 0.5) : full);
 export const TICKET = 100000;
 export interface AutoCfg { maxOpen: number; ticket: number }
 export const DEFAULT_CFG: AutoCfg = { maxOpen: MAX_OPEN, ticket: TICKET };
@@ -47,9 +58,10 @@ export function planAutoBook(l: Ledger, cfg: AutoCfg = DEFAULT_CFG): AutoPlan {
       const voidWhy = l.voided?.[p.id]; if (voidWhy) { no(`Voided in the record: ${voidWhy}`); continue; }
       const held = taken.filter((t) => holdsSlot(l.outcomes[t.pick.id], night));
       if (held.some((t) => t.pick.sym === p.sym)) { no('The same name is already held.'); continue; }
-      const qty = Math.floor(cfg.ticket / p.ref);
-      if (!(p.ref > 0) || qty < 1) { no(`One share costs more than the ${inr0(cfg.ticket)} ticket.`); continue; }
+      const ticket = ticketFor(p, cfg.ticket); const qty = Math.floor(ticket / p.ref);
+      if (!(p.ref > 0) || qty < 1) { no(`One share costs more than the ${inr0(ticket)} ticket.`); continue; }
       if (held.length >= cfg.maxOpen) { no(`The book is full: ${cfg.maxOpen} positions are running.`); continue; }
+      if (bookRulesOf(p.asOf) === 'book-2' && p.sector && held.filter((t) => t.pick.sector === p.sector).length >= SECTOR_CAP) { no(`${SECTOR_CAP} positions are already running in ${p.sector}; the book holds no more than that in one sector.`); continue; }
       taken.push({ pick: p, qty, takenAt: takenAtFor(night) });
       log.push({ day: night, kind: 'taken', sym: p.sym, engine: p.engine, id: p.id, text: `Taken: ${p.sym} (${p.engine}), ${qty} shares, about ${inr0(qty * p.ref)} at the signal close of ${inr0(p.ref)}, stop ${inr0(p.stop)}. Enters at the next open.` });
     }

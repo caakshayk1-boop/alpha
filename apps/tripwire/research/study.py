@@ -186,6 +186,7 @@ if __name__ == "__main__":
     p = load_real(screen)
     res = run(p)
     meta = {"when": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "symbols": len(p.syms), "dates": [str(p.dates[0])[:10], str(p.dates[-1])[:10]]}
+    import provenance; meta = provenance.stamp(meta, p, outdir / "factor_study.json", "factor_study", {'horizon': HORIZON, 'step': STEP, 'splits': SPLITS}, [__file__, pathlib.Path(__file__).with_name('indicators.py')])
     (outdir / "factor_study.json").write_text(json.dumps({"meta": meta, **res}, indent=1))
     (outdir / "factor_study.md").write_text(to_markdown(res, meta))
     print(to_markdown(res, meta))

@@ -35,11 +35,11 @@ function DayChart({ pts }: { pts: { t: number; v: number }[] }) {
 function Road({ l }: { l: Line }) {
   const pts = [l.stop, l.entry, l.last, ...(l.t1 != null ? [l.t1] : []), ...(l.t2 != null ? [l.t2] : [])]; const lo = Math.min(...pts), hi = Math.max(...pts); const w = hi > lo ? hi - lo : 1;
   const at = (v: number) => `${Math.min(100, Math.max(0, ((v - lo) / w) * 100))}%`;
-  return <div className="road" role="img" aria-label={`Stop ${inr(l.stop)}, entry ${inr(l.entry)}, now ${inr(l.last)}${l.t1 != null ? `, first target ${inr(l.t1)}` : ''}${l.t2 != null ? `, second target ${inr(l.t2)}` : ''}`}>
+  return <div className="road" role="img" aria-label={`Stop ${inr(l.stop)}, entry ${inr(l.entry)}, now ${inr(l.last)}${l.t1 != null ? `, ${l.ref ? 'reference first level' : 'first target'} ${inr(l.t1)}` : ''}${l.t2 != null ? `, ${l.ref ? 'reference second level' : 'second target'} ${inr(l.t2)}` : ''}`}>
     <i className="seg lose" style={{ left: at(l.stop), width: `calc(${at(l.entry)} - ${at(l.stop)})` }} />
-    {l.t2 != null && <i className="seg win" style={{ left: at(l.entry), width: `calc(${at(l.t2)} - ${at(l.entry)})` }} />}
+    {l.t2 != null && <i className={`seg win${l.ref ? ' ref' : ''}`} style={{ left: at(l.entry), width: `calc(${at(l.t2)} - ${at(l.entry)})` }} />}
     <b className="mk stop" style={{ left: at(l.stop) }} /><b className="mk ent" style={{ left: at(l.entry) }} />
-    {l.t1 != null && <b className="mk tgt" style={{ left: at(l.t1) }} />}{l.t2 != null && <b className="mk tgt" style={{ left: at(l.t2) }} />}
+    {l.t1 != null && <b className={`mk tgt${l.ref ? ' ref' : ''}`} style={{ left: at(l.t1) }} />}{l.t2 != null && <b className={`mk tgt${l.ref ? ' ref' : ''}`} style={{ left: at(l.t2) }} />}
     <b className={`mk now ${l.pnl >= 0 ? 'up' : 'dn'}`} style={{ left: at(l.last) }} />
     <span className="lbl l">{inr0(l.stop)}</span>{l.t2 != null && <span className="lbl r">{inr0(l.t2)}</span>}
   </div>;
@@ -72,12 +72,13 @@ export function Live() {
       {auto.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {auto.intra.err}. {own.bars.data || auto.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </section>
 
-    {ls.length > 0 && <><Head aside={<span className="small mute">stop · entry · targets</span>}>Positions</Head>
+    {ls.length > 0 && <><Head aside={<span className="small mute">stop · entry · targets{ls.some((l) => l.ref) ? ' (ref = shown for orientation, not traded)' : ''}</span>}>Positions</Head>
       <div className="poscards">{sorted.map((l: Line) => <a key={l.id} href={`#/c/${l.sym}`} className={`poscard ${l.pnl >= 0 ? 'win' : 'lose'}`}>
         <div className="row between"><b>{l.sym}</b><span className="tag">{styleDef(l.style).label}</span></div>
         <div className={`num amt big ${tone(l.pnl)}`}>{money(l.pnl)} <span className="small">{pct(l.pct)}</span></div>
         <Road l={l} />
         <div className="row between small mute num"><span>{inr(l.entry)} in</span><span>{l.live ? 'live' : 'close'} {inr(l.last)}</span></div>
+        <div className="row between small num" style={{ marginTop: 2 }}><span className="down">stop {inr0(l.stop)}</span>{l.t1 != null ? <span className={l.ref ? 'dim' : 'up'} title={l.ref ? 'Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit.' : 'Profit-booking targets'}>{l.t1Hit ? 'T1 ✓ · ' : ''}T1 {inr0(l.t1)}{l.t2 != null ? ` · T2 ${inr0(l.t2)}` : ''}{l.ref ? ' (ref)' : ''}</span> : <span className="dim">no targets</span>}</div>
       </a>)}</div></>}
     {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Waiting ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
 
@@ -90,7 +91,7 @@ export function Live() {
         <td className="num">{Math.round(l.qty * 100) / 100}</td><td className="num">{inr(l.entry)}</td><td className="num"><Tick v={l.last}>{inr(l.last)}</Tick>{!l.live && <span className="sub2">close</span>}</td>
         <td className={`num amt ${tone(l.pnl)}`}>{money(l.pnl)}</td><td className={`num ${tone(l.pct)}`}>{pct(l.pct)}</td><td className={`num amt ${tone(l.dayPnl)}`}>{money(l.dayPnl)}</td><td className="num amt">{inr0(l.value)}</td>
         <td className="num down">{l.toStop == null ? '—' : pct(l.toStop)}<span className="sub2">{inr(l.stop)}</span></td><td className={`num ${tone(l.r)}`}>{R(l.r)}</td>
-        <td className="num">{l.t1Hit ? <span className="up">T1 ✓</span> : l.toT1 != null ? <>T1 {pct(l.toT1)}</> : '—'}{l.toT2 != null && <span className="sub2">T2 {pct(l.toT2)}</span>}</td></tr>)}</tbody></table></div>
+        <td className="num">{l.t1Hit ? <span className="up">T1 ✓</span> : l.t1 != null ? <span className={l.ref ? 'dim' : ''} title={l.ref ? 'Reference level, not traded' : undefined}>T1 {inr0(l.t1)}{l.toT1 != null ? ` (${pct(l.toT1)})` : ''}</span> : '—'}{l.t2 != null && <span className="sub2">T2 {inr0(l.t2)}{l.toT2 != null ? ` (${pct(l.toT2)})` : ''}{l.ref ? ' ref' : ''}</span>}</td></tr>)}</tbody></table></div>
       : <div className="card dim">Nothing is open yet. {waiting} {waiting === 1 ? 'position is' : 'positions are'} waiting for the next open.</div>}
 
     {ls.length > 0 && <><Head>Risk lens</Head>

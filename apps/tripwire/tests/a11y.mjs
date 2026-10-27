@@ -37,7 +37,7 @@ for (const [w, h, tag] of [[390, 844, 'phone'], [360, 740, 'small'], [320, 640, 
   }
   // sheet focus trap
   await pg.goto(base + '/#/today'); await pg.waitForSelector('nav.tabs');
-  await pg.getByRole('button', { name: 'Search' }).click();
+  await pg.getByRole('button', { name: 'Search' }).click(); await pg.waitForSelector('[role=dialog]');
   for (let i = 0; i < 6; i++) await pg.keyboard.press('Tab');
   if (!(await pg.evaluate(() => !!document.activeElement?.closest('[role=dialog]')))) problems.push(`${tag}: focus left the open sheet`);
   await pg.keyboard.press('Escape');

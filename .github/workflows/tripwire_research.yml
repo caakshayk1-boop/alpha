@@ -50,4 +50,4 @@ jobs:
           git add apps/tripwire/research/results
           git diff --cached --quiet && echo unchanged && exit 0
           git commit -m "research: tripwire factor study $(date -u +%Y-%m-%d) [skip ci]"
-          for i in 1 2 3; do git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; git pull --rebase origin "${GITHUB_REF_NAME}"; done; exit 1
+          for i in 1 2 3; do git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; git pull --rebase --autostash origin "${GITHUB_REF_NAME}"; done; exit 1

@@ -1,11 +1,57 @@
 {
  "meta": {
-  "when": "2026-10-27 04:19 UTC",
+  "when": "2026-10-27 07:01 UTC",
   "symbols": 660,
   "dates": [
    "2015-10-27",
    "2026-10-27"
-  ]
+  ],
+  "run": {
+   "id": "b707aa6efd",
+   "study": "engines_backtest",
+   "when": "2026-10-27 07:01 UTC",
+   "git": "3f2691c",
+   "data": {
+    "first_day": "2015-10-27",
+    "last_day": "2026-10-27",
+    "sessions": 2709,
+    "symbols": 660,
+    "symbols_hash": "0af3269458"
+   },
+   "code": {
+    "files": {
+     "engines_backtest.py": "8545276c5e",
+     "study.py": "47c83048c1",
+     "indicators.py": "76d5cd0f2e"
+    },
+    "hash": "63bebe828d"
+   },
+   "params": {
+    "engines": {
+     "MOM": {
+      "h": 20,
+      "atr": 2.5,
+      "cap": 12
+     },
+     "MOMR": {
+      "h": 20,
+      "atr": 2.5,
+      "cap": 12
+     },
+     "LVT": {
+      "h": 40,
+      "atr": 2.0,
+      "cap": 10
+     }
+    },
+    "costs": 0.0025,
+    "slippage": 0.001
+   },
+   "changes": [
+    "First recorded run of this study: nothing to compare with."
+   ],
+   "previous": null
+  }
  },
  "engines": {
   "MOM": {
@@ -50,11 +96,11 @@
    "periods": {
     "train": {
      "trades": 269,
-     "mean_net": 0.0227,
+     "mean_net": 0.0226,
      "hit_rate": 0.498,
-     "mean_R": 0.234,
-     "excess_vs_universe": 0.0252,
-     "excess_t": 1.886,
+     "mean_R": 0.235,
+     "excess_vs_universe": 0.0251,
+     "excess_t": 1.857,
      "months": 57
     },
     "validation": {
@@ -85,11 +131,11 @@
    "periods": {
     "train": {
      "trades": 159,
-     "mean_net": -0.0029,
-     "hit_rate": 0.34,
-     "mean_R": -0.067,
-     "excess_vs_universe": -0.032,
-     "excess_t": -2.419,
+     "mean_net": -0.0025,
+     "hit_rate": 0.346,
+     "mean_R": -0.051,
+     "excess_vs_universe": -0.0316,
+     "excess_t": -2.385,
      "months": 32
     },
     "validation": {

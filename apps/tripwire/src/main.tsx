@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { Component, type ReactNode } from 'react';
 import { App } from './app.tsx';
 import { followSystemTextSize } from './dyntype.ts';
+import { registerWebMcp } from './webmcp.ts';
 
 class Boundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false };
@@ -12,4 +13,5 @@ class Boundary extends Component<{ children: ReactNode }, { err: boolean }> {
 }
 createRoot(document.getElementById('root')!).render(<Boundary><App /></Boundary>);
 followSystemTextSize();
+registerWebMcp();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* offline shell is optional */ }); });

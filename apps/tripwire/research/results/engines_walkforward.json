@@ -1,11 +1,56 @@
 {
  "meta": {
-  "when": "2026-10-27 04:19 UTC",
+  "when": "2026-10-27 07:01 UTC",
   "symbols": 660,
   "dates": [
    "2015-10-27",
    "2026-10-27"
-  ]
+  ],
+  "run": {
+   "id": "849bfbff3a",
+   "study": "engines_walkforward",
+   "when": "2026-10-27 07:01 UTC",
+   "git": "3f2691c",
+   "data": {
+    "first_day": "2015-10-27",
+    "last_day": "2026-10-27",
+    "sessions": 2709,
+    "symbols": 660,
+    "symbols_hash": "0af3269458"
+   },
+   "code": {
+    "files": {
+     "engines_walkforward.py": "6f349eb8cd",
+     "engines_backtest.py": "8545276c5e",
+     "study.py": "47c83048c1",
+     "indicators.py": "76d5cd0f2e"
+    },
+    "hash": "616c281bad"
+   },
+   "params": {
+    "family": [
+     "L126-x-q80",
+     "L126-x-q90",
+     "L126-R-q80",
+     "L126-R-q90",
+     "L252-x-q80",
+     "L252-x-q90",
+     "L252-R-q80",
+     "L252-R-q90"
+    ],
+    "first_test_year": 2019,
+    "lookback_years": 3,
+    "t_procedure": 2.0,
+    "t_fixed": 2.7,
+    "min_active": 20,
+    "costs": 0.0025,
+    "slippage": 0.001
+   },
+   "changes": [
+    "First recorded run of this study: nothing to compare with."
+   ],
+   "previous": null
+  }
  },
  "walk_forward": {
   "test_years": [
@@ -77,47 +122,47 @@
    "L252-x-q80": {
     "rebalances": 95,
     "active": 94,
-    "mean_excess": 0.0018,
-    "t": 0.257,
+    "mean_excess": 0.0021,
+    "t": 0.304,
     "months": 88,
-    "mean_net_per_rebalance": 0.0117,
+    "mean_net_per_rebalance": 0.012,
     "supported": false
    },
    "L252-x-q90": {
     "rebalances": 95,
     "active": 93,
-    "mean_excess": 0.0004,
-    "t": 0.051,
+    "mean_excess": 0.0007,
+    "t": 0.095,
     "months": 87,
-    "mean_net_per_rebalance": 0.0087,
+    "mean_net_per_rebalance": 0.009,
     "supported": false
    },
    "L252-R-q80": {
     "rebalances": 95,
     "active": 72,
-    "mean_excess": 0.0036,
-    "t": 0.447,
+    "mean_excess": 0.0041,
+    "t": 0.497,
     "months": 69,
-    "mean_net_per_rebalance": 0.0066,
+    "mean_net_per_rebalance": 0.0069,
     "supported": false
    },
    "L252-R-q90": {
     "rebalances": 95,
     "active": 71,
-    "mean_excess": 0.0037,
-    "t": 0.408,
+    "mean_excess": 0.0041,
+    "t": 0.453,
     "months": 68,
-    "mean_net_per_rebalance": 0.006,
+    "mean_net_per_rebalance": 0.0063,
     "supported": false
    }
   },
   "as_built": {
    "rebalances": 95,
    "active": 94,
-   "mean_excess": 0.0018,
-   "t": 0.257,
+   "mean_excess": 0.0021,
+   "t": 0.304,
    "months": 88,
-   "mean_net_per_rebalance": 0.0117,
+   "mean_net_per_rebalance": 0.012,
    "id": "L252-x-q80"
   }
  }

@@ -1,14 +1,18 @@
-# Integrations: what is real, what is not, and what each needs
+# Integrations: what is working, what is not set up, what is not built
 
-Tripwire runs without an account. Nothing in the app pretends otherwise: Profile says "Sign-in is not available yet" and "Notifications: not available yet", and no control exists that looks like it works and does not.
+Tripwire runs without an account. Three states and no others. **Working**: configured and used now. **Not set up**: the capability could exist but no key or provider is configured, so no control for it exists. **Not built**: there is no code for it. Nothing is "coming soon" and no control exists that looks like it works and does not. The Profile screen shows this same list, and `/api/health` probes the two live sources and lists the Worker's binding names (never a value; there are no secrets).
 
-| Capability | State | What it needs to be real |
+`apps/tripwire/src/services.ts` is the source; `services.test.ts` fails if this table and that list disagree.
+
+| Capability | State | What it is, and what it would need |
 |---|---|---|
-| Accounts and sign-in | Not built. No identity provider is configured. | A provider (for example Cloudflare Access, Clerk or Auth0) with its client id, secret and callback URLs set as Worker secrets; a decision on which sign-in methods; a privacy notice update. |
-| Sync between devices | Not built. State lives in this browser's storage. | Accounts first, then a store (Cloudflare D1 or KV) with per-user rows, conflict rules (the app already merges by id, longer history wins) and an export-before-first-sync step. |
-| Notifications | Not built. Review dates appear on Today when the app is opened; nothing is sent. | Web Push needs VAPID keys (public and private) as Worker secrets, a push-subscription store tied to an account, a service-worker push handler, and on iPhone the app must be added to the Home Screen first. Email alerts need a sender domain and a mail API key. |
-| Waitlist e-mail | Owner-dependent. | Mail API secrets (see OPEN_ITEMS). |
-| Backup and restore | Real. Export, import, merge and journal CSV, tested end to end (`backup.test.ts`, `beta.mjs`). | Nothing. This is the only data-safety route until accounts exist. |
-| Screen lock | Real, and honest: it locks the screen with the phone's own unlock; it does not encrypt storage. | Nothing. |
-
-When a credential is supplied, build the feature behind a capability check (configured or not), so a missing secret shows the same honest "not available" line instead of a broken button.
+| Live prices | Working | Yahoo Finance via the Worker. Unofficial: it can throttle or change; the app says so when it does not answer. |
+| News headlines | Working | Google News and Bing News RSS via the Worker, filtered to what bears on a decision. |
+| Published screen and the forward ledger | Working | Screen fetched at build time; ledger written by one nightly workflow, append-only. |
+| Backup and restore | Working | Export, import, merge, journal CSV. Tested end to end. The only data-safety route until accounts exist. |
+| Screen lock | Working | The phone's own unlock. It locks the screen; it does not encrypt storage. |
+| Accounts and sign-in | Not set up | Needs a provider with client id, secret and callback URL as Worker secrets, and a privacy notice update. |
+| Sync between devices | Not built | Needs accounts, then a per-user store and a conflict rule. |
+| Notifications and alerts | Not built | Needs Web Push keys as Worker secrets, a subscription store tied to an account, a push handler; on iPhone the app on the Home Screen. |
+| E-mail | Not set up | Needs a sender domain and a mail API key. The Pro waitlist is a different service. |
+| Broker connection and orders | Not built | None, by design. Every position is paper. |

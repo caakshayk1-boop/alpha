@@ -1,0 +1,18 @@
+# Tripwire
+
+> A paper-only research and decision tool for Indian listed companies. It shows which public rules fired at the last close, the evidence for and against a name, and keeps the reader's own notes and review dates in their own browser. It is not investment advice and places no orders.
+
+## What is here
+- Today: market read, the last close's rule picks (dated), the paper book and its live profit and loss.
+- Discover: a screen of roughly a thousand NSE companies with filters on price, trend, momentum and fundamentals.
+- Company pages: price chart, figures with their dates, risks, news.
+- Signals: how each rule has performed in a back-test and forward, including the results that did not support it.
+- Data: how current each dataset is, the eligibility rule versions and the back-test run history.
+
+## Limits you should state if you summarise this site
+- Prices come from Yahoo Finance and can lag the exchange; every figure says its date.
+- The back-test found no supported edge for the momentum rule. Nothing here predicts prices.
+- Paper money only. Nothing on the site is a recommendation.
+
+## Machine access
+- Tools registered through WebMCP (where the browser supports it): search_companies, open_company, market_status. All are read-only or navigation.

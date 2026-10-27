@@ -19,10 +19,15 @@ import { Ago, LiveBadge, Observed, Spark, Tick } from '../live.tsx';
 import { LivePositions } from './LivePositions.tsx';
 import { Heat, Ring, avatarStyle } from '../widgets.tsx';
 import { mood } from '../mood.ts';
+import { IndexRows } from './IndexRows.tsx';
+import { TrendMap } from './TrendMap.tsx';
 import { Icon } from '../ui.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
+import { rulesFor } from '../rules.ts';
 import { isLiveQuote } from '../stamp.ts';
+import { pickFacts, factLine } from '../pickfacts.ts';
+import { targetPrices } from '../levels.ts';
 
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
@@ -86,14 +91,7 @@ export function Today() {
     <section className="moodhero card" aria-label="Market mood">
       <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
       {md ? <div className="word" style={{ margin: '8px 0 10px' }}>{md.word}</div> : <div className="sk" style={{ height: 28, width: '45%', margin: '8px 0 10px' }} />}
-      <div className="idx" role="list" aria-label="Indices">
-        {pulse.data?.quotes.NIFTY ? <a role="listitem" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Nifty 50</span><span className="px num"><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick></span><span className={`ch num ${tone(niftyCh)}`}>{pct(niftyCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
-          : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}
-        <a role="listitem" href={tvIndexUrl('BANKNIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Bank Nifty</span><span className="px num"><Tick v={pulse.data?.quotes.BANKNIFTY?.px}>{pulse.data?.quotes.BANKNIFTY ? pulse.data.quotes.BANKNIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '—'}</Tick></span><span className={`ch num ${tone(bankCh)}`}>{pct(bankCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
-        <a role="listitem" href={tvIndexUrl('VIX')} target="_blank" rel="noopener noreferrer"><span className="nm">India VIX</span><span className="px num"><Tick v={pulse.data?.quotes.VIX?.px}>{pulse.data?.quotes.VIX ? pulse.data.quotes.VIX.px.toFixed(2) : '—'}</Tick></span><span className={`ch num ${vixCh == null ? '' : vixCh > 0 ? 'down' : vixCh < 0 ? 'up' : ''}`}>{pct(vixCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
-      </div>
-      {!pulse.data?.quotes.NIFTY && <div style={{ marginTop: 10, height: 44 }} aria-hidden="true" />}
-      {pulse.data?.quotes.NIFTY && <div style={{ marginTop: 10 }}><Spark c={pulse.data.quotes.NIFTY.c} up={(niftyCh ?? 0) >= 0} refs={[{ v: pulse.data.quotes.NIFTY.prev, kind: 'prev' }]} h={44} label="Nifty 50 today" /></div>}
+      <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} />
     </section>
       </div>
       <div style={{ '--o': 2 } as React.CSSProperties}>
@@ -103,27 +101,24 @@ export function Today() {
       </div>
       {scr.data && <div style={{ '--o': 5 } as React.CSSProperties}>
       {/* tonight's picks: ranked, each with its own live line, price and move, and where it stands in the auto book */}
-      {total > 0 && <><Head aside={<span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span>}>Tonight's picks</Head>
+      {total > 0 && <><Head aside={<span className="row small" style={{ gap: 6 }}><span className={`tag ${fr.tone}`} title="How old the screen these picks came from is, by the exchange calendar">{fr.word}</span><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span>}>Picks from the close of {dayWord(day)}</Head>
         <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
             <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
             <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
-              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · stop −{p.stopPct}%</span></span>
+              <span className="small dim trunc" style={{ display: 'block' }}>{factLine(pickFacts(p.engine, row), 3)}</span>
+              <span className="small mute trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)}</> : ''} · stop {inr0(p.stop)}{(() => { const t = targetPrices(p); return t ? ` · T1 ${inr0(t.t1)} · T2 ${inr0(t.t2)}${t.ref ? ' (ref)' : ''}` : ''; })()}</span></span>
             <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
             <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          <p className="small dim" style={{ margin: '4px 0 8px' }}>{evHead ? `${evHead} ` : ''}Ranked by each engine's own rank among eligible names, which is not a chance of winning.</p>
+          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}Chosen on the close of {dayWord(day)}{fr.behind ? `, ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago` : ''}. A rank, not a chance of winning.</p>
+          <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices from the signal close; "(ref)" means the pick was filed before profit booking began, so they are shown for orientation and the position exits on its stop and time limit. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
           {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
 
       </div>}
       {scr.data && late && <div style={{ '--o': 6 } as React.CSSProperties}>
       {/* the trend map, live */}
       <Head aside={<span className="small mute">{liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · <Ago at={breadth.at} /></> : liveMap ? <>last prices · <Ago at={breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
-      <div className="card">
-        <div className="row between"><span className="small"><b className="num up">{map.n ? Math.round((map.up / map.n) * 100) : '—'}%</b> in an uptrend</span><span className="small dim num">{map.n ? Math.round((map.down / map.n) * 100) : '—'}% in a downtrend</span></div>
-        <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.up} are in an uptrend, ${map.mixed} sideways and ${map.down} in a downtrend`}><i style={{ flexGrow: map.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.down || .01, background: 'var(--down)' }} /></div>
-        <div className="small mute" style={{ margin: '6px 0 8px' }}>{map.n} of {rows.filter((r) => r.liquid).length} liquid names: the rest have no 200-day average yet. Uptrend needs all four: {TREND_RULE_TEXT.up}. Downtrend is the mirror; anything else is sideways.{liveMap ? ` Today's price used for the ${liveMap.repriced} names near a trend line; the rest use the close of ${dayWord(day)}.` : breadth.err ? ' Live update unavailable; showing the close.' : ''}</div>
-        {map.sectors.length > 0 && <Heat cells={map.sectors.slice(0, 9).map((x) => ({ k: x.k, n: x.n, up: x.up, down: x.down }))} href={(c) => `#/discover?sector=${encodeURIComponent(c.k)}&trend=${c.up >= c.down ? 'up' : 'down'}`} />}
-      </div>
+      <TrendMap rows={rows} day={day} map={map} live={!!liveMap} liveAt={breadth.at} open={sess.phase === 'open'} repriced={liveMap ? liveMap.repriced : null} err={!!breadth.err} />
 
       </div>}
     </div>
@@ -135,7 +130,7 @@ export function Today() {
       {showAuto && ownRows.length > 0 && <div className={`num amt ${tone(auto.sum.openPnl + ownPnl)}`} style={{ font: '600 1.75rem/1.1 var(--sans)', margin: '6px 0 2px' }}><Tick v={auto.sum.openPnl + ownPnl}>{money(auto.sum.openPnl + ownPnl)}</Tick> <span className="small dim" style={{ font: 'inherit', fontSize: '0.75rem' }}>open now</span></div>}
       {showAuto && <a className="bookrow" href="#/signals?v=auto">
         <Ring value={auto.slots} max={auto.cfg.maxOpen} size={54} stroke={6} label={`${auto.slots} of ${auto.cfg.maxOpen} positions in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick></Ring>
-        <span className="grow"><b>Auto book</b><span className="small dim" style={{ display: 'block' }}>Every engine pick, ₹1,00,000 each · {auto.sum.open} open{auto.sum.waiting ? ` · ${auto.sum.waiting} waiting` : ''} of {auto.cfg.maxOpen} places</span></span>
+        <span className="grow"><b>Auto book</b><span className="small dim" style={{ display: 'block' }}>Every engine pick, up to ₹1,00,000 each · {auto.sum.open} open{auto.sum.waiting ? ` · ${auto.sum.waiting} waiting` : ''} of {auto.cfg.maxOpen} places</span></span>
         <span style={{ textAlign: 'right' }}><span className={`num amt ${tone(auto.sum.openPnl)}`} style={{ font: '600 1.125rem/1.2 var(--sans)', display: 'block' }}><Tick v={auto.sum.open ? auto.sum.openPnl : null}>{auto.sum.open ? money(auto.sum.openPnl) : '—'}</Tick></span>{auto.dayTotal != null && <span className={`small num amt ${tone(auto.dayTotal)}`}>today {money(auto.dayTotal)}</span>}</span></a>}
       {ownRows.length > 0 && <a className="bookrow" href="#/signals?v=tracker">
         <span className="bookdot" aria-hidden="true">{ownRows.length}</span>

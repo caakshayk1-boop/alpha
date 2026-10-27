@@ -4,7 +4,7 @@
 import type { Row } from './screen.ts';
 import { eligibilityOf, meaningful, type MetricId } from './eligibility.ts';
 
-export type MetricKey = 'price' | 'r1d' | 'r1m' | 'r3m' | 'rs3m' | 'from_high' | 'rsi' | 'vol_spike' | 'turnover_cr' | 'pe' | 'pb' | 'roce_med' | 'roe' | 'rev_cagr' | 'eps_cagr' | 'de' | 'net_margin' | 'piotroski' | 'comp' | 'atr_pct' | 'r1w' | 'r6m' | 'r1y' | 'dist20' | 'dist50' | 'dist200' | 'from_low' | 'pe_pctile' | 'ebit_margin' | 'fcf_margin' | 'icover' | 'cfo_pat' | 'insiders' | 'instis' | 'sd1y' | 'q' | 'g' | 'v' | 'tech';
+export type MetricKey = 'price' | 'r1d' | 'r1m' | 'r3m' | 'rs3m' | 'from_high' | 'rsi' | 'rsi_w' | 'rsi_m' | 'vol_spike' | 'turnover_cr' | 'pe' | 'pb' | 'roce_med' | 'roe' | 'rev_cagr' | 'eps_cagr' | 'de' | 'net_margin' | 'piotroski' | 'comp' | 'atr_pct' | 'r1w' | 'r6m' | 'r1y' | 'dist20' | 'dist50' | 'dist200' | 'from_low' | 'pe_pctile' | 'ebit_margin' | 'fcf_margin' | 'icover' | 'cfo_pat' | 'insiders' | 'instis' | 'sd1y' | 'q' | 'g' | 'v' | 'tech';
 export interface Metric { id: MetricKey; label: string; short: string; unit: string; dp: number; hint: string; presets: number[]; /** returns "this ratio is not meaningful for this company" */ elig?: MetricId; signed?: boolean; /** a figure worked out from the row's own published numbers */ derive?: (r: Row) => number | null; group?: string }
 const rel = (a?: number | null, b?: number | null) => (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b) && b > 0 ? Math.round(((a / b - 1) * 100) * 100) / 100 : null);
 export const METRICS: Metric[] = [
@@ -15,6 +15,8 @@ export const METRICS: Metric[] = [
   { id: 'rs3m', label: 'Against the Nifty, 3 months', short: 'VS NIFTY', unit: ' pts', dp: 1, hint: 'stock minus Nifty, 3 months', presets: [0, 10, 25], signed: true },
   { id: 'from_high', label: 'From the 52-week high', short: 'FROM HIGH', unit: '%', dp: 1, hint: 'always zero or below; -5 is within 5% of the high', presets: [-5, -15, -30], signed: true },
   { id: 'rsi', label: 'RSI (14)', short: 'RSI', unit: '', dp: 0, hint: '0 to 100; above 70 stretched, below 30 weak', presets: [30, 50, 70] },
+  { id: 'rsi_w', label: 'RSI (14), weekly closes', short: 'RSI WK', unit: '', dp: 0, hint: 'on weekly closes, this week to date; the nightly RSI sheet, so a name outside it has no figure', presets: [30, 50, 70] },
+  { id: 'rsi_m', label: 'RSI (14), monthly closes', short: 'RSI MO', unit: '', dp: 0, hint: 'on monthly closes, this month to date; needs 15 months of history', presets: [40, 55, 70] },
   { id: 'vol_spike', label: 'Volume against its average', short: 'VOL X', unit: '×', dp: 1, hint: 'today over the 20-day average', presets: [1.5, 2, 3] },
   { id: 'turnover_cr', label: 'Traded value a day', short: 'TURNOVER', unit: ' cr', dp: 0, hint: 'rupees crore', presets: [5, 25, 100] },
   { id: 'pe', label: 'PE (trailing)', short: 'PE', unit: '', dp: 1, hint: 'absent for loss-makers', presets: [15, 25, 40] },
@@ -74,7 +76,7 @@ export const sameCond = (a: Cond, b: Cond) => a.m === b.m && a.op === b.op && a.
 
 /** The table view's column sets: each a reading of the screen from one angle. */
 export const COLUMN_SETS: { id: string; label: string; cols: MetricKey[] }[] = [
-  { id: 'momentum', label: 'Momentum', cols: ['price', 'r1d', 'r1m', 'r3m', 'rs3m', 'rsi', 'from_high', 'vol_spike'] },
+  { id: 'momentum', label: 'Momentum', cols: ['price', 'r1d', 'r1m', 'r3m', 'rs3m', 'rsi', 'rsi_w', 'rsi_m', 'from_high', 'vol_spike'] },
   { id: 'value', label: 'Value', cols: ['price', 'pe', 'pb', 'roce_med', 'roe', 'rev_cagr', 'eps_cagr', 'turnover_cr'] },
   { id: 'quality', label: 'Quality', cols: ['roce_med', 'de', 'net_margin', 'piotroski', 'comp', 'rev_cagr', 'atr_pct'] },
   { id: 'trend', label: 'Trend', cols: ['price', 'dist20', 'dist50', 'dist200', 'from_low', 'from_high', 'r6m', 'r1y'] },

@@ -10,6 +10,7 @@ import { summarize } from '../tracker.ts';
 import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
+import { targetPrices } from '../levels.ts';
 import { styleDef, styleOf } from '../exits.ts';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
@@ -78,6 +79,8 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
           {isOpen && q && <div className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</div>}</div>
         <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num amt ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={v.pnl}>{money(v.pnl)}</Tick></div><div className="small dim num">{R(v.r)} · {pct(v.pct)}</div></div></div>
         : <p className="small dim num" style={{ margin: '8px 0 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit{v.status === 'skipped' ? '' : ''}</p>}
+      {(isOpen || v.status === 'pending' || v.status === 'waiting') && (() => { const t = targetPrices({ asOf: p.asOf, horizon: p.horizon, ref: v.signal ?? p.ref, stop: p.stop }); const L = v.ladder; const stopNow = L ? L.stop : p.stop;
+        return <p className="small num" style={{ margin: '6px 0 0' }}><span className="down">stop {inr(stopNow)}{L && L.t1Hit && Math.abs(L.stop - (v.entry ?? 0)) < 0.01 ? ' (at the fill)' : ''}</span>{L ? <> · <span className={L.t1Hit ? 'up' : ''}>T1 {inr(L.t1)}{L.t1Hit ? ' ✓' : ''}</span> · <span className={L.t2Hit ? 'up' : ''}>T2 {inr(L.t2)}{L.t2Hit ? ' ✓' : ''}</span></> : t ? <span className="dim" title="Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit."> · T1 {inr(t.t1)} · T2 {inr(t.t2)}{t.ref ? ' (ref)' : ''}</span> : null}</p>; })()}
       {v.status === 'skipped' && <p className="small down" style={{ margin: '8px 0 0' }}>{v.skipReason}. No trade was opened, and none is counted.</p>}
     </button>
     {expanded && (isOpen || done) && <div style={{ padding: '0 13px 13px' }}>

@@ -1,5 +1,7 @@
 # Tripwire research beta: report and go / no-go (26 Oct 2026)
 
+> Update 27 Oct: see [LAUNCH_HARDENING.md](LAUNCH_HARDENING.md) for the hardening pass, test evidence and the current go/no-go.
+
 Branch `tripwire-beta`, based on `main` at 1ea9b05. **Not deployed.** Evidence below is from automated checks on a local build. None of it is real-user validation.
 
 ## Verdict

@@ -5,10 +5,11 @@
 import { evaluatePaper, type Bar, type Paper } from './tracker.ts';
 import { ENGINES, type Run } from './quant.ts';
 import { targetsFor } from './exits.ts';
+import { rulesFor } from './rules.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null }
 export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean }
-export interface Day { asOf: string; recorded: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
+export interface Day { asOf: string; recorded: string; /** the eligibility rule version this night was written under; absent on nights written before versions existed (those are elig-1) */ rules?: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
 export interface Ledger { schema: 'tripwire-ledger/1'; started: string; updated: string; cost: number; days: Day[]; picks: LedgerPick[]; outcomes: Record<string, Outcome>;
   /** picks struck from the record, with the reason. A pick is never deleted or edited: it is voided in the open and left out of every total. */
   voided?: Record<string, string> }
@@ -25,7 +26,7 @@ export function record(l: Ledger, runs: readonly Run[], asOf: string, now: strin
   if (l.days.length && asOf < l.days[l.days.length - 1].asOf) return { ledger: l, added: 0, skipped: 'stale data' };
   const picks: LedgerPick[] = runs.flatMap((r) => r.picks.map((p) => ({ id: pickId(asOf, p.engine, p.sym), engine: p.engine, sym: p.sym, asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, score: p.score, rank: p.rank, sector: p.sector ?? null })));
   const engines: Day['engines'] = {}; for (const r of runs) engines[r.id] = { eligible: r.funnel.eligible, passed: r.funnel.passed, picked: r.funnel.picked, skippedWideStop: r.funnel.skippedWideStop };
-  return { ledger: { ...l, updated: now, days: [...l.days, { asOf, recorded: now, engines }], picks: [...l.picks, ...picks] }, added: picks.length, skipped: null };
+  return { ledger: { ...l, updated: now, days: [...l.days, { asOf, recorded: now, rules: runs[0]?.rules ?? rulesFor(asOf), engines }], picks: [...l.picks, ...picks] }, added: picks.length, skipped: null };
 }
 /** Void the picks a correction names. Idempotent; nothing is removed, and the reason is kept beside the pick. */
 export function applyCorrections(l: Ledger, fixes: readonly Correction[]): Ledger {

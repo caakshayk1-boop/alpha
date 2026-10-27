@@ -1,11 +1,13 @@
 /** The live blotter: every open position as one line with its own live P&L, the day's total as a curve, and a risk lens on the book.
  *  Pure, so each figure can be checked by hand. Nothing here predicts: the risk lens says what the last 60 sessions did to THIS book, not what will happen. */
 import type { BookRow } from './book.ts';
-import { styleOf } from './exits.ts';
+import { styleDef, styleOf } from './exits.ts';
 
 export interface Line { id: string; sym: string; engine: string; style: 'short' | 'swing' | 'long'; qty: number; entry: number; last: number; live: boolean; value: number; pnl: number; pct: number | null; r: number | null; dayPnl: number | null;
   /** distance from the last price to the stop and to the open targets, in percent of the last price (stop is negative) */
-  toStop: number | null; toT1: number | null; toT2: number | null; t1Hit: boolean; stop: number; t1: number | null; t2: number | null }
+  toStop: number | null; toT1: number | null; toT2: number | null; t1Hit: boolean; stop: number; t1: number | null; t2: number | null;
+  /** true when t1 and t2 are REFERENCE levels: the pick was filed before profit booking began, so it exits on its stop and time limit only and the two prices are shown for orientation, never traded */
+  ref: boolean }
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const pc = (to: number, from: number) => (from > 0 ? r2(((to - from) / from) * 100) : null);
 
@@ -14,8 +16,9 @@ export function lines(rows: readonly BookRow[]): Line[] {
   for (const { p, v, dayPnl } of rows) {
     if (v.status !== 'open' || v.entry == null || v.mark == null || v.pnl == null) continue;
     const qty = v.ladder ? v.ladder.qtyLeft : p.qty; const stop = v.ladder?.stop ?? p.stop;
+    const sd = styleDef(styleOf(p.horizon)); const risk = v.entry - stop; const refOk = !v.ladder && risk > 0;
     out.push({ id: p.id, sym: p.sym, engine: p.engine, style: styleOf(p.horizon), qty, entry: v.entry, last: v.mark, live: v.markKind === 'live', value: r2(v.mark * qty), pnl: v.pnl, pct: v.pct, r: v.r, dayPnl,
-      toStop: pc(stop, v.mark), toT1: v.ladder && !v.ladder.t1Hit ? pc(v.ladder.t1, v.mark) : null, toT2: v.ladder && !v.ladder.t2Hit ? pc(v.ladder.t2, v.mark) : null, t1Hit: !!v.ladder?.t1Hit, stop, t1: v.ladder?.t1 ?? null, t2: v.ladder?.t2 ?? null });
+      toStop: pc(stop, v.mark), toT1: v.ladder && !v.ladder.t1Hit ? pc(v.ladder.t1, v.mark) : null, toT2: v.ladder && !v.ladder.t2Hit ? pc(v.ladder.t2, v.mark) : null, t1Hit: !!v.ladder?.t1Hit, stop, t1: v.ladder?.t1 ?? (refOk ? r2(v.entry + sd.t1 * risk) : null), t2: v.ladder?.t2 ?? (refOk ? r2(v.entry + sd.t2 * risk) : null), ref: refOk });
   }
   return out;
 }

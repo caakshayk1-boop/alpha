@@ -23,14 +23,8 @@ Waitlist mail secrets; Cloudflare Browser Cache TTL; T09 contact; Telegram secre
 Yahoo is unofficial and can throttle; `/api/breadth` falls back to the close and says so. Breadth uses the published averages, so a name far from its 50-day line is not re-priced (it cannot change class in one session).
 
 
-## Beta decisions that belong to the owner (26 Oct 2026)
-Tripwire did not change any engine rule to make the written spec and the data agree. A rule change alters every percentile rank and the forward record, so each is a versioned decision. Live counts are on the Data screen.
-| # | Disagreement | What the data shows | Options |
-|---|---|---|---|
-| D1 | The spec says the Nifty 500 and no micro caps. The code lets an unpublished size class pass. | 293 of 988 names carry no size class; 266 of them are flagged liquid and eligible. Two of the five Momentum picks on 23 Oct (GCSL, SBC) are among them. | Exclude unpublished size (cuts about 266 names), keep as is and document, or publish a size class for all names. |
-| D2 | The spec says liquid means a 20-session median traded value of at least ₹10 crore. The code uses the screen's liquid flag. | 145 of 960 flagged-liquid names show under ₹10 crore a day (lowest ₹0.7 crore); 4 unflagged names show ₹50 crore or more. The flag's definition is not published. | Publish the flag's definition, or replace it with the written threshold. |
-| D3 | The spec says priced at ₹50 or more. No floor is applied. | 45 flagged-liquid names trade under ₹50. | Apply the floor, or correct the spec. |
-The forward record has one night (23 Oct) and no closed trade; it was written under the current code. If any of D1 to D3 changes, record the version beside the night it takes effect.
+## D1 to D3: resolved by a versioned rule (27 Oct 2026)
+The three gaps between the written spec and the code are closed by `elig-2` (rules.ts), which applies the spec as written from the data day 27 Oct 2026: a published size class that is not micro (D1), traded value of at least ₹10 crore a day (D2), price of at least ₹50 (D3). On the 23 Oct rows the previous version admitted 753 names and `elig-2` admits 459. Nights recorded before 27 Oct (23 and 26 Oct) keep `elig-1` and are never re-run or re-scored; the Signals screen prints the version beside the nights it governs and the Data screen shows the counts. Regression tests: `eligibility.test.ts` (each threshold at its boundary, both versions, GCSL and SBC), `ledgerversion.test.ts` (the ledger is append-only across the cut-over, a night with no version reads as `elig-1`, the same screen gives different picks under the two versions), `universe.test.ts`. Not decided by tuning: the thresholds are the spec's own and were fixed before the counts were read. Known limit: the feed does not say whether its traded-value figure is a 20-session median (the spec) or a mean.
 
 ## D4. Target multiples and ladder is unvalidated
 The T1/T2 ladder (1/2R, 1.5/3R, 2/4R) is chosen, not tested. Review once 30 trades have closed per style. No engine writes short-term picks.

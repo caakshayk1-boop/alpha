@@ -173,3 +173,46 @@ assert before == [(c["a"], c["b"], round(c["beta"], 9)) for c in pr.screen(pp2.C
 nulls = [pr.run(pair_panel(s, False)[0], pair_panel(s, False)[1], True) for s in range(20, 26)]
 assert sum(n["supported"] for n in nulls) <= 1, "independent random walks were 'supported' too often"
 print("pairs: ADF size sane, a planted pair is found, the screen reads no future price, noise is not supported")
+
+# ---- provenance: a run says what it ran on and why it differs from the last run of the same study ----
+import provenance as pv, tempfile, types
+def fakep(T=300, N=4, shift=0.0, extra=0, seed=2):
+    r = np.random.default_rng(seed); C = np.exp(np.cumsum(r.normal(0, 0.01, size=(T + extra, N)), axis=0)) * 100 + shift
+    return types.SimpleNamespace(dates=np.array([np.datetime64("2020-01-01") + np.timedelta64(k, "D") for k in range(T + extra)]), syms=[f"S{k}" for k in range(N)], C=C)
+tmp = pathlib.Path(tempfile.mkdtemp()); code = [pathlib.Path(__file__)]
+m1 = pv.stamp({"when": "t1"}, fakep(), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert m1["changes"][0].startswith("First recorded run") and m1["previous"] is None
+same = pv.stamp({"when": "t2"}, fakep(), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert same["id"] == m1["id"] and "No change" in same["changes"][0], same["changes"]
+grown = pv.stamp({"when": "t3"}, fakep(extra=40), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert grown["id"] != m1["id"] and any("History window moved" in c and "+40 sessions" in c for c in grown["changes"]), grown["changes"]
+assert not any("restated" in c for c in grown["changes"]), "the same closes over a longer window must not read as restated"
+rest = pv.stamp({"when": "t4"}, fakep(extra=40, shift=5.0), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert any("restated old closes" in c for c in rest["changes"]), rest["changes"]
+fewer = fakep(extra=40, shift=5.0); fewer.syms = fewer.syms[:3]; fewer.C = fewer.C[:, :3]
+u = pv.stamp({"when": "t5"}, fewer, tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]; assert any("Universe changed: 0 names added, 1 removed" in c for c in u["changes"]), u["changes"]
+pm = pv.stamp({"when": "t6"}, fewer, tmp / "x.json", "demo", {"cost": 0.30}, code)["run"]; assert any("Parameters changed: cost 0.25 to 0.3" in c for c in pm["changes"]), pm["changes"]
+other = tmp / "other.py"; other.write_text("a=1"); pv.stamp({"when": "t7"}, fewer, tmp / "x.json", "demo2", {}, [other]); other.write_text("a=2")
+cc = pv.stamp({"when": "t8"}, fewer, tmp / "x.json", "demo2", {}, [other])["run"]; assert any("Study code changed: other.py" in c for c in cc["changes"]), cc["changes"]
+print("provenance: first run, no change, history grown, closes restated, universe, parameters and code changes are each named")
+
+# ---- RSI on three timeframes: same numbers as the app's chart code (shared golden vectors), partial periods count to date, a name with no last close has no figure ----
+import json as _json, numpy as _np, pandas as _pd, pathlib as _pl
+from rsi_multi import wilder as _wilder, sheet as _rsi_sheet
+_G = _json.loads((_pl.Path(__file__).parent.parent / "tests" / "fixtures" / "rsi_golden.json").read_text())
+for _k, _g in _G.items():
+    for _a, _b in zip(_wilder(_g["closes"]), _g["rsi"]):
+        assert (_a is None and _b is None) or abs(_a - _b) < 1e-4, (_k, _a, _b)
+_d = _pd.bdate_range("2025-01-01", "2026-10-23"); _rng = _np.random.default_rng(3)
+_C = _np.column_stack([100 * _np.cumprod(1 + _rng.normal(0.0004, 0.015, len(_d))) for _ in range(3)]); _C[-1, 2] = _np.nan
+_s = _rsi_sheet(_d, ["A", "B", "C"], _C, "2026-10-23")
+assert set(_s["rows"]) == {"A", "B"} and all(len(v) == 3 for v in _s["rows"].values()), "a name with no last close is absent, not stale"
+assert all(0 <= x <= 100 for v in _s["rows"].values() for x in v if x is not None)
+_up = _np.column_stack([_np.linspace(10, 50, len(_d))]); _u = _rsi_sheet(_d, ["U"], _up, "x")["rows"]["U"]; assert _u == [100.0, 100.0, 100.0], _u
+_short = _rsi_sheet(_d[-30:], ["S"], _np.linspace(10, 20, 30).reshape(-1, 1) + _np.sin(_np.arange(30)).reshape(-1, 1), "x")["rows"]["S"]
+assert _short[2] is None, "30 sessions hold about two months: no monthly RSI yet, and the sheet says null rather than guessing"
+print("rsi sheet: matches the shared golden vectors; to-date periods; no last close means no figure; too little history is null")
+
+_Cn = _np.vstack([_C, _np.full((1, 3), _np.nan)]); _dn = _pd.bdate_range("2025-01-01", periods=len(_Cn))
+_sn = _rsi_sheet(_dn, ["A", "B", "C"], _Cn, "x"); assert set(_sn["rows"]) == {"A", "B"} and _sn["as_of"] == str(_dn[-2].date()), "a trailing row with no prices is not a session"
+print("rsi sheet: an unfinished trailing session is ignored")

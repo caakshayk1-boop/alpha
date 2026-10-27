@@ -1,22 +1,25 @@
 import { StatusBar } from './statusbar.tsx';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULTS, readSaved, type State } from './store.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
 import { Today } from './screens/today.tsx';
-import { Discover } from './screens/discover.tsx';
-import { Signals } from './screens/signals.tsx';
-import { Desk } from './screens/desk.tsx';
-import { Profile } from './screens/profile.tsx';
-import { Company } from './screens/company.tsx';
-import { Compare } from './screens/compare.tsx';
-import { DataPage } from './screens/Data.tsx';
-import { Live } from './screens/Live.tsx';
-import { Lab } from './screens/Lab.tsx';
-import { Report } from './screens/report.tsx';
+const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ default: m.Discover })));
+const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
+const Desk = lazy(() => import('./screens/desk.tsx').then((m) => ({ default: m.Desk })));
+const Profile = lazy(() => import('./screens/profile.tsx').then((m) => ({ default: m.Profile })));
+const Company = lazy(() => import('./screens/company.tsx').then((m) => ({ default: m.Company })));
+const Compare = lazy(() => import('./screens/compare.tsx').then((m) => ({ default: m.Compare })));
+const DataPage = lazy(() => import('./screens/Data.tsx').then((m) => ({ default: m.DataPage })));
+const Live = lazy(() => import('./screens/Live.tsx').then((m) => ({ default: m.Live })));
+const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
+const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
 import { MacroPage } from './screens/Macro.tsx';
-import { Welcome } from './screens/welcome.tsx';
-import { SearchSheet, PlannerSheet, ThesisSheet, ExplainSheet } from './sheets.tsx';
+const Welcome = lazy(() => import('./screens/welcome.tsx').then((m) => ({ default: m.Welcome })));
+const SearchSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.SearchSheet })));
+const PlannerSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.PlannerSheet })));
+const ThesisSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ThesisSheet })));
+const ExplainSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ExplainSheet })));
 import { freshness } from './fresh.ts';
 import { applyTheme } from './theme.ts';
 import { haptic } from './haptic.ts';
@@ -90,11 +93,13 @@ export function App(): ReactNode {
   const [locked, setLocked] = useState(() => !!lockId());
   useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
+  // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
+  useEffect(() => { const run = () => { void import('./screens/discover.tsx'); void import('./screens/company.tsx'); void import('./screens/signals.tsx'); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; const id = window.setTimeout(run, 500); void w; return () => window.clearTimeout(id); }, []);
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   useEffect(() => { window.scrollTo(0, 0); document.title = `${TABS[ti].label} · Tripwire`; }, [loc.raw, ti]);
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
-  if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Welcome unreadable={health.unreadable} /></UiProvider>;
+  if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
   const head = loc.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   let view: ReactNode;
   if (head === 'c' && loc.path[1]) view = <Company sym={decodeURIComponent(loc.path[1])} />;
@@ -118,16 +123,18 @@ export function App(): ReactNode {
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
-        <div className="view" key={loc.path.slice(0, 2).join('/')}>{view}</div>
+        <div className="view" key={loc.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c } as React.CSSProperties}>
         <span className="pill" style={{ transform: `translate${matchMedia('(min-width:900px)').matches ? 'Y' : 'X'}(${ti * 100}%)` }} aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined}><Icon n={t.id} /><span>{t.label}</span></a>)}
       </nav>
     </div>
+    <Suspense fallback={null}>
     {sheet?.k === 'search' && <SearchSheet onClose={close} />}
     {sheet?.k === 'plan' && <PlannerSheet onClose={close} sym={sheet.sym} entry={sheet.entry} stop={sheet.stop} />}
     {sheet?.k === 'thesis' && <ThesisSheet onClose={close} sym={sheet.sym} id={sheet.id} />}
     {sheet?.k === 'explain' && <ExplainSheet onClose={close} id={sheet.id} />}
+    </Suspense>
   </SheetCtx.Provider></UiProvider>;
 }
