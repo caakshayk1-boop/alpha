@@ -65,3 +65,7 @@ a.nw-head:hover{text-decoration:underline;text-underline-offset:2px}
 .nwp-table td.num{font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:no-preference){.nw-offer,.nw-more>summary::after{transition:background-color .18s,border-color .18s}}
 @media (min-width:700px){.nw-head{font-size:1rem}.nw-row.lead .nw-head{font-size:1.25rem}}
+/* at 200% text the checks row and the archive filters must wrap, not push the page sideways */
+.nw-times{display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0}.nw-times>div{min-width:0}.nw-times dd,.nw-times dt{overflow-wrap:anywhere}
+.nwp-filters label{max-width:100%;min-width:0}.nwp-filters select{max-width:100%;min-width:0}
+.nwp-filters label:has(input[type=search]){flex:1 1 100%}
