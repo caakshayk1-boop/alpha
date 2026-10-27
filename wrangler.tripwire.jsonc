@@ -1,6 +1,6 @@
 {
   // Tripwire: a static PWA plus one read-only Worker route (/api/bars) that serves daily bars and a delayed live price to the paper tracker.
-  // No secrets, no bindings other than the asset store. Address chosen by the owner's go-ahead on 25 Oct 2026. Indexing stays off.
+  // No secrets, no bindings other than the asset store. Address chosen by the owner's go-ahead on 25 Oct 2026. The landing page is indexable since 27 Oct 2026 (robots.txt allows /, keeps /api/ and /data/ out).
   "name": "tripwire",
   "main": "apps/tripwire/worker.js",
   "compatibility_date": "2026-05-01",

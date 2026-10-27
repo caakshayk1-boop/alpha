@@ -83,3 +83,27 @@ export const FACTOR_META: Record<string, { label: string; high: string; low: str
   coil: { label: 'Volatility coil (tight against its own past)', high: 'trading in an unusually tight range', low: 'swinging wider than usual' },
   skew60: { label: 'Skew of daily moves, 60 sessions', high: 'more large drops than large jumps', low: 'more large jumps than large drops' },
 };
+
+/** The shareholding as the provider gives it is six figures that do not simply add up: promoter and public make the whole, institutions are inside public, mutual funds are inside the domestic institutions.
+ *  The nesting is not assumed: it is drawn only for a company whose own figures obey it (promoter + public = 100, foreign + domestic = the institutions total, institutions no more than public,
+ *  mutual funds and insurers no more than domestic institutions). A company that breaks any of those is shown flat with a note that the groups may overlap, never nested on trust. */
+export interface OwnNode { key: string; label: string; pct: number; pp: number | null; def: string; derived?: boolean; children?: OwnNode[] }
+export interface OwnTree { nested: boolean; nodes: OwnNode[]; basis: string }
+export function ownershipTree(i: Inst | null | undefined): OwnTree | null {
+  const flat = holders(i); if (!i || !flat.length) return null;
+  const DEF: Record<string, string> = { promoter: 'the founders or controlling holders, as the company reports them', public: 'everyone who is not a promoter: the institutions below, plus individuals, companies and others',
+    insti: 'foreign and domestic institutions together', fii: 'foreign funds and investors registered in India', dii: 'India-based institutions: mutual funds, insurers, banks and pension funds', mf: 'mutual funds, counted inside domestic institutions', insurance: 'insurers, counted inside domestic institutions', other: 'public holders that are not institutions (public minus institutions), worked out here' };
+  const g = (k: keyof Inst) => (n(i[k]) ? (i[k] as number) : null);
+  const p = g('promoter'), pub = g('publicHold'), fii = g('fii'), dii = g('dii'), ins = g('insti'), mf = g('mf'), insu = g('insurance');
+  const fail: string[] = [];
+  if (p == null || pub == null) fail.push('promoter or public holding is missing'); else if (p + pub > 100.6) fail.push(`promoter and public add to ${(p + pub).toFixed(1)}%`);
+  if (fii == null || dii == null || ins == null) fail.push('the institutions total is missing'); else { if (Math.abs(fii + dii - ins) > 0.1) fail.push('foreign plus domestic institutions do not equal the institutions total'); if (pub != null && ins > pub + 0.1) fail.push('institutions exceed the public holding'); }
+  if (dii != null && ((mf ?? 0) + (insu ?? 0) > dii + 0.1)) fail.push('mutual funds and insurers exceed domestic institutions');
+  if (fail.length || p == null || pub == null || fii == null || dii == null || ins == null) return { nested: false, nodes: flat.map((h) => ({ key: h.key, label: h.label, pct: h.pct, pp: h.pp, def: DEF[h.key] ?? '' })), basis: `Shown as the provider gives them. The groups may overlap and need not add to 100%${fail.length ? ` (${fail[0]})` : ''}.` };
+  const left = 100 - p - pub;
+  const diiKids: OwnNode[] = [...(mf != null ? [{ key: 'mf', label: 'Mutual funds', pct: mf, pp: null, def: DEF.mf }] : []), ...(insu != null ? [{ key: 'insurance', label: 'Insurers', pct: insu, pp: null, def: DEF.insurance }] : [])];
+  const other = pub - ins;
+  const publicKids: OwnNode[] = [{ key: 'insti', label: 'Institutions', pct: ins, pp: n(i.insti_pp) ? i.insti_pp : null, def: DEF.insti, children: [{ key: 'fii', label: 'Foreign institutions (FII)', pct: fii, pp: n(i.fii_pp) ? i.fii_pp : null, def: DEF.fii }, { key: 'dii', label: 'Domestic institutions (DII)', pct: dii, pp: n(i.dii_pp) ? i.dii_pp : null, def: DEF.dii, children: diiKids }] }, ...(other >= 0.05 ? [{ key: 'other', label: 'Other public holders', pct: other, pp: null, def: DEF.other, derived: true }] : [])];
+  const nodes: OwnNode[] = [{ key: 'promoter', label: 'Promoter', pct: p, pp: null, def: DEF.promoter }, { key: 'public', label: 'Public and others', pct: pub, pp: null, def: DEF.public, children: publicKids }, ...(left > 0.6 ? [{ key: 'neither', label: 'In neither group', pct: left, pp: null, def: 'what promoter and public leave out of 100%, worked out here; the provider does not label it', derived: true }] : [])];
+  return { nested: true, nodes, basis: 'Nested because this company’s own figures add up that way: promoter plus public make the whole, foreign plus domestic institutions equal the institutions total, and mutual funds and insurers fit inside domestic institutions. Lines marked "worked out" are subtractions, not reported figures.' };
+}

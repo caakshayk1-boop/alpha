@@ -51,7 +51,9 @@ export const METRICS: Metric[] = [
   { id: 'tech', label: 'Technical score', short: 'TECH', unit: '', dp: 0, hint: '0 to 100, the screen\'s own', presets: [20, 40, 70] },
 ];
 export const metricOf = (id: string) => METRICS.find((m) => m.id === id);
-export interface Cond { m: MetricKey; op: 'gte' | 'lte'; v: number }
+/** One numeric condition. `unk` is the explicit "also include names with no figure" choice: off by default, because a name with no figure is not a match.
+ *  It lets through a MISSING figure only, never one that is not meaningful for the company (a lender's ROCE is undefined, not unknown). */
+export interface Cond { m: MetricKey; op: 'gte' | 'lte'; v: number; unk?: boolean }
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 /** The figure for a row, or null when there is none or it is not meaningful for this company. */
 export function valueOf(r: Row, id: MetricKey): number | null {
@@ -59,20 +61,39 @@ export function valueOf(r: Row, id: MetricKey): number | null {
   if (m?.elig && !meaningful(eligibilityOf(r), m.elig)) return null;
   return v;
 }
-export function applyConds(rows: readonly Row[], conds: readonly Cond[] | undefined): { rows: Row[]; noFigure: number } {
-  if (!conds?.length) return { rows: [...rows], noFigure: 0 };
-  let noFigure = 0; const out: Row[] = [];
+/** What a row has for a figure: a number, "not meaningful for this company" (the eligibility rule), or nothing published. Missing is never zero, and not-meaningful is not missing. */
+export type Figure = { k: 'value'; v: number } | { k: 'na' } | { k: 'missing' };
+export function figureOf(r: Row, id: MetricKey): Figure {
+  const m = metricOf(id);
+  if (m?.elig && !meaningful(eligibilityOf(r), m.elig)) return { k: 'na' };
+  const v = m?.derive ? m.derive(r) : (r as unknown as Record<string, unknown>)[id];
+  return num(v) ? { k: 'value', v } : { k: 'missing' };
+}
+export interface CondResult {
+  rows: Row[];
+  /** names left out because a figure was missing or not meaningful (this count includes the next one) */ noFigure: number;
+  /** of those, names for which the figure is not defined (a financial-sector ratio) */ notApplicable: number;
+  /** names let through only because a condition asked to include names with no figure */ unknownIncluded: number;
+}
+export function applyConds(rows: readonly Row[], conds: readonly Cond[] | undefined): CondResult {
+  if (!conds?.length) return { rows: [...rows], noFigure: 0, notApplicable: 0, unknownIncluded: 0 };
+  let noFigure = 0, notApplicable = 0, unknownIncluded = 0; const out: Row[] = [];
   for (const r of rows) {
-    let ok = true, missing = false;
-    for (const c of conds) { const v = valueOf(r, c.m); if (v === null) { missing = true; ok = false; break; } if (c.op === 'gte' ? v < c.v : v > c.v) { ok = false; break; } }
-    if (ok) out.push(r); else if (missing) noFigure++;
+    let ok = true, missing = false, na = false, viaUnknown = false;
+    for (const c of conds) {
+      const f = figureOf(r, c.m);
+      if (f.k === 'missing') { if (c.unk) { viaUnknown = true; continue; } missing = true; ok = false; break; }
+      if (f.k === 'na') { na = true; ok = false; break; }
+      if (c.op === 'gte' ? f.v < c.v : f.v > c.v) { ok = false; break; }
+    }
+    if (ok) { out.push(r); if (viaUnknown) unknownIncluded++; } else if (missing || na) { noFigure++; if (na) notApplicable++; }
   }
-  return { rows: out, noFigure };
+  return { rows: out, noFigure, notApplicable, unknownIncluded };
 }
 export const fmtMetric = (m: Metric, v: number | null) => (v === null ? '—' : `${m.signed && v > 0 ? '+' : ''}${m.unit === '₹' ? '₹' : ''}${v.toLocaleString('en-IN', { minimumFractionDigits: m.dp, maximumFractionDigits: m.dp })}${m.unit === '₹' ? '' : m.unit}`);
 /** A condition is read back with every digit it was set with (up to two decimals), so "RSI around 47" never reads as a rounded threshold it is not. */
-export const describeCond = (c: Cond) => { const m = metricOf(c.m); if (!m) return ''; const dec = Math.min(2, (String(c.v).split('.')[1] ?? '').length); return `${m.short} ${c.op === 'gte' ? '≥' : '≤'} ${fmtMetric({ ...m, signed: false, dp: Math.max(m.dp, dec) }, c.v)}`; };
-export const sameCond = (a: Cond, b: Cond) => a.m === b.m && a.op === b.op && a.v === b.v;
+export const describeCond = (c: Cond) => { const m = metricOf(c.m); if (!m) return ''; const dec = Math.min(2, (String(c.v).split('.')[1] ?? '').length); return `${m.short} ${c.op === 'gte' ? '≥' : '≤'} ${fmtMetric({ ...m, signed: false, dp: Math.max(m.dp, dec) }, c.v)}${c.unk ? ' or no figure' : ''}`; };
+export const sameCond = (a: Cond, b: Cond) => a.m === b.m && a.op === b.op && a.v === b.v && !!a.unk === !!b.unk;
 
 /** The table view's column sets: each a reading of the screen from one angle. */
 export const COLUMN_SETS: { id: string; label: string; cols: MetricKey[] }[] = [
@@ -82,16 +103,28 @@ export const COLUMN_SETS: { id: string; label: string; cols: MetricKey[] }[] = [
   { id: 'trend', label: 'Trend', cols: ['price', 'dist20', 'dist50', 'dist200', 'from_low', 'from_high', 'r6m', 'r1y'] },
   { id: 'cash', label: 'Cash and holders', cols: ['ebit_margin', 'fcf_margin', 'cfo_pat', 'icover', 'insiders', 'instis', 'sd1y'] },
 ];
-export function sortByMetric(rows: readonly Row[], id: MetricKey | 'name', dir: 'asc' | 'desc'): Row[] {
+/** The one ordering behind both views. Missing figures sort last in either direction; ties fall back to the symbol, always A to Z, so the order is the same on every run
+ *  and in every view. A figure that is not meaningful for the company counts as missing. */
+export type SortId = 'name' | 'sym' | MetricKey;
+const NAMES = new Intl.Collator('en', { sensitivity: 'base' });
+const bySym = (a: Row, b: Row) => (a.sym < b.sym ? -1 : a.sym > b.sym ? 1 : 0);
+export function sortRowsBy(rows: readonly Row[], id: SortId, dir: 'asc' | 'desc'): Row[] {
   const s = dir === 'asc' ? 1 : -1;
+  if (id === 'sym') return [...rows].sort((a, b) => s * bySym(a, b));
+  if (id === 'name') return [...rows].sort((a, b) => s * NAMES.compare(a.name, b.name) || bySym(a, b));
+  const key = new Map<string, number | null>(rows.map((r) => [r.sym, valueOf(r, id)]));
   return [...rows].sort((a, b) => {
-    if (id === 'name') return s * a.sym.localeCompare(b.sym);
-    const x = valueOf(a, id), y = valueOf(b, id);
-    if (x === null && y === null) return a.sym.localeCompare(b.sym);
+    const x = key.get(a.sym) ?? null, y = key.get(b.sym) ?? null;
+    if (x === null && y === null) return bySym(a, b);
     if (x === null) return 1; if (y === null) return -1;          // no figure sorts last in either direction
-    return x === y ? a.sym.localeCompare(b.sym) : s * (x - y);
+    return x === y ? bySym(a, b) : s * (x - y);
   });
 }
+/** Kept for older callers: "name" here has always meant the symbol. */
+export const sortByMetric = (rows: readonly Row[], id: MetricKey | 'name', dir: 'asc' | 'desc'): Row[] => sortRowsBy(rows, id === 'name' ? 'sym' : id, dir);
+/** The direction a figure is read in first: the cheapest, safest and smallest first where lower is better, otherwise the biggest. */
+export const LOWER_FIRST = new Set<SortId>(['name', 'sym', 'pe', 'pb', 'de', 'atr_pct', 'sd1y']);
+export const defaultDir = (id: SortId): 'asc' | 'desc' => (LOWER_FIRST.has(id) ? 'asc' : 'desc');
 const q = (t: string) => (/[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t);
 /** CSV of the current result: symbol, name, sector, then the chosen columns. A missing figure is an empty cell, never a zero. */
 export function toCsv(rows: readonly Row[], cols: readonly MetricKey[]): string {
@@ -119,3 +152,50 @@ export function condsFor(m: MetricKey, mode: RangeMode, a: number, b: number): C
   const [lo, hi] = a <= b ? [a, b] : [b, a]; return [{ m, op: 'gte', v: lo }, { m, op: 'lte', v: hi }];
 }
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
+
+/* ---- what a figure may be set to ---- */
+export interface Limits { min?: number; max?: number; /** why the bound exists, as a sentence about the figure */ why: string }
+const RET: Limits = { min: -100, why: 'A return cannot be below −100%.' }, SCORE: Limits = { min: 0, max: 100, why: 'Scores run from 0 to 100.' }, RSI: Limits = { min: 0, max: 100, why: 'RSI runs from 0 to 100.' }, HOLD: Limits = { min: 0, max: 100, why: 'A holding runs from 0 to 100%.' };
+/** Definitional bounds only: a value outside them is a mistake (RSI 130, a price below zero), not a strict choice. Nothing here is a view on what is sensible. */
+export const LIMITS: Partial<Record<MetricKey, Limits>> = {
+  price: { min: 0, why: 'A price cannot be negative.' }, rsi: RSI, rsi_w: RSI, rsi_m: RSI,
+  from_high: { min: -100, max: 0, why: 'Distance from the 52-week high is zero or below (−5 means within 5% of it) and cannot pass −100%.' }, from_low: { min: 0, why: 'Distance above the 52-week low is zero or more.' },
+  r1d: RET, r1w: RET, r1m: RET, r3m: RET, r6m: RET, r1y: RET,
+  vol_spike: { min: 0, why: 'Volume against its average cannot be negative.' }, turnover_cr: { min: 0, why: 'Traded value cannot be negative.' },
+  pe: { min: 0, why: 'PE is published for profitable companies only, so a negative PE matches no one.' }, pe_pctile: { min: 0, max: 100, why: 'A percentile runs from 0 to 100.' },
+  net_margin: { max: 100, why: 'A margin above 100% means the statement lines do not describe one business.' }, ebit_margin: { max: 100, why: 'A margin above 100% is not meaningful.' },
+  piotroski: { min: 0, max: 9, why: 'The F-score runs from 0 to 9.' }, atr_pct: { min: 0, why: 'A daily range cannot be negative.' }, sd1y: { min: 0, why: 'Volatility cannot be negative.' },
+  insiders: HOLD, instis: HOLD, comp: SCORE, q: SCORE, g: SCORE, v: SCORE, tech: SCORE,
+};
+/** The figure's unit in words, for the line under the number field. */
+export function unitWords(m: Metric): string {
+  const u = m.unit.trim();
+  return u === '%' ? 'in percent, so 5 means 5%' : u === '₹' ? 'in rupees' : u === 'cr' ? 'in rupees crore, so 100 means ₹100 crore' : u === '×' ? 'in times, so 2 means twice' : u === 'pts' ? 'in percentage points against the Nifty' : 'a plain number with no unit';
+}
+/** A typed number, read strictly: a minus sign (also the typographic one), thousands commas and the figure's own unit mark are accepted; everything else is refused, so "1e", "12abc"
+ *  and an empty box are not numbers (Number('') is 0, which would read an empty field as a zero threshold). */
+export function parseNumber(text: string): number | null {
+  const t = text.trim().replace(/[−–]/g, '-').replace(/,/g, '').replace(/^₹\s*/, '').replace(/\s*(%|×|x|cr|pts)$/i, '').trim();
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return null; const v = Number(t); return Number.isFinite(v) && Math.abs(v) <= 1e9 ? v : null;
+}
+export interface RangeCheck { a: number | null; b: number | null; errors: { a?: string; b?: string; range?: string }; ok: boolean }
+/** The sheet's inline messages. `aText` and `bText` are what the two boxes hold. Blocks on: not a number, outside a definitional bound, From above To, a negative margin. */
+export function checkRange(id: MetricKey, mode: RangeMode, aText: string, bText: string): RangeCheck {
+  const m = metricOf(id); const lim = LIMITS[id]; const errors: RangeCheck['errors'] = {};
+  const needB = mode === 'between' || mode === 'around'; const a = parseNumber(aText); const b = needB ? parseNumber(bText) : null;
+  const bound = (v: number) => (lim && ((lim.min !== undefined && v < lim.min) || (lim.max !== undefined && v > lim.max)) ? lim.why : null);
+  if (a === null) errors.a = aText.trim() === '' ? 'Enter a number.' : `“${aText.trim()}” is not a number. Use digits, a minus sign and a decimal point${m ? `; this figure is ${unitWords(m)}` : ''}.`;
+  else { const e = bound(a); if (e) errors.a = e; }
+  if (needB) {
+    if (b === null) errors.b = bText.trim() === '' ? 'Enter a number.' : `“${bText.trim()}” is not a number.`;
+    else if (mode === 'around') { if (b < 0) errors.b = 'The margin is zero or more: it applies on both sides.'; }
+    else { const e = bound(b); if (e) errors.b = e; }
+  }
+  if (mode === 'between' && a !== null && b !== null && !errors.a && !errors.b && a > b) errors.range = `From (${a}) is above To (${b}), so nothing can match. Swap them or change one.`;
+  return { a, b, errors, ok: Object.keys(errors).length === 0 };
+}
+/** How many names have a figure, have none, or are outside the figure's definition: the line that explains an unavailable filter. */
+export function coverage(rows: readonly Row[], id: MetricKey): { have: number; missing: number; na: number; total: number } {
+  let have = 0, missing = 0, na = 0; for (const r of rows) { const f = figureOf(r, id); if (f.k === 'value') have++; else if (f.k === 'na') na++; else missing++; }
+  return { have, missing, na, total: rows.length };
+}

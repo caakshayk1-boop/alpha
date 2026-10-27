@@ -1,132 +1,147 @@
-/** Headlines, cleaned by the Worker and refreshed hourly. Module-level cache so the same query on two screens is one request. */
-import { useCallback, useEffect, useState } from 'react';
-import { marketOpenNow } from './calendar.ts';
-export interface NewsItem { title: string; source: string; url: string; t: number; tags: string[]; also: number; sources: string[] }
-export interface NewsFeed { ok: boolean; fetched_at: string; q: string; items: NewsItem[] }
-/** How often the list is re-read: every 10 minutes while the exchange is open (news that can move a price arrives then), every 30 otherwise. The Worker's own copy is five minutes old at most. */
-export const newsEvery = (nowMs = Date.now()) => (marketOpenNow(nowMs) ? 10 : 30) * 60 * 1000;
-export const MARKET_Q = 'Sensex Nifty today when:1d';      // plain words: Bing returns nothing for an OR query
-/** A search phrase from a company name: the legal suffix goes (it only adds noise), the rest is quoted so the name stays together. */
-export const companyQ = (name: string) => `"${name.replace(/\b(ltd|limited|inc|corp|corporation|pvt|private)\b\.?/gi, '').replace(/[^A-Za-z0-9 &.'\-]/g, ' ').replace(/\s+/g, ' ').trim()}" when:7d`;
+/** News in the browser: ONE store for the published snapshot and its status, hooks for the screens, live queries for names the snapshot does not cover.
+ *
+ *  What the browser does, and does not do:
+ *    - It polls only /api/news/version (a few hundred bytes), once a minute while the tab is visible, not at all while hidden, and again when the tab regains focus. It reads the snapshot itself
+ *      (/api/news) only when the version moved.
+ *    - It never reorders a list under the reader. A screen freezes the list it drew; newer events are offered as "N new updates" and applied on a tap, or the next time the screen is opened.
+ *    - "Refresh now" asks for the newest PUBLISHED check; it cannot make the job run. It is limited to once in 30 seconds here (and by the Worker), reports Checking / Updated / No new stories / Failed,
+ *      and a Retry-After from the server is honoured for every request.
+ *    - Content kept from an earlier visit is readable offline, labelled by the health model (newshealth.ts) as delayed, never as live. */
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { newsHealth, type NewsHealth, type StatusDoc } from './newshealth.ts';
+import { mergePools, newUpdates, todayList, type Lists, type NewsEvent } from './newsview.ts';
+import { companyQuery } from '../news/plan.js';
+import { useScreen } from './data.ts';
 
-const cache = new Map<string, { at: number; data: NewsFeed }>(); const flight = new Map<string, Promise<NewsFeed>>();
-async function load(q: string, force: boolean): Promise<NewsFeed> {
-  const hit = cache.get(q); if (hit && !force && Date.now() - hit.at < newsEvery()) return hit.data;
-  const f = flight.get(q); if (f) return f;
-  const p = (async () => {
-    const r = await fetch(`/api/news?q=${encodeURIComponent(q)}${force ? '&force=1' : ''}`, { signal: AbortSignal.timeout(20000), cache: force ? 'reload' : 'default' }); const d = (await r.json().catch(() => null)) as (NewsFeed & { error?: string }) | null;
-    if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the news service is not available here' : d?.error ?? 'the news source did not answer');
-    cache.set(q, { at: Date.now(), data: d }); return d;
+export const companyQ = (name: string): string => companyQuery(name, 7);
+export interface SourceStatus { id: string; label: string; status: string; queries?: number; ok?: number; failed?: number; skipped?: number; httpStatus?: number | null; error?: string | null; breaker?: { failures: number; openUntil: number | null }; breakerState?: string }
+export interface NewsSnapshot {
+  ok: true; schema: string; snapshotVersion: number; pipelineVersion: string; rankingVersion: string; scheduledAt: string | null; startedAt: string | null; completedAt: string | null; checkedAt: string | null; lastSuccessfulAt: string | null; nextScheduledAt: string | null; cadenceMin: number;
+  status: 'ok' | 'partial' | 'failed'; lastError: string | null; sources: SourceStatus[]; coverage: { feeds: number; answered: number; failed: number; unresolvedNames: string[] }; rejections: Record<string, number>;
+  scopes: { market: string; paper: string[]; covered: string[] }; names: Record<string, string>; events: NewsEvent[];
+}
+export type RefreshState = 'idle' | 'checking' | 'updated' | 'none' | 'failed';
+export interface Refresh { state: RefreshState; message: string; at: number }
+interface Core { doc: StatusDoc | null; snapshot: NewsSnapshot | null; unreachable: boolean; loaded: boolean; remembered: StatusDoc | null; refresh: Refresh; retryUntil: number; polledAt: number }
+
+const KEEP = 'tripwire:newsSnap1';
+const readKept = (): { doc: StatusDoc | null; snapshot: NewsSnapshot | null } => { try { const t = localStorage.getItem(KEEP); if (!t) return { doc: null, snapshot: null }; const o = JSON.parse(t); return o?.snapshot?.schema === 'tripwire-news/1' ? o : { doc: null, snapshot: null }; } catch { return { doc: null, snapshot: null }; } };
+const keep = (doc: StatusDoc | null, snapshot: NewsSnapshot | null) => { try { const t = JSON.stringify({ doc, snapshot }); if (t.length < 900_000) localStorage.setItem(KEEP, t); } catch { /* private mode or full: the page still works, it just cannot show an earlier copy next time */ } };
+const kept = readKept();
+let core: Core = { doc: null, snapshot: kept.snapshot, unreachable: false, loaded: false, remembered: kept.doc, refresh: { state: 'idle', message: '', at: 0 }, retryUntil: 0, polledAt: 0 };
+const subs = new Set<() => void>();
+const set = (p: Partial<Core>) => { core = { ...core, ...p }; subs.forEach((f) => f()); };
+
+async function getJson(url: string, force = false): Promise<{ ok: boolean; status: number; data: any; retryAfterSec: number | null }> {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000), cache: force ? 'reload' : 'default' }); const ra = Number(r.headers.get('retry-after')); let data: any = null; try { data = await r.json(); } catch { /* not JSON */ }
+    const bodyRa = Number(data?.retry_after); const retryAfterSec = Number.isFinite(ra) && ra > 0 ? ra : Number.isFinite(bodyRa) && bodyRa > 0 ? bodyRa : null;
+    return { ok: r.ok, status: r.status, data, retryAfterSec };
+  } catch { return { ok: false, status: 0, data: null, retryAfterSec: null }; }
+}
+const holdFor = (sec: number | null) => { if (sec) core.retryUntil = Math.max(core.retryUntil, Date.now() + Math.min(sec, 3600) * 1000); };
+
+/** Read the version document; when the version moved, read the snapshot too. Returns what happened. */
+export async function pollVersion(force = false): Promise<'changed' | 'same' | 'failed' | 'held'> {
+  if (!force && Date.now() < core.retryUntil) return 'held';
+  const v = await getJson(`/api/news/version${force ? '?force=1' : ''}`, force); holdFor(v.retryAfterSec); core.polledAt = Date.now();
+  if (!v.ok || !v.data) { set({ unreachable: true, loaded: true }); return 'failed'; }
+  if (v.data.ok === false) { if (v.data.reason === 'absent') { set({ doc: null, unreachable: false, loaded: true }); return 'same'; } set({ unreachable: true, loaded: true }); return 'failed'; }
+  const doc = v.data as StatusDoc; const had = core.snapshot?.snapshotVersion;
+  if (had == null || doc.snapshotVersion !== had) {
+    const s = await getJson(`/api/news?v=${doc.snapshotVersion}`, force); holdFor(s.retryAfterSec);
+    if (s.ok && s.data?.ok && s.data.schema === 'tripwire-news/1') { const snap = s.data as NewsSnapshot; set({ doc, snapshot: snap, unreachable: false, loaded: true, remembered: doc }); keep(doc, snap); return 'changed'; }
+    set({ doc, unreachable: false, loaded: true, remembered: doc }); return 'failed';
+  }
+  set({ doc, unreachable: false, loaded: true, remembered: doc }); keep(doc, core.snapshot); return 'same';
+}
+
+let cooldownUntil = 0; let idleTimer = 0;
+const REFRESH_COOLDOWN_MS = 30_000;
+/** "Refresh now". Never faster than once in 30 seconds. Resolves to the outcome so a screen can apply what arrived. */
+export async function refreshNow(): Promise<RefreshState> {
+  const say = (state: RefreshState, message: string) => { set({ refresh: { state, message, at: Date.now() } }); window.clearTimeout(idleTimer); if (state !== 'checking') idleTimer = window.setTimeout(() => set({ refresh: { state: 'idle', message: '', at: Date.now() } }), 9000); return state; };
+  if (core.refresh.state === 'checking') return 'checking';
+  if (Date.now() < cooldownUntil) return say('none', 'No new stories: checked a moment ago');
+  say('checking', 'Checking'); cooldownUntil = Date.now() + REFRESH_COOLDOWN_MS;
+  const r = await pollVersion(true);
+  if (r === 'failed') return say('failed', 'Failed: the news service did not answer. The last saved stories stay on screen.');
+  if (r === 'held') return say('failed', 'Failed: the news service asked to be left alone for a while.');
+  return r === 'changed' ? say('updated', 'Updated') : say('none', 'No new stories');
+}
+
+let timer = 0;
+function ensurePolling() {
+  if (timer) return;
+  const tick = () => { if (document.visibilityState === 'visible') void pollVersion(false); };
+  const onVis = () => { if (document.visibilityState === 'visible' && Date.now() - core.polledAt > 30_000) void pollVersion(false); };
+  timer = window.setInterval(tick, 60_000); document.addEventListener('visibilitychange', onVis); window.addEventListener('focus', onVis);
+  (ensurePolling as any).off = () => { window.clearInterval(timer); timer = 0; document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis); };
+  if (!core.loaded || Date.now() - core.polledAt > 30_000) void pollVersion(false);
+}
+/** One stable subscribe function: React re-subscribes whenever it changes, and a gap with no subscriber would stop the polling timer. */
+const subscribe = (f: () => void) => { subs.add(f); ensurePolling(); return () => { subs.delete(f); if (!subs.size) (ensurePolling as any).off?.(); }; };
+export function useNewsStore(): Core { return useSyncExternalStore(subscribe, () => core, () => core); }
+/** The one health answer for every screen. Re-evaluated every 30 seconds so "delayed" appears without a reload. */
+export function useNewsHealth(): NewsHealth {
+  const c = useNewsStore(); const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(i); }, []);
+  return useMemo(() => newsHealth({ doc: c.doc, unreachable: c.unreachable, remembered: c.remembered, nowMs: now }), [c.doc, c.unreachable, c.remembered, now]);
+}
+
+/* ---------- live queries for names the snapshot does not cover ---------- */
+export interface QueryResult { ok: boolean; checkedAt: string | null; events: NewsEvent[]; error: string | null }
+const qcache = new Map<string, { at: number; r: QueryResult }>(); const qflight = new Map<string, Promise<QueryResult>>(); const QTTL = 5 * 60_000;
+export async function queryNews(name: string, sym: string | null, force = false): Promise<QueryResult> {
+  const key = `${sym ?? ''}|${name}`; const hit = qcache.get(key); if (hit && Date.now() - hit.at < QTTL && !force) return hit.r;
+  const f = qflight.get(key); if (f) return f;
+  const p = (async (): Promise<QueryResult> => {
+    if (!force && Date.now() < core.retryUntil) return hit?.r ?? { ok: false, checkedAt: null, events: [], error: 'asked to wait' };
+    const r = await getJson(`/api/news?q=${encodeURIComponent(companyQ(name))}${sym ? `&sym=${encodeURIComponent(sym)}` : ''}${force ? '&force=1' : ''}`, force); holdFor(r.retryAfterSec);
+    if (r.ok && r.data?.ok && Array.isArray(r.data.events)) { const out = { ok: true, checkedAt: r.data.checkedAt as string, events: r.data.events as NewsEvent[], error: null }; qcache.set(key, { at: Date.now(), r: out }); return out; }
+    return hit?.r ? { ...hit.r, error: r.data?.error ?? 'the news source did not answer' } : { ok: false, checkedAt: null, events: [], error: r.data?.error ?? (r.status === 429 ? 'checked a moment ago' : 'the news source did not answer') };
   })();
-  flight.set(q, p); try { return await p; } finally { flight.delete(q); }
+  qflight.set(key, p); try { return await p; } finally { qflight.delete(key); }
 }
-/** One query, loaded now and again every hour while the page is open and visible. */
-export function useNews(q: string | null) {
-  const [st, set] = useState<{ data: NewsFeed | null; at: number | null; err: string | null; loading: boolean }>({ data: null, at: null, err: null, loading: !!q });
-  const run = useCallback((force: boolean) => {
-    if (!q) return () => {}; let live = true; set((s) => ({ ...s, loading: true }));
-    load(q, force).then((d) => live && set({ data: d, at: cache.get(q)?.at ?? Date.now(), err: null, loading: false })).catch((e: Error) => live && set((s) => ({ ...s, err: e.message || 'unreachable', loading: false })));
-    return () => { live = false; };
-  }, [q]);
-  useEffect(() => {
-    if (!q) { set({ data: null, at: null, err: null, loading: false }); return; }
-    const stop = run(false);
-    const due = () => document.visibilityState === 'visible' && Date.now() - (cache.get(q)?.at ?? 0) >= newsEvery();
-    const i = window.setInterval(() => { if (due()) run(true); }, 60 * 1000);
-    const vis = () => { if (due()) run(true); };
-    document.addEventListener('visibilitychange', vis);
-    return () => { stop(); window.clearInterval(i); document.removeEventListener('visibilitychange', vis); };
-  }, [q, run]);
+/** One company's own stories, through the same pipeline and gates. Used on the company page. */
+export function useNameNews(name: string, sym: string | null) {
+  const [st, setSt] = useState<{ r: QueryResult | null; loading: boolean }>({ r: null, loading: true });
+  const run = useCallback((force: boolean) => { let live = true; setSt((s) => ({ ...s, loading: true })); void queryNews(name, sym, force).then((r) => live && setSt({ r, loading: false })); return () => { live = false; }; }, [name, sym]);
+  useEffect(() => { const stop = run(false); const i = window.setInterval(() => { if (document.visibilityState === 'visible' && Date.now() - (qcache.get(`${sym ?? ''}|${name}`)?.at ?? 0) >= QTTL) run(false); }, 60_000); return () => { stop(); window.clearInterval(i); }; }, [run, name, sym]);
   return { ...st, refresh: () => run(true) };
 }
-export const ago = (sec: number, nowMs = Date.now()) => { const m = Math.max(0, Math.round((nowMs / 1000 - sec) / 60)); return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
-
-export interface Merged extends NewsItem { sym?: string; score: number; /** true when the line passed only the wider test (see decisionNews) */ broad?: boolean }
-const STOP = new Set(['the', 'a', 'an', 'of', 'to', 'in', 'on', 'for', 'and', 'as', 'at', 'by', 'with', 'is', 'are', 'its', 'from', 'after', 'over', 'amid']);
-const words = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
-const same = (a: Set<string>, b: Set<string>) => { if (!a.size || !b.size) return false; let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) >= 0.7; };
-const TAG_WEIGHT: Record<string, number> = { Results: 3, Regulator: 3, Deal: 2, Order: 2, Rating: 1.5, Payout: 1.5, IPO: 1, People: 0.5 };
-/** Pure. Several feeds into one short list: the same story once (by URL, or by most of its words), a story about a name you hold ahead of a general one,
- *  a material tag ahead of none, newer ahead of older. The score is ordering only; it is not shown and says nothing about good or bad news. */
-export function mergeNews(feeds: { sym?: string; items: NewsItem[] }[], limit: number, nowMs = Date.now()): Merged[] {
-  const out: { m: Merged; w: Set<string> }[] = [];
-  for (const f of feeds) for (const it of f.items) {
-    const w = words(it.title); const hit = out.find((o) => o.m.url === it.url || same(o.w, w));
-    const ageH = Math.max(0, (nowMs / 1000 - it.t) / 3600);
-    const score = (f.sym ? 4 : 0) + Math.max(0, ...it.tags.map((t) => TAG_WEIGHT[t] ?? 0)) + Math.min(2, it.also * 0.5) - Math.min(6, ageH / 8);
-    if (hit) { if (f.sym && !hit.m.sym) hit.m.sym = f.sym; hit.m.score = Math.max(hit.m.score, score); if (it.t > hit.m.t) { hit.m.t = it.t; hit.m.title = it.title; hit.m.url = it.url; hit.m.source = it.source; } hit.m.also = Math.max(hit.m.also, it.also + 1); continue; }
-    out.push({ m: { ...it, sym: f.sym, score }, w });
-  }
-  return out.map((o) => o.m).sort((a, b) => b.score - a.score || b.t - a.t).slice(0, limit);
-}
-/** Several queries, each loaded once and refreshed hourly, sharing the module cache with useNews. */
-export function useNewsMany(qs: string[]) {
-  const key = qs.join('\n'); const [st, set] = useState<{ feeds: (NewsFeed | null)[]; at: number | null; loading: boolean; failed: number }>({ feeds: [], at: null, loading: qs.length > 0, failed: 0 });
+function useLiveNames(items: { sym: string; name: string }[]) {
+  const key = items.map((x) => x.sym).join(','); const [st, setSt] = useState<{ key: string; events: NewsEvent[]; loading: boolean; failed: number; checkedAt: string | null }>({ key: '', events: [], loading: items.length > 0, failed: 0, checkedAt: null });
   const run = useCallback((force: boolean) => {
-    const list = key ? key.split('\n') : []; let live = true; if (!list.length) return () => {}; set((s) => ({ ...s, loading: true }));
-    Promise.allSettled(list.map((q) => load(q, force))).then((rs) => { if (live) set({ feeds: rs.map((r) => (r.status === 'fulfilled' ? r.value : null)), at: Date.now(), loading: false, failed: rs.filter((r) => r.status === 'rejected').length }); });
+    if (!items.length) { setSt({ key, events: [], loading: false, failed: 0, checkedAt: null }); return () => {}; } let live = true; setSt((s) => ({ ...s, loading: true }));
+    void Promise.all(items.map((x) => queryNews(x.name, x.sym, force))).then((rs) => live && setSt({ key, events: rs.flatMap((r) => r.events), loading: false, failed: rs.filter((r) => !r.ok).length, checkedAt: rs.map((r) => r.checkedAt).filter(Boolean).sort().pop() ?? null }));
     return () => { live = false; };
-  }, [key]);
-  useEffect(() => {
-    const stop = run(false); const i = window.setInterval(() => { const l = key ? key.split('\n') : []; if (document.visibilityState === 'visible' && l.some((q) => Date.now() - (cache.get(q)?.at ?? 0) >= newsEvery())) run(true); }, 60 * 1000);
-    const vis = () => { if (document.visibilityState === 'visible') run(false); };
-    document.addEventListener('visibilitychange', vis);
-    return () => { stop(); window.clearInterval(i); document.removeEventListener('visibilitychange', vis); };
-  }, [run]);
-  return { ...st, refresh: () => run(true) };
+  }, [key]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const stop = run(false); const i = window.setInterval(() => { if (document.visibilityState === 'visible') run(false); }, 5 * 60_000); return () => { stop(); window.clearInterval(i); }; }, [run]);
+  return { ...st, loading: st.loading || (items.length > 0 && st.key !== key), refresh: () => run(true) };
 }
 
-/** Pure. A company's own feed, cut to what is about THAT company and told once. The headline must name it; and the many outlets that cover one event
- *  (a results night is printed by five) become one line: stories with the same topic tag inside 72 hours are one story, kept as the most
- *  corroborated and then the newest, and the rest are counted ("+4 outlets"), never listed. Untagged stories fold only on shared words. */
-export function companyStories(name: string, items: NewsItem[], limit = 3): NewsItem[] {
-  const core = name.replace(/\b(ltd|limited|inc|corp|corporation|pvt|private|india|industries|the)\b\.?/gi, ' ').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3)[0]?.toLowerCase();
-  const about = items.filter((it) => !core || it.title.toLowerCase().includes(core));
-  const out: { it: NewsItem; w: Set<string>; n: number }[] = [];
-  for (const it of [...about].sort((a, b) => b.t - a.t)) {
-    const w = words(it.title); const tag = it.tags[0];
-    const hit = out.find((o) => (tag && o.it.tags[0] === tag && Math.abs(o.it.t - it.t) < 72 * 3600) || same(o.w, w));
-    if (hit) { hit.n += 1 + it.also; if (it.also > hit.it.also && it.t > hit.it.t - 24 * 3600) { hit.it = { ...it }; hit.w = w; } continue; }
-    out.push({ it: { ...it }, w, n: it.also });
-  }
-  return out.slice(0, limit).map((o) => ({ ...o.it, also: o.n }));
-}
-
-/* ---------- Today: only what could change a decision ---------- */
-const NOISE = /gift nifty|stocks? to (buy|watch|track)|live updates?|market (wrap|live|today|outlook)|top (gainers|losers)|price target|technical (view|outlook)|buy or sell|closing bell|opening bell|ends? (higher|lower|flat)|sensex (today|ends|jumps|falls)|nifty (today|ends)|horoscope|what .* (betting|buyers)|rally before/i;
-const HINGLISH = /\b(ne|ke|ki|ka|ko|par|pehle|baad|tezi|giravat|hai|hain|mein|kya|aaj|share|maari|entry)\b/gi;
-const MACRO = /\b(rbi|sebi|repo rate|rate (cut|hike)|inflation|gdp|budget|tariff|fed|fomc|fii|fpi|crude|brent|rupee|ipo)\b/i;
-/** Pure. The short list for Today. Every line has to be able to change something the reader is holding or following:
- *  - company stories only for the names passed in (held or followed), only from the last 72 hours, only when the headline carries a material tag
- *    (results, regulator, deal, order, rating, payout, people), and ONE line per name: a results story and a "margin guidance" story about the same
- *    night are one event, so the most corroborated wins and the rest are counted as "+N outlets";
- *  - market stories at most two, only from the last day, only when they name a macro driver (RBI, SEBI, rates, crude, tariffs, flows), never a
- *    price-action recap or a "stocks to watch" list;
- *  - promotional and mixed-language headlines are dropped; the same story is never shown twice. */
-export function decisionNews(market: NewsItem[], companies: { sym: string; name: string; items: NewsItem[] }[], nowMs = Date.now(), limit = 5): Merged[] {
-  const clean = (it: NewsItem) => !NOISE.test(it.title) && (it.title.match(HINGLISH) ?? []).length < 2;
-  const hours = (it: NewsItem) => (nowMs / 1000 - it.t) / 3600;
-  const feeds: { sym?: string; items: NewsItem[] }[] = [];
-  for (const c of companies) {
-    const one = companyStories(c.name, c.items.filter(clean).filter((it) => hours(it) <= 72 && it.tags.length > 0), 1);
-    if (one.length) feeds.push({ sym: c.sym, items: one });
-  }
-  const mk = market.filter(clean).filter((it) => hours(it) <= 24 && MACRO.test(it.title)).slice(0, 2);
-  if (mk.length) feeds.push({ items: mk });
-  const strict = mergeNews(feeds, limit, nowMs);
-  if (strict.length >= MIN_LINES) return strict;
-  // A quiet day should not read as "no news": widen the test, and say on each widened line that it passed only the wider one.
-  // Names you hold or follow: their newest story of the last four days even with no material tag. The market: the last 36 hours, any clean headline.
-  const wide: { sym?: string; items: NewsItem[] }[] = [...feeds];
-  const has = new Set(feeds.map((f) => f.sym).filter(Boolean));   // a name that already has its line is not given a second
-  for (const c of companies) { if (has.has(c.sym)) continue; const one = companyStories(c.name, c.items.filter(clean).filter((it) => hours(it) <= 96), 1); if (one.length) wide.push({ sym: c.sym, items: one }); }
-  const mk2 = market.filter(clean).filter((it) => hours(it) <= 36).slice(0, 3); if (mk2.length && !mk.length) wide.push({ items: mk2 });
-  const kept = new Set(strict.map((x) => x.url));
-  return mergeNews(wide, limit, nowMs).map((x) => (kept.has(x.url) ? x : { ...x, broad: true }));
-}
-const MIN_LINES = 4;
-
-/** Which lines are new since the reader last looked: remembered per browser, never sent anywhere. */
+/* ---------- the board: what a screen draws, frozen until the reader asks ---------- */
 const SEEN_KEY = 'tripwire:newsSeen';
-export const newsSeenAt = (): number => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch { return 0; } };
-export const markNewsSeen = (nowSec = Math.floor(Date.now() / 1000)) => { try { localStorage.setItem(SEEN_KEY, String(nowSec)); } catch { /* private mode: every line then reads as seen */ } };
+/** When the reader last looked at the news, per browser, never sent anywhere. 0 means never: nothing is then called new. */
+export const lastVisitSec = (): number => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch { return 0; } };
+export const markVisited = (nowSec = Math.floor(Date.now() / 1000)) => { try { localStorage.setItem(SEEN_KEY, String(nowSec)); } catch { /* private mode: nothing is then new */ } };
+
+export function useNewsBoard(lists: Lists) {
+  const c = useNewsStore(); const scr = useScreen(); const health = useNewsHealth();
+  const covered = useMemo(() => new Set([...(c.snapshot?.scopes.paper ?? []), ...(c.snapshot?.scopes.covered ?? [])]), [c.snapshot]);
+  const settled = c.loaded || !!c.snapshot;   // ask for live names only once we know which ones the snapshot already covers
+  const wanted = useMemo(() => (settled ? [...new Set([...lists.follows, ...lists.paper])].filter((s) => !covered.has(s)).slice(0, 10) : []), [settled, lists.follows.join(), lists.paper.join(), covered]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const nameOf = useMemo(() => new Map((scr.data?.rows ?? []).map((r) => [r.sym, r.name])), [scr.data]);
+  const named = useMemo(() => wanted.filter((s) => nameOf.has(s)).map((s) => ({ sym: s, name: nameOf.get(s) as string })), [wanted, nameOf]);
+  const live = useLiveNames(named);
+  const candidate = useMemo(() => mergePools(c.snapshot?.events ?? [], live.events), [c.snapshot, live.events]);
+  const ready = settled && !live.loading && (wanted.length === 0 || !scr.loading);
+  const [applied, setApplied] = useState<{ pool: NewsEvent[]; at: number } | null>(null); const candRef = useRef(candidate); candRef.current = candidate;
+  useEffect(() => { if (!applied && ready) setApplied({ pool: candidate, at: Date.now() }); }, [ready, applied, candidate]);   // first sight, or the next visit: a new instance starts from the newest data
+  useEffect(() => { if (applied && applied.pool.length === 0 && candidate.length > 0) setApplied({ pool: candidate, at: Date.now() }); }, [applied, candidate]);   // nothing on screen to disturb: show it
+  const apply = useCallback(() => setApplied({ pool: candRef.current, at: Date.now() }), []);
+  const pending = applied ? newUpdates(todayList(applied.pool, 'all', lists, applied.at), todayList(candidate, 'all', lists, Date.now())) : 0;
+  const refresh = useCallback(async () => { const [r] = await Promise.all([refreshNow(), live.refresh()]); if (r !== 'failed' && r !== 'checking') window.setTimeout(apply, 60); return r; }, [live, apply]);
+  return { health, snapshot: c.snapshot, pool: applied?.pool ?? [], at: applied?.at ?? Date.now(), loading: !applied, pending, apply, refresh, refreshState: c.refresh, liveFailed: live.failed, liveChecked: live.checkedAt, hasSnapshot: !!c.snapshot };
+}

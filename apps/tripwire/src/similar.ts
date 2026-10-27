@@ -30,3 +30,15 @@ export function similarTo(sym: string, rows: readonly Row[], n = 5): Like[] {
   }
   return out.sort((a, b) => a.distance - b.distance || (a.row.sym < b.row.sym ? -1 : 1)).slice(0, n);
 }
+
+/** Real peers, kept apart from `similarTo`: the same broad sector and the same size class, liquid names only, listed by value traded a day. It is a grouping, not a ranking of likeness:
+ *  the sector is the data provider's coarse label. A company with no sector or no size class has no such list, and the answer says why rather than listing strangers. */
+export interface SectorPeers { sector: string | null; tier: string | null; list: Row[]; why: string }
+export function sectorPeers(sym: string, rows: readonly Row[], n = 5): SectorPeers | null {
+  const me = rows.find((r) => r.sym === sym); if (!me) return null;
+  const sector = me.sector ?? null, tier = me.tier ?? null;
+  if (!sector) return { sector, tier, list: [], why: 'The data names no sector for this company, so there is no same-sector list.' };
+  if (!tier) return { sector, tier, list: [], why: `No size class is published for this company, so a same-sector list in ${sector} would not be like for like.` };
+  const list = rows.filter((r) => r.sym !== sym && r.sector === sector && r.tier === tier && r.liquid).sort((a, b) => (b.turnover_cr ?? 0) - (a.turnover_cr ?? 0)).slice(0, n);
+  return { sector, tier, list, why: list.length ? '' : `No other liquid ${tier} cap company in ${sector} is in this screen.` };
+}

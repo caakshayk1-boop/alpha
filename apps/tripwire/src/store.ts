@@ -2,8 +2,10 @@
  *  All transitions are pure functions so the journal's history rules, review dates and snapshots can be tested without a browser. */
 import type { Filters } from './screen.ts';
 import type { Paper } from './tracker.ts';
+import type { SeenSnap, SeenChange } from './sincevisit.ts';
 export const VERSION = 1;
-export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null }
+/** `question` is optional and absent from every version written before 27 Oct 2026: an open question the thesis has not answered yet. */
+export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null; question?: string }
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
@@ -13,8 +15,14 @@ export interface State {
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
   /** paper trades taken from engine picks; the tracker replays real bars against them */
   paper: Paper[];
+  /** What the user was last SHOWN for each followed name (bounded, newest last), written only once the module had been on screen. Optional: absent in every state saved before 27 Oct 2026. */
+  seen?: Record<string, SeenSnap[]>;
+  /** Changes that were surfaced and not yet acknowledged, newest first; bounded and aged out. Optional. */
+  inbox?: SeenChange[];
+  /** change id to the time the user dismissed it. Reversible: removing the key restores the item. Optional. */
+  dismissed?: Record<string, string>;
 }
-export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [],
+export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
   prefs: { motion: 'auto', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -119,7 +127,8 @@ export function parseState(text: string): State | null {
     if (!d || typeof d !== 'object' || d.v !== VERSION || !Array.isArray(d.follows) || !Array.isArray(d.entries) || !Array.isArray(d.plans)) return null;
     // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
     return { v: VERSION, follows: d.follows, entries: d.entries, plans: d.plans, compares: Array.isArray(d.compares) ? d.compares : [], screens: Array.isArray(d.screens) ? d.screens : [], snaps: d.snaps && typeof d.snaps === 'object' ? d.snaps : {},
-      onboarded: !!d.onboarded, reviews: Array.isArray(d.reviews) ? d.reviews : [], paper: Array.isArray(d.paper) ? d.paper : [], prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) } };
+      onboarded: !!d.onboarded, reviews: Array.isArray(d.reviews) ? d.reviews : [], paper: Array.isArray(d.paper) ? d.paper : [],
+      seen: d.seen && typeof d.seen === 'object' && !Array.isArray(d.seen) ? d.seen : {}, inbox: Array.isArray(d.inbox) ? d.inbox : [], dismissed: d.dismissed && typeof d.dismissed === 'object' && !Array.isArray(d.dismissed) ? d.dismissed : {}, prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) } };
   } catch { return null; }
 }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
@@ -134,6 +143,9 @@ export function mergeStates(a: State, b: State): State {
     // weekly reviews: one per week, the longer note wins. Since-you-last-looked baselines: the union by day, so a restored device does not lose its history.
     reviews: (() => { const m = new Map((a.reviews ?? []).map((r) => [r.week, r])); for (const r of b.reviews ?? []) { const o = m.get(r.week); if (!o || r.note.length > o.note.length) m.set(r.week, r); } return [...m.values()]; })(),
     snaps: (() => { const out: State['snaps'] = { ...a.snaps }; for (const [sym, list] of Object.entries(b.snaps ?? {})) { const m = new Map((out[sym] ?? []).map((x) => [x.day, x])); for (const x of list) if (!m.has(x.day)) m.set(x.day, x); out[sym] = [...m.values()].sort((p, q) => p.day.localeCompare(q.day)); } return out; })(),
+    seen: (() => { const out: NonNullable<State['seen']> = { ...(a.seen ?? {}) }; for (const [sym, list] of Object.entries(b.seen ?? {})) { const m = new Map((out[sym] ?? []).map((x) => [x.at, x])); for (const x of list) if (!m.has(x.at)) m.set(x.at, x); out[sym] = [...m.values()].sort((p, q) => p.at.localeCompare(q.at)).slice(-5); } return out; })(),
+    inbox: (() => { const m = new Map((a.inbox ?? []).map((c) => [c.id, c])); for (const c of b.inbox ?? []) if (!m.has(c.id)) m.set(c.id, c); return [...m.values()].sort((p, q) => q.curAt.localeCompare(p.curAt)).slice(0, 50); })(),
+    dismissed: { ...(b.dismissed ?? {}), ...(a.dismissed ?? {}) },
     // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
     prefs: JSON.stringify(a.prefs) === JSON.stringify(DEFAULTS.prefs) || JSON.stringify({ ...a.prefs, haptics: true }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
 }

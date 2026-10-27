@@ -50,3 +50,14 @@ test('saved data on the device: nothing is "no data yet"; something unreadable i
   assert.deepEqual(readSaved(null), { state: DEFAULTS, unreadable: false }); assert.equal(readSaved('').unreadable, false);
   assert.equal(readSaved('{"v":7}').unreadable, true); assert.equal(readSaved('garbage{').unreadable, true); assert.equal(readSaved(JSON.stringify(rich())).unreadable, false);
 });
+test('since-your-last-visit state (seen snapshots, unacknowledged changes, dismissals) and a thesis question survive export, import and merge; a backup from before them still imports', async () => {
+  const { recordSeen, dismissChange } = await import('../src/sincevisit.ts');
+  const row = (rsi: number) => ({ sym: 'TCS', name: 'TCS', sector: 'Technology', tier: 'large', price: 100, sma20: 99, sma50: 95, sma200: 90, r3m: 5, rsi, rs3m: 2, from_high: -3, high52: 105, low52: 70, atr_pct: 2, risk_lvl: 'LOW' }) as never;
+  let s = rich(); s = recordSeen(s, [row(65)], '2026-10-20', [], '2026-10-20T10:00:00.000Z', '2026-10-20');
+  const ch = { id: 'TCS|rsi|up70|2026-10-23', sym: 'TCS', kind: 'rsi', title: 'RSI crossed 70', before: 'RSI 65', after: 'RSI 72', basis: 'Screen data', prevDay: '2026-10-20', curDay: '2026-10-23', prevAt: '2026-10-20T10:00:00.000Z', curAt: '2026-10-27T10:00:00.000Z', framing: 'New information to review', entryId: null } as const;
+  s = recordSeen(s, [row(72)], '2026-10-23', [ch], '2026-10-27T10:00:00.000Z', '2026-10-27'); s = dismissChange(s, ch.id, '2026-10-27T10:05:00.000Z');
+  s = { ...s, entries: s.entries.map((e, i) => (i ? e : { ...e, versions: [...e.versions, { ...current(e), at: '2026-10-25T00:00:00Z', question: 'Will margins hold?' }] })) };
+  const back = parseState(exportJson(s))!; assert.deepEqual(back, s); assert.equal(back.seen!.TCS.length, 2);
+  const m = mergeStates({ ...DEFAULTS, onboarded: true }, back); assert.deepEqual(m.seen, s.seen); assert.deepEqual(m.inbox, s.inbox); assert.deepEqual(m.dismissed, s.dismissed); assert.equal(current(m.entries[0]).question, 'Will margins hold?');
+  const old = JSON.parse(exportJson(rich())); delete old.seen; delete old.inbox; delete old.dismissed; const o = parseState(JSON.stringify(old))!; assert.deepEqual(o.seen, {}); assert.equal(o.entries.length, 1);
+});
