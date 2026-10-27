@@ -70,7 +70,7 @@ const grades = scr.rows.reduce((a, r) => { a[String(r.risk_lvl)] = (a[String(r.r
 ok(Object.keys(grades).every((g) => ['LOW', 'MEDIUM', 'HIGH', 'undefined'].includes(g)) && grades.LOW > 0 && grades.MEDIUM > 0 && grades.HIGH > 0, `every risk grade is LOW, MEDIUM or HIGH (${JSON.stringify(grades)})`);
 
 // Discover → follow → compare → research
-await pg.locator('nav.tabs a[href="#/discover"]').click();
+await pg.locator('nav.tabs a[href="#/discover"]').click(); await pg.evaluate(() => { location.hash = '#/discover'; });   // the tab returns to the last Discover screen (the trend-map link above); this journey starts from a fresh one
 await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li'); await pg.locator('.adv summary').click();
 const fs = await pg.evaluate(() => ({ field: parseFloat(getComputedStyle(document.querySelector('input.field')).fontSize), body: parseFloat(getComputedStyle(document.body).fontSize), touch: getComputedStyle(document.querySelector('button')).touchAction, vp: document.querySelector('meta[name=viewport]').content }));
 ok(fs.field >= 16, `text fields are 16px or more, so iPhone Safari does not zoom the page in on focus (${fs.field}px)`);
@@ -99,7 +99,7 @@ await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.getByRo
 ok(/Different rules tried on this device: 1/.test(await text()), 'the same rule again is not a new variant');
 await pg.getByRole('group', { name: 'Stop distance' }).getByRole('button', { name: '5', exact: true }).click(); await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.locator('.verdict .word2').waitFor({ timeout: 60000 });
 ok(/Different rules tried on this device: 2/.test(await text()), 'a changed rule is a second variant and the bar is told'); if (!/tried on this device: 2/.test(await text())) console.log((await text()).match(/Different rules tried[^.]*\./)?.[0]);
-await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
+await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('radio', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
 ok(await pg.getByRole('button', { name: /Remove condition: RSI ≤ 45/ }).count() === 1, 'the Lab takes a condition built with the same sheet as Discover');
 // the Data screen: pipeline health by the calendar, the eligibility version and the three resolved discrepancies, the runs and what changed in them
 await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline health').first().waitFor({ timeout: 15000 });
@@ -112,7 +112,7 @@ ok(!/coming soon/i.test(await text()), 'no service is described as coming soon')
 pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
 await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
-await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'Around' }).click();
+await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('radio', { name: 'Around' }).click();
 await pg.locator('#c-v').fill('47'); await pg.locator('#c-v2').fill('1.5');
 ok(/of \d+ companies match/.test(await pg.locator('p[role=status]').last().innerText()), 'the condition sheet counts the matches live');
 await pg.getByRole('button', { name: 'Add', exact: true }).click();

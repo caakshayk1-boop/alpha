@@ -51,14 +51,13 @@ ok((await pg.locator('.chart-plot path.c-line').count()) === 1 && (await pg.loca
 
 /* Discover table */
 await pg.goto(base + '/#/discover?view=table&rsi=35-70&trend=up'); await pg.waitForSelector('.stbl');
-ok(/RSI/.test(await pg.locator('.c-bar').innerText()) || (await pg.locator('.chip.on-x', { hasText: /RSI/ }).count()) > 0, 'Discover: a link can carry an RSI range, shown as removable conditions');
-await pg.getByRole('button', { name: 'MOMENTUM' }).click().catch(() => {});
+ok((await pg.locator('.chip.on-x', { hasText: /RSI/ }).count()) > 0, 'Discover: a link can carry an RSI range, shown as removable conditions');
 ok(await pg.locator('.stbl th', { hasText: 'RSI MO' }).count() === 1 && await pg.locator('.stbl th', { hasText: 'RSI WK' }).count() === 1, 'Discover: weekly and monthly RSI columns');
 const fb = pg.getByRole('button', { name: /^Filter RSI \(14\), monthly closes$/ }); ok((await fb.count()) === 1, 'Discover: every column heading has its own filter button');
 await fb.click(); await pg.waitForSelector('text=Add a condition');
 ok((await pg.locator('#c-m').inputValue()) === 'rsi_m', 'Discover: the column filter opens on that column');
 await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
-await pg.goto(base + '/#/discover?view=table'); await pg.waitForSelector('.stbl tbody tr'); await pg.waitForSelector('.ldot', { timeout: 15000 });
+await pg.goto(base + '/#/discover?view=table'); await pg.waitForFunction(() => document.querySelectorAll('.stbl tbody tr').length > 20); await pg.waitForSelector('.ldot', { timeout: 15000 }); await pg.waitForTimeout(800);
 ok((await pg.locator('.stbl .ldot').count()) > 3 && /marks a figure worked out at today's live price/.test(await text()), 'Discover: price-derived cells use the live print and are marked, and the page says filters and sorting stay on the close');
 
 /* robots and llms */

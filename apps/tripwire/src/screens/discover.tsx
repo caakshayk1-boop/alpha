@@ -3,7 +3,7 @@ import { go, isQuiet, replaceHash, setState, useAppState, useLoc, wantsRestore }
 import { useScreen } from '../data.ts';
 import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
-import { NO_FILTER, describeFilters, TREND_WORD, isFinancialSector, type Filters, type Row } from '../screen.ts';
+import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
 import { dayWord, initials, inr, pct, tone } from '../fmt.ts';
@@ -85,7 +85,9 @@ export function Discover() {
 
   const toggleSet = <K extends 'trend' | 'quality' | 'momentum' | 'value' | 'sector' | 'tier'>(k: K, v: DiscoverState[K]) => patch({ [k]: st[k] === v ? '' : v } as Partial<DiscoverState>);
   const lensOn = (l: (typeof LENSES)[number]) => (Object.entries(l.f) as [keyof Filters, string][]).every(([k, v]) => (filtersOf(st)[k] ?? '') === v);
-  const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length ? runScreen(rows, { ...DEFAULT_STATE, ...l.f } as DiscoverState).ordered.length : null])) as Record<string, number | null>, [rows]);
+  const [advOpen, setAdvOpen] = useState(false);
+  // the idea cards count their names only once Advanced is open: five filter passes over the screen are not paid on every visit
+  const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length && advOpen ? filterRows(rows, { ...NO_FILTER, ...l.f }).rows.length : null])) as Record<string, number | null>, [rows, advOpen]);
   const applyLens = (l: (typeof LENSES)[number]) => { if (lensOn(l)) patch(Object.fromEntries(Object.keys(l.f).map((k) => [k, ''])) as Partial<DiscoverState>); else patch({ trend: '', momentum: '', value: '', quality: '', ...l.f } as Partial<DiscoverState>); tick(); };
   const togglePick = (sym: string) => { setSt((x) => ({ ...x, pick: x.pick.includes(sym) ? x.pick.filter((s) => s !== sym) : x.pick.length < MAX_PICK ? [...x.pick, sym] : x.pick })); tick(); };
   const blocked = useCallback((m: MetricKey) => (metricOf(m)?.elig && st.sector === FIN ? 'Not defined for the financial sector, and a sector filter is on it: every name here has no figure, so nothing can match.' : null), [st.sector]);
@@ -117,7 +119,7 @@ export function Discover() {
           <optgroup label="Common">{QUICK_SORTS.map((k) => <option key={k} value={k}>{sortName(k)}</option>)}</optgroup>
           <optgroup label="More figures">{METRICS.filter((m) => !QUICK_SORTS.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</optgroup>
         </select>
-        <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })} aria-label={`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}>{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</button>
+        <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
       </div>
       <button className="chip dbtn" onClick={() => setSheet('columns')} aria-haspopup="dialog">Columns</button>
       <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
@@ -130,7 +132,7 @@ export function Discover() {
       {hasAnyFilter(st) && <button className="chip" onClick={clearAll}>Clear all</button>}
     </div>
 
-    <details className="adv">
+    <details className="adv" onToggle={(e) => setAdvOpen(e.currentTarget.open)}>
       <summary>Advanced</summary>
       <div className="advbody">
         <div className="strip lenses" role="group" aria-label="Ideas">{LENSES.map((l) => { const on = lensOn(l); const n = counts[l.id];
