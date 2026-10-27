@@ -123,3 +123,11 @@ test('run.mjs end to end against the fixtures: writes the three files and exits 
   const down = spawnSync('node', ['--experimental-strip-types', '--no-warnings', 'apps/tripwire/news/run.mjs', '--out', out2, '--prev', out2, '--now', '2026-10-27T07:00:00Z', '--paper', 'TCS', '--fixtures', 'apps/tripwire/tests/fixtures/news/down'], { encoding: 'utf8' });
   assert.equal(down.status, 0, down.stderr); const s = JSON.parse(readFileSync(join(out2, 'news-status.json'), 'utf8')); assert.equal(s.status, 'failed'); assert.equal(s.lastSuccessfulAt, '2026-10-27T06:00:00.000Z'); assert.equal(s.checkedAt, '2026-10-27T07:00:00.000Z');
 });
+
+test('contentHash moves when anything a reader sees changes, and not when only the clock moves', async () => {
+  const { contentHash } = await import('../news/snapshot.js');
+  const e = { eventClusterId: 'a', headline: 'H', moreSources: 0, publishedAt: '2026-10-27T01:00:00Z', sources: [{}], summary: { text: 's', provenance: { retrievedAt: 'r1' } }, rank: { reason: 'p1' }, eventType: 'Results', entities: [{ sym: 'X', confidence: 1 }], updatedAt: 'u1', relevanceScore: 0.9, factors: { r: 1 }, fetchedAt: 't1' };
+  const base = contentHash([e]);
+  assert.equal(contentHash([{ ...e, relevanceScore: 0.4, factors: { r: 0 }, fetchedAt: 't2', rank: { reason: 'p2' }, summary: { text: 's', provenance: { retrievedAt: 'r2' } } }]), base, 'time-decayed score, rank reason and fetch times do not count');
+  for (const patch of [{ summary: { text: 'changed' } }, { eventType: 'Update' }, { updatedAt: 'u2' }, { entities: [] }]) assert.notEqual(contentHash([{ ...e, ...patch }]), base, JSON.stringify(patch));
+});

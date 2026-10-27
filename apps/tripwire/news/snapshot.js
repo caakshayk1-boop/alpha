@@ -7,7 +7,9 @@ import { hash } from './urls.js';
 import { cadenceMin, nextCheckMs } from './schedule.js';
 
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
-export const contentHash = (events) => hash(JSON.stringify(events.map((e) => [e.eventClusterId, e.headline, e.moreSources, e.publishedAt, e.sources?.length ?? 0]).sort()));
+/** Everything a reader can see of an event, minus what changes with the clock (the time-decayed score, rank factors and rank reason) or with the fetch (fetchedAt, a summary's retrieval time). A change to any of the rest advances the version. */
+const visible = ({ relevanceScore: _s, factors: _f, rank: _r, fetchedAt: _t, items: _i, members: _m, summary, ...e }) => ({ ...e, summary: summary?.text ?? summary ?? null });
+export const contentHash = (events) => hash(JSON.stringify(events.map(visible).sort((a, b) => (a.eventClusterId < b.eventClusterId ? -1 : 1))));
 
 /** `sources`: [{ id, label, queries, ok, failed, skipped, notModified, httpStatus, error, breaker, validators, accepted }]. `result`: the pipeline's output or null when nothing was fetched. */
 export function assemble({ prev = null, result, sources, scheduledMs, startedMs, completedMs, names = {}, covered = [], paper = [], unresolved = [], note = null }) {

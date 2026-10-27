@@ -49,7 +49,7 @@ export async function pollVersion(force = false): Promise<'changed' | 'same' | '
   if (v.data.ok === false) { if (v.data.reason === 'absent') { set({ doc: null, unreachable: false, loaded: true }); return 'same'; } set({ unreachable: true, loaded: true }); return 'failed'; }
   const doc = v.data as StatusDoc; const had = core.snapshot?.snapshotVersion;
   if (had == null || doc.snapshotVersion !== had) {
-    const s = await getJson('/api/news', force); holdFor(s.retryAfterSec);
+    const s = await getJson(`/api/news?v=${doc.snapshotVersion}`, force); holdFor(s.retryAfterSec);
     if (s.ok && s.data?.ok && s.data.schema === 'tripwire-news/1') { const snap = s.data as NewsSnapshot; set({ doc, snapshot: snap, unreachable: false, loaded: true, remembered: doc }); keep(doc, snap); return 'changed'; }
     set({ doc, unreachable: false, loaded: true, remembered: doc }); return 'failed';
   }

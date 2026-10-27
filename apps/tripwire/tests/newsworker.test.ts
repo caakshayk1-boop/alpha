@@ -47,3 +47,11 @@ test('health reports the published news status, not a probe of Google', async ()
   const h = await (await get('/api/health')).json(); assert.equal(h.news.ok, false); assert.equal(h.news.status, 'failed'); assert.equal(h.news.last_successful_at, 'g'); assert.match(h.news.error, /latest news check failed/);
 });
 test.after(() => { (globalThis as any).fetch = realFetch; });
+
+test('a reader that knows a newer snapshot version is never handed an older cached copy', async () => {
+  reset(); let ver = 4; route({ 'news-browser.json': () => new Response(`{"schema":"tripwire-news/1","events":[],"snapshotVersion":${ver}}`) });
+  assert.equal((await (await get('/api/news')).json()).snapshotVersion, 4);
+  ver = 5; assert.equal((await (await get('/api/news')).json()).snapshotVersion, 4, 'no version asked: the cached copy is fine');
+  assert.equal((await (await get('/api/news?v=5', '2.2.2.2')).json()).snapshotVersion, 5, 'version 5 asked: the stale copy is skipped');
+  assert.equal((await (await get('/api/news?v=5', '3.3.3.3')).json()).snapshotVersion, 5, 'and the refreshed copy is now what is cached');
+});

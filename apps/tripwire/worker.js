@@ -279,11 +279,14 @@ async function forcedTooSoon(request, ctx) {
   return false;
 }
 const tooMany = () => json({ ok: false, error: 'checked a moment ago', retry_after: RL_SECONDS }, 429, { 'retry-after': String(RL_SECONDS), 'cache-control': 'no-store' });
-async function newsFile(which, ctx, force) {
+async function newsFile(which, ctx, force, minVersion = 0) {
   const [file, schema, ttl] = NEWS_FILES[which]; const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_file_v1/${file}`);
   const keep = { 'cache-control': `public, max-age=${Math.min(ttl, 60)}, s-maxage=${ttl}` };
   try {
-    const hit = !force && cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, ...keep } });
+    let hit = !force && cache && await cache.match(key);
+    // A reader that already knows a newer version exists (from the status file) must not be handed an older cached copy.
+    if (hit && minVersion > 0) { const d0 = await hit.clone().json().catch(() => null); if (!(Number(d0?.snapshotVersion) >= minVersion)) hit = null; }
+    if (hit) return new Response(hit.body, { headers: { ...H, ...keep } });
     const r = await fetch(NEWS_BASE + file, { signal: AbortSignal.timeout(12000), headers: { 'cache-control': 'no-cache' } });
     if (r.status === 404) return json({ ok: false, reason: 'absent', error: 'the first news check has not been published yet' }, 200, { 'cache-control': 'public, max-age=30, s-maxage=30' });
     if (!r.ok) { const ra = Number(r.headers.get('retry-after')); return json({ ok: false, reason: 'upstream', status: r.status, error: 'the news snapshot could not be read', ...(Number.isFinite(ra) && ra > 0 ? { retry_after: Math.min(ra, 3600) } : {}) }, 200, { 'cache-control': 'no-store' }); }
@@ -299,7 +302,7 @@ const queryEntity = (q, sym) => { const m = q.match(/"([^"]{2,80})"/); return m 
 const QOK = /^[\p{L}\p{N} .,&'"()\-:+%]{2,110}$/u;
 async function news(url, ctx, request) {
   const q = (url.searchParams.get('q') || '').trim(); const force = url.searchParams.get('force') === '1';
-  if (!q) { if (force && await forcedTooSoon(request, ctx)) return tooMany(); return newsFile('snapshot', ctx, force); }
+  if (!q) { if (force && await forcedTooSoon(request, ctx)) return tooMany(); return newsFile('snapshot', ctx, force, Number(url.searchParams.get('v')) || 0); }
   if (!QOK.test(q)) return json({ ok: false, error: 'give a short search phrase' }, 400);
   const sym = (url.searchParams.get('sym') || '').toUpperCase(); if (sym && !SYM.test(sym)) return json({ ok: false, error: 'not a valid symbol' }, 400);
   const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_q_v2/${encodeURIComponent(q.toLowerCase())}/${sym}`);
