@@ -64,3 +64,13 @@
 @media(max-width:899px){.disc .lenses{display:flex}.disc .lens{width:9.5rem}}
 @media(min-width:900px){.disc .lenses{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.disc .lens{width:auto;min-height:0;padding:8px 12px}.disc .lens .ll{display:none}}
 @media(prefers-reduced-motion:reduce){.disc *{transition:none!important}}
+
+/* the phone-only short basis line */
+.disc .basis .basis-short{display:none}
+/* On a phone the controls are two short rows, not five, so the first result is on the first screen; the long basis sentence is one line and the rest is under Details. */
+@media (max-width:700px){
+  .disc .dsearch{order:0}.disc .dtool > .dbtn{order:1;flex:1 1 0}.disc .dtool > [role=radiogroup]{order:2}.disc .dsort{order:3;flex:1 1 100%}
+  .disc .dtool{gap:6px;margin-bottom:6px}
+  .disc .basis .basis-line{display:none}.disc .basis .basis-short{display:inline}.disc .basis details{display:inline}
+}
+

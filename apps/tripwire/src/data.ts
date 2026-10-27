@@ -78,7 +78,12 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
 
 export interface ChartFeed { ok: boolean; sym: string; t: number[]; c: number[]; n?: (number | null)[] | null; /** open, high, low and volume of each day, null where Yahoo did not print one (never the close in its place) */ o?: (number | null)[] | null; h?: (number | null)[] | null; l?: (number | null)[] | null; v?: (number | null)[] | null }
 /** Every daily close Yahoo holds for a symbol, fetched once; the ranges and the monthly view are cut from it in the browser. */
-export const useChart = (sym: string) => useJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(sym)}`);
+/** A reply that is not a price history ({ ok: false }, a changed shape) is an unavailable chart, never data: reading `.t` of it crashed the whole company page. */
+export const hasHistory = (d: unknown): d is ChartFeed => !!d && Array.isArray((d as ChartFeed).t) && Array.isArray((d as ChartFeed).c);
+export function useChart(sym: string): Loaded<ChartFeed> {
+  const f = useJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(sym)}`);
+  return f.data && !hasHistory(f.data) ? { ...f, data: null, err: f.err ?? 'The price history could not be read right now.' } : f;
+}
 
 export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger }
 export const useLedger = () => useJson<LedgerFeed>('/api/ledger');

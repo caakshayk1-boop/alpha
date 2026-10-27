@@ -192,3 +192,31 @@ test('diversity: at most two events per company in the default five, a major eve
 test('sources: tiers are by publisher name and by host; an official host outranks a name', () => {
   assert.equal(sourceTier('Reuters', 'reuters.com').tier, 'wire'); assert.equal(sourceTier('Mint', 'livemint.com').tier, 'major'); assert.equal(sourceTier('Univest', 'univest.in').tier, 'aggregator'); assert.equal(sourceTier('NSE India', 'nsearchives.nseindia.com').tier, 'official'); assert.equal(sourceTier('Some Blog', 'blog.example.com').tier, 'unknown');
 });
+
+test('entities: real wrong matches of the first live snapshot stay wrong (ITC tax credit, SBI Life, a shared first word)', () => {
+  const R = buildRegistry([
+    { sym: 'ITC', name: 'ITC Ltd.', aliases: ['ITC'] }, { sym: 'SBIN', name: 'State Bank of India', aliases: ['SBI'] }, { sym: 'SBILIFE', name: 'SBI Life Insurance Company Ltd.' },
+    { sym: 'BAJFINANCE', name: 'Bajaj Finance Ltd.' }, { sym: 'ICICIBANK', name: 'ICICI Bank Ltd.' }, { sym: 'KOTAKBANK', name: 'Kotak Mahindra Bank Ltd.', aliases: ['Kotak Mahindra Bank'] },
+    { sym: 'TORNTPHARM', name: 'Torrent Pharmaceuticals Ltd.' }, { sym: 'RELIANCE', name: 'Reliance Industries Ltd.', aliases: ['Reliance'] }, { sym: 'NYKAA', name: 'FSN E-Commerce Ventures Ltd.', aliases: ['Nykaa'] },
+  ]);
+  const s = (h: string) => matchEntities(h, R).map((m) => m.sym);
+  // not the company
+  assert.ok(!s('GSTAT Prayagraj Quashes GST Demand, Rules GSTR-3B & 2A Mismatch Alone Can\'t Justify ITC Reversal').includes('ITC'), 'ITC beside GST words is the input tax credit');
+  assert.ok(!s('Capital Goods ITC Refund Over 60 Months').includes('ITC'));
+  assert.ok(!s('ITC Hotels Q2 Results: Net Profit Jumps 51%').includes('ITC'), 'ITC Hotels is its own company');
+  assert.ok(!s('SBI Life Insurance Q2 Net Profit Jumps 11% to Rs 549 Cr').includes('SBIN'), 'SBI Life is not the bank');
+  assert.deepEqual(s('SBI Life Insurance Q2 Net Profit Jumps 11% to Rs 549 Cr'), ['SBILIFE']);
+  assert.ok(!s('Bajaj Electricals Revises Q2FY27 Earnings Call Details').includes('BAJFINANCE'));
+  assert.ok(!s("Here's why Kotak Neo recommends 'Buy' rating on ICICI Bank").includes('KOTAKBANK'));
+  assert.ok(!s('Buy Adani Energy Solutions: target of Rs 1600: ICICI Securities').includes('ICICIBANK'));
+  // still the company
+  assert.ok(s('ITC shares fall 3% after a GST input tax credit ruling').includes('ITC'), 'a corporate word beside the mention makes it the company');
+  assert.ok(s('Shares of ITC slip as GST council meets').includes('ITC'));
+  assert.ok(s('ITC Ltd: cigarettes volume up; separately a GST council meeting is due on a distant date next week').includes('ITC'), 'the veto is scoped to the mention, not the headline');
+  assert.ok(s('ITC Q2 profit rises 4% as cigarettes volumes recover').includes('ITC'));
+  assert.ok(s('Valmet to supply BCTMP line to ITC in India').includes('ITC'));
+  assert.ok(s('Latest FD interest rates: ICICI Bank, Indian Bank, SBI and HDFC Bank').includes('SBIN'));
+  assert.ok(s('Reliance shares decline ahead of Jio Platforms IPO listing').includes('RELIANCE'));
+  assert.ok(s('Torrent Pharma Q2 FY27: India, Brazil, US or Germany').includes('TORNTPHARM'), 'the rest of the company\'s own name may follow');
+  assert.ok(s('Nykaa Q2 FY2027 Earnings Call Scheduled for November 4').includes('NYKAA'));
+});

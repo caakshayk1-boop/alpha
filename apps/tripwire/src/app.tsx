@@ -1,5 +1,5 @@
 import { StatusBar } from './statusbar.tsx';
-import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, lazy, createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULTS, readSaved, type State } from './store.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
@@ -86,6 +86,8 @@ const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' 
 export function App(): ReactNode {
   const s = useAppState();
   const loc = useLoc();
+  /** The screen follows the address one render later, so a tap on a tab keeps the last screen until the next one has arrived: no blank frame, no spinner. The tab bar uses `loc` and answers at once. */
+  const vl = useDeferredValue(loc);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const screen = useScreen();
@@ -114,7 +116,7 @@ export function App(): ReactNode {
   useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
   // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
-  useEffect(() => { const run = () => { void import('./screens/discover.tsx'); void import('./screens/company.tsx'); void import('./screens/signals.tsx'); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; const id = window.setTimeout(run, 500); void w; return () => window.clearTimeout(id); }, []);
+  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/profile.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
   const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
@@ -122,12 +124,13 @@ export function App(): ReactNode {
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
   if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
-  const head = loc.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
+  const vtab = tabOf(vl.path);
+  const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   let view: ReactNode;
-  if (head === 'c' && loc.path[1]) view = <Company sym={decodeURIComponent(loc.path[1])} />;
-  else if (head === 'm' && loc.path[1]) view = <MacroPage k={decodeURIComponent(loc.path[1]).toUpperCase()} />;
-  else if (head === 'compare') view = <Compare syms={(loc.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
-  else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
+  if (head === 'c' && vl.path[1]) view = <Company sym={decodeURIComponent(vl.path[1])} />;
+  else if (head === 'm' && vl.path[1]) view = <MacroPage k={decodeURIComponent(vl.path[1]).toUpperCase()} />;
+  else if (head === 'compare') view = <Compare syms={(vl.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
+  else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
   else if (head === 'help') view = <Help />;
@@ -136,10 +139,10 @@ export function App(): ReactNode {
   else if (head === 'news') view = <NewsPage />;
   else if (head === 'markets') view = <Markets />;
   else if (head === 'lab') view = <Lab />;
-  else if (tab === 'discover') view = <Discover />;
-  else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'picks'} />;
-  else if (tab === 'desk') view = <Desk seg={loc.q.get('v') ?? 'follow'} />;
-  else if (tab === 'profile') view = <Profile />;
+  else if (vtab === 'discover') view = <Discover />;
+  else if (vtab === 'signals') view = <Signals seg={vl.q.get('v') ?? 'picks'} />;
+  else if (vtab === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
+  else if (vtab === 'profile') view = <Profile />;
   else view = <Today />;
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
@@ -150,7 +153,7 @@ export function App(): ReactNode {
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
-        <div className="view" key={loc.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
+        <div className="view" key={vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c } as React.CSSProperties}>
         <span className="pill" style={{ transform: `translate${matchMedia('(min-width:900px)').matches ? 'Y' : 'X'}(${ti * 100}%)` }} aria-hidden="true" />
