@@ -10,6 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { cadenceMin, nextCheckMs, shouldRun, delayAfterMin } from '../news/schedule.js';
 import { backoffMs, breakerAllow, breakerRecord, breakerState, fetchPolicy, retryAfterMs } from '../news/fetcher.js';
 import { runJob } from '../news/job.js';
+import { ALIASES } from '../news/aliases.js';
 import { buildNames, queryPlan, companyQuery, BOUNDS } from '../news/plan.js';
 
 const Z = (s: string) => Date.parse(s);
@@ -17,7 +18,7 @@ const dir = (n: string) => new URL(`./fixtures/news/${n}/`, import.meta.url);
 const routesFetch = (name: string) => { const routes = JSON.parse(readFileSync(new URL('routes.json', dir(name)), 'utf8')); return async (url: string) => {
   const r = routes.find((x: { match: string }) => new RegExp(x.match).test(decodeURIComponent(url))); if (!r) return new Response('', { status: 404 }); if (r.throw) throw Object.assign(new Error(r.throw), { name: 'TimeoutError' });
   return new Response(r.file ? readFileSync(new URL(r.file, dir(name)), 'utf8') : '', { status: r.status ?? 200, headers: r.headers ?? {} }); }; };
-const inputs = { ledger: { picks: [{ sym: 'TCS' }] }, covered: JSON.parse(readFileSync(new URL('../news/covered.json', import.meta.url), 'utf8')), aliases: JSON.parse(readFileSync(new URL('../news/aliases.json', import.meta.url), 'utf8')), universe: [] };
+const inputs = { ledger: { picks: [{ sym: 'TCS' }] }, covered: JSON.parse(readFileSync(new URL('../news/covered.json', import.meta.url), 'utf8')), aliases: { aliases: ALIASES }, universe: [] };
 const nosleep = async () => {};
 
 test('cadence: 15 minutes while the NSE session is on, 30 otherwise, by the calendar', () => {

@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } fr
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runJob } from './job.js';
+import { ALIASES } from './aliases.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const arg = (k, d = null) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] ?? true : d; };
@@ -30,7 +31,7 @@ let universe = [];
 if (arg('--universe')) universe = readJson(arg('--universe'), { rows: [] }).rows ?? [];
 else if (!fixtures && process.env.NEWS_UNIVERSE_URL) { try { const r = await fetch(process.env.NEWS_UNIVERSE_URL, { signal: AbortSignal.timeout(15000) }); if (r.ok) universe = (await r.json()).rows ?? []; } catch { /* the covered list and the aliases carry the names; unresolved ones are reported */ } }
 const ledger = readJson(join(HERE, '..', 'ledger', 'ledger.json'), { picks: [] }); if (arg('--paper')) ledger.picks = [...ledger.picks, ...String(arg('--paper')).split(',').map((sym) => ({ sym }))];   // extra paper-book names, for the offline demo
-const inputs = { ledger, covered: readJson(join(HERE, 'covered.json'), { names: [] }), aliases: readJson(join(HERE, 'aliases.json'), { aliases: {} }), universe };
+const inputs = { ledger, covered: readJson(join(HERE, 'covered.json'), { names: [] }), aliases: { aliases: ALIASES }, universe };
 
 let res;
 try { res = await runJob({ nowMs, fetchImpl, prev, inputs, force: has('--force') || !!fixtures, sleep: fixtures ? async () => {} : undefined, random: fixtures ? () => 0.5 : undefined }); }

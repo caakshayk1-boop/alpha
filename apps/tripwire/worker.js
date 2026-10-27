@@ -8,6 +8,7 @@ import { runPipeline, compactEvent } from './news/pipeline.js';
 import { buildRegistry } from './news/entities.js';
 import { parseFeed } from './news/feed.js';
 import { FEEDS, QUERY_SCHEMA } from './news/config.js';
+import { ALIASES } from './news/aliases.js';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
 const MAX = 30;                              // symbols a call may ask for (list quotes, the paper books): one Yahoo call each, cached 60 s (quotes) or 5 min (bars)
 const MAX_QUOTES = MAX;
@@ -294,7 +295,7 @@ async function newsFile(which, ctx, force) {
   } catch { return json({ ok: false, reason: 'upstream', error: 'the news snapshot could not be read' }, 200, { 'cache-control': 'no-store' }); }
 }
 /** The company a live query is about: the quoted phrase of `"Name" when:7d`. A query with no quoted name is a market query: no company, only India-wide events pass. */
-const queryEntity = (q, sym) => { const m = q.match(/"([^"]{2,80})"/); return m ? [{ sym: sym || null, name: m[1] }] : []; };
+const queryEntity = (q, sym) => { const m = q.match(/"([^"]{2,80})"/); return m ? [{ sym: sym || null, name: m[1], aliases: ALIASES[sym] ?? [] }] : []; };
 const QOK = /^[\p{L}\p{N} .,&'"()\-:+%]{2,110}$/u;
 async function news(url, ctx, request) {
   const q = (url.searchParams.get('q') || '').trim(); const force = url.searchParams.get('force') === '1';

@@ -1,6 +1,6 @@
 {
  "schema": "tripwire-news-covered/1",
- "note": "Names the news job covers besides the paper book: the 40 most-traded large and mid caps of the 26 Oct 2026 screen, plus every symbol in the ledger that day. Aliases are in aliases.json. A new paper-book name that is not here is resolved from the published universe when the job can read it, else reported as unresolved.",
+ "note": "Names the news job covers besides the paper book: the 40 most-traded large and mid caps of the 26 Oct 2026 screen, plus every symbol in the ledger that day. Aliases are in aliases.js. A new paper-book name that is not here is resolved from the published universe when the job can read it, else reported as unresolved.",
  "built": "2026-10-27",
  "names": [
   {

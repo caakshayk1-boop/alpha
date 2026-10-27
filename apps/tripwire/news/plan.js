@@ -7,7 +7,7 @@ const LEGAL = /\b(ltd|limited|inc|corp|corporation|pvt|private)\b\.?/gi;
 /** A search phrase from a company name: the legal suffix goes, the rest is quoted so the name stays together. */
 export const companyQuery = (name, days = 7) => `"${String(name).replace(LEGAL, '').replace(/[^A-Za-z0-9 &.'\-]/g, ' ').replace(/\s+/g, ' ').trim()}" when:${days}d`;
 
-/** Entities for the registry. `ledger`: parsed ledger.json (picks with `sym`). `covered`: parsed covered.json. `aliases`: parsed aliases.json. `universe`: optional rows [sym, sector, name, ...] from the published universe.
+/** Entities for the registry. `ledger`: parsed ledger.json (picks with `sym`). `covered`: parsed covered.json. `aliases`: parsed aliases.js. `universe`: optional rows [sym, sector, name, ...] from the published universe.
  *  A paper-book symbol with no name anywhere is reported as unresolved, not guessed. */
 export function buildNames({ ledger, covered, aliases, universe = [] }) {
   const nameOf = new Map(); for (const r of universe) if (r?.[0] && r?.[2]) nameOf.set(r[0], r[2]); for (const c of covered?.names ?? []) nameOf.set(c.sym, c.name);
