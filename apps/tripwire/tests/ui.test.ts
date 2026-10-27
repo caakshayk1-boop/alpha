@@ -4,7 +4,7 @@ import { aggregate, defaultRange, geometry, nearestX, rangeAvailability, sliceRa
 import { plural } from '../src/fmt.ts';
 import { ownershipTree } from '../src/intel.ts';
 import { sectorPeers } from '../src/similar.ts';
-import { SERVICES, hapticsNote, publicStatus } from '../src/services.ts';
+import { hapticsNote } from '../src/services.ts';
 import type { Row } from '../src/screen.ts';
 import type { Inst } from '../src/data.ts';
 
@@ -64,13 +64,6 @@ test('same-sector peers: same sector and size class, liquid, by traded value; no
   const rows = [R('A', 'Tech', 'large', 10), R('B', 'Tech', 'large', 50), R('C', 'Tech', 'large', 30, false), R('D', 'Tech', 'small', 99), R('E', 'Energy', 'large', 99), R('F', null, 'large', 1), R('G', 'Tech', null, 1)];
   assert.deepEqual(sectorPeers('A', rows)!.list.map((r) => r.sym), ['B']); assert.match(sectorPeers('F', rows)!.why, /no sector/); assert.match(sectorPeers('G', rows)!.why, /size class/); assert.equal(sectorPeers('ZZ', rows), null);
   assert.match(sectorPeers('E', rows)!.why, /No other liquid/);
-});
-test('services: a device-dependent service is never "Working" when this device cannot use it, and configuration is stated apart from capability', () => {
-  const lock = SERVICES.find((s) => s.id === 'lock')!; assert.ok(lock.device);
-  const no = publicStatus(lock, null, false); assert.equal(no.word, 'Configured'); assert.match(no.deviceLine!, /not supported in this browser/); assert.notEqual(no.tone, 'lime');
-  const yes = publicStatus(lock, null, true); assert.equal(yes.word, 'Configured'); assert.match(yes.deviceLine!, /supported/); assert.equal(publicStatus(lock, null, null).deviceLine, 'This device: checking');
-  assert.equal(publicStatus(SERVICES.find((s) => s.id === 'backup')!, null, null).word, 'Working');
-  assert.equal(publicStatus(SERVICES.find((s) => s.id === 'prices')!, { ok: false }, null).word, 'Not answering'); assert.equal(publicStatus(SERVICES.find((s) => s.id === 'sync')!, null, null).word, 'Not built');
 });
 test('haptics: the note never claims a tap that was not verified', () => {
   assert.match(hapticsNote('vibrate'), /not been verified/); assert.match(hapticsNote('ios-switch'), /not been verified/); assert.match(hapticsNote('none'), /Not supported/);

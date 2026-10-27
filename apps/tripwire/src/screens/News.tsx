@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { lastVisitSec, markVisited, useNameNews, useNewsBoard, type RefreshState } from '../news.ts';
 import { isNewStory, plural, storyTime, type NewsHealth } from '../newshealth.ts';
 import { fmtIst } from '../stamp.ts';
+import { checkedLabel } from '../timelabels.ts';
 import { entityLine, inTab, labelsOf, safeHref, tabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
 import { RANKING_VERSION, PIPELINE_VERSION, TIERS, WEIGHTS, HALF_LIFE_H, TODAY_WINDOW_H, DIVERSITY, CADENCE, DELAY_AFTER, MAX_AGE_DAYS } from '../../news/config.js';
 import { EVENT_TYPES, SIGNIFICANCE } from '../../news/events.js';
@@ -12,7 +13,7 @@ const FLAG_WORD: Record<string, string> = { date_unknown: 'Publication time unkn
 /** One line saying how current the news is, in the one vocabulary (newshealth.ts). */
 export function NewsHealthLine({ h, full }: { h: NewsHealth; full?: boolean }) {
   return <div className={`nw-health ${h.state}`} role="status"><span className="nw-state"><span className="nw-dot" aria-hidden="true" />{h.word}</span><span className="nw-hline">{h.line}</span>
-    {full && <dl className="nw-times"><div><dt>Last successful check</dt><dd>{h.lastGood ?? 'none yet'}</dd></div><div><dt>Latest check</dt><dd>{h.checked ?? 'none yet'}</dd></div><div><dt>Next check due</dt><dd>{h.state === 'unavailable' ? 'unknown' : h.next ?? 'unknown'}</dd></div></dl>}</div>;
+    {full && <dl className="nw-times"><div><dt>Last successful check</dt><dd>{h.lastGood ?? 'none yet'}</dd></div>{h.onDemand && <div><dt>Refreshed on demand</dt><dd>{h.onDemand}</dd></div>}<div><dt>Latest check</dt><dd>{h.checked ?? 'none yet'}</dd></div><div><dt>Next check due</dt><dd>{h.state === 'unavailable' ? 'unknown' : h.next ?? 'unknown'}</dd></div></dl>}</div>;
 }
 const REFRESH_LABEL: Record<RefreshState, string> = { idle: 'Check for updates', checking: 'Checking…', updated: 'Updated', none: 'No new stories', failed: 'Failed, try again' };
 export function RefreshControl({ state, message, onClick }: { state: RefreshState; message: string; onClick: () => void }) {
@@ -104,7 +105,7 @@ export function CompanyNews({ name, sym }: { name: string; sym?: string }) {
     {n.loading && !h ? <div style={{ padding: '12px 0' }}><div className="sk" style={{ height: 14, width: '90%', marginBottom: 8 }} /><div className="sk" style={{ height: 14, width: '70%' }} /></div>
       : h?.ok ? (events.length ? <ul className="nw-list">{events.map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={0} nowMs={now} />)}</ul> : <div className="nw-empty"><b>No verified update in the last 7 days.</b><p>Nothing that names this company and reports an event passed the filters.</p></div>)
         : <p className="small down" style={{ margin: '12px 0 0' }}>News could not be loaded ({h?.error ?? 'no answer'}). Nothing is shown in its place.</p>}
-    <div className="nw-foot"><span className="small mute">{h?.checkedAt ? `Checked ${fmtIst(Date.parse(h.checkedAt) / 1000, now)}${h.ok ? '' : ' (last good copy)'}` : 'Not checked yet'}</span><button className="btn sm" onClick={n.refresh} disabled={n.loading}>{n.loading ? 'Checking…' : 'Check now'}</button></div>
+    <div className="nw-foot"><span className="small mute">{checkedLabel(h?.checkedAt, now, { ok: h ? h.ok : true })}</span><button className="btn sm" onClick={n.refresh} disabled={n.loading}>{n.loading ? 'Checking…' : 'Check now'}</button></div>
     <p className="mute small" style={{ margin: '6px 0 0' }}>Stories are admitted only if they name this company and report an event. <a href="#/news" style={{ textDecoration: 'underline' }}>How news is chosen</a></p></div>;
 }
 export { inTab };

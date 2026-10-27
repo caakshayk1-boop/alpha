@@ -109,9 +109,9 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const today = (await pg.locator('.nw-hline').first().innerText()).trim(); const state = await pg.locator('.nw-state').first().innerText();
   ok(/Delayed/.test(state) && /^News delayed - last successful check \d\d:\d\d IST/.test(today) && /latest check failed \(HTTP 503\)/.test(today), `failed latest check: "${today}"`);
   ok(await rows(pg).count() > 0 && !/Fresh/.test(state), 'cached stories stay readable, and are not called fresh or live');
-  await pg.goto(base + '/#/profile'); await pg.waitForSelector('details.ev summary', { timeout: 15000 }); const sum = pg.locator('details.ev summary', { hasText: /News/ }).first(); await sum.click(); await pg.waitForTimeout(300);
+  await pg.goto(base + '/#/ops'); await pg.waitForSelector('details.ev summary', { timeout: 15000 }); const sum = pg.locator('details.ev summary', { hasText: /News/ }).first(); await sum.click(); await pg.waitForTimeout(300);
   const prof = await sum.locator('xpath=..').innerText(); const line = prof.match(/Right now:\s*([^\n]+)/)?.[1]?.trim() ?? '';
-  ok(line === today && /Delayed/i.test(prof), `Profile says the same thing as Today: "${line}"`);
+  ok(line === today && /Delayed/i.test(prof), `Operations says the same thing as Today: "${line}"`);
   ok(!/HTTP 503\)\./.test(prof.replace(today, '')) || true, 'one model'); await ctx.close();
 }
 

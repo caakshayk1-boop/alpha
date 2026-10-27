@@ -25,7 +25,7 @@ export function Markets() {
       <MacroStrip />
     </div><div className="col">
       {scr.loading && <Loading what="the trend map" />}
-      {scr.data && <><Head aside={<span className="small mute">{t.liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · <Ago at={t.breadth.at} /></> : t.liveMap ? <>last prices · <Ago at={t.breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
+      {scr.data && <><Head aside={<span className="small mute">{t.liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · fetched <Ago at={t.breadth.at} /></> : t.liveMap ? <>last prices · fetched <Ago at={t.breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
         <TrendMap rows={rows} day={day} map={t.map} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} repriced={t.liveMap ? t.liveMap.repriced : null} err={!!t.breadth.err} /></>}
     </div></div>
   </div>;

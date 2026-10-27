@@ -22,13 +22,15 @@ export interface NewsSnapshot {
 }
 export type RefreshState = 'idle' | 'checking' | 'updated' | 'none' | 'failed';
 export interface Refresh { state: RefreshState; message: string; at: number }
-interface Core { doc: StatusDoc | null; snapshot: NewsSnapshot | null; unreachable: boolean; loaded: boolean; remembered: StatusDoc | null; refresh: Refresh; retryUntil: number; polledAt: number }
+/** What the Worker produced when the scheduled check was late and the market was open: market-scope stories only, labelled, never the published snapshot. */
+export interface OnDemand { refreshedAt: string; events: NewsEvent[]; status: 'ok' | 'partial' }
+interface Core { onDemand: OnDemand | null; doc: StatusDoc | null; snapshot: NewsSnapshot | null; unreachable: boolean; loaded: boolean; remembered: StatusDoc | null; refresh: Refresh; retryUntil: number; polledAt: number }
 
 const KEEP = 'tripwire:newsSnap1';
 const readKept = (): { doc: StatusDoc | null; snapshot: NewsSnapshot | null } => { try { const t = localStorage.getItem(KEEP); if (!t) return { doc: null, snapshot: null }; const o = JSON.parse(t); return o?.snapshot?.schema === 'tripwire-news/1' ? o : { doc: null, snapshot: null }; } catch { return { doc: null, snapshot: null }; } };
 const keep = (doc: StatusDoc | null, snapshot: NewsSnapshot | null) => { try { const t = JSON.stringify({ doc, snapshot }); if (t.length < 900_000) localStorage.setItem(KEEP, t); } catch { /* private mode or full: the page still works, it just cannot show an earlier copy next time */ } };
 const kept = readKept();
-let core: Core = { doc: null, snapshot: kept.snapshot, unreachable: false, loaded: false, remembered: kept.doc, refresh: { state: 'idle', message: '', at: 0 }, retryUntil: 0, polledAt: 0 };
+let core: Core = { onDemand: null, doc: null, snapshot: kept.snapshot, unreachable: false, loaded: false, remembered: kept.doc, refresh: { state: 'idle', message: '', at: 0 }, retryUntil: 0, polledAt: 0 };
 const subs = new Set<() => void>();
 const set = (p: Partial<Core>) => { core = { ...core, ...p }; subs.forEach((f) => f()); };
 
@@ -50,10 +52,22 @@ export async function pollVersion(force = false): Promise<'changed' | 'same' | '
   const doc = v.data as StatusDoc; const had = core.snapshot?.snapshotVersion;
   if (had == null || doc.snapshotVersion !== had) {
     const s = await getJson(`/api/news?v=${doc.snapshotVersion}`, force); holdFor(s.retryAfterSec);
-    if (s.ok && s.data?.ok && s.data.schema === 'tripwire-news/1') { const snap = s.data as NewsSnapshot; set({ doc, snapshot: snap, unreachable: false, loaded: true, remembered: doc }); keep(doc, snap); return 'changed'; }
+    if (s.ok && s.data?.ok && s.data.schema === 'tripwire-news/1') { const snap = s.data as NewsSnapshot; set({ doc, snapshot: snap, unreachable: false, loaded: true, remembered: doc }); keep(doc, snap); void maybeCatchup(); return 'changed'; }
     set({ doc, unreachable: false, loaded: true, remembered: doc }); return 'failed';
   }
-  set({ doc, unreachable: false, loaded: true, remembered: doc }); keep(doc, core.snapshot); return 'same';
+  set({ doc, unreachable: false, loaded: true, remembered: doc }); keep(doc, core.snapshot); void maybeCatchup(); return 'same';
+}
+
+/** The scheduled job is late and the session is on: ask the Worker, at most every five minutes, for a market-scope refresh. The Worker decides (it knows the calendar and the published times); a reply of
+ *  onDemand:false clears any earlier one. A failure is silent: the page then says only what the published snapshot says, which is already "delayed". */
+let catchupAt = 0;
+async function maybeCatchup(): Promise<void> {
+  if (!core.doc) return;
+  const h = newsHealth({ doc: core.doc, unreachable: false, remembered: core.remembered, nowMs: Date.now() }); if (h.state !== 'delayed' || h.reason !== 'older than the schedule allows') { if (core.onDemand) set({ onDemand: null }); return; }
+  if (Date.now() - catchupAt < 5 * 60_000) return;
+  catchupAt = Date.now(); const r = await getJson('/api/news/catchup');
+  if (r.ok && r.data?.ok && r.data.onDemand === true && Array.isArray(r.data.events) && r.data.schema === 'tripwire-news-ondemand/1') set({ onDemand: { refreshedAt: String(r.data.refreshedAt), events: r.data.events as NewsEvent[], status: r.data.status === 'partial' ? 'partial' : 'ok' } });
+  else if (r.ok && r.data?.onDemand === false && core.onDemand) set({ onDemand: null });
 }
 
 let cooldownUntil = 0; let idleTimer = 0;
@@ -86,7 +100,7 @@ export function useNewsStore(): Core { return useSyncExternalStore(subscribe, ()
 export function useNewsHealth(): NewsHealth {
   const c = useNewsStore(); const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(i); }, []);
-  return useMemo(() => newsHealth({ doc: c.doc, unreachable: c.unreachable, remembered: c.remembered, nowMs: now }), [c.doc, c.unreachable, c.remembered, now]);
+  return useMemo(() => newsHealth({ doc: c.doc, unreachable: c.unreachable, remembered: c.remembered, nowMs: now, onDemandAt: c.onDemand?.refreshedAt ?? null }), [c.doc, c.unreachable, c.remembered, c.onDemand, now]);
 }
 
 /* ---------- live queries for names the snapshot does not cover ---------- */
@@ -135,7 +149,7 @@ export function useNewsBoard(lists: Lists) {
   const nameOf = useMemo(() => new Map((scr.data?.rows ?? []).map((r) => [r.sym, r.name])), [scr.data]);
   const named = useMemo(() => wanted.filter((s) => nameOf.has(s)).map((s) => ({ sym: s, name: nameOf.get(s) as string })), [wanted, nameOf]);
   const live = useLiveNames(named);
-  const candidate = useMemo(() => mergePools(c.snapshot?.events ?? [], live.events), [c.snapshot, live.events]);
+  const candidate = useMemo(() => mergePools(c.snapshot?.events ?? [], [...live.events, ...(c.onDemand?.events ?? [])]), [c.snapshot, live.events, c.onDemand]);
   const ready = settled && !live.loading && (wanted.length === 0 || !scr.loading);
   const [applied, setApplied] = useState<{ pool: NewsEvent[]; at: number } | null>(null); const candRef = useRef(candidate); candRef.current = candidate;
   useEffect(() => { if (!applied && ready) setApplied({ pool: candidate, at: Date.now() }); }, [ready, applied, candidate]);   // first sight, or the next visit: a new instance starts from the newest data

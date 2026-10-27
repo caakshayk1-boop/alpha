@@ -59,21 +59,21 @@ for (const w of [390, 1280]) {
     ok(t === 'Skip to main content' && a.id === 'main' && a.tag === 'MAIN' && a.hash === r.slice(1), `${r}: the first Tab stop is "Skip to main content" and it lands on the main landmark without changing the page (${a.hash})`); }
   await ctx.close(); }
 
-/* 5. Profile: configured is not the same as supported on this device, and Operations is not linked */
-{ const ctx = await newCtx(b, 390, null); const pg = await ctx.newPage(); await open(pg, '/#/profile', 'text=Services and integrations'); await pg.waitForTimeout(600);
+/* 5. Settings and Operations: a device feature the device cannot use is never "working", and infrastructure detail lives only on Operations */
+{ const ctx = await newCtx(b, 390, null); const pg = await ctx.newPage(); await open(pg, '/#/profile', 'text=Screen lock'); await pg.waitForTimeout(600);
   const sw = pg.getByRole('switch', { name: /Lock with Face ID/ }); const dis = await sw.isDisabled();
-  const sum = await pg.locator('details.ev', { hasText: 'Screen lock' }).first(); await sum.locator('summary').click();
-  const body = await sum.innerText(); 
   ok(dis && /Not supported in this browser/.test(await pg.locator('body').innerText()), 'where the browser has no device unlock the switch is disabled and says "Not supported in this browser"');
-  ok(!/Working/i.test(body.split('\n').slice(0, 2).join(' ')) && /Configured/i.test(body) && /not supported in this browser/i.test(body), 'the Screen lock service says Configured, and on its own line that this device cannot use it, never Working');
-  ok((await pg.locator('a[href*="ops"]').count()) === 0 && !/binding|secret/i.test(await pg.locator('body').innerText()), 'ordinary settings carry no link to Operations and no binding or secret metadata');
+  ok(!/binding|secret/i.test(await pg.locator('body').innerText()) && (await pg.locator('details.ev').count()) === 0, 'settings carry no binding or secret metadata and no service list');
+  ok((await pg.locator('a[href="#/ops"]').count()) === 1, 'settings link to System status, the one door to Operations');
   await ctx.close();
-  const c2 = await newCtx(b, 390, null); await c2.addInitScript(() => { window.PublicKeyCredential = { isUserVerifyingPlatformAuthenticatorAvailable: async () => true }; }); const p2 = await c2.newPage(); await open(p2, '/#/profile', 'text=Services and integrations'); await p2.waitForTimeout(600);
+  const c2 = await newCtx(b, 390, null); await c2.addInitScript(() => { window.PublicKeyCredential = { isUserVerifyingPlatformAuthenticatorAvailable: async () => true }; }); const p2 = await c2.newPage(); await open(p2, '/#/profile', 'text=Screen lock'); await p2.waitForTimeout(600);
   ok(!(await p2.getByRole('switch', { name: /Lock with Face ID/ }).isDisabled()), 'where the browser reports a platform authenticator the switch is enabled (stubbed)');
-  const s2 = p2.locator('details.ev', { hasText: 'Screen lock' }).first(); await s2.locator('summary').click(); ok(/This device: supported/.test(await s2.innerText()), 'and the service line says this device is supported (stubbed)');
   ok(/not been verified|Not supported/.test(await p2.locator('body').innerText()), 'the haptics row says what was not verified'); await c2.close();
-  const c3 = await newCtx(b, 390, null); const p3 = await c3.newPage(); await open(p3, '/#/ops', 'text=Operations');
-  ok(/This page is not protected/.test(await p3.locator('body').innerText()) && /Real protection needs authentication/.test(await p3.locator('body').innerText()), 'Operations says plainly that it is not access-protected'); await c3.close(); }
+  const c3 = await newCtx(b, 390, null); const p3 = await c3.newPage(); await open(p3, '/#/ops', 'text=Operations'); await p3.waitForTimeout(800);
+  ok(/This page is not protected/.test(await p3.locator('body').innerText()) && /Real protection needs authentication/.test(await p3.locator('body').innerText()), 'Operations says plainly that it is not access-protected');
+  const lockRow = p3.locator('details.ev', { hasText: 'Screen lock' }).first(); await lockRow.locator('summary').click(); const lt = await lockRow.innerText();
+  ok(/Not supported here/i.test(lt) && !/Working/i.test(lt) && /How this is known/.test(lt), 'the Screen lock service on Operations says Not supported here, names how it is known, and is never Working');
+  ok(!/\bWorking\b/.test(await p3.locator('body').innerText()), 'nothing on Operations is called Working merely because it is configured'); await c3.close(); }
 
 /* 6. reduced motion: the device setting and the in-app switch both leave no transform or animation motion */
 for (const mode of ['media', 'app', 'none']) {

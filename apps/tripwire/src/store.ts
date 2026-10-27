@@ -120,17 +120,62 @@ export function journalCsv(s: State): string {
   return [head, ...rows].map((r) => r.map(cell).join(',')).join('\n');
 }
 export const exportJson = (s: State) => JSON.stringify({ app: 'tripwire', exported: new Date().toISOString(), ...s }, null, 1);
-/** Import accepts only our own shape, version-checked; anything else is refused whole rather than merged half-way. */
-export function parseState(text: string): State | null {
-  try {
-    const d = JSON.parse(text);
-    if (!d || typeof d !== 'object' || d.v !== VERSION || !Array.isArray(d.follows) || !Array.isArray(d.entries) || !Array.isArray(d.plans)) return null;
-    // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
-    return { v: VERSION, follows: d.follows, entries: d.entries, plans: d.plans, compares: Array.isArray(d.compares) ? d.compares : [], screens: Array.isArray(d.screens) ? d.screens : [], snaps: d.snaps && typeof d.snaps === 'object' ? d.snaps : {},
-      onboarded: !!d.onboarded, reviews: Array.isArray(d.reviews) ? d.reviews : [], paper: Array.isArray(d.paper) ? d.paper : [],
-      seen: d.seen && typeof d.seen === 'object' && !Array.isArray(d.seen) ? d.seen : {}, inbox: Array.isArray(d.inbox) ? d.inbox : [], dismissed: d.dismissed && typeof d.dismissed === 'object' && !Array.isArray(d.dismissed) ? d.dismissed : {}, prefs: { ...DEFAULTS.prefs, ...(d.prefs ?? {}) } };
-  } catch { return null; }
+/** Import accepts only our own shape, version-checked and checked piece by piece; anything else is refused whole, with the reason, rather than merged half-way.
+ *  A file that is the right version and the right outline but holds a damaged entry used to be accepted and then crashed the screens that read it, after it had been saved over the good data. */
+export type BackupCheck = { ok: true; state: State } | { ok: false; reason: string };
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+/** A string field that older writers may have left out: absent is empty, anything else that is not text is damage. */
+const strField = (o: Record<string, unknown>, k: string): string | null => (o[k] === undefined ? '' : isStr(o[k]) ? (o[k] as string) : null);
+function checkEntry(e: unknown): Entry | null {
+  if (!isObj(e) || !isStr(e.id) || !isStr(e.sym) || !Array.isArray(e.versions) || e.versions.length < 1) return null;
+  const versions: Version[] = [];
+  for (const v of e.versions) {
+    if (!isObj(v) || !isStr(v.at)) return null;
+    const f = Object.fromEntries(['thesis', 'support', 'counter', 'decision', 'invalidation', 'trigger'].map((k) => [k, strField(v, k)]));
+    if (Object.values(f).some((x) => x === null) || !(v.reviewOn == null || isStr(v.reviewOn)) || !(v.question === undefined || isStr(v.question))) return null;
+    versions.push({ ...(v as unknown as Version), ...(f as Record<string, string>), reviewOn: (v.reviewOn as string | null | undefined) ?? null });
+  }
+  return { ...(e as unknown as Entry), archived: !!e.archived, created: isStr(e.created) ? e.created : versions[0].at, versions };
 }
+const checkPlan = (p: unknown): Plan | null => (isObj(p) && isStr(p.id) && isStr(p.sym) && isNum(p.entry) && isNum(p.stop) && isNum(p.qty) ? { ...(p as unknown as Plan), at: isStr(p.at) ? p.at : '', rev: isNum(p.rev) ? p.rev : 1, riskPct: isNum(p.riskPct) ? p.riskPct : 0, note: isStr(p.note) ? p.note : '', status: p.status === 'paper-filled' || p.status === 'closed' ? p.status : 'saved', expiry: isStr(p.expiry) ? p.expiry : null } : null);
+const checkPaper = (p: unknown): Paper | null => (isObj(p) && isStr(p.id) && isStr(p.sym) && isNum(p.ref) && isNum(p.stop) && isNum(p.qty) && isNum(p.takenAt) ? (p as unknown as Paper) : null);
+const NUM_PREFS = ['equity', 'cash', 'riskPct', 'maxPositionPct'] as const;
+/** Preferences are the one place a wrong type is repaired rather than refused: a bad value falls back to the default, because refusing a whole backup over a theme string would lose the journal with it. */
+function checkPrefs(raw: unknown): Prefs {
+  const p: Record<string, unknown> = isObj(raw) ? raw : {}; const D = DEFAULTS.prefs; const out: Record<string, unknown> = { ...D, ...p };
+  for (const k of NUM_PREFS) if (!isNum(p[k]) || (p[k] as number) < 0) out[k] = D[k];
+  if (p.motion !== 'auto' && p.motion !== 'off') out.motion = D.motion;
+  if (typeof p.haptics !== 'boolean') out.haptics = D.haptics;
+  if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
+  out.interests = Array.isArray(p.interests) ? p.interests.filter(isStr) : D.interests;
+  if (p.hideAmounts !== undefined && typeof p.hideAmounts !== 'boolean') delete out.hideAmounts; if (p.theme !== undefined && !isStr(p.theme)) delete out.theme;
+  return out as unknown as Prefs;
+}
+export function checkBackup(text: string): BackupCheck {
+  let d: unknown; try { d = JSON.parse(text); } catch { return { ok: false, reason: 'The file is not readable: it is not a JSON file.' }; }
+  if (!isObj(d)) return { ok: false, reason: 'The file is not a Tripwire backup: it does not hold a saved state.' };
+  if (d.app !== undefined && d.app !== 'tripwire') return { ok: false, reason: `The file is from another app (${String(d.app).slice(0, 30)}), not a Tripwire backup.` };
+  if (d.v === undefined) return { ok: false, reason: 'The file has no Tripwire version number, so it is not a Tripwire backup.' };
+  if (d.v !== VERSION) return { ok: false, reason: `The file is from version ${String(d.v).slice(0, 12)} of Tripwire; this one reads version ${VERSION}.` };
+  for (const k of ['follows', 'entries', 'plans'] as const) if (!Array.isArray(d[k])) return { ok: false, reason: `The ${k === 'entries' ? 'journal' : k} section is missing or damaged.` };
+  if (!(d.follows as unknown[]).every(isStr)) return { ok: false, reason: 'The followed names are damaged.' };
+  const entries: Entry[] = []; for (const [i, e] of (d.entries as unknown[]).entries()) { const c = checkEntry(e); if (!c) return { ok: false, reason: `Journal entry ${i + 1} is damaged (it has no symbol, id or readable versions).` }; entries.push(c); }
+  const plans: Plan[] = []; for (const [i, p] of (d.plans as unknown[]).entries()) { const c = checkPlan(p); if (!c) return { ok: false, reason: `Plan ${i + 1} is damaged (it has no symbol, id or readable prices).` }; plans.push(c); }
+  const paperIn = d.paper === undefined ? [] : d.paper; if (!Array.isArray(paperIn)) return { ok: false, reason: 'The paper trades section is damaged.' };
+  const paper: Paper[] = []; for (const [i, p] of paperIn.entries()) { const c = checkPaper(p); if (!c) return { ok: false, reason: `Paper trade ${i + 1} is damaged (it has no symbol, id or readable prices).` }; paper.push(c); }
+  const compares = Array.isArray(d.compares) ? (d.compares as unknown[]).filter((c): c is string[] => Array.isArray(c) && c.every(isStr)) : [];
+  const screens = Array.isArray(d.screens) ? (d.screens as unknown[]).filter((c): c is { name: string; f: Filters } => isObj(c) && isStr(c.name) && isObj(c.f)) : [];
+  const snaps: State['snaps'] = {}; if (isObj(d.snaps)) for (const [sym, list] of Object.entries(d.snaps)) if (Array.isArray(list)) snaps[sym] = list.filter((x): x is Snap => isObj(x) && isStr(x.day) && isStr(x.at));
+  const reviews = Array.isArray(d.reviews) ? (d.reviews as unknown[]).filter((r): r is { week: string; note: string } => isObj(r) && isStr(r.week) && isStr(r.note)) : [];
+  const seen: NonNullable<State['seen']> = {}; if (isObj(d.seen)) for (const [sym, list] of Object.entries(d.seen)) if (Array.isArray(list)) seen[sym] = list.filter((x): x is SeenSnap => isObj(x) && isStr(x.at) && isStr(x.day));
+  const inbox = Array.isArray(d.inbox) ? (d.inbox as unknown[]).filter((c): c is SeenChange => isObj(c) && isStr(c.id) && isStr(c.sym) && isStr(c.curAt)) : [];
+  const dismissed: Record<string, string> = {}; if (isObj(d.dismissed)) for (const [k, v] of Object.entries(d.dismissed)) if (isStr(v)) dismissed[k] = v;
+  // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
+  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs) } };
+}
+export function parseState(text: string): State | null { const c = checkBackup(text); return c.ok ? c.state : null; }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
 export function mergeStates(a: State, b: State): State {
   const byId = <T extends { id: string }>(x: T[], y: T[], pick: (p: T, q: T) => T) => { const m = new Map(x.map((i) => [i.id, i])); for (const i of y) m.set(i.id, m.has(i.id) ? pick(m.get(i.id)!, i) : i); return [...m.values()]; };

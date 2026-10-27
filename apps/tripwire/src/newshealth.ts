@@ -19,6 +19,8 @@ export interface NewsHealth {
   /** The same facts as separate labelled parts, for a layout that shows three timestamps. */
   checked: string | null; lastGood: string | null; next: string | null;
   checkedSec: number | null; lastGoodSec: number | null; nextSec: number | null; ageMin: number | null; reason: string | null;
+  /** When the Worker ran a market-scope catch-up because the scheduled check was late (Indian time), or null. It never changes the state or the times above: the scheduled check is still late. */
+  onDemand: string | null;
 }
 const sec = (iso: string | null | undefined) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.floor(t / 1000) : null; };
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -26,13 +28,13 @@ export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n ==
 export const allowedAgeMin = (checkedMs: number) => DELAY_AFTER.cadences * cadenceMin(checkedMs) + DELAY_AFTER.graceMin;
 
 /** `doc`: the latest status document (null when none has been read). `unreachable`: reading it failed just now. `remembered`: the last document this browser held, for the unreachable case. */
-export function newsHealth({ doc, unreachable = false, remembered = null, nowMs }: { doc: StatusDoc | null; unreachable?: boolean; remembered?: StatusDoc | null; nowMs: number }): NewsHealth {
+export function newsHealth({ doc, unreachable = false, remembered = null, nowMs, onDemandAt = null }: { doc: StatusDoc | null; unreachable?: boolean; remembered?: StatusDoc | null; nowMs: number; onDemandAt?: string | null }): NewsHealth {
   const nowSec = nowMs / 1000; const d = doc ?? remembered;
   const out = (state: NewsState, line: string, extra: Partial<NewsHealth> = {}): NewsHealth => {
     const checkedSec = sec(d?.checkedAt), lastGoodSec = sec(d?.lastSuccessfulAt), nextSec = sec(d?.nextScheduledAt);
     return { state, tone: state === 'fresh' ? 'ok' : state === 'unavailable' ? 'bad' : 'warn', word: { fresh: 'Fresh', partial: 'Partial', delayed: 'Delayed', unavailable: 'Unavailable' }[state], line,
       checked: checkedSec != null ? fmtIst(checkedSec, nowMs) : null, lastGood: lastGoodSec != null ? fmtIst(lastGoodSec, nowMs) : null, next: nextSec != null ? fmtIst(nextSec, nowMs) : null, checkedSec, lastGoodSec, nextSec,
-      ageMin: lastGoodSec != null ? Math.max(0, Math.round((nowSec - lastGoodSec) / 60)) : null, reason: null, ...extra };
+      ageMin: lastGoodSec != null ? Math.max(0, Math.round((nowSec - lastGoodSec) / 60)) : null, reason: null, onDemand: null, ...extra };
   };
   if (!d || sec(d.lastSuccessfulAt) == null) return out('unavailable', unreachable ? 'News unavailable: the news service could not be reached and no earlier check is saved.' : 'News unavailable: no check has succeeded yet.');
   const good = sec(d.lastSuccessfulAt) as number; const lastGood = fmtIst(good, nowMs);
@@ -40,7 +42,8 @@ export function newsHealth({ doc, unreachable = false, remembered = null, nowMs 
   const ageMin = (nowSec - good) / 60; const allowed = allowedAgeMin(good * 1000);
   if (unreachable && !doc) return out('delayed', `News delayed - last successful check ${lastGood}. The news service did not answer just now; the saved copy is shown.`, { reason: 'unreachable' });
   if (d.status === 'failed') return out('delayed', `News delayed - last successful check ${lastGood}. The latest check failed${d.lastError ? ` (${d.lastError})` : ''}; the last good stories are shown.`, { reason: 'latest check failed' });
-  if (ageMin > allowed) return out('delayed', `News delayed - last successful check ${lastGood}, ${Math.round(ageMin)} minutes ago; checks run every ${cadenceMin(good * 1000)} minutes at that time of day.`, { reason: 'older than the schedule allows' });
+  if (ageMin > allowed) { const od = sec(onDemandAt); const odIst = od != null && od >= good && od <= nowSec + 600 ? fmtIst(od, nowMs) : null;
+    return out('delayed', `News delayed - last successful check ${lastGood}, ${Math.round(ageMin)} minutes ago; scheduled checks run every ${cadenceMin(good * 1000)} minutes at that time of day.${odIst ? ` Market stories were refreshed on demand ${odIst}.` : ''}`, { reason: 'older than the schedule allows', onDemand: odIst }); }
   if (d.status === 'partial') { const f = d.sourcesFailed ?? 0, t = d.sourcesTotal ?? 0; return out('partial', `Partial coverage${t ? `: ${plural(f, 'source')} of ${t} not answering` : ''}. Last successful check ${lastGood}.`, { reason: 'some sources failed' }); }
   const next = sec(d.nextScheduledAt);
   return out('fresh', `Checked ${lastGood}${next && next > nowSec ? ` · next check about ${fmtIst(next, nowMs)}` : ''}`);

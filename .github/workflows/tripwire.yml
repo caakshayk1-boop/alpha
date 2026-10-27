@@ -8,12 +8,13 @@ on:
         description: 'Deploy the Tripwire Worker (owner decision; choose the address first, see docs/tripwire/README.md)'
         type: boolean
         default: false
-  # The app's data is a snapshot taken at build time, so it goes a day stale unless it is rebuilt. The website's screen is built at 21:00 IST
-  # (retry 23:00 IST); these runs build and deploy after it. They run every check first, and a failing check stops the deploy.
-  # A schedule only runs on the default branch. Remove these two lines to make deploys manual again.
+  # The app's data is a snapshot taken at build time, so it goes a day stale unless it is rebuilt. The screen it reads is committed by the newspaper job at 23:45 to 01:05 UTC (05:15 to 06:35 IST),
+  # after the 21:00 IST screen build has reached the database. The earlier slots (18:15 and 22:45 UTC) were BEFORE that commit, so on time they rebuilt the previous day's data, and the new day reached
+  # the site only when GitHub started the run about 3 hours late (docs/tripwire/launch/RELIABILITY.md). These slots sit after the commit. They run every check first, and a failing check stops the deploy.
+  # The second slot is a retry: it builds, and deploys only if the live site does not already carry that data day. A schedule only runs on the default branch. Remove these two lines to make deploys manual again.
   schedule:
-    - cron: '15 18 * * 1-6'      # 23:45 IST, Monday to Saturday
-    - cron: '45 22 * * 1-6'      # 04:15 IST, a catch-up if the first run found no new data
+    - cron: '15 2 * * 2-6'       # 07:45 IST, Tuesday to Saturday
+    - cron: '45 3 * * 2-6'       # 09:15 IST, a retry
 concurrency:
   group: tripwire-${{ github.ref }}
   cancel-in-progress: true
@@ -41,9 +42,25 @@ jobs:
       - name: Fetch the published company data (the same step the website's build runs)
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
-      - run: npm run tripwire:check
+      # The browser gate drives a real page against mocks and has failed on a slow runner with nothing wrong (run 40433652756: a 15 s wait for a live dot, and an immediate read of a summary).
+      # A scheduled run gets ONE more attempt before it gives up, because a flaky gate otherwise leaves the site on yesterday's data. Pull requests and manual runs fail on the first failure, as before.
+      - name: Browser gate
+        id: gate
+        run: npm run tripwire:check
+        continue-on-error: ${{ github.event_name == 'schedule' }}
+      - name: Browser gate, second attempt (scheduled runs only)
+        if: ${{ github.event_name == 'schedule' && steps.gate.outcome == 'failure' }}
+        run: npm run tripwire:check
+      - name: Is this data day already on the site? (the retry slot only)
+        id: already
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '45 3 * * 2-6' }}
+        run: |
+          built=$(node -e "console.log(JSON.parse(require('fs').readFileSync('apps/tripwire/dist/data/screen.json','utf8')).as_of)")
+          live=$(curl -fsS --max-time 30 https://alpha.askakshay.com/data/screen.json | node -e "let t='';process.stdin.on('data',d=>t+=d).on('end',()=>{try{console.log(JSON.parse(t).as_of)}catch{console.log('unknown')}})" || echo unknown)
+          echo "built=$built live=$live"
+          if [ "$built" = "$live" ]; then echo 'same=true' >> "$GITHUB_OUTPUT"; echo "The site already carries data through $built; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Deploy (manual, or the scheduled refresh on main)
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main') }}
+        if: ${{ steps.already.outputs.same != 'true' && ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')) }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

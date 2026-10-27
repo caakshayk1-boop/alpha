@@ -113,8 +113,8 @@ await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline
 ok(/Published screen/.test(await text()) && /Forward ledger, last night recorded/.test(await text()) && /Live quotes/.test(await text()) && /NSE holiday calendar/.test(await text()), 'the Data screen shows each pipeline stage against the exchange calendar');
 ok(/The eligibility rule, by version/i.test(await text()) && /elig-[12]/.test(await text()) && /Three gaps between the written spec and the code/i.test(await text()), 'the Data screen names the rule version in force and how D1 to D3 were resolved');
 ok(/Back-test runs, and why a result changed/i.test(await text()), 'the Data screen lists the study runs and why they changed');
-await pg.goto(base + '/#/profile'); await pg.reload(); await pg.getByText('Services and integrations').first().waitFor({ timeout: 15000 });
-ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()) && /Not built/i.test(await text()) && /Working/i.test(await text()), 'Profile lists each service as working, not set up or not built');
+await pg.goto(base + '/#/ops'); await pg.reload(); await pg.getByText('News checks').first().waitFor({ timeout: 15000 });
+ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()) && /Not built/i.test(await text()) && /Services/.test(await text()) && !/\bWorking\b/.test(await text()), 'Operations lists each service with its evidence, as checked, not set up or not built, and nothing is called Working');
 ok(!/coming soon/i.test(await text()), 'no service is described as coming soon');
 pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
@@ -362,8 +362,8 @@ await shot('10-search'); await pg.keyboard.press('Escape');
 
 // profile
 await pg.goto(base + '/#/profile'); await shot('11-profile');
-ok(/Sign-in is not available yet/.test(await text()), 'profile is honest that no account exists');
-ok(/Notifications and alerts/i.test(await text()) && /Not built/i.test(await text()) && /Free/.test(await text()), 'notifications and billing are shown as unavailable, not faked');
+ok(/There is no sign-in/.test(await text()) && /Notifications are not built/.test(await text()), 'settings are honest that no account exists and notifications are not built, in one short paragraph');
+ok(!/Services and integrations|Accounts and sign-in|Sync between devices|Broker connection/.test(await text()) && !/binding|secret/i.test(await text()), 'settings carry no service list and no infrastructure detail');
 await pg.getByRole('button', { name: /Delete all my data/ }).click();
 await pg.getByRole('button', { name: 'Erase now' }).click();
 await pg.goto(base + '/#/desk?v=journal');

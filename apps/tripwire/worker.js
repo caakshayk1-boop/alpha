@@ -9,6 +9,8 @@ import { buildRegistry } from './news/entities.js';
 import { parseFeed } from './news/feed.js';
 import { FEEDS, QUERY_SCHEMA } from './news/config.js';
 import { ALIASES } from './news/aliases.js';
+import { catchupDecision, runCatchup } from './news/catchup.js';
+import { nudge } from './news/nudge.js';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
 const MAX = 30;                              // symbols a call may ask for (list quotes, the paper books): one Yahoo call each, cached 60 s (quotes) or 5 min (bars)
 const MAX_QUOTES = MAX;
@@ -263,6 +265,7 @@ async function rsiSheet(ctx) {
 // THREE routes, one pipeline (apps/tripwire/news/*, shared with the scheduled job):
 //   GET /api/news/version  -> the tiny status document the job writes every run: { ok, snapshotVersion, status, checkedAt, lastSuccessfulAt, nextScheduledAt, ... }  (edge copy 60 s)
 //   GET /api/news          -> the latest published snapshot for the browser: { ok, schema: 'tripwire-news/1', events, scopes, names, sources, rejections, ... }       (edge copy 5 min)
+//   GET /api/news/catchup  -> only when the published check is late and the session is on: a market-scope run of the same pipeline, labelled on demand, edge copy one cadence (news/catchup.js)
 //   GET /api/news?q=<phrase>&sym=<SYMBOL>  -> a live query for one reader-chosen name, run through the SAME pipeline and gates, edge copy 5 minutes
 // The snapshot is written by .github/workflows/tripwire_news.yml on the orphan branch `tripwire-data` and read from raw.githubusercontent.com, like the ledger and the RSI sheet.
 // Absent or unreadable answers HTTP 200 with ok:false (a 404 or 5xx is a console error in every browser); `retry_after` (seconds) is passed through when the upstream gave one.
@@ -330,6 +333,20 @@ async function news(url, ctx, request) {
   } catch { return json({ ok: false, error: 'the news source did not answer' }, 200, { 'cache-control': 'no-store' }); }
 }
 
+/** GET /api/news/catchup: when the PUBLISHED snapshot is late (older than two cadences) and the NSE session is on, run the market scope of the same pipeline once and cache it at the edge for one
+ *  cadence. Labelled `onDemand` in its own schema; the published snapshot's times and events are never changed or re-dated (apps/tripwire/news/catchup.js, docs/tripwire/launch/RELIABILITY.md).
+ *  Not late, or the market is shut: answers `onDemand:false` with the reason and does no work. A failed attempt is remembered for two minutes so a stalled source is not asked on every page view. */
+async function catchup(ctx) {
+  const nowMs = Date.now(); const vr = await (await newsFile('version', ctx, false)).json().catch(() => null); const status = vr?.ok ? vr : null;
+  const d = catchupDecision({ status, nowMs });
+  if (!d.run) return json({ ok: true, onDemand: false, reason: d.reason, ageMin: d.ageMin }, 200, { 'cache-control': 'public, max-age=60, s-maxage=60' });
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__news_catchup_v1');
+  const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=60, s-maxage=300' } });
+  const snap = status ? await (await newsFile('snapshot', ctx, false)).json().catch(() => null) : null;
+  let body; try { body = await runCatchup({ fetchImpl: fetch, nowMs, status, snapshot: snap?.ok ? snap : null, decision: d }); } catch { body = { ok: false, error: 'the on-demand refresh failed' }; }
+  const ttl = body.ok ? 900 : 120; const res = json(body, 200, { 'cache-control': `public, max-age=60, s-maxage=${ttl}` }); if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
+}
+
 async function bars(url, ctx) {
   const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
   if (!list.length || list.length > MAX || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give 1 to ${MAX} valid symbols` }, 400);
@@ -384,6 +401,12 @@ async function health(env, ctx) {
 }
 
 export default {
+  /** Cloudflare cron trigger (wrangler.tripwire.jsonc): asks GitHub to start the news job. Does nothing at all until the secret GITHUB_DISPATCH_TOKEN is set (news/nudge.js). */
+  async scheduled(_event, env, ctx) {
+    if (!env?.GITHUB_DISPATCH_TOKEN) return;
+    const status = await (await newsFile('version', ctx, true)).json().catch(() => null);
+    ctx.waitUntil(nudge({ env, nowMs: Date.now(), fetchImpl: fetch, status: status?.ok ? status : null }).then((r) => console.log('news nudge:', r.sent ? 'sent' : 'not sent', r.why)));
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/api/bars' || url.pathname === '/api/bars/') {
@@ -419,6 +442,10 @@ export default {
     if (url.pathname === '/api/macro' || url.pathname === '/api/macro/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return quotes(Object.keys(MACRO), (s) => MACRO[s], ctx);
+    }
+    if (url.pathname === '/api/news/catchup') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return catchup(ctx);
     }
     if (url.pathname === '/api/news/version') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);

@@ -35,7 +35,7 @@ export function TrendMap({ rows, day, map, live, liveAt, open, repriced, err }: 
       <div className="mini-seg" role="group" aria-label="Group by">{(['sector', 'size'] as const).map((v) => <button key={v} aria-pressed={by === v} onClick={() => setBy(v)}>{v === 'sector' ? 'SECTOR' : 'SIZE'}</button>)}</div></div>
     {cells.length > 0 ? <Heat cells={cells} href={href} /> : <p className="small dim" style={{ margin: 0 }}>No group has enough names to compare.</p>}
     <div className="small mute" style={{ margin: '8px 0 0' }}>
-      {live && open ? <>Trend split live · <Ago at={liveAt} />. </> : live ? 'Trend split on the last prices. ' : `Trend split at the close of ${dayWord(day)}. `}Breadth figures and groups are always the close of {dayWord(day)}. {map.n} of {st.liquid} liquid names have the 200-day average the trend needs.
+      {live && open ? <>Trend split live · prices fetched <Ago at={liveAt} />. </> : live ? 'Trend split on the last prices. ' : `Trend split at the close of ${dayWord(day)}. `}Breadth figures and groups are always the close of {dayWord(day)}. {map.n} of {st.liquid} liquid names have the 200-day average the trend needs.
       {repriced != null ? ` Today's price was used for the ${repriced} names near a trend line.` : err ? ' Live update unavailable.' : ''}</div>
     <details className="more"><summary>How to read this</summary><div>{w.word === 'No read' ? '' : `${w.word}: `}{w.rule} Uptrend needs all four: {TREND_RULE_TEXT.up}. Downtrend is the mirror; anything else is sideways. The five breadth figures are shares of the names that have the figure; hover one for the count. The shortcuts are screens (the same filters as Discover), not recommendations, and none of this forecasts anything.</div></details>
   </div>;
