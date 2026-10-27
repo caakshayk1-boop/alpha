@@ -1,0 +1,215 @@
+{
+ "schema": "tripwire-news-covered/1",
+ "note": "Names the news job covers besides the paper book: the 40 most-traded large and mid caps of the 26 Oct 2026 screen, plus every symbol in the ledger that day. Aliases are in aliases.json. A new paper-book name that is not here is resolved from the published universe when the job can read it, else reported as unresolved.",
+ "built": "2026-10-27",
+ "names": [
+  {
+   "sym": "CASTROLIND",
+   "name": "Castrol India Ltd."
+  },
+  {
+   "sym": "ECLERX",
+   "name": "eClerx Services Ltd."
+  },
+  {
+   "sym": "GCSL",
+   "name": "Gretex Corporate Services Limited"
+  },
+  {
+   "sym": "HBLENGINE",
+   "name": "HBL Engineering Ltd."
+  },
+  {
+   "sym": "HCLTECH",
+   "name": "HCL Technologies Ltd."
+  },
+  {
+   "sym": "LAURUSLABS",
+   "name": "Laurus Labs Ltd."
+  },
+  {
+   "sym": "NYKAA",
+   "name": "FSN E-Commerce Ventures Ltd."
+  },
+  {
+   "sym": "PETRONET",
+   "name": "Petronet LNG Ltd."
+  },
+  {
+   "sym": "SANSERA",
+   "name": "Sansera Engineering Ltd."
+  },
+  {
+   "sym": "SBC",
+   "name": "SBC Exports Limited"
+  },
+  {
+   "sym": "SHREEJISPG",
+   "name": "Shreeji Shipping Global Limited"
+  },
+  {
+   "sym": "STARHEALTH",
+   "name": "Star Health and Allied Insurance Company Ltd."
+  },
+  {
+   "sym": "TORNTPHARM",
+   "name": "Torrent Pharmaceuticals Ltd."
+  },
+  {
+   "sym": "INFY",
+   "name": "Infosys Ltd."
+  },
+  {
+   "sym": "SWIGGY",
+   "name": "Swiggy Ltd."
+  },
+  {
+   "sym": "BHARTIARTL",
+   "name": "Bharti Airtel Ltd."
+  },
+  {
+   "sym": "RELIANCE",
+   "name": "Reliance Industries Ltd."
+  },
+  {
+   "sym": "ETERNAL",
+   "name": "Eternal Ltd."
+  },
+  {
+   "sym": "TCS",
+   "name": "Tata Consultancy Services Ltd."
+  },
+  {
+   "sym": "ICICIBANK",
+   "name": "ICICI Bank Ltd."
+  },
+  {
+   "sym": "HDFCBANK",
+   "name": "HDFC Bank Ltd."
+  },
+  {
+   "sym": "AXISBANK",
+   "name": "Axis Bank Ltd."
+  },
+  {
+   "sym": "SBIN",
+   "name": "State Bank of India"
+  },
+  {
+   "sym": "INDHOTEL",
+   "name": "Indian Hotels Co. Ltd."
+  },
+  {
+   "sym": "ADANIPOWER",
+   "name": "Adani Power Ltd."
+  },
+  {
+   "sym": "CGPOWER",
+   "name": "CG Power and Industrial Solutions Ltd."
+  },
+  {
+   "sym": "LT",
+   "name": "Larsen & Toubro Ltd."
+  },
+  {
+   "sym": "KOTAKBANK",
+   "name": "Kotak Mahindra Bank Ltd."
+  },
+  {
+   "sym": "COFORGE",
+   "name": "Coforge Ltd."
+  },
+  {
+   "sym": "PERSISTENT",
+   "name": "Persistent Systems Ltd."
+  },
+  {
+   "sym": "HINDALCO",
+   "name": "Hindalco Industries Ltd."
+  },
+  {
+   "sym": "M&M",
+   "name": "Mahindra & Mahindra Ltd."
+  },
+  {
+   "sym": "BSE",
+   "name": "BSE Ltd."
+  },
+  {
+   "sym": "POWERINDIA",
+   "name": "Hitachi Energy India Ltd."
+  },
+  {
+   "sym": "TECHM",
+   "name": "Tech Mahindra Ltd."
+  },
+  {
+   "sym": "SHRIRAMFIN",
+   "name": "Shriram Finance Ltd."
+  },
+  {
+   "sym": "IDEA",
+   "name": "Vodafone Idea Ltd."
+  },
+  {
+   "sym": "BAJFINANCE",
+   "name": "Bajaj Finance Ltd."
+  },
+  {
+   "sym": "BHEL",
+   "name": "Bharat Heavy Electricals Ltd."
+  },
+  {
+   "sym": "GVT&D",
+   "name": "GE Vernova T&D India Ltd."
+  },
+  {
+   "sym": "DIVISLAB",
+   "name": "Divi's Laboratories Ltd."
+  },
+  {
+   "sym": "WIPRO",
+   "name": "Wipro Ltd."
+  },
+  {
+   "sym": "TATASTEEL",
+   "name": "Tata Steel Ltd."
+  },
+  {
+   "sym": "HAL",
+   "name": "Hindustan Aeronautics Ltd."
+  },
+  {
+   "sym": "CHOLAFIN",
+   "name": "Cholamandalam Investment and Finance Company Ltd."
+  },
+  {
+   "sym": "ITC",
+   "name": "ITC Ltd."
+  },
+  {
+   "sym": "ADANIENT",
+   "name": "Adani Enterprises Ltd."
+  },
+  {
+   "sym": "LICI",
+   "name": "Life Insurance Corporation of India"
+  },
+  {
+   "sym": "DIXON",
+   "name": "Dixon Technologies (India) Ltd."
+  },
+  {
+   "sym": "JIOFIN",
+   "name": "Jio Financial Services Ltd."
+  },
+  {
+   "sym": "APOLLOHOSP",
+   "name": "Apollo Hospitals Enterprise Ltd."
+  },
+  {
+   "sym": "ADANIENSOL",
+   "name": "Adani Energy Solutions Ltd."
+  }
+ ]
+}
