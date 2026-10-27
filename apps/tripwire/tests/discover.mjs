@@ -32,14 +32,14 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   await pg.locator('#d-sort').selectOption('sym'); await pg.waitForTimeout(300); const first = (await symsOf(pg))[0];
   await pg.getByLabel('Search companies').fill(first); await pg.waitForTimeout(500); ok((await count(pg)) >= 1, `search finds ${first}`); const n3 = await count(pg);
   await pg.waitForTimeout(400); const url1 = await hashQ(pg); ok(/view=table/.test(url1) && /sort=sym\.asc/.test(url1) && /c=rsi:ge:30/.test(url1) && /trend=up/.test(url1) && new RegExp(`q=${first}`).test(url1), `the address carries the whole screen (${url1})`);
-  await pg.locator(`tr[data-sym="${first}"] a.symlink`).click(); await pg.waitForSelector('text=/Price|Trend|Decision/', { timeout: 15000 }); ok(/#\/c\//.test(await hashQ(pg)), 'the company page opens');
+  await pg.locator(`tr[data-sym="${first}"] a.symlink`).click(); await pg.waitForSelector('text=/Price|Trend|Decision/ >> visible=true', { timeout: 15000 }); ok(/#\/c\//.test(await hashQ(pg)), 'the company page opens');
   await pg.goBack(); await ready(pg);
   ok((await pg.locator('.stbl').count()) === 1 && (await pg.getByRole('radio', { name: 'Table' }).getAttribute('aria-checked')) === 'true', 'Back: still the table');
   ok((await count(pg)) === n3 && (await pg.getByLabel('Search companies').inputValue()) === first, `Back: the search and the count are kept (${first}, ${n3})`);
   ok((await pg.locator('#d-sort').inputValue()) === 'sym', 'Back: the sort is kept');
   ok((await pg.locator('.dchips .chip', { hasText: 'Uptrend' }).count()) === 1 && (await pg.locator('.dchips .chip', { hasText: 'RSI ≥ 30' }).count()) === 1 && (await pg.locator('.dchips .chip', { hasText: 'RSI ≤ 56' }).count()) === 1, 'Back: the filters and conditions are kept');
   ok((await pg.locator(`tr.sel[data-sym="${first}"]`).count()) === 1 && (await pg.evaluate(() => document.activeElement?.closest('[data-sym]')?.getAttribute('data-sym'))) === first, 'Back: the company opened is marked and has focus');
-  await pg.goForward(); await pg.waitForSelector('text=/Price|Trend|Decision/', { timeout: 15000 }); ok(/#\/c\//.test(await hashQ(pg)), 'Forward: the company again'); await pg.goBack(); await ready(pg); ok((await count(pg)) === n3, 'Forward then Back: the same screen');
+  await pg.goForward(); await pg.waitForSelector('text=/Price|Trend|Decision/ >> visible=true', { timeout: 15000 }); ok(/#\/c\//.test(await hashQ(pg)), 'Forward: the company again'); await pg.goBack(); await ready(pg); ok((await count(pg)) === n3, 'Forward then Back: the same screen');
   await pg.reload(); await ready(pg); ok((await count(pg)) === n3 && (await pg.locator('.stbl').count()) === 1 && (await pg.locator('#d-sort').inputValue()) === 'sym', 'reload: the same screen');
   await ctx.close(); }
 
@@ -49,10 +49,10 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   const shown = await pg.locator('[data-sym]').count(); ok(shown >= 48, `rows are revealed a page at a time, and the status says how many (${shown}): ${await pg.locator('.more [role=status]').innerText()}`);
   const target = pg.locator('[data-sym]').nth(Math.min(40, shown - 1)); const sym = await target.getAttribute('data-sym'); await target.scrollIntoViewIfNeeded(); await pg.mouse.wheel(0, 150); await pg.waitForTimeout(400);
   const y0 = await pg.evaluate(() => Math.round(scrollY)); ok(y0 > 800, `scrolled well down (${y0}px)`);
-  await target.locator('a').first().click(); await pg.waitForSelector('text=/Price|Trend|Decision/', { timeout: 15000 }); ok((await pg.evaluate(() => scrollY)) < 50, 'the company page starts at the top');
+  await target.locator('a').first().click(); await pg.waitForSelector('text=/Price|Trend|Decision/ >> visible=true', { timeout: 15000 }); ok((await pg.evaluate(() => scrollY)) < 50, 'the company page starts at the top');
   await pg.goBack(); await ready(pg); await pg.waitForTimeout(500); const y1 = await pg.evaluate(() => Math.round(scrollY));
   ok(Math.abs(y1 - y0) <= 6, `Back: the scroll position is restored (${y0} then ${y1})`); ok((await pg.locator('[data-sym]').count()) === shown, 'Back: the same rows are revealed'); ok((await pg.locator(`.li.sel[data-sym="${sym}"]`).count()) === 1, `Back: ${sym} is the marked row`);
-  const q = await hashQ(pg); await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.moodhero'); await pg.locator('nav.tabs a[href="#/discover"]').click(); await ready(pg); await pg.waitForTimeout(500);
+  const q = await hashQ(pg); await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('[data-brief]'); await pg.locator('nav.tabs a[href="#/discover"]').click(); await ready(pg); await pg.waitForTimeout(500);
   ok((await hashQ(pg)) === q, `Today then the Discover tab: the last Discover screen is back (${q})`); ok(Math.abs((await pg.evaluate(() => scrollY)) - y1) <= 6, 'and the scroll with it');
   await ctx.close(); }
 
@@ -88,7 +88,7 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   await pg.locator(`[data-sym="${a}"]`).getByRole("button", { name: /^Follow / }).click(); await pg.getByRole('radio', { name: 'List' }).click(); await pg.waitForTimeout(300);
   ok((await pg.locator(`[data-sym="${a}"]`).getByRole("button", { name: /^Unfollow / }).count()) === 1, 'a follow made in the table shows in the list');
   const q = await hashQ(pg); ok(/cmp=/.test(q) && !/follow|note|plan|paper/i.test(q), 'picks are in the link; follows, notes and plans are not');
-  await pg.locator(`[data-sym="${a}"] a`).first().click(); await pg.waitForSelector('text=/Price|Trend|Decision/', { timeout: 15000 }); await pg.goBack(); await ready(pg); ok((await pg.getByRole('button', { name: `Remove from comparison: ${a}` }).count()) === 1, 'the picks survive a visit to a company');
+  await pg.locator(`[data-sym="${a}"] a`).first().click(); await pg.waitForSelector('text=/Price|Trend|Decision/ >> visible=true', { timeout: 15000 }); await pg.goBack(); await ready(pg); ok((await pg.getByRole('button', { name: `Remove from comparison: ${a}` }).count()) === 1, 'the picks survive a visit to a company');
   await ctx.close(); }
 
 /* ---- 6. empty result and clear all ---- */
