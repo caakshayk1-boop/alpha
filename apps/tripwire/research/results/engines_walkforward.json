@@ -1,10 +1,10 @@
 {
  "meta": {
-  "when": "2026-10-27 02:55 UTC",
+  "when": "2026-10-27 04:19 UTC",
   "symbols": 660,
   "dates": [
-   "2015-10-26",
-   "2026-10-26"
+   "2015-10-27",
+   "2026-10-27"
   ]
  },
  "walk_forward": {
@@ -21,103 +21,103 @@
   "chosen": {
    "2019": "L252-R-q80",
    "2020": "L252-R-q80",
-   "2021": "L126-x-q90",
+   "2021": "L126-x-q80",
    "2022": "L252-R-q80",
    "2023": "L252-R-q80",
-   "2024": "L252-R-q90",
-   "2025": "L252-R-q90",
-   "2026": "L252-R-q90"
+   "2024": "L126-R-q90",
+   "2025": "L126-R-q90",
+   "2026": "L126-R-q90"
   },
   "procedure": {
    "rebalances": 95,
-   "active": 69,
-   "mean_excess": 0.0054,
-   "t": 0.629,
-   "months": 67,
-   "mean_net_per_rebalance": 0.0096,
+   "active": 71,
+   "mean_excess": 0.0019,
+   "t": 0.25,
+   "months": 68,
+   "mean_net_per_rebalance": 0.0052,
    "supported": false
   },
   "variants": {
    "L126-x-q80": {
     "rebalances": 95,
     "active": 94,
-    "mean_excess": -0.0022,
-    "t": -0.279,
-    "months": 91,
-    "mean_net_per_rebalance": 0.0085,
+    "mean_excess": 0.0031,
+    "t": 0.43,
+    "months": 88,
+    "mean_net_per_rebalance": 0.0138,
     "supported": false
    },
    "L126-x-q90": {
     "rebalances": 95,
-    "active": 92,
-    "mean_excess": 0.0004,
-    "t": 0.045,
-    "months": 89,
-    "mean_net_per_rebalance": 0.0109,
+    "active": 90,
+    "mean_excess": 0.0035,
+    "t": 0.462,
+    "months": 85,
+    "mean_net_per_rebalance": 0.014,
     "supported": false
    },
    "L126-R-q80": {
     "rebalances": 95,
-    "active": 71,
-    "mean_excess": 0.0015,
-    "t": 0.163,
+    "active": 72,
+    "mean_excess": 0.0064,
+    "t": 0.793,
     "months": 69,
-    "mean_net_per_rebalance": 0.007,
+    "mean_net_per_rebalance": 0.009,
     "supported": false
    },
    "L126-R-q90": {
     "rebalances": 95,
     "active": 69,
-    "mean_excess": 0.002,
-    "t": 0.197,
-    "months": 67,
-    "mean_net_per_rebalance": 0.0072,
+    "mean_excess": 0.0086,
+    "t": 0.994,
+    "months": 66,
+    "mean_net_per_rebalance": 0.0097,
     "supported": false
    },
    "L252-x-q80": {
     "rebalances": 95,
     "active": 94,
-    "mean_excess": 0.0036,
-    "t": 0.532,
-    "months": 91,
-    "mean_net_per_rebalance": 0.0145,
+    "mean_excess": 0.0018,
+    "t": 0.257,
+    "months": 88,
+    "mean_net_per_rebalance": 0.0117,
     "supported": false
    },
    "L252-x-q90": {
     "rebalances": 95,
-    "active": 94,
-    "mean_excess": 0.0011,
-    "t": 0.155,
-    "months": 91,
-    "mean_net_per_rebalance": 0.0122,
+    "active": 93,
+    "mean_excess": 0.0004,
+    "t": 0.051,
+    "months": 87,
+    "mean_net_per_rebalance": 0.0087,
     "supported": false
    },
    "L252-R-q80": {
     "rebalances": 95,
-    "active": 71,
-    "mean_excess": 0.0091,
-    "t": 1.114,
+    "active": 72,
+    "mean_excess": 0.0036,
+    "t": 0.447,
     "months": 69,
-    "mean_net_per_rebalance": 0.0127,
+    "mean_net_per_rebalance": 0.0066,
     "supported": false
    },
    "L252-R-q90": {
     "rebalances": 95,
     "active": 71,
-    "mean_excess": 0.008,
-    "t": 0.948,
-    "months": 69,
-    "mean_net_per_rebalance": 0.0119,
+    "mean_excess": 0.0037,
+    "t": 0.408,
+    "months": 68,
+    "mean_net_per_rebalance": 0.006,
     "supported": false
    }
   },
   "as_built": {
    "rebalances": 95,
    "active": 94,
-   "mean_excess": 0.0036,
-   "t": 0.532,
-   "months": 91,
-   "mean_net_per_rebalance": 0.0145,
+   "mean_excess": 0.0018,
+   "t": 0.257,
+   "months": 88,
+   "mean_net_per_rebalance": 0.0117,
    "id": "L252-x-q80"
   }
  }

@@ -1,44 +1,44 @@
 {
  "meta": {
-  "when": "2026-10-27 02:54 UTC",
+  "when": "2026-10-27 04:19 UTC",
   "symbols": 660,
   "dates": [
-   "2015-10-26",
-   "2026-10-26"
+   "2015-10-27",
+   "2026-10-27"
   ]
  },
  "engines": {
   "MOM": {
    "horizon": 20,
-   "picked": 603,
+   "picked": 601,
    "skipped": 21,
    "periods": {
     "train": {
-     "trades": 301,
-     "mean_net": 0.013,
-     "hit_rate": 0.468,
-     "mean_R": 0.155,
-     "excess_vs_universe": 0.0049,
-     "excess_t": 0.585,
-     "months": 60
+     "trades": 293,
+     "mean_net": 0.011,
+     "hit_rate": 0.451,
+     "mean_R": 0.112,
+     "excess_vs_universe": 0.0075,
+     "excess_t": 0.819,
+     "months": 57
     },
     "validation": {
-     "trades": 117,
-     "mean_net": 0.0193,
-     "hit_rate": 0.513,
-     "mean_R": 0.202,
-     "excess_vs_universe": 0.001,
-     "excess_t": 0.109,
-     "months": 24
+     "trades": 121,
+     "mean_net": 0.0078,
+     "hit_rate": 0.488,
+     "mean_R": 0.085,
+     "excess_vs_universe": -0.0069,
+     "excess_t": -0.818,
+     "months": 23
     },
     "holdout": {
-     "trades": 164,
-     "mean_net": 0.0035,
-     "hit_rate": 0.494,
-     "mean_R": 0.038,
-     "excess_vs_universe": -0.0022,
-     "excess_t": -0.184,
-     "months": 33
+     "trades": 166,
+     "mean_net": -0.0072,
+     "hit_rate": 0.422,
+     "mean_R": -0.107,
+     "excess_vs_universe": -0.013,
+     "excess_t": -1.224,
+     "months": 32
     }
    },
    "label": "no historical support"
@@ -46,34 +46,34 @@
   "MOMR": {
    "horizon": 20,
    "picked": 564,
-   "skipped": 20,
+   "skipped": 21,
    "periods": {
     "train": {
-     "trades": 277,
-     "mean_net": 0.0169,
-     "hit_rate": 0.469,
-     "mean_R": 0.194,
-     "excess_vs_universe": 0.0104,
-     "excess_t": 1.154,
-     "months": 58
+     "trades": 269,
+     "mean_net": 0.0227,
+     "hit_rate": 0.498,
+     "mean_R": 0.234,
+     "excess_vs_universe": 0.0252,
+     "excess_t": 1.886,
+     "months": 57
     },
     "validation": {
-     "trades": 112,
-     "mean_net": 0.0118,
-     "hit_rate": 0.536,
-     "mean_R": 0.169,
-     "excess_vs_universe": -0.0085,
-     "excess_t": -0.744,
-     "months": 24
+     "trades": 117,
+     "mean_net": 0.0084,
+     "hit_rate": 0.504,
+     "mean_R": 0.12,
+     "excess_vs_universe": -0.0064,
+     "excess_t": -0.713,
+     "months": 23
     },
     "holdout": {
-     "trades": 155,
-     "mean_net": -0.0034,
-     "hit_rate": 0.458,
-     "mean_R": -0.048,
-     "excess_vs_universe": -0.008,
-     "excess_t": -0.952,
-     "months": 32
+     "trades": 157,
+     "mean_net": -0.0032,
+     "hit_rate": 0.452,
+     "mean_R": -0.036,
+     "excess_vs_universe": -0.006,
+     "excess_t": -0.656,
+     "months": 31
     }
    },
    "label": "no historical support"
@@ -81,33 +81,33 @@
   "LVT": {
    "horizon": 40,
    "picked": 305,
-   "skipped": 0,
+   "skipped": 1,
    "periods": {
     "train": {
-     "trades": 160,
-     "mean_net": -0.0008,
-     "hit_rate": 0.362,
-     "mean_R": -0.018,
-     "excess_vs_universe": -0.0303,
-     "excess_t": -2.283,
+     "trades": 159,
+     "mean_net": -0.0029,
+     "hit_rate": 0.34,
+     "mean_R": -0.067,
+     "excess_vs_universe": -0.032,
+     "excess_t": -2.419,
      "months": 32
     },
     "validation": {
      "trades": 60,
-     "mean_net": 0.0148,
-     "hit_rate": 0.35,
-     "mean_R": 0.395,
-     "excess_vs_universe": -0.0237,
-     "excess_t": -1.278,
+     "mean_net": 0.0212,
+     "hit_rate": 0.417,
+     "mean_R": 0.42,
+     "excess_vs_universe": -0.018,
+     "excess_t": -1.253,
      "months": 12
     },
     "holdout": {
      "trades": 85,
-     "mean_net": -0.0144,
-     "hit_rate": 0.294,
-     "mean_R": -0.253,
-     "excess_vs_universe": -0.0326,
-     "excess_t": -1.686,
+     "mean_net": -0.0085,
+     "hit_rate": 0.341,
+     "mean_R": -0.105,
+     "excess_vs_universe": -0.0274,
+     "excess_t": -1.543,
      "months": 17
     }
    },

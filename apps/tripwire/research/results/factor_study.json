@@ -1,500 +1,500 @@
 {
  "meta": {
-  "when": "2026-10-27 02:53 UTC",
+  "when": "2026-10-27 04:18 UTC",
   "symbols": 660,
   "dates": [
-   "2015-10-26",
-   "2026-10-26"
+   "2015-10-27",
+   "2026-10-27"
   ]
  },
  "features": {
   "mom12_1": {
    "train": {
-    "ic": 0.047,
-    "t": 2.448,
+    "ic": 0.048,
+    "t": 2.511,
+    "months": 62,
+    "top_quintile_excess_net": 0.0035
+   },
+   "validation": {
+    "ic": 0.044,
+    "t": 2.01,
+    "months": 24,
+    "top_quintile_excess_net": 0.0032
+   },
+   "holdout": {
+    "ic": 0.032,
+    "t": 1.666,
+    "months": 33,
+    "top_quintile_excess_net": 0.0019
+   }
+  },
+  "near_high": {
+   "train": {
+    "ic": 0.026,
+    "t": 1.201,
+    "months": 62,
+    "top_quintile_excess_net": -0.0015
+   },
+   "validation": {
+    "ic": 0.036,
+    "t": 3.192,
+    "months": 24,
+    "top_quintile_excess_net": -0.002
+   },
+   "holdout": {
+    "ic": 0.04,
+    "t": 2.026,
+    "months": 33,
+    "top_quintile_excess_net": 0.0001
+   }
+  },
+  "rev21": {
+   "train": {
+    "ic": 0.019,
+    "t": 1.475,
+    "months": 62,
+    "top_quintile_excess_net": -0.0039
+   },
+   "validation": {
+    "ic": -0.016,
+    "t": -0.998,
+    "months": 24,
+    "top_quintile_excess_net": -0.0068
+   },
+   "holdout": {
+    "ic": -0.008,
+    "t": -0.561,
+    "months": 33,
+    "top_quintile_excess_net": -0.0064
+   }
+  },
+  "smooth_fip": {
+   "train": {
+    "ic": 0.032,
+    "t": 2.445,
+    "months": 62,
+    "top_quintile_excess_net": 0.0015
+   },
+   "validation": {
+    "ic": 0.001,
+    "t": 0.088,
+    "months": 24,
+    "top_quintile_excess_net": -0.0084
+   },
+   "holdout": {
+    "ic": 0.028,
+    "t": 2.161,
+    "months": 33,
+    "top_quintile_excess_net": -0.0039
+   }
+  },
+  "eff_ratio60": {
+   "train": {
+    "ic": 0.033,
+    "t": 2.638,
+    "months": 62,
+    "top_quintile_excess_net": 0.0024
+   },
+   "validation": {
+    "ic": 0.01,
+    "t": 0.698,
+    "months": 24,
+    "top_quintile_excess_net": -0.0006
+   },
+   "holdout": {
+    "ic": 0.045,
+    "t": 3.996,
+    "months": 33,
+    "top_quintile_excess_net": 0.0041
+   }
+  },
+  "resid_mom": {
+   "train": {
+    "ic": 0.055,
+    "t": 2.815,
     "months": 62,
     "top_quintile_excess_net": 0.0032
    },
    "validation": {
     "ic": 0.041,
-    "t": 1.82,
-    "months": 24,
-    "top_quintile_excess_net": 0.0031
-   },
-   "holdout": {
-    "ic": 0.034,
-    "t": 1.766,
-    "months": 33,
-    "top_quintile_excess_net": 0.0026
-   }
-  },
-  "near_high": {
-   "train": {
-    "ic": 0.025,
-    "t": 1.104,
-    "months": 62,
-    "top_quintile_excess_net": -0.0024
-   },
-   "validation": {
-    "ic": 0.033,
-    "t": 2.858,
-    "months": 24,
-    "top_quintile_excess_net": -0.0017
-   },
-   "holdout": {
-    "ic": 0.037,
-    "t": 1.871,
-    "months": 33,
-    "top_quintile_excess_net": -0.0004
-   }
-  },
-  "rev21": {
-   "train": {
-    "ic": 0.02,
-    "t": 1.568,
-    "months": 62,
-    "top_quintile_excess_net": -0.0039
-   },
-   "validation": {
-    "ic": -0.006,
-    "t": -0.33,
-    "months": 24,
-    "top_quintile_excess_net": -0.0047
-   },
-   "holdout": {
-    "ic": -0.006,
-    "t": -0.417,
-    "months": 33,
-    "top_quintile_excess_net": -0.0053
-   }
-  },
-  "smooth_fip": {
-   "train": {
-    "ic": 0.031,
-    "t": 2.415,
-    "months": 62,
-    "top_quintile_excess_net": 0.0012
-   },
-   "validation": {
-    "ic": 0.001,
-    "t": 0.082,
-    "months": 24,
-    "top_quintile_excess_net": -0.008
-   },
-   "holdout": {
-    "ic": 0.027,
-    "t": 1.976,
-    "months": 33,
-    "top_quintile_excess_net": -0.0045
-   }
-  },
-  "eff_ratio60": {
-   "train": {
-    "ic": 0.036,
-    "t": 2.771,
-    "months": 62,
-    "top_quintile_excess_net": 0.0029
-   },
-   "validation": {
-    "ic": 0.008,
-    "t": 0.613,
-    "months": 24,
-    "top_quintile_excess_net": -0.0018
-   },
-   "holdout": {
-    "ic": 0.046,
-    "t": 3.85,
-    "months": 33,
-    "top_quintile_excess_net": 0.0035
-   }
-  },
-  "resid_mom": {
-   "train": {
-    "ic": 0.053,
-    "t": 2.699,
-    "months": 62,
-    "top_quintile_excess_net": 0.003
-   },
-   "validation": {
-    "ic": 0.037,
-    "t": 1.64,
+    "t": 1.837,
     "months": 24,
     "top_quintile_excess_net": 0.0007
    },
    "holdout": {
-    "ic": 0.037,
-    "t": 2.279,
+    "ic": 0.035,
+    "t": 2.171,
     "months": 33,
-    "top_quintile_excess_net": -0.0005
+    "top_quintile_excess_net": -0.0003
    }
   },
   "max5": {
    "train": {
-    "ic": 0.027,
-    "t": 2.227,
+    "ic": 0.028,
+    "t": 2.417,
     "months": 62,
-    "top_quintile_excess_net": -0.0051
+    "top_quintile_excess_net": -0.0052
    },
    "validation": {
-    "ic": -0.029,
-    "t": -1.651,
+    "ic": -0.031,
+    "t": -1.767,
     "months": 24,
-    "top_quintile_excess_net": -0.0114
+    "top_quintile_excess_net": -0.0115
    },
    "holdout": {
-    "ic": 0.001,
-    "t": 0.062,
+    "ic": 0.009,
+    "t": 0.481,
     "months": 33,
-    "top_quintile_excess_net": -0.0092
+    "top_quintile_excess_net": -0.0087
    }
   },
   "overnight60": {
    "train": {
-    "ic": -0.02,
-    "t": -1.662,
+    "ic": -0.023,
+    "t": -1.827,
     "months": 62,
     "top_quintile_excess_net": -0.0032
    },
    "validation": {
-    "ic": 0.02,
-    "t": 1.033,
+    "ic": 0.021,
+    "t": 1.144,
     "months": 24,
-    "top_quintile_excess_net": 0.0022
+    "top_quintile_excess_net": 0.0028
    },
    "holdout": {
-    "ic": -0.012,
-    "t": -0.622,
+    "ic": -0.013,
+    "t": -0.734,
     "months": 33,
-    "top_quintile_excess_net": 0.0009
+    "top_quintile_excess_net": 0.0008
    }
   },
   "vol_shock": {
    "train": {
-    "ic": -0.001,
-    "t": -0.138,
+    "ic": -0.006,
+    "t": -0.593,
     "months": 62,
-    "top_quintile_excess_net": -0.0018
+    "top_quintile_excess_net": -0.002
    },
    "validation": {
-    "ic": 0.027,
-    "t": 2.12,
+    "ic": 0.031,
+    "t": 2.375,
     "months": 24,
-    "top_quintile_excess_net": 0.004
+    "top_quintile_excess_net": 0.0036
    },
    "holdout": {
-    "ic": 0.009,
-    "t": 0.803,
+    "ic": 0.006,
+    "t": 0.539,
     "months": 33,
-    "top_quintile_excess_net": 0.0002
+    "top_quintile_excess_net": -0.0005
    }
   },
   "ud_vol": {
    "train": {
-    "ic": -0.012,
-    "t": -1.302,
+    "ic": -0.015,
+    "t": -1.677,
     "months": 62,
-    "top_quintile_excess_net": -0.0038
+    "top_quintile_excess_net": -0.0039
    },
    "validation": {
-    "ic": 0.002,
-    "t": 0.155,
+    "ic": 0.001,
+    "t": 0.118,
     "months": 24,
-    "top_quintile_excess_net": -0.001
+    "top_quintile_excess_net": -0.0014
    },
    "holdout": {
-    "ic": -0.008,
-    "t": -0.662,
+    "ic": -0.011,
+    "t": -0.889,
     "months": 33,
-    "top_quintile_excess_net": -0.0025
+    "top_quintile_excess_net": -0.0027
    }
   },
   "clv20": {
    "train": {
-    "ic": 0.015,
-    "t": 1.21,
+    "ic": 0.013,
+    "t": 1.028,
     "months": 62,
-    "top_quintile_excess_net": -0.0043
+    "top_quintile_excess_net": -0.0045
    },
    "validation": {
-    "ic": -0.004,
-    "t": -0.212,
+    "ic": -0.001,
+    "t": -0.042,
     "months": 24,
-    "top_quintile_excess_net": -0.0089
+    "top_quintile_excess_net": -0.0092
    },
    "holdout": {
-    "ic": 0.027,
-    "t": 1.797,
+    "ic": 0.033,
+    "t": 2.196,
     "months": 33,
-    "top_quintile_excess_net": -0.0049
+    "top_quintile_excess_net": -0.004
    }
   },
   "coil": {
    "train": {
     "ic": 0.01,
-    "t": 0.7,
+    "t": 0.752,
     "months": 62,
-    "top_quintile_excess_net": -0.0042
+    "top_quintile_excess_net": -0.0035
    },
    "validation": {
-    "ic": -0.023,
-    "t": -1.848,
+    "ic": -0.026,
+    "t": -1.897,
     "months": 24,
-    "top_quintile_excess_net": -0.0096
+    "top_quintile_excess_net": -0.01
    },
    "holdout": {
-    "ic": 0.003,
-    "t": 0.212,
+    "ic": 0.005,
+    "t": 0.348,
     "months": 33,
-    "top_quintile_excess_net": -0.0044
+    "top_quintile_excess_net": -0.0043
    }
   },
   "skew60": {
    "train": {
-    "ic": -0.002,
-    "t": -0.22,
+    "ic": -0.0,
+    "t": -0.051,
     "months": 62,
-    "top_quintile_excess_net": -0.0053
+    "top_quintile_excess_net": -0.0052
    },
    "validation": {
     "ic": -0.021,
-    "t": -2.187,
+    "t": -1.931,
     "months": 24,
-    "top_quintile_excess_net": -0.009
+    "top_quintile_excess_net": -0.0085
    },
    "holdout": {
-    "ic": -0.005,
-    "t": -0.343,
+    "ic": -0.003,
+    "t": -0.234,
     "months": 33,
-    "top_quintile_excess_net": -0.0063
+    "top_quintile_excess_net": -0.0067
    }
   },
   "amihud": {
    "train": {
-    "ic": 0.007,
-    "t": 0.556,
+    "ic": 0.008,
+    "t": 0.706,
     "months": 62,
-    "top_quintile_excess_net": 0.0007
+    "top_quintile_excess_net": 0.0011
    },
    "validation": {
     "ic": 0.027,
-    "t": 1.496,
+    "t": 1.55,
     "months": 24,
-    "top_quintile_excess_net": 0.0051
+    "top_quintile_excess_net": 0.0054
    },
    "holdout": {
-    "ic": 0.004,
-    "t": 0.186,
+    "ic": -0.004,
+    "t": -0.206,
     "months": 33,
-    "top_quintile_excess_net": 0.0016
+    "top_quintile_excess_net": 0.0011
    }
   },
   "noise": {
    "train": {
-    "ic": -0.006,
-    "t": -1.292,
+    "ic": -0.007,
+    "t": -1.399,
     "months": 62,
-    "top_quintile_excess_net": -0.0069
+    "top_quintile_excess_net": -0.0071
    },
    "validation": {
-    "ic": -0.002,
-    "t": -0.379,
+    "ic": 0.0,
+    "t": 0.029,
     "months": 24,
-    "top_quintile_excess_net": -0.0048
+    "top_quintile_excess_net": -0.0034
    },
    "holdout": {
-    "ic": 0.006,
-    "t": 1.225,
+    "ic": 0.005,
+    "t": 1.013,
     "months": 33,
-    "top_quintile_excess_net": -0.0038
+    "top_quintile_excess_net": -0.0036
    }
   }
  },
  "modifiers": {
   "smooth_fip": {
    "train": {
-    "diff": 0.0051,
-    "t": 1.348,
+    "diff": 0.004,
+    "t": 1.029,
     "months": 62
    },
    "validation": {
-    "diff": -0.0103,
-    "t": -2.309,
+    "diff": -0.0106,
+    "t": -2.31,
     "months": 24
    },
    "holdout": {
-    "diff": -0.0099,
-    "t": -2.755,
+    "diff": -0.0078,
+    "t": -2.317,
     "months": 33
    }
   },
   "eff_ratio60": {
    "train": {
-    "diff": 0.0084,
-    "t": 2.504,
+    "diff": 0.0083,
+    "t": 2.58,
     "months": 62
    },
    "validation": {
-    "diff": -0.004,
-    "t": -0.974,
+    "diff": -0.002,
+    "t": -0.478,
     "months": 24
    },
    "holdout": {
-    "diff": 0.0089,
-    "t": 2.52,
+    "diff": 0.0115,
+    "t": 3.194,
     "months": 33
    }
   },
   "resid_mom": {
    "train": {
-    "diff": 0.0042,
-    "t": 0.959,
+    "diff": 0.0037,
+    "t": 0.893,
     "months": 62
    },
    "validation": {
-    "diff": 0.0015,
-    "t": 0.426,
+    "diff": 0.0011,
+    "t": 0.326,
     "months": 24
    },
    "holdout": {
-    "diff": -0.0064,
-    "t": -2.022,
+    "diff": -0.0036,
+    "t": -1.144,
     "months": 33
    }
   },
   "max5": {
    "train": {
-    "diff": -0.0103,
-    "t": -2.992,
+    "diff": -0.0094,
+    "t": -2.572,
     "months": 62
    },
    "validation": {
-    "diff": -0.007,
-    "t": -1.343,
+    "diff": -0.0067,
+    "t": -1.407,
     "months": 24
    },
    "holdout": {
-    "diff": -0.0071,
-    "t": -1.958,
+    "diff": -0.0078,
+    "t": -2.027,
     "months": 33
    }
   },
   "overnight60": {
    "train": {
-    "diff": 0.0086,
-    "t": 1.982,
+    "diff": 0.0064,
+    "t": 1.419,
     "months": 62
    },
    "validation": {
-    "diff": 0.0093,
-    "t": 1.527,
+    "diff": 0.0101,
+    "t": 1.728,
     "months": 24
    },
    "holdout": {
-    "diff": 0.0,
-    "t": 0.005,
+    "diff": 0.0007,
+    "t": 0.162,
     "months": 33
    }
   },
   "clv20": {
    "train": {
-    "diff": 0.001,
-    "t": 0.337,
+    "diff": 0.0039,
+    "t": 1.199,
     "months": 62
    },
    "validation": {
-    "diff": -0.0074,
-    "t": -1.363,
+    "diff": -0.0048,
+    "t": -0.905,
     "months": 24
    },
    "holdout": {
-    "diff": 0.0031,
-    "t": 0.869,
+    "diff": 0.0061,
+    "t": 1.768,
     "months": 33
    }
   }
  },
  "winner_profile": {
   "mom12_1": {
-   "train": 0.063,
-   "validation": 0.039,
-   "holdout": 0.015
+   "train": 0.065,
+   "validation": 0.035,
+   "holdout": 0.022
   },
   "near_high": {
-   "train": 0.02,
-   "validation": 0.04,
-   "holdout": 0.016
+   "train": 0.024,
+   "validation": 0.038,
+   "holdout": 0.014
   },
   "rev21": {
    "train": 0.026,
-   "validation": -0.01,
-   "holdout": 0.006
+   "validation": -0.023,
+   "holdout": 0.014
   },
   "smooth_fip": {
-   "train": 0.034,
-   "validation": -0.033,
-   "holdout": -0.006
+   "train": 0.041,
+   "validation": -0.031,
+   "holdout": -0.0
   },
   "eff_ratio60": {
-   "train": 0.03,
-   "validation": 0.023,
-   "holdout": 0.019
-  },
-  "resid_mom": {
-   "train": 0.062,
-   "validation": 0.028,
-   "holdout": 0.016
-  },
-  "max5": {
-   "train": 0.014,
-   "validation": -0.053,
-   "holdout": -0.013
-  },
-  "overnight60": {
-   "train": -0.014,
-   "validation": 0.071,
-   "holdout": 0.008
-  },
-  "vol_shock": {
-   "train": -0.001,
-   "validation": 0.062,
+   "train": 0.027,
+   "validation": 0.015,
    "holdout": 0.022
   },
+  "resid_mom": {
+   "train": 0.063,
+   "validation": 0.026,
+   "holdout": 0.021
+  },
+  "max5": {
+   "train": 0.024,
+   "validation": -0.057,
+   "holdout": -0.001
+  },
+  "overnight60": {
+   "train": -0.017,
+   "validation": 0.06,
+   "holdout": 0.003
+  },
+  "vol_shock": {
+   "train": -0.005,
+   "validation": 0.065,
+   "holdout": 0.014
+  },
   "ud_vol": {
-   "train": -0.019,
-   "validation": 0.016,
-   "holdout": -0.007
+   "train": -0.022,
+   "validation": 0.009,
+   "holdout": -0.018
   },
   "clv20": {
-   "train": -0.005,
-   "validation": -0.048,
-   "holdout": -0.015
+   "train": -0.007,
+   "validation": -0.042,
+   "holdout": -0.011
   },
   "coil": {
-   "train": 0.002,
-   "validation": -0.05,
-   "holdout": -0.004
+   "train": -0.002,
+   "validation": -0.053,
+   "holdout": 0.006
   },
   "skew60": {
-   "train": -0.0,
-   "validation": -0.031,
-   "holdout": -0.027
+   "train": 0.0,
+   "validation": -0.039,
+   "holdout": -0.021
   },
   "amihud": {
-   "train": 0.046,
-   "validation": 0.079,
-   "holdout": 0.04
+   "train": 0.045,
+   "validation": 0.059,
+   "holdout": 0.039
   },
   "noise": {
-   "train": -0.011,
-   "validation": -0.019,
-   "holdout": -0.0
+   "train": -0.009,
+   "validation": -0.006,
+   "holdout": 0.004
   }
  },
  "verdict": {
   "mom12_1": {
    "kind": "common baseline",
    "steps": {
-    "train IC > 0 and t >= 2.5": false,
+    "train IC > 0 and t >= 2.5": true,
     "validation IC > 0 and >= half of train": true,
     "validation top quintile beats the universe net of costs": true,
     "holdout IC > 0": true,
@@ -509,7 +509,7 @@
     "validation IC > 0 and >= half of train": true,
     "validation top quintile beats the universe net of costs": false,
     "holdout IC > 0": true,
-    "holdout top quintile beats the universe net of costs": false
+    "holdout top quintile beats the universe net of costs": true
    },
    "adopt": false
   },
@@ -586,7 +586,7 @@
     "validation IC > 0 and >= half of train": true,
     "validation top quintile beats the universe net of costs": true,
     "holdout IC > 0": true,
-    "holdout top quintile beats the universe net of costs": true
+    "holdout top quintile beats the universe net of costs": false
    },
    "adopt": false
   },
@@ -640,7 +640,7 @@
     "train IC > 0 and t >= 2.5": false,
     "validation IC > 0 and >= half of train": true,
     "validation top quintile beats the universe net of costs": true,
-    "holdout IC > 0": true,
+    "holdout IC > 0": false,
     "holdout top quintile beats the universe net of costs": true
    },
    "adopt": false
@@ -697,7 +697,7 @@
    "steps": {
     "train diff > 0 and t >= 2.5": false,
     "validation diff > 0": true,
-    "holdout diff > 0": false
+    "holdout diff > 0": true
    },
    "adopt": false
   },
