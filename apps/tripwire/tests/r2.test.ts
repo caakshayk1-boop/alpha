@@ -5,10 +5,10 @@ import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
 import { trendOfCloses, trendOf, TREND_WORD } from '../src/screen.ts';
-import { companyQ, companyStories, decisionNews, mergeNews, type NewsItem } from '../src/news.ts';
+import { companyQ } from '../src/news.ts';
 import { pct, tone } from '../src/fmt.ts';
 import { fmtMacro, MACRO } from '../src/macro.ts';
-import { parseNews, parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
+import { parseSpark, trendOfRow, aggregateBreadth, MACRO as WORKER_MACRO } from '../worker.js';
 
 const pick = (night: string, sym: string, ref = 100, o: Partial<LedgerPick> = {}): LedgerPick => ({ id: `${night}|MOM|${sym}`, engine: 'MOM', sym, asOf: night, ref, stop: ref * 0.9, horizon: 20, score: 80, rank: 1, ...o });
 /** thirty picks spread over the three sleeves (5, 20 and 60 sessions) so the 30 cap is the binding limit, not one sleeve */
@@ -96,38 +96,6 @@ test('macro: every instrument the app lists is one the Worker serves, formatted 
   assert.equal(fmtMacro(MACRO.find((m) => m.key === 'USDMYR')!, 4.2123), 'RM4.2123'); assert.equal(fmtMacro(MACRO.find((m) => m.key === 'BTC')!, 67890.4), '$67,890'); assert.equal(fmtMacro(MACRO[0], null), '—');
 });
 
-const item = (title: string, source: string, pub: string, link = 'https://news.google.com/rss/articles/x') => `<item><title>${title} - ${source}</title><link>${link}</link><pubDate>${pub}</pubDate><source url="https://s.example">${source}</source></item>`;
-test('news: filler and non-English are dropped, one story from many outlets is one line, tags are keywords, newest material first', () => {
-  const now = Date.parse('Mon, 26 Oct 2026 06:00:00 GMT');
-  const xml = `<rss><channel>${[
-    item('EAAA India Alternatives IPO to open on October 26; price band fixed at ₹1,585-1,665', 'TradingView', 'Wed, 21 Oct 2026 06:14:00 GMT', 'https://news.google.com/a1'),
-    item("EAAA India Alternatives' IPO to open on October 26, price band fixed", 'The Economic Times', 'Wed, 21 Oct 2026 07:00:00 GMT', 'https://news.google.com/a2'),
-    item('Edelweiss Financial Services Share Price News: NBFC Metrics', 'Univest', 'Mon, 19 Oct 2026 10:10:00 GMT', 'https://news.google.com/a3'),
-    item('Edelweiss Subsidiary IPO: రూ. 1,200 కోట్ల ఐపీఓకు సిద్ధమైన EAAA Alternatives', 'Whalesbook', 'Tue, 20 Oct 2026 05:22:00 GMT', 'https://news.google.com/a4'),
-    item('Kavish Malji joins Edelweiss Financial Services as Deputy Vice President – Marketing', 'Exchange4Media', 'Wed, 21 Oct 2026 07:14:00 GMT', 'https://news.google.com/a5'),
-    item('Edelweiss posts Q2 net profit of ₹150 crore, up 30%', 'Mint', 'Mon, 26 Oct 2026 04:00:00 GMT', 'https://news.google.com/a6'),
-    item('Future dated story about nothing in particular here today', 'Bad', 'Fri, 30 Oct 2026 04:00:00 GMT', 'https://news.google.com/a7'),
-  ].join('')}</channel></rss>`;
-  const r = parseNews(xml, now);
-  assert.deepEqual(r.map((x) => x.url), ['https://news.google.com/a6', 'https://news.google.com/a2', 'https://news.google.com/a5']);        // results first, the IPO once (the newest outlet's link), the hire last
-  assert.equal(r[1].also, 1); assert.ok(r[1].sources.includes('TradingView') && r[1].sources.includes('The Economic Times'));
-  assert.ok(r[0].tags.includes('Results')); assert.ok(r[1].tags.includes('IPO')); assert.deepEqual(r[2].tags, ['People']);
-  assert.ok(!r.some((x) => /Univest|Whalesbook|Bad/.test(x.source)));
-  assert.equal(r[0].title, 'Edelweiss posts Q2 net profit of ₹150 crore, up 30%');                // the " - Source" suffix is removed
-  assert.deepEqual(parseNews('<rss></rss>', now), []); assert.deepEqual(parseNews('', now), []);
-});
-
-test('news from Bing: the real article link is taken from the click link, the source from its own field, and items older than the window are dropped', () => {
-  const now = Date.parse('Mon, 26 Oct 2026 06:00:00 GMT');
-  const bing = (title: string, url: string, pub: string, src: string) => `<item><title>${title}</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=abc&amp;url=${encodeURIComponent(url).replace(/&/g, '&amp;')}&amp;c=1&amp;mkt=en-in</link><description>d</description><pubDate>${pub}</pubDate><News:Source>${src}</News:Source></item>`;
-  const xml = `<rss xmlns:News="x"><channel>${[
-    bing('Edelweiss Financial Services to Raise Rs 300 Cr via NCDs', 'https://money.rediff.com/news/a?x=1&y=2', 'Sun, 25 Oct 2026 17:00:00 GMT', 'Rediff Money'),
-    bing('Mohnish Pabrai fund buys 2% stake in Edelweiss Financial Services', 'https://www.livemint.com/old', 'Mon, 07 Dec 2020 22:48:00 GMT', 'Mint'),
-  ].join('')}</channel></rss>`;
-  const r = parseNews(xml, now, 8, 8);
-  assert.equal(r.length, 1); assert.equal(r[0].url, 'https://money.rediff.com/news/a?x=1&y=2'); assert.equal(r[0].source, 'Rediff Money'); assert.ok(r[0].tags.includes('Deal') || r[0].tags.length >= 0);
-  assert.equal(parseNews(xml, now, 8, 100000).length, 2);                                   // the window is what drops the 2020 story
-});
 test('auto book: picks from a retired engine are not taken, and the log says why', () => {
   const lvt = pick('2026-10-23', 'TORNTPHARM', 4524, { engine: 'LVT', id: '2026-10-23|LVT|TORNTPHARM' });
   const p = planAutoBook(ledger([lvt, pick('2026-10-23', 'AAA', 100)]));
@@ -190,35 +158,10 @@ test('breadth: counts use the live price where one is given, the close otherwise
   const live = aggregateBreadth(rows, { A: 101 }); assert.deepEqual([live.n, live.up, live.mixed, live.down], [3, 2, 0, 1]);
   assert.equal(live.sectors.length, 0);                                                      // a sector under eight names is not reported
 });
-const hl = (title: string, o: Partial<NewsItem> = {}): NewsItem => ({ title, source: 'Mint', url: 'https://x/' + title.length + title.slice(0, 5), t: 1_800_000_000 - 3600, tags: [], also: 0, sources: ['Mint'], ...o });
-test('news: the same story from two queries is one line, and a named holding is ranked ahead of a general one', () => {
-  const now = 1_800_000_000_000;
-  const market = { items: [hl('Sensex ends higher as banks rally on strong earnings'), hl('Gold steadies near record ahead of Fed meeting')] };
-  const name = { sym: 'HDFCBANK', items: [hl('Banks rally as Sensex ends higher on strong earnings', { url: 'https://y/1' }), hl('HDFC Bank Q2 profit rises 12%', { tags: ['Results'], url: 'https://y/2' })] };
-  const m = mergeNews([market, name], 10, now);
-  assert.equal(m.length, 3);                                                                   // the rally story folded into one
-  assert.equal(m[0].sym, 'HDFCBANK'); assert.ok(m.some((x) => x.sym === 'HDFCBANK' && /rally/i.test(x.title)), 'the folded story is credited to the name that carried it');
-  assert.equal(mergeNews([market, name], 2, now).length, 2);
-});
 test('numbers: a value that rounds to zero carries no sign and no colour', () => {
   assert.equal(pct(-0.04), '0.0%'); assert.equal(pct(0.04), '0.0%'); assert.equal(pct(0), '0.0%');
   assert.equal(pct(-0.06), '−0.1%'); assert.equal(pct(1.26), '+1.3%'); assert.equal(pct(null), '—');
   assert.equal(tone(-0.04), ''); assert.equal(tone(0.2), 'up'); assert.equal(tone(-0.2), 'down');
-});
-
-test('news: five outlets reporting one results night are one line, and a headline that is not about the company is dropped', () => {
-  const now = 1_800_000_000;
-  const feed = [
-    hl('Castrol India Q3 Results: raw material costs hit margins', { tags: ['Results'], t: now - 3600, also: 1, url: 'https://a/1' }),
-    hl('Castrol India Q3 revenue rises 27% to Rs 1,735 crore', { tags: ['Results'], t: now - 90000, url: 'https://a/2' }),
-    hl('Castrol India Q3 net profit slumps 23%', { tags: ['Results'], t: now - 100000, url: 'https://a/3' }),
-    hl('Castrol India Ltd. declines 1.5% amid mixed technical signals', { tags: ['Rating'], t: now - 400000, url: 'https://a/4' }),
-    hl('Lubricant demand rises across Asia', { t: now - 5000, url: 'https://a/5' }),
-  ];
-  const s = companyStories('Castrol India Ltd.', feed, 5);
-  assert.equal(s.length, 2);                                                     // the results night once, the rating once; the unrelated line is gone
-  assert.deepEqual(s.map((x) => x.tags[0]), ['Results', 'Rating']);
-  assert.ok(s[0].also >= 2, 'the folded outlets are counted');
 });
 
 test('auto book: the 30 places are shared by every style, with no sleeves', () => {
@@ -226,34 +169,6 @@ test('auto book: the 30 places are shared by every style, with no sleeves', () =
   assert.equal(planAutoBook(ledger(swing)).taken.length, 12, 'twelve swing picks all fit: one style may use any free place');
   const many = Array.from({ length: 33 }, (_, i) => pick('2026-10-23', `M${i}`, 100, { score: 90 - i, horizon: 20 }));
   const p = planAutoBook(ledger(many)); assert.equal(p.taken.length, 30); assert.ok(p.refused.every((r) => /book is full/.test(r.why)));
-});
-
-test('decision news: one line per held name, material and recent only; no recaps, no previews, no mixed-language filler', () => {
-  const NOW = Date.UTC(2026, 9, 26, 12) ; const h = (x: number) => Math.floor(NOW / 1000) - x * 3600;
-  const it = (title: string, t: number, tags: string[] = [], also = 0): NewsItem => ({ title, source: 'S', url: 'u:' + title, t, tags, also, sources: [] });
-  const castrol = [it('Castrol India Q3 Results: how rising costs hit margins', h(14), ['Results'], 7), it('Castrol India retains 21-24% margin guidance despite cost surge', h(9)), it('Castrol India shares: technical view and price target', h(5), ['Rating'])];
-  const laurus = [it('Laurus Labs ne maari entry! Share ke All-Time High par, pehle tezi', h(24 * 7), ['Results']), it('What Laurus Labs buyers were betting on before a 118% rally', h(96)), it('Laurus Labs gets USFDA approval for new plant', h(30), ['Regulator'])];
-  const market = [it('Gift Nifty today: Sensex, Nifty likely to open flat as crude tops $115', h(16)), it('RBI keeps repo rate unchanged, signals pause', h(6)), it('Sensex ends higher as banks rally', h(3)), it('Tariff talks: government weighs duty cut', h(40))];
-  const out = decisionNews(market, [{ sym: 'CASTROLIND', name: 'Castrol India Ltd', items: castrol }, { sym: 'LAURUSLABS', name: 'Laurus Labs Ltd', items: laurus }], NOW, 5);
-  const titles = out.map((x) => x.title);
-  assert.equal(out.filter((x) => x.sym === 'CASTROLIND').length, 1, 'two stories about one results night are one line');
-  assert.match(titles.join('|'), /Q3 Results/); assert.doesNotMatch(titles.join('|'), /technical view|margin guidance/);
-  assert.equal(out.filter((x) => x.sym === 'LAURUSLABS').length, 1); assert.match(titles.join('|'), /USFDA/);
-  assert.doesNotMatch(titles.join('|'), /Gift Nifty|Sensex ends|ne maari|betting on/, 'recaps, previews, filler and mixed-language headlines are out');
-  assert.match(titles.join('|'), /RBI keeps repo rate/); assert.doesNotMatch(titles.join('|'), /Tariff talks/, 'a market story older than a day is out');
-  assert.equal(new Set(titles).size, titles.length);
-  assert.deepEqual(decisionNews(market.slice(0, 1), [], NOW), [], 'nothing qualifying means nothing shown');
-});
-
-test('a quiet day widens the news test and marks the lines that passed only the wider one', async () => {
-  const { decisionNews } = await import('../src/news.ts');
-  const now = 1_800_000_000_000; const sec = now / 1000;
-  const it = (title: string, hAgo: number, tags: string[] = []) => ({ title, source: 'Mint', url: `https://x/${title}`, t: sec - hAgo * 3600, tags, also: 0, sources: ['Mint'] });
-  const strictOnly = decisionNews([it('RBI holds repo rate', 2)], [{ sym: 'TCS', name: 'Tata Consultancy Services', items: [it('Tata Consultancy Services Q2 results beat', 5, ['Results'])] }], now, 8);
-  assert.equal(strictOnly.some((x) => x.broad), false);   // two strict lines: but fewer than four, so the wider pass ran and found nothing extra
-  const quiet = decisionNews([it('Markets drift lower on global cues', 20), it('Oil steady ahead of data', 30)], [{ sym: 'TCS', name: 'Tata Consultancy Services', items: [it('Tata Consultancy Services opens new office', 80)] }], now, 8);
-  assert.ok(quiet.length >= 3 && quiet.every((x) => x.broad), 'with nothing material, the wider lines show and each says so');
-  const none = decisionNews([it('Stocks to watch today', 3)], [], now, 8); assert.equal(none.length, 0, 'filler is still dropped');
 });
 
 test('book-2 (nights from 27 Oct): a ticket follows the engine, a sector holds at most four, and earlier nights keep the full ticket', async () => {

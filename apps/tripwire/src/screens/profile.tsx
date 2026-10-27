@@ -8,6 +8,8 @@ import { disableLock, enableLock, lockId, lockSupported } from '../lock.ts';
 import { useEffect } from 'react';
 import { SERVICES, STATE_WORD } from '../services.ts';
 import { useJson } from '../data.ts';
+import { useNewsHealth } from '../news.ts';
+import { newsServiceView } from '../newshealth.ts';
 
 export function download(name: string, text: string, type: string) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -79,12 +81,13 @@ interface HealthFeed { ok: boolean; checked_at: string; prices: { ok: boolean; m
 /** One list of what works and what does not. The two live sources are probed once when this section opens; everything else is a fact about the build. */
 function ServicesCard() {
   const h = useJson<HealthFeed>('/api/health');
-  const live = (id: string) => (id === 'prices' ? h.data?.prices : id === 'news' ? h.data?.news : null);
+  const live = (id: string) => (id === 'prices' ? h.data?.prices : null);
+  const nh = useNewsHealth();   // the one news health model: the same words as Today and the News page
   return <div className="card" style={{ padding: '2px 14px' }}>
-    {SERVICES.map((v) => { const l = live(v.id); const age = v.id === 'prices' ? h.data?.prices.age_sec ?? null : null; const tone = v.state === 'working' ? (l && !l.ok ? 'peach' : 'lime') : 'peach';
-      return <details key={v.id} className="ev" style={{ margin: 0 }}><summary>{v.label}<span className={`tag ${tone} num`} style={{ marginLeft: 'auto' }}>{l && !l.ok ? 'Not answering' : STATE_WORD[v.state]}</span><span className="chev">▾</span></summary>
+    {SERVICES.map((v) => { const l = live(v.id); const nv = v.id === 'news' ? newsServiceView(nh) : null; const age = v.id === 'prices' ? h.data?.prices.age_sec ?? null : null; const tone = nv ? nv.tone : v.state === 'working' ? (l && !l.ok ? 'peach' : 'lime') : 'peach';
+      return <details key={v.id} className="ev" style={{ margin: 0 }}><summary>{v.label}<span className={`tag ${tone} num`} style={{ marginLeft: 'auto' }}>{nv ? nv.tag : l && !l.ok ? 'Not answering' : STATE_WORD[v.state]}</span><span className="chev">▾</span></summary>
         <div className="body small"><p style={{ margin: '0 0 6px' }}>{v.what}</p>
-          {l ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {h.loading ? 'checking' : l.ok ? `answering${l.ms != null ? ` in ${l.ms} ms` : ''}${age != null ? `; last exchange print ${age < 120 ? `${age} s` : age < 7200 ? `${Math.round(age / 60)} min` : `${Math.round(age / 3600)} h`} ago` : ''}` : `not answering (${l.error ?? 'no reply'})`}.</p> : null}
+          {nv ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {nv.line}</p> : l ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {h.loading ? 'checking' : l.ok ? `answering${l.ms != null ? ` in ${l.ms} ms` : ''}${age != null ? `; last exchange print ${age < 120 ? `${age} s` : age < 7200 ? `${Math.round(age / 60)} min` : `${Math.round(age / 3600)} h`} ago` : ''}` : `not answering (${l.error ?? 'no reply'})`}.</p> : null}
           {v.needs ? <p style={{ margin: 0 }}><b>To make it real:</b> {v.needs}</p> : null}</div></details>; })}
     <p className="small mute" style={{ margin: '6px 0 10px' }}>{h.data ? `The Worker holds ${h.data.secrets_configured} secrets and ${h.data.bindings.length} binding${h.data.bindings.length === 1 ? '' : 's'} (${h.data.bindings.join(', ') || 'none'}); checked ${new Date(h.data.checked_at).toISOString().slice(11, 16)} UTC.` : h.err ? `The health check did not answer (${h.err}); the list above is what the build contains.` : 'Checking the live sources…'}</p>
   </div>;

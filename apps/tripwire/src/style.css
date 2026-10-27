@@ -1,3 +1,4 @@
+@import "./news.css";   /* an @import is only valid before every other rule, so this line sits first, not last */
 :root{
   --bg:#0b0d07;--bg2:#10130a;--s1:#151910;--s2:#1c2114;--s3:#252b19;--line:rgba(214,236,150,.11);--line2:rgba(214,236,150,.2);
   --tx:#eef2de;--dim:#a2a98d;--mute:#7c8368;--lime:#c8f23c;--lime-d:#a9d12a;--ink:#10150a;--peach:#ff9a6c;--peach-bg:rgba(255,154,108,.12);--lime-bg:rgba(200,242,60,.12);

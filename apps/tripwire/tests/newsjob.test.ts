@@ -1,3 +1,4 @@
+// @ts-nocheck  (the pipeline under test is untyped JavaScript, see src/newsjs.d.ts; the assertions are the contract)
 // The scheduled job: the 15/30 minute cadence by exchange calendar, polite fetching (backoff, Retry-After, conditional requests, circuit breaker), and the snapshot's honesty rules
 // (a total failure keeps the last good events and never resets lastSuccessfulAt). Recorded-style fixtures only; no network.
 import { test } from 'node:test';

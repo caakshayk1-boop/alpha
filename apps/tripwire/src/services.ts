@@ -7,7 +7,7 @@ export type ServiceState = 'working' | 'not set up' | 'not built';
 export interface Service { id: string; label: string; state: ServiceState; what: string; needs: string | null }
 export const SERVICES: Service[] = [
   { id: 'prices', label: 'Live prices', state: 'working', what: 'Yahoo Finance, read by the Worker at /api/tick and /api/bars. Unofficial: it can throttle or change without notice, and the app says so when it does not answer.', needs: null },
-  { id: 'news', label: 'News headlines', state: 'working', what: 'Google News and Bing News RSS, read by the Worker, filtered to what bears on a decision.', needs: null },
+  { id: 'news', label: 'News headlines', state: 'working', what: 'Google News and Bing News search feeds plus RBI and SEBI release feeds, read by a scheduled GitHub Actions job (every 15 minutes while the NSE session is on, 30 otherwise; best effort) and published as one snapshot; stories are admitted only if they name a covered company or an India-wide event. Free feeds can lag or fail, so the state below is the last check, never "live".', needs: null },
   { id: 'screen', label: 'Published screen and the forward ledger', state: 'working', what: 'The screen is fetched when the site is built; the ledger is written by one nightly workflow and is append-only.', needs: null },
   { id: 'backup', label: 'Backup and restore', state: 'working', what: 'Export, import and merge as a file, plus a journal CSV, tested end to end. Your data lives only in this browser until you export it.', needs: null },
   { id: 'lock', label: 'Screen lock', state: 'working', what: "Uses the phone's own unlock. It locks the screen; it does not encrypt what is stored.", needs: null },

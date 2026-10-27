@@ -1,3 +1,4 @@
+// @ts-nocheck  (the pipeline under test is untyped JavaScript, see src/newsjs.d.ts; the assertions are the contract)
 // The news pipeline: URLs, feeds, entity matching, rejection of landing pages and noise, clustering, ranking, diversity, summaries.
 // Fixtures are written by hand in the shape the feeds use (tests/fixtures/news/ok): they are NOT captures of the live services.
 import { test } from 'node:test';

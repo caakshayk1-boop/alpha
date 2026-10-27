@@ -1,9 +1,13 @@
-// Tripwire Worker: static assets plus read-only routes: /api/bars and /api/intraday (paper tracker, live P&L, list quotes), /api/tick (everything on screen in one request, every 8 s), /api/breadth (live trend map), /api/pulse (index strip), /api/macro (gold, silver, oil, FX, Bitcoin), /api/news (cleaned headlines, cached an hour), /api/chart (price history), /api/ledger (forward record), /api/factors (nightly factor sheet).
+// Tripwire Worker: static assets plus read-only routes: /api/bars and /api/intraday (paper tracker, live P&L, list quotes), /api/tick (everything on screen in one request, every 8 s), /api/breadth (live trend map), /api/pulse (index strip), /api/macro (gold, silver, oil, FX, Bitcoin), /api/news and /api/news/version (the published news snapshot, and live queries for one name, through one pipeline), /api/chart (price history), /api/ledger (forward record), /api/factors (nightly factor sheet).
 //   GET /api/bars?s=TCS,INFY   (up to 30 NSE symbols)
 //   -> { ok, fetched_at, bars: { TCS: { t:[epoch s], o:[], h:[], l:[], c:[], forming: bool, live: { px, t } | null } }, missing: [] }
 // Daily bars for six months from Yahoo Finance. A bar missing any of open, high, low or close is dropped, never filled. The last bar
 // is marked `forming` while its session is still open (IST), so the tracker never treats it as a close. Cached five minutes per
 // symbol. No secrets, no storage, no user data: the request carries only symbols.
+import { runPipeline, compactEvent } from './news/pipeline.js';
+import { buildRegistry } from './news/entities.js';
+import { parseFeed } from './news/feed.js';
+import { FEEDS, QUERY_SCHEMA } from './news/config.js';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
 const MAX = 30;                              // symbols a call may ask for (list quotes, the paper books): one Yahoo call each, cached 60 s (quotes) or 5 min (bars)
 const MAX_QUOTES = MAX;
@@ -255,85 +259,71 @@ async function rsiSheet(ctx) {
 }
 
 // ---- News -------------------------------------------------------------------------------------------------------------------------
-// GET /api/news?q=<search>  -> { ok, fetched_at, q, items: [{ title, source, url, t, tags, also }] }
-// Google News' public RSS for the query, cleaned by fixed rules (below), cached one hour at the edge. The rules are plain code, not a model:
-// they drop what is not English and search-engine filler, folds the same story from several outlets into one line, and tags headlines by keyword.
-// The tags say what a headline is ABOUT. They never say whether it is good or bad news.
-const decode = (x) => x.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&');
-const tag = (xml, name) => { const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`)); return m ? decode(m[1].replace(/<!\[CDATA\[|\]\]>/g, '')).trim() : ''; };
-const STOP = new Set('a an the of to in on for and or at by with from as is are be its it this that after over into amid says said new share shares stock stocks price prices today news live update updates latest rs'.split(' '));
-export const TAGS = [
-  ['Results', /\b(q[1-4]\b|quarter|quarterly|results?|net profit|earnings|revenue|ebitda|profit)\b/i],
-  ['IPO', /\b(ipo|listing|price band|anchor investors?|subscription|gmp)\b/i],
-  ['Deal', /\b(acquires?|acquisition|merger|demerger|stake|block deal|bulk deal|buyback|open offer|takeover|fundrais|qip)\b/i],
-  ['Order', /\b(orders?|contracts?|bags|wins|secures)\b/i],
-  ['Rating', /\b(upgrade[sd]?|downgrade[sd]?|target|initiates coverage|rating|brokerage)\b/i],
-  ['Payout', /\b(dividend|bonus|stock split|record date)\b/i],
-  ['Regulator', /\b(sebi|rbi|nclt|penalty|fined|fines|probe|fraud|raid|cbi|banned|show-cause|notice)\b/i],
-  ['People', /\b(appoints?|appointed|joins|resigns?|steps down|ceo|cfo|managing director)\b/i],
-];
-const WEIGHT = { Results: 5, Deal: 5, Regulator: 5, IPO: 4, Order: 4, Payout: 4, Rating: 3, People: 1 };
-const FILLER = /(share price (news|today|live)|stock price (today|live)|\bshare price\b.*:\s|top \d+ stocks? to buy|stocks? to (buy|watch) (today|tomorrow)|multibagger|penny stock)/i;
-const latinShare = (t) => { const L = (t.match(/\p{L}/gu) || []); return L.length ? L.filter((c) => /[A-Za-z]/.test(c)).length / L.length : 0; };
-const words = (t) => new Set(t.toLowerCase().replace(/[^a-z0-9₹ ]+/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
-// the same story from another outlet shares most of the shorter headline's words (and at least four of them)
-const sameStory = (a, b) => { let i = 0; for (const x of a) if (b.has(x)) i++; return i >= 4 && i / Math.min(a.size, b.size) >= 0.7; };
-
-/** Pure: Google News RSS text to cleaned items, newest and most material first. Exported for the tests. */
-export function parseNews(xml, nowMs = Date.now(), max = 8, maxAgeDays = 14) {
-  const raw = [];
-  for (const m of String(xml).matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-    const b = m[1]; let title = tag(b, 'title'); const source = tag(b, 'source') || tag(b, 'News:Source'); let link = tag(b, 'link'); const t = Math.floor(Date.parse(tag(b, 'pubDate')) / 1000);
-    const direct = link.match(/^https?:\/\/(?:www\.)?bing\.com\/news\/apiclick\.aspx\?.*?[?&]url=([^&]+)/); if (direct) { try { link = decodeURIComponent(direct[1]); } catch { /* keep the click link */ } }
-    if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3)).trim();
-    if (!title || !/^https:\/\//.test(link) || !(t > 0)) continue;
-    if (latinShare(title) < 0.8) continue;                       // not English: not shown rather than shown unreadable
-    if (FILLER.test(title)) continue;                            // search-engine filler, not news
-    if (t * 1000 > nowMs + 3600e3) continue;                     // dated in the future: a bad feed
-    if (t * 1000 < nowMs - maxAgeDays * 86400e3) continue;       // older than the window asked for (Bing does not honour when:)
-    raw.push({ title, source: source || 'Unknown', url: link, t, w: words(title) });
-  }
-  raw.sort((a, b) => b.t - a.t);
-  const kept = [];
-  for (const it of raw) {                                        // one line per story: a later outlet repeating it is counted, not listed
-    const dup = kept.find((k) => sameStory(k.w, it.w));
-    if (dup) { dup.also++; if (!dup.sources.includes(it.source)) dup.sources.push(it.source); continue; }
-    kept.push({ ...it, also: 0, sources: [it.source] });
-  }
-  const scored = kept.map((k) => {
-    const tags = TAGS.filter(([, re]) => re.test(k.title)).map(([n]) => n);
-    const mat = Math.max(0, ...tags.map((n) => WEIGHT[n] || 0));
-    const ageH = Math.max(0, (nowMs / 1000 - k.t) / 3600);
-    return { ...k, tags, score: mat + 2 * Math.min(k.also, 3) + 6 * Math.exp(-ageH / 36) };
-  }).sort((a, b) => b.score - a.score || b.t - a.t).slice(0, max);
-  return scored.map(({ title, source, url, t, tags, also, sources }) => ({ title, source, url, t, tags, also, sources: sources.slice(0, 4) }));
+// THREE routes, one pipeline (apps/tripwire/news/*, shared with the scheduled job):
+//   GET /api/news/version  -> the tiny status document the job writes every run: { ok, snapshotVersion, status, checkedAt, lastSuccessfulAt, nextScheduledAt, ... }  (edge copy 60 s)
+//   GET /api/news          -> the latest published snapshot for the browser: { ok, schema: 'tripwire-news/1', events, scopes, names, sources, rejections, ... }       (edge copy 5 min)
+//   GET /api/news?q=<phrase>&sym=<SYMBOL>  -> a live query for one reader-chosen name, run through the SAME pipeline and gates, edge copy 5 minutes
+// The snapshot is written by .github/workflows/tripwire_news.yml on the orphan branch `tripwire-data` and read from raw.githubusercontent.com, like the ledger and the RSI sheet.
+// Absent or unreadable answers HTTP 200 with ok:false (a 404 or 5xx is a console error in every browser); `retry_after` (seconds) is passed through when the upstream gave one.
+// Nothing here is a model. Event types are keyword rules, the ranker is a weighted sum (news/rank.js), and a headline that names no covered company or India-wide event is dropped.
+const NEWS_BASE = 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/tripwire-data/';
+const NEWS_FILES = { snapshot: ['news-browser.json', 'tripwire-news/1', 300], version: ['news-status.json', 'tripwire-news-status/1', 60] };
+const RL_SECONDS = 30;
+/** Best-effort limit on "Refresh now": one forced call per client address per 30 seconds, kept in the edge cache of the data centre that served it. Not a security control. */
+async function forcedTooSoon(request, ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; if (!cache) return false;
+  const ip = request.headers.get('cf-connecting-ip') || 'local'; const key = new Request(`https://tripwire.internal/__news_rl/${encodeURIComponent(ip)}`);
+  if (await cache.match(key)) return true;
+  const mark = new Response('1', { headers: { 'cache-control': `max-age=${RL_SECONDS}` } }); if (ctx) ctx.waitUntil(cache.put(key, mark)); else await cache.put(key, mark);
+  return false;
 }
+const tooMany = () => json({ ok: false, error: 'checked a moment ago', retry_after: RL_SECONDS }, 429, { 'retry-after': String(RL_SECONDS), 'cache-control': 'no-store' });
+async function newsFile(which, ctx, force) {
+  const [file, schema, ttl] = NEWS_FILES[which]; const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_file_v1/${file}`);
+  const keep = { 'cache-control': `public, max-age=${Math.min(ttl, 60)}, s-maxage=${ttl}` };
+  try {
+    const hit = !force && cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, ...keep } });
+    const r = await fetch(NEWS_BASE + file, { signal: AbortSignal.timeout(12000), headers: { 'cache-control': 'no-cache' } });
+    if (r.status === 404) return json({ ok: false, reason: 'absent', error: 'the first news check has not been published yet' }, 200, { 'cache-control': 'public, max-age=30, s-maxage=30' });
+    if (!r.ok) { const ra = Number(r.headers.get('retry-after')); return json({ ok: false, reason: 'upstream', status: r.status, error: 'the news snapshot could not be read', ...(Number.isFinite(ra) && ra > 0 ? { retry_after: Math.min(ra, 3600) } : {}) }, 200, { 'cache-control': 'no-store' }); }
+    const d = await r.json();
+    if (d?.schema !== schema) return json({ ok: false, reason: 'shape', error: 'the news snapshot is not in the expected shape' }, 200, { 'cache-control': 'no-store' });
+    const res = json({ ok: true, ...d, served_at: new Date().toISOString() }, 200, keep);
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, reason: 'upstream', error: 'the news snapshot could not be read' }, 200, { 'cache-control': 'no-store' }); }
+}
+/** The company a live query is about: the quoted phrase of `"Name" when:7d`. A query with no quoted name is a market query: no company, only India-wide events pass. */
+const queryEntity = (q, sym) => { const m = q.match(/"([^"]{2,80})"/); return m ? [{ sym: sym || null, name: m[1] }] : []; };
 const QOK = /^[\p{L}\p{N} .,&'"()\-:+%]{2,110}$/u;
-async function news(url, ctx) {
-  const q = (url.searchParams.get('q') || '').trim();
+async function news(url, ctx, request) {
+  const q = (url.searchParams.get('q') || '').trim(); const force = url.searchParams.get('force') === '1';
+  if (!q) { if (force && await forcedTooSoon(request, ctx)) return tooMany(); return newsFile('snapshot', ctx, force); }
   if (!QOK.test(q)) return json({ ok: false, error: 'give a short search phrase' }, 400);
-  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_v1/${encodeURIComponent(q.toLowerCase())}`);
-  const H1 = { 'cache-control': 'public, max-age=60, s-maxage=300' };   // five minutes at the edge; a reader's "check now" may go past it once the copy is a minute old
-  const force = url.searchParams.get('force') === '1';
+  const sym = (url.searchParams.get('sym') || '').toUpperCase(); if (sym && !SYM.test(sym)) return json({ ok: false, error: 'not a valid symbol' }, 400);
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_q_v2/${encodeURIComponent(q.toLowerCase())}/${sym}`);
+  const H1 = { 'cache-control': 'public, max-age=60, s-maxage=300' };      // five minutes at the edge
   try {
     const hit = cache && await cache.match(key);
-    if (hit) { const body = await hit.text(); let age = Infinity; try { age = (Date.now() - Date.parse(JSON.parse(body).fetched_at)) / 1000; } catch { /* unreadable copy: treat as old */ } if (!(force && age >= 60)) return new Response(body, { headers: { ...H, ...H1 } }); }
-    // Google News first; if it refuses or fails (it may refuse a datacentre address), Bing News with the same words.
-    const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 14); const plain = q.replace(/\s*when:\d+d/g, '').trim(); const tried = [];
-    const sources = [['google', `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`], ['bing', `https://www.bing.com/news/search?q=${encodeURIComponent(plain)}&format=rss&setmkt=en-IN`]];
-    for (const [via, u] of sources) {
+    if (hit) { const body = await hit.text(); let age = Infinity; try { age = (Date.now() - Date.parse(JSON.parse(body).checkedAt)) / 1000; } catch { /* unreadable copy: old */ }
+      if (!(force && age >= 60)) return new Response(body, { headers: { ...H, ...H1 } });
+      if (await forcedTooSoon(request, ctx)) return tooMany(); }
+    else if (force && await forcedTooSoon(request, ctx)) return tooMany();
+    const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 7); const tried = []; let retryAfter = 0;
+    const order = [FEEDS.google, FEEDS.bing];                                   // Google News first; Bing News with the same words when Google refuses or has nothing
+    for (const feed of order) {
       try {
-        const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/rss+xml,text/xml' }, signal: AbortSignal.timeout(9000) });
-        if (!r.ok) { tried.push(`${via} ${r.status}`); continue; }
-        const items = parseNews(await r.text(), Date.now(), 8, days + 1);
-        if (!items.length && via === 'google') { tried.push('google no items'); continue; }
-        const res = json({ ok: true, fetched_at: new Date().toISOString(), q, via, items }, 200, H1);
-        if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
-        return res;
-      } catch { tried.push(`${via} failed`); }
+        const r = await fetch(feed.url(q), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/rss+xml,text/xml' }, signal: AbortSignal.timeout(9000) });
+        if (!r.ok) { tried.push(`${feed.id} ${r.status}`); const ra = Number(r.headers.get('retry-after')); if (ra > retryAfter) retryAfter = ra; continue; }
+        const raw = parseFeed(await r.text()); const nowMs = Date.now();
+        const p = runPipeline({ batches: [{ feed, rawItems: raw, fetchedAt: new Date(nowMs).toISOString() }], registry: buildRegistry(queryEntity(q, sym)), nowMs, full: false, limit: 20 });
+        if (!p.events.length && feed === FEEDS.google && p.counts.seen === 0) { tried.push(`${feed.id} no items`); continue; }
+        const body = { ok: true, schema: QUERY_SCHEMA, checkedAt: new Date(nowMs).toISOString(), q, sym: sym || null, via: feed.id, status: tried.length ? 'partial' : 'ok', days, events: p.events.map(compactEvent), rejections: p.rejections, counts: p.counts, rankingVersion: p.rankingVersion, pipelineVersion: p.pipelineVersion };
+        const res = json(body, 200, H1); if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
+      } catch { tried.push(`${feed.id} failed`); }
     }
-    return json({ ok: false, error: `the news sources did not answer (${tried.join(', ')})` }, 502);
-  } catch { return json({ ok: false, error: 'the news source did not answer' }, 502); }
+    return json({ ok: false, error: `the news sources did not answer (${tried.join(', ')})`, ...(retryAfter > 0 ? { retry_after: Math.min(retryAfter, 3600) } : {}) }, 200, { 'cache-control': 'no-store' });
+  } catch { return json({ ok: false, error: 'the news source did not answer' }, 200, { 'cache-control': 'no-store' }); }
 }
 
 async function bars(url, ctx) {
@@ -370,7 +360,7 @@ export function healthShape(probes, bindingNames, nowMs = Date.now()) {
   const p = probes.prices ?? {}; const n = probes.news ?? {};
   return { ok: !!(p.ok && n.ok), checked_at: new Date(nowMs).toISOString(),
     prices: { ok: !!p.ok, ms: p.ms ?? null, last_print: p.printSec ? new Date(p.printSec * 1000).toISOString() : null, age_sec: p.printSec ? Math.max(0, Math.round(nowMs / 1000 - p.printSec)) : null, error: p.ok ? null : (p.error ?? 'no answer') },
-    news: { ok: !!n.ok, ms: n.ms ?? null, error: n.ok ? null : (n.error ?? 'no answer') },
+    news: { ok: !!n.ok && n.newsStatus !== 'failed', ms: n.ms ?? null, error: n.ok ? (n.newsStatus === 'failed' ? 'the latest news check failed' : null) : (n.error ?? 'no answer'), status: n.newsStatus ?? null, last_successful_at: n.lastGood ?? null, checked_at: n.checkedAt ?? null },
     bindings: [...bindingNames].sort(), secrets_configured: 0 };
 }
 async function probe(url, pick) {
@@ -383,7 +373,7 @@ async function health(env, ctx) {
   const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: H });
   const [prices, nws] = await Promise.all([
     probe('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?range=1d&interval=5m', async (r) => { const j = await r.json(); return { printSec: Number(j?.chart?.result?.[0]?.meta?.regularMarketTime) || null }; }),
-    probe('https://news.google.com/rss/search?q=nifty&hl=en-IN&gl=IN&ceid=IN:en'),
+    probe(NEWS_BASE + 'news-status.json', async (r) => { const j = await r.json(); return { newsStatus: j?.status ?? null, lastGood: j?.lastSuccessfulAt ?? null, checkedAt: j?.checkedAt ?? null }; }),   // the published news status, not a probe of Google
   ]);
   const body = JSON.stringify(healthShape({ prices, news: nws }, Object.keys(env ?? {}))); const res = new Response(body, { headers: { ...H, 'cache-control': 'public, max-age=60' } });
   if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
@@ -426,9 +416,14 @@ export default {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return quotes(Object.keys(MACRO), (s) => MACRO[s], ctx);
     }
+    if (url.pathname === '/api/news/version') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      const force = url.searchParams.get('force') === '1'; if (force && await forcedTooSoon(request, ctx)) return tooMany();
+      return newsFile('version', ctx, force);
+    }
     if (url.pathname === '/api/news' || url.pathname === '/api/news/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      return news(url, ctx);
+      return news(url, ctx, request);
     }
     if (url.pathname === '/api/health' || url.pathname === '/api/health/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);

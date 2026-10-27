@@ -12,6 +12,7 @@ const Company = lazy(() => import('./screens/company.tsx').then((m) => ({ defaul
 const Compare = lazy(() => import('./screens/compare.tsx').then((m) => ({ default: m.Compare })));
 const DataPage = lazy(() => import('./screens/Data.tsx').then((m) => ({ default: m.DataPage })));
 const Live = lazy(() => import('./screens/Live.tsx').then((m) => ({ default: m.Live })));
+const NewsPage = lazy(() => import('./screens/NewsPage.tsx').then((m) => ({ default: m.NewsPage })));
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
 const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
 import { MacroPage } from './screens/Macro.tsx';
@@ -61,7 +62,7 @@ const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} })
 export const useSheets = () => useContext(SheetCtx);
 
 const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'profile', label: 'Profile', c: 'var(--a5)' }];
-const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' ? 'today' : p[0] === 'report' ? 'desk' : p[0] === 'data' ? 'profile' : p[0] === 'live' ? 'today' : p[0] === 'lab' ? 'discover' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
+const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' ? 'discover' : p[0] === 'm' || p[0] === 'news' ? 'today' : p[0] === 'report' ? 'desk' : p[0] === 'data' ? 'profile' : p[0] === 'live' ? 'today' : p[0] === 'lab' ? 'discover' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
 
 export function App(): ReactNode {
   const s = useAppState();
@@ -108,6 +109,7 @@ export function App(): ReactNode {
   else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
   else if (head === 'data') view = <DataPage />;
   else if (head === 'live') view = <Live />;
+  else if (head === 'news') view = <NewsPage />;
   else if (head === 'lab') view = <Lab />;
   else if (tab === 'discover') view = <Discover />;
   else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'picks'} />;

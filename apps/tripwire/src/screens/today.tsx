@@ -14,7 +14,7 @@ import { journeyOf } from '../journey.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
 import { useAutoBook, useLiveBook } from '../book.ts';
 import { MacroStrip } from './Macro.tsx';
-import { TodayNews } from './News.tsx';
+import { WhatMattersNow } from './News.tsx';
 import { Ago, LiveBadge, Observed, Spark, Tick } from '../live.tsx';
 import { LivePositions } from './LivePositions.tsx';
 import { Heat, Ring, avatarStyle } from '../widgets.tsx';
@@ -71,7 +71,7 @@ export function Today() {
   const showAuto = auto.rows.length > 0;
   const autoState = (p: { sym: string; engine: string; asOf: string }) => dupOf(p) ? 'in' : auto.plan?.refused.find((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf)?.why ? 'no' : 'wait';
   const pickSyms = (out?.picks ?? []).map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, pickSyms.length > 0);
-  const newsSyms = [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...ownRows.map((r) => r.p.sym), ...s.follows])];
+  const paperSyms = [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...ownRows.map((r) => r.p.sym)])];   // the paper book's names; news keeps them apart from the names you follow
   const needs = reviews.length > 0 || events.length > 0;
   const live = sess.phase === 'open' && !!anyLive;
   const [showAllPicks, setAllPicks] = useState(false);
@@ -170,8 +170,7 @@ export function Today() {
 
       </div>}
       {scr.data && late && <div style={{ '--o': 9 } as React.CSSProperties}>
-      <Head>News</Head>
-      <TodayNews syms={newsSyms} />
+      <WhatMattersNow follows={s.follows} paper={paperSyms} />
 
       </div>}
       {scr.data && <div style={{ '--o': 10 } as React.CSSProperties}>
