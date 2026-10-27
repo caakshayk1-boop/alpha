@@ -1,7 +1,8 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useChart } from '../data.ts';
-import { RANGES, aggregate, compareSeries, drawdownSeries, pathThrough, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearest, sliceRange, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
+import { aggregate, compareSeries, defaultRange, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
 import { inr, pct } from '../fmt.ts';
+import { Radios } from '../ui.tsx';
 
 /** Price history: simple on purpose. One line, five ranges, daily or monthly, linear or log. Hover, touch or arrow keys scrub it.
  *  The line draws itself once per change (and not at all with reduced motion). Numbers never count up. */
@@ -12,10 +13,12 @@ const FRAME_WORD: Record<Frame, string> = { daily: 'day', weekly: 'week', monthl
 export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?: (v: number) => string; name?: string; levels?: Level[] }) {
   const f = fmt ?? ((v: number) => inr(v)); const instrument = !!fmt;      // an index, metal, currency or coin: no Nifty line, no adjustment note
   const feed = useChart(sym); const gid = useId().replace(/:/g, '');
-  const [range, setRange] = useState<RangeId>('10Y'); const [view, setView] = useState<Frame>('daily'); const [log, setLog] = useState(false); const [vs, setVs] = useState(false); const [ma, setMa] = useState(false); const [dd, setDd] = useState(false);
+  const [rangeSel, setRange] = useState<RangeId | null>(null); const [view, setView] = useState<Frame>('daily'); const [log, setLog] = useState(false); const [vs, setVs] = useState(false); const [ma, setMa] = useState(false); const [dd, setDd] = useState(false);
   const [kind, setKind] = useState<'line' | 'candle'>('line'); const [vol, setVol] = useState(false); const [rsi, setRsi] = useState(false);
   const [cur, setCur] = useState<number | null>(null); const box = useRef<HTMLDivElement>(null);
   const all: Pt[] = useMemo(() => (feed.data ? feed.data.t.map((t, i) => ({ t, c: feed.data!.c[i], n: feed.data!.n ? feed.data!.n[i] : null, o: feed.data!.o?.[i] ?? null, h: feed.data!.h?.[i] ?? null, l: feed.data!.l?.[i] ?? null, v: feed.data!.v?.[i] ?? null })) : []), [feed.data]);
+  const range: RangeId = rangeSel ?? defaultRange(all);      // the longest range the history can fill, until the reader picks one
+  const avail = useMemo(() => rangeAvailability(all), [all]); const spanYears = all.length > 1 ? (all[all.length - 1].t - all[0].t) / (365.25 * 86400) : 0;
   const hasOhlc = all.some((q) => q.o != null && q.h != null && q.l != null), hasVol = all.some((q) => q.v != null);
   const hasNifty = !!feed.data?.n && !instrument;
   const win = useMemo(() => sliceRange(all, range), [all, range]);
@@ -31,7 +34,15 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
   const cmp = useMemo(() => (vs && hasNifty ? compareSeries(shown) : null), [vs, hasNifty, shown]);
   const plot = cmp ? cmp.a : shown;                       // what the x axis and the scrubber run along
   const candles = kind === 'candle' && hasOhlc && !cmp;
-  const geo = useMemo(() => (cmp ? null : geometry(shown, log, 1000, 300, 12, candles)), [cmp, shown, log, candles]);
+  // candles and volume bars are drawn whole: the x domain is padded by half a bar at both ends, and in candle mode the last price is tagged in a right-hand gutter, clear of the final candle
+  const barsMode = !cmp && (candles || (vol && hasVol));
+  const [wpx, setWpx] = useState(340); const ready = !feed.loading && !!feed.data && all.length >= 30;
+  useLayoutEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx((x) => (Math.abs(x - w) < 1 ? x : w)); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready]);
+  const lastLen = shown.length ? f(shown[shown.length - 1].c).length : 8;
+  const gutU = candles ? Math.round((Math.min(wpx * 0.3, Math.max(54, lastLen * 6.4 + 18)) / wpx) * 1000) : 0;
+  const geo = useMemo(() => (cmp ? null : geometry(shown, log, 1000, 300, 12, candles, { bars: barsMode, gutter: gutU })), [cmp, shown, log, candles, barsMode, gutU]);
+  // the line draws itself on the first reveal only; later changes of range, frame or scale move the line without drawing it again
+  const [revealed, setRevealed] = useState(false); useEffect(() => { if (!ready || revealed) return; const t = window.setTimeout(() => setRevealed(true), 1400); return () => window.clearTimeout(t); }, [ready, revealed]);
   const pair = useMemo(() => (cmp ? geometryPair(cmp.a, cmp.b, log) : null), [cmp, log]);
   const st = useMemo(() => stats(win.pts), [win]);
   // moving averages are computed on the whole history and looked up by time, so a 200-day line is correct from the first point of a short window
@@ -45,7 +56,7 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
   const fromStart = p && st ? (p.c / st.first.c - 1) * 100 : null;
   const cmpA = cmp && i != null ? cmp.a[i].c - 100 : null, cmpB = cmp && i != null ? cmp.b[i].c - 100 : null;
   const text = p ? (cmp ? `${dateLabel(p.t, view === 'monthly')}, ${sym} ${pct(cmpA)}, Nifty ${pct(cmpB)} since the start` : `${dateLabel(p.t, view === 'monthly')}, ${f(p.c)}, ${pct(fromStart)} from the start of the window`) : '';
-  const at = (e: PointerEvent) => { const r = box.current!.getBoundingClientRect(); setCur(nearest(plot, (e.clientX - r.left) / r.width)); };
+  const at = (e: PointerEvent) => { const r = box.current!.getBoundingClientRect(); const g = geo ?? pair; if (g) setCur(nearestX(g.xs, ((e.clientX - r.left) / r.width) * g.W)); };
   const key = (e: KeyboardEvent) => {
     const step = e.shiftKey ? 10 : 1; const cc = i ?? plot.length - 1;
     if (e.key === 'ArrowLeft') { e.preventDefault(); setCur(Math.max(0, cc - step)); } else if (e.key === 'ArrowRight') { e.preventDefault(); setCur(Math.min(plot.length - 1, cc + step)); }
@@ -53,7 +64,7 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
   };
   if (feed.loading) return <div className="card chart" aria-busy="true"><div className="sk" style={{ height: 22, width: '45%', marginBottom: 12 }} /><div className="sk" style={{ height: 200 }} /><span className="sr">Loading price history</span></div>;
   if (feed.err || !feed.data || all.length < 30) return <div className="card chart"><b>Price history</b><p className="dim small" style={{ margin: '6px 0 10px' }}>{feed.err === 'not published' || feed.err === 'no price history for this symbol' ? 'No price history is held for this symbol.' : feed.data ? 'Too little history to draw.' : `Could not load the price history${feed.err ? ` (${feed.err})` : ''}. Nothing is drawn in its place.`}</p><button className="btn sm" onClick={feed.retry}>Try again</button></div>;
-  const yrs = st ? (st.years >= 1.5 ? `${st.years.toFixed(st.years >= 10 ? 0 : 1)} years` : `${Math.round(st.years * 12)} months`) : '';
+  const yrs = st ? spanWord(st.years) : '';
   return <section className="card chart" aria-label="Price history">
     <div className="chart-head" aria-live="off">
       {p && cmp ? <><div className="k">{dateLabel(p.t, view === 'monthly')}</div><div className="num chart-big"><span className={(cmpA ?? 0) >= 0 ? 'up' : 'down'}>{pct(cmpA)}</span></div><div className="small num dim">{sym} · Nifty <b style={{ color: 'var(--tx)' }}>{pct(cmpB)}</b> over the same days</div></>
@@ -72,15 +83,15 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
         const ticks = yTicks(lo, hi, log, 4).map((v) => ({ v, y: yOf(v) }));
         return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
           {ticks.map((t) => <line key={t.v} x1="0" x2={W} y1={t.y} y2={t.y} stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
-          {pair && <g key={`${sym}${range}${view}${log}vs`}>
-            <path className="c-line" d={pair.lineB} pathLength={1} fill="none" stroke="var(--mute)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" style={{ strokeDasharray: '4 3', animation: 'none', strokeDashoffset: 0 }} />
-            <path className="c-line" d={pair.lineA} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          {pair && <g>
+            <path className={`c-line${revealed ? ' settled' : ''}`} d={pair.lineB} pathLength={1} fill="none" stroke="var(--mute)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" style={{ strokeDasharray: '4 3', animation: 'none', strokeDashoffset: 0 }} />
+            <path className={`c-line${revealed ? ' settled' : ''}`} d={pair.lineA} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
           </g>}
-          {geo && candles && (() => { const gaps = geo.xs.slice(1).map((x, k) => x - geo.xs[k]).sort((a, b) => a - b); const bw = Math.max(1.2, Math.min(18, (gaps[Math.floor(gaps.length / 2)] ?? 10) * 0.62));
+          {geo && candles && (() => { const bw = geo.barW;
             return <g className="c-candles" shapeRendering="crispEdges">{shown.map((q, k) => { const x = geo.xs[k]; if (q.o == null || q.h == null || q.l == null) return <line key={k} x1={x - bw / 2} x2={x + bw / 2} y1={geo.ys[k]} y2={geo.ys[k]} stroke="var(--mute)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />;
               const col = q.c >= q.o ? 'var(--up)' : 'var(--down)'; const yt = geo.yOf(Math.max(q.o, q.c)), yb = geo.yOf(Math.min(q.o, q.c));
               return <g key={k}><line x1={x} x2={x} y1={geo.yOf(q.h)} y2={geo.yOf(q.l)} stroke={col} strokeWidth="1" vectorEffect="non-scaling-stroke" /><rect x={x - bw / 2} y={yt} width={bw} height={Math.max(1, yb - yt)} fill={col} /></g>; })}</g>; })()}
-          {geo && !candles && <g key={`${sym}${range}${view}${log}`}><path className="c-line" d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></g>}
+          {geo && !candles && <g><path className={`c-line${revealed ? ' settled' : ''}`} d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></g>}
           {geo && <line x1="0" x2={W} y1={geo.ys[geo.ys.length - 1]} y2={geo.ys[geo.ys.length - 1]} stroke={color} strokeOpacity=".55" strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
           {geo && smaMap && (['a', 'b'] as const).map((k) => <path key={k} className="c-ma" d={pathThrough(geo.xs, shown.map((q) => { const v = smaMap.get(q.t)?.[k]; return v == null ? null : geo.yOf(v); }))} fill="none" stroke={k === 'a' ? 'var(--a4)' : 'var(--a2)'} strokeWidth="1" strokeOpacity=".9" vectorEffect="non-scaling-stroke" />)}
           {geo && levels.filter((lv) => lv.v >= geo.min && lv.v <= geo.max).map((lv) => <line key={lv.label} x1="0" x2={W} y1={geo.yOf(lv.v)} y2={geo.yOf(lv.v)} stroke={lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--mute)'} strokeWidth="1" strokeDasharray="5 3" vectorEffect="non-scaling-stroke" />)}
@@ -101,9 +112,9 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
       {pair && i != null && <><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysA[i] / pair.H) * 100}%`, background: color }} /><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysB[i] / pair.H) * 100}%`, background: 'var(--mute)' }} /></>}
       {geo && i != null && <span className="c-dot" style={{ left: `${(geo.xs[i] / geo.W) * 100}%`, top: `${(geo.ys[i] / geo.H) * 100}%`, background: color }} />}
     </div>
-    {st && <div className="c-xaxis" aria-hidden="true">{xTicks(plot[0].t, plot[plot.length - 1].t, 5).map((x) => { const fr = (x.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t); return <span key={x.t} style={{ left: `${fr * 100}%` }}>{x.label}</span>; })}</div>}
+    {st && <div className="c-xaxis" aria-hidden="true">{xTicks(plot[0].t, plot[plot.length - 1].t, 5).map((x) => { const g = geo ?? pair; const fr = g ? (geo ? geo.xOf(x.t) : ((x.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t)) * g.W) / g.W : 0; return <span key={x.t} style={{ left: `${fr * 100}%` }}>{x.label}</span>; })}</div>}
     {ma && geo && <div className="small num" style={{ display: 'flex', gap: 14, marginTop: 4 }}><span><span className="c-key" style={{ background: 'var(--a4)' }} />50-day</span><span><span className="c-key" style={{ background: 'var(--a2)' }} />200-day</span></div>}
-    {vol && hasVol && geo && !cmp && (() => { const H3 = 70; const vs2 = shown.map((q) => q.v ?? 0); const mx = Math.max(1, ...vs2); const gaps = geo.xs.slice(1).map((x, k) => x - geo.xs[k]).sort((a, b) => a - b); const bw = Math.max(1.2, Math.min(18, (gaps[Math.floor(gaps.length / 2)] ?? 10) * 0.62));
+    {vol && hasVol && geo && !cmp && (() => { const H3 = 70; const vs2 = shown.map((q) => q.v ?? 0); const mx = Math.max(1, ...vs2); const bw = geo.barW;
       return <div className="chart-sub"><div className="k">Volume · {FRAME_WORD[eff]} bars{i != null && shown[i]?.v != null ? ` · ${compact(shown[i].v!)}` : ''}</div><div className="chart-plot sub" style={{ height: 56, cursor: 'default' }} role="img" aria-label={`Volume per ${FRAME_WORD[eff]}, highest ${compact(mx)}`}>
         <svg viewBox={`0 0 ${geo.W} ${H3}`} preserveAspectRatio="none" aria-hidden="true" shapeRendering="crispEdges">{shown.map((q, k) => q.v == null ? null : <rect key={k} x={geo.xs[k] - bw / 2} y={H3 - (q.v / mx) * (H3 - 4)} width={bw} height={(q.v / mx) * (H3 - 4)} fill={(q.o != null ? q.c >= q.o : k > 0 ? q.c >= shown[k - 1].c : true) ? 'var(--up)' : 'var(--down)'} opacity={i === k ? 1 : 0.55} />)}</svg></div></div>; })()}
     {rsi && geo && !cmp && rsiFull && (() => { const H4 = 90; const y = (v: number) => 6 + (1 - v / 100) * (H4 - 12); const vals = shown.map((q) => rsiFull.get(q.t) ?? null); const d = pathThrough(geo.xs, vals.map((v) => (v == null ? null : y(v)))); const last = [...vals].reverse().find((v) => v != null) ?? null; const cur = i != null ? vals[i] : last;
@@ -117,13 +128,14 @@ export function PriceChart({ sym, fmt, name, levels = [] }: { sym: string; fmt?:
       return <div style={{ marginTop: 8 }}><div className="k">Drawdown from the running peak · worst {pct(mn, 1)}</div><div className="chart-plot" style={{ height: 70, marginTop: 4, cursor: 'default' }} role="img" aria-label={`Drawdown from the running peak, worst ${pct(mn, 1)}`}>
         <svg viewBox={`0 0 ${geo.W} ${H2}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={geo.W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" vectorEffect="non-scaling-stroke" /><path d={`${d}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${y(0)}L${geo.xs[0].toFixed(1)} ${y(0)}Z`} fill="var(--down)" fillOpacity=".12" /><path d={d} fill="none" stroke="var(--down)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" /></svg></div></div>; })()}
     <div className="c-bar" role="group" aria-label="Chart controls">
-      <div className="mini-seg" role="group" aria-label="Range">{RANGES.map((r) => <button key={r.id} aria-pressed={range === r.id} onClick={() => { setRange(r.id); setCur(null); }}>{r.id === 'Max' ? 'MAX' : r.id}</button>)}</div>
-      <div className="mini-seg" role="group" aria-label="Detail">{(['daily', 'weekly', 'monthly'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setCur(null); }}>{v === 'daily' ? 'DAILY' : v === 'weekly' ? 'WEEKLY' : 'MONTHLY'}</button>)}</div>
-      {hasOhlc && !instrument ? <div className="mini-seg" role="group" aria-label="Style">{(['line', 'candle'] as const).map((v) => <button key={v} aria-pressed={kind === v} disabled={v === 'candle' && !!cmp} onClick={() => { setKind(v); setCur(null); }}>{v === 'line' ? 'LINE' : 'CANDLES'}</button>)}</div> : null}
-      <div className="mini-seg" role="group" aria-label="Scale">{([false, true] as const).map((l) => <button key={String(l)} aria-pressed={log === l} onClick={() => setLog(l)}>{l ? 'LOG' : 'LINEAR'}</button>)}</div>
-      <div className="mini-seg" role="group" aria-label="Overlays"><button aria-pressed={ma} onClick={() => setMa(!ma)}>MA 50/200</button><button aria-pressed={vol} disabled={!!cmp || !hasVol} title={!hasVol ? 'This series carries no volume' : undefined} onClick={() => setVol(!vol)}>VOLUME</button><button aria-pressed={rsi} disabled={!!cmp} onClick={() => setRsi(!rsi)}>RSI 14</button><button aria-pressed={dd} disabled={!!cmp} onClick={() => setDd(!dd)}>DRAWDOWN</button></div>
-      {!instrument && <div className="mini-seg" role="group" aria-label="Compare">{([false, true] as const).map((v) => <button key={String(v)} aria-pressed={vs === v} disabled={v && !hasNifty} title={v && !hasNifty ? 'The Nifty could not be read' : undefined} onClick={() => { setVs(v); setCur(null); }}>{v ? 'VS NIFTY' : 'PRICE'}</button>)}</div>}
+      <Radios label="Range" value={range} onChange={(r) => { setRange(r); setCur(null); }} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
+      <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
+      {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => { setKind(v); setCur(null); }} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', disabled: !!cmp, hint: cmp ? 'Candles are not drawn against the Nifty' : undefined }] as { id: 'line' | 'candle'; label: string; disabled?: boolean; hint?: string }[]} /> : null}
+      <Radios label="Scale" value={log ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG' }]} />
+      <div className="mini-seg" role="group" aria-label="Indicators"><button aria-pressed={ma} onClick={() => setMa(!ma)}>MA 50/200</button><button aria-pressed={vol} disabled={!!cmp || !hasVol} title={!hasVol ? 'This series carries no volume' : undefined} onClick={() => setVol(!vol)}>VOLUME</button><button aria-pressed={rsi} disabled={!!cmp} onClick={() => setRsi(!rsi)}>RSI 14</button><button aria-pressed={dd} disabled={!!cmp} onClick={() => setDd(!dd)}>DRAWDOWN</button></div>
+      {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => { setVs(v === 'vs'); setCur(null); }} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
     </div>
+    {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
     {bars && eff !== view && !cmp && <p className="small mute" style={{ margin: '8px 0 0' }}>{kind === 'candle' ? 'Candles' : 'Volume'} are drawn as {FRAME_WORD[eff]} bars here: {win.pts.length.toLocaleString('en-IN')} daily bars would be too thin to read, and thinning them would misstate each day.</p>}
     {kind === 'candle' && candles && shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>{shown.filter((q) => q.o == null || q.h == null || q.l == null).length} bars have no open, high or low from the source and are drawn as a tick on the close.</p>}
     {cmp && <div className="row small" style={{ gap: 14, marginTop: 8, flexWrap: 'wrap' }}><span><span className="c-key" style={{ background: color }} />{sym}</span><span><span className="c-key dashed" />Nifty 50</span><span className="mute">both indexed to 100</span></div>}

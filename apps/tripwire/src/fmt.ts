@@ -10,3 +10,5 @@ export const tone = (v: unknown) => (isNum(v) ? (Math.abs(v) < 0.05 ? '' : v > 0
 const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const dayWord = (iso?: string | null) => { if (!iso) return 'an unknown date'; const [y, m, d] = iso.slice(0, 10).split('-').map(Number); if (!y || !m || !d) return 'an unknown date'; const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][wd]} ${d} ${M[m - 1]}`; };
 export const initials = (s: string) => s.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
+/** "1 company", "2 companies": the count and the right form of the word. Pass the plural when it is not just an s. Counts print with Indian digit grouping. */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-IN')} ${n === 1 ? one : many}`;

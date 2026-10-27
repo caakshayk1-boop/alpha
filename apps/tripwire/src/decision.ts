@@ -16,7 +16,7 @@ export interface DecisionInput {
 }
 export interface QualityItem { k: string; v: string; warn: boolean }
 export interface Decision {
-  why: { text: string; rank: string | null };
+  why: { text: string; rank: string | null; /** the same answer without the rule-by-rule arithmetic, which the engine check further down the page already lists */ short: string };
   counter: { text: string; detail: string | null; found: boolean };
   evidence: { chips: { id: string; name: string; word: string; state: string }[]; text: string; experimental: boolean };
   quality: QualityItem[];
@@ -30,9 +30,9 @@ export function decisionOf(i: DecisionInput): Decision {
   const passing = engines.filter((e) => e.pass);
   // 1. why it surfaced
   const why = pick
-    ? { text: `${engines.find((e) => e.id === pick.engine)?.name ?? pick.engine} picked it on the close of ${dayWord(pick.asOf)}: ${pick.why.slice(0, 3).join('; ') || 'it passed every rule'}.`, rank: `Rank ${pick.score} of 100${i.eligibleCount ? ` among ${i.eligibleCount} eligible names` : ''}. ${RANK_NOTE}` }
-    : passing.length ? { text: `It passes the ${passing.map((e) => e.name).join(' and ')} rules but did not make tonight's top five or was held back by the per-sector limit.`, rank: passing[0].score != null ? `Rank ${Math.round(passing[0].score)} of 100. ${RANK_NOTE}` : null }
-    : { text: engines.length ? 'No engine surfaced it tonight: it fails at least one rule of each. You are looking at it by choice, which is fine; the engines are not the only reason to study a company.' : 'Engine results load with the screen.', rank: null };
+    ? { text: `${engines.find((e) => e.id === pick.engine)?.name ?? pick.engine} picked it on the close of ${dayWord(pick.asOf)}: ${pick.why.slice(0, 3).join('; ') || 'it passed every rule'}.`, short: `${engines.find((e) => e.id === pick.engine)?.name ?? pick.engine} picked it on the close of ${dayWord(pick.asOf)}. The rules it passed are under Engine check.`, rank: `Rank ${pick.score} of 100${i.eligibleCount ? ` among ${i.eligibleCount} eligible names` : ''}. ${RANK_NOTE}` }
+    : passing.length ? { text: `It passes the ${passing.map((e) => e.name).join(' and ')} rules but did not make tonight's top five or was held back by the per-sector limit.`, short: `It passes the ${passing.map((e) => e.name).join(' and ')} rules but was not among tonight's picks.`, rank: passing[0].score != null ? `Rank ${Math.round(passing[0].score)} of 100. ${RANK_NOTE}` : null }
+    : { text: engines.length ? 'No engine surfaced it tonight: it fails at least one rule of each. You are looking at it by choice, which is fine; the engines are not the only reason to study a company.' : 'Engine results load with the screen.', short: engines.length ? 'No engine surfaced it tonight. You are looking at it by choice.' : 'Engine results load with the screen.', rank: null };
   // 2. the strongest counterargument
   const c0 = cur.counters[0];
   const counter = c0 ? { text: c0.t, detail: c0.k, found: true } : { text: 'The screen raised no flag.', detail: 'It only sees prices and annual ratios. Read the filings, the results call and the auditor\'s notes anyway.', found: false };

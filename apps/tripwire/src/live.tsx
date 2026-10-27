@@ -30,7 +30,8 @@ export function Roll({ text }: { text: string }) {
     setChg(new Map(d.map((c) => [c.fromEnd, c]))); const t = window.setTimeout(() => setChg(new Map()), 230); return () => window.clearTimeout(t);
   }, [text]);
   const cs = [...text];
-  return <span className="roll">{cs.map((c, i) => { const k = cs.length - 1 - i; const ch = chg.get(k); return <span key={k} className={`rd${ch ? ` ${ch.dir}` : ''}`}><span className="cur">{c}</span>{ch && <span className="old" aria-hidden="true">{ch.from}</span>}</span>; })}</span>;
+  // one accessible value for the whole figure ("₹3,812.40"), the digit spans hidden from it: a screen reader gets the price once, not character by character, and not again as it changes
+  return <span className="roll" role="img" aria-label={text}>{cs.map((c, i) => { const k = cs.length - 1 - i; const ch = chg.get(k); return <span key={k} className={`rd${ch ? ` ${ch.dir}` : ''}`} aria-hidden="true"><span className="cur">{c}</span>{ch && <span className="old">{ch.from}</span>}</span>; })}</span>;
 }
 export function Tick({ v, children, className = '' }: { v: number | null | undefined; children: ReactNode; className?: string }) {
   const prev = useRef<number | null | undefined>(v); const [dir, setDir] = useState<'' | 'u' | 'd'>('');

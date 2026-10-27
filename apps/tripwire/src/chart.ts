@@ -17,6 +17,15 @@ export function sliceRange(pts: readonly Pt[], id: RangeId): { pts: Pt[]; covers
   const out = pts.filter((p) => p.t >= from);
   return { pts: out, covers: pts[0].t <= from + 7 * DAY };
 }
+/** "14 months" or "5.0 years": how much history a span of `years` is, in the words the chart uses everywhere. */
+export function spanWord(years: number): string { return years >= 1.5 ? `${years.toFixed(years >= 10 ? 0 : 1)} years` : `${Math.max(1, Math.round(years * 12))} months`; }
+/** Which of the five ranges the history can fill. A range longer than the history is not offered: its note says how much there is instead of drawing the same line under another name. */
+export function rangeAvailability(pts: readonly Pt[]): { id: RangeId; available: boolean; note: string | null }[] {
+  const years = pts.length > 1 ? (pts[pts.length - 1].t - pts[0].t) / (365.25 * DAY) : 0;
+  return RANGES.map((r) => { const ok = r.id === 'Max' || sliceRange(pts, r.id).covers; return { id: r.id, available: ok, note: ok ? null : `${r.id}: only ${spanWord(years)} of history` }; });
+}
+/** The range a chart opens on: ten years where there are ten years, otherwise everything that exists (Max). Never a range the history cannot fill. */
+export function defaultRange(pts: readonly Pt[]): RangeId { return rangeAvailability(pts).find((r) => r.id === '10Y')?.available ? '10Y' : 'Max'; }
 export type Frame = 'daily' | 'weekly' | 'monthly';
 const dayOf = (t: number) => Math.floor((t + 19800) / 86400);
 /** One bar per period. The close, time and Nifty close are the period's LAST day's; the open is the first day's; the high and low are the extremes of the days that printed one;
@@ -66,20 +75,45 @@ export function stats(pts: readonly Pt[]): Stats | null {
   const years = (last.t - first.t) / (365.25 * DAY);
   return { first, last, ret: (last.c / first.c - 1) * 100, hi, lo, years, cagr: years >= 2 && first.c > 0 && last.c > 0 ? (Math.pow(last.c / first.c, 1 / years) - 1) * 100 : null };
 }
-export interface Geo { min: number; max: number; line: string; area: string; xs: number[]; ys: number[]; W: number; H: number; yOf: (c: number) => number; xOf: (t: number) => number }
-/** SVG paths in a W by H box. x is proportional to TIME (a weekend is a gap, not a point). `log` plots the percentage move, which is the honest view over ten years. */
-export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12, hl = false): Geo | null {
+export interface Geo { min: number; max: number; line: string; area: string; xs: number[]; ys: number[]; W: number; H: number; yOf: (c: number) => number; xOf: (t: number) => number; barW: number; padL: number; padR: number }
+/** How the x axis is inset. `bars`: candles or volume bars are drawn about each x, so the first and the last are given half a bar of room on their outer side and are drawn whole.
+ *  `gutter` (in the same units as W) keeps the right-hand strip clear of data, for the price tag and the axis labels. */
+export interface GeoOpts { bars?: boolean; gutter?: number }
+const MAX_BAR = 18;
+/** The width of one bar in W units: 62% of the usual spacing, never more than MAX_BAR and never less than 1.2. */
+const barWidth = (gapFrac: number, inner: number) => Math.max(1.2, Math.min(MAX_BAR, gapFrac * inner * 0.62));
+/** SVG paths in a W by H box. x is proportional to TIME (a weekend is a gap, not a point). `log` plots the percentage move, which is the honest view over ten years.
+ *  With `opts.bars` the x domain is padded by half a bar at both ends (and `opts.gutter` more on the right), so every body and wick lies inside [0, W] at any range or frame. */
+export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12, hl = false, opts: GeoOpts = {}): Geo | null {
   if (pts.length < 2) return null;
   const f = (c: number) => (log ? Math.log(c) : c);
   // with `hl` the scale also takes in each bar's high and low, so a candle never leaves the plot
   const cs = pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c])).map(f); let lo = Math.min(...cs), hi = Math.max(...cs); if (hi === lo) { hi += 1; lo -= 1; }
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = Math.max(1, t1 - t0);
-  const xOf = (t: number) => ((t - t0) / span) * W;
+  const gutter = Math.max(0, opts.gutter ?? 0);
+  // the usual spacing as a share of the span: the median gap, so one long holiday does not set the bar width
+  const gaps = pts.slice(1).map((p, k) => p.t - pts[k].t).sort((a, b) => a - b); const gapFrac = (gaps[Math.floor(gaps.length / 2)] ?? span) / span;
+  let barW = 0, padL = 0, padR = gutter;
+  if (opts.bars) {
+    // half a bar and one unit of stroke on each outer side; the bar width depends on the room left, so settle it by iteration (it only shrinks)
+    barW = barWidth(gapFrac, Math.max(1, W - gutter));
+    for (let k = 0; k < 8; k++) { const next = barWidth(gapFrac, Math.max(1, W - gutter - barW - 2)); if (Math.abs(next - barW) < 0.01) break; barW = Math.min(barW, next); }
+    padL = barW / 2 + 1; padR = gutter + barW / 2 + 1;
+  }
+  const inner = Math.max(1, W - padL - padR);
+  const xOf = (t: number) => padL + ((t - t0) / span) * inner;
   const yOf = (c: number) => pad + (1 - (f(c) - lo) / (hi - lo)) * (H - 2 * pad);
   const xs = pts.map((p) => xOf(p.t)), ys = pts.map((p) => yOf(p.c));
   const r = (v: number) => Math.round(v * 10) / 10;
   const line = xs.map((x, i) => `${i ? 'L' : 'M'}${r(x)} ${r(ys[i])}`).join('');
-  return { min: Math.min(...pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c]))), max: Math.max(...pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c]))), line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf };
+  const all = pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c]));
+  return { min: Math.min(...all), max: Math.max(...all), line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf, barW, padL, padR };
+}
+/** The index of the point whose x is closest to `u` (in the same units as the xs), for a pointer that may sit in a padded margin or the gutter. */
+export function nearestX(xs: readonly number[], u: number): number {
+  if (!xs.length) return -1; let lo = 0, hi = xs.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (xs[m] <= u) lo = m; else hi = m; }
+  return Math.abs(xs[lo] - u) <= Math.abs(xs[hi] - u) ? lo : hi;
 }
 /** The point closest in time to a fraction (0..1) of the way across the window. */
 export function nearest(pts: readonly Pt[], frac: number): number {

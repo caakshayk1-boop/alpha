@@ -9,6 +9,7 @@ import { engineEvidence } from '../evidence.ts';
 import { current, istDay, toggleFollow } from '../store.ts';
 import { journeyOf } from '../journey.ts';
 import { fmtIst } from '../stamp.ts';
+import { plural } from '../fmt.ts';
 import type { Company } from '../data.ts';
 import type { LivePx } from '../quotes.ts';
 
@@ -30,12 +31,12 @@ export function DecisionCard({ c, lp }: { c: Company; lp: LivePx }) {
   const step = j.next;
   return <section className="card decision" aria-label="Decision summary">
     <div className="row between"><span className="k">Decision summary</span>{d.evidence.experimental && <span className="tag amber" title="No engine here has passed its tests. Treat a pick as an experiment.">Experimental</span>}</div>
-    {row2('Why it surfaced', <>{d.why.text}{d.why.rank && <span className="small dim" style={{ display: 'block', marginTop: 2 }}>{d.why.rank}</span>}</>)}
+    {row2('Why it surfaced', <>{d.why.short}{d.why.rank && <span className="small dim" style={{ display: 'block', marginTop: 2 }}>{d.why.rank}</span>}</>)}
     {row2('Strongest counterargument', <>{d.counter.text}{d.counter.detail && <span className="small dim" style={{ display: 'block', marginTop: 2 }}>{d.counter.detail}</span>}</>)}
     {row2('Evidence status', <><span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>{d.evidence.chips.map((x) => <span key={x.id} className={`tag ${x.state === 'unsupported' ? 'peach' : x.state === 'supported' ? 'lime' : ''}`}>{x.name}: {x.word.toLowerCase()}</span>)}</span>{d.evidence.experimental && <span className="small dim" style={{ display: 'block', marginTop: 4 }}>Judged on the forward record, which is still short. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>The evidence</a></span>}</>)}
-    {row2('Data quality', <ul className="dq">{d.quality.map((x) => <li key={x.k} className={x.warn ? 'warn' : ''}><b>{x.k}</b> {x.v}</li>)}</ul>)}
     {row2('Invalidation', d.invalidation.text, d.invalidation.source === 'none' ? 'warn' : undefined)}
     {row2('Next review', d.review.text, d.review.overdue ? 'warn' : undefined)}
+    <details className="more dqd"><summary>Data quality{d.quality.some((x) => x.warn) ? <span className="tag amber" style={{ marginLeft: 8 }}>{plural(d.quality.filter((x) => x.warn).length, 'note')}</span> : null}</summary><ul className="dq">{d.quality.map((x) => <li key={x.k} className={x.warn ? 'warn' : ''}><b>{x.k}</b> {x.v}</li>)}</ul></details>
     {step && <div className="row between nextstep"><span className="small"><b>Step {step.n} of 4:</b> {step.title}.</span>
       <button className="btn sm pri" onClick={() => { if (step.id === 'follow') setState((x) => toggleFollow(x, sym)); else if (step.id === 'plan') open({ k: 'plan', sym }); else open({ k: 'thesis', sym, id: s.entries.find((e) => e.sym === sym && !e.archived)?.id }); }}>{step.id === 'follow' ? `Follow ${sym}` : step.id === 'plan' ? 'Size a plan' : step.id === 'review' ? 'Set a review date' : 'Write a thesis'}</button></div>}
   </section>;

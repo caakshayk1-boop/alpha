@@ -115,9 +115,9 @@ export function App(): ReactNode {
   else if (tab === 'profile') view = <Profile />;
   else view = <Today />;
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
-    <a className="sr" href="#/today">Skip to Today</a>
+    <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
-      <main className="main" id="main">
+      <main className="main" id="main" tabIndex={-1}>
         <StatusBar asOf={screen.data?.as_of} />
         {!health.persisted && <div className="banner" role="alert">This browser is not keeping Tripwire's data (private mode, or storage is full). Notes, plans and paper trades will be lost when this tab closes. Export a backup from Profile now.</div>}
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}

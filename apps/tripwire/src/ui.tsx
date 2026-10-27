@@ -1,5 +1,5 @@
 import { haptic, kindOf, setHaptics } from './haptic.ts';
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyEvent, type ReactNode } from 'react';
 
 const P: Record<string, string> = {
   today: 'M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z',
@@ -68,6 +68,30 @@ export function Seg<T extends string>({ value, onChange, items, label }: { value
   return <div className="seg" role="tablist" aria-label={label}>
     <span className="thumb" style={{ width: `calc((100% - 8px) / ${items.length})`, transform: `translateX(${i * 100}%)` }} aria-hidden="true" />
     {items.map((x) => <button key={x.id} role="tab" aria-selected={x.id === value} onClick={() => onChange(x.id)}>{x.label}</button>)}
+  </div>;
+}
+
+
+export interface RadioItem<T extends string> { id: T; label: string; disabled?: boolean; hint?: string }
+/** A set of mutually exclusive choices: a radio group, not a row of toggles. One tab stop (the chosen item); the arrow keys move the choice, Home and End jump to the ends, a disabled item is skipped.
+ *  The chosen state is announced as checked, and one indicator slides from the old choice to the new one rather than the two blinking. A disabled item names its reason. */
+export function Radios<T extends string>({ value, onChange, items, label, className = 'mini-seg' }: { value: T; onChange: (v: T) => void; items: RadioItem<T>[]; label: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null); const [ind, setInd] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const measure = () => { const b = el.querySelector<HTMLElement>('[aria-checked="true"]'); setInd(b ? (cur) => (cur && cur.x === b.offsetLeft && cur.w === b.offsetWidth ? cur : { x: b.offsetLeft, w: b.offsetWidth }) : null); };
+    measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
+  }, [value, items.map((x) => x.label).join('|')]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const on = items.filter((x) => !x.disabled); const stop = on.find((x) => x.id === value) ?? on[0];
+  const move = (e: ReactKeyEvent) => {
+    const k = e.key; if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(k) || !on.length) return;
+    e.preventDefault(); const at = Math.max(0, on.findIndex((x) => x.id === value));
+    const to = k === 'Home' ? 0 : k === 'End' ? on.length - 1 : (at + (k === 'ArrowRight' || k === 'ArrowDown' ? 1 : -1) + on.length) % on.length;
+    ref.current?.querySelector<HTMLElement>(`[data-id="${on[to].id}"]`)?.focus(); onChange(on[to].id);
+  };
+  return <div ref={ref} className={`${className} radios`} role="radiogroup" aria-label={label} onKeyDown={move}>
+    {ind && <span className="ms-ind" aria-hidden="true" style={{ transform: `translateX(${ind.x}px)`, width: ind.w }} />}
+    {items.map((x) => <button key={x.id} type="button" role="radio" data-id={x.id} aria-checked={x.id === value} aria-label={x.disabled && x.hint ? x.hint : undefined} title={x.hint} disabled={x.disabled} tabIndex={stop && x.id === stop.id ? 0 : -1} onClick={() => onChange(x.id)}>{x.label}</button>)}
   </div>;
 }
 

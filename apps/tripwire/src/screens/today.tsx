@@ -4,7 +4,7 @@ import { Empty } from '../ui.tsx';
 import { Head, Loading, Failed, PageBar, CompanyRow } from './common.tsx';
 import { freshness } from '../fresh.ts';
 import { changesSince, istDay, recordSnap, reviewDue, current } from '../store.ts';
-import { dayWord, initials, inr0, isNum, pct, tone } from '../fmt.ts';
+import { dayWord, initials, inr0, isNum, pct, plural, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import { trendOf, TREND_WORD, TREND_RULE_TEXT, type Row } from '../screen.ts';
@@ -96,7 +96,7 @@ export function Today() {
       </div>
       <div style={{ '--o': 2 } as React.CSSProperties}>
     <Head>Commodities, currencies, Bitcoin</Head>
-    <MacroStrip />
+    <div className="compact-strip"><MacroStrip /></div>
 
       </div>
       {scr.data && <div style={{ '--o': 5 } as React.CSSProperties}>
@@ -110,8 +110,8 @@ export function Today() {
               <span className="small mute trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)}</> : ''} · stop {inr0(p.stop)}{(() => { const t = targetPrices(p); return t ? ` · T1 ${inr0(t.t1)} · T2 ${inr0(t.t2)}${t.ref ? ' (ref)' : ''}` : ''; })()}</span></span>
             <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
             <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}Chosen on the close of {dayWord(day)}{fr.behind ? `, ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago` : ''}. A rank, not a chance of winning.</p>
-          <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices from the signal close; "(ref)" means the pick was filed before profit booking began, so they are shown for orientation and the position exits on its stop and time limit. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
+          <p className="small dim" style={{ margin: '4px 0 0' }}>Paper picks from the close of {dayWord(day)}{fr.behind ? `, ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago` : ''}. Experimental: starting points for your own research, not recommendations, and a rank, not a chance of winning.</p>
+          <details className="more"><summary>How to read these picks</summary><div>{evHead ? `${evHead} ` : ''}Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices from the signal close; "(ref)" means the pick was filed before profit booking began, so they are shown for orientation and the position exits on its stop and time limit. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
           {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
 
       </div>}
@@ -126,7 +126,7 @@ export function Today() {
       <div style={{ '--o': 3 } as React.CSSProperties}>
     {/* the paper book, once, with its two parts named: what the auto book holds and what you took by hand */}
     {(showAuto || ownRows.length > 0) && <section className="card glass" aria-label="Paper book" style={{ marginTop: 10 }}>
-      <div className="row between"><span className="k">Paper book</span><span className="small mute">{showAuto && ownRows.length ? 'two parts, added up' : 'paper money only'}</span></div>
+      <div className="row between"><span className="k">Paper book</span><span className="small mute">{showAuto && ownRows.length ? 'two parts, added up' : ''}</span></div>
       {showAuto && ownRows.length > 0 && <div className={`num amt ${tone(auto.sum.openPnl + ownPnl)}`} style={{ font: '600 1.75rem/1.1 var(--sans)', margin: '6px 0 2px' }}><Tick v={auto.sum.openPnl + ownPnl}>{money(auto.sum.openPnl + ownPnl)}</Tick> <span className="small dim" style={{ font: 'inherit', fontSize: '0.75rem' }}>open now</span></div>}
       {showAuto && <a className="bookrow" href="#/signals?v=auto">
         <Ring value={auto.slots} max={auto.cfg.maxOpen} size={54} stroke={6} label={`${auto.slots} of ${auto.cfg.maxOpen} positions in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick></Ring>
@@ -175,7 +175,7 @@ export function Today() {
 
       </div>}
       {scr.data && <div style={{ '--o': 10 } as React.CSSProperties}>
-      <p className="mute small" style={{ marginTop: 10 }}>Screen: close of {dayWord(day)} ({fr.word.toLowerCase()}) · {scr.data.count} companies · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>. Picks are starting points, not recommendations.</p>
+      <p className="mute small" style={{ marginTop: 10 }}>Screen: close of {dayWord(day)} ({fr.word.toLowerCase()}) · {plural(scr.data.count, 'company', 'companies')} · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a></p>
       </div>}
     </div>
     </div>

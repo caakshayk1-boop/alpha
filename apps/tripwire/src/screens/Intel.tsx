@@ -2,24 +2,30 @@ import { useMemo } from 'react';
 import { useFactors, type Company } from '../data.ts';
 import type { Row } from '../screen.ts';
 import { eligibilityOf } from '../eligibility.ts';
-import { FACTOR_META, earningsQuality, holders, ownershipRead, peerLadder, riskMap, seasonRead } from '../intel.ts';
+import { FACTOR_META, earningsQuality, holders, ownershipRead, ownershipTree, peerLadder, riskMap, seasonRead, type OwnNode } from '../intel.ts';
 import { Spark } from '../live.tsx';
 import { dayWord, pct } from '../fmt.ts';
 
 const Sec = ({ title, head, children, open = false }: { title: string; head: string; children: React.ReactNode; open?: boolean }) =>
   <details className="ev" open={open}><summary><span className="grow"><span className="k" style={{ display: 'block' }}>{title}</span><span style={{ fontWeight: 600 }}>{head}</span></span><span className="chev">▾</span></summary><div className="body">{children}</div></details>;
 
+const OwnRow = ({ h, depth }: { h: OwnNode; depth: number }): React.ReactNode => <>
+  <div className="contrib" style={{ gridTemplateColumns: '1fr 92px 82px', paddingLeft: depth * 14 }}><span className="trunc">{h.label}{h.derived ? <span className="mute small"> · worked out</span> : null}</span><span className="bar2"><i style={{ width: `${Math.min(100, h.pct)}%`, left: 0, background: h.key === 'promoter' ? 'var(--dim)' : 'var(--lime)', opacity: depth ? 0.6 : 0.85 }} /></span><span className="num" style={{ textAlign: 'right' }}>{h.pct.toFixed(1)}%{h.pp != null && Math.abs(h.pp) >= 0.1 ? <span className={h.pp > 0 ? 'up' : 'down'}> {h.pp > 0 ? '▲' : '▼'}{Math.abs(h.pp).toFixed(2)}</span> : null}</span></div>
+  {h.children?.map((k) => <OwnRow key={k.key} h={k} depth={depth + 1} />)}</>;
+
 /** Everything the screen and the filings tell us about a company that a price chart does not: who owns it, when it tends to move, how its
  *  valuation compares with its own past, whether profit is real, where it stands among peers, how big a move is ordinary, and a fingerprint of
  *  less common indicators that carries the verdict of the study that tested them. */
 export function Intel({ c, rows }: { c: Company; rows: readonly Row[] }) {
   const r = c.row; const month = new Date(Date.now() + 330 * 60000).getUTCMonth();
-  const own = holders(c.inst); const season = seasonRead(c.season, month); const ladder = useMemo(() => peerLadder(r, rows), [r, rows]);
+  const own = holders(c.inst); const tree = ownershipTree(c.inst); const season = seasonRead(c.season, month); const ladder = useMemo(() => peerLadder(r, rows), [r, rows]);
   const eq = earningsQuality(r, eligibilityOf(r, c.years)); const rm = riskMap(r); const fac = useFactors(); const fr = fac.data?.rows[c.sym];
   const mx = Math.max(1, ...(c.season?.m ?? []).map((x) => Math.abs(x?.[1] ?? 0)));
   return <>
     {own.length > 0 && <Sec title="Who owns it" head={c.inst?.signal_label ?? 'Shareholding'} open>
-      {own.map((h) => <div key={h.key} className="contrib" style={{ gridTemplateColumns: '1fr 92px 82px' }}><span className="trunc">{h.label}</span><span className="bar2"><i style={{ width: `${Math.min(100, h.pct)}%`, left: 0, background: h.key === 'promoter' ? 'var(--dim)' : 'var(--lime)', opacity: .85 }} /></span><span className="num" style={{ textAlign: 'right' }}>{h.pct.toFixed(1)}%{h.pp != null && Math.abs(h.pp) >= 0.1 ? <span className={h.pp > 0 ? 'up' : 'down'}> {h.pp > 0 ? '▲' : '▼'}{Math.abs(h.pp).toFixed(2)}</span> : null}</span></div>)}
+      {tree && tree.nodes.map((h) => <OwnRow key={h.key} h={h} depth={0} />)}
+      {tree && <p className="small mute" style={{ margin: '8px 0 0' }}>{tree.basis}</p>}
+      {tree && <details className="more"><summary>What the groups mean</summary><div>{(() => { const out: OwnNode[] = []; const walk = (x: OwnNode) => { out.push(x); x.children?.forEach(walk); }; tree.nodes.forEach(walk); return out.map((x) => <p key={x.key} style={{ margin: '0 0 4px' }}><b>{x.label}:</b> {x.def}.</p>); })()}</div></details>}
       {ownershipRead(c.inst) && <p className="small" style={{ margin: '10px 0 4px' }}>{ownershipRead(c.inst)}</p>}
       {c.inst?.series && c.inst.series.length > 2 && <div className="row" style={{ gap: 12, marginTop: 6 }}><div className="grow"><div className="k">FII, {c.inst.series.length} quarters</div><Spark c={c.inst.series.map((s) => s.f)} up label="Foreign institutions' stake by quarter" /></div><div className="grow"><div className="k">DII</div><Spark c={c.inst.series.map((s) => s.d)} up label="Domestic institutions' stake by quarter" /></div></div>}
       {c.inst?.quality === 'partial' && <p className="small mute" style={{ margin: '8px 0 0' }}>Part of the shareholding data is missing for this company.</p>}
