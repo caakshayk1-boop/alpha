@@ -1,11 +1,53 @@
 {
  "meta": {
-  "when": "2026-10-27 04:18 UTC",
+  "when": "2026-10-27 07:00 UTC",
   "symbols": 660,
   "dates": [
    "2015-10-27",
    "2026-10-27"
-  ]
+  ],
+  "run": {
+   "id": "61bd6e53f2",
+   "study": "factor_study",
+   "when": "2026-10-27 07:00 UTC",
+   "git": "3f2691c",
+   "data": {
+    "first_day": "2015-10-27",
+    "last_day": "2026-10-27",
+    "sessions": 2709,
+    "symbols": 660,
+    "symbols_hash": "0af3269458"
+   },
+   "code": {
+    "files": {
+     "study.py": "47c83048c1",
+     "indicators.py": "76d5cd0f2e"
+    },
+    "hash": "e3c1487fcf"
+   },
+   "params": {
+    "horizon": 20,
+    "step": 5,
+    "splits": {
+     "train": [
+      null,
+      "2021-12-31"
+     ],
+     "validation": [
+      "2022-01-01",
+      "2023-12-31"
+     ],
+     "holdout": [
+      "2024-01-01",
+      null
+     ]
+    }
+   },
+   "changes": [
+    "First recorded run of this study: nothing to compare with."
+   ],
+   "previous": null
+  }
  },
  "features": {
   "mom12_1": {
@@ -71,13 +113,13 @@
   "smooth_fip": {
    "train": {
     "ic": 0.032,
-    "t": 2.445,
+    "t": 2.446,
     "months": 62,
     "top_quintile_excess_net": 0.0015
    },
    "validation": {
     "ic": 0.001,
-    "t": 0.088,
+    "t": 0.089,
     "months": 24,
     "top_quintile_excess_net": -0.0084
    },
@@ -131,7 +173,7 @@
   "max5": {
    "train": {
     "ic": 0.028,
-    "t": 2.417,
+    "t": 2.416,
     "months": 62,
     "top_quintile_excess_net": -0.0052
    },
@@ -191,7 +233,7 @@
   "ud_vol": {
    "train": {
     "ic": -0.015,
-    "t": -1.677,
+    "t": -1.678,
     "months": 62,
     "top_quintile_excess_net": -0.0039
    },
@@ -251,13 +293,13 @@
   "skew60": {
    "train": {
     "ic": -0.0,
-    "t": -0.051,
+    "t": -0.05,
     "months": 62,
     "top_quintile_excess_net": -0.0052
    },
    "validation": {
     "ic": -0.021,
-    "t": -1.931,
+    "t": -1.932,
     "months": 24,
     "top_quintile_excess_net": -0.0085
    },

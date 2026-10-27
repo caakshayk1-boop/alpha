@@ -1,22 +1,22 @@
 # Tripwire factor study
 
-Run 2026-10-27 04:18 UTC on 660 symbols, 2015-10-27 to 2026-10-27. Survivorship bias applies (today's constituents only): results are an upper bound.
+Run 2026-10-27 07:00 UTC on 660 symbols, 2015-10-27 to 2026-10-27. Survivorship bias applies (today's constituents only): results are an upper bound.
 
 | Feature | kind | train IC (t) | validation IC | holdout IC | holdout Q5 net | adopt |
 |---|---|---|---|---|---|---|
 | mom12_1 | common baseline | 0.048 (2.511) | 0.044 | 0.032 | 0.0019 | no |
 | near_high | common baseline | 0.026 (1.201) | 0.036 | 0.04 | 0.0001 | no |
 | rev21 | common baseline | 0.019 (1.475) | -0.016 | -0.008 | -0.0064 | no |
-| smooth_fip | candidate | 0.032 (2.445) | 0.001 | 0.028 | -0.0039 | no |
+| smooth_fip | candidate | 0.032 (2.446) | 0.001 | 0.028 | -0.0039 | no |
 | eff_ratio60 | candidate | 0.033 (2.638) | 0.01 | 0.045 | 0.0041 | no |
 | resid_mom | candidate | 0.055 (2.815) | 0.041 | 0.035 | -0.0003 | no |
-| max5 | candidate | 0.028 (2.417) | -0.031 | 0.009 | -0.0087 | no |
+| max5 | candidate | 0.028 (2.416) | -0.031 | 0.009 | -0.0087 | no |
 | overnight60 | candidate | -0.023 (-1.827) | 0.021 | -0.013 | 0.0008 | no |
 | vol_shock | candidate | -0.006 (-0.593) | 0.031 | 0.006 | -0.0005 | no |
-| ud_vol | candidate | -0.015 (-1.677) | 0.001 | -0.011 | -0.0027 | no |
+| ud_vol | candidate | -0.015 (-1.678) | 0.001 | -0.011 | -0.0027 | no |
 | clv20 | candidate | 0.013 (1.028) | -0.001 | 0.033 | -0.004 | no |
 | coil | candidate | 0.01 (0.752) | -0.026 | 0.005 | -0.0043 | no |
-| skew60 | candidate | -0.0 (-0.051) | -0.021 | -0.003 | -0.0067 | no |
+| skew60 | candidate | -0.0 (-0.05) | -0.021 | -0.003 | -0.0067 | no |
 | amihud | control | 0.008 (0.706) | 0.027 | -0.004 | 0.0011 | no |
 | noise | control | -0.007 (-1.399) | 0.0 | 0.005 | -0.0036 | no |
 
