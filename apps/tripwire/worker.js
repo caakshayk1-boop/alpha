@@ -343,6 +343,30 @@ async function bars(url, ctx) {
   return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), bars: out, missing }, 200);
 }
 
+/** Pure: the health answer, from the probe results and the NAMES of the bindings the Worker was given. A binding's value, and any secret's, never appears: only that it exists. */
+export function healthShape(probes, bindingNames, nowMs = Date.now()) {
+  const p = probes.prices ?? {}; const n = probes.news ?? {};
+  return { ok: !!(p.ok && n.ok), checked_at: new Date(nowMs).toISOString(),
+    prices: { ok: !!p.ok, ms: p.ms ?? null, last_print: p.printSec ? new Date(p.printSec * 1000).toISOString() : null, age_sec: p.printSec ? Math.max(0, Math.round(nowMs / 1000 - p.printSec)) : null, error: p.ok ? null : (p.error ?? 'no answer') },
+    news: { ok: !!n.ok, ms: n.ms ?? null, error: n.ok ? null : (n.error ?? 'no answer') },
+    bindings: [...bindingNames].sort(), secrets_configured: 0 };
+}
+async function probe(url, pick) {
+  const t0 = Date.now();
+  try { const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: '*/*' }, signal: AbortSignal.timeout(6000) }); if (!r.ok) return { ok: false, ms: Date.now() - t0, error: `HTTP ${r.status}` };
+    const extra = pick ? await pick(r) : {}; return { ok: true, ms: Date.now() - t0, ...extra }; } catch (e) { return { ok: false, ms: Date.now() - t0, error: String(e?.message ?? e).slice(0, 80) }; }
+}
+async function health(env, ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__health_v1');
+  const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: H });
+  const [prices, nws] = await Promise.all([
+    probe('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?range=1d&interval=5m', async (r) => { const j = await r.json(); return { printSec: Number(j?.chart?.result?.[0]?.meta?.regularMarketTime) || null }; }),
+    probe('https://news.google.com/rss/search?q=nifty&hl=en-IN&gl=IN&ceid=IN:en'),
+  ]);
+  const body = JSON.stringify(healthShape({ prices, news: nws }, Object.keys(env ?? {}))); const res = new Response(body, { headers: { ...H, 'cache-control': 'public, max-age=60' } });
+  if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -383,6 +407,10 @@ export default {
     if (url.pathname === '/api/news' || url.pathname === '/api/news/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return news(url, ctx);
+    }
+    if (url.pathname === '/api/health' || url.pathname === '/api/health/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return health(env, ctx);
     }
     if (url.pathname === '/api/factors' || url.pathname === '/api/factors/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);

@@ -15,6 +15,7 @@ import { PriceChart } from './PriceChart.tsx';
 import { similarTo } from '../similar.ts';
 import { metricOf } from '../screener.ts';
 import { levelsFor } from '../levels.ts';
+import { reprice } from '../basis.ts';
 import { useAutoPicks } from '../book.ts';
 import { Tick, TvButton, TvIcon } from '../live.tsx';
 import { Intel } from './Intel.tsx';
@@ -36,7 +37,7 @@ export function Company({ sym }: { sym: string }) {
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
   if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack />{c.err === 'not published' ? <Empty title={`${sym} is not in the screen`}>It is not among the {scr.data?.count ?? 'published'} companies in this screen. Check the symbol, or search by name.</Empty> : <Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} />}</div>;
   const fr = freshness(row.last_date ?? day);
-  const lp = livePrice(row, quote); const lo = row.low52, hi = row.high52, px = lp.px;
+  const lp = livePrice(row, quote); const rp = reprice(row, lp.fromQuote ? lp.px : null); const lo = rp.low52, hi = rp.high52, px = lp.px;   // figures that are a function of the price follow the live print; the rest stay at the close (basis.ts)
   const at = (v?: number | null) => (isNum(v) && isNum(lo) && isNum(hi) && hi > lo ? Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100)) : null);
   const pxAt = at(px);
   const swot = c.data.swot; const flags = c.data.risk?.flags ?? [];
@@ -53,7 +54,7 @@ export function Company({ sym }: { sym: string }) {
         <div className="fill" style={{ width: `${pxAt}%` }} />
         {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }} title={`${l} average ${inr(v!)}`} />; })}
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
-        <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(row.from_high)} from high {inr(hi, 0)}</span></div>
+        <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(rp.fromHigh)} from {rp.newHigh ? 'its old high: a new 52-week high' : 'high'} {inr(hi, 0)}<span className="mute"> · {rp.basis === 'live' ? 'live' : 'at close'}</span></span></div>
         <div className="small num mute" style={{ marginTop: 4 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ')}</div></> : <p className="dim small">52-week range not available.</p>}
     </section>
 
@@ -99,15 +100,16 @@ export function Company({ sym }: { sym: string }) {
       {el!.notes.length > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Margin, ROCE and debt-to-equity are withheld for this company (reason above), not shown as zero.</p>}
     </div> : <div className="card dim">No financial statements are held for this name. Every ratio below that depends on them is missing, not zero.</div>}
     <div className="card" style={{ padding: '2px 14px', marginTop: 10 }}><div className="list">
-      <Metric id="pe" label="PE (trailing)" v={x1(row.pe)} />
+      <Metric id="pe" label={rp.basis === 'live' ? 'PE (trailing), at the live price' : 'PE (trailing), at the close'} v={x1(rp.pe)} />
       {meaningful(el!, 'roce') && <Metric id="roce" label="ROCE (median)" v={pct(row.roce_med, 1, false)} />}
       {meaningful(el!, 'leverage') && <Metric id="de" label="Debt to equity" v={x1(row.de, 2)} />}
-      <Metric id="net_margin" label="Net margin" v={pct(row.net_margin, 1, false)} />
+      {meaningful(el!, 'margin') && <Metric id="net_margin" label="Net margin" v={pct(row.net_margin, 1, false)} />}
       <Metric id="rev_cagr" label="Revenue growth, 3y" v={pct(row.rev_cagr, 1)} />
       <Metric id="rsi" label="RSI (14)" v={x1(row.rsi, 0)} />
       <Metric id="rs3m" label="Against the Nifty, 3m" v={isNum(row.rs3m) ? `${row.rs3m > 0 ? '+' : '−'}${Math.abs(row.rs3m).toFixed(1)} pts` : dash} />
       <Metric id="turnover_cr" label="Traded value a day" v={cr(row.turnover_cr)} />
     </div></div>
+    <details className="more"><summary>Which figures are live, which are at the close{rp.basis === 'live' ? ' (PE and range are live)' : ''}</summary><div>{rp.basis === 'live' ? `PE and the 52-week range use the live print of ${lp.t ? fmtIst(lp.t) : 'now'}. ` : ''}RSI, the Nifty comparison, the averages and the scores are as of the close of {dayWord(row.last_date)}; ROCE, debt, margins and growth come from the {row.fy ?? 'latest'} accounts and do not move with the price.</div></details>
 
     <Head>Timeline</Head>
     <div className="card"><div className="list">

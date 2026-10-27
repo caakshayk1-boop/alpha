@@ -11,6 +11,7 @@
  *  repository's earlier engines failed their walk-forward tests, so nothing here is claimed to work. The paper tracker is the test.
  *  Missing data is never a pass. Ranks are percentiles inside the eligible set, not probabilities. */
 import type { Row } from './screen.ts';
+import { CURRENT_RULES, eligibleUnder, rulesFor, stepsFor, type RulesId } from './rules.ts';
 import { isFinancialSector, eligibilityOf, riskGradeOf, topicOf } from './eligibility.ts';
 
 export type EngineId = 'MOM' | 'QLT' | 'LVT';
@@ -33,18 +34,12 @@ export const ENGINES: EngineDef[] = [
 export const ACTIVE = ENGINES.filter((e) => !e.retired);
 export const engineDef = (id: EngineId) => ENGINES.find((e) => e.id === id)!;
 
-/** Names the engines may consider at all: liquid, priced, with a measured ATR, and not a micro cap (fills there are not credible). */
-export interface EligStep { id: string; label: string; pass: (r: Q) => boolean }
-/** The eligibility rule as an ordered list, so the number on the Data screen is produced by the SAME predicates the engines use and cannot drift from them. */
-export const ELIG_STEPS: EligStep[] = [
-  { id: 'liquid', label: 'Flagged liquid by the screen', pass: (r) => r.liquid === true },
-  { id: 'priced', label: 'Has a price', pass: (r) => n(r.price) && r.price > 0 },
-  { id: 'atr', label: 'Daily range (ATR) measured', pass: (r) => n(r.atr_pct) && r.atr_pct > 0 },
-  { id: 'notmicro', label: 'Not classed micro cap (an unpublished size class passes)', pass: (r) => r.tier !== 'micro' },
-];
-export const eligible = (r: Q): boolean => ELIG_STEPS.every((s) => s.pass(r));
+/** Names the engines may consider at all. The rule is versioned in rules.ts; this is the version in force NOW. A night's run uses the version for ITS data day (rulesFor). */
+export type { EligStep } from './rules.ts';
+export const ELIG_STEPS = stepsFor(CURRENT_RULES) as unknown as { id: string; label: string; pass: (r: Q) => boolean }[];
+export const eligible = (r: Q, rules: RulesId = CURRENT_RULES): boolean => eligibleUnder(r, rules);
 
-export interface Ctx { elig: Q[]; pct: Record<string, Map<string, number>> }
+export interface Ctx { elig: Q[]; pct: Record<string, Map<string, number>>; rules: RulesId }
 /** Percentile of each name among those measured: share strictly below plus half the ties. Unmeasured names get no entry. */
 export function pctMap(rows: readonly Q[], f: (r: Q) => number | null | undefined): Map<string, number> {
   const v = rows.map((r) => ({ s: r.sym, x: f(r) })).filter((a): a is { s: string; x: number } => n(a.x));
@@ -56,9 +51,9 @@ export function pctMap(rows: readonly Q[], f: (r: Q) => number | null | undefine
 }
 export const mom12_1 = (r: Q): number | null => (n(r.r1y) && n(r.r1m) && r.r1m > -100 ? ((1 + r.r1y / 100) / (1 + r.r1m / 100) - 1) * 100 : null);
 const mfPct = (r: Q): number | null => (r.mf && n(r.mf.rank) && n(r.mf.of) && r.mf.of > 1 ? (1 - (r.mf.rank - 1) / (r.mf.of - 1)) * 100 : null);
-export function buildCtx(rows: readonly Q[]): Ctx {
-  const elig = rows.filter(eligible);
-  return { elig, pct: {
+export function buildCtx(rows: readonly Q[], rules: RulesId = CURRENT_RULES): Ctx {
+  const elig = rows.filter((r) => eligible(r, rules));
+  return { elig, rules, pct: {
     mom: pctMap(elig, mom12_1), high: pctMap(elig, (r) => r.from_high), pio: pctMap(elig, (r) => r.piotroski), roce: pctMap(elig, (r) => (isFinancialSector(r) ? null : r.roce_med)),
     mf: pctMap(elig, mfPct), sd: pctMap(elig, (r) => r.sd1y), r6: pctMap(elig, (r) => r.r6m),
   } };
@@ -71,7 +66,7 @@ const sgn = (v: number | null | undefined, dp = 1) => (n(v) ? `${v > 0 ? '+' : v
 const test = (label: string, v: number | null | undefined, ok: (x: number) => boolean, show: string): Criterion => ({ label, pass: n(v) ? ok(v) : null, value: show });
 
 export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
-  const el = eligible(r); const g = (k: string) => ctx.pct[k].get(r.sym) ?? null;
+  const el = eligible(r, ctx.rules); const g = (k: string) => ctx.pct[k].get(r.sym) ?? null;
   const above200 = n(r.price) && n(r.sma200) ? r.price > r.sma200 : null;
   const base: Criterion[] = [{ label: 'Liquid, priced, not a micro cap', pass: el, value: el ? 'yes' : 'no' }];
   const c: Criterion[] = [...base];
@@ -105,7 +100,7 @@ export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
 }
 
 export interface Pick { engine: EngineId; sym: string; name: string; sector?: string | null; /** facts about the pick a reader should see beside it (size class unpublished, risk grade not applicable) */ flags?: string[]; asOf: string; ref: number; stop: number; stopPct: number; horizon: number; score: number; rank: number; risk?: string | null; why: string[] }
-export interface Run { id: EngineId; picks: Pick[]; funnel: { universe: number; eligible: number; passed: number; skippedWideStop: number; picked: number } }
+export interface Run { id: EngineId; /** the eligibility version this run was made under (always set by runEngine; optional so older fixtures still type) */ rules?: RulesId; picks: Pick[]; funnel: { universe: number; eligible: number; passed: number; skippedWideStop: number; picked: number } }
 
 /** The main risk shown beside a pick, from the same eligibility layer as the company page: a flag about a figure that is not meaningful is never shown. */
 function pickRisk(r: Q): string | null {
@@ -134,9 +129,9 @@ export function runEngine(id: EngineId, rows: readonly Q[], ctx: Ctx, asOf: stri
     picks.push({ engine: id, sym: r.sym, name: r.name, sector: r.sector, asOf, ref, stop, stopPct: Math.round(((ref - stop) / ref) * 1000) / 10, horizon: def.horizon, score: Math.round(e.score!), rank: picks.length + 1, risk: pickRisk(r), flags: pickFlags(r),
       why: [...new Set(e.criteria.filter((x) => x.pass === true && x.label !== 'Liquid, priced, not a micro cap').map((x) => `${x.label}: ${x.value}`))] });
   }
-  return { id, picks, funnel: { universe: rows.length, eligible: ctx.elig.length, passed: passed.length, skippedWideStop: wide, picked: picks.length } };
+  return { id, rules: ctx.rules, picks, funnel: { universe: rows.length, eligible: ctx.elig.length, passed: passed.length, skippedWideStop: wide, picked: picks.length } };
 }
 export function runAll(rows: readonly Q[], asOf: string): { runs: Run[]; ctx: Ctx; picks: Pick[] } {
-  const ctx = buildCtx(rows); const runs = ACTIVE.map((e) => runEngine(e.id, rows, ctx, asOf));
+  const ctx = buildCtx(rows, rulesFor(asOf)); const runs = ACTIVE.map((e) => runEngine(e.id, rows, ctx, asOf));
   return { runs, ctx, picks: runs.flatMap((r) => r.picks) };
 }

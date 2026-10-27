@@ -1,20 +1,10 @@
-/** How old is the data? The last finished NSE session is the latest weekday whose 15:30 IST close has passed (we use 16:00 to be safe).
- *  Exchange holidays are NOT modelled, so "behind" can overcount by a holiday; the page says so rather than claiming a calendar it does not have. */
-const ist = (d: Date) => new Date(d.getTime() + 330 * 60000);
-export function lastFinishedSession(now = new Date()): string {
-  const t = ist(now); let day = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()));
-  const afterClose = t.getUTCHours() >= 16;
-  const wd = day.getUTCDay();
-  if (wd === 0 || wd === 6 || !afterClose) day = new Date(day.getTime() - 86400000);
-  while (day.getUTCDay() === 0 || day.getUTCDay() === 6) day = new Date(day.getTime() - 86400000);
-  return day.toISOString().slice(0, 10);
-}
+/** How old is the data? The last finished NSE session comes from the exchange calendar (weekends and the published holidays), so a screen built on the last
+ *  session before a holiday is "current" through the holiday and the word "behind" never counts a day the market was shut. */
+import { lastFinishedSession as lastFinished, sessionsBetween } from './calendar.ts';
+export const lastFinishedSession = (now = new Date()): string => lastFinished(now.getTime());
 export function sessionsBehind(dataDay: string | null | undefined, now = new Date()): number | null {
   if (!dataDay || !/^\d{4}-\d{2}-\d{2}$/.test(dataDay)) return null;
-  const last = lastFinishedSession(now); if (dataDay >= last) return 0;
-  let n = 0; let d = new Date(dataDay + 'T00:00:00Z');
-  while (d.toISOString().slice(0, 10) < last) { d = new Date(d.getTime() + 86400000); if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++; }
-  return n;
+  const last = lastFinishedSession(now); return dataDay >= last ? 0 : sessionsBetween(dataDay, last);
 }
 export type Fresh = { word: 'Current' | 'One session behind' | 'Behind' | 'Unknown'; behind: number | null; tone: 'lime' | 'peach' | '' };
 export function freshness(dataDay: string | null | undefined, now = new Date()): Fresh {

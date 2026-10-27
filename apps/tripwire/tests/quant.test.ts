@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { ENGINES, buildCtx, evaluate, mom12_1, pctMap, runAll, runEngine, type Q } from '../src/quant.ts';
 import { evaluatePaper, summarize, type Bar, type Paper } from '../src/tracker.ts';
 
-const base = (o: Partial<Q>): Q => ({ sym: 'X', name: 'X', sector: 'Technology', tier: 'large', liquid: true, price: 100, atr_pct: 2, sma200: 80, rs3m: 5, r1y: 40, r1m: 5, from_high: -3, r6m: 20, sd1y: 20, piotroski: 8, roce_med: 25, de: 0.3, risk_lvl: 'LOW', mf: { rank: 5, of: 100 }, ...o });
+const base = (o: Partial<Q>): Q => ({ sym: 'X', name: 'X', sector: 'Technology', tier: 'large', liquid: true, price: 100, turnover_cr: 50, atr_pct: 2, sma200: 80, rs3m: 5, r1y: 40, r1m: 5, from_high: -3, r6m: 20, sd1y: 20, piotroski: 8, roce_med: 25, de: 0.3, risk_lvl: 'LOW', mf: { rank: 5, of: 100 }, ...o });
 
 test('percentiles: ties share, missing is absent, never zero', () => {
   const m = pctMap([base({ sym: 'A', r6m: 1 }), base({ sym: 'B', r6m: 2 }), base({ sym: 'C', r6m: 2 }), base({ sym: 'D', r6m: null })], (r) => r.r6m);

@@ -18,14 +18,14 @@ const VIEWS: Record<View, { label: string; lines: Line[] }> = {
   overview: { label: 'Overview', lines: [
     { live: 'px', label: 'Price', get: (c) => c.row.price, fmt: inr as never }, { live: 'ch', label: 'Day', get: (c) => c.row.r1d, fmt: pct as never },
     { label: 'Against the Nifty, 3m (pts)', get: (c) => c.row.rs3m, fmt: ((v: number) => `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}`) as never, best: 'high' },
-    { label: 'From 52-week high', get: (c) => c.row.from_high, fmt: pct as never, best: 'high' }, { label: 'Trend', get: (c) => { const x = trendOf(c.row).trend; return x ? TREND_WORD[x] : null; }, fmt: ((v: string) => v) as never },
+    { label: 'From 52-week high (at close)', get: (c) => c.row.from_high, fmt: pct as never, best: 'high' }, { label: 'Trend', get: (c) => { const x = trendOf(c.row).trend; return x ? TREND_WORD[x] : null; }, fmt: ((v: string) => v) as never },
     { label: 'Size', get: (c) => c.row.tier, fmt: ((v: string) => v) as never }, { label: 'Sector', get: (c) => c.row.sector, fmt: ((v: string) => v) as never } ] },
   growth: { label: 'Growth', lines: [
     { label: 'Revenue growth, 3y', get: (c) => c.row.rev_cagr, fmt: pct as never, best: 'high' }, { label: 'EPS growth, 3y', get: (c) => c.row.eps_cagr, fmt: pct as never, best: 'high' } ] },
   profit: { label: 'Profit', lines: [
     { label: 'ROCE (median)', get: (c) => c.row.roce_med, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', metric: 'roce' },
     { label: 'EBIT margin', get: (c) => c.row.ebit_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', metric: 'margin' },
-    { label: 'Net margin', get: (c) => c.row.net_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high' } ] },
+    { label: 'Net margin', get: (c) => c.row.net_margin, fmt: ((v: number) => pct(v, 1, false)) as never, best: 'high', metric: 'margin' } ] },
   value: { label: 'Valuation', lines: [
     { label: 'PE (trailing)', get: (c) => c.row.pe, fmt: x1 as never }, { label: 'Price to book', get: (c) => c.row.pb, fmt: x1 as never }, { label: 'Dividend yield', get: (c) => c.row.div_yield, fmt: ((v: number) => pct(v, 2, false)) as never } ] },
   balance: { label: 'Balance sheet', lines: [

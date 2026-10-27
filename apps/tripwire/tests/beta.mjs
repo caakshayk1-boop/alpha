@@ -49,7 +49,23 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.getByRole('button', { name: 'Save plan' }).click(); await pg.waitForTimeout(500);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero');
   ok((await pg.locator('.journey').count()) === 0, 'all four steps done: the path card is gone from Today');
-  ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
+  ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : ''));
+  // closing the browser and opening it again: the saved state travels in the profile, and the journal, follow and plan are still there
+  const profile = await ctx.storageState(); await ctx.close();
+  const again = await mk({ storageState: profile }); await again.pg.goto(base + '/#/desk'); await again.pg.waitForSelector('nav.tabs', { timeout: 15000 }); await again.pg.waitForTimeout(600);
+  const st = await saved(again.pg);
+  ok(st && st.follows.includes('GCSL') && st.entries.length === 1 && st.entries[0].versions[0].invalidation === 'Close below 675' && st.plans.length >= 1, 'after closing and reopening the browser the follow, the thesis with its invalidation and the plan are all still there');
+  ok(/GCSL/.test(await text(again.pg)), 'and the Desk lists the followed name'); await again.pg.getByRole('tab', { name: 'Journal' }).or(again.pg.getByRole('button', { name: 'Journal' })).first().click(); await again.pg.waitForTimeout(400);
+  ok(/Close below 675/.test(await text(again.pg)) && /Momentum with a tiny base/.test(await text(again.pg)), 'and the Journal shows the thesis and what would make it wrong');
+  await again.ctx.close();
+}
+
+/* ---- 1b. a browser that will not keep data says so, before a person writes anything that vanishes ---- */
+{
+  const { ctx, pg } = await mk(); await ctx.addInitScript((s) => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; void s; }, 0);
+  await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore as a guest/ }).click(); await pg.waitForTimeout(800);
+  const banner = await pg.locator('.banner[role=alert]').innerText().catch(() => '');
+  ok(/not keeping Tripwire's data/.test(banner), 'when storage refuses to write, a banner says the data is not being kept: ' + banner.slice(0, 70)); await ctx.close();
 }
 
 /* ---- 2. backup round trip through the real screens ---- */

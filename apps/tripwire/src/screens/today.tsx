@@ -22,6 +22,7 @@ import { mood } from '../mood.ts';
 import { Icon } from '../ui.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import { sessionNow } from '../market.ts';
+import { rulesFor } from '../rules.ts';
 import { isLiveQuote } from '../stamp.ts';
 
 
@@ -103,15 +104,16 @@ export function Today() {
       </div>
       {scr.data && <div style={{ '--o': 5 } as React.CSSProperties}>
       {/* tonight's picks: ranked, each with its own live line, price and move, and where it stands in the auto book */}
-      {total > 0 && <><Head aside={<span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span>}>Tonight's picks</Head>
+      {total > 0 && <><Head aside={<span className="row small" style={{ gap: 6 }}><span className={`tag ${fr.tone}`} title="How old the screen these picks came from is, by the exchange calendar">{fr.word}</span><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span>}>Picks from the close of {dayWord(day)}</Head>
         <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
             <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
             <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
-              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · stop −{p.stopPct}%</span></span>
+              <span className="small dim trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)} since</> : ''} · stop −{p.stopPct}%</span></span>
             <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
             <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          <p className="small dim" style={{ margin: '4px 0 8px' }}>{evHead ? `${evHead} ` : ''}Ranked by each engine's own rank among eligible names, which is not a chance of winning.</p>
+          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}Chosen on the close of {dayWord(day)}{fr.behind ? `, ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago` : ''}. A rank, not a chance of winning.</p>
+          <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
           {allPicks.length > 5 && <button className="btn sm" style={{ width: '100%', margin: '4px 0 10px' }} onClick={() => setAllPicks(!showAllPicks)}>{showAllPicks ? 'Show the top 5' : `Show all ${allPicks.length}`}</button>}</div></>}
 
       </div>}

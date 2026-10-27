@@ -173,3 +173,25 @@ assert before == [(c["a"], c["b"], round(c["beta"], 9)) for c in pr.screen(pp2.C
 nulls = [pr.run(pair_panel(s, False)[0], pair_panel(s, False)[1], True) for s in range(20, 26)]
 assert sum(n["supported"] for n in nulls) <= 1, "independent random walks were 'supported' too often"
 print("pairs: ADF size sane, a planted pair is found, the screen reads no future price, noise is not supported")
+
+# ---- provenance: a run says what it ran on and why it differs from the last run of the same study ----
+import provenance as pv, tempfile, types
+def fakep(T=300, N=4, shift=0.0, extra=0, seed=2):
+    r = np.random.default_rng(seed); C = np.exp(np.cumsum(r.normal(0, 0.01, size=(T + extra, N)), axis=0)) * 100 + shift
+    return types.SimpleNamespace(dates=np.array([np.datetime64("2020-01-01") + np.timedelta64(k, "D") for k in range(T + extra)]), syms=[f"S{k}" for k in range(N)], C=C)
+tmp = pathlib.Path(tempfile.mkdtemp()); code = [pathlib.Path(__file__)]
+m1 = pv.stamp({"when": "t1"}, fakep(), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert m1["changes"][0].startswith("First recorded run") and m1["previous"] is None
+same = pv.stamp({"when": "t2"}, fakep(), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert same["id"] == m1["id"] and "No change" in same["changes"][0], same["changes"]
+grown = pv.stamp({"when": "t3"}, fakep(extra=40), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert grown["id"] != m1["id"] and any("History window moved" in c and "+40 sessions" in c for c in grown["changes"]), grown["changes"]
+assert not any("restated" in c for c in grown["changes"]), "the same closes over a longer window must not read as restated"
+rest = pv.stamp({"when": "t4"}, fakep(extra=40, shift=5.0), tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]
+assert any("restated old closes" in c for c in rest["changes"]), rest["changes"]
+fewer = fakep(extra=40, shift=5.0); fewer.syms = fewer.syms[:3]; fewer.C = fewer.C[:, :3]
+u = pv.stamp({"when": "t5"}, fewer, tmp / "x.json", "demo", {"cost": 0.25}, code)["run"]; assert any("Universe changed: 0 names added, 1 removed" in c for c in u["changes"]), u["changes"]
+pm = pv.stamp({"when": "t6"}, fewer, tmp / "x.json", "demo", {"cost": 0.30}, code)["run"]; assert any("Parameters changed: cost 0.25 to 0.3" in c for c in pm["changes"]), pm["changes"]
+other = tmp / "other.py"; other.write_text("a=1"); pv.stamp({"when": "t7"}, fewer, tmp / "x.json", "demo2", {}, [other]); other.write_text("a=2")
+cc = pv.stamp({"when": "t8"}, fewer, tmp / "x.json", "demo2", {}, [other])["run"]; assert any("Study code changed: other.py" in c for c in cc["changes"]), cc["changes"]
+print("provenance: first run, no change, history grown, closes restated, universe, parameters and code changes are each named")

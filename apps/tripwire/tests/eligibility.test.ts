@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { curateCase, eligibilityOf, meaningful, riskGradeOf, topicOf, isFinancialSector } from '../src/eligibility.ts';
 import { isLender } from '../src/screen.ts';
 import { buildCtx, evaluate, eligible, type Q } from '../src/quant.ts';
+import { rulesFor, rulesOfRecord } from '../src/rules.ts';
 
 const load = (f: string) => JSON.parse(readFileSync(new URL(`./fixtures/${f}`, import.meta.url), 'utf8'));
 const gcsl = load('gcsl.json'); const tcs = load('tcs.json');
@@ -52,11 +53,23 @@ test('size class: an unpublished class is stated, never read as a finding', () =
   assert.deepEqual(eligibilityOf({ sector: 'Industrials' }).size, { known: false, tier: null, label: 'Size class not published' });
   assert.equal(eligibilityOf({ sector: 'Industrials', tier: 'micro' }).size.label, 'Micro cap');
 });
-test('the engines\' current rule is pinned, so changing it is a decision and not an accident: an unpublished size class counts as not micro', () => {
-  const base = { sym: 'X', name: 'X', liquid: true, price: 100, atr_pct: 2 };
-  assert.equal(eligible({ ...base, tier: 'micro' } as Q), false);
-  assert.equal(eligible({ ...base, tier: undefined } as Q), true);       // 266 liquid names today; see docs/tripwire/OPEN_ITEMS.md, decision D1
-  assert.equal(eligible({ ...base, tier: 'mid' } as Q), true);
+test('the eligibility rule is pinned by version: elig-1 is what was built, elig-2 is the written spec, and the day each applies from is fixed', () => {
+  const base = { sym: 'X', name: 'X', liquid: true, price: 100, atr_pct: 2, turnover_cr: 50, tier: 'mid' };
+  assert.equal(rulesFor('2026-10-26'), 'elig-1'); assert.equal(rulesFor('2026-10-27'), 'elig-2'); assert.equal(rulesFor('2027-03-01'), 'elig-2'); assert.equal(rulesOfRecord(undefined), 'elig-1', 'a night written before versions existed is elig-1'); assert.equal(rulesOfRecord('elig-2'), 'elig-2'); assert.equal(rulesOfRecord('nonsense'), 'elig-1');
+  // elig-1, exactly as built
+  assert.equal(eligible({ ...base, tier: 'micro' } as Q, 'elig-1'), false); assert.equal(eligible({ ...base, tier: undefined } as Q, 'elig-1'), true, 'D1 as it was: an unpublished class passed');
+  assert.equal(eligible({ ...base, price: 30 } as Q, 'elig-1'), true, 'D3 as it was: no floor'); assert.equal(eligible({ ...base, turnover_cr: 2 } as Q, 'elig-1'), true, 'D2 as it was: the traded value was not read');
+  // elig-2, the written spec
+  assert.equal(eligible({ ...base } as Q, 'elig-2'), true);
+  assert.equal(eligible({ ...base, tier: undefined } as Q, 'elig-2'), false, 'D1: a class that is not published is not shown to be in the index'); assert.equal(eligible({ ...base, tier: 'micro' } as Q, 'elig-2'), false);
+  assert.equal(eligible({ ...base, turnover_cr: 9.99 } as Q, 'elig-2'), false, 'D2: just under ₹10 crore'); assert.equal(eligible({ ...base, turnover_cr: 10 } as Q, 'elig-2'), true, 'exactly ₹10 crore passes'); assert.equal(eligible({ ...base, turnover_cr: null } as Q, 'elig-2'), false, 'an unmeasured value is not a pass');
+  assert.equal(eligible({ ...base, price: 49.99 } as Q, 'elig-2'), false, 'D3: just under ₹50'); assert.equal(eligible({ ...base, price: 50 } as Q, 'elig-2'), true);
+  assert.equal(eligible({ ...base, liquid: false } as Q, 'elig-2'), false, 'the liquid flag still has to hold');
+  assert.equal(eligible({ ...base } as Q), true, 'the default is the version in force now');
+});
+test('the two real names behind the discrepancy: GCSL and SBC (no published class) were Momentum picks under elig-1 and are not eligible under elig-2', () => {
+  const gcsl = { sym: 'GCSL', name: 'Gretex', liquid: true, price: 746, atr_pct: 3, turnover_cr: 40, tier: undefined }, sbc = { sym: 'SBC', name: 'SBC', liquid: true, price: 63.7, atr_pct: 3, turnover_cr: 12, tier: undefined };
+  for (const r of [gcsl, sbc]) { assert.equal(eligible(r as Q, 'elig-1'), true); assert.equal(eligible(r as Q, 'elig-2'), false); }
 });
 test('one definition: the old name and the new one agree on every sector', () => {
   for (const sector of ['Financial Services', 'Industrials', 'Technology', null, undefined]) assert.equal(isLender({ sector }), isFinancialSector({ sector }));

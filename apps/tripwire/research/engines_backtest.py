@@ -133,5 +133,6 @@ if __name__ == "__main__":
     sector = np.array([rows.get(s, "unknown") for s in p.syms])
     res = run(p, sector)
     meta = {"when": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "symbols": len(p.syms), "dates": [str(p.dates[0])[:10], str(p.dates[-1])[:10]]}
+    import provenance; meta = provenance.stamp(meta, p, outdir / "engines_backtest.json", "engines_backtest", {'engines': ENG, 'costs': COSTS, 'slippage': SLIP}, [__file__, pathlib.Path(__file__).with_name('study.py'), pathlib.Path(__file__).with_name('indicators.py')])
     (outdir / "engines_backtest.json").write_text(json.dumps({"meta": meta, "engines": res}, indent=1))
     (outdir / "engines_backtest.md").write_text(markdown(res, meta)); print(markdown(res, meta))

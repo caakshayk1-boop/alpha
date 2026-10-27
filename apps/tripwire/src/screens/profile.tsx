@@ -6,6 +6,8 @@ import { Head, PageBar } from './common.tsx';
 import { DEFAULTS, exportJson, journalCsv, mergeStates, parseState } from '../store.ts';
 import { disableLock, enableLock, lockId, lockSupported } from '../lock.ts';
 import { useEffect } from 'react';
+import { SERVICES, STATE_WORD } from '../services.ts';
+import { useJson } from '../data.ts';
 
 export function download(name: string, text: string, type: string) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -49,8 +51,8 @@ export function Profile() {
       <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{{ vibrate: 'A light tap on buttons and on success or error messages (this device vibrates).', 'ios-switch': 'A light tap on buttons and on success or error messages (the iPhone system tap).', none: 'Not supported on this browser or device, so this switch does nothing.' }[support()]}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
     </div>
 
-    <Head>Notifications</Head>
-    <div className="card"><div className="row"><Icon n="bell" /><div className="grow"><b>Not available yet</b><div className="small dim">Delivery needs a configured service, and none is. Review dates and changes appear on Today when you open the app. No alert is promised or sent.</div></div></div></div>
+    <Head>Services and integrations</Head>
+    <ServicesCard />
 
     <Head>Your data</Head>
     <div className="card">
@@ -70,5 +72,20 @@ export function Profile() {
     <Head>About</Head>
     <div className="card small dim"><p style={{ marginTop: 0 }}>Tripwire shows which public rules fired at the last close and the evidence on each side. It is educational research, not investment advice, and no order is ever placed. Prices are end-of-day from public sources and may contain errors. Paper results are not real results.</p>
       <p style={{ marginBottom: 0 }}>Privacy: no account, no tracking, no analytics. Your notes never leave this device.</p></div>
+  </div>;
+}
+
+interface HealthFeed { ok: boolean; checked_at: string; prices: { ok: boolean; ms: number | null; age_sec: number | null; error: string | null }; news: { ok: boolean; ms: number | null; error: string | null }; bindings: string[]; secrets_configured: number }
+/** One list of what works and what does not. The two live sources are probed once when this section opens; everything else is a fact about the build. */
+function ServicesCard() {
+  const h = useJson<HealthFeed>('/api/health');
+  const live = (id: string) => (id === 'prices' ? h.data?.prices : id === 'news' ? h.data?.news : null);
+  return <div className="card" style={{ padding: '2px 14px' }}>
+    {SERVICES.map((v) => { const l = live(v.id); const age = v.id === 'prices' ? h.data?.prices.age_sec ?? null : null; const tone = v.state === 'working' ? (l && !l.ok ? 'peach' : 'lime') : 'peach';
+      return <details key={v.id} className="ev" style={{ margin: 0 }}><summary>{v.label}<span className={`tag ${tone} num`} style={{ marginLeft: 'auto' }}>{l && !l.ok ? 'Not answering' : STATE_WORD[v.state]}</span><span className="chev">▾</span></summary>
+        <div className="body small"><p style={{ margin: '0 0 6px' }}>{v.what}</p>
+          {l ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {h.loading ? 'checking' : l.ok ? `answering${l.ms != null ? ` in ${l.ms} ms` : ''}${age != null ? `; last exchange print ${age < 120 ? `${age} s` : age < 7200 ? `${Math.round(age / 60)} min` : `${Math.round(age / 3600)} h`} ago` : ''}` : `not answering (${l.error ?? 'no reply'})`}.</p> : null}
+          {v.needs ? <p style={{ margin: 0 }}><b>To make it real:</b> {v.needs}</p> : null}</div></details>; })}
+    <p className="small mute" style={{ margin: '6px 0 10px' }}>{h.data ? `The Worker holds ${h.data.secrets_configured} secrets and ${h.data.bindings.length} binding${h.data.bindings.length === 1 ? '' : 's'} (${h.data.bindings.join(', ') || 'none'}); checked ${new Date(h.data.checked_at).toISOString().slice(11, 16)} UTC.` : h.err ? `The health check did not answer (${h.err}); the list above is what the build contains.` : 'Checking the live sources…'}</p>
   </div>;
 }

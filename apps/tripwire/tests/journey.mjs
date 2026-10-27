@@ -48,13 +48,14 @@ await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
 await pg.waitForSelector('.news'); ok(/RBI keeps rates unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Regulator|Results/i.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
-ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');
+await pg.getByText('How to read these picks').click();
+ok(/Picks from the close of/i.test(await text()) && /rule version elig-\d/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');
 T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
 for (let k = 0; k < 6 && !(await pg.locator('.dot-live').count()); k++) { await pg.waitForSelector('.dot-live', { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
 await pg.waitForSelector('.dot-live', { timeout: 10000 });
-ok(/live ·/i.test(await text()) && /Needs you|Tonight's picks/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
+ok(/live ·/i.test(await text()) && /Needs you|Picks from the close of/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 ok(!/Your names|Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0, 'Today carries no empty-state cards, no per-name news block and no duplicate ticker');
 ok((await pg.locator('.card:has(.news) .li.news').count()) <= 5, 'the news on Today is at most five lines until asked for more');
@@ -99,6 +100,14 @@ await pg.getByRole('group', { name: 'Stop distance' }).getByRole('button', { nam
 ok(/Different rules tried on this device: 2/.test(await text()), 'a changed rule is a second variant and the bar is told'); if (!/tried on this device: 2/.test(await text())) console.log((await text()).match(/Different rules tried[^.]*\./)?.[0]);
 await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
 ok(await pg.getByRole('button', { name: /Remove condition: RSI ≤ 45/ }).count() === 1, 'the Lab takes a condition built with the same sheet as Discover');
+// the Data screen: pipeline health by the calendar, the eligibility version and the three resolved discrepancies, the runs and what changed in them
+await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline health').first().waitFor({ timeout: 15000 });
+ok(/Published screen/.test(await text()) && /Forward ledger, last night recorded/.test(await text()) && /Live quotes/.test(await text()) && /NSE holiday calendar/.test(await text()), 'the Data screen shows each pipeline stage against the exchange calendar');
+ok(/The eligibility rule, by version/i.test(await text()) && /elig-[12]/.test(await text()) && /Three gaps between the written spec and the code/i.test(await text()), 'the Data screen names the rule version in force and how D1 to D3 were resolved');
+ok(/Back-test runs, and why a result changed/i.test(await text()), 'the Data screen lists the study runs and why they changed');
+await pg.goto(base + '/#/profile'); await pg.reload(); await pg.getByText('Services and integrations').first().waitFor({ timeout: 15000 });
+ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()) && /Not built/i.test(await text()) && /Working/i.test(await text()), 'Profile lists each service as working, not set up or not built');
+ok(!/coming soon/i.test(await text()), 'no service is described as coming soon');
 pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
 await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
@@ -142,6 +151,12 @@ ok(/Close of /.test(t), 'company price carries its date');
 T.stock = (s) => (s === 'TCS' ? quote(2500, 2600) : null);
 await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 15000 }); await pg.waitForTimeout(500);
 ok(/₹2,600\.00/.test(await text()) && /\+4\.0% today/.test(await text()), 'a live quote replaces the published close on the company page, with its time and the day\'s change');
+T.stock = null;
+// GCSL, the name that exposed it: a live print beyond the published 52-week high must move the high, and a financial-sector name must not show a margin the page says it withholds
+T.stock = (s) => (s === 'GCSL' ? quote(726, 100000) : null);
+await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 15000 }); await pg.waitForTimeout(400);
+ok(/a new 52-week high/.test(await text()) && /· live/.test(await text()) && /at the live price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price');
+ok(!/Net margin/.test(await text()) && /withheld for this company/.test(await text()), 'GCSL: the page that says margins are withheld for a financial-sector name does not print one');
 T.stock = null;
 
 // price chart: ten years of mocked daily closes
@@ -339,7 +354,7 @@ await shot('10-search'); await pg.keyboard.press('Escape');
 // profile
 await pg.goto(base + '/#/profile'); await shot('11-profile');
 ok(/Sign-in is not available yet/.test(await text()), 'profile is honest that no account exists');
-ok(/Not available yet/.test(await text()) && /Free/.test(await text()), 'notifications and billing are shown as unavailable, not faked');
+ok(/Notifications and alerts/i.test(await text()) && /Not built/i.test(await text()) && /Free/.test(await text()), 'notifications and billing are shown as unavailable, not faked');
 await pg.getByRole('button', { name: /Delete all my data/ }).click();
 await pg.getByRole('button', { name: 'Erase now' }).click();
 await pg.goto(base + '/#/desk?v=journal');

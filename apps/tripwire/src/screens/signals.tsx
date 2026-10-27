@@ -1,3 +1,4 @@
+import { rulesOfRecord } from '../rules.ts';
 import { useMemo, useState } from 'react';
 import { go, setState, useAppState } from '../app.tsx';
 import { useLedger } from '../data.ts';
@@ -89,7 +90,7 @@ function RecordView() {
       <div className="k">Forward record since {dayWord(sum.first)}</div>
       <p className="lead" style={{ marginTop: 6 }}><em className="ed">{a.closed}</em> of {MIN_TRADES} trades closed</p>
       <div className="stage" role="img" aria-label={`${a.closed} of ${MIN_TRADES} closed`} style={{ marginTop: 10 }}>{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < Math.floor((Math.min(a.closed, MIN_TRADES) / MIN_TRADES) * 10) ? 'on' : ''} />)}</div>
-      <p className="dim small" style={{ margin: '10px 0 0' }}>{l.days.length} night{l.days.length === 1 ? '' : 's'} recorded, through {dayWord(sum.last)} · {a.picks} picks · {a.open} open · {a.skipped} skipped · {a.pending} waiting for prices.</p>
+      <p className="dim small" style={{ margin: '10px 0 0' }}>{l.days.length} night{l.days.length === 1 ? '' : 's'} recorded, through {dayWord(sum.last)} · {a.picks} picks · {a.open} open · {a.skipped} skipped · {a.pending} waiting for prices.<br />Eligibility rule by night: {(() => { const by: Record<string, string[]> = {}; for (const d of l.days) (by[rulesOfRecord(d.rules)] ??= []).push(d.asOf); return Object.entries(by).map(([v, ds]) => `${v} (${ds.length} ${ds.length === 1 ? 'night' : 'nights'}, ${dayWord(ds[0])}${ds.length > 1 ? ` to ${dayWord(ds[ds.length - 1])}` : ''})`).join(' · '); })()}. A night keeps the version it was written under.</p>
       <p className="small" style={{ margin: '8px 0 0' }}>{a.enough ? <>Average <b className="num">{fmtR(a.avgR)}</b> a trade · won {a.winRate}% {a.avgExcess != null ? <>· <span className="num">{a.avgExcess > 0 ? '+' : '−'}{Math.abs(a.avgExcess).toFixed(2)}%</span> against the Nifty over the same days</> : null}</> : <span className="dim">Average R, win rate and the comparison with the Nifty stay hidden until {MIN_TRADES} trades have closed. Fewer than that says nothing.</span>}</p>
     </div>
     <Head>By engine</Head>

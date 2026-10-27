@@ -111,11 +111,13 @@ export function Lab() {
     </>}
 
     <Head>What this cannot tell you</Head>
-    <section className="card small mute">
-      <p style={{ margin: '0 0 8px' }}>Today's names only (survivorship): a company that was delisted or collapsed is not in the history, so every result is an upper bound.</p>
-      <p style={{ margin: '0 0 8px' }}>Daily closes only. A stop is seen only on a close beyond it, so a gap costs more than the stop says, and an intraday touch of a target that closed back inside is missed.</p>
-      <p style={{ margin: '0 0 8px' }}>Price-only figures. Quality, growth and value cannot be tested here: they need point-in-time accounts this app does not hold. They are judged only on the forward record.</p>
-      <p style={{ margin: '0 0 8px' }}>Built {panel.built}. Paper only; nothing here places an order, and a supported rule is a candidate for the forward record, not a recommendation.</p>
+    <section className="card small">
+      <p style={{ margin: 0 }}>Today's names only, daily closes only, and price-only figures. Every result is an upper bound, and nothing here is a recommendation.</p>
+      <details className="more"><summary>The three limits in full</summary><div>
+        <p style={{ margin: '0 0 8px' }}>Today's names only (survivorship): a company that was delisted or collapsed is not in the history, so every result is an upper bound.</p>
+        <p style={{ margin: '0 0 8px' }}>Daily closes only. A stop is seen only on a close beyond it, so a gap costs more than the stop says, and an intraday touch of a target that closed back inside is missed.</p>
+        <p style={{ margin: '0 0 8px' }}>Price-only figures. Quality, growth and value cannot be tested here: they need point-in-time accounts this app does not hold. They are judged only on the forward record.</p>
+        <p style={{ margin: 0 }}>Built {panel.built}. Paper only; nothing here places an order, and a supported rule is a candidate for the forward record, not a recommendation.</p></div></details>
     </section>
     {sheet && <CondSheet metrics={LAB_KEYS} rows={rows} count={(cs) => applyConds(rows, [...strat.conds.filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs]).rows.length} onClose={() => setSheet(false)} onAdd={(cs) => { set({ conds: [...strat.conds.filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }); setSheet(false); }} />}
   </div>;

@@ -1,15 +1,22 @@
 import { useMemo } from 'react';
-import { useLedger, useScreen } from '../data.ts';
+import { useJson, useLedger, useScreen } from '../data.ts';
+import { liveStatus } from '../quotes.ts';
+import { HEALTH_WORD, overduePending, pipelineHealth } from '../pipeline.ts';
+import { rulesOfRecord } from '../rules.ts';
 import { universeReport } from '../universe.ts';
 import { freshness } from '../fresh.ts';
 import { dayWord } from '../fmt.ts';
 import { Head, Loading, Failed, PageBar } from './common.tsx';
 import { fmtIst } from '../stamp.ts';
+import { CALENDAR, calendarNote } from '../calendar.ts';
 
 const N = (v: number) => v.toLocaleString('en-IN');
+interface RunStamp { id: string; when?: string; git: string; data: { first_day: string; last_day: string; sessions: number; symbols: number }; code: { hash: string }; changes: string[]; previous: string | null }
 /** What the screen holds, counted from its own rows, and where every kind of figure comes from and how old it is. Nothing here is typed in: it is all read from the data. */
 export function DataPage() {
-  const scr = useScreen(); const led = useLedger();
+  const runs = [['Factor study', 'factor_study'], ['Engines back-test', 'engines_backtest'], ['Momentum walk-forward', 'engines_walkforward'], ['Pairs', 'engines_pairs']] as const;
+  const rs = runs.map(([, f]) => useJson<{ meta?: { when?: string; run?: RunStamp } }>(`/data/research/${f}.json`));   // eslint-disable-line react-hooks/rules-of-hooks
+  const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
   const u = useMemo(() => (scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on) : null), [scr.data]);
   if (scr.loading) return <div><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
   if (scr.err || !u || !scr.data) return <div><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
@@ -22,6 +29,13 @@ export function DataPage() {
       <p className="small dim" style={{ margin: '8px 0 0' }}>{fr.word === 'Current' ? 'That is the last finished session.' : `That is ${fr.word.toLowerCase()} the last finished session.`} The screen was built {built ? dayWord(built) : 'on an unknown date'}. Exchange holidays are not modelled.</p>
       <div className="note" style={{ marginTop: 10 }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}).</div>
     </section>
+
+    {(() => { const L = led.data?.ledger; const od = L ? overduePending(L) : null; const q = liveStatus(); const last = L?.days[L.days.length - 1];
+      const ph = pipelineHealth({ screenAsOf: u.asOf, screenBuiltOn: u.builtOn, ledgerLastNight: last?.asOf ?? null, ledgerUpdated: L?.updated ?? null, ledgerRules: last ? rulesOfRecord(last.rules) : null, pendingOld: od?.old ?? 0, pendingTotal: od?.total ?? 0, quoteLastAt: q.lastAt || null, quoteErr: q.err ?? null, panelLastDay: panel.data?.dates?.[panel.data.dates.length - 1] ?? null, panelBuilt: panel.data?.built ?? null });
+      return <><Head aside={<span className={`tag ${ph.overall === 'ok' ? 'lime' : 'peach'}`}>{HEALTH_WORD[ph.overall]}</span>}>Pipeline health</Head>
+        <div className="card" style={{ padding: '2px 14px' }}><table className="tbl" style={{ width: '100%' }}><caption className="sr">Each stage of the data pipeline against what the exchange calendar says it should be</caption><tbody>
+          {ph.stages.map((s) => <tr key={s.id}><th scope="row" style={{ textAlign: 'left', verticalAlign: 'top', width: '34%' }}>{s.label}</th><td><span className={`tag ${s.health === 'ok' ? 'lime' : s.health === 'waiting' ? '' : 'peach'}`}>{HEALTH_WORD[s.health]}</span><div className="small dim" style={{ marginTop: 4 }}>{s.detail}</div></td></tr>)}</tbody></table>
+          <p className="small mute" style={{ margin: '6px 0 10px' }}>Expected: the close of {dayWord(ph.expectedSession)}, from the NSE holiday calendar ({CALENDAR.version}, covers {CALENDAR.year}). {calendarNote() ?? ''}</p></div></>; })()}
 
     <Head>Size classes</Head>
     <div className="card" style={{ padding: '2px 14px' }}><table className="tbl" style={{ width: '100%' }}><caption className="sr">Companies by size class</caption><tbody>
@@ -43,9 +57,21 @@ export function DataPage() {
       <tr><td>Financial sector (statement ratios not judged)</td><td className="num" style={{ textAlign: 'right' }}>{N(u.financial)}</td></tr></tbody></table>
       <p className="small dim" style={{ margin: '8px 0 10px' }}>{N(u.liquid - u.liquidWithAverages)} liquid names have no 200-day average yet (recent listings), so the trend map counts {N(u.liquidWithAverages)}, not {N(u.liquid)}.</p></div>
 
-    <Head>Where the written rules and the data disagree</Head>
-    {u.conflicts.map((c) => <details key={c.id} className="ev"><summary><b>{c.id}</b> · {c.title}<span className="tag peach num" style={{ marginLeft: 'auto' }}>{N(c.count)}</span><span className="chev">▾</span></summary><div className="body"><p style={{ margin: '0 0 6px' }}><b>Written:</b> {c.spec}</p><p style={{ margin: '0 0 6px' }}><b>In the data:</b> {c.actual}</p><p style={{ margin: 0 }}><b>Open decision:</b> {c.decision}</p></div></details>)}
-    <p className="small mute">Tripwire has not changed any engine rule to make these agree. A rule change alters percentile ranks and the forward record, so it is a versioned decision for the owner.</p>
+    <Head>The eligibility rule, by version</Head>
+    <div className="card" style={{ padding: '10px 14px' }}>
+      <p className="small" style={{ margin: 0 }}>This screen is read under <b className="num">{u.rules}</b>{u.rules === 'elig-1' ? ` (elig-2 applies from the ${dayWord(u.rulesFrom === '0000-00-00' ? '2026-10-27' : u.rulesFrom)} data day)` : ` (in force from the ${dayWord(u.rulesFrom)} data day)`}. {u.rulesSummary}</p>
+      <p className="small mute" style={{ margin: '8px 0 0' }}>On these rows the previous version would admit <b className="num">{N(u.engineEligibleElig1)}</b> names and this one admits <b className="num">{N(u.engineEligible)}</b>. Nights already in the record keep the version they were written under; none is re-run or re-scored.</p>
+    </div>
+    <Head>Three gaps between the written spec and the code, and how each was resolved</Head>
+    {u.conflicts.map((c) => <details key={c.id} className="ev"><summary><b>{c.id}</b> · {c.title}<span className="tag lime num" style={{ marginLeft: 'auto' }}>{c.resolvedIn}</span><span className="chev">▾</span></summary><div className="body"><p style={{ margin: '0 0 6px' }}><b>Written:</b> {c.spec}</p><p style={{ margin: '0 0 6px' }}><b>In the data:</b> {c.actual}</p><p style={{ margin: 0 }}><b>Resolution:</b> {c.decision} <span className="mute">It removes {N(c.count)} names the old rule admitted.</span></p></div></details>)}
+    <p className="small mute">A rule change alters every percentile rank and every pick that follows, so it is a dated version, never an edit. Thresholds are the spec's own, fixed before the counts were read; they are not tuned and not claimed to be better.</p>
+
+    <Head>Back-test runs, and why a result changed</Head>
+    <div className="card" style={{ padding: '2px 14px' }}>{runs.map(([label], i) => { const m = rs[i].data?.meta; const r = m?.run;
+      return <details key={label} className="ev" style={{ margin: 0 }}><summary>{label}<span className="small mute num" style={{ marginLeft: 'auto' }}>{r ? `run ${r.id}` : m ? 'not stamped' : rs[i].loading ? '…' : 'not available'}</span><span className="chev">▾</span></summary>
+        <div className="body small">{r ? <><p style={{ margin: '0 0 6px' }}>Run <b className="num">{r.id}</b> on {m?.when ?? 'an unknown time'}, code <span className="num">{r.code.hash}</span>, commit <span className="num">{r.git}</span>. Prices {r.data.first_day} to {r.data.last_day} ({N(r.data.sessions)} sessions, {N(r.data.symbols)} names).</p>
+          <p style={{ margin: '0 0 4px' }}><b>What changed since the previous run{r.previous ? ` (${r.previous})` : ''}:</b></p><ul style={{ margin: 0, paddingLeft: 18 }}>{r.changes.map((c) => <li key={c}>{c}</li>)}</ul></> : m ? <p style={{ margin: 0 }}>This result was produced before runs were stamped. The next research run records what it ran on and compares with this one.</p> : <p style={{ margin: 0 }}>Not published.</p>}</div></details>; })}
+      <p className="small mute" style={{ margin: '6px 0 10px' }}>A result can move for four reasons only: the history grew, the universe changed, the provider restated old closes, or the code or parameters changed. Each run says which. The same id means the same inputs.</p></div>
 
     <Head>Sources and ages</Head>
     <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Sources and ages, scrolls sideways"><table className="tbl" style={{ width: '100%' }}><thead><tr><th scope="col">Figure</th><th scope="col">Source</th><th scope="col">Observed</th><th scope="col">Delay</th></tr></thead><tbody>

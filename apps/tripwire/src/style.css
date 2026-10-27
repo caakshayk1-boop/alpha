@@ -692,3 +692,22 @@ a.li.news:hover .nt{text-decoration:underline;text-underline-offset:3px}
 @media(prefers-reduced-motion:no-preference){.hero.livecard{animation:heroGlow 3.2s ease-in-out infinite}@keyframes heroGlow{0%,100%{box-shadow:0 0 18px color-mix(in srgb,var(--lime) 5%,transparent)}50%{box-shadow:0 0 34px color-mix(in srgb,var(--lime) 13%,transparent)}}}
 .moodhero .idx>.dim{display:block;padding:6px 0;border-top:1px solid var(--line);font-size:.8125rem;line-height:1.35;min-height:2.1rem}
 .verdict .word2{font:700 1.5rem/1.1 var(--mono);text-transform:uppercase;margin-top:4px}.verdict.good{border-color:color-mix(in srgb,var(--up) 50%,var(--line));box-shadow:0 0 24px color-mix(in srgb,var(--up) 12%,transparent)}.verdict.good .word2{color:var(--up)}
+
+/* ---- reading comfort (hardening pass) ----
+   Prose is set in the system's proportional face at a comfortable size and measure; the mono face stays for figures, labels, tags, controls and tables (the list above).
+   Secondary text is lighter than the page but never under 7:1 on the darkest surface; tabular figures keep numbers in prose aligned. */
+:root{--prose:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--dim:#cfcfcf;--mute:#aeaeae;--down:#ff7468;--peach:#ff7468;--line2:#3d3d3d}
+body{font-family:var(--prose);font-size:.9375rem;line-height:1.55;font-variant-numeric:tabular-nums;letter-spacing:0}
+p,li,dd,.body,.note,.news .t,details.ev .body{line-height:1.55}
+p,.body p,.note p{max-width:68ch}
+.small{font-size:.8125rem;line-height:1.5}
+.mute,.dim{font-weight:400}
+:where(p,li,.small,.body,.note,summary,.lead){font-family:var(--prose)}
+summary{font-family:var(--prose)}
+.k,h2.h{letter-spacing:.07em}
+
+:where(.dv,.l,.card.dim,.tbl td:not(.num)){font-family:var(--prose)}
+/* progressive disclosure: the sentence that matters stays visible, the reasoning is one tap away */
+details.more{margin:6px 0 0}details.more>summary{cursor:pointer;color:var(--dim);font-size:.8125rem;list-style:none;display:flex;gap:6px;align-items:center;min-height:32px}
+details.more>summary::-webkit-details-marker{display:none}details.more>summary::before{content:"+";font-family:var(--mono);color:var(--lime);width:1ch}details.more[open]>summary::before{content:"−"}
+details.more>div{padding:2px 0 6px 2ch;color:var(--dim);font-size:.8125rem;line-height:1.55}

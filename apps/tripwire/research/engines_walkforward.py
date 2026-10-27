@@ -114,4 +114,5 @@ if __name__ == "__main__":
     p = load_real(screen); rows = {r["sym"]: r.get("sector") or "unknown" for r in json.loads(pathlib.Path(screen).read_text())["rows"]}
     sector = np.array([rows.get(s, "unknown") for s in p.syms]); wf = walk_forward(series(p, sector))
     meta = {"when": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "symbols": len(p.syms), "dates": [str(p.dates[0])[:10], str(p.dates[-1])[:10]]}
+    import provenance; meta = provenance.stamp(meta, p, outdir / "engines_walkforward.json", "engines_walkforward", {'family': [vid(v) for v in FAMILY], 'first_test_year': FIRST_TEST_YEAR, 'lookback_years': LOOKBACK_YEARS, 't_procedure': T_PROCEDURE, 't_fixed': T_FIXED, 'min_active': MIN_ACTIVE, 'costs': COSTS, 'slippage': SLIP}, [__file__, pathlib.Path(__file__).with_name('engines_backtest.py'), pathlib.Path(__file__).with_name('study.py'), pathlib.Path(__file__).with_name('indicators.py')])
     (outdir / "engines_walkforward.json").write_text(json.dumps({"meta": meta, "walk_forward": wf}, indent=1)); (outdir / "engines_walkforward.md").write_text(markdown(wf, meta)); print(markdown(wf, meta))

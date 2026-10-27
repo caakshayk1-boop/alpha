@@ -1,22 +1,23 @@
-/** The trading session, from the Indian clock. Exchange HOLIDAYS are not modelled, so a holiday reads as an ordinary weekday until the
- *  live feed shows no fresh prints; callers pass `anyLive` (true when a quote printed in the last 25 minutes) to override the clock. */
+/** The trading session, from the Indian clock and the exchange calendar (holidays included, see calendar.ts). Callers pass `anyLive` (true when a quote printed in
+ *  the last 25 minutes) to override the clock: a live print always wins over the calendar, because the calendar can be wrong and a print cannot. */
+import { OPEN_MIN, CLOSE_MIN, closureToday, holidayName, isTradingDay, istClock, nextSession } from './calendar.ts';
 export type Phase = 'pre' | 'open' | 'closed';
 export interface Session { phase: Phase; label: string; detail: string }
 const ist = (ms: number) => new Date(ms + 330 * 60000);
 const hm = (m: number) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function sessionNow(nowMs = Date.now(), anyLive: boolean | null = null): Session {
-  const d = ist(nowMs); const wd = d.getUTCDay(); const mins = d.getUTCHours() * 60 + d.getUTCMinutes(); const OPEN = 9 * 60 + 15, CLOSE = 15 * 60 + 30;
-  const weekday = wd >= 1 && wd <= 5;
-  if (anyLive === true) return { phase: 'open', label: 'Market open', detail: weekday && mins < CLOSE ? `closes in ${hm(CLOSE - mins)}` : 'prices are printing now' };
-  if (weekday && mins >= 9 * 60 && mins < OPEN) return { phase: 'pre', label: 'Pre-open', detail: `opens in ${hm(OPEN - mins)}` };
-  if (weekday && mins >= OPEN && mins < CLOSE) {
-    if (anyLive === false) return { phase: 'closed', label: 'No live prints', detail: 'a holiday, or the price source is quiet' };
-    return { phase: 'open', label: 'Market open', detail: `closes in ${hm(CLOSE - mins)}` };
+  const { day, mins } = istClock(nowMs); const trading = isTradingDay(day);
+  if (anyLive === true) return { phase: 'open', label: 'Market open', detail: trading && mins < CLOSE_MIN ? `closes in ${hm(CLOSE_MIN - mins)}` : 'prices are printing now' };
+  if (trading && mins >= 9 * 60 && mins < OPEN_MIN) return { phase: 'pre', label: 'Pre-open', detail: `opens in ${hm(OPEN_MIN - mins)}` };
+  if (trading && mins >= OPEN_MIN && mins < CLOSE_MIN) {
+    if (anyLive === false) return { phase: 'closed', label: 'No live prints', detail: 'the price source is quiet, or an unscheduled closure' };
+    return { phase: 'open', label: 'Market open', detail: `closes in ${hm(CLOSE_MIN - mins)}` };
   }
-  // closed: say when it opens next
-  let next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); let add = weekday && mins < OPEN ? 0 : 1;
-  next = new Date(next.getTime() + add * 86400000); while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next = new Date(next.getTime() + 86400000);
-  const same = add === 0; const tomorrow = add === 1 && next.getTime() - Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) === 86400000;
-  return { phase: 'closed', label: 'Market closed', detail: same ? `opens today 9:15` : tomorrow ? 'opens tomorrow 9:15' : `opens ${DAYS[next.getUTCDay()]} 9:15` };
+  // closed: say why when it is a holiday, and when it opens next
+  const next = trading && mins < OPEN_MIN ? day : nextSession(day); const dayMs = Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10));
+  const nextMs = Date.UTC(+next.slice(0, 4), +next.slice(5, 7) - 1, +next.slice(8, 10)); const same = next === day; const tomorrow = nextMs - dayMs === 86400000;
+  const when = same ? 'opens today 9:15' : tomorrow ? 'opens tomorrow 9:15' : `opens ${DAYS[new Date(nextMs).getUTCDay()]}${nextMs - dayMs > 3 * 86400000 ? ` ${next.slice(8)}/${next.slice(5, 7)}` : ''} 9:15`;
+  const why = closureToday(nowMs); void holidayName;
+  return { phase: 'closed', label: why ? 'NSE holiday' : 'Market closed', detail: why ? `${why.replace('NSE holiday: ', '')}, ${when}` : when };
 }

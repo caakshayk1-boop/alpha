@@ -4,9 +4,10 @@
 export type QState = 'live' | 'lagging' | 'stale' | 'last';
 export const LIVE_SEC = 5 * 60, LAG_SEC = 20 * 60;
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { marketOpenNow } from './calendar.ts';
 const ist = (ms: number) => new Date(ms + 330 * 60000);
-/** True when the Indian clock says the NSE cash session is on (a weekday, 09:15 to 15:30). */
-export function nseClockOpen(nowMs: number): boolean { const d = ist(nowMs); const wd = d.getUTCDay(); const m = d.getUTCHours() * 60 + d.getUTCMinutes(); return wd >= 1 && wd <= 5 && m >= 9 * 60 + 15 && m < 15 * 60 + 30; }
+/** True when the Indian clock and the exchange calendar say the NSE cash session is on (a trading day, 09:15 to 15:30). */
+export function nseClockOpen(nowMs: number): boolean { return marketOpenNow(nowMs); }
 /** "14:32 IST" for today, "Fri 23 Oct 15:29 IST" for another day (Indian time). */
 export function fmtIst(sec: number, nowMs = Date.now()): string {
   const d = ist(sec * 1000), t = ist(nowMs); const hm = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
