@@ -33,6 +33,8 @@ ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'To
 await pg.waitForSelector('.card .row[role=group][aria-label="Which headlines"]', { timeout: 15000 });
 ok(/All\s*\d+/.test(await pg.locator('[aria-label="Which headlines"]').innerText()) && /My names/.test(await pg.locator('[aria-label="Which headlines"]').innerText()) && /Market/.test(await pg.locator('[aria-label="Which headlines"]').innerText()), 'Today: news can be read as All, My names or Market');
 
+await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.tcard-head'); 
+ok(/stop ₹[\d,.]+ · T1 ₹[\d,.]+ · T2 ₹[\d,.]+ \(ref\)/.test(await pg.locator('.tcard-head').first().innerText()), 'a paper position card shows its stop and its two targets (reference ones for a pick filed before profit booking began)');
 /* chart */
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
 for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole('button', { name, exact: true }).count() === 1, `chart: a ${name} control`);
