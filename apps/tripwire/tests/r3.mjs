@@ -1,4 +1,4 @@
-// Round 3 checks: index rows, trend map, chart (candles, volume, RSI on three frames), the table's column filters and live dots, targets on picks, news views, robots and llms.txt.
+// Round 3 checks: index rows, trend map, chart (candles, volume, RSI on three frames), the table's column filters and live dots, targets on picks, news tabs, robots and llms.txt.
 // Usage: node apps/tripwire/tests/r3.mjs [baseUrl]
 import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
@@ -30,8 +30,8 @@ await pg.goto(base + '/#/today'); await pg.waitForSelector('.pickrow');
 ok(/T1 ₹[\d,]+ · T2 ₹[\d,]+/.test(await pg.locator('.pickrow').first().innerText()), 'Today: every pick shows its two targets (marked ref when filed before profit booking began)');
 const picks = await pg.locator('.pickrow').evaluateAll((e) => e.slice(0, 6).map((x) => x.querySelectorAll('.small')[0]?.textContent ?? ''));
 ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'Today: the line under each pick is its own engine figures, not one repeated line');
-await pg.waitForSelector('.card .row[role=group][aria-label="Which headlines"]', { timeout: 15000 });
-ok(/All\s*\d+/.test(await pg.locator('[aria-label="Which headlines"]').innerText()) && /My names/.test(await pg.locator('[aria-label="Which headlines"]').innerText()) && /Market/.test(await pg.locator('[aria-label="Which headlines"]').innerText()), 'Today: news can be read as All, My names or Market');
+await pg.waitForSelector('.nw .nw-tabs', { timeout: 15000 });
+ok(/All\s*\d+/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Following/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Paper book/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Market/.test(await pg.locator('.nw .nw-tabs').innerText()), 'Today: news can be read as All, Market, Following or Paper book');
 
 await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.tcard-head'); 
 ok(/stop ₹[\d,.]+ · T1 ₹[\d,.]+ · T2 ₹[\d,.]+ \(ref\)/.test(await pg.locator('.tcard-head').first().innerText()), 'a paper position card shows its stop and its two targets (reference ones for a pick filed before profit booking began)');

@@ -79,11 +79,9 @@ function ensurePolling() {
   (ensurePolling as any).off = () => { window.clearInterval(timer); timer = 0; document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis); };
   if (!core.loaded || Date.now() - core.polledAt > 30_000) void pollVersion(false);
 }
-export function useNewsStore(): Core {
-  const c = useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); if (!subs.size) (ensurePolling as any).off?.(); }; }, () => core, () => core);
-  useEffect(() => { ensurePolling(); }, []);
-  return c;
-}
+/** One stable subscribe function: React re-subscribes whenever it changes, and a gap with no subscriber would stop the polling timer. */
+const subscribe = (f: () => void) => { subs.add(f); ensurePolling(); return () => { subs.delete(f); if (!subs.size) (ensurePolling as any).off?.(); }; };
+export function useNewsStore(): Core { return useSyncExternalStore(subscribe, () => core, () => core); }
 /** The one health answer for every screen. Re-evaluated every 30 seconds so "delayed" appears without a reload. */
 export function useNewsHealth(): NewsHealth {
   const c = useNewsStore(); const [now, setNow] = useState(() => Date.now());
@@ -113,14 +111,14 @@ export function useNameNews(name: string, sym: string | null) {
   return { ...st, refresh: () => run(true) };
 }
 function useLiveNames(items: { sym: string; name: string }[]) {
-  const key = items.map((x) => x.sym).join(','); const [st, setSt] = useState<{ events: NewsEvent[]; loading: boolean; failed: number; checkedAt: string | null }>({ events: [], loading: items.length > 0, failed: 0, checkedAt: null });
+  const key = items.map((x) => x.sym).join(','); const [st, setSt] = useState<{ key: string; events: NewsEvent[]; loading: boolean; failed: number; checkedAt: string | null }>({ key: '', events: [], loading: items.length > 0, failed: 0, checkedAt: null });
   const run = useCallback((force: boolean) => {
-    if (!items.length) { setSt({ events: [], loading: false, failed: 0, checkedAt: null }); return () => {}; } let live = true; setSt((s) => ({ ...s, loading: true }));
-    void Promise.all(items.map((x) => queryNews(x.name, x.sym, force))).then((rs) => live && setSt({ events: rs.flatMap((r) => r.events), loading: false, failed: rs.filter((r) => !r.ok).length, checkedAt: rs.map((r) => r.checkedAt).filter(Boolean).sort().pop() ?? null }));
+    if (!items.length) { setSt({ key, events: [], loading: false, failed: 0, checkedAt: null }); return () => {}; } let live = true; setSt((s) => ({ ...s, loading: true }));
+    void Promise.all(items.map((x) => queryNews(x.name, x.sym, force))).then((rs) => live && setSt({ key, events: rs.flatMap((r) => r.events), loading: false, failed: rs.filter((r) => !r.ok).length, checkedAt: rs.map((r) => r.checkedAt).filter(Boolean).sort().pop() ?? null }));
     return () => { live = false; };
   }, [key]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const stop = run(false); const i = window.setInterval(() => { if (document.visibilityState === 'visible') run(false); }, 5 * 60_000); return () => { stop(); window.clearInterval(i); }; }, [run]);
-  return { ...st, refresh: () => run(true) };
+  return { ...st, loading: st.loading || (items.length > 0 && st.key !== key), refresh: () => run(true) };
 }
 
 /* ---------- the board: what a screen draws, frozen until the reader asks ---------- */
@@ -132,12 +130,13 @@ export const markVisited = (nowSec = Math.floor(Date.now() / 1000)) => { try { l
 export function useNewsBoard(lists: Lists) {
   const c = useNewsStore(); const scr = useScreen(); const health = useNewsHealth();
   const covered = useMemo(() => new Set([...(c.snapshot?.scopes.paper ?? []), ...(c.snapshot?.scopes.covered ?? [])]), [c.snapshot]);
-  const wanted = useMemo(() => [...new Set([...lists.follows, ...lists.paper])].filter((s) => !covered.has(s)).slice(0, 10), [lists.follows.join(), lists.paper.join(), covered]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const settled = c.loaded || !!c.snapshot;   // ask for live names only once we know which ones the snapshot already covers
+  const wanted = useMemo(() => (settled ? [...new Set([...lists.follows, ...lists.paper])].filter((s) => !covered.has(s)).slice(0, 10) : []), [settled, lists.follows.join(), lists.paper.join(), covered]);   // eslint-disable-line react-hooks/exhaustive-deps
   const nameOf = useMemo(() => new Map((scr.data?.rows ?? []).map((r) => [r.sym, r.name])), [scr.data]);
   const named = useMemo(() => wanted.filter((s) => nameOf.has(s)).map((s) => ({ sym: s, name: nameOf.get(s) as string })), [wanted, nameOf]);
   const live = useLiveNames(named);
   const candidate = useMemo(() => mergePools(c.snapshot?.events ?? [], live.events), [c.snapshot, live.events]);
-  const ready = (c.loaded || !!c.snapshot) && !live.loading && (wanted.length === 0 || !scr.loading);
+  const ready = settled && !live.loading && (wanted.length === 0 || !scr.loading);
   const [applied, setApplied] = useState<{ pool: NewsEvent[]; at: number } | null>(null); const candRef = useRef(candidate); candRef.current = candidate;
   useEffect(() => { if (!applied && ready) setApplied({ pool: candidate, at: Date.now() }); }, [ready, applied, candidate]);   // first sight, or the next visit: a new instance starts from the newest data
   useEffect(() => { if (applied && applied.pool.length === 0 && candidate.length > 0) setApplied({ pool: candidate, at: Date.now() }); }, [applied, candidate]);   // nothing on screen to disturb: show it

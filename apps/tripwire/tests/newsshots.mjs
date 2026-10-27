@@ -17,9 +17,9 @@ for (const [w, h] of [[390, 844], [1280, 900]]) {
     await ctx.route('**/api/health*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, checked_at: t, prices: { ok: true, ms: 200, last_print: t, age_sec: 30, error: null }, news: { ok: false, ms: 900, error: 'HTTP 503' }, bindings: ['ASSETS'], secrets_configured: 0 }) }));
   }
   const pg = await ctx.newPage();
-  await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.news', { timeout: 15000 }); await pg.waitForTimeout(1500);
-  await pg.locator('.card:has(.news)').first().scrollIntoViewIfNeeded(); await pg.waitForTimeout(300);
-  await pg.locator('.card:has(.news)').first().screenshot({ path: `${out}/${tag}-today-news-${w}.png` });
+  await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.news, .nw-row', { timeout: 15000 }); await pg.waitForTimeout(1500);
+  await pg.locator(tag === 'after' ? 'section.nw' : '.card:has(.news)').first().scrollIntoViewIfNeeded(); await pg.waitForTimeout(300);
+  await pg.locator(tag === 'after' ? 'section.nw' : '.card:has(.news)').first().screenshot({ path: `${out}/${tag}-today-news-${w}.png` });
   await pg.goto(base + '/#/profile'); await pg.reload(); await pg.waitForTimeout(1500);
   const sum = pg.locator('details.ev summary', { hasText: /News/ }).first(); await sum.scrollIntoViewIfNeeded(); await sum.click(); await pg.waitForTimeout(500);
   await sum.locator('xpath=ancestor::div[contains(@class,"card")][1]').screenshot({ path: `${out}/${tag}-profile-services-${w}.png` });
