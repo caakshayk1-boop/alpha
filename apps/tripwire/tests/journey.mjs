@@ -52,6 +52,9 @@ ok(/Open|closed|Pre-open|No live/i.test(await pg.locator('header.bar .sub').inne
 ok(await pg.locator('.rangebar').count() === 0 && /of liquid names are in an uptrend/.test(await text()), 'Today gives the breadth in one line; the trend map itself is on the Markets page');
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 ok(/Gold \$2,650\.50/.test(await pg.locator('.brief-macro').innerText().then((s) => s.replace(/\s+/g, ' '))), 'Today keeps one compact line of gold, Brent and the rupee');
+ok(/Start with one company/.test(await text()) && !/What matters now|Picks from the close/.test(await text()), 'a new user\'s Today is the setup card and the brief: no news, picks or book until they have something of their own');
+await pg.goto(base + '/#/c/HDFCBANK'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row button[aria-pressed]').click(); await pg.waitForTimeout(300);   // one explicit follow makes this a returning user
+await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief-ix');
 await pg.waitForSelector('.nw-row'); ok(/What matters now/.test(await text()) && /RBI keeps repo rate unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d IST/.test(await text()) && /Policy|Results/.test(await pg.locator('.nw-row').first().innerText()), 'Today shows What matters now with verified events, their tags, and when the news was last checked (IST)');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 await pg.getByText('How to read these picks').click();

@@ -42,7 +42,9 @@ h2.sec{margin:0;font:650 1.0625rem/1.3 var(--sans);letter-spacing:-.01em;color:v
 .todaydesk{display:grid;gap:var(--sp-5,22px)}
 @media (min-width:1024px){
   .today{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:20px;align-items:start}
-  .today>.brief,.today>.tfoot,.today>.journey{grid-column:1/-1}
+  .today>.brief,.today>.tfoot,.today>.setup{grid-column:1/-1}
+  /* on a wide screen the brief spans the top and the news sits beside what changed; on a phone what changed leads */
+  .today>.setup{order:0}.today>.brief{order:1}.today>.tnews{order:2}.today>.tchg{order:3}.today>.tbook{order:4}.today>.tpicks{order:5}.today>.tfoot{order:9}
 }
 @media (prefers-reduced-motion:reduce){.svi{transition:none}}
 :root:not(.fx) .svi{transition:none}
@@ -50,12 +52,36 @@ h2.sec{margin:0;font:650 1.0625rem/1.3 var(--sans);letter-spacing:-.01em;color:v
 /* My Desk */
 .dsk{display:grid;gap:var(--sp-5,22px)}
 .dsk-grid{display:grid;gap:var(--sp-5,22px);grid-template-columns:minmax(0,1fr)}
-@media (min-width:1024px){.dsk-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}}
+@media (min-width:1024px){.dsk-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}.dsk-grid.one{grid-template-columns:minmax(0,40rem)}}
 .dsk-row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;padding:12px 2px;border-bottom:1px solid var(--line);min-height:52px;color:inherit;text-decoration:none;text-align:left;width:100%}
 .dsk-row:last-child{border-bottom:0}
 .dsk-row .grow{flex:1 1 12rem;min-width:0}
-.dsk-q{width:100%;display:grid;gap:6px;padding:10px 2px}
+.dsk-q{display:grid;gap:8px}
 .dsk-q form{display:flex;gap:8px;flex-wrap:wrap}
 .dsk-q input.field{flex:1 1 14rem}
 .dsk-sum{display:flex;gap:18px;flex-wrap:wrap}
 .dsk-sum b{font:650 1.5rem/1 var(--sans);display:block;font-variant-numeric:tabular-nums}
+
+/* First use and the new-user Today (28 Oct 2026). Plain type, no decoration, no motion. */
+.setup{padding:16px}
+.setup .btn{min-height:2.75rem}
+.wl-find{display:grid;gap:6px}
+.wl-find .l{font-size:.8125rem;color:var(--dim)}
+.wl-hits{margin-top:6px}
+.wl-hits .li{width:100%;min-height:3.25rem}
+.wl-out{display:flex;gap:10px;flex-wrap:wrap}
+.wl-out .btn{flex:1 1 9rem;min-height:2.75rem}
+.ft-strip{margin:10px 0 0}
+.first{margin:18px 0 0}
+.first .ft-risk{margin:6px 0 0;font-size:1rem;line-height:1.45;max-width:60ch}
+.first .ft-form{display:grid;gap:6px;margin-top:14px}
+.first .ft-form .l{font-size:.8125rem;color:var(--dim);margin-top:6px}
+.first .ft-act{gap:8px;margin-top:10px;flex-wrap:wrap}
+.first .ft-act .btn{min-height:2.75rem}
+.first .ft-quote{white-space:pre-wrap;overflow-wrap:anywhere}
+.first .ft-note{margin:10px 0 0;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r2,12px);background:var(--s1)}
+.first .ft-note a{text-decoration:underline}
+/* My Desk adapts: a view that holds nothing is not drawn as an empty panel */
+.dsk-line{margin:0 0 4px}
+.dsk-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dsk-add .btn{min-height:2.75rem}
