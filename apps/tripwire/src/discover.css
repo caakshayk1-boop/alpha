@@ -71,6 +71,6 @@
 @media (max-width:700px){
   .disc .dsearch{order:0}.disc .dtool > .dbtn{order:1;flex:1 1 0}.disc .dtool > [role=radiogroup]{order:2}.disc .dsort{order:3;flex:1 1 100%}
   .disc .dtool{gap:6px;margin-bottom:6px}
-  .disc .basis .basis-line,.disc .basis .basis-live{display:none}.disc .basis .basis-short{display:inline}.disc .basis details{display:inline}
+  .disc .basis .basis-line{display:none}.disc .basis .basis-short{display:inline}.disc .basis details{display:inline}
 }
 
