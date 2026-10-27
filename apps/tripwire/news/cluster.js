@@ -7,7 +7,7 @@ const STOP = new Set('a an the of to in on for and or at by with from as is are 
 const stem = (w) => { let s = w; if (s.length > 4 && /ies$/.test(s)) s = s.slice(0, -3) + 'y'; else if (s.length > 3 && /s$/.test(s) && !/ss$/.test(s)) s = s.slice(0, -1); if (s.length > 5 && /(ing|ed)$/.test(s)) s = s.replace(/(ing|ed)$/, ''); if (s.length > 3 && /e$/.test(s)) s = s.slice(0, -1); return s; };
 export function tokens(headline) {
   return new Set(String(headline ?? '').toLowerCase().replace(/(\d),(\d)/g, '$1$2').replace(/[‘’']s\b/g, '').replace(/[^a-z0-9. ]+/g, ' ').split(/\s+/)
-    .map((w) => w.replace(/^\.+|\.+$/g, '')).filter((w) => w && !STOP.has(w) && (w.length > 2 || /^\d/.test(w)))
+    .map((w) => w.replace(/^\.+|\.+$/g, '')).filter((w) => w && !STOP.has(w) && (w.length > 2 || /^\d/.test(w) || /^q[1-4]$/.test(w)))
     .map((w) => (/^\d/.test(w) ? w : stem(w))));
 }
 /** The figures a headline states (a year is not a figure). Two headlines that both state figures and share none are reporting different things. */
@@ -27,6 +27,9 @@ export function sameEvent(a, b) {
   if (na.size && nb.size && !overlap(na, nb).n) return false;                  // both state figures and none agrees: different developments ("up 5%" and "down 3%")
   if (a.eventType !== b.eventType && frac < 0.85) return false;                // different kinds of event need near-identical words to be one
   if (ea.size === 0 && eb.size === 0 && a.eventType !== b.eventType) return false;
+  // the same kind of event, the same company, within a day and a half, stating a figure they agree on: one results night, one buyback, one policy decision, told with different words
+  const near = a.publishedSec != null && b.publishedSec != null && Math.abs(a.publishedSec - b.publishedSec) <= 36 * 3600;
+  if (a.eventType === b.eventType && !['Update', 'People', 'Rating'].includes(a.eventType) && shared && near && na.size && nb.size && overlap(na, nb).n && n >= 3) return true;
   return n >= 4 && frac >= 0.7 || n >= 3 && frac >= 0.85;
 }
 

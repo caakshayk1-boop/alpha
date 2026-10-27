@@ -52,9 +52,9 @@ export const DELAY_AFTER = { cadences: 2, graceMin: 10 };
 export const FEEDS = {
   google: { id: 'google-news', label: 'Google News (RSS search)', kind: 'search', summary: false, tz: 'UTC', url: (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en` },
   bing: { id: 'bing-news', label: 'Bing News (RSS search)', kind: 'search', summary: false, tz: 'UTC', url: (q) => `https://www.bing.com/news/search?q=${encodeURIComponent(q.replace(/\s*when:\d+d/g, '').trim())}&format=rss&setmkt=en-IN` },
-  rbi: { id: 'rbi-press', label: 'RBI press releases (RSS)', kind: 'official', summary: true, tz: 'Asia/Kolkata', url: () => 'https://rbi.org.in/pressreleases_rss.xml' },
-  sebi: { id: 'sebi-releases', label: 'SEBI press releases and orders (RSS)', kind: 'official', summary: true, tz: 'Asia/Kolkata', url: () => 'https://www.sebi.gov.in/sebirss.xml' },
+  rbi: { id: 'rbi-press', label: 'RBI press releases (RSS)', kind: 'official', summary: true, publisherName: 'Reserve Bank of India', tz: 'Asia/Kolkata', url: () => 'https://rbi.org.in/pressreleases_rss.xml' },
+  sebi: { id: 'sebi-releases', label: 'SEBI press releases and orders (RSS)', kind: 'official', summary: true, publisherName: 'SEBI', tz: 'Asia/Kolkata', url: () => 'https://www.sebi.gov.in/sebirss.xml' },
 };
 
 /** The market-wide searches. Plain words: Bing returns nothing for an OR query. */
-export const MARKET_QUERIES = ['Sensex Nifty RBI SEBI when:2d', 'India economy inflation rupee crude when:2d'];
+export const MARKET_QUERIES = ['Sensex Nifty when:2d', 'RBI repo rate when:2d', 'SEBI circular order when:2d', 'India inflation rupee crude when:2d'];

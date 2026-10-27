@@ -29,7 +29,7 @@ export function normalise(raw, batch, ctx) {
   const j = judge({ title: raw.title, url, publishedSec: dt?.sec ?? null, nowMs: ctx.nowMs, filing });
   if (j.reasons.length) return { rejected: j.reasons[0], reasons: j.reasons };
   const entities = matchEntities(raw.title, ctx.registry).filter((e) => e.confidence >= VERIFIED);
-  const publisher = raw.publisher || (hostOf(url) || 'Unknown'); const tier = sourceTier(publisher, hostOf(raw.publisherUrl) || hostOf(url));
+  const publisher = raw.publisher || feed.publisherName || (hostOf(url) || 'Unknown'); const tier = sourceTier(publisher, hostOf(raw.publisherUrl) || hostOf(url));
   const macro = isMacro(raw.title) && hasIndia(raw.title);
   if (!entities.length) {
     if (isInternational(raw.title)) return { rejected: 'international' };
