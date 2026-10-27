@@ -40,6 +40,9 @@ jobs:
       - name: Price panel for the Strategy Lab (ten years of adjusted closes, one small file)
         working-directory: apps/tripwire/research
         run: python lab_panel.py ../dist/data/screen.json results
+      - name: Pairs (cointegration screen, same-sector, quarterly re-screen, out of sample; with a correlation-only control)
+        working-directory: apps/tripwire/research
+        run: python engines_pairs.py ../dist/data/screen.json results
       - name: Commit the report
         run: |
           git config user.name 'github-actions[bot]'
