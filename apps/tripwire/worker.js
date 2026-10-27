@@ -78,15 +78,17 @@ export function parseChart(res, niftyRes) {
 }
 // GET /api/chart?s=TCS  ->  { ok, sym, t:[epoch s], c:[close] } : every daily close Yahoo holds (up to the whole listing), split-adjusted, dividends not included, with the Nifty 50 close of the same day in `n` (null where absent; the whole field is null if the index could not be read).
 // The page makes its own ranges and its monthly view from this one series. Cached six hours: a close does not change after the session.
+// An explicit date range, never `range=max`: for a long history Yahoo answers `range=max&interval=1d` with MONTHLY bars (TCS came back as 267 monthly bars from 2002), and daily and weekly candles cannot be built from months.
+const FROM = 631152000;   // 1 Jan 1990, before any NSE listing; Yahoo starts at the first trade
 async function chart(url, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase().trim();
   if (!SYM.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
   const macro = Object.prototype.hasOwnProperty.call(MACRO, sym);          // an instrument, not an NSE share: its own Yahoo symbol, and no Nifty line
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://tripwire.internal/__chart_v2/${sym}`);
+  const key = new Request(`https://tripwire.internal/__chart_v3/${sym}`);
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=1800, s-maxage=21600' } });
-    const get = (s) => fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=max&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
+    const get = (s) => fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?period1=${FROM}&period2=${Math.floor(Date.now() / 1000) + 86400}&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
     const [r, nr] = await Promise.all([get(macro ? MACRO[sym] : `${sym}.NS`), macro ? Promise.resolve(null) : get('^NSEI').catch(() => null)]);
     if (!r.ok) return json({ ok: false, error: r.status === 404 ? 'no price history for this symbol' : 'the price source did not answer' }, r.status === 404 ? 404 : 502);
     const niftyRes = nr && nr.ok ? (await nr.json().catch(() => null))?.chart?.result?.[0] : null;
