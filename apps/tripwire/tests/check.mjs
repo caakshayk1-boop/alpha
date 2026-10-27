@@ -2,7 +2,7 @@
 // Usage: npm run tripwire:build && npm run tripwire:check
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-const PORT = 8801; const base = `http://localhost:${PORT}`;
+const PORT = Number(process.env.TW_PORT ?? 8801); const base = `http://localhost:${PORT}`;
 if (!existsSync('apps/tripwire/dist/index.html')) { console.error('Build first: npm run tripwire:build'); process.exit(2); }
 const srv = spawn('npx', ['wrangler', 'dev', '--config', 'wrangler.tripwire.jsonc', '--local', '--port', String(PORT)], { stdio: 'ignore', detached: true });
 const stop = () => { try { process.kill(-srv.pid); } catch { /* gone */ } };
