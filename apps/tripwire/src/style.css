@@ -814,3 +814,5 @@ html:not(.fx) .c-line{stroke-dashoffset:0}
 h2.h{font-size:var(--fs-sm);color:var(--tx-2);margin:var(--sp-5) 0 var(--sp-2)}
 .facts{font-size:var(--fs-md);line-height:var(--lh-body)}
 .card .small,.note.info{font-size:var(--fs-sm)}
+/* the stale-data banner: dark ink on a dark surface was unreadable (axe colour-contrast); the text takes the page colour and the warning is carried by the amber edge */
+.banner{color:var(--tx);border-left:3px solid var(--peach)}
