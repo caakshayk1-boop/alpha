@@ -1,0 +1,58 @@
+/* Today and My Desk (27 Oct 2026). Tokens that may not exist yet carry literal fallbacks. Motion: short, opacity and transform only, never looping, off under reduced motion. */
+.today{display:grid;gap:var(--sp-5,22px);margin-top:6px;grid-template-columns:minmax(0,1fr)}
+.today>*{min-width:0}
+h2.sec{margin:0;font:650 1.0625rem/1.3 var(--sans);letter-spacing:-.01em;color:var(--tx)}
+.sechead{align-items:center;margin:0 0 8px;gap:10px}
+.tsec>h2.sec{margin-bottom:10px}
+.tsec>.sechead>h2.sec{margin:0}
+.brief{padding:16px}
+.brief>.brief-top{margin-bottom:8px;gap:10px;align-items:center;min-height:2rem}
+.brief-text{margin:0 0 14px;font-size:1.0625rem;line-height:1.5;max-width:60ch;min-height:3em}
+.brief-ix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.bix{display:grid;gap:2px;padding:10px 12px;border-radius:var(--r2,12px);background:var(--s2);border:1px solid var(--line);min-height:3.75rem;font-variant-numeric:tabular-nums;color:inherit;text-decoration:none}
+.bix b{font:650 1rem/1.2 var(--sans);font-variant-numeric:tabular-nums}
+.brief-macro{display:flex;flex-wrap:wrap;gap:4px 16px;margin:10px 0 0;min-height:1.4em;font-variant-numeric:tabular-nums}
+.brief-fresh{margin:12px 0 0;line-height:1.7}
+.brief-fresh a{text-decoration:underline}
+.newsslot{min-height:20rem}
+.sv .svlist,.svlist{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:10px}
+.svi{padding:12px 14px;border-radius:var(--r,16px);background:var(--s1);border:1px solid var(--line);display:grid;gap:4px;transition:opacity .18s ease}
+.svlist.dis .svi{opacity:.75}
+.svi-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.svi-t{font-weight:600}
+.svi-new{font-size:.75rem;color:var(--lime);font-weight:600}
+.svi-ba{font-variant-numeric:tabular-nums;color:var(--dim)}
+.svi-inv{color:var(--peach);font-weight:600}
+.svi-basis summary{cursor:pointer;color:var(--mute);font-size:.8125rem;min-height:1.75rem;display:flex;align-items:center}
+.svi-basis p{margin:2px 0 4px}
+.svi-act{gap:8px;margin-top:4px;flex-wrap:wrap}
+.svi-act .btn{min-height:2.75rem;min-width:2.75rem}
+.svmsg{min-height:1.4rem;margin:0 0 4px}
+.linkbtn{min-height:2.75rem;padding:0 6px;color:var(--lime);text-decoration:underline;font-size:.8125rem;font-weight:600;background:none;border:0}
+.sv .btn.sm,.picks-all,.bookact .btn{min-height:2.75rem}
+.guest{display:grid;justify-items:start}
+.needs{margin-top:var(--sp-5,22px)}
+.bookcard .bigpnl{font:650 1.75rem/1.1 var(--sans);font-variant-numeric:tabular-nums;min-width:7ch}
+.bookact{gap:8px;margin-top:12px}
+.picks-all{width:100%;margin:8px 0 10px}
+.tfoot{margin:0}
+.todaydesk{display:grid;gap:var(--sp-5,22px)}
+@media (min-width:1024px){
+  .today{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:20px;align-items:start}
+  .today>.brief,.today>.tfoot,.today>.journey{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){.svi{transition:none}}
+:root:not(.fx) .svi{transition:none}
+@media (max-width:420px){.brief-text{font-size:1rem}.bix{padding:8px 9px}}
+/* My Desk */
+.dk{display:grid;gap:var(--sp-5,22px)}
+.dk-grid{display:grid;gap:var(--sp-5,22px);grid-template-columns:minmax(0,1fr)}
+@media (min-width:1024px){.dk-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}}
+.dk-row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;padding:12px 2px;border-bottom:1px solid var(--line);min-height:52px;color:inherit;text-decoration:none;text-align:left;width:100%}
+.dk-row:last-child{border-bottom:0}
+.dk-row .grow{flex:1 1 12rem;min-width:0}
+.dk-q{width:100%;display:grid;gap:6px;padding:10px 2px}
+.dk-q form{display:flex;gap:8px;flex-wrap:wrap}
+.dk-q input.field{flex:1 1 14rem}
+.dk-sum{display:flex;gap:18px;flex-wrap:wrap}
+.dk-sum b{font:650 1.5rem/1 var(--sans);display:block;font-variant-numeric:tabular-nums}

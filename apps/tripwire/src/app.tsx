@@ -12,6 +12,7 @@ const Company = lazy(() => import('./screens/company.tsx').then((m) => ({ defaul
 const Compare = lazy(() => import('./screens/compare.tsx').then((m) => ({ default: m.Compare })));
 const DataPage = lazy(() => import('./screens/Data.tsx').then((m) => ({ default: m.DataPage })));
 const Live = lazy(() => import('./screens/Live.tsx').then((m) => ({ default: m.Live })));
+const Markets = lazy(() => import('./screens/markets.tsx').then((m) => ({ default: m.Markets })));
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
 const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
 import { MacroPage } from './screens/Macro.tsx';
@@ -108,6 +109,7 @@ export function App(): ReactNode {
   else if (head === 'report' && loc.path[1]) view = <Report sym={decodeURIComponent(loc.path[1])} />;
   else if (head === 'data') view = <DataPage />;
   else if (head === 'live') view = <Live />;
+  else if (head === 'markets') view = <Markets />;
   else if (head === 'lab') view = <Lab />;
   else if (tab === 'discover') view = <Discover />;
   else if (tab === 'signals') view = <Signals seg={loc.q.get('v') ?? 'picks'} />;
