@@ -18,7 +18,7 @@ export const BASIS: Record<string, Basis> = {
   sym: 'identity', name: 'identity', sector: 'identity', tier: 'identity', fy: 'identity', last_date: 'identity', has_stmts: 'identity', liquid: 'close', next_earnings: 'statement', shares_changed: 'statement',
   price: 'price',
   from_high: 'reprice', high52: 'reprice', low52: 'reprice', pe: 'reprice', pb: 'reprice', div_yield: 'reprice',
-  r1d: 'close', r1w: 'close', r1m: 'close', r3m: 'close', r6m: 'close', r1y: 'close', rs3m: 'close', rsi: 'close', sma20: 'close', sma50: 'close', sma200: 'close',
+  r1d: 'close', r1w: 'close', r1m: 'close', r3m: 'close', r6m: 'close', r1y: 'close', rs3m: 'close', rsi: 'close', rsi_w: 'close', rsi_m: 'close', sma20: 'close', sma50: 'close', sma200: 'close',
   vol_spike: 'close', turnover_cr: 'close', atr_pct: 'close', sd1y: 'close', tech: 'close', comp: 'close', v: 'close', rank_move: 'close', pe_pctile: 'close', mf: 'close',
   roce_med: 'statement', roe: 'statement', de: 'statement', net_margin: 'statement', ebit_margin: 'statement', margin_delta: 'statement', em_label: 'statement', rev_cagr: 'statement', eps_cagr: 'statement',
   icover: 'statement', cfo_pat: 'statement', fcf_margin: 'statement', piotroski: 'statement', q: 'statement', g: 'statement', insiders: 'statement', instis: 'statement', risk_lvl: 'statement', risk_top: 'statement',

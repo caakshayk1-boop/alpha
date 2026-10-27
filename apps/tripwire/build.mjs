@@ -11,8 +11,8 @@ rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'data', 'c'), { recursive: true });
 
 const stamp = Date.now().toString(36);
-await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: true, sourcemap: false, target: 'es2020', format: 'iife', jsx: 'automatic',
-  outfile: join(DIST, `app.${stamp}.js`), loader: { '.css': 'css' }, define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'warning' });
+await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: true, sourcemap: false, target: 'es2020', format: 'esm', splitting: true, chunkNames: `app.${stamp}.[name]-[hash]`, entryNames: `app.${stamp}`, jsx: 'automatic',
+  outdir: DIST, loader: { '.css': 'css' }, define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'warning' });
 await build({ entryPoints: [join(HERE, 'src/style.css')], bundle: true, minify: true, external: ['/fonts/*'], outfile: join(DIST, `app.${stamp}.css`), logLevel: 'warning' });
 
 // The screen rows: one compact file for Discover, the rules and Today. Fields not listed here are not shipped.
@@ -56,7 +56,9 @@ cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp);
 writeFileSync(join(DIST, 'sw.js'), sw);
-writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+// The page itself may be indexed; the data and the live-price routes are not pages and are not crawled.
+writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nDisallow: /api/\nDisallow: /data/\n');
+writeFileSync(join(DIST, 'llms.txt'), readFileSync(join(HERE, 'static/llms.txt'), 'utf8'));
 const size = (p) => statSync(p).size;
 console.log(`tripwire: ${rows.length} companies, data through ${uni.as_of}, js ${(size(join(DIST, `app.${stamp}.js`)) / 1024).toFixed(0)} kB, css ${(size(join(DIST, `app.${stamp}.css`)) / 1024).toFixed(0)} kB`);
 writeFileSync(join(DIST, 'build.json'), JSON.stringify({ stamp, built: new Date().toISOString(), data_built_on: built, data_as_of: uni.as_of, companies: rows.length }));

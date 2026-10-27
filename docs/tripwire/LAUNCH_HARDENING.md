@@ -2,6 +2,8 @@
 
 Branch `tripwire-harden`. **Not merged, not deployed.** All evidence is from automated checks on a local build and CI. None of it is real-user or real-device validation, and none of it supports a production-readiness claim.
 
+> Round 3 (27 Oct, later): see [ROUND3.md](ROUND3.md) for the changes made after this report (live overlay, book-2 rules, charts, RSI, PageSpeed) and the answers to the open questions.
+
 ## Verdict
 - **GO** for a closed, invite-only research beta (small group, told it is paper-only and experimental, shown the Data and evidence screens).
 - **NO-GO** for a public or production launch. Blockers below; the first group needs the owner.

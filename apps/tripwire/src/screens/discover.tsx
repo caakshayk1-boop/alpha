@@ -5,7 +5,8 @@ import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
 import { CompanyRow, Failed, Head, Loading, PageBar } from './common.tsx';
 import { NO_FILTER, filterRows, sortRows, describeFilters, TREND_WORD, type Filters, type SortKey } from '../screen.ts';
 import { saveScreen } from '../store.ts';
-import { useWatchQuotes } from '../quotes.ts';
+import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
+import { reprice } from '../basis.ts';
 import { inr0, pct } from '../fmt.ts';
 import type { Row } from '../screen.ts';
 import { askInWords, ASK_EXAMPLES } from '../ask.ts';
@@ -39,12 +40,17 @@ export function Discover() {
   const scr = useScreen(); const s = useAppState(); const { toast, tick } = useUi();
   const loc = useLoc();
   // a link from Today (a sector, a trend) opens Discover already filtered
-  const [f, setF] = useState<Filters>(() => ({ ...NO_FILTER, sector: loc.q.get('sector') ?? '', trend: (['up', 'down', 'mixed'].includes(loc.q.get('trend') ?? '') ? loc.q.get('trend') : '') as Filters['trend'] }));
+  const [f, setF] = useState<Filters>(() => {
+    const q = loc.q; const one = <T extends string>(k: string, ok: readonly T[]): T | '' => { const v = q.get(k) ?? ''; return (ok as readonly string[]).includes(v) ? (v as T) : ''; };
+    // rsi=35-50 and rsi_w=.. / rsi_m=..: a range on that RSI, as two conditions; anything else in the link is ignored rather than guessed at
+    const cond: Cond[] = []; for (const m of ['rsi', 'rsi_w', 'rsi_m'] as const) { const mm = (q.get(m) ?? '').match(/^(\d{1,3})-(\d{1,3})$/); if (mm && +mm[1] <= +mm[2] && +mm[2] <= 100) cond.push({ m, op: 'gte', v: +mm[1] }, { m, op: 'lte', v: +mm[2] }); }
+    return { ...NO_FILTER, cond, sector: q.get('sector') ?? '', tier: one('tier', ['large', 'mid', 'small', 'micro'] as const), trend: one('trend', ['up', 'down', 'mixed'] as const) as Filters['trend'], momentum: one('momentum', ['strong', 'weak', 'near-high'] as const), value: one('value', ['cheap', 'rich'] as const), quality: one('quality', ['high'] as const) };
+  });
   const [sort, setSort] = useState(0);
   const [limit, setLimit] = useState(PAGE);
   const [sheet, setSheet] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
-  const [view, setView] = useState<'list' | 'table'>('list'); const [cset, setCset] = useState(COLUMN_SETS[0].id); const [tsort, setTsort] = useState<{ id: MetricKey | 'name'; dir: 'asc' | 'desc' }>({ id: 'comp', dir: 'desc' }); const [condSheet, setCondSheet] = useState(false);
+  const [view, setView] = useState<'list' | 'table'>(loc.q.get('view') === 'table' ? 'table' : 'list'); const [filterCol, setFilterCol] = useState<MetricKey | null>(null); const [cset, setCset] = useState(COLUMN_SETS[0].id); const [tsort, setTsort] = useState<{ id: MetricKey | 'name'; dir: 'asc' | 'desc' }>({ id: 'comp', dir: 'desc' }); const [condSheet, setCondSheet] = useState(false);
   const rows = scr.data?.rows ?? [];
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
   // the pressed state of a chip answers at once; the list under it catches up a moment later, so a tap never waits for forty rows to be drawn
@@ -56,6 +62,12 @@ export function Discover() {
   const shownList = view === 'table' ? tlist : list;
   const exportCsv = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCsv(shownList, cols)], { type: 'text/csv' })); a.download = `tripwire-screen-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast(`${shownList.length} rows exported`); };
   useWatchQuotes(shownList.slice(0, limit).map((r) => r.sym));        // live prices for the rows on screen
+  // what the rows on screen show: the live print where there is one from today, with every figure that is a pure function of the price worked out at that price
+  // (basis.ts); filters and sorting stay on the last close, and the caption under the list says so
+  const qs = useQuotes(shownList.slice(0, limit).map((r) => r.sym));
+  const disp = (r: Row): { row: Row; live: boolean } => { const lp = livePrice(r, qs[r.sym] ?? null); if (!lp.fromQuote || lp.px == null) return { row: r, live: false }; const rp = reprice(r, lp.px); return { row: { ...r, price: lp.px, r1d: lp.ch, from_high: rp.fromHigh, high52: rp.high52, low52: rp.low52, pe: rp.pe, pb: rp.pb, div_yield: rp.divYield }, live: true }; };
+  const LIVE_COLS = new Set<string>(['price', 'r1d', 'from_high', 'from_low', 'pe', 'pb', 'dist20', 'dist50', 'dist200']);
+  const anyLive = shownList.slice(0, limit).some((r) => disp(r).live);
   const active = describeFilters(f);
   const chosen = ([['q', f.q && `“${f.q}”`], ['sector', f.sector], ['tier', f.tier && `${f.tier} cap`], ['trend', f.trend && TREND_WORD[f.trend]], ['value', f.value === 'cheap' ? 'PE 15 or less' : f.value === 'rich' ? 'PE 40 or more' : ''], ['quality', f.quality && 'ROCE 20%+'], ['momentum', f.momentum === 'strong' ? 'Ahead of Nifty' : f.momentum === 'weak' ? 'Behind Nifty' : f.momentum === 'near-high' ? 'Near 52w high' : '']] as [string, string | undefined][]).filter(([, l]) => l).map(([k, label]) => ({ k, label: label as string }));
   const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length ? filterRows(rows, { ...NO_FILTER, ...l.f }).rows.length : null])) as Record<string, number | null>, [rows]);
@@ -101,15 +113,16 @@ export function Discover() {
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
     {scr.data && view === 'list' && (list.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">
-      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[dsort].id, r)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
+      {list.slice(0, limit).map((r) => <CompanyRow key={r.sym} r={r} meta={metaFor(SORTS[dsort].id, disp(r).row)} compare={{ on: pick.includes(r.sym), toggle: () => { toggle(r.sym); tick(); }, disabled: pick.length >= 3 }} />)}
     </div></div> : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Filters are exact. A name with no figure for a filter is left out, never counted as a match.</Empty>)}
     {scr.data && view === 'table' && (tlist.length ? <div className="stbl-wrap"><table className="stbl"><caption className="sr">Screen results, {tlist.length} companies. Tap a column heading to sort.</caption>
       <thead><tr><th scope="col" className="sticky"><button onClick={() => setTsort({ id: 'name', dir: tsort.id === 'name' && tsort.dir === 'asc' ? 'desc' : 'asc' })} aria-label="Sort by symbol">SYMBOL{tsort.id === 'name' ? (tsort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
-        {cols.map((c) => { const m = metricOf(c)!; const on = tsort.id === c; return <th scope="col" key={c} aria-sort={on ? (tsort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button onClick={() => setTsort({ id: c, dir: on ? (tsort.dir === 'asc' ? 'desc' : 'asc') : m.id === 'pe' || m.id === 'pb' || m.id === 'de' || m.id === 'atr_pct' ? 'asc' : 'desc' })}>{m.short}{on ? (tsort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>; })}</tr></thead>
-      <tbody>{tlist.slice(0, limit).map((r) => <tr key={r.sym}><th scope="row" className="sticky"><a href={`#/c/${r.sym}`}>{r.sym}</a></th>{cols.map((c) => { const m = metricOf(c)!; const v = valueOf(r, c); return <td key={c} className={`num ${m.signed && v !== null ? (v > 0 ? 'up' : v < 0 ? 'down' : '') : ''}`}>{fmtMetric(m, v)}</td>; })}</tr>)}</tbody></table></div>
+        {cols.map((c) => { const m = metricOf(c)!; const on = tsort.id === c; return <th scope="col" key={c} aria-sort={on ? (tsort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button onClick={() => setTsort({ id: c, dir: on ? (tsort.dir === 'asc' ? 'desc' : 'asc') : m.id === 'pe' || m.id === 'pb' || m.id === 'de' || m.id === 'atr_pct' ? 'asc' : 'desc' })}>{m.short}{on ? (tsort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button><button className="thf" aria-label={`Filter ${m.label}`} aria-pressed={(f.cond ?? []).some((x) => x.m === c)} title={`Filter by ${m.label}`} onClick={() => setFilterCol(c)}><Icon n="filter" /></button></th>; })}</tr></thead>
+      <tbody>{tlist.slice(0, limit).map((r) => { const d = disp(r); return <tr key={r.sym}><th scope="row" className="sticky"><a href={`#/c/${r.sym}`}>{r.sym}</a></th>{cols.map((c) => { const m = metricOf(c)!; const v = valueOf(d.row, c); const lv = d.live && LIVE_COLS.has(c); return <td key={c} className={`num ${m.signed && v !== null ? (v > 0 ? 'up' : v < 0 ? 'down' : '') : ''}`}>{fmtMetric(m, v)}{lv && <i className="ldot" aria-label="live" title="Worked out at today's live price" />}</td>; })}</tr>; })}</tbody></table><p className="small mute" style={{ margin: '6px 2px 0' }}>{anyLive ? <><i className="ldot" aria-hidden="true" /> marks a figure worked out at today's live price. </> : ''}Every other figure, and all filtering and sorting, are at the close of {scr.data?.as_of ?? 'the last session'}.</p></div>
       : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Conditions are exact. A name with no figure for a condition is left out, never counted as a match.</Empty>)}
     {shownList.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, shownList.length - limit)} more</button>}
     {pick.length >= 2 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => setPick([])}>Clear {pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} onClick={() => go(`/compare?s=${pick.join(',')}`)}><Icon n="compare" />Compare {pick.length}</button></div>}
+    {filterCol && <CondSheet rows={rows} initial={filterCol} count={(cs) => filterRows(rows, { ...f, cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }).rows.length} onClose={() => setFilterCol(null)} onAdd={(cs) => { set({ cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }); setFilterCol(null); tick(); }} />}
     {condSheet && <CondSheet rows={rows} count={(cs) => filterRows(rows, { ...f, cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }).rows.length} onClose={() => setCondSheet(false)} onAdd={(cs) => { set({ cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }); setCondSheet(false); tick(); }} />}
     {sheet && <Sheet title="Filters" onClose={() => setSheet(false)}>
       <label className="l" htmlFor="f-sec">Sector</label>
@@ -140,8 +153,8 @@ function SaveScreen({ f, labels }: { f: Filters; labels: string[] }) {
 }
 
 /** One numeric condition: a figure, at least or at most, a value. The figure's own unit and a few typical values are on the sheet, so there is nothing to look up. */
-export function CondSheet({ onClose, onAdd, rows, count, metrics }: { onClose: () => void; onAdd: (c: Cond[]) => void; rows: Row[]; count: (c: Cond[]) => number; metrics?: MetricKey[] }) {
-  const [m, setM] = useState<MetricKey>(metrics?.includes('rsi') || !metrics ? 'rsi' : metrics[0]); const [mode, setMode] = useState<RangeMode>('between'); const met = metricOf(m)!;
+export function CondSheet({ onClose, onAdd, rows, count, metrics, initial }: { onClose: () => void; onAdd: (c: Cond[]) => void; rows: Row[]; count: (c: Cond[]) => number; metrics?: MetricKey[]; initial?: MetricKey }) {
+  const [m, setM] = useState<MetricKey>(initial ?? (metrics?.includes('rsi') || !metrics ? 'rsi' : metrics[0])); const [mode, setMode] = useState<RangeMode>('between'); const met = metricOf(m)!;
   const dist = useMemo(() => distribution(rows, m), [rows, m]);
   const step = Math.max(Math.pow(10, -met.dp), dist ? (dist.hi - dist.lo) / 400 : 1);
   const snap = (x: number) => Math.round(x / step) * step; const clean = (x: number) => Math.round(x * 1e4) / 1e4;

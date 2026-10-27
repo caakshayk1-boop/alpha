@@ -244,3 +244,27 @@ test('decision news: one line per held name, material and recent only; no recaps
   assert.equal(new Set(titles).size, titles.length);
   assert.deepEqual(decisionNews(market.slice(0, 1), [], NOW), [], 'nothing qualifying means nothing shown');
 });
+
+test('a quiet day widens the news test and marks the lines that passed only the wider one', async () => {
+  const { decisionNews } = await import('../src/news.ts');
+  const now = 1_800_000_000_000; const sec = now / 1000;
+  const it = (title: string, hAgo: number, tags: string[] = []) => ({ title, source: 'Mint', url: `https://x/${title}`, t: sec - hAgo * 3600, tags, also: 0, sources: ['Mint'] });
+  const strictOnly = decisionNews([it('RBI holds repo rate', 2)], [{ sym: 'TCS', name: 'Tata Consultancy Services', items: [it('Tata Consultancy Services Q2 results beat', 5, ['Results'])] }], now, 8);
+  assert.equal(strictOnly.some((x) => x.broad), false);   // two strict lines: but fewer than four, so the wider pass ran and found nothing extra
+  const quiet = decisionNews([it('Markets drift lower on global cues', 20), it('Oil steady ahead of data', 30)], [{ sym: 'TCS', name: 'Tata Consultancy Services', items: [it('Tata Consultancy Services opens new office', 80)] }], now, 8);
+  assert.ok(quiet.length >= 3 && quiet.every((x) => x.broad), 'with nothing material, the wider lines show and each says so');
+  const none = decisionNews([it('Stocks to watch today', 3)], [], now, 8); assert.equal(none.length, 0, 'filler is still dropped');
+});
+
+test('book-2 (nights from 27 Oct): a ticket follows the engine, a sector holds at most four, and earlier nights keep the full ticket', async () => {
+  const { bookRulesOf, ticketFor, SECTOR_CAP } = await import('../src/autobook.ts');
+  assert.equal(bookRulesOf('2026-10-26'), 'book-1'); assert.equal(bookRulesOf('2026-10-27'), 'book-2');
+  assert.equal(ticketFor({ asOf: '2026-10-26', engine: 'MOM' }, TICKET), TICKET, 'a night written before the rule is not re-sized');
+  assert.equal(ticketFor({ asOf: '2026-10-27', engine: 'MOM' }, TICKET), TICKET * 0.25); assert.equal(ticketFor({ asOf: '2026-10-27', engine: 'QLT' }, TICKET), TICKET * 0.5);
+  const old = planAutoBook(ledger([pick('2026-10-26', 'AAA', 100)])); assert.equal(old.taken[0].qty, 1000);
+  const neu = planAutoBook(ledger([pick('2026-10-27', 'AAA', 100)])); assert.equal(neu.taken[0].qty, 250);
+  const seven = ['A', 'B', 'C', 'D', 'E', 'F'].map((s, i) => pick('2026-10-27', `S${s}`, 100, { id: `x${i}`, sector: 'Banks', score: 90 - i }));
+  const plan = planAutoBook(ledger(seven)); assert.equal(plan.taken.length, SECTOR_CAP); assert.equal(plan.refused.length, 2);
+  assert.match(plan.refused[0].why, /Banks/);
+  const oldSector = planAutoBook(ledger(seven.map((p) => ({ ...p, asOf: '2026-10-26' })))); assert.equal(oldSector.taken.length, 6, 'the sector cap does not reach back to earlier nights');
+});

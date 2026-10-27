@@ -195,3 +195,24 @@ pm = pv.stamp({"when": "t6"}, fewer, tmp / "x.json", "demo", {"cost": 0.30}, cod
 other = tmp / "other.py"; other.write_text("a=1"); pv.stamp({"when": "t7"}, fewer, tmp / "x.json", "demo2", {}, [other]); other.write_text("a=2")
 cc = pv.stamp({"when": "t8"}, fewer, tmp / "x.json", "demo2", {}, [other])["run"]; assert any("Study code changed: other.py" in c for c in cc["changes"]), cc["changes"]
 print("provenance: first run, no change, history grown, closes restated, universe, parameters and code changes are each named")
+
+# ---- RSI on three timeframes: same numbers as the app's chart code (shared golden vectors), partial periods count to date, a name with no last close has no figure ----
+import json as _json, numpy as _np, pandas as _pd, pathlib as _pl
+from rsi_multi import wilder as _wilder, sheet as _rsi_sheet
+_G = _json.loads((_pl.Path(__file__).parent.parent / "tests" / "fixtures" / "rsi_golden.json").read_text())
+for _k, _g in _G.items():
+    for _a, _b in zip(_wilder(_g["closes"]), _g["rsi"]):
+        assert (_a is None and _b is None) or abs(_a - _b) < 1e-4, (_k, _a, _b)
+_d = _pd.bdate_range("2025-01-01", "2026-10-23"); _rng = _np.random.default_rng(3)
+_C = _np.column_stack([100 * _np.cumprod(1 + _rng.normal(0.0004, 0.015, len(_d))) for _ in range(3)]); _C[-1, 2] = _np.nan
+_s = _rsi_sheet(_d, ["A", "B", "C"], _C, "2026-10-23")
+assert set(_s["rows"]) == {"A", "B"} and all(len(v) == 3 for v in _s["rows"].values()), "a name with no last close is absent, not stale"
+assert all(0 <= x <= 100 for v in _s["rows"].values() for x in v if x is not None)
+_up = _np.column_stack([_np.linspace(10, 50, len(_d))]); _u = _rsi_sheet(_d, ["U"], _up, "x")["rows"]["U"]; assert _u == [100.0, 100.0, 100.0], _u
+_short = _rsi_sheet(_d[-30:], ["S"], _np.linspace(10, 20, 30).reshape(-1, 1) + _np.sin(_np.arange(30)).reshape(-1, 1), "x")["rows"]["S"]
+assert _short[2] is None, "30 sessions hold about two months: no monthly RSI yet, and the sheet says null rather than guessing"
+print("rsi sheet: matches the shared golden vectors; to-date periods; no last close means no figure; too little history is null")
+
+_Cn = _np.vstack([_C, _np.full((1, 3), _np.nan)]); _dn = _pd.bdate_range("2025-01-01", periods=len(_Cn))
+_sn = _rsi_sheet(_dn, ["A", "B", "C"], _Cn, "x"); assert set(_sn["rows"]) == {"A", "B"} and _sn["as_of"] == str(_dn[-2].date()), "a trailing row with no prices is not a session"
+print("rsi sheet: an unfinished trailing session is ignored")

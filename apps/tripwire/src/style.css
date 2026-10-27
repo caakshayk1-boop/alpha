@@ -711,3 +711,41 @@ summary{font-family:var(--prose)}
 details.more{margin:6px 0 0}details.more>summary{cursor:pointer;color:var(--dim);font-size:.8125rem;list-style:none;display:flex;gap:6px;align-items:center;min-height:32px}
 details.more>summary::-webkit-details-marker{display:none}details.more>summary::before{content:"+";font-family:var(--mono);color:var(--lime);width:1ch}details.more[open]>summary::before{content:"−"}
 details.more>div{padding:2px 0 6px 2ch;color:var(--dim);font-size:.8125rem;line-height:1.55}
+.routewait{min-height:70vh}
+
+/* index rows: level, move, today's range with yesterday's close marked. The heights are fixed so the card does not change size when prices arrive. */
+.moodhero .idx{display:block}
+.moodhero .idx a.ix{display:block;box-sizing:border-box;padding:8px 0 7px;border-top:1px solid var(--line);height:5.5rem;overflow:hidden;font-size:.8125rem}
+.moodhero .idx a.ix::before{content:none}
+.ix-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:baseline}
+.ix-top .nm{color:var(--dim)}.ix-top .px{font-weight:650;text-align:right}.ix-top .ch{text-align:right;min-width:8.5rem}
+.ix-mid{display:grid;grid-template-columns:minmax(0,1fr) 5.5rem;gap:12px;align-items:center;margin:7px 0 3px;height:22px}
+.rg{position:relative;height:6px;display:block}.rg .trk{position:absolute;inset:0;background:var(--s3);border-radius:3px}
+.rg .pv{position:absolute;top:-3px;width:2px;height:12px;background:var(--mute);margin-left:-1px;border-radius:1px}
+.rg .nw{position:absolute;top:-2px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--tx);border:2px solid var(--bg)}
+.rg .nw.up{background:var(--up)}.rg .nw.down{background:var(--down)}
+.ix-bot{display:flex;justify-content:space-between;gap:8px;font-size:.6875rem;white-space:nowrap}
+.ix-bot span:nth-child(2){overflow:hidden;text-overflow:ellipsis;text-align:center;min-width:0}
+.ix-note{box-sizing:border-box;padding:7px 0 0;border-top:1px solid var(--line);height:4.6rem;overflow:hidden;line-height:1.4}
+.road .seg.win.ref{opacity:.22}.road .mk.tgt.ref{background:var(--mute);opacity:.8}
+.chart-sub{margin-top:10px}.chart-plot.sub{margin-top:4px}
+.c-candles line,.c-candles rect{shape-rendering:crispEdges}
+
+/* trend map: the word, the five breadth figures, three one-tap questions */
+.trendmap .tm-word{font:700 1.125rem/1.1 var(--mono);letter-spacing:-.01em;text-transform:uppercase}
+.tm-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0 2px}
+.tm-stats span{display:block;padding:6px 6px 5px;border:1px solid var(--line);border-radius:var(--r2);min-width:0}
+.tm-stats b{display:block;font-size:1rem;line-height:1.1}.tm-stats small{display:block;color:var(--mute);font-size:.625rem;line-height:1.25;margin-top:2px}
+.tm-go{display:grid;gap:6px;margin:10px 0 0}
+.tm-btn{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;row-gap:1px;align-items:baseline;padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--s1)}
+.tm-btn .tm-n{grid-row:1 / span 2;font-size:1.125rem;font-weight:700;min-width:2.2ch;text-align:right}.tm-btn .tm-t{font-size:.8125rem;font-weight:600}
+@media (hover:hover) and (pointer:fine){.tm-btn:hover{border-color:var(--tx)}}
+@media (max-width:380px){.tm-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stbl th .thf{margin-left:2px;padding:0;min-height:24px;min-width:24px;display:inline-grid;place-items:center;opacity:.65;vertical-align:middle}.stbl th .thf[aria-pressed=true]{opacity:1;color:var(--lime)}
+.stbl th .thf svg{width:11px;height:11px}
+.ldot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--lime);margin-left:3px;vertical-align:middle}
+.factstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(5.2rem,1fr));gap:6px;margin:10px 0 0}
+.factstrip span{display:block;padding:5px 7px;border:1px solid var(--line);border-radius:var(--r2);min-width:0}
+.factstrip small{display:block;color:var(--mute);font-size:.625rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.factstrip b{display:block;font-size:.875rem;line-height:1.25}
+/* the mood card's first row reserves two lines: the live label and "observed" text may wrap on a narrow phone, and the card must not grow when they arrive */
+.moodhero>.row.between:first-child{min-height:2.6rem;align-items:flex-start}

@@ -17,6 +17,7 @@ const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (3
 const mq = (prev, px) => quote(prev, px);
 const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;      // the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
 const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, macro: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, breadth: { ok: true, t: Date.now(), as_of: SCREEN_DAY, n: 100, up: 40, mixed: 40, down: 20, sectors: [{ k: 'Industrials', n: 202, up: 60, down: 10 }, { k: 'Consumer Cyclical', n: 155, up: 35, down: 40 }, { k: 'Financial Services', n: 130, up: 45, down: 20 }], repriced: 12, near: 30 } });
+await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: '2026-10-23', order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66], INFY: [48, 52, null] } }) }));
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
 
 const nowS = Math.floor(Date.now() / 1000);
@@ -27,10 +28,10 @@ let pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
 const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/tick') && !r.url().includes('/api/breadth') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
-const text = () => pg.locator('body').innerText();
+const text = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };   // screens load as separate files: wait out the placeholder
 
 await pg.goto(base + '/', { waitUntil: 'load' });
-ok(await pg.locator('.welcome h1').isVisible(), 'first run shows the welcome screen');
+await pg.waitForSelector('.welcome h1', { timeout: 15000 }).catch(() => {}); ok(await pg.locator('.welcome h1').isVisible(), 'first run shows the welcome screen');
 await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore as a guest' }).click();
 await pg.waitForSelector('nav.tabs');
@@ -46,7 +47,7 @@ ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await tex
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'Today shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
-await pg.waitForSelector('.news'); ok(/RBI keeps rates unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked \d\d:\d\d · hourly/.test(await text()) && /Regulator|Results/i.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says it refreshes hourly');
+await pg.waitForSelector('.news'); ok(/RBI keeps rates unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Read \d\d:\d\d · again every \d+ min/.test(await text()) && /Regulator|Results/i.test(await pg.locator('.news').first().innerText()), 'Today shows market news, its tags, and says how often it refreshes');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 await pg.getByText('How to read these picks').click();
 ok(/Picks from the close of/i.test(await text()) && /rule version elig-\d/i.test(await text()) && (await pg.locator('.pickrow').count()) === 5, 'Today ranks the night\'s picks, five first, each with its status (no duplicate buttons: the auto book takes them)');

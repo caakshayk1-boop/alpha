@@ -16,6 +16,8 @@ import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
 import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
+import { pickFacts } from '../pickfacts.ts';
+import { targetPrices } from '../levels.ts';
 import { takePaper } from '../store.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
@@ -57,7 +59,7 @@ function Picks() {
   const state = (p: Pick) => { if (!auto.plan) return { k: 'no' as const, text: 'The record could not be read, so the auto book cannot take it yet' }; const t = auto.plan?.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); if (t) return { k: 'in' as const, text: 'In the auto book' }; const r = auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); return r ? { k: 'no' as const, text: `Not taken: ${r.why}` } : { k: 'wait' as const, text: 'Taken automatically when tonight is written to the record' }; };
   return <>
     <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {headline ? `${headline} ` : ''}The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
-    {all.length > 0 && <p className="small dim" style={{ margin: '0 0 6px' }}>Every pick below is taken on paper automatically (up to 30 positions, ₹1,00,000 each). A pick the auto book refuses can be taken by hand. <a href="#/signals?v=auto" style={{ textDecoration: 'underline' }}>See the auto book</a></p>}
+    {all.length > 0 && <p className="small dim" style={{ margin: '0 0 6px' }}>Every pick below is taken on paper automatically (up to 30 positions, at most ₹1,00,000 each: a quarter of that for Momentum and half for Quality, and four to a sector, from the 27 Oct picks). A pick the auto book refuses can be taken by hand. <a href="#/signals?v=auto" style={{ textDecoration: 'underline' }}>See the auto book</a></p>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
       <div className="card"><div className="row between"><span className="dim small">{def.line}</span><EvidenceChip id={def.id} /></div>
@@ -66,7 +68,8 @@ function Picks() {
           <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>
       {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
         <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num" title={RANK_NOTE}>Rank {p.score} of 100</span></div>
-        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
+        {(() => { const fx = pickFacts(p.engine, scr.data!.rows.find((x) => x.sym === p.sym)); return fx.length ? <div className="factstrip num" role="list" aria-label={`What ranked ${p.sym} in ${def.name}`}>{fx.map((x) => <span key={x.k} role="listitem"><small>{x.k}</small><b className={x.tone ?? ''}>{x.v}</b></span>)}</div> : null; })()}
+        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}{(() => { const t = targetPrices(p); return t ? <> · T1 <b>{inr(t.t1)}</b> · T2 <b>{inr(t.t2)}</b>{t.ref ? ' (reference only: filed before profit booking began)' : ''}</> : null; })()}</div>
         {(p.flags ?? []).map((f) => <p key={f} className="small" style={{ margin: '0 0 6px', color: 'var(--a4)' }}>⚠ {f}</p>)}
         <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}<p className="small dim" style={{ margin: '8px 0 0' }}>{RANK_NOTE}</p></div></details>
         <div className="pickfoot"><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}><EvidenceChip id={p.engine} />{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);

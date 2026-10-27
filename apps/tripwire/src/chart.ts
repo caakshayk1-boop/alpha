@@ -1,7 +1,8 @@
 /** Price-chart maths. Pure, so every number on the chart can be tested.
  *  Input is daily closes (split-adjusted, dividends NOT reinvested): the price that traded, which is what the exchange publishes. */
 /** `n` is the Nifty 50 close on the same day, or null/absent when it is not held for that day. */
-export interface Pt { t: number; c: number; n?: number | null }
+/** `o`, `h`, `l`, `v` are the day's open, high, low and volume where Yahoo printed them; absent or null otherwise, never filled from the close. */
+export interface Pt { t: number; c: number; n?: number | null; o?: number | null; h?: number | null; l?: number | null; v?: number | null }
 export type RangeId = '1Y' | '3Y' | '5Y' | '10Y' | 'Max';
 export const RANGES: { id: RangeId; years: number | null }[] = [{ id: '1Y', years: 1 }, { id: '3Y', years: 3 }, { id: '5Y', years: 5 }, { id: '10Y', years: 10 }, { id: 'Max', years: null }];
 const DAY = 86400;
@@ -16,10 +17,34 @@ export function sliceRange(pts: readonly Pt[], id: RangeId): { pts: Pt[]; covers
   const out = pts.filter((p) => p.t >= from);
   return { pts: out, covers: pts[0].t <= from + 7 * DAY };
 }
-/** The last close of each calendar month (Indian date). The final, unfinished month keeps its latest close. */
-export function monthly(pts: readonly Pt[]): Pt[] {
+export type Frame = 'daily' | 'weekly' | 'monthly';
+const dayOf = (t: number) => Math.floor((t + 19800) / 86400);
+/** One bar per period. The close, time and Nifty close are the period's LAST day's; the open is the first day's; the high and low are the extremes of the days that printed one;
+ *  the volume is the sum of the days that printed one. A period in which no day printed a field leaves it null. The final, unfinished period is a bar of the days so far.
+ *  Weeks run Monday to Sunday by the Indian date; months are calendar months. */
+export function aggregate(pts: readonly Pt[], frame: Frame): Pt[] {
+  if (frame === 'daily') return [...pts];
+  const keyOf = (t: number) => { if (frame === 'weekly') return String(Math.floor((dayOf(t) + 3) / 7)); const d = ist(t); return `${d.getUTCFullYear()}-${d.getUTCMonth()}`; };
   const out: Pt[] = []; let key = '';
-  for (const p of pts) { const d = ist(p.t); const k = `${d.getUTCFullYear()}-${d.getUTCMonth()}`; if (k === key) out[out.length - 1] = p; else { out.push(p); key = k; } }
+  for (const p of pts) {
+    const k = keyOf(p.t);
+    if (k !== key) { out.push({ ...p }); key = k; continue; }
+    const b = out[out.length - 1];
+    const hi = [b.h, p.h, p.c].filter((x): x is number => typeof x === 'number'), lo = [b.l, p.l, p.c].filter((x): x is number => typeof x === 'number');
+    // the period's high and low must include every close in it even when a day printed no high or low of its own
+    out[out.length - 1] = { t: p.t, c: p.c, n: p.n, o: b.o ?? null, h: b.h == null && p.h == null && b.o == null ? null : Math.max(...hi, b.o ?? -Infinity), l: b.l == null && p.l == null && b.o == null ? null : Math.min(...lo, b.o ?? Infinity), v: b.v == null && p.v == null ? null : (b.v ?? 0) + (p.v ?? 0) };
+  }
+  return out;
+}
+/** The last close of each calendar month (Indian date). The final, unfinished month keeps its latest close. */
+export function monthly(pts: readonly Pt[]): Pt[] { return aggregate(pts, 'monthly'); }
+/** Wilder's Relative Strength Index. `n` closes of change are averaged to seed it (a simple mean), then each later value is smoothed (previous * (n-1) + today) / n.
+ *  The first value is at index n; before that, and where no price has moved at all, null. 100 = only gains in the average, 0 = only losses. */
+export function rsiSeries(closes: readonly number[], n = 14): (number | null)[] {
+  const out: (number | null)[] = closes.map(() => null); if (closes.length <= n) return out;
+  let g = 0, l = 0; for (let i = 1; i <= n; i++) { const d = closes[i] - closes[i - 1]; if (d > 0) g += d; else l -= d; }
+  g /= n; l /= n; const val = () => (g === 0 && l === 0 ? null : l === 0 ? 100 : 100 - 100 / (1 + g / l)); out[n] = val();
+  for (let i = n + 1; i < closes.length; i++) { const d = closes[i] - closes[i - 1]; g = (g * (n - 1) + (d > 0 ? d : 0)) / n; l = (l * (n - 1) + (d < 0 ? -d : 0)) / n; out[i] = val(); }
   return out;
 }
 /** Keep at most about `max` points without losing a peak or a trough: each bucket keeps its lowest and highest close, in time order. */
@@ -43,17 +68,18 @@ export function stats(pts: readonly Pt[]): Stats | null {
 }
 export interface Geo { min: number; max: number; line: string; area: string; xs: number[]; ys: number[]; W: number; H: number; yOf: (c: number) => number; xOf: (t: number) => number }
 /** SVG paths in a W by H box. x is proportional to TIME (a weekend is a gap, not a point). `log` plots the percentage move, which is the honest view over ten years. */
-export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12): Geo | null {
+export function geometry(pts: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12, hl = false): Geo | null {
   if (pts.length < 2) return null;
   const f = (c: number) => (log ? Math.log(c) : c);
-  const cs = pts.map((p) => f(p.c)); let lo = Math.min(...cs), hi = Math.max(...cs); if (hi === lo) { hi += 1; lo -= 1; }
+  // with `hl` the scale also takes in each bar's high and low, so a candle never leaves the plot
+  const cs = pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c])).map(f); let lo = Math.min(...cs), hi = Math.max(...cs); if (hi === lo) { hi += 1; lo -= 1; }
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = Math.max(1, t1 - t0);
   const xOf = (t: number) => ((t - t0) / span) * W;
   const yOf = (c: number) => pad + (1 - (f(c) - lo) / (hi - lo)) * (H - 2 * pad);
   const xs = pts.map((p) => xOf(p.t)), ys = pts.map((p) => yOf(p.c));
   const r = (v: number) => Math.round(v * 10) / 10;
   const line = xs.map((x, i) => `${i ? 'L' : 'M'}${r(x)} ${r(ys[i])}`).join('');
-  return { min: Math.min(...pts.map((p) => p.c)), max: Math.max(...pts.map((p) => p.c)), line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf };
+  return { min: Math.min(...pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c]))), max: Math.max(...pts.flatMap((p) => (hl ? [p.c, p.h ?? p.c, p.l ?? p.c] : [p.c]))), line, area: `${line}L${r(xs[xs.length - 1])} ${H}L${r(xs[0])} ${H}Z`, xs, ys, W, H, yOf, xOf };
 }
 /** The point closest in time to a fraction (0..1) of the way across the window. */
 export function nearest(pts: readonly Pt[], frac: number): number {
