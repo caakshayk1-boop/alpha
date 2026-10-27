@@ -1,6 +1,6 @@
 {
  "meta": {
-  "when": "2026-10-26 16:28 UTC",
+  "when": "2026-10-27 02:54 UTC",
   "symbols": 660,
   "dates": [
    "2015-10-26",
@@ -19,16 +19,16 @@
      "hit_rate": 0.468,
      "mean_R": 0.155,
      "excess_vs_universe": 0.0049,
-     "excess_t": 0.586,
+     "excess_t": 0.585,
      "months": 60
     },
     "validation": {
      "trades": 117,
-     "mean_net": 0.0201,
+     "mean_net": 0.0193,
      "hit_rate": 0.513,
-     "mean_R": 0.21,
-     "excess_vs_universe": 0.0018,
-     "excess_t": 0.183,
+     "mean_R": 0.202,
+     "excess_vs_universe": 0.001,
+     "excess_t": 0.109,
      "months": 24
     },
     "holdout": {
@@ -37,7 +37,7 @@
      "hit_rate": 0.494,
      "mean_R": 0.038,
      "excess_vs_universe": -0.0022,
-     "excess_t": -0.185,
+     "excess_t": -0.184,
      "months": 33
     }
    },
@@ -50,29 +50,29 @@
    "periods": {
     "train": {
      "trades": 277,
-     "mean_net": 0.0168,
+     "mean_net": 0.0169,
      "hit_rate": 0.469,
-     "mean_R": 0.193,
-     "excess_vs_universe": 0.0103,
-     "excess_t": 1.143,
+     "mean_R": 0.194,
+     "excess_vs_universe": 0.0104,
+     "excess_t": 1.154,
      "months": 58
     },
     "validation": {
      "trades": 112,
-     "mean_net": 0.0128,
+     "mean_net": 0.0118,
      "hit_rate": 0.536,
-     "mean_R": 0.18,
-     "excess_vs_universe": -0.0074,
-     "excess_t": -0.664,
+     "mean_R": 0.169,
+     "excess_vs_universe": -0.0085,
+     "excess_t": -0.744,
      "months": 24
     },
     "holdout": {
      "trades": 155,
-     "mean_net": -0.0039,
+     "mean_net": -0.0034,
      "hit_rate": 0.458,
-     "mean_R": -0.052,
-     "excess_vs_universe": -0.0084,
-     "excess_t": -0.991,
+     "mean_R": -0.048,
+     "excess_vs_universe": -0.008,
+     "excess_t": -0.952,
      "months": 32
     }
    },
@@ -88,26 +88,26 @@
      "mean_net": -0.0008,
      "hit_rate": 0.362,
      "mean_R": -0.018,
-     "excess_vs_universe": -0.0302,
-     "excess_t": -2.282,
+     "excess_vs_universe": -0.0303,
+     "excess_t": -2.283,
      "months": 32
     },
     "validation": {
      "trades": 60,
-     "mean_net": 0.0152,
+     "mean_net": 0.0148,
      "hit_rate": 0.35,
-     "mean_R": 0.393,
-     "excess_vs_universe": -0.0233,
-     "excess_t": -1.254,
+     "mean_R": 0.395,
+     "excess_vs_universe": -0.0237,
+     "excess_t": -1.278,
      "months": 12
     },
     "holdout": {
      "trades": 85,
-     "mean_net": -0.0142,
+     "mean_net": -0.0144,
      "hit_rate": 0.294,
-     "mean_R": -0.252,
-     "excess_vs_universe": -0.0324,
-     "excess_t": -1.679,
+     "mean_R": -0.253,
+     "excess_vs_universe": -0.0326,
+     "excess_t": -1.686,
      "months": 17
     }
    },
