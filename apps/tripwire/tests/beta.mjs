@@ -160,7 +160,7 @@ for (const [w, h] of [[360, 740], [390, 844], [430, 932], [768, 1024], [1440, 90
     await pg.goto(base + '/#/today'); await pg.waitForSelector('.split'); await pg.waitForTimeout(800);
     const cols = await pg.evaluate(() => [...document.querySelectorAll('.split > .col')].map((c) => Math.round(c.getBoundingClientRect().width)));
     ok(cols.length === 2 && cols[0] > cols[1] && cols[1] >= 340, `1440px: Today is a two-column workspace (${cols.join(' + ')} px)`);
-    await pg.goto(base + '/#/discover'); await pg.waitForSelector('.lens'); const lensW = await pg.locator('.lens').evaluateAll((e) => e.map((x) => Math.round(x.getBoundingClientRect().width)));
+    await pg.goto(base + '/#/discover'); await pg.waitForSelector('.adv summary'); await pg.locator('.adv summary').click(); await pg.waitForSelector('.lens'); const lensW = await pg.locator('.lens').evaluateAll((e) => e.map((x) => Math.round(x.getBoundingClientRect().width)));
     ok(lensW.length === 5 && lensW.every((x) => x > 150) && (await pg.locator('.li .wide').first().isVisible()), '1440px: Discover shows its five lenses side by side and a figure table on each row');
   }
   await ctx.close();
@@ -176,7 +176,7 @@ for (let rep = 0; rep < 3; rep++) {
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__v.cls += e.value; window.__v.src.push(`${e.value.toFixed(3)}@${Math.round(e.startTime)}ms ${(e.sources || []).map((x) => (x.node?.nodeName ?? '') + '.' + (x.node?.className ?? '')).join(' | ')}`); } }).observe({ type: 'layout-shift', buffered: true });
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.duration > window.__v.inp) { window.__v.inp = e.duration; window.__v.what = `${e.name} on ${e.target?.nodeName ?? ''}.${e.target?.className ?? ''} ${e.target?.getAttribute?.('href') ?? ''}`; } }).observe({ type: 'event', durationThreshold: 16, buffered: true }); });
   await pg.goto(base + '/#/today', { waitUntil: 'load' }); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(4000);
-  for (const sel of ['nav.tabs a[href="#/discover"]', '.lens', 'nav.tabs a[href="#/today"]']) { await pg.locator(sel).first().click(); await pg.waitForTimeout(600); }
+  for (const sel of ['nav.tabs a[href="#/discover"]', '.adv summary', 'nav.tabs a[href="#/today"]']) { await pg.locator(sel).first().click(); await pg.waitForTimeout(600); }
   const v = await pg.evaluate(() => window.__v); const size = await pg.evaluate(() => performance.getEntriesByType('resource').reduce((a, r) => a + (r.transferSize || 0), 0));
   console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms (${v.what ?? 'none'}), transferred ${(size / 1024).toFixed(0)} kB`); if (v.cls >= 0.05) console.log('  shifts: ' + v.src.join(' ; '));
   mkdirSync('/tmp/tw', { recursive: true }); writeFileSync('/tmp/tw/vitals.json', JSON.stringify({ lcp: Math.round(v.lcp), cls: +v.cls.toFixed(3), inp: Math.round(v.inp), kB: Math.round(size / 1024) }));

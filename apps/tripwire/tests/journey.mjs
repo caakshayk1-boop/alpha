@@ -71,7 +71,7 @@ ok(Object.keys(grades).every((g) => ['LOW', 'MEDIUM', 'HIGH', 'undefined'].inclu
 
 // Discover → follow → compare → research
 await pg.locator('nav.tabs a[href="#/discover"]').click();
-await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li');
+await pg.waitForSelector('input.field[type=search]'); await pg.waitForSelector('.li'); await pg.locator('.adv summary').click();
 const fs = await pg.evaluate(() => ({ field: parseFloat(getComputedStyle(document.querySelector('input.field')).fontSize), body: parseFloat(getComputedStyle(document.body).fontSize), touch: getComputedStyle(document.querySelector('button')).touchAction, vp: document.querySelector('meta[name=viewport]').content }));
 ok(fs.field >= 16, `text fields are 16px or more, so iPhone Safari does not zoom the page in on focus (${fs.field}px)`);
 ok(fs.body <= 15.2 && fs.body >= 13 && fs.touch === 'manipulation', `readable type (${fs.body}px) and no double-tap zoom on controls`);
