@@ -210,6 +210,9 @@ test('entities: real wrong matches of the first live snapshot stay wrong (ITC ta
   assert.ok(!s("Here's why Kotak Neo recommends 'Buy' rating on ICICI Bank").includes('KOTAKBANK'));
   assert.ok(!s('Buy Adani Energy Solutions: target of Rs 1600: ICICI Securities').includes('ICICIBANK'));
   // still the company
+  assert.ok(s('ITC shares fall 3% after a GST input tax credit ruling').includes('ITC'), 'a corporate word beside the mention makes it the company');
+  assert.ok(s('Shares of ITC slip as GST council meets').includes('ITC'));
+  assert.ok(s('ITC Ltd: cigarettes volume up; separately a GST council meeting is due on a distant date next week').includes('ITC'), 'the veto is scoped to the mention, not the headline');
   assert.ok(s('ITC Q2 profit rises 4% as cigarettes volumes recover').includes('ITC'));
   assert.ok(s('Valmet to supply BCTMP line to ITC in India').includes('ITC'));
   assert.ok(s('Latest FD interest rates: ICICI Bank, Indian Bank, SBI and HDFC Bank').includes('SBIN'));

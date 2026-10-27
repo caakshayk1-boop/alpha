@@ -52,17 +52,22 @@ export function buildEntity({ sym, name, aliases = [] }) {
 }
 export const buildRegistry = (list) => list.map(buildEntity);
 
-/** Where a house abbreviation or bare symbol is NOT the company. "SBI Life" and "SBI Cards" are other listed companies; "ITC" beside GST words is the input tax credit, and "ITC Hotels" is a separate listed company. A veto only removes a match; it never creates one. */
+/** Where a house abbreviation or bare symbol is NOT the company. "SBI Life" and "SBI Cards" are other listed companies; "ITC" with GST words within 40 characters of that mention is the input tax credit (the veto is per mention, so a company headline that also names a GST case still tags ITC), and "ITC Hotels" is a separate listed company. A veto only removes a match; it never creates one. */
 const VETO = {
   ITC: { follow: /^\s*(hotels?|grand|welcomhotel|brief)\b/i, context: /\b(gst\w*|gstr[\w-]*|gstat|cgst|igst|sgst|input tax|tax credit|cbic|customs|income[- ]tax|itat|tribunal|refunds?|reversal|invoices?|section \d+[\w()]*|eligib\w+|capital goods)\b/i },
   SBIN: { follow: /^\s*(life|cards?|mutual|general|funds?|securities|caps|capital|payments?)\b/i },
 };
 /** A single word of a company name ("Bajaj", "Kotak", "Reliance") stands for the company only when what follows it is not another capitalised word: "Bajaj Electricals" is not Bajaj Finance and "Kotak Neo" is not Kotak Bank. A corporate cue, a plain verb, or the rest of the company's own name may follow. */
 const VERB = /^(reports?|posts?|announces?|says?|gets?|wins?|bags?|launch\w*|plans?|hikes?|cuts?|rises?|falls?|jumps?|surges?|slips?|gains?|drops?|raises?|approves?|signs?|receives?|issues?|sets?|names?|appoints?|files?|settles?|to|at|in|on|as|with|by|and|or|for|from|of|may|will|is|are|has|have|hits?|crosse?s?|buys?|sells?|stock|stocks|share|shares|q[1-4]\w*|fy\w*)$/i;
+const OWN_BESIDE = /^\s*(shares?|stocks?|q[1-4]\b|results?|profit|dividend|board|agm|share price|ltd|limited)\b/i;
+const OWN_BEFORE = /\b(shares? of|stocks? of|results? of|profit of)\s+$/i;
 function vetoed(e, re, text) {
   const v = VETO[e.sym]; if (!v) return false;
   const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); let any = false;
-  for (const m of text.matchAll(g)) { any = true; const after = text.slice(m.index + m[0].length); if (!(v.follow && v.follow.test(after)) && !(v.context && v.context.test(text))) return false; }
+  for (const m of text.matchAll(g)) { any = true; const after = text.slice(m.index + m[0].length); const before = text.slice(0, m.index); const near = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
+    const own = OWN_BESIDE.test(after) || OWN_BEFORE.test(before);          // 'ITC shares fall after a GST ruling', 'shares of ITC': the company, whatever else the headline names
+    if (own) return false;
+    if (!(v.follow && v.follow.test(after)) && !(v.context && v.context.test(near))) return false; }
   return any;
 }
 function wordStands(text, key, entity) {
