@@ -58,6 +58,7 @@ test('thesis rule: only a stated price level in the invalidation text links a ch
   assert.equal(detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2390 }), entry: arch, today: '2026-10-27' }).some((c) => c.kind === 'invalidation'), false, 'an archived thesis is not read');
   const lv = detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2450 }), entry: e, live: 2395, today: '2026-10-27' }).find((c) => c.kind === 'invalidation')!;
   assert.match(lv.after, /live price/, 'a live print is used for this one rule and labelled live');
+  assert.equal(detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2450 }), entry: e, live: 212, today: '2026-10-27' }).some((c) => c.kind === 'invalidation'), false, 'a print 90% off the close is a bad tick, not a crossing');
   assert.ok(!JSON.stringify(ch).includes(current(e).thesis + 'x'));
 });
 

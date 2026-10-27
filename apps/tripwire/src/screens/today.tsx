@@ -58,7 +58,7 @@ export function Today() {
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading); const jr = journeyOf(s, today);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
-  const macroLine = ['GOLD', 'BRENT', 'USDINR'].map((k) => MACRO.find((d) => d.key === k)).filter((d): d is NonNullable<typeof d> => !!d).map((d) => { const q = macro.data?.quotes[d.key]; return q ? { k: d.label, v: fmtMacro(d, q.px), ch: (q.px / q.prev - 1) * 100 } : null; }).filter((x): x is { k: string; v: string; ch: number } => !!x);
+  const macroLine = ['GOLD', 'BRENT', 'USDINR'].map((k) => MACRO.find((d) => d.key === k)).filter((d): d is NonNullable<typeof d> => !!d).map((d) => { const q = macro.data?.quotes[d.key]; return q ? { k: d.label, v: fmtMacro(d, q.px), ch: (q.px / q.prev - 1) * 100 } : null; }).filter(Boolean) as { k: string; v: string; ch: number | null }[];
 
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
@@ -70,7 +70,7 @@ export function Today() {
         <div className="brief-ix num" role="list" aria-label="Indices">
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
-        {macroLine.length > 0 && <p className="small dim brief-macro num">{macroLine.map((m) => <span key={m.k}>{m.k} {m.v} <span className={tone(m.ch)}>{pct(m.ch, 1)}</span></span>)}</p>}
+        <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
         <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.word}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a> · <a href="#/data">Data and coverage</a></p>
       </section>
 

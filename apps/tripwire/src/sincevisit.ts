@@ -10,6 +10,7 @@ import { trendChecks, trendOf } from './screen.ts';
 import { eligibilityOf } from './eligibility.ts';
 import type { Entry, State } from './store.ts';
 import { current } from './store.ts';
+import { dayWord } from './fmt.ts';
 
 /** Every threshold in one place so a test (and a reader) can see the whole rule set. */
 export const THRESHOLDS = {
@@ -20,6 +21,8 @@ export const THRESHOLDS = {
   resultsDays: 7,
   /** a 52-week high or low is "new" when the close is within this percent of it */
   extremePct: 0.1,
+  /** a live print is used for the stated-invalidation rule only when within this fraction of the screen close */
+  liveSanity: 0.35,
   /** snapshots kept per name */
   history: 5,
   /** an unacknowledged change is dropped after this many days */
@@ -75,9 +78,10 @@ export function detect({ sym, prev, cur, entry, live, today }: DetectIn): SeenCh
   // 1. the user's own stated invalidation level, the only link to a thesis
   const lv = entry && !entry.archived ? parseLevel(current(entry).invalidation) : null;
   if (lv && num(prev.px)) {
-    const now = num(live) ? live : cur.px; const src = num(live) ? 'live price' : `close of ${cur.day}`;
+    const useLive = num(live) && num(cur.px) && Math.abs(live / cur.px - 1) <= THRESHOLDS.liveSanity;   // a print far from the close is a bad tick, not a crossing
+    const now = useLive ? live : cur.px; const src = useLive ? 'live price' : `close of ${cur.day}`;
     if (num(now) && ((lv.dir === 'below' && prev.px >= lv.level && now < lv.level) || (lv.dir === 'above' && prev.px <= lv.level && now > lv.level)))
-      mk('invalidation', `${lv.dir}${lv.level}${num(live) ? 'live' : ''}`, `${lv.dir === 'below' ? 'Fell below' : 'Rose above'} ${px(lv.level)}`, `${px(prev.px)} (close of ${prev.day})`, `${px(now)} (${src})`, { framing: `crossed your stated invalidation level ${lv.shown}`, basis: `Your thesis says "${current(entry!).invalidation.trim().slice(0, 80)}". Compared ${prev.day} close with the ${src}.` });
+      mk('invalidation', `${lv.dir}${lv.level}${useLive ? 'live' : ''}`, `${lv.dir === 'below' ? 'Fell below' : 'Rose above'} ${px(lv.level)}`, `${px(prev.px)} (close of ${prev.day})`, `${px(now)} (${src})`, { framing: `crossed your stated invalidation level ${lv.shown}`, basis: `Your thesis says "${current(entry!).invalidation.trim().slice(0, 80)}". Compared ${prev.day} close with the ${src}.` });
   }
   if (prev.trend && cur.trend && prev.trend !== cur.trend) mk('trend', `${prev.trend}-${cur.trend}`, 'Trend class changed', WORD[prev.trend], WORD[cur.trend]);
   if (num(prev.px) && num(prev.sma200) && num(cur.px) && num(cur.sma200)) {
@@ -103,7 +107,7 @@ export function detect({ sym, prev, cur, entry, live, today }: DetectIn): SeenCh
   if (prev.elig && cur.elig && prev.elig !== cur.elig) mk('elig', cur.elig, 'Eligibility status changed', prev.elig, cur.elig);
   if (num(prev.px) && num(cur.px) && num(cur.atr_pct) && cur.atr_pct > 0) {
     const mv = (cur.px / prev.px - 1) * 100; const lim = THRESHOLDS.atrMultiple * cur.atr_pct;
-    if (Math.abs(mv) >= lim) mk('move', mv > 0 ? 'up' : 'down', `${mv > 0 ? 'Up' : 'Down'} ${Math.abs(mv).toFixed(1)}% since ${prev.day}`, px(prev.px), px(cur.px), { basis: `${base}. A move of ${THRESHOLDS.atrMultiple}x its daily range (ATR ${cur.atr_pct.toFixed(1)}%) or more.` });
+    if (Math.abs(mv) >= lim) mk('move', mv > 0 ? 'up' : 'down', `${mv > 0 ? 'Up' : 'Down'} ${Math.abs(mv).toFixed(1)}% since ${dayWord(prev.day)}`, px(prev.px), px(cur.px), { basis: `${base}. A move of ${THRESHOLDS.atrMultiple}x its daily range (ATR ${cur.atr_pct.toFixed(1)}%) or more.` });
   }
   return out;
 }
@@ -157,6 +161,8 @@ export function recordSeen(s: State, rows: readonly Row[], day: string | null, s
   if (!touched && inbox.length === prevIn.length && inbox.every((c, i) => c === prevIn[i]) && Object.keys(dis).length === Object.keys(s.dismissed ?? {}).length) return s;
   return { ...s, seen, inbox, dismissed: dis };
 }
-export const lastSeen = (s: State): Record<string, SeenSnap | undefined> => Object.fromEntries(Object.entries(s.seen ?? {}).map(([k, v]) => [k, v[v.length - 1]]));
+/** The most recent change surfaced for a name (acknowledged or not), or null. Read from what was recorded; nothing is recomputed. */
+export const lastChange = (s: State, sym: string): SeenChange | null => (s.inbox ?? []).filter((c) => c.sym === sym).sort((a, b) => b.curAt.localeCompare(a.curAt))[0] ?? null;
+export const lastSeen =(s: State): Record<string, SeenSnap | undefined> => Object.fromEntries(Object.entries(s.seen ?? {}).map(([k, v]) => [k, v[v.length - 1]]));
 export const dismissChange = (s: State, id: string, nowIso: string): State => ((s.dismissed ?? {})[id] ? s : { ...s, dismissed: { ...(s.dismissed ?? {}), [id]: nowIso } });
 export const restoreChange = (s: State, id: string): State => { if (!(s.dismissed ?? {})[id]) return s; const d = { ...(s.dismissed ?? {}) }; delete d[id]; return { ...s, dismissed: d }; };

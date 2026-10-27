@@ -17,13 +17,13 @@ export function SinceVisit({ rows, day, today }: { rows: Row[]; day: string | nu
   const live = useMemo(() => Object.fromEntries(s.follows.map((sym) => { const r = rows.find((x) => x.sym === sym); const lp = r ? livePrice(r, q.data?.quotes[sym] ?? null) : null; return [sym, lp?.fromQuote && lp.live ? lp.px : null]; })), [q.data, rows, s.follows.join()]);   // eslint-disable-line react-hooks/exhaustive-deps
   const nowIso = useMemo(() => new Date().toISOString(), []);
   const sv = useMemo(() => surface(s, baseline.current, rows, day, today, nowIso, live), [s.follows, s.entries, s.inbox, s.dismissed, rows, day, today, live, nowIso]);   // eslint-disable-line react-hooks/exhaustive-deps
-  // record what was shown once it has been visible for 3 s (page visible, module at least half on screen)
-  const box = useRef<HTMLElement>(null); const latest = useRef({ rows, day, fresh: sv.fresh, today }); latest.current = { rows, day, fresh: sv.fresh, today };
+  // record what was shown once it has been visible for 3 s (page visible, at least half of it, or 240px of it, on screen)
+  const box = useRef<HTMLElement>(null); const latest = useRef({ rows, day, fresh: sv.fresh, today }); latest.current = { rows, day, fresh: [...sv.fresh, ...sv.dismissed], today };   // dismissed items are kept too, so Undo works after a reload
   useEffect(() => {
     const el = box.current; if (!el || !day || !rows.length || !s.follows.length || sawAt.current === day) return;
     let timer = 0; let inView = false;
     const arm = () => { window.clearTimeout(timer); if (inView && document.visibilityState === 'visible') timer = window.setTimeout(() => { sawAt.current = latest.current.day; const l = latest.current; setState((x) => recordSeen(x, l.rows, l.day, l.fresh, new Date().toISOString(), l.today)); }, THRESHOLDS.visibleMs); };
-    const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver((e) => { inView = !!e[0]?.isIntersecting; arm(); }, { threshold: 0.5 }) : null;
+    const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver((e) => { const x = e[e.length - 1]; inView = !!x && x.isIntersecting && (x.intersectionRatio >= 0.5 || x.intersectionRect.height >= 240); arm(); }, { threshold: [0, 0.25, 0.5, 1] }) : null;
     if (io) io.observe(el); else inView = true;
     document.addEventListener('visibilitychange', arm); arm();
     return () => { window.clearTimeout(timer); io?.disconnect(); document.removeEventListener('visibilitychange', arm); };
