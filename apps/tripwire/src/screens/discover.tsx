@@ -9,7 +9,7 @@ import { useWatchQuotes } from '../quotes.ts';
 import { inr0, pct } from '../fmt.ts';
 import type { Row } from '../screen.ts';
 import { askInWords, ASK_EXAMPLES } from '../ask.ts';
-import { COLUMN_SETS, METRICS, describeCond, fmtMetric, metricOf, sameCond, sortByMetric, toCsv, valueOf, type Cond, type MetricKey } from '../screener.ts';
+import { COLUMN_SETS, condsFor, distribution, type RangeMode, METRICS, describeCond, fmtMetric, metricOf, sameCond, sortByMetric, toCsv, valueOf, type Cond, type MetricKey } from '../screener.ts';
 
 const SORTS: { id: SortKey; label: string; dir: 'asc' | 'desc' }[] = [
   { id: 'name', label: 'Name A to Z', dir: 'asc' }, { id: 'r1d', label: 'Biggest day gain', dir: 'desc' }, { id: 'rs3m', label: 'Ahead of the Nifty, 3 months', dir: 'desc' },
@@ -86,6 +86,7 @@ export function Discover() {
     <div className="chips chosen" role="group" aria-label="Conditions">
       {(f.cond ?? []).map((c) => <button key={`${c.m}${c.op}${c.v}`} className="chip cc on-x" onClick={() => set({ cond: (f.cond ?? []).filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
       <button className="chip" onClick={() => setCondSheet(true)}>+ Condition</button>
+      <button className="chip" onClick={() => { try { sessionStorage.setItem('tripwire:lab:seed', JSON.stringify(f.cond ?? [])); } catch { /* the Lab then opens on its own starting rule */ } go('/lab'); }}>Test in the Lab</button>
     </div>
     <div className="c-bar" role="group" aria-label="View" style={{ marginTop: 8 }}>
       <div className="mini-seg">{(['list', 'table'] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setLimit(PAGE); }}>{v === 'list' ? 'LIST' : 'TABLE'}</button>)}</div>
@@ -109,7 +110,7 @@ export function Discover() {
       : <Empty title="No company matches" action={<button className="btn" onClick={() => setF(NO_FILTER)}>Reset filters</button>}>Conditions are exact. A name with no figure for a condition is left out, never counted as a match.</Empty>)}
     {shownList.length > limit && <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, shownList.length - limit)} more</button>}
     {pick.length >= 2 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => setPick([])}>Clear {pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} onClick={() => go(`/compare?s=${pick.join(',')}`)}><Icon n="compare" />Compare {pick.length}</button></div>}
-    {condSheet && <CondSheet onClose={() => setCondSheet(false)} onAdd={(c) => { set({ cond: [...(f.cond ?? []).filter((x) => !(x.m === c.m && x.op === c.op)), c] }); setCondSheet(false); tick(); }} />}
+    {condSheet && <CondSheet rows={rows} count={(cs) => filterRows(rows, { ...f, cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }).rows.length} onClose={() => setCondSheet(false)} onAdd={(cs) => { set({ cond: [...(f.cond ?? []).filter((x) => !cs.some((c) => c.m === x.m && c.op === x.op)), ...cs] }); setCondSheet(false); tick(); }} />}
     {sheet && <Sheet title="Filters" onClose={() => setSheet(false)}>
       <label className="l" htmlFor="f-sec">Sector</label>
       <select id="f-sec" className="field" value={f.sector} onChange={(e) => set({ sector: e.target.value })}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
@@ -139,19 +140,49 @@ function SaveScreen({ f, labels }: { f: Filters; labels: string[] }) {
 }
 
 /** One numeric condition: a figure, at least or at most, a value. The figure's own unit and a few typical values are on the sheet, so there is nothing to look up. */
-function CondSheet({ onClose, onAdd }: { onClose: () => void; onAdd: (c: Cond) => void }) {
-  const [m, setM] = useState<MetricKey>('rsi'); const [op, setOp] = useState<'gte' | 'lte'>('gte'); const [v, setV] = useState('');
-  const met = metricOf(m)!; const n = Number(v); const ok = v.trim() !== '' && Number.isFinite(n);
+export function CondSheet({ onClose, onAdd, rows, count, metrics }: { onClose: () => void; onAdd: (c: Cond[]) => void; rows: Row[]; count: (c: Cond[]) => number; metrics?: MetricKey[] }) {
+  const [m, setM] = useState<MetricKey>(metrics?.includes('rsi') || !metrics ? 'rsi' : metrics[0]); const [mode, setMode] = useState<RangeMode>('between'); const met = metricOf(m)!;
+  const dist = useMemo(() => distribution(rows, m), [rows, m]);
+  const step = Math.max(Math.pow(10, -met.dp), dist ? (dist.hi - dist.lo) / 400 : 1);
+  const snap = (x: number) => Math.round(x / step) * step; const clean = (x: number) => Math.round(x * 1e4) / 1e4;
+  const [a, setA] = useState(''); const [b, setB] = useState('');
+  const mid = dist ? clean(snap(dist.median)) : 0;
+  const na = a.trim() === '' ? (mode === 'between' && dist ? clean(snap(dist.lo + (dist.hi - dist.lo) * 0.25)) : mid) : Number(a);
+  const nb = b.trim() === '' ? (mode === 'between' && dist ? clean(snap(dist.lo + (dist.hi - dist.lo) * 0.75)) : mode === 'around' ? clean(Math.max(step, (dist ? (dist.hi - dist.lo) / 40 : 1))) : 0) : Number(b);
+  const ok = Number.isFinite(na) && (mode === 'gte' || mode === 'lte' || Number.isFinite(nb));
+  const conds = ok ? condsFor(m, mode, na, nb) : []; const hits = ok ? count(conds) : null;
+  const lo = Math.min(...conds.map((c) => c.v)), hi = Math.max(...conds.map((c) => c.v));
+  const inside = (v: number) => conds.every((c) => (c.op === 'gte' ? v >= c.v : v <= c.v));
+  const maxBin = dist ? Math.max(1, ...dist.bins) : 1; const fmt = (v: number) => fmtMetric({ ...met, signed: false }, v);
+  const MODES: [RangeMode, string][] = [['gte', 'At least'], ['lte', 'At most'], ['between', 'Between'], ['around', 'Around']];
+  const set = (which: 'a' | 'b', v: string) => (which === 'a' ? setA(v) : setB(v));
   return <Sheet title="Add a condition" onClose={onClose}>
     <label className="l" htmlFor="c-m">Figure</label>
-    <select id="c-m" className="field" value={m} onChange={(e) => { setM(e.target.value as MetricKey); setV(''); }}>{METRICS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+    <select id="c-m" className="field" value={m} onChange={(e) => { setM(e.target.value as MetricKey); setA(''); setB(''); }}>{METRICS.filter((x) => !metrics || metrics.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
     <p className="small mute" style={{ margin: '6px 0 0' }}>{met.hint || 'Last close.'}</p>
-    <label className="l" htmlFor="c-op">Is</label>
-    <select id="c-op" className="field" value={op} onChange={(e) => setOp(e.target.value as 'gte' | 'lte')}><option value="gte">at least</option><option value="lte">at most</option></select>
-    <label className="l" htmlFor="c-v">Value{met.unit.trim() ? ` (${met.unit.trim()})` : ''}</label>
-    <input id="c-v" className="field" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder={String(met.presets[1])} />
-    <div className="chips wrap" style={{ marginTop: 8 }} role="group" aria-label="Typical values">{met.presets.map((p) => <button key={p} className="chip" onClick={() => setV(String(p))}>{fmtMetric({ ...met, signed: false }, p)}</button>)}</div>
+    <div className="c-bar" role="group" aria-label="How to compare" style={{ marginTop: 10 }}>{MODES.map(([k, l]) => <button key={k} className="seg" aria-pressed={mode === k} onClick={() => { setMode(k); setA(''); setB(''); }}>{l}</button>)}</div>
+    {dist ? <>
+      <div className="hist" role="img" aria-label={`How ${met.label} is spread across ${dist.n} companies: the middle is ${fmt(dist.median)}, most sit between ${fmt(dist.p1)} and ${fmt(dist.p99)}`}>
+        {dist.bins.map((n, k) => { const x0 = dist.lo + ((dist.hi - dist.lo) * k) / dist.bins.length, x1 = dist.lo + ((dist.hi - dist.lo) * (k + 1)) / dist.bins.length; return <i key={k} className={ok && (inside(x0) || inside(x1)) ? 'on' : ''} style={{ height: `${Math.max(4, (n / maxBin) * 100)}%` }} />; })}
+      </div>
+      <div className="row between small mute num"><span>{fmt(dist.p1)}</span><span>middle {fmt(dist.median)}</span><span>{fmt(dist.p99)}</span></div>
+      {mode === 'between' ? <>
+        <label className="l" htmlFor="c-r1">From {fmt(Math.min(na, nb))}</label>
+        <input id="c-r1" type="range" className="rng" min={dist.lo} max={dist.hi} step={step} value={Math.min(Math.max(na, dist.lo), dist.hi)} onChange={(e) => setA(String(clean(Number(e.target.value))))} aria-label={`${met.short} lower end`} />
+        <label className="l" htmlFor="c-r2">To {fmt(Math.max(na, nb))}</label>
+        <input id="c-r2" type="range" className="rng" min={dist.lo} max={dist.hi} step={step} value={Math.min(Math.max(nb, dist.lo), dist.hi)} onChange={(e) => setB(String(clean(Number(e.target.value))))} aria-label={`${met.short} upper end`} />
+      </> : <>
+        <label className="l" htmlFor="c-r1">{mode === 'gte' ? 'At least' : mode === 'lte' ? 'At most' : 'Around'} {fmt(na)}</label>
+        <input id="c-r1" type="range" className="rng" min={dist.lo} max={dist.hi} step={step} value={Math.min(Math.max(na, dist.lo), dist.hi)} onChange={(e) => setA(String(clean(Number(e.target.value))))} aria-label={`${met.short} value`} />
+      </>}
+    </> : <p className="small mute">Too few companies have this figure to draw it.</p>}
+    <div className="row" style={{ gap: 8, marginTop: 8 }}>
+      <div className="grow"><label className="l" htmlFor="c-v">{mode === 'between' ? 'From' : 'Exact value'}{met.unit.trim() ? ` (${met.unit.trim()})` : ''}</label><input id="c-v" className="field" inputMode="decimal" value={a} onChange={(e) => set('a', e.target.value)} placeholder={String(na)} /></div>
+      {(mode === 'between' || mode === 'around') && <div className="grow"><label className="l" htmlFor="c-v2">{mode === 'between' ? 'To' : 'Plus or minus'}</label><input id="c-v2" className="field" inputMode="decimal" value={b} onChange={(e) => set('b', e.target.value)} placeholder={String(nb)} /></div>}
+    </div>
+    <div className="chips wrap" style={{ marginTop: 8 }} role="group" aria-label="Typical values">{met.presets.map((p) => <button key={p} className="chip" onClick={() => setA(String(p))}>{fmtMetric({ ...met, signed: false }, p)}</button>)}</div>
+    <p className="small num" role="status" style={{ margin: '10px 0 0' }}>{hits === null ? 'Enter a number.' : <><b className="lime">{hits}</b> of {rows.length} companies match with your other filters{ok && conds.length ? ` (${conds.map(describeCond).join(' and ')})` : ''}.</>}{dist && dist.missing > 0 ? <span className="mute"> {dist.missing} have no figure and never match.</span> : null}</p>
     <p className="small dim">A company with no figure for this is left out, never counted as a match. For the financial sector, ratios built on capital employed are not defined and count as no figure.</p>
-    <div className="row" style={{ marginTop: 12 }}><button className="btn grow" onClick={onClose}>Cancel</button><button className="btn pri grow" disabled={!ok} onClick={() => onAdd({ m, op, v: n })}>Add</button></div>
+    <div className="row" style={{ marginTop: 12 }}><button className="btn grow" onClick={onClose}>Cancel</button><button className="btn pri grow" disabled={!ok} onClick={() => onAdd(conds)}>Add</button></div>
   </Sheet>;
 }

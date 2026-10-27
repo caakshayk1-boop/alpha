@@ -85,13 +85,14 @@ export function Today() {
     {/* the market, once: the mood, the Nifty, and the two figures that colour it, with one live label */}
     <section className="moodhero card" aria-label="Market mood">
       <div className="row between"><span className="k">Market mood</span><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
-      {md ? <div className="word" style={{ margin: '8px 0 10px' }}>{md.word}</div> : <div className="sk" style={{ height: 32, width: '45%', margin: '10px 0' }} />}
+      {md ? <div className="word" style={{ margin: '8px 0 10px' }}>{md.word}</div> : <div className="sk" style={{ height: 28, width: '45%', margin: '8px 0 10px' }} />}
       <div className="idx" role="list" aria-label="Indices">
         {pulse.data?.quotes.NIFTY ? <a role="listitem" href={tvIndexUrl('NIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Nifty 50</span><span className="px num"><Tick v={pulse.data.quotes.NIFTY.px}>{pulse.data.quotes.NIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Tick></span><span className={`ch num ${tone(niftyCh)}`}>{pct(niftyCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
           : <span className="dim">{pulse.err ? 'Index prices unavailable' : 'Reading the market…'}</span>}
         <a role="listitem" href={tvIndexUrl('BANKNIFTY')} target="_blank" rel="noopener noreferrer"><span className="nm">Bank Nifty</span><span className="px num"><Tick v={pulse.data?.quotes.BANKNIFTY?.px}>{pulse.data?.quotes.BANKNIFTY ? pulse.data.quotes.BANKNIFTY.px.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '—'}</Tick></span><span className={`ch num ${tone(bankCh)}`}>{pct(bankCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
         <a role="listitem" href={tvIndexUrl('VIX')} target="_blank" rel="noopener noreferrer"><span className="nm">India VIX</span><span className="px num"><Tick v={pulse.data?.quotes.VIX?.px}>{pulse.data?.quotes.VIX ? pulse.data.quotes.VIX.px.toFixed(2) : '—'}</Tick></span><span className={`ch num ${vixCh == null ? '' : vixCh > 0 ? 'down' : vixCh < 0 ? 'up' : ''}`}>{pct(vixCh)}</span><span className="sr"> on TradingView, opens in a new tab</span></a>
       </div>
+      {!pulse.data?.quotes.NIFTY && <div style={{ marginTop: 10, height: 44 }} aria-hidden="true" />}
       {pulse.data?.quotes.NIFTY && <div style={{ marginTop: 10 }}><Spark c={pulse.data.quotes.NIFTY.c} up={(niftyCh ?? 0) >= 0} refs={[{ v: pulse.data.quotes.NIFTY.prev, kind: 'prev' }]} h={44} label="Nifty 50 today" /></div>}
     </section>
       </div>

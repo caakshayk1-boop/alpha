@@ -31,6 +31,29 @@ export function parseYahoo(res, nowMs = Date.now()) {
   return out;
 }
 
+/** Pure: the finished sessions Yahoo's daily rows list but leave incomplete (a null open, high, low or close, which `parseYahoo` drops), newer than the last
+ *  complete bar. A session is finished once the IST day has passed, or today after 15:45. These are the days a position can be waiting on for no reason of its own. */
+export function incompleteSessions(res, daily, nowMs = Date.now()) {
+  const ts = res?.timestamp; if (!Array.isArray(ts) || !daily?.t?.length) return [];
+  const have = new Set(daily.t); const lastT = daily.t[daily.t.length - 1]; const now = istParts(nowMs);
+  return [...new Set(ts.filter((t) => !have.has(t) && t > lastT).map((t) => istParts(t * 1000).day))]
+    .filter((d) => d < now.day || (d === now.day && now.mins >= 15 * 60 + 45));
+}
+/** Pure: those sessions rebuilt from the five-minute chart. Open is the first 5-minute bar's open, high and low run across the day, close is the last bar's close.
+ *  A session is rebuilt only if the chart holds its opening bar (09:15 to 09:25 IST) and a bar from 15:15 IST on; anything less stays missing, never guessed. */
+export function rebuildSessions(res5, days) {
+  const q = res5?.indicators?.quote?.[0]; const ts = res5?.timestamp; if (!q || !Array.isArray(ts)) return [];
+  const out = [];
+  for (const day of days) {
+    const idx = []; ts.forEach((t, i) => { if (istParts(t * 1000).day === day && q.open?.[i] > 0 && q.high?.[i] > 0 && q.low?.[i] > 0 && q.close?.[i] > 0) idx.push(i); });
+    if (idx.length < 20) continue;
+    const first = istParts(ts[idx[0]] * 1000), last = istParts(ts[idx[idx.length - 1]] * 1000);
+    if (first.mins > 9 * 60 + 25 || last.mins < 15 * 60 + 15) continue;
+    out.push({ t: ts[idx[0]], o: r2(q.open[idx[0]]), h: r2(Math.max(...idx.map((i) => q.high[i]))), l: r2(Math.min(...idx.map((i) => q.low[i]))), c: r2(q.close[idx[idx.length - 1]]), day });
+  }
+  return out;
+}
+
 /** Pure: Yahoo's long daily history reduced to epoch seconds and closes. A day missing its close is dropped, never filled. */
 export function parseChart(res, niftyRes) {
   const ts = res?.timestamp; const cl = res?.indicators?.quote?.[0]?.close;
@@ -297,13 +320,22 @@ async function bars(url, ctx) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const out = {}; const missing = [];
   await Promise.all(list.map(async (s) => {
-    const key = new Request(`https://tripwire.internal/__bars_v1/${s}`);
+    const key = new Request(`https://tripwire.internal/__bars_v2/${s}`);
     try {
       const hit = cache && await cache.match(key); if (hit) { out[s] = await hit.json(); return; }
       const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=6mo&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
       if (!r.ok) { missing.push(s); return; }
-      const p = parseYahoo((await r.json())?.chart?.result?.[0]);
+      const res = (await r.json())?.chart?.result?.[0]; const p = parseYahoo(res);
       if (!p) { missing.push(s); return; }
+      const gaps = incompleteSessions(res, p);
+      if (gaps.length) {                 // a finished session Yahoo's daily row has no complete bar for: rebuild it from the five-minute chart, and say so
+        try {
+          const r5 = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=5d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
+          const add = r5.ok ? rebuildSessions((await r5.json())?.chart?.result?.[0], gaps) : [];
+          for (const b of add) { p.t.push(b.t); p.o.push(b.o); p.h.push(b.h); p.l.push(b.l); p.c.push(b.c); }
+          if (add.length) p.rebuilt = add.map((b) => b.day);
+        } catch { /* the sessions stay missing */ }
+      }
       out[s] = p;
       if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(p), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } })));
     } catch { missing.push(s); }          // absent, never zero

@@ -129,3 +129,47 @@ planted_key = wfm.vid(wfm.FAMILY[2]); pl = wfm.walk_forward(fake(effect_for=plan
 assert pl["variants"][planted_key]["supported"] and pl["procedure"]["supported"], pl["procedure"]
 assert sum(pl["chosen"][str(y)] == planted_key for y in pl["test_years"]) >= len(pl["test_years"]) - 2, "the planted variant was not chosen"
 print("walk-forward: choice reads no future data; noise not supported; a planted effect is chosen and found")
+
+# ---- lab panel: the file round-trips exactly (to the paisa), a name is absent before it listed, a gap carries the last close, and the golden fixture the browser decodes is the one written here ----
+import json
+import lab_panel as lp
+rg2 = np.random.default_rng(4); Tn, Nn = 300, 5
+Cx = np.exp(np.cumsum(rg2.normal(0, 0.01, size=(Tn, Nn)), axis=0)) * 100; Cx[:40, 2] = np.nan; Cx[100:103, 1] = np.nan
+dts = [str(np.datetime64("2020-01-01") + k) for k in range(Tn)]
+meta, blob = lp.encode(dts, [f"S{k}" for k in range(Nn)], Cx); back = lp.decode(meta, blob)
+assert meta["first"] == [0, 0, 40, 0, 0], meta["first"]
+assert np.isnan(back[:40, 2]).all() and not np.isnan(back[40:, 2]).any(), "a name must be absent before it listed and present after"
+assert np.allclose(back[~np.isnan(Cx)], np.round(Cx[~np.isnan(Cx)] * 100) / 100, atol=0.0051), "the round trip lost more than a paisa"
+assert np.allclose(back[100:103, 1], back[99, 1]), "a gap must carry the last close, not read as a crash"
+gold = pathlib.Path(__file__).parent.parent / "tests" / "fixtures"
+tiny = np.array([[10.0, np.nan], [10.5, 20.25], [10.25, 20.5], [11.0, 20.5]]); tm, tb = lp.encode(["2026-01-01", "2026-01-02", "2026-01-05", "2026-01-06"], ["AAA", "BBB"], tiny)
+tm["built"] = "fixture"; (gold / "lab_panel_golden.json").write_text(json.dumps(tm, separators=(",", ":"))); (gold / "lab_panel_golden.bin.gz").write_bytes(tb)
+print("lab panel: round trip exact to the paisa; absent before listing; gaps carry; golden fixture written")
+# ---- pairs: ADF has the right size, a planted cointegrated pair is found and earns, independent walks do not, nothing after the formation close is read ----
+import engines_pairs as pr
+rg = np.random.default_rng(11)
+fp = [pr.adf_t(np.cumsum(rg.normal(size=252))) <= pr.ADF_5PCT for _ in range(400)]
+assert np.mean(fp) < 0.12, f"a random walk residual passed the -3.34 bar {np.mean(fp):.2f} of the time"      # nominal 5 percent; the walk itself is not a fitted residual, so this is conservative on size
+ou = np.zeros(252)
+for k in range(1, 252): ou[k] = 0.85 * ou[k - 1] + rg.normal(scale=0.01)
+assert pr.adf_t(ou) <= pr.ADF_5PCT and 3 <= pr.half_life(ou) <= 30, "a mean-reverting series was not recognised"
+def pair_panel(seed, coint, T=1100, N=8):
+    r = np.random.default_rng(seed); lx = np.cumsum(r.normal(0, 0.012, size=(T, N)), axis=0) + 4.0; ly = lx.copy()
+    for j in range(0, N, 2):
+        if coint:
+            e = np.zeros(T)
+            for k in range(1, T): e[k] = 0.85 * e[k - 1] + r.normal(0, 0.012)
+            ly[:, j] = 1.1 * lx[:, j + 1] + e + 0.2
+        else: ly[:, j] = np.cumsum(r.normal(0, 0.012, size=T)) + 4.0
+    C = np.exp(np.where(np.arange(N) % 2 == 0, ly, lx).reshape(T, N)); dates = (np.datetime64("2018-01-01") + np.arange(T)).astype("datetime64[D]")
+    return Panel(dates, [f"S{j}" for j in range(N)], C, C, C, C, np.ones_like(C), np.ones(T)), np.array(["Banks"] * N)
+pp, sec = pair_panel(5, True)
+# make the sibling in each pair move with the first so the correlation gate passes
+chosen = pr.screen(pp.C, 600, sec, True); assert chosen, "the planted cointegrated pairs were not selected"
+res_c = pr.run(pp, sec, True); assert res_c["trades"] >= 5 and res_c["mean_net"] is not None and res_c["mean_net"] > 0, res_c      # a real, strong effect must earn after costs
+before = [(c["a"], c["b"], round(c["beta"], 9)) for c in pr.screen(pp.C, 600, sec, True)]
+pp2 = Panel(pp.dates, pp.syms, pp.O, pp.H, pp.L, pp.C.copy(), pp.V, pp.M); pp2.C[600:] = 7e7
+assert before == [(c["a"], c["b"], round(c["beta"], 9)) for c in pr.screen(pp2.C, 600, sec, True)], "the screen at close i read a price from i or later"
+nulls = [pr.run(pair_panel(s, False)[0], pair_panel(s, False)[1], True) for s in range(20, 26)]
+assert sum(n["supported"] for n in nulls) <= 1, "independent random walks were 'supported' too often"
+print("pairs: ADF size sane, a planted pair is found, the screen reads no future price, noise is not supported")

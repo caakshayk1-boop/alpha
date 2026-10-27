@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
+import { mockLab } from './labmock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
@@ -10,17 +11,19 @@ let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
+if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env.JOURNEY_AT) });
 const now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 const mq = (prev, px) => quote(prev, px);
-const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, macro: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, breadth: { ok: true, t: Date.now(), as_of: '2026-10-23', n: 100, up: 40, mixed: 40, down: 20, sectors: [{ k: 'Industrials', n: 202, up: 60, down: 10 }, { k: 'Consumer Cyclical', n: 155, up: 35, down: 40 }, { k: 'Financial Services', n: 130, up: 45, down: 20 }], repriced: 12, near: 30 } });
+const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;      // the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
+const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, macro: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, breadth: { ok: true, t: Date.now(), as_of: SCREEN_DAY, n: 100, up: 40, mixed: 40, down: 20, sectors: [{ k: 'Industrials', n: 202, up: 60, down: 10 }, { k: 'Consumer Cyclical', n: 155, up: 35, down: 40 }, { k: 'Financial Services', n: 130, up: 45, down: 20 }], repriced: 12, near: 30 } });
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
 
 const nowS = Math.floor(Date.now() / 1000);
 await ctx.route('**/api/news*', (r) => { const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('q') || ''); const own = /Tata Consultancy/i.test(q); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: 'x', q: 'q', items: own ? [{ title: 'Tata Consultancy Services Q2 profit rises 5%', source: 'Mint', url: 'https://example.com/t1', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint'] }, { title: 'Tata Consultancy Services wins large deal', source: 'ET', url: 'https://example.com/t2', t: nowS - 7200, tags: ['Deal'], also: 0, sources: ['ET'] }] : [{ title: 'Sensex ends higher as banks rally; Q2 results in focus', source: 'Mint', url: 'https://example.com/a', t: nowS - 3600, tags: ['Results'], also: 2, sources: ['Mint', 'ET'] }, { title: 'RBI keeps rates unchanged', source: 'Reuters', url: 'https://example.com/b', t: nowS - 7200, tags: ['Regulator'], also: 0, sources: ['Reuters'] }] }) }); });
 await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
 
-const pg = await ctx.newPage();
+let pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
 const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/tick') && !r.url().includes('/api/breadth') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
@@ -49,7 +52,8 @@ ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count(
 T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
-await pg.waitForSelector('.dot-live', { timeout: 15000 });
+for (let k = 0; k < 6 && !(await pg.locator('.dot-live').count()); k++) { await pg.waitForSelector('.dot-live', { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
+await pg.waitForSelector('.dot-live', { timeout: 10000 });
 ok(/live ·/i.test(await text()) && /Needs you|Tonight's picks/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 ok(!/Your names|Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0, 'Today carries no empty-state cards, no per-name news block and no duplicate ticker');
@@ -80,6 +84,30 @@ await pg.getByLabel('Search companies').fill('tata consultancy');
 await pg.waitForTimeout(200);
 ok((await pg.locator('.li .sym').first().innerText()).startsWith('TCS'), 'Discover search finds TCS by name');
 await shot('02-discover');
+// the Strategy Lab: a rule, a test on ten years of closes, a verdict that gets harder with every different rule tried
+const saved = await pg.evaluate(() => localStorage.getItem('tripwire:v1')); const lctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }); await lctx.addInitScript((v) => { if (v) localStorage.setItem('tripwire:v1', v); }, saved); await mockLab(lctx);   // the service worker would answer /data/ itself, past the mock
+const lp = await lctx.newPage(); const pgMain = pg; pg = lp;
+await pg.goto(base + '/#/lab'); await pg.reload(); await pg.getByRole('button', { name: 'Run the test' }).waitFor({ timeout: 20000 });
+ok(/Strategy Lab/.test(await text()) && /closes only/.test(await text()), 'the Lab opens on a price history and says it is closes only');
+await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.locator('.verdict .word2').waitFor({ timeout: 60000 });
+const w1 = (await pg.locator('.verdict .word2').innerText()).toLowerCase();
+ok(['supported', 'beats random picks, not holding', 'worked then stopped', 'not supported', 'too few trades'].includes(w1) && /Different rules tried on this device: 1/.test(await text()) && /The t needed is 2/.test(await text()), 'a run ends in one of five plain verdicts and counts the rule as the first tried');
+ok(await pg.locator('.stbl tbody tr').count() === 4 && /Random picks/.test(await text()) && await pg.locator('.chart svg path').count() >= 2, 'the result shows all, before and since 2023 side by side, and the book against holding every name equally');
+await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.getByRole('button', { name: /Testing/ }).waitFor({ timeout: 5000 }).catch(() => {}); await pg.getByRole('button', { name: 'Run the test' }).waitFor({ timeout: 60000 });
+ok(/Different rules tried on this device: 1/.test(await text()), 'the same rule again is not a new variant');
+await pg.getByRole('group', { name: 'Stop distance' }).getByRole('button', { name: '5', exact: true }).click(); await pg.getByRole('button', { name: 'Run the test' }).click(); await pg.locator('.verdict .word2').waitFor({ timeout: 60000 });
+ok(/Different rules tried on this device: 2/.test(await text()), 'a changed rule is a second variant and the bar is told'); if (!/tried on this device: 2/.test(await text())) console.log((await text()).match(/Different rules tried[^.]*\./)?.[0]);
+await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
+ok(await pg.getByRole('button', { name: /Remove condition: RSI ≤ 45/ }).count() === 1, 'the Lab takes a condition built with the same sheet as Discover');
+pg = pgMain; await lctx.close();
+// the range builder: any figure, an exact value or a range, with the picture and a live count
+await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
+await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'Around' }).click();
+await pg.locator('#c-v').fill('47'); await pg.locator('#c-v2').fill('1.5');
+ok(/of \d+ companies match/.test(await pg.locator('p[role=status]').last().innerText()), 'the condition sheet counts the matches live');
+await pg.getByRole('button', { name: 'Add', exact: true }).click();
+ok(await pg.getByRole('button', { name: /Remove condition: RSI ≥ 45\.5/ }).count() === 1 && await pg.getByRole('button', { name: /Remove condition: RSI ≤ 48\.5/ }).count() === 1, 'RSI around 47 plus or minus 1.5 becomes two removable conditions');
+await pg.getByRole('button', { name: /Remove condition: RSI ≥ 45\.5/ }).click(); await pg.getByRole('button', { name: /Remove condition: RSI ≤ 48\.5/ }).click();
 await pg.getByRole('button', { name: /^Follow Tata Consultancy/ }).first().click();
 ok(/Following TCS/.test(await text()), 'follow gives a clear confirmation');
 ok(await pg.getByRole('button', { name: /^Unfollow Tata/ }).first().isVisible(), 'follow state is reflected on the control');

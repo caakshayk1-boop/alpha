@@ -1,0 +1,48 @@
+{
+ "meta": {
+  "when": "2026-10-27 04:21 UTC",
+  "symbols": 660,
+  "dates": [
+   "2015-10-27",
+   "2026-10-27"
+  ]
+ },
+ "pairs": {
+  "filtered": {
+   "quarters": 39,
+   "pairs": 377,
+   "trades": 2039,
+   "mean_net": -0.00627,
+   "win": 0.283,
+   "monthly_mean": -0.00589,
+   "t": -6.67,
+   "months": 118,
+   "ended": {
+    "converged": 144,
+    "stopped": 1691,
+    "timeout": 70,
+    "forced": 134
+   },
+   "persistence": 0.536,
+   "supported": false
+  },
+  "control": {
+   "quarters": 39,
+   "pairs": 390,
+   "trades": 1633,
+   "mean_net": -0.00564,
+   "win": 0.267,
+   "monthly_mean": -0.0036,
+   "t": -2.92,
+   "months": 117,
+   "ended": {
+    "converged": 80,
+    "stopped": 1307,
+    "timeout": 115,
+    "forced": 131
+   },
+   "persistence": null,
+   "supported": false
+  }
+ }
+}

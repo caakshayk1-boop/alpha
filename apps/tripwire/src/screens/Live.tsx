@@ -31,6 +31,20 @@ function DayChart({ pts }: { pts: { t: number; v: number }[] }) {
     <div className="row between small mute num" style={{ marginTop: 4 }}><span>{tm(t0)}</span><span>today, 5-minute</span><span>{tm(t1)}</span></div></div>;
 }
 
+/** One position's road: the stop on the left, the entry, the two targets to the right, and where the price is now. Scaled to those five numbers only. */
+function Road({ l }: { l: Line }) {
+  const pts = [l.stop, l.entry, l.last, ...(l.t1 != null ? [l.t1] : []), ...(l.t2 != null ? [l.t2] : [])]; const lo = Math.min(...pts), hi = Math.max(...pts); const w = hi > lo ? hi - lo : 1;
+  const at = (v: number) => `${Math.min(100, Math.max(0, ((v - lo) / w) * 100))}%`;
+  return <div className="road" role="img" aria-label={`Stop ${inr(l.stop)}, entry ${inr(l.entry)}, now ${inr(l.last)}${l.t1 != null ? `, first target ${inr(l.t1)}` : ''}${l.t2 != null ? `, second target ${inr(l.t2)}` : ''}`}>
+    <i className="seg lose" style={{ left: at(l.stop), width: `calc(${at(l.entry)} - ${at(l.stop)})` }} />
+    {l.t2 != null && <i className="seg win" style={{ left: at(l.entry), width: `calc(${at(l.t2)} - ${at(l.entry)})` }} />}
+    <b className="mk stop" style={{ left: at(l.stop) }} /><b className="mk ent" style={{ left: at(l.entry) }} />
+    {l.t1 != null && <b className="mk tgt" style={{ left: at(l.t1) }} />}{l.t2 != null && <b className="mk tgt" style={{ left: at(l.t2) }} />}
+    <b className={`mk now ${l.pnl >= 0 ? 'up' : 'dn'}`} style={{ left: at(l.last) }} />
+    <span className="lbl l">{inr0(l.stop)}</span>{l.t2 != null && <span className="lbl r">{inr0(l.t2)}</span>}
+  </div>;
+}
+
 export function Live() {
   const s = useAppState(); const scr = useScreen(); const auto = useAutoBook(true); const own = useLiveBook(true);
   const [key, setKey] = useState<Key>('pnl'); const [dir, setDir] = useState<'asc' | 'desc'>('desc');
@@ -46,7 +60,7 @@ export function Live() {
   if (!rows.length && !auto.ledger.loading) return <div><PageBar title="Live P&L" onBack /><Empty title="No paper position yet">When the first pick enters at its next open, it appears here with its own live P&L.</Empty></div>;
   return <div>
     <PageBar title="Live P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
-    <section className="card">
+    <section className={`card hero${live ? ' livecard' : ''}`}>
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : auto.session.label} /><span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 10 }}>
         <div><div className="k">Open P&L (paper)</div><div className={`num amt ${tone(tot.pnl)}`} style={{ font: '700 1.75rem/1.1 var(--mono)' }}><Tick v={ls.length ? tot.pnl : null}>{ls.length ? money(tot.pnl) : '—'}</Tick></div>
@@ -57,6 +71,15 @@ export function Live() {
       {tot.best && tot.worst && ls.length > 1 && <div className="row between small num" style={{ marginTop: 6 }}><span>Best <b>{tot.best.sym}</b> <span className={tone(tot.best.pnl)}>{money(tot.best.pnl)}</span></span><span>Worst <b>{tot.worst.sym}</b> <span className={tone(tot.worst.pnl)}>{money(tot.worst.pnl)}</span></span></div>}
       {auto.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {auto.intra.err}. {own.bars.data || auto.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </section>
+
+    {ls.length > 0 && <><Head aside={<span className="small mute">stop · entry · targets</span>}>Positions</Head>
+      <div className="poscards">{sorted.map((l: Line) => <a key={l.id} href={`#/c/${l.sym}`} className={`poscard ${l.pnl >= 0 ? 'win' : 'lose'}`}>
+        <div className="row between"><b>{l.sym}</b><span className="tag">{styleDef(l.style).label}</span></div>
+        <div className={`num amt big ${tone(l.pnl)}`}>{money(l.pnl)} <span className="small">{pct(l.pct)}</span></div>
+        <Road l={l} />
+        <div className="row between small mute num"><span>{inr(l.entry)} in</span><span>{l.live ? 'live' : 'close'} {inr(l.last)}</span></div>
+      </a>)}</div></>}
+    {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Waiting ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
 
     <Head aside={<span className="small mute">tap a heading to sort</span>}>Blotter</Head>
     {ls.length ? <div className="stbl-wrap"><table className="stbl"><caption className="sr">Open paper positions with live profit and loss. Tap a column heading to sort.</caption>

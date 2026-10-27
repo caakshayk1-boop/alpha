@@ -44,7 +44,7 @@ for (const f of ['signals.json', 'engines_v3.json']) if (existsSync(join(PUB, f)
 
 // the study results (apps/tripwire/research/results), so every screen can say what the history says
 mkdirSync(join(DIST, 'data', 'research'), { recursive: true });
-for (const f of ['factor_study.json', 'engines_backtest.json', 'engines_walkforward.json']) { const src = join(HERE, 'research', 'results', f); if (existsSync(src)) cpSync(src, join(DIST, 'data', 'research', f)); }
+for (const f of ['factor_study.json', 'engines_backtest.json', 'engines_walkforward.json', 'engines_pairs.json', 'lab_panel.json', 'lab_panel.bin.gz']) { const src = join(HERE, 'research', 'results', f); if (existsSync(src)) cpSync(src, join(DIST, 'data', 'research', f)); }
 
 // static shell
 const html = readFileSync(join(HERE, 'static/index.html'), 'utf8').replaceAll('__STAMP__', stamp);

@@ -4,8 +4,9 @@
 import type { Row } from './screen.ts';
 import { eligibilityOf, meaningful, type MetricId } from './eligibility.ts';
 
-export type MetricKey = 'price' | 'r1d' | 'r1m' | 'r3m' | 'rs3m' | 'from_high' | 'rsi' | 'vol_spike' | 'turnover_cr' | 'pe' | 'pb' | 'roce_med' | 'roe' | 'rev_cagr' | 'eps_cagr' | 'de' | 'net_margin' | 'piotroski' | 'comp' | 'atr_pct';
-export interface Metric { id: MetricKey; label: string; short: string; unit: string; dp: number; hint: string; presets: number[]; /** returns "this ratio is not meaningful for this company" */ elig?: MetricId; signed?: boolean }
+export type MetricKey = 'price' | 'r1d' | 'r1m' | 'r3m' | 'rs3m' | 'from_high' | 'rsi' | 'vol_spike' | 'turnover_cr' | 'pe' | 'pb' | 'roce_med' | 'roe' | 'rev_cagr' | 'eps_cagr' | 'de' | 'net_margin' | 'piotroski' | 'comp' | 'atr_pct' | 'r1w' | 'r6m' | 'r1y' | 'dist20' | 'dist50' | 'dist200' | 'from_low' | 'pe_pctile' | 'ebit_margin' | 'fcf_margin' | 'icover' | 'cfo_pat' | 'insiders' | 'instis' | 'sd1y' | 'q' | 'g' | 'v' | 'tech';
+export interface Metric { id: MetricKey; label: string; short: string; unit: string; dp: number; hint: string; presets: number[]; /** returns "this ratio is not meaningful for this company" */ elig?: MetricId; signed?: boolean; /** a figure worked out from the row's own published numbers */ derive?: (r: Row) => number | null; group?: string }
+const rel = (a?: number | null, b?: number | null) => (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b) && b > 0 ? Math.round(((a / b - 1) * 100) * 100) / 100 : null);
 export const METRICS: Metric[] = [
   { id: 'price', label: 'Price', short: 'PRICE', unit: '₹', dp: 2, hint: 'last close', presets: [100, 500, 1000] },
   { id: 'r1d', label: 'Day change', short: '1D', unit: '%', dp: 1, hint: 'last session', presets: [-3, 3, 5], signed: true },
@@ -27,14 +28,33 @@ export const METRICS: Metric[] = [
   { id: 'piotroski', label: 'Piotroski F-score', short: 'F-SCORE', unit: '', dp: 0, hint: '0 to 9 accounting-strength checks', presets: [5, 7, 8] },
   { id: 'comp', label: 'Screen composite', short: 'COMPOSITE', unit: '', dp: 0, hint: '0 to 100, quality, growth, value and technicals together', presets: [50, 65, 80] },
   { id: 'atr_pct', label: 'Daily range (ATR %)', short: 'ATR %', unit: '%', dp: 1, hint: 'how far it moves in a day; bigger means a wider stop', presets: [2, 3, 5] },
+  { id: 'r1w', label: 'Return, 1 week', short: '1W', unit: '%', dp: 1, hint: '5 sessions', presets: [-5, 0, 5], signed: true },
+  { id: 'r6m', label: 'Return, 6 months', short: '6M', unit: '%', dp: 1, hint: '126 sessions', presets: [-10, 0, 30], signed: true },
+  { id: 'r1y', label: 'Return, 1 year', short: '1Y', unit: '%', dp: 1, hint: '252 sessions', presets: [-10, 10, 50], signed: true },
+  { id: 'dist20', label: 'Price against its 20-day average', short: 'VS 20D', unit: '%', dp: 1, hint: 'positive means above the average', presets: [-5, 0, 5], signed: true, derive: (r) => rel(r.price, r.sma20) },
+  { id: 'dist50', label: 'Price against its 50-day average', short: 'VS 50D', unit: '%', dp: 1, hint: 'positive means above the average', presets: [-5, 0, 10], signed: true, derive: (r) => rel(r.price, r.sma50) },
+  { id: 'dist200', label: 'Price against its 200-day average', short: 'VS 200D', unit: '%', dp: 1, hint: 'positive means above the average', presets: [-10, 0, 20], signed: true, derive: (r) => rel(r.price, r.sma200) },
+  { id: 'from_low', label: 'Above the 52-week low', short: 'FROM LOW', unit: '%', dp: 0, hint: 'zero or above; 100 means doubled from the low', presets: [10, 50, 100], derive: (r) => rel(r.price, r.low52) },
+  { id: 'pe_pctile', label: 'PE against its own history', short: 'PE PCTILE', unit: '', dp: 0, hint: '0 is its cheapest PE on record here, 100 its dearest', presets: [20, 50, 80] },
+  { id: 'ebit_margin', label: 'Operating margin', short: 'EBIT MARGIN', unit: '%', dp: 0, hint: '', presets: [5, 15, 25], elig: 'margin' },
+  { id: 'fcf_margin', label: 'Free cash flow margin', short: 'FCF MARGIN', unit: '%', dp: 0, hint: 'free cash flow over sales', presets: [0, 5, 15], signed: true },
+  { id: 'icover', label: 'Interest cover', short: 'INT COVER', unit: '×', dp: 1, hint: 'operating profit over interest; not defined for lenders', presets: [2, 4, 8], elig: 'cover' },
+  { id: 'cfo_pat', label: 'Cash profit against reported profit', short: 'CFO/PAT', unit: '×', dp: 2, hint: 'above 1 means profit is backed by cash', presets: [0.5, 1, 1.2], elig: 'cash' },
+  { id: 'insiders', label: 'Insider holding', short: 'INSIDERS', unit: '%', dp: 0, hint: "Yahoo's insiders bucket, a proxy and not promoter holding", presets: [25, 50, 70] },
+  { id: 'instis', label: 'Institutional holding', short: 'INSTIS', unit: '%', dp: 0, hint: '', presets: [5, 15, 30] },
+  { id: 'sd1y', label: 'Yearly volatility', short: 'VOL 1Y', unit: '%', dp: 0, hint: 'annualised standard deviation of daily returns', presets: [20, 35, 50] },
+  { id: 'q', label: 'Quality score', short: 'QUALITY', unit: '', dp: 0, hint: '0 to 100, the screen\'s own', presets: [40, 60, 80] },
+  { id: 'g', label: 'Growth score', short: 'GROWTH', unit: '', dp: 0, hint: '0 to 100, the screen\'s own', presets: [40, 60, 80] },
+  { id: 'v', label: 'Value score', short: 'VALUE', unit: '', dp: 0, hint: '0 to 100, the screen\'s own', presets: [40, 60, 80] },
+  { id: 'tech', label: 'Technical score', short: 'TECH', unit: '', dp: 0, hint: '0 to 100, the screen\'s own', presets: [20, 40, 70] },
 ];
 export const metricOf = (id: string) => METRICS.find((m) => m.id === id);
 export interface Cond { m: MetricKey; op: 'gte' | 'lte'; v: number }
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 /** The figure for a row, or null when there is none or it is not meaningful for this company. */
 export function valueOf(r: Row, id: MetricKey): number | null {
-  const v = (r as unknown as Record<string, unknown>)[id]; if (!num(v)) return null;
-  const m = metricOf(id); if (m?.elig && !meaningful(eligibilityOf(r), m.elig)) return null;
+  const m = metricOf(id); const v = m?.derive ? m.derive(r) : (r as unknown as Record<string, unknown>)[id]; if (!num(v)) return null;
+  if (m?.elig && !meaningful(eligibilityOf(r), m.elig)) return null;
   return v;
 }
 export function applyConds(rows: readonly Row[], conds: readonly Cond[] | undefined): { rows: Row[]; noFigure: number } {
@@ -48,7 +68,8 @@ export function applyConds(rows: readonly Row[], conds: readonly Cond[] | undefi
   return { rows: out, noFigure };
 }
 export const fmtMetric = (m: Metric, v: number | null) => (v === null ? '—' : `${m.signed && v > 0 ? '+' : ''}${m.unit === '₹' ? '₹' : ''}${v.toLocaleString('en-IN', { minimumFractionDigits: m.dp, maximumFractionDigits: m.dp })}${m.unit === '₹' ? '' : m.unit}`);
-export const describeCond = (c: Cond) => { const m = metricOf(c.m); return m ? `${m.short} ${c.op === 'gte' ? '≥' : '≤'} ${fmtMetric({ ...m, signed: false }, c.v)}` : ''; };
+/** A condition is read back with every digit it was set with (up to two decimals), so "RSI around 47" never reads as a rounded threshold it is not. */
+export const describeCond = (c: Cond) => { const m = metricOf(c.m); if (!m) return ''; const dec = Math.min(2, (String(c.v).split('.')[1] ?? '').length); return `${m.short} ${c.op === 'gte' ? '≥' : '≤'} ${fmtMetric({ ...m, signed: false, dp: Math.max(m.dp, dec) }, c.v)}`; };
 export const sameCond = (a: Cond, b: Cond) => a.m === b.m && a.op === b.op && a.v === b.v;
 
 /** The table view's column sets: each a reading of the screen from one angle. */
@@ -56,6 +77,8 @@ export const COLUMN_SETS: { id: string; label: string; cols: MetricKey[] }[] = [
   { id: 'momentum', label: 'Momentum', cols: ['price', 'r1d', 'r1m', 'r3m', 'rs3m', 'rsi', 'from_high', 'vol_spike'] },
   { id: 'value', label: 'Value', cols: ['price', 'pe', 'pb', 'roce_med', 'roe', 'rev_cagr', 'eps_cagr', 'turnover_cr'] },
   { id: 'quality', label: 'Quality', cols: ['roce_med', 'de', 'net_margin', 'piotroski', 'comp', 'rev_cagr', 'atr_pct'] },
+  { id: 'trend', label: 'Trend', cols: ['price', 'dist20', 'dist50', 'dist200', 'from_low', 'from_high', 'r6m', 'r1y'] },
+  { id: 'cash', label: 'Cash and holders', cols: ['ebit_margin', 'fcf_margin', 'cfo_pat', 'icover', 'insiders', 'instis', 'sd1y'] },
 ];
 export function sortByMetric(rows: readonly Row[], id: MetricKey | 'name', dir: 'asc' | 'desc'): Row[] {
   const s = dir === 'asc' ? 1 : -1;
@@ -73,3 +96,24 @@ export function toCsv(rows: readonly Row[], cols: readonly MetricKey[]): string 
   const head = ['symbol', 'name', 'sector', ...cols.map((c) => metricOf(c)?.label ?? c)].map(q).join(',');
   return [head, ...rows.map((r) => [r.sym, r.name, r.sector ?? '', ...cols.map((c) => { const v = valueOf(r, c); return v === null ? '' : String(v); })].map(q).join(','))].join('\n') + '\n';
 }
+
+/** What a figure looks like across the universe: the typical range, the middle, and a histogram clipped to the 1st-99th percentile so one absurd ratio
+ *  cannot flatten it. Names with no figure are counted, not placed. Everything is read from the same valueOf as the filter, so the picture and the result agree. */
+export interface Dist { n: number; missing: number; min: number; max: number; p1: number; p99: number; median: number; bins: number[]; lo: number; hi: number }
+export function distribution(rows: readonly Row[], id: MetricKey, nbins = 24): Dist | null {
+  const xs = rows.map((r) => valueOf(r, id)).filter((v): v is number => v !== null).sort((a, b) => a - b);
+  if (xs.length < 2) return null;
+  const at = (p: number) => xs[Math.min(xs.length - 1, Math.max(0, Math.round(p * (xs.length - 1))))];
+  const lo = at(0.01), hi = at(0.99), w = hi > lo ? (hi - lo) / nbins : 1; const bins = new Array(nbins).fill(0);
+  for (const v of xs) { if (v < lo || v > hi) continue; bins[Math.min(nbins - 1, Math.floor((v - lo) / w))]++; }
+  return { n: xs.length, missing: rows.length - xs.length, min: xs[0], max: xs[xs.length - 1], p1: lo, p99: hi, median: at(0.5), bins, lo, hi };
+}
+/** The condition(s) a chosen mode stands for. 'around' is the value plus or minus a tolerance, written as two conditions so they are removable one by one. */
+export type RangeMode = 'gte' | 'lte' | 'between' | 'around';
+export function condsFor(m: MetricKey, mode: RangeMode, a: number, b: number): Cond[] {
+  if (mode === 'gte') return [{ m, op: 'gte', v: a }];
+  if (mode === 'lte') return [{ m, op: 'lte', v: a }];
+  if (mode === 'around') { const t = Math.abs(b); return [{ m, op: 'gte', v: round(a - t) }, { m, op: 'lte', v: round(a + t) }]; }
+  const [lo, hi] = a <= b ? [a, b] : [b, a]; return [{ m, op: 'gte', v: lo }, { m, op: 'lte', v: hi }];
+}
+const round = (x: number) => Math.round(x * 1e6) / 1e6;

@@ -672,3 +672,23 @@ a.li.news:hover .nt{text-decoration:underline;text-underline-offset:3px}
 .c-lvl{position:absolute;left:6px;transform:translateY(-110%);font:500 .5938rem/1 var(--mono);letter-spacing:.03em;pointer-events:none;background:var(--bg2);padding:0 2px}
 
 .askbox{display:flex;gap:8px;margin:8px 0 0}.askbox .field{flex:1;min-width:0}
+
+.hist{display:flex;align-items:flex-end;gap:2px;height:64px;margin:12px 0 4px}.hist i{flex:1;background:var(--s3);border-radius:2px 2px 0 0;min-height:3px;transition:background .15s}.hist i.on{background:var(--lime);box-shadow:0 0 10px color-mix(in srgb,var(--lime) 45%,transparent)}
+.rng{width:100%;accent-color:var(--lime);height:28px;margin:0}.rng:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+
+/* roads, cards and glow: a position as a path from its stop to its targets (the idea of a bot card, with only measured numbers on it) */
+.poscards{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:640px){.poscards{grid-template-columns:1fr 1fr}}@media(min-width:1100px){.poscards{grid-template-columns:repeat(3,1fr)}}
+.poscard{display:block;background:var(--s2);border:1px solid var(--line);border-radius:8px;padding:12px;color:inherit;text-decoration:none;transition:border-color .18s,box-shadow .18s}
+@media(hover:hover) and (pointer:fine){.poscard.win:hover{border-color:color-mix(in srgb,var(--up) 55%,var(--line));box-shadow:0 0 22px color-mix(in srgb,var(--up) 14%,transparent)}.poscard.lose:hover{border-color:color-mix(in srgb,var(--down) 55%,var(--line));box-shadow:0 0 22px color-mix(in srgb,var(--down) 14%,transparent)}}
+.poscard .big{font:700 1.25rem/1.2 var(--mono);margin:6px 0 14px}.poscard .big .small{font-weight:500}
+.poscard.win .big.up{text-shadow:0 0 16px color-mix(in srgb,var(--up) 45%,transparent)}.poscard.lose .big.down{text-shadow:0 0 16px color-mix(in srgb,var(--down) 45%,transparent)}
+.road{position:relative;height:6px;margin:6px 4px 20px;background:var(--s3);border-radius:3px}
+.road .seg{position:absolute;top:0;bottom:0;border-radius:3px;opacity:.55}.road .seg.lose{background:var(--down)}.road .seg.win{background:var(--up)}
+.road .mk{position:absolute;top:50%;width:2px;height:14px;transform:translate(-50%,-50%);background:var(--mute);border-radius:1px}.road .mk.tgt{background:var(--up)}.road .mk.stop{background:var(--down)}
+.road .mk.now{width:10px;height:10px;border-radius:50%;border:2px solid var(--bg);background:var(--lime)}.road .mk.now.up{background:var(--up);box-shadow:0 0 12px var(--up)}.road .mk.now.dn{background:var(--down);box-shadow:0 0 12px var(--down)}
+.road .lbl{position:absolute;top:12px;font:500 .625rem/1 var(--mono);color:var(--mute)}.road .lbl.l{left:0}.road .lbl.r{right:0}
+.hero.livecard{border-color:color-mix(in srgb,var(--lime) 35%,var(--line));box-shadow:0 0 28px color-mix(in srgb,var(--lime) 8%,transparent)}
+.hero .amt.up{text-shadow:0 0 18px color-mix(in srgb,var(--up) 40%,transparent)}.hero .amt.down{text-shadow:0 0 18px color-mix(in srgb,var(--down) 40%,transparent)}
+@media(prefers-reduced-motion:no-preference){.hero.livecard{animation:heroGlow 3.2s ease-in-out infinite}@keyframes heroGlow{0%,100%{box-shadow:0 0 18px color-mix(in srgb,var(--lime) 5%,transparent)}50%{box-shadow:0 0 34px color-mix(in srgb,var(--lime) 13%,transparent)}}}
+.moodhero .idx>.dim{display:block;padding:6px 0;border-top:1px solid var(--line);font-size:.8125rem;line-height:1.35;min-height:2.1rem}
+.verdict .word2{font:700 1.5rem/1.1 var(--mono);text-transform:uppercase;margin-top:4px}.verdict.good{border-color:color-mix(in srgb,var(--up) 50%,var(--line));box-shadow:0 0 24px color-mix(in srgb,var(--up) 12%,transparent)}.verdict.good .word2{color:var(--up)}
