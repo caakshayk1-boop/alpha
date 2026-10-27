@@ -3,7 +3,7 @@ import { mockTick } from './tickmock.mjs';
 import { mockNews } from './newsmock.mjs';
 export const STATE = { v: 1, follows: ['TCS', 'GCSL'], plans: [], compares: [], screens: [], snaps: {}, onboarded: true, reviews: [],
   paper: [{ id: 'pp1', sym: 'TCS', engine: 'MOM', asOf: '2026-10-23', ref: 2530, stop: 2400, horizon: 20, qty: 10, takenAt: 1792000000 }],
-  prefs: { motion: 'auto', haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
+  prefs: { motion: 'auto', motionV: 2, haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
   entries: [{ id: 'x1', sym: 'TCS', created: '2026-10-01T00:00:00Z', archived: false, versions: [{ at: '2026-10-01T00:00:00Z', thesis: 'Seed thesis', support: 'Steady compounder', counter: 'Slow growth', decision: 'watch', invalidation: 'Close below 2,400', trigger: '', reviewOn: '2026-10-10' }] }] };
 export const quoteOf = (prev, px, seed = 1) => { const now = Math.floor(Date.now() / 1000); return { t: Array.from({ length: 40 }, (_, i) => now - (40 - i) * 300), c: Array.from({ length: 40 }, (_, i) => +(prev + (px - prev) * (i / 39) + Math.sin(i / 3 + seed) * prev * 0.002).toFixed(2)), px, pt: now - 20, prev, live: true }; };
 export async function mockApi(ctx) {

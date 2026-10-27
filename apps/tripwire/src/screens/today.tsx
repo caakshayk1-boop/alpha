@@ -75,8 +75,7 @@ export function Today() {
       </section>
 
       {/* (b) what matters now */}
-      <section className="tsec tnews" aria-labelledby="t-news" data-sec="news">
-        <h2 id="t-news" className="sec">What matters now</h2>
+      <section className="tsec tnews" aria-label="What matters now" data-sec="news">
         <div className="newsslot">{late && <WhatMattersNowSlot syms={s.follows} />}</div>
       </section>
 

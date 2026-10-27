@@ -52,6 +52,31 @@ export function buildEntity({ sym, name, aliases = [] }) {
 }
 export const buildRegistry = (list) => list.map(buildEntity);
 
+/** Where a house abbreviation or bare symbol is NOT the company. "SBI Life" and "SBI Cards" are other listed companies; "ITC" beside GST words is the input tax credit, and "ITC Hotels" is a separate listed company. A veto only removes a match; it never creates one. */
+const VETO = {
+  ITC: { follow: /^\s*(hotels?|grand|welcomhotel|brief)\b/i, context: /\b(gst\w*|gstr[\w-]*|gstat|cgst|igst|sgst|input tax|tax credit|cbic|customs|income[- ]tax|itat|tribunal|refunds?|reversal|invoices?|section \d+[\w()]*|eligib\w+|capital goods)\b/i },
+  SBIN: { follow: /^\s*(life|cards?|mutual|general|funds?|securities|caps|capital|payments?)\b/i },
+};
+/** A single word of a company name ("Bajaj", "Kotak", "Reliance") stands for the company only when what follows it is not another capitalised word: "Bajaj Electricals" is not Bajaj Finance and "Kotak Neo" is not Kotak Bank. A corporate cue, a plain verb, or the rest of the company's own name may follow. */
+const VERB = /^(reports?|posts?|announces?|says?|gets?|wins?|bags?|launch\w*|plans?|hikes?|cuts?|rises?|falls?|jumps?|surges?|slips?|gains?|drops?|raises?|approves?|signs?|receives?|issues?|sets?|names?|appoints?|files?|settles?|to|at|in|on|as|with|by|and|or|for|from|of|may|will|is|are|has|have|hits?|crosse?s?|buys?|sells?|stock|stocks|share|shares|q[1-4]\w*|fy\w*)$/i;
+function vetoed(e, re, text) {
+  const v = VETO[e.sym]; if (!v) return false;
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); let any = false;
+  for (const m of text.matchAll(g)) { any = true; const after = text.slice(m.index + m[0].length); if (!(v.follow && v.follow.test(after)) && !(v.context && v.context.test(text))) return false; }
+  return any;
+}
+function wordStands(text, key, entity) {
+  const re = new RegExp(`(?<![A-Za-z0-9&])${esc(key)}(?![A-Za-z0-9&])([ \\t]+([A-Za-z][A-Za-z0-9&]*))?`, 'gi'); const own = norm(entity.name || '').split(' ');
+  let seen = false;
+  for (const m of text.matchAll(re)) {
+    seen = true; const next = m[2]; if (!next) return true;
+    if (!/^[A-Z]/.test(next)) return true;                                        // lower-case next word: "Reliance shares"
+    const n = next.toLowerCase();
+    if (VERB.test(n) || CUE.test(n)) return true;
+    if (own.some((t) => t && (t.startsWith(n) || n.startsWith(t)))) return true;     // "Torrent Pharma" for Torrent Pharmaceuticals
+  }
+  return !seen;
+}
 const upperShare = (t) => { const L = t.match(/[A-Za-z]/g) ?? []; return L.length ? L.filter((c) => c === c.toUpperCase()).length / L.length : 0; };
 /** Entities a headline is about, best first. Longest phrase wins and is consumed, so "Tata Motors Passenger Vehicles" does not also match "Tata Motors". */
 export function matchEntities(headline, registry) {
@@ -63,13 +88,14 @@ export function matchEntities(headline, registry) {
   for (const { e, k } of phrases) {
     if ((k.kind === 'word' || k.kind === 'word-name') && !cue) continue;
     const needle = ` ${k.text} `; const at = padded.indexOf(needle); if (at < 0) continue;
+    if ((k.kind === 'word' || k.kind === 'word-name') && !wordStands(text, k.text, e)) continue;
     padded = padded.split(needle).join(` ${'§ '.repeat(k.text.split(' ').length)}`);
     put(e, k.conf, k.kind === 'name' || k.kind === 'word-name' ? 'name' : k.kind === 'word' ? 'single word + corporate cue' : k.kind, at);
   }
   for (const e of registry) {
     if (e.markers.some((m) => m.test(text))) { put(e, 0.95, 'symbol with exchange marker', -1); continue; }
-    if (e.caps.some((r) => r.test(text)) && !caps) { put(e, 0.85, 'house abbreviation', -1); continue; }
-    if (e.bare && !caps && e.bare.test(text)) put(e, 0.8, 'symbol', -1);
+    if (e.caps.some((r) => vetoed(e, r, text) === false && r.test(text)) && !caps) { put(e, 0.85, 'house abbreviation', -1); continue; }
+    if (e.bare && !caps && vetoed(e, e.bare, text) === false && e.bare.test(text)) put(e, 0.8, 'symbol', -1);
   }
   return [...found.values()].sort((a, b) => b.confidence - a.confidence || a.at - b.at).map(({ sym, name, confidence, matchedOn }) => ({ sym, name, confidence, matchedOn }));
 }
