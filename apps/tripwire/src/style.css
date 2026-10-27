@@ -749,3 +749,68 @@ details.more>div{padding:2px 0 6px 2ch;color:var(--dim);font-size:.8125rem;line-
 .factstrip small{display:block;color:var(--mute);font-size:.625rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.factstrip b{display:block;font-size:.875rem;line-height:1.25}
 /* the mood card's first row reserves two lines: the live label and "observed" text may wrap on a narrow phone, and the card must not grow when they arrive */
 .moodhero>.row.between:first-child{min-height:2.6rem;align-items:flex-start}
+
+/* ===== UI revamp, 27 Oct 2026 =====================================================================================================================
+   Tokens first: spacing, type, radius, elevation, contrast and motion are variables, and the new work reads only these.
+   Motion rules: press 100-140ms, selection 160-220ms, disclosure 180-240ms, sheet and navigation 220-300ms. Strong ease-out for anything entering or responding,
+   ease-in-out only for movement already on screen, never ease-in, never `transition: all`, never scale(0). Everything that moves is switched off by html:not(.fx)
+   (the in-app motion setting, and the device's reduce-motion setting which also removes .fx) and leaves colour and opacity changes as the feedback. */
+:root{
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
+  --fs-xs:.75rem;--fs-sm:.8125rem;--fs-md:.9375rem;--fs-lg:1.125rem;--fs-xl:1.5rem;--lh-tight:1.2;--lh-body:1.5;
+  --rad-sm:8px;--rad-md:12px;--rad-lg:16px;
+  --elev-1:0 1px 2px rgba(0,0,0,.4);--elev-2:0 8px 24px rgba(0,0,0,.5);
+  --tx-2:#c9cfb6;                       /* secondary text: 10:1 or better on every surface */
+  --dur-press:120ms;--dur-select:200ms;--dur-disclose:220ms;--dur-sheet:260ms;
+  --ease-out:cubic-bezier(.23,1,.32,1);--ease-io:cubic-bezier(.77,0,.175,1);--ease-drawer:cubic-bezier(.32,.72,0,1);
+  --hit:44px;
+}
+/* a segmented radio group: one indicator that slides to the chosen item */
+.mini-seg.radios{position:relative}
+.mini-seg.radios .ms-ind{position:absolute;left:0;top:0;bottom:0;background:var(--s3);box-shadow:inset 0 -2px 0 var(--lime);pointer-events:none;transition:transform var(--dur-select) var(--ease-out),width var(--dur-select) var(--ease-out)}
+.mini-seg.radios button{position:relative;z-index:1;transition-property:color,opacity;transition-duration:var(--dur-select);transition-timing-function:var(--ease-out)}
+.mini-seg.radios button[aria-checked=true]{background:transparent;color:var(--lime);box-shadow:none}
+.mini-seg button:focus-visible{outline:2px solid var(--lime);outline-offset:-2px;z-index:2}
+.mini-seg button[disabled]{opacity:.4;cursor:not-allowed}
+@media (hover:hover) and (pointer:fine){.mini-seg button:not([disabled]):hover{color:var(--tx)}.mini-seg button[aria-checked=true]:hover{color:var(--lime)}}
+/* press feedback on every pressable control, on pointer-down, fast */
+.btn,.chip,.icon-btn,.mini-seg button,.seg button,.tile,a.li,.tm-btn,details.ev>summary{transition-duration:var(--dur-press);transition-timing-function:var(--ease-out)}
+.btn:active,.chip:active,.icon-btn:active,.mini-seg button:not([disabled]):active,.tm-btn:active{transform:scale(.97)}
+details.ev>summary .chev{transition-duration:var(--dur-disclose)}
+html.fx details.ev[open] .body,html.fx details.more[open]>div{animation-duration:var(--dur-disclose);animation-timing-function:var(--ease-out)}
+html.fx .sheet{animation:up var(--dur-sheet) var(--ease-drawer) both}
+html.fx .view{animation-duration:var(--dur-sheet)}
+/* states: loading, error, success, disabled */
+.btn[aria-busy=true]{opacity:.7;pointer-events:none}
+.btn[disabled],.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.field[aria-invalid=true]{border-color:var(--peach)}
+.note.ok{border-color:color-mix(in srgb,var(--up) 45%,transparent)}
+/* the chart: first reveal only; the gutter and tag */
+html.fx .c-line.settled{animation:none;stroke-dashoffset:0}
+.c-last{z-index:1}
+.facts{margin:6px 0 0;padding-left:18px;font-size:var(--fs-md);line-height:var(--lh-body)}.facts li{margin:0 0 4px}
+.compact-strip .tile{min-width:104px;padding:7px 10px}.compact-strip .tile svg{display:none}.compact-strip .tile .vv{font-size:.9375rem}
+.skip:focus{position:fixed;left:12px;top:12px;width:auto;height:auto;clip:auto;overflow:visible;z-index:100;padding:10px 14px;border-radius:var(--rad-md);background:var(--lime);color:var(--ink);font-weight:700;outline-offset:2px}
+.main:focus{outline:none}
+/* touch targets: primary controls reach 44px on a phone. Exceptions (36px): the Scale, Compare and Indicators groups under a chart, which are secondary toggles. */
+@media (pointer:coarse),(max-width:760px){
+  .chart-range .mini-seg button,.c-bar .mini-seg.radios[aria-label=Range] button,.c-bar .mini-seg.radios[aria-label=Detail] button,.c-bar .mini-seg.radios[aria-label=Style] button{min-height:var(--hit);min-width:var(--hit)}
+  .c-bar .mini-seg button{min-height:36px}
+  .btn.pri,.fab-row .btn{min-height:var(--hit)}
+  .tabs a{min-height:var(--hit)}
+}
+/* less ceremony: one border per card, quieter small caps */
+.card{box-shadow:none}.card.glass{background:var(--s1)!important;backdrop-filter:none}
+.k{letter-spacing:.06em}
+.small.mute,.mute.small{color:var(--mute)}
+/* reduced motion, by the device setting or by the in-app switch: nothing moves, colour and opacity still change */
+html:not(.fx) *,html:not(.fx) *::before,html:not(.fx) *::after{animation:none!important;transition-property:color,background-color,border-color,opacity,box-shadow!important;scroll-behavior:auto!important}
+html:not(.fx) .btn:active,html:not(.fx) .chip:active,html:not(.fx) .icon-btn:active,html:not(.fx) .mini-seg button:active,html:not(.fx) .seg button:active,html:not(.fx) .tile:active,html:not(.fx) a.li:active,html:not(.fx) .tm-btn:active,html:not(.fx) details.ev>summary:active,html:not(.fx) a.card:active,html:not(.fx) .pick-row:active{transform:none;opacity:.78}
+html:not(.fx) .c-line{stroke-dashoffset:0}
+.c-ev{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--dim);pointer-events:none}
+.c-ev::before{content:"";position:absolute;top:0;left:-4px;border:4px solid transparent;border-top-color:var(--dim)}
+/* labels in sentence case at a readable size, not tiny capitals */
+.k,h2.h{text-transform:none;letter-spacing:.01em;font-size:var(--fs-xs);font-weight:600;color:var(--dim)}
+h2.h{font-size:var(--fs-sm);color:var(--tx-2);margin:var(--sp-5) 0 var(--sp-2)}
+.facts{font-size:var(--fs-md);line-height:var(--lh-body)}
+.card .small,.note.info{font-size:var(--fs-sm)}

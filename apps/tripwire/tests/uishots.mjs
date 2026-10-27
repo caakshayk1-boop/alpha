@@ -8,7 +8,7 @@ for (const w of [390, 1280]) {
   const ctx = await newCtx(b, w, series); const pg = await ctx.newPage();
   const wait = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); await pg.waitForTimeout(1500); };
   await pg.goto(base + '/#/c/360ONE'); await pg.waitForSelector('.chart-plot svg', { timeout: 20000 });
-  for (const name of ['5Y', 'MONTHLY', 'CANDLES']) await pg.locator('.c-bar').getByText(name, { exact: true }).click();
+  for (const name of ["5Y", "MONTHLY", "CANDLES"]) await pg.locator(".c-bar").getByText(name, { exact: true }).click();
   await pg.waitForSelector('.c-candles rect'); await pg.waitForTimeout(700);
   await pg.locator('section.chart').scrollIntoViewIfNeeded(); await pg.locator('section.chart').screenshot({ path: `${out}/${prefix}-chart-candles-${w}.png` });
   await pg.screenshot({ path: `${out}/${prefix}-company-${w}.png`, fullPage: true });

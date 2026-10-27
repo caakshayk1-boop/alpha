@@ -139,7 +139,8 @@ ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
 ok(/Case and countercase/i.test(t) && /Countercase/i.test(t), 'company page has case and countercase');
-ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(t), 'the company page tags its trend and shows the averages behind it');
+await pg.getByText('Why this trend').click();   // the four-rule calculation now sits behind this control, not in the overview
+ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(await text()), 'the company page tags its trend and, behind "Why this trend", shows the averages behind it');
 ok(/Who owns it/i.test(t) && /Seasonality/i.test(t) && /Risk map/i.test(t), 'the company page carries ownership, seasonality and a risk map');
 await pg.waitForSelector('text=Indicator fingerprint', { timeout: 10000 });
 await pg.locator('summary', { hasText: 'Indicator fingerprint' }).click();
@@ -167,26 +168,26 @@ await pg.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'ap
 await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
 ok(/Last 10 years/i.test(await text()) && /a year/.test(await text()), 'chart opens on ten years and states the period return and the yearly rate');
 const d0 = await pg.locator('.chart-plot path.c-line').getAttribute('d');
-await pg.getByRole('button', { name: /^max$/i }).click();
+await pg.getByRole('radio', { name: /^max$/i }).click();
 ok(/Since listing in this data/i.test(await text()), 'Max shows everything held and says it starts at listing');
-await pg.getByRole('button', { name: '1Y', exact: true }).click();
+await pg.getByRole('radio', { name: '1Y', exact: true }).click();
 ok(/Last year/i.test(await text()) && (await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== d0, 'switching range redraws the line');
-await pg.getByRole('button', { name: '10Y', exact: true }).click();
+await pg.getByRole('radio', { name: '5Y', exact: true }).click();
 await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
 ok(await pg.locator('.chart-plot path.c-ma').count() === 2 && /Drawdown from the running peak/i.test(await pg.locator('.chart').innerText()) && /50-day/.test(await pg.locator('.chart').innerText()), 'the chart can overlay the 50 and 200-day averages and a drawdown panel, with a key');
 await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
 ok(await pg.locator('.chart-plot path.c-ma').count() === 0, 'the overlays switch off again');
 const daily = await pg.locator('.chart-plot path.c-line').getAttribute('d');
-await pg.getByRole('button', { name: 'Monthly' }).click();
+await pg.getByRole('radio', { name: 'Monthly' }).click();
 ok((await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== daily && /[A-Z][a-z]{2} 20\d\d/.test(await pg.locator('.chart').innerText()), 'monthly view uses month-end closes and month labels');
-await pg.getByRole('button', { name: 'Log' }).click();
-ok(await pg.getByRole('button', { name: 'Log' }).getAttribute('aria-pressed') === 'true', 'log scale can be switched on');
-await pg.getByRole('button', { name: 'vs Nifty' }).click();
+await pg.getByRole('radio', { name: 'Log' }).click();
+ok(await pg.getByRole('radio', { name: 'Log' }).getAttribute('aria-checked') === 'true', 'log scale can be switched on');
+await pg.getByRole('radio', { name: 'vs Nifty' }).click();
 ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.chart-plot path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
 ok(/both indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded(); const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2); await pg.waitForTimeout(150);
 ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');
-await pg.getByRole('button', { name: /^price$/i }).click();
+await pg.getByRole('radio', { name: /^price$/i }).click();
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded();
 const box = await pg.locator('.chart-plot').boundingBox();
 await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2); await pg.waitForTimeout(150);
@@ -199,8 +200,8 @@ await shot('04b-chart');
 // an instrument's own page: its chart, no Nifty line, and the scale explained
 await pg.goto(base + '/#/m/GOLD'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 }); await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 await pg.getByText('About this chart').first().click();
-ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('button', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
-await pg.getByRole('button', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
+ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('radio', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
+await pg.getByRole('radio', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
 // compare starting from a single company: it asks for the second one instead of dead-ending
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();

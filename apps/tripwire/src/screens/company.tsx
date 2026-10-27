@@ -23,6 +23,7 @@ import { DecisionCard } from './DecisionCard.tsx';
 import { CompanyNews } from './News.tsx';
 import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 import { fmtIst } from '../stamp.ts';
+import { changeLine } from '../overview.ts';
 
 export function Company({ sym }: { sym: string }) {
   useWatchQuotes([sym]); const quote = useQuote(sym);
@@ -49,6 +50,7 @@ export function Company({ sym }: { sym: string }) {
     <section className="card glass">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
         <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.live ? 'Live' : 'Last price'} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
+      <p className="small" style={{ margin: '12px 0 0' }}><span className="k">What changed</span><br />{changeLine(row, lp.ch ?? null, lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day')}</p>
       {(() => { const tr = trendOf(row); const short = { up: 'All four trend rules hold.', down: 'All four mirrored rules hold.', mixed: 'It meets neither the uptrend nor the downtrend rule.' };
         return tr.trend ? <div style={{ margin: '12px 0 0' }}><p className="small" style={{ margin: 0 }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{short[tr.trend]}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p>
           <details className="more"><summary>Why this trend</summary><div><p style={{ margin: '0 0 6px' }}>{tr.detail}</p><p style={{ margin: 0 }}>The rule for an uptrend: {TREND_RULE_TEXT.up}. A downtrend is {TREND_RULE_TEXT.down}. Anything else is sideways. It describes the past and forecasts nothing.</p></div></details></div>
@@ -59,13 +61,12 @@ export function Company({ sym }: { sym: string }) {
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
         <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(rp.fromHigh)} from {rp.newHigh ? 'its old high: a new 52-week high' : 'high'} {inr(hi, 0)}<span className="mute"> · {rp.basis === 'live' ? 'live' : 'at close'}</span></span></div>
         <div className="small num mute" style={{ marginTop: 4 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ')}</div></> : <p className="dim small">52-week range not available.</p>}
-      {cases.length > 0 && <div style={{ margin: '12px 0 0' }}><div className="k">Three facts from the screen</div><ul className="facts">{cases.slice(0, 3).map((x) => <li key={x.t}>{x.t}</li>)}</ul></div>}
     </section>
 
     <DecisionCard c={c.data} lp={lp} />
 
     <Head>Price history</Head>
-    <PriceChart sym={sym} levels={levelsFor(sym, picks)} />
+    <PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} />
 
     <Head>Case and countercase</Head>
     <details className="ev"><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">

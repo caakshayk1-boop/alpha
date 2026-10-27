@@ -1,6 +1,6 @@
 import { support } from '../haptic.ts';
 import { useRef, useState } from 'react';
-import { setState, useAppState, useLoc } from '../app.tsx';
+import { setState, useAppState } from '../app.tsx';
 import { Icon, useUi } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
 import { DEFAULTS, exportJson, journalCsv, mergeStates, parseState } from '../store.ts';
@@ -13,9 +13,7 @@ export function download(name: string, text: string, type: string) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 const SECTORS = ['Technology', 'Financial Services', 'Healthcare', 'Industrials', 'Consumer Cyclical', 'Consumer Defensive', 'Basic Materials', 'Energy', 'Utilities', 'Real Estate', 'Communication Services'];
-/** Settings, or the separate Operations page when the address carries ?view=ops. Operations is not linked from here (see its own note on what that does and does not protect). */
-export function Profile() { const loc = useLoc(); return loc.q.get('view') === 'ops' ? <Operations /> : <Settings />; }
-function Settings() {
+export function Profile() {
   const s = useAppState(); const { toast } = useUi(); const file = useRef<HTMLInputElement>(null); const [sure, setSure] = useState(false);
   const [lockOn, setLockOn] = useState(!!lockId()); const [canLock, setCanLock] = useState<boolean | null>(null); useEffect(() => { void lockSupported().then(setCanLock); }, []);
   const p = s.prefs; const set = (o: Partial<typeof p>) => setState((x) => ({ ...x, prefs: { ...x.prefs, ...o } }));
@@ -69,6 +67,9 @@ function Settings() {
         : <div className="note"><b>This erases every note, plan and follow on this device.</b> Export first if you want a copy.<div className="row" style={{ marginTop: 10 }}><button className="btn warn grow" onClick={() => { setState(() => ({ ...DEFAULTS, onboarded: true })); setSure(false); toast('All data deleted from this device'); }}>Erase now</button><button className="btn grow" onClick={() => setSure(false)}>Keep</button></div></div>}
     </div>
 
+    <Head>Help and method</Head>
+    <div className="card" style={{ padding: '2px 14px' }}><div className="list"><a className="li" href="#/help"><span className="grow">How to use Tripwire</span></a><a className="li" href="#/methodology"><span className="grow">Methodology and evidence<span className="small dim" style={{ display: 'block' }}>How picks, trends and charts are worked out, and what the tests found</span></span></a><a className="li" href="#/data"><span className="grow">Data and coverage<span className="small dim" style={{ display: 'block' }}>What is in the screen and how old each figure is</span></span></a></div></div>
+
     <Head>Plan</Head>
     <div className="card"><b>Free</b><p className="small dim" style={{ margin: '6px 0 0' }}>Everything in Tripwire today is free. Paid features are not for sale yet: no billing provider is configured and no price is set.</p></div>
     <Head>About</Head>
@@ -94,9 +95,9 @@ function ServicesCard({ lock }: { lock: boolean | null }) {
   </div>;
 }
 
-/** Operations: what the Worker holds and how its probes ran. For the person who runs the service, not for ordinary reading, and not linked from Settings.
+/** Operations (route #/ops): what the Worker holds and how its probes ran. For the person who runs the service, not for ordinary reading, and not linked from Settings or anywhere in the app.
  *  This is a separate page, not protection: there is no sign-in, so anyone who knows the address (or reads /api/health, which is public) sees the same. It carries binding NAMES and counts only, never a value. */
-function Operations() {
+export function Operations() {
   const h = useJson<HealthFeed>('/api/health');
   return <div>
     <PageBar title="Operations" onBack />
