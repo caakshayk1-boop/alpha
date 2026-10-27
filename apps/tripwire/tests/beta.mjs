@@ -47,7 +47,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.fill('#pl-x', '675.37'); await pg.waitForTimeout(250);
   ok(/If it opens 2% higher/.test(await pg.locator('.sheet').innerText()), 'the planner shows what a higher open does to the planned risk');
   await pg.getByRole('button', { name: 'Save plan' }).click(); await pg.waitForTimeout(500);
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero');
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief');
   ok((await pg.locator('.journey').count()) === 0, 'all four steps done: the path card is gone from Today');
   ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : ''));
   // closing the browser and opening it again: the saved state travels in the profile, and the journal, follow and plan are still there
@@ -118,10 +118,10 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const NOW = new Date('2026-10-26T09:02:00Z'); await ctx.clock.install({ time: NOW });
   const old = (prev, px) => ({ ...quoteOf(prev, px), pt: Math.floor(NOW.getTime() / 1000) - 40 * 60, live: true });
   T.pulse = { NIFTY: old(22600, 22700), BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero'); await pg.clock.runFor(20000); await pg.waitForTimeout(300);
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief'); await pg.clock.runFor(20000); await pg.waitForTimeout(300);
   const t = await text(pg);
   ok(/No print since 13:\d\d IST/.test(t) && /holiday, or the price source is quiet/.test(t), 'a 40-minute-old print in a live session is called stale, with its own time, even though the app refreshed');
-  ok(!(await pg.locator('.moodhero .livebadge.on').count()), 'no LIVE badge on a stale print');
+  ok(!(await pg.locator('.brief .livebadge.on').count()), 'no LIVE badge on a stale print');
   T.pulse = { NIFTY: { ...quoteOf(22600, 22700), pt: Math.floor(NOW.getTime() / 1000) - 20, live: true }, BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
   await pg.clock.runFor(20000); await pg.waitForTimeout(400);
   ok(/\d\d:\d\d IST · \d+ s old/.test(await text(pg)) || /IST · \d+ min old/.test(await text(pg)), 'a fresh print shows its time and its age'); await ctx.close();
@@ -134,9 +134,9 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   T.pulse = { NIFTY: shut(22600, 22700), BANKNIFTY: shut(54000, 54100), VIX: shut(16, 16.2) };
   await ctx.route('**/api/bars*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"fetched_at":"x","bars":{},"missing":[]}' }));
   const seen = []; pg.on('request', (r) => { const u = r.url(); if (/\/api\/(tick|breadth|bars)/.test(u)) seen.push(u); });
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero'); await pg.clock.runFor(5000); await pg.waitForTimeout(600);
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief'); await pg.clock.runFor(5000); await pg.waitForTimeout(600);
   const t0 = await text(pg); await pg.clock.runFor(2 * 60 * 1000); await pg.waitForTimeout(300); const n0 = seen.length;   // the first load may fetch names that mount a moment later (the paper book); that is the one fetch each name gets
-  ok(/Market closed/i.test(t0) && /NSE\s*CLOSED/i.test(t0.replace(/\s+/g, ' ')), 'Saturday: the page says the market is closed (header strip and mood card)');
+  ok(/Market closed/i.test(t0) && /NSE\s*CLOSED/i.test(t0.replace(/\s+/g, ' ')), 'Saturday: the page says the market is closed (header strip and the market brief)');
   await pg.clock.runFor(10 * 60 * 1000); await pg.waitForTimeout(400);
   const fresh = seen.slice(n0).filter((u) => !/[?&]m=1/.test(u) || /[?&](i=1|s=[^&])/.test(u));
   ok(fresh.length === 0, `Saturday: ten minutes open, no price, pulse, bars or trend-map request after the first load (${fresh.length} made${fresh.length ? ': ' + fresh[0].slice(0, 90) : ''})`);
@@ -144,10 +144,10 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
 }
 {
   const { ctx, pg } = await mk(); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(1200);
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief'); await pg.waitForTimeout(1200);
   await ctx.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.waitForTimeout(100);
   await ctx.setOffline(true); await pg.reload().catch(() => {}); await pg.waitForTimeout(1500);
-  ok(/Offline/.test(await text(pg)) && (await pg.locator('.moodhero').count()) === 1, 'offline: the saved copy still opens and says it is offline'); await ctx.close();
+  ok(/Offline/.test(await text(pg)) && (await pg.locator('.brief').count()) === 1, 'offline: the saved copy still opens and says it is offline'); await ctx.close();
 }
 
 /* ---- 5. layout at five widths, and the desktop workspace ---- */
@@ -157,9 +157,9 @@ for (const [w, h] of [[360, 740], [390, 844], [430, 932], [768, 1024], [1440, 90
   for (const r of ['/#/today', '/#/discover', '/#/c/GCSL', '/#/signals', '/#/data']) { await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(900); const o = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); if (o > 1) bad.push(`${r} ${o}px`); }
   ok(bad.length === 0, `${w}px: no sideways scroll on Today, Discover, a company, Signals and Data${bad.length ? ' (' + bad.join(', ') + ')' : ''}`);
   if (w === 1440) {
-    await pg.goto(base + '/#/today'); await pg.waitForSelector('.split'); await pg.waitForTimeout(800);
-    const cols = await pg.evaluate(() => [...document.querySelectorAll('.split > .col')].map((c) => Math.round(c.getBoundingClientRect().width)));
-    ok(cols.length === 2 && cols[0] > cols[1] && cols[1] >= 340, `1440px: Today is a two-column workspace (${cols.join(' + ')} px)`);
+    await pg.goto(base + '/#/today'); await pg.waitForSelector('.today .tnews'); await pg.waitForTimeout(800);   // 27 Oct 2026: Today's two columns are a grid (news beside changes), no longer .split
+    const cols = await pg.evaluate(() => { const a = document.querySelector('.today > .tnews').getBoundingClientRect(), c = document.querySelector('.today > .tchg').getBoundingClientRect(); return Math.abs(a.top - c.top) < 4 ? [Math.round(a.width), Math.round(c.width)] : []; });
+    ok(cols.length === 2 && cols[0] >= 340 && cols[1] >= 340, `1440px: Today is a two-column workspace (${cols.join(' + ')} px)`);
     await pg.goto(base + '/#/discover'); await pg.waitForSelector('.lens'); const lensW = await pg.locator('.lens').evaluateAll((e) => e.map((x) => Math.round(x.getBoundingClientRect().width)));
     ok(lensW.length === 5 && lensW.every((x) => x > 150) && (await pg.locator('.li .wide').first().isVisible()), '1440px: Discover shows its five lenses side by side and a figure table on each row');
   }
@@ -175,7 +175,7 @@ for (let rep = 0; rep < 3; rep++) {
   await pg.addInitScript(() => { window.__v = { lcp: 0, cls: 0, inp: 0, src: [] }; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__v.lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__v.cls += e.value; window.__v.src.push(`${e.value.toFixed(3)}@${Math.round(e.startTime)}ms ${(e.sources || []).map((x) => (x.node?.nodeName ?? '') + '.' + (x.node?.className ?? '')).join(' | ')}`); } }).observe({ type: 'layout-shift', buffered: true });
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.duration > window.__v.inp) { window.__v.inp = e.duration; window.__v.what = `${e.name} on ${e.target?.nodeName ?? ''}.${e.target?.className ?? ''} ${e.target?.getAttribute?.('href') ?? ''}`; } }).observe({ type: 'event', durationThreshold: 16, buffered: true }); });
-  await pg.goto(base + '/#/today', { waitUntil: 'load' }); await pg.waitForSelector('.moodhero'); await pg.waitForTimeout(4000);
+  await pg.goto(base + '/#/today', { waitUntil: 'load' }); await pg.waitForSelector('.brief'); await pg.waitForTimeout(4000);
   for (const sel of ['nav.tabs a[href="#/discover"]', '.lens', 'nav.tabs a[href="#/today"]']) { await pg.locator(sel).first().click(); await pg.waitForTimeout(600); }
   const v = await pg.evaluate(() => window.__v); const size = await pg.evaluate(() => performance.getEntriesByType('resource').reduce((a, r) => a + (r.transferSize || 0), 0));
   console.log(`VITALS (lab, 4x CPU slowdown, 1.6 Mbit/s, 150 ms RTT): LCP ${Math.round(v.lcp)} ms, CLS ${v.cls.toFixed(3)}, slowest interaction ${Math.round(v.inp)} ms (${v.what ?? 'none'}), transferred ${(size / 1024).toFixed(0)} kB`); if (v.cls >= 0.05) console.log('  shifts: ' + v.src.join(' ; '));

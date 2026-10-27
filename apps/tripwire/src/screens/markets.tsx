@@ -19,7 +19,7 @@ export function Markets() {
   return <div>
     <PageBar title="Markets" onBack sub={<>{sess.label} · {sess.detail}</>} />
     <div className="split"><div className="col">
-      <section className="card" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
+      <section className="moodhero card" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
         <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
       <Head>Commodities, currencies, Bitcoin</Head>
       <MacroStrip />

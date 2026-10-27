@@ -13,11 +13,11 @@ await ctx.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'a
 await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: '2026-10-23', order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66], INFY: [48, 52, null] } }) }));
 const pg = await ctx.newPage(); const text = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };
 
-/* Today */
-await pg.goto(base + '/#/today'); await pg.waitForSelector('.moodhero .ix .rg'); await pg.waitForTimeout(600);
-ok((await pg.locator('.moodhero a.ix').count()) === 3 && (await pg.locator('.moodhero .ix .rg').count()) === 3, 'Today: Nifty, Bank Nifty and VIX each carry a day-range bar');
-ok(/prev [\d,]+/.test(await text()) && /opened [+−-]?\d/.test(await text()) && /low [\d,]+/.test(await text()), 'Today: each index shows the previous close, the open against it, and the day low and high');
-ok(/Banks (ahead of|behind|level with) the Nifty by/.test(await text()), 'Today: Bank Nifty is set against the Nifty in points');
+/* Markets (the index cards and the trend map moved here from Today on 27 Oct 2026) */
+await pg.goto(base + '/#/markets'); await pg.waitForSelector('.moodhero .ix .rg'); await pg.waitForTimeout(600);
+ok((await pg.locator('.moodhero a.ix').count()) === 3 && (await pg.locator('.moodhero .ix .rg').count()) === 3, 'Markets: Nifty, Bank Nifty and VIX each carry a day-range bar');
+ok(/prev [\d,]+/.test(await text()) && /opened [+−-]?\d/.test(await text()) && /low [\d,]+/.test(await text()), 'Markets: each index shows the previous close, the open against it, and the day low and high');
+ok(/Banks (ahead of|behind|level with) the Nifty by/.test(await text()), 'Markets: Bank Nifty is set against the Nifty in points');
 const h1 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height);
 await pg.reload(); await pg.waitForSelector('.moodhero'); const h0 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height); await pg.waitForSelector('.moodhero .ix .rg .nw'); await pg.waitForTimeout(500); const h2 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height);
 ok(Math.abs(h0 - h2) < 2, `Today: the mood card does not change height when the prices arrive (${Math.round(h0)} px before, ${Math.round(h2)} after)`); void h1;
@@ -26,6 +26,7 @@ ok(/^(broad strength|broad weakness|mixed|no read)$/i.test((await pg.locator('.t
 ok((await pg.locator('.tm-stats [role=listitem]').count()) === 5 && (await pg.locator('.tm-go a').count()) === 3, 'trend map: five breadth figures and three one-tap questions');
 await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('text=Discover'); await pg.waitForTimeout(500);
 ok(/Uptrend/.test(await text()), 'trend map: a question opens Discover already filtered');
+/* Today */
 await pg.goto(base + '/#/today'); await pg.waitForSelector('.pickrow');
 ok(/T1 ₹[\d,]+ · T2 ₹[\d,]+/.test(await pg.locator('.pickrow').first().innerText()), 'Today: every pick shows its two targets (marked ref when filed before profit booking began)');
 const picks = await pg.locator('.pickrow').evaluateAll((e) => e.slice(0, 6).map((x) => x.querySelectorAll('.small')[0]?.textContent ?? ''));
