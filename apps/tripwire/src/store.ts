@@ -9,7 +9,7 @@ export interface Version { at: string; thesis: string; support: string; counter:
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
-export interface Prefs { motion: 'auto' | 'off'; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number }
+export interface Prefs { motion: 'auto' | 'off'; /** 2 = the owner's 27 Oct decision: motion is OFF unless the person turns it on. A device saved before that is moved to off once. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number }
 export interface State {
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
@@ -23,7 +23,7 @@ export interface State {
   dismissed?: Record<string, string>;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
-  prefs: { motion: 'auto', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
+  prefs: { motion: 'off', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const iso = (d: Date) => d.toISOString();
@@ -150,7 +150,8 @@ function checkPrefs(raw: unknown): Prefs {
   if (typeof p.haptics !== 'boolean') out.haptics = D.haptics;
   if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
   out.interests = Array.isArray(p.interests) ? p.interests.filter(isStr) : D.interests;
-  if (p.hideAmounts !== undefined && typeof p.hideAmounts !== 'boolean') delete out.hideAmounts; if (p.theme !== undefined && !isStr(p.theme)) delete out.theme;
+  if (p.motionV !== 2) { out.motion = 'off'; out.motionV = 2; }   // 27 Oct decision (PR #41): a backup from before it is moved to off once, as an ordinary load is
+    if (p.hideAmounts !== undefined && typeof p.hideAmounts !== 'boolean') delete out.hideAmounts; if (p.theme !== undefined && !isStr(p.theme)) delete out.theme;
   return out as unknown as Prefs;
 }
 export function checkBackup(text: string): BackupCheck {

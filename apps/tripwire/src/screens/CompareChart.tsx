@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
-import { getJson, type ChartFeed } from '../data.ts';
+import { getJson, hasHistory, type ChartFeed } from '../data.ts';
 import { RANGES, alignIndexed, dateLabel, nearest, type RangeId } from '../chart.ts';
 import { pct } from '../fmt.ts';
 
@@ -8,7 +8,7 @@ function useCharts(syms: string[]) {
   const key = syms.join(','); const [st, set] = useState<{ data: Record<string, ChartFeed>; err: Record<string, string> }>({ data: {}, err: {} });
   useEffect(() => {
     let live = true; set({ data: {}, err: {} });
-    syms.forEach((s) => getJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(s)}`).then((d) => live && set((x) => ({ ...x, data: { ...x.data, [s]: d } }))).catch((e: Error) => live && set((x) => ({ ...x, err: { ...x.err, [s]: e.message } }))));
+    syms.forEach((s) => getJson<ChartFeed>(`/api/chart?s=${encodeURIComponent(s)}`).then((d) => { if (!live) return; if (!hasHistory(d)) throw new Error('The price history could not be read right now.'); set((x) => ({ ...x, data: { ...x.data, [s]: d } })); }).catch((e: Error) => live && set((x) => ({ ...x, err: { ...x.err, [s]: e.message } }))));
     return () => { live = false; };
   }, [key]);   // eslint-disable-line react-hooks/exhaustive-deps
   return st;
