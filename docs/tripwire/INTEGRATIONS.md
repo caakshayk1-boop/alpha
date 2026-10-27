@@ -7,7 +7,7 @@ Tripwire runs without an account. Three states and no others. **Working**: confi
 | Capability | State | What it is, and what it would need |
 |---|---|---|
 | Live prices | Working | Yahoo Finance via the Worker. Unofficial: it can throttle or change; the app says so when it does not answer. |
-| News headlines | Working | Google News and Bing News RSS via the Worker, filtered to what bears on a decision. |
+| News headlines | Working | Google News and Bing News search feeds plus RBI and SEBI release feeds, read by a scheduled GitHub Actions job (every 15 minutes while the NSE session is on, 30 otherwise; best effort) and published as one snapshot. Free feeds can lag or fail, so the page shows the state of the last check (fresh, partial, delayed, unavailable), never "live". |
 | Published screen and the forward ledger | Working | Screen fetched at build time; ledger written by one nightly workflow, append-only. |
 | Backup and restore | Working | Export, import, merge, journal CSV. Tested end to end. The only data-safety route until accounts exist. |
 | Screen lock | Working | The phone's own unlock. It locks the screen; it does not encrypt storage. |

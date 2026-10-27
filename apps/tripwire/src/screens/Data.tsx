@@ -8,6 +8,7 @@ import { freshness } from '../fresh.ts';
 import { dayWord } from '../fmt.ts';
 import { Head, Loading, Failed, PageBar } from './common.tsx';
 import { fmtIst } from '../stamp.ts';
+import { useNewsHealth } from '../news.ts';
 import { CALENDAR, calendarNote } from '../calendar.ts';
 
 const N = (v: number) => v.toLocaleString('en-IN');
@@ -16,7 +17,7 @@ interface RunStamp { id: string; when?: string; git: string; data: { first_day: 
 export function DataPage() {
   const runs = [['Factor study', 'factor_study'], ['Engines back-test', 'engines_backtest'], ['Momentum walk-forward', 'engines_walkforward'], ['Pairs', 'engines_pairs']] as const;
   const rs = runs.map(([, f]) => useJson<{ meta?: { when?: string; run?: RunStamp } }>(`/data/research/${f}.json`));   // eslint-disable-line react-hooks/rules-of-hooks
-  const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
+  const nh = useNewsHealth(); const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
   const u = useMemo(() => (scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on) : null), [scr.data]);
   if (scr.loading) return <div><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
   if (scr.err || !u || !scr.data) return <div><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
@@ -79,7 +80,7 @@ export function DataPage() {
       <tr><td>Screen, scores, trend, averages</td><td>Published daily screen, built from Yahoo Finance daily bars and annual statements</td><td>Close of {dayWord(u.asOf)}</td><td>{fr.word === 'Current' ? 'None: the last finished session' : `${fr.word}${fr.behind ? ` (${fr.behind})` : ''}`}</td></tr>
       <tr><td>Financial statements</td><td>Annual statements via Yahoo Finance</td><td>Latest fiscal year held per company (shown on its page)</td><td>Annual, months after a year ends</td></tr>
       <tr><td>Forward record and automatic book</td><td>Nightly job, daily bars via yfinance</td><td>{led.data?.ledger ? `Written ${fmtIst(Date.parse(led.data.ledger.updated) / 1000)}` : 'Not available'}</td><td>One night</td></tr>
-      <tr><td>News</td><td>Bing News (Google News when it answers), English only</td><td>Each headline carries its own time</td><td>Checked hourly</td></tr></tbody></table></div></div>
+      <tr><td>News</td><td>Google News and Bing News search feeds, RBI and SEBI release feeds; admitted only if a story names a covered company or an India-wide event</td><td>Each story carries its own publication time; the check has its own: {nh.state === 'unavailable' ? 'no check has succeeded yet' : `last successful check ${nh.lastGood}`}</td><td>{nh.word}{nh.next && nh.state === 'fresh' ? `, next check about ${nh.next}` : ''}; scheduled every 15 minutes in the NSE session, 30 otherwise</td></tr></tbody></table></div></div>
     <p className="small mute" style={{ marginTop: 10 }}>Times are Indian Standard Time. A figure's age is measured from when it was printed, never from when this app last asked.</p>
   </div>;
 }

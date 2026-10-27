@@ -1,0 +1,6 @@
+[
+ { "match": "news\\.google\\.com", "status": 503, "headers": { "retry-after": "2" } },
+ { "match": "bing\\.com", "throw": "timeout" },
+ { "match": "rbi\\.org\\.in", "status": 429, "headers": { "retry-after": "3600" } },
+ { "match": "sebi\\.gov\\.in", "status": 503 }
+]

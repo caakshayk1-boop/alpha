@@ -1,0 +1,8 @@
+[
+ { "match": "rbi\\.org\\.in", "status": 200, "file": "rbi.xml", "headers": { "etag": "\"rbi-1\"" } },
+ { "match": "sebi\\.gov\\.in", "status": 503, "headers": { "retry-after": "1" } },
+ { "match": "rss/search\\?q=\"Tata Consultancy Services\"", "status": 200, "file": "google-tcs.xml" },
+ { "match": "rss/search\\?q=Sensex Nifty", "status": 200, "file": "google-market.xml" },
+ { "match": "news\\.google\\.com/rss/search", "status": 200, "file": "empty.xml" },
+ { "match": "bing\\.com/news", "status": 200, "file": "empty.xml" }
+]

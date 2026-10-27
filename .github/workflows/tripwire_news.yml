@@ -1,0 +1,54 @@
+name: tripwire-news
+# The news job. It runs on GitHub's clock, with no browser open anywhere, reads the news feeds, runs the pipeline in apps/tripwire/news and publishes an immutable snapshot
+# (news.json, news-browser.json, news-status.json) by force-pushing the orphan branch `tripwire-data`. The Worker serves it from raw.githubusercontent.com at /api/news and /api/news/version.
+#
+# SCHEDULE. The cron lines are a coarse grid; the exchange calendar decides (apps/tripwire/news/schedule.js): every 15 minutes while the NSE session is on, every 30 otherwise, and a tick
+# that arrives inside its cadence does nothing. The 15-minute line covers 08:30 to 16:29 IST on weekdays, a little wider than the session, so a holiday weekday inside it works at the 30-minute pace.
+# GitHub cron is BEST EFFORT: runs start late (minutes, sometimes tens of minutes at busy hours) and an occasional run is dropped. The page therefore calls the news "delayed" when the last
+# successful check is older than two cadences plus ten minutes, rather than trusting this file. Scheduled workflows are also switched off after 60 days without repository activity.
+#
+# A source being down is a status in the snapshot, not a failed job: the steps below are continue-on-error and the script exits 0 whenever it ran to the end.
+on:
+  workflow_dispatch:
+    inputs:
+      force: { description: 'Run now, ignoring the cadence guard', type: boolean, default: true }
+  schedule:
+    - cron: '*/15 3-10 * * 1-5'
+    - cron: '*/30 0-2,11-23 * * 1-5'
+    - cron: '*/30 * * * 0,6'
+concurrency:
+  group: tripwire-news
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Previous snapshot (conditional requests, first-seen times and the last good events come from it)
+        continue-on-error: true
+        run: |
+          mkdir -p prev news-out
+          git fetch --depth=1 origin tripwire-data && git show FETCH_HEAD:news.json > prev/news.json || rm -f prev/news.json
+      - name: Read the feeds and build the snapshot
+        id: run
+        continue-on-error: true
+        env:
+          NEWS_UNIVERSE_URL: https://alpha.askakshay.com/universe.json
+        run: node --experimental-strip-types --no-warnings apps/tripwire/news/run.mjs --out news-out --prev prev ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
+      - name: Publish (force-push the orphan branch; no history on main)
+        if: steps.run.outputs.publish == 'true'
+        continue-on-error: true
+        run: |
+          cd news-out
+          printf 'Written by .github/workflows/tripwire_news.yml. Not a branch to merge: it is overwritten on every run.\n' > README.txt
+          git init -q -b tripwire-data
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "news snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tripwire-data

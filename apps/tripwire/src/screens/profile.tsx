@@ -8,6 +8,8 @@ import { disableLock, enableLock, lockId, lockSupported } from '../lock.ts';
 import { useEffect } from 'react';
 import { SERVICES, hapticsNote, publicStatus } from '../services.ts';
 import { useJson } from '../data.ts';
+import { useNewsHealth } from '../news.ts';
+import { newsServiceView } from '../newshealth.ts';
 
 export function download(name: string, text: string, type: string) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -83,13 +85,14 @@ interface HealthFeed { ok: boolean; checked_at: string; prices: { ok: boolean; m
  *  Timings, binding names and error codes are not here: they are on the separate Operations page. */
 function ServicesCard({ lock }: { lock: boolean | null }) {
   const h = useJson<HealthFeed>('/api/health');
-  const live = (id: string) => (id === 'prices' ? h.data?.prices : id === 'news' ? h.data?.news : null);
+  const live = (id: string) => (id === 'prices' ? h.data?.prices : null);
+  const nh = useNewsHealth();   // the one news health model: the same words as Today and the News page
   return <div className="card" style={{ padding: '2px 14px' }}>
-    {SERVICES.map((v) => { const l = live(v.id); const st = publicStatus(v, l ?? null, v.id === 'lock' ? lock : null);
+    {SERVICES.map((v) => { const l = live(v.id); const st0 = publicStatus(v, l ?? null, v.id === 'lock' ? lock : null); const nv = v.id === 'news' ? newsServiceView(nh) : null; const st = nv ? { ...st0, tone: nv.tone, word: nv.tag } : st0;
       return <details key={v.id} className="ev" style={{ margin: 0 }}><summary>{v.label}<span className={`tag ${st.tone} num`} style={{ marginLeft: 'auto' }}>{st.word}</span><span className="chev">▾</span></summary>
         <div className="body small"><p style={{ margin: '0 0 6px' }}>{v.what}</p>
           {st.deviceLine ? <p style={{ margin: '0 0 6px' }}><b>{st.deviceLine.split(':')[0]}:</b>{st.deviceLine.slice(st.deviceLine.indexOf(':') + 1)}.</p> : null}
-          {l ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {h.loading ? 'checking' : l.ok ? 'answering' : 'not answering'}.</p> : null}
+          {nv ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {nv.line}</p> : l ? <p style={{ margin: '0 0 6px' }}><b>Right now:</b> {h.loading ? 'checking' : l.ok ? 'answering' : 'not answering'}.</p> : null}
           {v.needs ? <p style={{ margin: 0 }}><b>To make it real:</b> {v.needs}</p> : null}</div></details>; })}
     <p className="small mute" style={{ margin: '6px 0 10px' }}>{h.data ? `Status checked at ${new Date(h.data.checked_at).toISOString().slice(11, 16)} UTC.` : h.err ? 'The status check did not answer; the list above is what the build contains.' : 'Checking the live sources…'}</p>
   </div>;
