@@ -1,5 +1,5 @@
 import { StatusBar } from './statusbar.tsx';
-import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULTS, readSaved, type State } from './store.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
@@ -27,6 +27,7 @@ import { freshness } from './fresh.ts';
 import { applyTheme } from './theme.ts';
 import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
+import { lastDiscoverQuery } from './discoverstate.ts';
 import { LockScreen } from './screens/LockScreen.tsx';
 
 /* ---- state: this device only, until an identity provider is configured ---- */
@@ -56,6 +57,20 @@ let lastRaw = ''; let lastLoc: Loc = read();
 const getLoc = (): Loc => { const h = location.hash; if (h !== lastRaw) { lastRaw = h; lastLoc = read(); } return lastLoc; };
 export const useLoc = (): Loc => useSyncExternalStore((f) => { window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, getLoc);
 export const go = (to: string) => { location.hash = to; };
+/* ---- Discover support: URL rewrites that are not navigation, and scroll restoration ----
+ * replaceHash rewrites the current URL in place: no history entry, no hashchange. The screen calling it already holds the state the URL now describes, so `quietRaw` names that URL and the
+ * effects below do not treat it as arriving somewhere (no jump to the top). Safari limits replaceState calls; a refused one only leaves the URL one edit behind.
+ * restoreHash marks the URL a Back/Forward (popstate) or a Discover tab tap is returning to, so the page can put the person back where they were instead of at the top. */
+let quietRaw = '', restoreHash = '', bootRestore = false;
+try { history.scrollRestoration = 'manual'; const t = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type; bootRestore = t === 'reload' || t === 'back_forward'; } catch { /* the browser then restores as it likes */ }
+window.addEventListener('popstate', () => { restoreHash = location.hash; });
+window.addEventListener('hashchange', () => { quietRaw = ''; if (location.hash !== restoreHash) restoreHash = ''; });
+export function replaceHash(to: string) { try { history.replaceState(history.state, '', `#${to}`); quietRaw = read().raw; } catch { /* see above */ } }
+export const requestRestore = (to: string) => { restoreHash = `#${to}`; };
+export const isRestoring = (raw: string) => restoreHash !== '' && restoreHash === `#${raw}`;
+/** True once, for the first screen after a reload or a browser restart-from-history; and whenever a Back, Forward or tab tap is returning to `raw`. */
+export const wantsRestore = (raw: string) => { const b = bootRestore; bootRestore = false; return b || isRestoring(raw); };
+export const isQuiet = (raw: string) => raw === quietRaw;
 export const back = () => { if (history.length > 1) history.back(); else go('/today'); };
 
 /* ---- sheets ---- */
@@ -99,7 +114,9 @@ export function App(): ReactNode {
   // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
   useEffect(() => { const run = () => { void import('./screens/discover.tsx'); void import('./screens/company.tsx'); void import('./screens/signals.tsx'); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; const id = window.setTimeout(run, 500); void w; return () => window.clearTimeout(id); }, []);
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
-  useEffect(() => { window.scrollTo(0, 0); document.title = `${TABS[ti].label} · Tripwire`; }, [loc.raw, ti]);
+  // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
+  const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
+  useEffect(() => { if (!(loc.path[0] === 'discover' && isRestoring(loc.raw))) window.scrollTo(0, 0); document.title = `${TABS[ti].label} · Tripwire`; }, [nav.current, ti]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
   if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
@@ -133,7 +150,8 @@ export function App(): ReactNode {
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c } as React.CSSProperties}>
         <span className="pill" style={{ transform: `translate${matchMedia('(min-width:900px)').matches ? 'Y' : 'X'}(${ti * 100}%)` }} aria-hidden="true" />
-        {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined}><Icon n={t.id} /><span>{t.label}</span></a>)}
+        {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined}
+          onClick={t.id === 'discover' ? (e) => { if (loc.path[0] === 'discover') return; const q = lastDiscoverQuery(); if (!q) return; e.preventDefault(); const to = `/discover?${q}`; requestRestore(to); go(to); } : undefined}><Icon n={t.id} /><span>{t.label}</span></a>)}
       </nav>
     </div>
     <Suspense fallback={null}>

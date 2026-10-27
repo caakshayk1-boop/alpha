@@ -33,7 +33,7 @@ const ratio = (a, c) => { const [x, y] = [lum(a), lum(c)].sort((p, q) => q - p);
   const clear = async (label, sel) => { const el = pg.locator(sel).first(); await el.waitFor({ timeout: 8000 }); await pg.setViewportSize({ width: 390, height: 844 - KB }); await el.focus(); await el.scrollIntoViewIfNeeded(); await pg.waitForTimeout(250);
     const r = await pg.evaluate((s) => { const e = document.querySelector(s); const q = e.getBoundingClientRect(); const bar = document.querySelector('header.bar, .bar'); const tabs = document.querySelector('nav.tabs'); const sheet = e.closest('.sheet'); const top = sheet ? 0 : (bar ? bar.getBoundingClientRect().bottom : 0); const bottom = sheet ? innerHeight : (tabs ? tabs.getBoundingClientRect().top : innerHeight); return { top: q.top, bottom: q.bottom, minTop: top, maxBottom: bottom }; }, sel);
     ok(r.top >= r.minTop - 1 && r.bottom <= r.maxBottom + 1, `${label}: the focused field sits between the bars with a ${KB}px keyboard (${Math.round(r.top)} to ${Math.round(r.bottom)}, room ${Math.round(r.minTop)} to ${Math.round(r.maxBottom)})`); await pg.setViewportSize({ width: 390, height: 844 }); };
-  await pg.goto(base + '/#/discover'); await pg.reload(); await pg.waitForSelector('.lens');
+  await pg.goto(base + '/#/discover'); await pg.reload(); await pg.waitForSelector('.adv summary'); await pg.locator('.adv summary').click();
   await clear('Discover search', 'input[type=search], input[placeholder*="earch"]');
   await clear('Ask in words', '.askbox input');
   await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await clear('condition value', '#c-v'); await pg.keyboard.press('Escape');

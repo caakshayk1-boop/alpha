@@ -9,7 +9,7 @@ export interface Row {
   net_margin?: number | null; ebit_margin?: number | null; div_yield?: number | null; risk_lvl?: string | null; risk_top?: string | null; next_earnings?: string | null; last_date?: string | null; fy?: string | null; has_stmts?: boolean | null;
 }
 export type Trend = 'up' | 'down' | 'mixed';
-import { applyConds, describeCond, type Cond } from './screener.ts';
+import { applyConds, describeCond, sortRowsBy, type Cond } from './screener.ts';
 export interface Filters { /** numeric conditions from the screener: every one must hold, and a name with no figure for one does not pass */ cond?: Cond[]; q: string; sector: string; tier: string; value: '' | 'cheap' | 'rich'; quality: '' | 'high'; momentum: '' | 'strong' | 'weak' | 'near-high'; trend?: '' | Trend }
 export const NO_FILTER: Filters = { cond: [], q: '', sector: '', tier: '', value: '', quality: '', momentum: '', trend: '' };
 export type SortKey = 'name' | 'r1d' | 'r3m' | 'rs3m' | 'pe' | 'roce_med' | 'from_high' | 'turnover_cr';
@@ -53,7 +53,8 @@ export const trendOfCloses = (c: readonly number[]) => trendOf({ price: c.length
  *  The single definition lives in eligibility.ts; this name is kept for the callers that still say lender. */
 export { isFinancialSector as isLender, isFinancialSector } from './eligibility.ts';
 
-export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unmeasured: number; notApplicable: number } {
+export interface Filtered { rows: Row[]; /** names left out for lacking a figure a filter needs */ unmeasured: number; /** names left out because the figure is not defined for them (financial sector) */ notApplicable: number; /** names let in only by a condition that asked to include names with no figure */ unknownIncluded: number }
+export function filterRows(rows: readonly Row[], f: Filters): Filtered {
   const q = f.q.trim().toLowerCase();
   let unmeasured = 0, notApplicable = 0;
   const out = rows.filter((r) => {
@@ -71,19 +72,10 @@ export function filterRows(rows: readonly Row[], f: Filters): { rows: Row[]; unm
     return true;
   });
   const c = applyConds(out, f.cond);
-  return { rows: c.rows, unmeasured: unmeasured + c.noFigure, notApplicable };
+  return { rows: c.rows, unmeasured: unmeasured + c.noFigure, notApplicable: notApplicable + c.notApplicable, unknownIncluded: c.unknownIncluded };
 }
-export function sortRows(rows: readonly Row[], key: SortKey, dir: 'asc' | 'desc'): Row[] {
-  const s = dir === 'asc' ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    if (key === 'name') return s * a.name.localeCompare(b.name);
-    const x = a[key], y = b[key];
-    if (!num(x) && !num(y)) return a.sym.localeCompare(b.sym);
-    if (!num(x)) return 1;                       // missing last in either direction
-    if (!num(y)) return -1;
-    return x === y ? a.sym.localeCompare(b.sym) : s * (x - y);
-  });
-}
+/** The list's sort, now the shared one (screener.sortRowsBy): by name or by a figure as the screener reads it (a ratio that is not meaningful for a name counts as missing), missing last in either direction, ties by symbol. */
+export function sortRows(rows: readonly Row[], key: SortKey, dir: 'asc' | 'desc'): Row[] { return sortRowsBy(rows, key, dir); }
 export const describeFilters = (f: Filters): string[] => [
   f.sector && `Sector: ${f.sector}`, f.tier && `Size: ${f.tier}`,
   f.value === 'cheap' && 'PE 15 or less', f.value === 'rich' && 'PE 40 or more', f.quality === 'high' && 'Median ROCE 20%+ (financial sector left out)',

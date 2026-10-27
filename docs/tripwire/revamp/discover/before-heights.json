@@ -1,0 +1,34 @@
+{
+ "390-list-default": {
+  "firstResultTop": 511,
+  "resultsBlockTop": 511
+ },
+ "390-table-default": {
+  "firstResultTop": 611,
+  "resultsBlockTop": 569
+ },
+ "390-list-uptrend-rsi": {
+  "firstResultTop": 581,
+  "resultsBlockTop": 581
+ },
+ "390-table-uptrend-rsi": {
+  "firstResultTop": 655,
+  "resultsBlockTop": 613
+ },
+ "1280-list-default": {
+  "firstResultTop": 493,
+  "resultsBlockTop": 493
+ },
+ "1280-table-default": {
+  "firstResultTop": 516,
+  "resultsBlockTop": 474
+ },
+ "1280-list-uptrend-rsi": {
+  "firstResultTop": 537,
+  "resultsBlockTop": 537
+ },
+ "1280-table-uptrend-rsi": {
+  "firstResultTop": 560,
+  "resultsBlockTop": 518
+ }
+}
