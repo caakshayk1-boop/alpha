@@ -5,7 +5,7 @@ import { styleOf } from './exits.ts';
 
 export interface Line { id: string; sym: string; engine: string; style: 'short' | 'swing' | 'long'; qty: number; entry: number; last: number; live: boolean; value: number; pnl: number; pct: number | null; r: number | null; dayPnl: number | null;
   /** distance from the last price to the stop and to the open targets, in percent of the last price (stop is negative) */
-  toStop: number | null; toT1: number | null; toT2: number | null; t1Hit: boolean; stop: number }
+  toStop: number | null; toT1: number | null; toT2: number | null; t1Hit: boolean; stop: number; t1: number | null; t2: number | null }
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const pc = (to: number, from: number) => (from > 0 ? r2(((to - from) / from) * 100) : null);
 
@@ -15,7 +15,7 @@ export function lines(rows: readonly BookRow[]): Line[] {
     if (v.status !== 'open' || v.entry == null || v.mark == null || v.pnl == null) continue;
     const qty = v.ladder ? v.ladder.qtyLeft : p.qty; const stop = v.ladder?.stop ?? p.stop;
     out.push({ id: p.id, sym: p.sym, engine: p.engine, style: styleOf(p.horizon), qty, entry: v.entry, last: v.mark, live: v.markKind === 'live', value: r2(v.mark * qty), pnl: v.pnl, pct: v.pct, r: v.r, dayPnl,
-      toStop: pc(stop, v.mark), toT1: v.ladder && !v.ladder.t1Hit ? pc(v.ladder.t1, v.mark) : null, toT2: v.ladder && !v.ladder.t2Hit ? pc(v.ladder.t2, v.mark) : null, t1Hit: !!v.ladder?.t1Hit, stop });
+      toStop: pc(stop, v.mark), toT1: v.ladder && !v.ladder.t1Hit ? pc(v.ladder.t1, v.mark) : null, toT2: v.ladder && !v.ladder.t2Hit ? pc(v.ladder.t2, v.mark) : null, t1Hit: !!v.ladder?.t1Hit, stop, t1: v.ladder?.t1 ?? null, t2: v.ladder?.t2 ?? null });
   }
   return out;
 }

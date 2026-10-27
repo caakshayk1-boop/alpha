@@ -315,3 +315,23 @@ test('chart overlays: moving average by hand, drawdown from the running peak, a 
   const dd = drawdownSeries([100, 120, 90, 120, 130, 117].map((c, i) => ({ t: i, c }))); assert.deepEqual(dd.map((x) => Math.round(x * 100) / 100), [0, 0, -25, 0, 0, -10]);
   assert.equal(pathThrough([0, 1, 2, 3], [5, null, 7, 8]), 'M0 5M2 7L3 8'); assert.equal(pathThrough([0], [null]), '');
 });
+
+import { incompleteSessions, rebuildSessions } from '../worker.js';
+test('worker: a finished session with a null daily row is rebuilt from the five-minute chart, only when the chart really covers it', () => {
+  const day = (iso: string, h: number, m: number) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10), h, m) / 1000 - 19800;      // an IST wall time as epoch seconds
+  const d1 = day('2026-10-23', 9, 15), d2 = day('2026-10-26', 9, 15);
+  const daily = { t: [d1], o: [], h: [], l: [], c: [], forming: false, live: null };
+  const res = { timestamp: [d1, d2], indicators: { quote: [{ open: [10, null], high: [11, null], low: [9, null], close: [10, null] }] } };
+  const now = Date.UTC(2026, 9, 27, 3, 0);                                                      // 08:30 IST the next morning
+  assert.deepEqual(incompleteSessions(res, daily, now), ['2026-10-26']);
+  assert.deepEqual(incompleteSessions(res, daily, Date.UTC(2026, 9, 26, 6, 0)), [], 'the session is still open at 11:30 IST: not rebuilt');
+  assert.deepEqual(incompleteSessions(res, daily, Date.UTC(2026, 9, 26, 10, 30)), ['2026-10-26'], 'after 15:45 IST it is finished');
+  const ts: number[] = [], o: number[] = [], h: number[] = [], l: number[] = [], c: number[] = [];
+  for (let k = 0; k < 75; k++) { ts.push(d2 + k * 300); o.push(100 + k); h.push(101 + k); l.push(99 + k); c.push(100.5 + k); }
+  const full = rebuildSessions({ timestamp: ts, indicators: { quote: [{ open: o, high: h, low: l, close: c }] } }, ['2026-10-26']);
+  assert.deepEqual(full, [{ t: d2, o: 100, h: 175, l: 99, c: 174.5, day: '2026-10-26' }], 'open of the first bar, extremes across the day, close of the last');
+  const half = rebuildSessions({ timestamp: ts.slice(0, 40), indicators: { quote: [{ open: o.slice(0, 40), high: h.slice(0, 40), low: l.slice(0, 40), close: c.slice(0, 40) }] } }, ['2026-10-26']);
+  assert.deepEqual(half, [], 'a chart that stops before 15:15 IST is not a finished session');
+  const late = rebuildSessions({ timestamp: ts.slice(3), indicators: { quote: [{ open: o.slice(3), high: h.slice(3), low: l.slice(3), close: c.slice(3) }] } }, ['2026-10-26']);
+  assert.deepEqual(late, [], 'a chart without the opening bar cannot give the open, so nothing is invented');
+});

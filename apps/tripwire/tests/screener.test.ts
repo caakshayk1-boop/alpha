@@ -31,3 +31,29 @@ test('screener: every metric is described, every column set uses known metrics, 
   for (const s of COLUMN_SETS) for (const c of s.cols) assert.ok(ids.has(c), c);
   assert.equal(describeCond({ m: 'rsi', op: 'gte', v: 55 }), 'RSI ≥ 55'); assert.equal(describeCond({ m: 'from_high', op: 'gte', v: -5 }), 'FROM HIGH ≥ -5.0%');
 });
+
+import { condsFor, distribution } from '../src/screener.ts';
+test('range builder: each mode writes the conditions it names, and "around" is value plus or minus', () => {
+  assert.deepEqual(condsFor('rsi', 'gte', 47, 0), [{ m: 'rsi', op: 'gte', v: 47 }]);
+  assert.deepEqual(condsFor('rsi', 'lte', 47, 0), [{ m: 'rsi', op: 'lte', v: 47 }]);
+  assert.deepEqual(condsFor('rsi', 'between', 60, 40), [{ m: 'rsi', op: 'gte', v: 40 }, { m: 'rsi', op: 'lte', v: 60 }], 'the ends may be given either way round');
+  assert.deepEqual(condsFor('rsi', 'around', 47, 1.5), [{ m: 'rsi', op: 'gte', v: 45.5 }, { m: 'rsi', op: 'lte', v: 48.5 }]);
+});
+test('range builder: "RSI around 47" keeps exactly the names inside, and a name with no RSI never matches', () => {
+  const rs = [40, 46, 47, 48.4, 49.6, 70].map((x, i) => r(`S${i}`, { rsi: x })).concat(r('NONE'));
+  assert.deepEqual(applyConds(rs, condsFor('rsi', 'around', 47, 1.5)).rows.map((x) => x.sym), ['S1', 'S2', 'S3']);
+});
+test('range builder: the picture reads the same figures as the filter and clips absurd ratios', () => {
+  const rs = Array.from({ length: 200 }, (_, i) => r(`S${i}`, { pe: 10 + i / 10 })).concat([r('WILD', { pe: 1e6 }), r('NOPE')]);
+  const d = distribution(rs, 'pe')!;
+  assert.equal(d.n, 201); assert.equal(d.missing, 1); assert.equal(d.max, 1e6); assert.ok(d.p99 < 40, 'the clip ignores the absurd ratio'); assert.equal(d.bins.reduce((a, b) => a + b, 0) <= 201, true);
+  assert.equal(distribution([r('A', { pe: 5 })], 'pe'), null, 'one figure draws nothing');
+});
+test('derived figures: price against an average is a percentage, and absent when either side is', () => {
+  assert.equal(valueOf(r('A', { price: 110, sma50: 100 }), 'dist50'), 10);
+  assert.equal(valueOf(r('A', { price: 110 }), 'dist50'), null);
+  assert.equal(valueOf(r('A', { price: 150, low52: 100 }), 'from_low'), 50);
+});
+test('a condition reads back with the digits it was set with', () => {
+  assert.equal(describeCond({ m: 'rsi', op: 'gte', v: 45.5 }), 'RSI ≥ 45.5'); assert.equal(describeCond({ m: 'rsi', op: 'gte', v: 47 }), 'RSI ≥ 47');
+});

@@ -80,6 +80,14 @@ await pg.getByLabel('Search companies').fill('tata consultancy');
 await pg.waitForTimeout(200);
 ok((await pg.locator('.li .sym').first().innerText()).startsWith('TCS'), 'Discover search finds TCS by name');
 await shot('02-discover');
+// the range builder: any figure, an exact value or a range, with the picture and a live count
+await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
+await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('button', { name: 'Around' }).click();
+await pg.locator('#c-v').fill('47'); await pg.locator('#c-v2').fill('1.5');
+ok(/of \d+ companies match/.test(await pg.locator('p[role=status]').last().innerText()), 'the condition sheet counts the matches live');
+await pg.getByRole('button', { name: 'Add', exact: true }).click();
+ok(await pg.getByRole('button', { name: /Remove condition: RSI ≥ 45\.5/ }).count() === 1 && await pg.getByRole('button', { name: /Remove condition: RSI ≤ 48\.5/ }).count() === 1, 'RSI around 47 plus or minus 1.5 becomes two removable conditions');
+await pg.getByRole('button', { name: /Remove condition: RSI ≥ 45\.5/ }).click(); await pg.getByRole('button', { name: /Remove condition: RSI ≤ 48\.5/ }).click();
 await pg.getByRole('button', { name: /^Follow Tata Consultancy/ }).first().click();
 ok(/Following TCS/.test(await text()), 'follow gives a clear confirmation');
 ok(await pg.getByRole('button', { name: /^Unfollow Tata/ }).first().isVisible(), 'follow state is reflected on the control');
