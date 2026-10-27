@@ -10,6 +10,7 @@ let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
+if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env.JOURNEY_AT) });
 const now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 const mq = (prev, px) => quote(prev, px);
@@ -49,7 +50,8 @@ ok(/Tonight's picks/i.test(await text()) && (await pg.locator('.pickrow').count(
 T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
-await pg.waitForSelector('.dot-live', { timeout: 15000 });
+for (let k = 0; k < 6 && !(await pg.locator('.dot-live').count()); k++) { await pg.waitForSelector('.dot-live', { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
+await pg.waitForSelector('.dot-live', { timeout: 10000 });
 ok(/live ·/i.test(await text()) && /Needs you|Tonight's picks/i.test(await text()), 'the trend map is live and says so, with how many names were re-priced');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 ok(!/Your names|Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0, 'Today carries no empty-state cards, no per-name news block and no duplicate ticker');

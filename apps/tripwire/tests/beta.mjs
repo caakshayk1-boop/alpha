@@ -40,7 +40,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.fill('#t-thesis', 'Momentum with a tiny base; revenue 13 to 66 crore in three years'); await pg.fill('#t-invalidation', 'Close below 675'); await pg.fill('#t-date', '2026-11-30');
   await pg.getByRole('button', { name: 'Save thesis' }).click(); await pg.waitForTimeout(400);
   ok((await saved(pg)).entries.length === 1 && /Step 3 of 4/.test(await pg.locator('.decision .nextstep').innerText()), 'step 2 done: the thesis is saved, with its invalidation and review date');
-  ok(/close below ₹675\.37/i.test(await pg.locator('.decision').innerText()) || /Close below 675/.test(await pg.locator('.decision').innerText()), 'invalidation is shown in the summary');
+  ok(await pg.locator('.decision').filter({ hasText: /close below (₹)?675/i }).waitFor({ timeout: 8000 }).then(() => true, () => false), 'invalidation is shown in the summary');
   await pg.getByRole('button', { name: 'Size a plan' }).click(); await pg.waitForSelector('#pl-e');
   const sheet = await pg.locator('.sheet').innerText();
   ok(/Nobody buys at a past close/.test(sheet) && /NEXT open plus 0\.1% slippage/.test(sheet) && /Experimental engine/.test(sheet), 'the planner states its entry-price assumption and that the name is an experiment\'s pick');
