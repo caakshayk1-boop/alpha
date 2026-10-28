@@ -67,7 +67,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const { ctx, pg } = await mk(); await ctx.addInitScript((s) => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; void s; }, 0);
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore as a guest/ }).click(); await pg.waitForTimeout(800);
   const banner = await pg.locator('.banner[role=alert]').innerText().catch(() => '');
-  ok(/not keeping Tripwire's data/.test(banner), 'when storage refuses to write, a banner says the data is not being kept: ' + banner.slice(0, 70)); await ctx.close();
+  ok(/could not save: this browser's storage is full/.test(banner) && /Download a backup now/.test(banner), 'when storage refuses to write, a banner says why and offers a backup: ' + banner.slice(0, 70)); await ctx.close();
 }
 
 /* ---- 2. backup round trip through the real screens ---- */
@@ -81,7 +81,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.locator('input[type=file]').setInputFiles(path); await pg.waitForTimeout(500);
   const back = await saved(pg); ok(JSON.stringify(back.entries) === JSON.stringify(STATE.entries) && JSON.stringify(back.paper) === JSON.stringify(STATE.paper) && back.follows.length === 2, 'import on a new device restores the journal, trades and follows exactly');
   await pg.setInputFiles('input[type=file]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":99}') }); await pg.waitForTimeout(400);
-  ok(/Not a Tripwire backup\. Nothing was changed\./.test(await text(pg)) && (await saved(pg)).entries.length === 1, 'a file that is not ours is refused and nothing changes');
+  ok(/version 99 of Tripwire; this one reads version 1\. Nothing was changed\./.test(await text(pg)) && (await saved(pg)).entries.length === 1, 'a file that is not ours is refused, says why, and nothing changes');
   await pg.evaluate(() => localStorage.setItem('tripwire:v1', '{"v":7,corrupt')); await pg.reload(); await pg.waitForTimeout(800);
   ok(/could not be read/.test(await text(pg)) && (await pg.evaluate(() => localStorage.getItem('tripwire:v1:unreadable'))) === '{"v":7,corrupt', 'unreadable saved data is flagged and a copy is kept before anything is written over it'); await ctx.close();
 }

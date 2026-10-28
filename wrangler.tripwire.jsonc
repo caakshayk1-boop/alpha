@@ -7,5 +7,7 @@
   "assets": { "directory": "./apps/tripwire/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "routes": [{ "pattern": "tripwire.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
+  // A cron trigger every 15 minutes runs worker.js scheduled(): it asks GitHub to start the news job, but only once the owner has set the secret GITHUB_DISPATCH_TOKEN. Without it the trigger does nothing.
+  "triggers": { "crons": ["*/15 * * * *"] },
   "observability": { "enabled": true }
 }

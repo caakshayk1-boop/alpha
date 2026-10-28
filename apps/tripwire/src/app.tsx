@@ -1,6 +1,8 @@
 import { StatusBar } from './statusbar.tsx';
 import { Suspense, lazy, createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { DEFAULTS, readSaved, type State } from './store.ts';
+import { DEFAULTS, type State } from './store.ts';
+import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type SaveFailure } from './persist.ts';
+import { downloadBackup } from './backupfile.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
 import { Today } from './screens/today.tsx';
@@ -36,20 +38,20 @@ import { LockScreen } from './screens/LockScreen.tsx';
 const KEY = 'tripwire:v1';
 let mem: State | null = null;
 /** Whether this browser is really keeping the data. Private modes and a full disk make setItem throw; saying nothing would let a person write notes that vanish. */
-const health = { persisted: true, unreadable: false };
+const health: { persisted: boolean; unreadable: boolean; why: SaveFailure | null } = { persisted: true, unreadable: false, why: null };
+const store = (): Storage | null => { try { return localStorage; } catch { return null; } };
 function load(): State {
-  try { const t = localStorage.getItem(KEY); const r = readSaved(t);
-    if (r.unreadable) { health.unreadable = true; try { localStorage.setItem(KEY + ':unreadable', t as string); } catch { /* nothing more can be done */ } }   // keep what could not be read before anything is written over it
-    return r.state; } catch { health.persisted = false; return DEFAULTS; }
+  const r = loadState(store(), KEY); if (r.unreadable) health.unreadable = true;   // loadState keeps a copy of what could not be read before anything is written over it
+  if (r.blocked) { health.persisted = false; health.why = 'blocked'; } return r.state;
 }
 const subs = new Set<() => void>();
 export function setState(fn: (s: State) => State) {
   mem = fn(mem ?? load());
-  try { localStorage.setItem(KEY, JSON.stringify(mem)); health.persisted = true; } catch { health.persisted = false; }   // kept in memory for this session, and said so on screen
+  const r = saveState(store(), KEY, mem); health.persisted = r.ok; health.why = r.ok ? null : r.why;   // on failure the state stays in memory for this session, and the banner says so and offers a backup
   subs.forEach((f) => f());
 }
 export function useAppState(): State {
-  return useSyncExternalStore((f) => { subs.add(f); const st = () => { mem = load(); f(); }; window.addEventListener('storage', st); return () => { subs.delete(f); window.removeEventListener('storage', st); }; }, () => (mem ??= load()), () => DEFAULTS);
+  return useSyncExternalStore((f) => { subs.add(f); const st = (e: StorageEvent) => { if (!shouldAdoptStorageEvent(e, KEY, health.persisted)) return; mem = load(); f(); }; /* never replace edits this browser would not save with an older copy */ window.addEventListener('storage', st); return () => { subs.delete(f); window.removeEventListener('storage', st); }; }, () => (mem ??= load()), () => DEFAULTS);
 }
 
 /* ---- router: hash based, so it works offline and from a static host ---- */
@@ -149,7 +151,7 @@ export function App(): ReactNode {
     <div className="app">
       <main className="main" id="main" tabIndex={-1}>
         <StatusBar asOf={screen.data?.as_of} />
-        {!health.persisted && <div className="banner" role="alert">This browser is not keeping Tripwire's data (private mode, or storage is full). Notes, plans and paper trades will be lost when this tab closes. Export a backup from Profile now.</div>}
+        {!health.persisted && <div className="banner" role="alert">Tripwire could not save: {SAVE_FAILURE_WORDS[health.why ?? 'other']}. What you have written is still here, but notes, plans and paper trades will be lost when this tab closes. <button className="btn sm" onClick={() => downloadBackup(s)}>Download a backup now</button></div>}
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Profile to restore your notes.</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
