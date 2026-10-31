@@ -1,0 +1,1 @@
+{"schema":"tripwire-news-status/1","snapshotVersion":24,"status":"ok","checkedAt":"2026-10-31T10:10:19.202Z","lastSuccessfulAt":"2026-10-31T10:10:19.202Z","nextScheduledAt":"2026-10-31T10:40:19.202Z","cadenceMin":30,"sourcesTotal":4,"sourcesFailed":0,"lastError":null,"eventCount":250,"rankingVersion":"news-rank-1","pipelineVersion":"news-pipe-1"}
