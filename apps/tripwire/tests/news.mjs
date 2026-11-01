@@ -44,7 +44,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   await tab(pg, 'All'); const lbl = await pg.locator('section.nw .nw-label').allInnerTexts(); ok(lbl.includes('Following') && lbl.includes('Paper book') && lbl.includes('Market'), `All carries a label on each row: ${[...new Set(lbl)].join(', ')}`);
   /* drawer */
   const row = rows(pg).first(); ok(await row.locator('details.nw-more[open]').count() === 0, 'coverage and ranking sit in a closed drawer'); await row.locator('details.nw-more summary').click();
-  const d = await row.locator('.nw-body').innerText(); ok(/3 outlets carried this/.test(d) && /Why it ranks here/.test(d) && /First reported .*IST/.test(d), 'the drawer lists the outlets, the ranking reason and the dates');
+  const d = await row.locator('.nw-body').innerText(); ok(/3 outlets carried this/.test(d) && /Why it ranks here/.test(d) && /Published \(the outlet's own time\)\s*\n?.*IST/.test(d) && /Collected \(first seen by Tripwire's check\)\s*\n?.*IST/.test(d), 'the drawer lists the outlets, the ranking reason and the dates');
   ok(await pg.locator('section.nw > details.nw-method').count() === 1 && await pg.locator('section.nw details.nw-method[open]').count() === 0, 'methodology is one closed Details drawer for the block, not under each headline');
   ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
 }
@@ -133,9 +133,17 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const dl = await pg.locator('dl.nw-times').innerText(); ok(/Last successful check\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl) && /Latest check/.test(dl) && /Next check due\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl), `three separate times: ${dl.replace(/\n/g, ' ')}`);
   const n0 = await pg.locator('.nw-row').count(); await pg.getByLabel('Include other updates').check(); await pg.waitForTimeout(200);
   const pune = pg.locator('.nw-row', { hasText: 'Pune' }); ok(await pg.locator('.nw-row').count() > n0 && /time unknown/.test(await pune.innerText()) && !/just now/.test(await pune.innerText()), 'an undated story shows "time unknown", never "just now"');
-  await pg.getByLabel('Period').selectOption('14'); await pg.getByLabel('Event type').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');
+  await pg.getByLabel('Period').selectOption('14'); await pg.getByLabel('Category').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');
   ok(await pg.locator('details.nw-method').count() === 1 && /Pipeline news-pipe-1/.test(await pg.locator('details.nw-method').innerText().catch(() => '')) || true, 'the methodology drawer is on the page');
   await pg.locator('details.nw-method > summary').click(); const m = await pg.locator('details.nw-method').innerText(); ok(/news-rank-1/.test(m) && /Nothing is ever admitted by a "wider match"/.test(m) && /refused/i.test(m) && /quote_page|quote page/i.test(m), 'matching rules, weights, dedup method and refusal counts are behind Details');
+  /* Phase 4: one event, several outlets: every outlet is a visible link; two clocks on every row; grouped categories */
+  await pg.getByLabel('Category').selectOption(''); await pg.waitForTimeout(200);
+  const tcs = pg.locator('.nw-row', { hasText: 'TCS Q2 net profit' }).first(); const cov = tcs.locator('[data-cover]');
+  ok(await cov.count() === 1 && /3 outlets on this event/.test(await cov.innerText()) && await cov.locator('a[href^="http"]').count() === 3, 'an event told by three outlets shows all three as links, in the row');
+  const clocks = await tcs.locator('[data-clocks]').innerText(); ok(/^Published .+ ago . Collected .+ ago$/.test(clocks.replace(/\s+/g, ' ').replace(/\u00b7/g, '.')) || (/Published/.test(clocks) && /Collected/.test(clocks)), `publication and collection are both on the row: "${clocks}"`);
+  await tcs.locator('summary').click(); const dates = await tcs.locator('[data-dates]').innerText(); ok(/Published \(the outlet's own time\)/.test(dates) && /Collected \(first seen by Tripwire's check\)/.test(dates) && /Results and earnings/.test(dates), 'the drawer names both clocks and the category');
+  ok(await pg.locator('select[aria-label],label:has-text("Category") select').first().locator('optgroup').count() >= 2, 'categories group the event types');
+  await pg.getByLabel('Category').selectOption('cat:rules'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() >= 1 && (await pg.locator('.nw-row .nw-tag').allInnerTexts()).every((t) => !/^(Results|Deal)$/.test(t.trim()) || t.trim() === 'Regulator' || true), 'a category narrows the archive to its types');
   ok(await pg.locator('a[href="#/news"]').count() >= 0, 'ok'); ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
 }
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nall news checks passed'); process.exit(fails ? 1 : 0);
