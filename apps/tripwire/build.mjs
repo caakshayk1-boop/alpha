@@ -1,6 +1,7 @@
 // Builds Tripwire into apps/tripwire/dist: one esbuild bundle, the static shell, and a compact copy of the published data.
 // Data is read from ../../public (the same feeds the website publishes); nothing here fetches from the network.
 import { build } from 'esbuild';
+import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,9 @@ const PUB = join(HERE, '..', '..', 'public');
 const DIST = join(HERE, 'dist');
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'data', 'c'), { recursive: true });
+
+// the design tokens are the only place a hex colour may live: fail the build otherwise (tools/lint-tokens.mjs)
+execFileSync(process.execPath, [join(HERE, 'tools/lint-tokens.mjs')], { stdio: 'inherit' });
 
 const stamp = Date.now().toString(36);
 await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: true, sourcemap: false, target: 'es2020', format: 'esm', splitting: true, chunkNames: `app.${stamp}.[name]-[hash]`, entryNames: `app.${stamp}`, jsx: 'automatic',
