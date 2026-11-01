@@ -21,7 +21,7 @@ for (const [name, o, expect] of [['T1 filled in the last completed session', { .
     ok(await card.count() === 1, `${name}: the card is shown`);
     const txt = await card.innerText(); ok(expect.test(txt) && /LAURUSLABS/.test(txt) && /2,154\.53/.test(txt), `${name}: names the position, the level and the fill (${txt.replace(/\s+/g, ' ').slice(0, 120)})`);
     ok(/nothing is sent to you/i.test(txt) && !/notified|we will tell|email/i.test(txt), `${name}: says plainly that nothing is sent`);
-    const firstSec = await pg.locator('.today > section').first().getAttribute('data-sec'); ok(firstSec === 'hits', `${name}: it is the top card (first section is ${firstSec})`);
+    const firstSec = await pg.locator('.today > section[data-sec]').first().getAttribute('data-sec'); ok(firstSec === 'hits', `${name}: it is the top content card (the hero above it is not a section) (first section is ${firstSec})`);
   } else ok(await card.count() === 0, `${name}: no card`);
   await ctx.close();
 }
