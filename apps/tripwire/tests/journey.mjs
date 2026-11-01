@@ -214,7 +214,9 @@ ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('radio
 await pg.getByRole('radio', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
 // compare starting from a single company: it asks for the second one instead of dead-ending
-await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
+// Compare pairs a followed company with another followed one when there is one, so this step starts from a single follow
+await pg.evaluate(() => { const k = 'tripwire:v1'; const st = JSON.parse(localStorage.getItem(k) || '{}'); st.follows = ['TCS']; localStorage.setItem(k, JSON.stringify(st)); });
+await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
 await pg.waitForSelector('#cmp-add'); ok(/Compare TCS with/.test(await text()), 'Compare from a company page asks which company to put beside it');
 await pg.locator('#cmp-add').fill('infosys'); await pg.locator('.pick-row', { hasText: 'INFY' }).first().click();
 await pg.waitForSelector('table.tbl'); await pg.waitForSelector('.cchart svg path');
