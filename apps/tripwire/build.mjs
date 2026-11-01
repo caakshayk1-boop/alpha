@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sessionsBetween } from './src/calendar.ts';
 import { FILE_IDS } from './src/freshness.ts';
+import { criticalCss } from './tools/critical.mjs';
+import { staticClosure } from './tools/budget.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', '..', 'public');
 const DIST = join(HERE, 'dist');
@@ -65,7 +67,15 @@ mkdirSync(join(DIST, 'data', 'research'), { recursive: true });
 for (const f of ['factor_study.json', 'engines_backtest.json', 'engines_walkforward.json', 'engines_pairs.json', 'lab_panel.json', 'lab_panel.bin.gz']) { const src = join(HERE, 'research', 'results', f); if (existsSync(src)) cpSync(src, join(DIST, 'data', 'research', f)); }
 
 // static shell
-const html = readFileSync(join(HERE, 'static/index.html'), 'utf8').replaceAll('__STAMP__', stamp);
+let html = readFileSync(join(HERE, 'static/index.html'), 'utf8').replaceAll('__STAMP__', stamp);
+// Performance: (1) the rules the first viewport needs go inline (the CSP already allows inline style: style-src 'self' 'unsafe-inline'; nothing is weakened) and the full stylesheet loads
+// WITHOUT blocking first paint (media="print" until src/main.tsx switches it on; a <noscript> copy for no-JS); (2) the entry's static chunks are named in modulepreload so they download
+// in parallel with the entry instead of one level down. tools/budget.mjs fails the build above the owner's budgets.
+const critical = criticalCss(readFileSync(join(DIST, `app.${stamp}.css`), 'utf8'), JSON.parse(readFileSync(join(HERE, 'static/critical-classes.json'), 'utf8')));
+const link = `<link rel="stylesheet" href="/app.${stamp}.css">`; if (!html.includes(link)) throw new Error('static/index.html lost its stylesheet link');
+html = html.replace(link, `<style data-critical>${critical}</style>\n<link rel="preload" href="/app.${stamp}.css" as="style">\n<link rel="stylesheet" href="/app.${stamp}.css" media="print" data-full-css>\n<noscript>${link}</noscript>`);
+const preload = staticClosure(DIST, `app.${stamp}.js`).filter((f) => f !== `app.${stamp}.js`).map((f) => `<link rel="modulepreload" href="/${f}">`).join('\n');
+html = html.replace('</head>', `${preload}\n</head>`);
 writeFileSync(join(DIST, 'index.html'), html);
 writeFileSync(join(DIST, '404.html'), html);
 for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));

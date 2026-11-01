@@ -43,6 +43,8 @@ jobs:
       - run: npm run tripwire:build
       - name: Freshness and completeness assertions (screen = last completed NSE session, no stale or sector-less rows; see apps/tripwire/tools/check-data.mjs)
         run: npm run tripwire:verify-data
+      - name: Performance budget (initial JS <= 250 KB gzip, no render-blocking CSS, modulepreload, lazy heavy views; see apps/tripwire/tools/budget.mjs)
+        run: npm run tripwire:budget
       - run: npm run tripwire:check
       - name: Deploy (manual, or the scheduled refresh on main)
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main') }}
