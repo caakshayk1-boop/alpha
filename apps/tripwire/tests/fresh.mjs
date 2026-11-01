@@ -7,7 +7,7 @@ const scr = await (await fetch(base + '/data/screen.json')).json(); const DAY = 
 const prevSession = (d) => { const t = new Date(d + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() - 1); while ([0, 6].includes(t.getUTCDay())); return t.toISOString().slice(0, 10); };
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
-const open = async (route, { ledgerDay, rsiDay, factorsDay }) => {
+const open = async (route, { ledgerDay, rsiDay, factorsDay, breadthDay }) => {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch {} }, STATE);
   await mockApi(ctx); await ctx.clock.setFixedTime(new Date(`${DAY}T17:30:00Z`));       // 23:00 IST on the data day: the close of DAY is the last finished session
@@ -16,6 +16,7 @@ const open = async (route, { ledgerDay, rsiDay, factorsDay }) => {
   await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(L(ledgerDay)) }));
   await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: rsiDay, order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66] } }) }));
   await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: factorsDay, universe: 500, rows: {}, study: {} }) }));
+  await ctx.route('**/api/breadth*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, t: Date.now(), as_of: breadthDay ?? DAY, n: 500, up: 200, mixed: 150, down: 150, sectors: [], repriced: 0, near: 0 }) }));   // pinned like the rest: the pill test must not depend on what the live worker serves
   const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); await pg.goto(base + route); return { ctx, pg, errs };
 };
 const same = { ledgerDay: DAY, rsiDay: DAY, factorsDay: DAY };
