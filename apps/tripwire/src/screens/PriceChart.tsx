@@ -80,7 +80,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
   const cmpYears = cmp ? (cmp.a[cmp.a.length - 1].t - cmp.a[0].t) / (365.25 * 86400) : 0;
   const words = cmp?.trimmed ? `the ${spanWord(cmpYears)} since ${dateLabel(cmp.from.t)}` : windowWords(range, win.covers, st?.years ?? 0);
   const take = priceTakeaway({ sym, pts: cmp ? cmp.a : shown, bench: cmp ? cmp.b : null, words, monthly: view === 'monthly' });
-  const legend = <SeriesLegend items={cmp ? [{ style: S, value: pct(cmp.stock), arrow: arrowOf(cmp.stock) }, { style: B, value: pct(cmp.nifty), arrow: arrowOf(cmp.nifty) }] : [{ style: S, value: st ? pct(st.ret) : undefined, arrow: st ? arrowOf(st.ret) : undefined }]} />;
+  const legend = <SeriesLegend items={cmp ? [{ style: S }, { style: B }] : [{ style: S }]} />;   // the values are in the header figures and at the line ends; the legend is the key
   // the table is built from the arrays the chart draws
   const table = (() => {
     const monthly = view === 'monthly' || eff === 'monthly';

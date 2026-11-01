@@ -1,17 +1,21 @@
 /* The shared chart frame (src/charts/frame.tsx). Tokens only. Motion for lines lives in style.css/motion.css under html.fx; nothing here animates. */
-.cf{padding:var(--card-pad);min-height:560px}
+.cf{padding:var(--sp-4) var(--card-pad) var(--card-pad);min-height:560px}
+.cf .chart-head{min-height:0}
+.cf .chart-plot{margin-top:var(--sp-2)}
 .cf.cf-state{min-height:0}
+.cf.cf-state[aria-busy=true]{min-height:1100px}
+@media(min-width:700px){.cf.cf-state[aria-busy=true]{min-height:800px}}
 .cf-head{display:flex;gap:var(--sp-3);justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
 .cf-title{min-width:0;flex:1 1 200px}
 .cf-h{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:600;color:var(--ink)}
 .cf-meta{font-size:var(--fs-label);line-height:1.4;color:var(--ink-3);margin-top:2px}
 .cf-view button{min-height:var(--hit);min-width:var(--hit)}
-.cf-take{margin:var(--sp-3) 0 var(--sp-2);min-height:132px}
+.cf-take{margin:var(--sp-1) 0 0}
+.cf-take2{margin:var(--sp-2) 0 0}
 .cf-lead{margin:0;font-size:var(--fs-body);line-height:var(--lh-body);color:var(--ink)}
 .cf-line{margin:var(--sp-1) 0 0;font-size:var(--fs-data);line-height:1.45;color:var(--ink-2)}
 .cf-through{margin:var(--sp-1) 0 0;font-size:var(--fs-label);color:var(--ink-3)}
-@media(min-width:700px){.cf-take{min-height:96px}}
-.cf-legend{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin:var(--sp-3) 0 0;padding:0;font-size:var(--fs-data);min-height:24px}
+.cf-legend{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);margin:var(--sp-1) 0 0;padding:0;font-size:var(--fs-data)}
 .cf-legend li{display:inline-flex;align-items:center;gap:6px}
 .cf-sw{flex:none}
 .cf-ln{color:var(--ink)}.cf-lv{color:var(--ink-2)}

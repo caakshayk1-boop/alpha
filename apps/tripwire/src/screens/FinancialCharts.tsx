@@ -15,7 +15,7 @@ export function FinancialCharts({ years, margins }: { years: readonly Year[]; ma
   const n = ys.length; const colW = 100; const W = n * colW; const H = 120; const pad = 14;
   const rev = ys.map((y) => (isN(y.rev_cr) ? y.rev_cr : null)), pat = ys.map((y) => (isN(y.pat_cr) ? y.pat_cr : null));
   const nm = ys.map((y) => netMargin(y)), em = ys.map((y) => (isN(y.ebit_margin) ? y.ebit_margin : null));
-  const take = financialsTakeaway(ys);
+  const take = financialsTakeaway(ys, { margins });
   const last = ys[n - 1];
   const bars = (vals: (number | null)[], fmtv: (v: number) => string, unit: string, name: string) => {
     const ok = vals.filter(isN); const mx = Math.max(0, ...ok), mn = Math.min(0, ...ok); const span = (mx - mn) || 1; const y0 = pad + (mx / span) * (H - 2 * pad);

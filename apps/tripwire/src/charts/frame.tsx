@@ -25,13 +25,10 @@ export function ChartFrame({ title, meta, mode, onMode, takeaway, legend, childr
       <div className="cf-title"><div className="cf-h">{title}</div>{meta && <div className="cf-meta">{meta}</div>}</div>
       {table && <Radios label="Show as" value={mode} onChange={onMode} className="mini-seg cf-view" items={[{ id: 'chart', label: 'CHART' }, { id: 'table', label: 'TABLE', hint: tableLabel ?? 'The same figures as a table' }] as { id: FrameMode; label: string; hint?: string }[]} />}
     </div>
-    {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway>
-      <p className="cf-lead">{takeaway.headline}</p>
-      {takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}
-      <p className="cf-through num">{takeaway.dataThrough}</p>
-    </div>}
+    {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead">{takeaway.headline}</p></div>}
     {legend}
     {mode === 'table' && table ? table : children}
+    {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
     {notes}
     {basis && <p className="cf-basis small mute">{basis}</p>}
   </section>;

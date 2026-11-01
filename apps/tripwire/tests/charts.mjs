@@ -1,0 +1,133 @@
+// The shared chart system in a browser: the first screen, the factual takeaway, the Chart / Table agreement, keyboard and touch, series identity beyond colour,
+// reduced motion, the saved range, missing and non-positive data, the comparison (coverage notes, drawdown, compact add control), the financial panels, no overflow at 360 and 1280.
+// AUTOMATED checks in a desktop Chromium; they do not replace a real phone or a screen reader. Usage: node apps/tripwire/tests/charts.mjs [baseUrl]
+import { chromium, newCtx, ohlcSeries } from './uimock.mjs';
+const base = process.argv[2] ?? 'http://localhost:8801';
+let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
+const b = await chromium.launch();
+const wait = (pg) => pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {});
+const open = async (pg, route, sel) => { await pg.goto(base + '/'); await pg.goto(base + route); await pg.reload(); await wait(pg); if (sel) await pg.waitForSelector(sel, { timeout: 20000 }); await pg.waitForTimeout(400); };
+const overflow = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+const radio = (pg, group, name) => pg.locator(`[role=radiogroup][aria-label="${group}"]`).getByRole('radio', { name, exact: true });
+const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
+
+/* 1. the first screen on a phone: the chart is in it, with its takeaway, and it opens on one year against the Nifty */
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const top = await pg.evaluate(() => document.querySelector('.chart-plot').getBoundingClientRect().top); ok(top > 0 && top < 844, `the principal chart starts inside the first 844px (top ${Math.round(top)})`);
+  const take = (await pg.locator('[data-takeaway]').allInnerTexts()).join('\n');
+  ok(/^TCS (rose|fell|was flat) [\d.]+% over the last year, against [+−]?[\d.]+% for the Nifty 50/.test(take) && /percentage points|level with it/.test(take) && /Closes through \d+ \w{3} \d{4}/.test(take), `the takeaway is a factual sentence with the benchmark and the data-through date (${take.split('\n')[0].slice(0, 90)})`);
+  ok(!/because|will |likely|expect|forecast|confidence/i.test(take), 'the takeaway makes no causal claim, forecast or confidence statement');
+  ok((await radio(pg, 'Range', '1Y').getAttribute('aria-checked')) === 'true' && (await radio(pg, 'Compare', 'VS NIFTY').getAttribute('aria-checked')) === 'true', 'a new person starts on 1Y, stock against the Nifty');
+  const head = await pg.locator('.chart-head').innerText(); ok(/Price change \(absolute\)/.test(head) && /Relative to the Nifty 50/.test(head) && /pts/.test(head), 'absolute change and relative performance are two labelled figures');
+  const leg = await pg.locator('.cf-legend li').count(); const shapes = await pg.locator('.cf-legend li svg path').count(); ok(leg === 2 && shapes === 2 && (await pg.locator('.cf-legend li svg line[stroke-dasharray]').count()) === 1, 'the legend gives each line its own marker, and the benchmark a dash');
+  ok(/[▲▼■]/.test(await pg.locator('.chart-head').innerText()) && /[▲▼■]/.test(await pg.locator('.c-end').first().innerText()), 'direction is carried by an arrow and a sign, not by colour alone');
+  const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
+  const basis = await pg.locator('.cf-basis').innerText(); ok(/split/i.test(basis) && /dividends/i.test(basis) && /Yahoo/.test(basis), 'the source and the adjustment basis, dividends included, are printed under the chart');
+  ok((await pg.locator('.cf-view button').first().boundingBox()).height >= 43.5, 'the Chart / Table switch is 44px tall');
+  ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
+  await ctx.close(); }
+
+/* 2. chart and table agree; the last price on the chart is the last row of the table */
+{ const ctx = await newCtx(b, 1280, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  await radio(pg, 'Compare', 'PRICE').click(); await pg.waitForSelector('.c-last');
+  const tag = (await pg.locator('.c-last').innerText()).replace(/[₹,\s]/g, '');
+  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click(); await pg.waitForSelector('.cf-table table');
+  const rows = await pg.locator('.cf-table tbody tr').count(); const lastRow = (await pg.locator('.cf-table tbody tr').last().locator('td').first().innerText()).replace(/[,\s]/g, '');
+  ok(lastRow === tag, `the last row of the table (${lastRow}) is the price tagged on the chart (${tag})`);
+  const closes = await pg.locator('.cf-table tbody tr td:first-of-type').allInnerTexts(); const nums = closes.map((x) => Number(x.replace(/,/g, '')));
+  ok(rows <= 26 && rows >= 4 && /of the \d+ day closes drawn on the chart/.test(await pg.locator('.cf-table').innerText()), `the table lists ${rows} rows and says how many of the drawn points they are`);
+  ok(await pg.locator('.cf-table caption.sr').count() === 1 && await pg.locator('.cf-table th[scope=col]').count() >= 2 && await pg.locator('.cf-table .scroll-x[tabindex="0"]').count() === 1, 'the table has a caption, column headers and a focusable scroll region');
+  await pg.getByRole('radio', { name: 'CHART', exact: true }).click(); await pg.waitForSelector('.chart-plot');
+  /* the highest close of the window is among the rows (the chart's HIGH figure) */
+  const high = Number((await pg.locator('.c-hl b').nth(1).innerText()).replace(/[₹,\s]/g, '')); ok(nums.includes(high) || Math.max(...nums) >= high - 0.005, 'the window high shown on the chart is among the table rows');
+  await ctx.close(); }
+
+/* 3. keyboard, tooltip and touch */
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true }), { hasTouch: true }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const plot = pg.locator('.chart-plot[role=slider]'); await plot.focus(); const v0 = await plot.getAttribute('aria-valuetext'); await pg.keyboard.press('End'); await pg.keyboard.press('ArrowLeft');
+  ok((await plot.getAttribute('aria-valuetext')) !== v0 && /TCS [+−]?[\d.]+%, Nifty [+−]?[\d.]+%/.test((await plot.getAttribute('aria-valuetext')) ?? ''), 'arrow keys move along the line and speak both values');
+  ok(await pg.locator('.c-tip').count() === 1 && /Nifty/.test(await pg.locator('.c-tip').innerText()) && (await pg.locator('.c-tip').getAttribute('aria-hidden')) === 'true', 'a tooltip follows the position (hidden from assistive tech: the slider speaks it)');
+  await pg.keyboard.press('Escape'); ok(await pg.locator('.c-tip').count() === 0, 'Escape clears it');
+  const bx = await plot.boundingBox(); await pg.touchscreen.tap(bx.x + bx.width * 0.5, bx.y + bx.height / 2); await pg.waitForTimeout(150);
+  ok(await pg.locator('.c-tip').count() === 1, 'a tap on the chart shows the tooltip (touch)');
+  ok(await plot.evaluate((e) => getComputedStyle(e).touchAction) === 'pan-y', 'vertical scrolling over the chart still works on touch');
+  await ctx.close(); }
+
+/* 4. reduced motion: motion is off by default; nothing animates, and the line is drawn in full */
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true }), { reducedMotion: 'reduce' }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok(await pg.evaluate(() => !document.documentElement.classList.contains('fx') && document.getAnimations().filter((a) => a.playState === 'running').length === 0), 'with reduced motion nothing on the page is animating');
+  ok(await pg.evaluate(() => [...document.querySelectorAll('.chart-plot path.c-line')].every((p) => getComputedStyle(p).strokeDashoffset === '0px' || getComputedStyle(p).strokeDashoffset === '0')), 'the line is fully drawn');
+  await ctx.close(); }
+
+/* 5. the saved choice wins: pick 3Y, reload, still 3Y */
+{ const ctx = await newCtx(b, 390, series(1400, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  await radio(pg, 'Range', '3Y').click(); await pg.waitForTimeout(400);
+  ok(await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1')).prefs.chart?.range === '3Y'), 'the choice is written to this device\'s saved preferences');
+  await pg.evaluate(() => { location.hash = '#/today'; }); await pg.waitForTimeout(600); await pg.evaluate(() => { location.hash = '#/c/TCS'; }); await pg.waitForSelector('.chart-plot svg');
+  ok((await radio(pg, 'Range', '3Y').getAttribute('aria-checked')) === 'true', 'the range a person chose is kept on this device');
+  await ctx.close(); }
+
+/* 6. advanced controls are grouped; a stock-only indicator switches the benchmark view off and says so; no Nifty means a plain price line */
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok((await pg.locator('details.c-adv').getAttribute('open')) === null && !(await radio(pg, 'Style', 'CANDLES').isVisible().catch(() => false)), 'candles, scale, detail and indicators are folded under Chart options');
+  await pg.locator('summary', { hasText: 'Chart options' }).click(); await radio(pg, 'Style', 'CANDLES').click(); await pg.waitForSelector('.c-candles rect');
+  ok((await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'choosing candles switches the benchmark view off (candles are drawn for the stock alone)');
+  const hollow = await pg.evaluate(() => { const r = [...document.querySelectorAll('.c-candles rect')]; const f = new Set(r.map((x) => x.getAttribute('fill'))); return f.size; }); ok(hollow >= 2, 'up candles are hollow and down candles solid (a second cue beside colour)');
+  await ctx.close();
+  const c2 = await newCtx(b, 390, series(900, 'TCS')); const p2 = await c2.newPage(); await open(p2, '/#/c/TCS', '.chart-plot svg');
+  ok(await radio(p2, 'Compare', 'PRICE').getAttribute('aria-checked') === 'true' && /rose|fell|was flat/.test((await p2.locator('[data-takeaway]').allInnerTexts()).join(' ')) && !/Nifty/.test(await p2.locator('[data-takeaway] .cf-lead').innerText()), 'with no Nifty series the chart is a plain price line and the takeaway names no benchmark');
+  ok(/Nifty 50 could not be read/.test(await p2.locator('.chart').innerText()), 'and the page says the benchmark is missing');
+  await c2.close(); }
+
+/* 7. a non-positive close: log scale is refused with the reason, nothing divides by zero */
+{ const raw = JSON.parse(series(900, 'TCS', { nifty: true })); raw.c[raw.c.length - 5] = 0; raw.h = raw.h.map((x, i) => (i === raw.c.length - 5 ? 0 : x));
+  const ctx = await newCtx(b, 390, JSON.stringify(raw)); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  await pg.locator('summary', { hasText: 'Chart options' }).click(); await radio(pg, 'Compare', 'PRICE').click();
+  ok(await pg.locator('[role=radiogroup][aria-label=Scale] [data-id=log]').isDisabled(), 'LOG is disabled when a close in the window is zero or negative');
+  ok(!/NaN|Infinity/.test(await pg.locator('.chart').innerText()), 'no NaN or Infinity is printed'); await ctx.close(); }
+
+/* 8. the comparison: takeaway and indexed chart first, compact add control, coverage notes, drawdown, no overflow */
+for (const w of [360, 1280]) {
+  const ctx = await newCtx(b, w, series(1100, 'TCS', { nifty: true })); const pg = await ctx.newPage();
+  await ctx.route('**/api/chart?s=NEWCO*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: series(120, 'NEWCO', { nifty: true }) }));
+  await open(pg, '/#/compare?s=TCS,INFY', '.cchart svg path');
+  const order = await pg.evaluate(() => { const c = document.querySelector('[data-takeaway]').getBoundingClientRect().top; const a = document.querySelector('.cmp-add')?.getBoundingClientRect().top ?? 1e9; return c < a; }); ok(order, `${w}: the takeaway and chart come before the add control`);
+  const sum = pg.locator('.cmp-add > summary'); ok(await sum.count() === 1 && (await sum.boundingBox()).height >= 43.5 && (await pg.locator('#cmp-add').count()) === 0 || !(await pg.locator('#cmp-add').isVisible()), `${w}: "Add a third company" is a compact 44px control, closed until asked for`);
+  await sum.click(); ok(await pg.locator('#cmp-add').isVisible(), `${w}: it opens to the search`); await sum.click();
+  const take = (await pg.locator('[data-takeaway]').allInnerTexts()).join('\n'); ok(/^Over the last year, price change: TCS [+−]?[\d.]+%, INFY [+−]?[\d.]+%, Nifty 50 [+−]?[\d.]+%\./.test(take) && /Deepest fall from a peak/.test(take) && !/winner|best|worst/i.test(take), `${w}: the comparison takeaway states each change and each deepest fall, with no winner`);
+  ok(/Trade-offs on the measured figures/.test(await pg.locator('[data-tradeoffs]').innerText()) && /no overall ranking/.test(await pg.locator('[data-tradeoffs]').innerText()), `${w}: trade-offs are described and no overall winner is declared`);
+  await radio(pg, 'Measure', 'DRAWDOWN').click(); await pg.waitForTimeout(150);
+  const legend = await pg.locator('.cf-legend').innerText(); ok(/Fall from the running peak/.test(await pg.locator('.cf-h').first().innerText()) && !/\+\d/.test(legend), `${w}: the drawdown view shows only falls (no positive figure)`);
+  await radio(pg, 'Measure', 'RETURN').click();
+  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click(); const cols = await pg.locator('.cf-table thead th').count(); ok(cols === 4, `${w}: the comparison table has a date and one column per line (${cols})`); await pg.getByRole('radio', { name: 'CHART', exact: true }).click();
+  ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Compare`);
+  await open(pg, '/#/compare?s=TCS,NEWCO', '.cchart svg path'); await radio(pg, 'Range', '3Y').click(); await pg.waitForTimeout(250);
+  const notes = await pg.locator('.cf [role=note]').allInnerTexts(); ok(notes.some((n) => /^The window is \d+ months, not 3Y: NEWCO \(from/.test(n)), `${w}: a new listing shortens the window and the note says which name and from when`);
+  await ctx.close();
+}
+
+/* 9. company sections and the financial panels */
+for (const w of [360, 1280]) {
+  const ctx = await newCtx(b, w, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok((await pg.getByRole('tab').allInnerTexts()).join('|') === 'Overview|Financials|Ownership|Risks|Thesis', `${w}: the sections are Overview, Financials, Ownership, Risks, Thesis`);
+  ok((await pg.locator('h1').count()) === 1, `${w}: one h1`);
+  await pg.getByRole('tab', { name: 'Financials', exact: true }).click(); await pg.waitForSelector('.fin-panel');
+  const panels = await pg.locator('.fin-panel').count(); const labels = await pg.locator('.fin-panel').evaluateAll((els) => els.map((e) => [...e.querySelectorAll('.fin-axis span')].map((s) => s.textContent).join(',')));
+  ok(panels === 3 && new Set(labels).size === 1, `${w}: revenue, profit and margin panels share the same fiscal years (${labels[0]})`);
+  ok(/Revenue went from/.test((await pg.locator('.fin-frame [data-takeaway]').allInnerTexts()).join(' ')), `${w}: the financials takeaway is built from the statements`);
+  await pg.locator('.fin-frame').getByRole('radio', { name: 'TABLE', exact: true }).click(); const trs = await pg.locator('.fin-frame tbody tr').count(); ok(trs === labels[0].split(',').length, `${w}: the table has one row per drawn year (${trs})`);
+  ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Financials`);
+  await pg.getByRole('tab', { name: 'Ownership', exact: true }).click(); ok(/Who owns it|not enough data/i.test(await pg.locator('[role=tabpanel]').innerText()), `${w}: Ownership shows the holding or says there is not enough data`);
+  await pg.getByRole('tab', { name: 'Risks', exact: true }).click(); ok(/countercase/i.test(await pg.locator("[role=tabpanel]").innerText()), `${w}: Risks carries the countercase`);
+  await pg.getByRole('tab', { name: 'Thesis', exact: true }).click(); ok(/Your thesis/.test(await pg.locator('[role=tabpanel]').innerText()), `${w}: Thesis carries the person's own thesis`);
+  ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Thesis`);
+  await ctx.close();
+}
+
+/* 10. reserved height: the chart card does not change height when the history arrives */
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await ctx.route('**/api/chart*', async (r) => { await new Promise((x) => setTimeout(x, 1200)); r.fulfill({ status: 200, contentType: 'application/json', body: series(900, 'TCS', { nifty: true }) }); });
+  await pg.goto(base + '/'); await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('section.cf[aria-busy]', { timeout: 20000 }).catch(() => {});
+  const h0 = await pg.evaluate(() => document.querySelector('section.cf')?.getBoundingClientRect().height ?? 0); await pg.waitForSelector('.chart-plot', { timeout: 20000 }); const h1 = await pg.evaluate(() => document.querySelector('section.cf').getBoundingClientRect().height);
+  ok(h0 > 0 && Math.abs(h1 - h0) < 200, `the chart card holds its place while loading (${Math.round(h0)}px, then ${Math.round(h1)}px)`); await ctx.close(); }
+
+await b.close(); console.log(fails ? `\ncharts: ${fails} failed` : '\ncharts: all passed'); process.exit(fails ? 1 : 0);

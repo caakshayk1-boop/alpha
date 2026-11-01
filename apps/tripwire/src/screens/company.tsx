@@ -103,6 +103,7 @@ export function Company({ sym }: { sym: string }) {
   const financials = <>
     <Head>Business</Head>
     <FinancialCharts years={c.data.years ?? []} margins={meaningful(el!, 'margin')} />
+    {el!.notes.length > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Margin, ROCE and debt-to-equity are withheld for this company (reason in the Risks section), not shown as zero.</p>}
     <div className="card" style={{ padding: '2px 14px', marginTop: 10 }}><div className="list">
       <Metric id="pe" label={rp.basis === 'live' ? 'PE (trailing), at the live price' : 'PE (trailing), at the close'} v={x1(rp.pe)} />
       {meaningful(el!, 'roce') && <Metric id="roce" label="ROCE (median)" v={pct(row.roce_med, 1, false)} />}
@@ -150,9 +151,8 @@ export function Company({ sym }: { sym: string }) {
       <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
     </>}
 
-    <div className="co-grid has-side" style={{ marginTop: 'var(--sp-5)' }}>
-      <div><Head>Price history</Head>
-        <PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
+    <div className="co-grid has-side" style={{ marginTop: 'var(--sp-4)', gap: 'var(--sp-4)' }}>
+      <div><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
       <div className="co-side"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 

@@ -49,7 +49,8 @@ const text = async (pg) => { await pg.waitForFunction(() => !document.querySelec
   await pg.goto(base + '/#/desk?v=journal'); await pg.waitForSelector('.card'); ok(/Steady cash generation/.test(await text(pg)), 'the Journal deep link shows it');
   await pg.goto(base + '/#/c/TCS?first=1'); await pg.waitForSelector('[data-first="saved"]'); const ct = await text(pg);
   ok(/Steady cash generation/.test(ct) && !(await pg.locator('[data-first="storage-note"]').count()), 'the company page shows the thought again, and the storage note does not return');
-  await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); ok(/Steady cash generation/.test(await text(pg)), 'and so does the normal company page, under Your thesis');
+  await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); await pg.getByRole('tab', { name: 'Thesis', exact: true }).click();   // 1 Nov 2026: the person's thesis lives in the Thesis section
+  ok(/Steady cash generation/.test(await text(pg)), 'and so does the normal company page, under Your thesis');
   await pg.goto(base + '/#/c/TCS?first=1'); await pg.locator('#first-thought').getByRole('button', { name: 'Follow TCS' }).click(); await pg.waitForTimeout(300);
   ok((await saved(pg)).follows.join() === 'TCS', 'following happens only when the person taps Follow');
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();

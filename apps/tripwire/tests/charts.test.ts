@@ -157,6 +157,10 @@ test('financials takeaway: revenue, profit and margin over the years held; a los
   assert.match(loss.lines[1], /from a loss of ₹20 cr in FY23 to ₹10 cr in FY24; a yearly rate is not defined across a loss or a zero/);
   assert.match(financialsTakeaway([]).lines[0], /No annual statements are held/); assert.match(financialsTakeaway([{ fy: 'FY24', rev_cr: 5 }]).lines[0], /Too few years/);
 });
+test('a lender\'s margins are left out of the financials takeaway when the screen withholds them', () => {
+  const y = [{ fy: 'FY23', rev_cr: 100, pat_cr: 10 }, { fy: 'FY24', rev_cr: 120, pat_cr: 30 }];
+  assert.equal(financialsTakeaway(y).lines.length, 3); assert.equal(financialsTakeaway(y, { margins: false }).lines.length, 2); assert.ok(!financialsTakeaway(y, { margins: false }).lines.join(' ').includes('margin'));
+});
 test('cagr and net margin refuse zero, negative and missing ends', () => {
   assert.equal(cagr(100, 121, 2)!.toFixed(4), '10.0000'); assert.equal(cagr(0, 5, 2), null); assert.equal(cagr(-5, 5, 2), null); assert.equal(cagr(5, -1, 2), null); assert.equal(cagr(null, 5, 1), null);
   assert.equal(netMargin({ fy: 'x', pat_cr: 10, rev_cr: 100 }), 10); assert.equal(netMargin({ fy: 'x', pat_cr: 10, rev_cr: 0 }), null); assert.equal(netMargin({ fy: 'x', pat_cr: null, rev_cr: 5 }), null); assert.equal(netMargin({ fy: 'x', pat_cr: -10, rev_cr: 100 }), -10);

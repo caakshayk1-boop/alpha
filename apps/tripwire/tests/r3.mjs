@@ -38,6 +38,8 @@ await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [
 ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');
 /* chart */
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
+// 1 Nov 2026: the chart opens on one year against the Nifty with its options folded; open them, and choose the longest price view the bar-width checks below were written for
+await pg.getByRole('radio', { name: 'PRICE', exact: true }).click(); await pg.getByRole('radio', { name: 'MAX', exact: true }).click(); await pg.locator('summary', { hasText: 'Chart options' }).click();
 for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole(['VOLUME', 'RSI 14'].includes(name) ? 'button' : 'radio', { name, exact: true }).count() === 1, `chart: a ${name} control`);
 await pg.getByRole('radio', { name: 'CANDLES', exact: true }).click(); await pg.waitForSelector('.c-candles rect');
 ok((await pg.locator('.c-candles rect').count()) > 20 && (await pg.locator('.chart-plot path.c-line').count()) === 0, 'chart: candles replace the line');

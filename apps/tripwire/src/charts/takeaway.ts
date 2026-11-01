@@ -97,14 +97,14 @@ export function yearsBetween(a: FyIn, b: FyIn): number | null {
 }
 const crw = (v: number) => `₹${Math.round(v).toLocaleString('en-IN')} cr`;
 /** What the annual figures did, oldest year first. Only years that hold the figure are compared; a gap is named, never filled. */
-export function financialsTakeaway(years: readonly FyIn[]): { lines: string[]; span: string | null } {
+export function financialsTakeaway(years: readonly FyIn[], opts: { margins?: boolean } = {}): { lines: string[]; span: string | null } {
   const sorted = [...years]; const lines: string[] = [];
   const pick = (get: (y: FyIn) => number | null | undefined) => sorted.filter((y) => isN(get(y)));
   const rev = pick((y) => y.rev_cr), pat = pick((y) => y.pat_cr), nm = sorted.filter((y) => netMargin(y) !== null);
   if (rev.length >= 2) { const a = rev[0], z = rev[rev.length - 1]; const n = yearsBetween(a, z); const g = n ? cagr(a.rev_cr, z.rev_cr, n) : null; lines.push(`Revenue went from ${crw(a.rev_cr as number)} in ${a.fy} to ${crw(z.rev_cr as number)} in ${z.fy}${g !== null && n ? `, ${signedPct(g)} a year over ${n} ${n === 1 ? 'year' : 'years'}` : ''}.`); }
   if (pat.length >= 2) { const a = pat[0], z = pat[pat.length - 1]; const av = a.pat_cr as number, zv = z.pat_cr as number; const n = yearsBetween(a, z); const g = n ? cagr(av, zv, n) : null;
     lines.push(`Profit after tax went from ${av < 0 ? `a loss of ${crw(-av)}` : crw(av)} in ${a.fy} to ${zv < 0 ? `a loss of ${crw(-zv)}` : crw(zv)} in ${z.fy}${g !== null ? `, ${signedPct(g)} a year` : '; a yearly rate is not defined across a loss or a zero'}.`); }
-  if (nm.length >= 2) { const a = nm[0], z = nm[nm.length - 1]; const av = netMargin(a) as number, zv = netMargin(z) as number; const d = zv - av;
+  if (opts.margins !== false && nm.length >= 2) { const a = nm[0], z = nm[nm.length - 1]; const av = netMargin(a) as number, zv = netMargin(z) as number; const d = zv - av;
     lines.push(`Net margin (profit after tax over revenue) went from ${av.toFixed(1)}% to ${zv.toFixed(1)}%, ${wordOf(d, 0.05) === 'flat' ? 'unchanged' : `${Math.abs(d).toFixed(1)} percentage points ${d > 0 ? 'higher' : 'lower'}`}.`); }
   const held = sorted.length;
   if (!lines.length) lines.push(held ? 'Too few years hold these figures to describe a change; each year that is held is in the table.' : 'No annual statements are held for this company.');
