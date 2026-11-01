@@ -1,6 +1,6 @@
 """Signal brief tests (no network, nothing sent). Run: python tests/test_brief.py"""
 import copy, json, pathlib, sys
-from datetime import date
+from datetime import date, timedelta
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import brief as B
 
@@ -22,7 +22,9 @@ check("it ends by saying nothing awaits approval and no order is sent", "sends n
 check("fits one Telegram message", len(real["text"]) <= 4096)
 check("a brief with no Sunday flag has no weekly block", "weekly" not in real)
 
-stale = B.build_brief(feed, date.fromisoformat(through).replace(day=min(28, int(through[-2:]) + 3)))
+# a week after the feed's own date is always at least one finished session later (the old .replace(day=min(28, d+3)) capped at the 28th, so from the 25th of any month it
+# was the SAME day, nothing was stale, and this test failed engines.yml on every run from 28 Oct 2026, freezing public/signals.json)
+stale = B.build_brief(feed, date.fromisoformat(through) + timedelta(days=7))
 check("data older than the last finished session is flagged first", stale["stale_sessions_behind"] and stale["text"].splitlines()[1].startswith("⚠"))
 
 f = copy.deepcopy(feed)
