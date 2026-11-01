@@ -38,7 +38,7 @@ input.field,select.field,textarea.field{background:var(--surface-2);border-color
 .statusbar .brand{display:inline-flex;align-items:center;gap:var(--sp-2);font:700 var(--fs-body)/1 var(--font);letter-spacing:var(--track-tight);text-transform:none;color:var(--ink)}
 .statusbar .brand i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent)}
 .statusbar .sp{display:block;flex:1;min-width:0}
-.statusbar .data{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* on a phone the clock state is read aloud and the Today brief says it in words; there is no room for it beside the two pills */
+.statusbar .data{display:inline;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* on a phone the clock state is read aloud and the Today brief says it in words; there is no room for it beside the two pills */
 @media(min-width:700px){.statusbar .data{position:static;width:auto;height:auto;overflow:visible;clip:auto}}
 .statusbar .on{color:var(--up)}.statusbar .off{color:var(--ink-2)}.statusbar .pre{color:var(--amber)}
 
@@ -111,3 +111,15 @@ a.ds-gate::after{content:"";position:absolute;inset:-8px -4px}   /* a 28px pill,
 .ds-go{flex:none;transform:rotate(-90deg);color:var(--ink-3)}
 /* motion off: every state change is instant. The older rules kept colour and opacity transitions with a duration; those are cut to zero here, so "off" means off */
 html:not(.fx) *,html:not(.fx) *::before,html:not(.fx) *::after{transition-duration:0s!important;transition-delay:0s!important;animation-duration:0s!important;animation-delay:0s!important}
+/* the full freshness pill (screens/FreshnessPill.tsx, wording unchanged): a quiet block that reads as a sentence, amber with words when something is behind */
+.statusbar{text-transform:none;letter-spacing:0}
+.tag.fresh-pill{display:block;border-radius:var(--radius-input);padding:var(--sp-3) var(--sp-4)!important;text-align:left;white-space:normal;line-height:1.5;font-size:var(--fs-data);font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-2);background:var(--surface);border:1px solid var(--line)}
+.tag.fresh-pill.lime{color:var(--up);background:var(--up-tint);border-color:transparent}
+.tag.fresh-pill.amber{color:var(--amber);background:var(--amber-tint);border-color:transparent}
+.tag.fresh-pill>span{display:inline}
+body{background-image:none!important}   /* the faint diagonal weave is gone: a calm canvas, one flat colour */
+.brief>.brief-top{flex-wrap:nowrap}.brief>.brief-top h2.sec{font:600 var(--fs-h3)/var(--lh-h3) var(--font);min-width:0}.brief>.brief-top .row{flex:none}   /* one line, always: the badge arriving later must not wrap under the title */
+/* the full pill is clamped to three lines (the sentence on one, the detail on two) (the whole sentence is its title and the link opens the Data page), and its slot is reserved at exactly that height, so it arriving or turning amber moves nothing */
+.tag.fresh-pill>span:first-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag.fresh-pill .fresh-why{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+div:has(>.fresh-pill),div:has(>a[data-fresh]){min-height:92px!important}
