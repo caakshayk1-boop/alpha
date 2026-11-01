@@ -1,8 +1,8 @@
 {
  "schema": "alpha-brief/1",
  "version": "swing-2.0.1",
- "generated": "2026-10-27T21:11:26Z",
- "data_through": "2026-10-27",
+ "generated": "2026-10-28T18:31:31Z",
+ "data_through": "2026-10-28",
  "stale_sessions_behind": null,
  "paper_only": true,
  "alerts": {
@@ -16,11 +16,11 @@
   "failing": [
    {
     "rule": "Nifty above its 200-day average, and that average rising over 20 sessions",
-    "value": "Nifty 22,750 · 200-day 24,091"
+    "value": "Nifty 22,699 · 200-day 24,073"
    },
    {
     "rule": "Nifty above its 50-day average",
-    "value": "Nifty 22,750 · 50-day 23,337"
+    "value": "Nifty 22,699 · 50-day 23,304"
    },
    {
     "rule": "At least 50% of stocks above their own 50-day average",
@@ -35,5 +35,5 @@
   "closed": 0,
   "avg_r": null
  },
- "text": "Alpha signal brief · data through 27 Oct · paper only, not advice\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (1 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 22,750 · 200-day 24,091)\n  not met: Nifty above its 50-day average (Nifty 22,750 · 50-day 23,337)\n  not met: At least 50% of stocks above their own 50-day average (18% above)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
+ "text": "Alpha signal brief · data through 28 Oct · paper only, not advice\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (1 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 22,699 · 200-day 24,073)\n  not met: Nifty above its 50-day average (Nifty 22,699 · 50-day 23,304)\n  not met: At least 50% of stocks above their own 50-day average (18% above)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
 }
