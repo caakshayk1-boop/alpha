@@ -3,7 +3,7 @@ import { getJson, hasHistory, type ChartFeed } from '../data.ts';
 import { RANGES, alignIndexed, dateLabel, nearest, type RangeId } from '../chart.ts';
 import { pct } from '../fmt.ts';
 
-const COLORS = ['#c8f23c', '#ff9a6c', '#7fb8ff'];
+const COLORS = ['var(--accent)', 'var(--ink)', 'var(--ink-3)'];
 function useCharts(syms: string[]) {
   const key = syms.join(','); const [st, set] = useState<{ data: Record<string, ChartFeed>; err: Record<string, string> }>({ data: {}, err: {} });
   useEffect(() => {

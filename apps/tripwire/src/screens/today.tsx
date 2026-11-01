@@ -1,3 +1,4 @@
+import { SessionPill } from '../components/pills.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
@@ -111,7 +112,7 @@ export function Today() {
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.label}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
+        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <SessionPill asOf={day} /> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
       </section>}
 
       {/* (b) what matters now */}
@@ -133,7 +134,7 @@ export function Today() {
 
       {/* (e) the last close's picks, compact */}
       {!fresh && scr.data && allPicks.length > 0 && <section className="tsec tpicks" aria-labelledby="t-picks" data-sec="picks">
-        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="row small" style={{ gap: 6 }}><span className={`tag ${fr.tone}`} title="How old the screen these picks came from is, by the exchange calendar">{fr.word}</span><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span></div>
+        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="row small" style={{ gap: 6 }}><SessionPill asOf={day} /><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span></div>
         <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
             <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
