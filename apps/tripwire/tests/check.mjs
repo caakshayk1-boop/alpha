@@ -13,7 +13,3 @@ const run = (f) => new Promise((res) => { const p = spawn('node', [f, base], { s
 const SUITES = ['journey', 'a11y', 'beta', 'comfort', 'r3', 'news', 'discover', 'today', 'ui', 'chartfail', 'reliability', 'shell', 'firstuse'];
 let bad = 0; for (const n of SUITES) { const code = await run(`apps/tripwire/tests/${n}.mjs`); if (code) bad++; }
 stop(); process.exit(bad ? 1 : 0);
-=======
-const a = await run('apps/tripwire/tests/journey.mjs'); const b = await run('apps/tripwire/tests/a11y.mjs'); const c = await run('apps/tripwire/tests/beta.mjs'); const d = await run('apps/tripwire/tests/comfort.mjs'); const e = await run('apps/tripwire/tests/r3.mjs'); const f = await run('apps/tripwire/tests/news.mjs'); const g = await run('apps/tripwire/tests/discover.mjs'); const h = await run('apps/tripwire/tests/today.mjs'); const i = await run('apps/tripwire/tests/ui.mjs'); const j = await run('apps/tripwire/tests/firstuse.mjs');
-stop(); process.exit(bad ? 1 : 0);
->>>>>>> worktree-agent-a49d147b65fc7304b
