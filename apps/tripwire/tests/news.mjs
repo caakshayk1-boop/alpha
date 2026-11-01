@@ -122,7 +122,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const p2 = await ctx.newPage(); await p2.goto(base + '/#/today'); await p2.waitForSelector('section.nw .nw-row', { timeout: 20000 }); await p2.waitForTimeout(800);
   const t = await p2.locator('.nw-hline').first().innerText(); ok(/^News delayed - last successful check/.test(t) && /did not answer just now/.test(t), `service down, saved copy: "${t}"`); await ctx.close();
   const u = await open(STATE); u.ctl.versionFails = true; await u.pg.goto(base + '/#/today'); await u.pg.waitForSelector('.nw-health', { timeout: 20000 }); await u.pg.waitForTimeout(800);
-  ok(/Unavailable/.test(await u.pg.locator('.nw-state').first().innerText()) && await rows(u.pg).count() === 0, 'no snapshot ever: Unavailable, and nothing is shown in its place'); await u.ctx.close();
+  ok(/Could not load/.test(await u.pg.locator('.nw-state').first().innerText()) && await rows(u.pg).count() === 0, 'service down and nothing saved: "Could not load" (an error, not "Unavailable"), and nothing is shown in its place'); await u.ctx.close();
 }
 
 /* 7. the News page */

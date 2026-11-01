@@ -30,7 +30,8 @@ test('partial: some sources down is labelled partial with the count, pluralised;
   assert.match(newsHealth({ doc: doc({ status: 'partial', sourcesFailed: 2 }), nowMs: NOW }).line, /2 sources of 4/); assert.equal(newsHealth({ doc: doc({ status: 'partial', sourcesFailed: 2 }), nowMs: Z('2026-10-27T08:00:00Z') }).state, 'delayed');
 });
 test('unavailable: nothing was ever read, or no check ever succeeded', () => {
-  assert.equal(newsHealth({ doc: null, nowMs: NOW }).state, 'unavailable'); assert.equal(newsHealth({ doc: null, unreachable: true, nowMs: NOW }).state, 'unavailable'); assert.equal(newsHealth({ doc: doc({ lastSuccessfulAt: null, status: 'failed' }), nowMs: NOW }).state, 'unavailable');
+  assert.equal(newsHealth({ doc: null, nowMs: NOW }).state, 'unavailable'); assert.equal(newsHealth({ doc: null, unreachable: true, nowMs: NOW }).state, 'error');   // 1 Nov 2026: an unreachable service with nothing saved is an ERROR, distinct from nothing-published (see newsstates.test.ts)
+   assert.equal(newsHealth({ doc: doc({ lastSuccessfulAt: null, status: 'failed' }), nowMs: NOW }).state, 'unavailable');
   assert.equal(newsHealth({ doc: null, nowMs: NOW }).tone, 'bad'); assert.equal(newsServiceView(newsHealth({ doc: null, nowMs: NOW })).tone, 'peach');
 });
 test('a check time in the future is not trusted: delayed, not fresh', () => { const h = newsHealth({ doc: doc({ lastSuccessfulAt: '2026-10-27T09:00:00.000Z' }), nowMs: NOW }); assert.equal(h.state, 'delayed'); assert.equal(h.reason, 'future check time'); });

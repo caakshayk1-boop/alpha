@@ -71,3 +71,32 @@ export const EVENT_TYPE_WORD: Record<string, string> = { Results: 'Results', Reg
 export const entityLine = (ev: NewsEvent): string => { const e = ev.entities[0]; return e ? `${e.sym ?? e.name}${e.sym && e.name ? ` · ${e.name.replace(/\b(ltd|limited)\.?$/i, '').trim()}` : ''}` : 'India-wide'; };
 /** A link that may be put in an href: https or http only. The pipeline already guarantees it; this is the last gate before the DOM. */
 export const safeHref = (u: string): string | null => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' ? x.toString() : null; } catch { return null; } };
+
+/* ---------- counts: events, articles, companies (one definition each) ---------- */
+/** EVENT: one story, however many outlets carried it (an `eventClusterId`). ARTICLE: one outlet's report of an event (`sources`; a row with none counts as the one it is). COMPANY: a distinct
+ *  verified company named by the events shown (an India-wide event names none, so it adds to events and articles only). */
+export interface NewsCounts { events: number; articles: number; companies: number; marketEvents: number }
+export function newsCounts(events: readonly NewsEvent[]): NewsCounts {
+  const cos = new Set<string>(); let articles = 0, market = 0;
+  for (const e of events) {
+    articles += Math.max(1, e.sources.length); if (isMarket(e)) market++;
+    for (const x of e.entities) { const k = x.sym ?? x.name; if (k) cos.add(k); }
+  }
+  return { events: events.length, articles, companies: cos.size, marketEvents: market };
+}
+/** "12 events · 19 articles · 8 companies". Singular where it is 1; the same words everywhere. */
+export function countsLine(c: NewsCounts): string {
+  const p = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return `${p(c.events, 'event', 'events')} · ${p(c.articles, 'article', 'articles')} · ${p(c.companies, 'company', 'companies')}`;
+}
+export const COUNT_DEFINITION = "An event is one story, however many outlets carried it. Articles are the outlets' separate reports of those events. Companies are the distinct covered companies the events name; India-wide events name none.";
+/** The News page's tab numbers: for each tab, how many events the page would list under the SAME filters (type, period, search, other updates), so a number on a tab always equals the total after pressing it. */
+export function archiveTabCounts(pool: NewsEvent[], f: ArchiveFilter, l: Lists, nowMs: number): Record<Tab, number> {
+  const n = (tab: Tab) => archiveList(pool, { ...f, tab }, l, nowMs).length;
+  return { all: n('all'), market: n('market'), following: n('following'), paper: n('paper') };
+}
+/** Today's tab numbers: each is the length of the list Today would draw for that tab (diversified and capped), so the chip equals what "Show more" can reach. */
+export function todayTabCounts(pool: NewsEvent[], l: Lists, nowMs: number): Record<Tab, number> {
+  const n = (tab: Tab) => todayList(pool, tab, l, nowMs).length;
+  return { all: n('all'), market: n('market'), following: n('following'), paper: n('paper') };
+}

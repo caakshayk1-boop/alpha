@@ -8,6 +8,8 @@ import { CURRENT_RULES, rulesDef } from '../rules.ts';
 import { TREND_RULE_TEXT } from '../screen.ts';
 import { POLICY_FROM, STYLES, TARGETS_BACKFILL_ON } from '../exits.ts';
 import { dayWord } from '../fmt.ts';
+import { holidayStatement } from '../calendar.ts';
+import { NO_FLAGS_SENTENCE, RISK_NAME, RISK_SCOPE } from '../eligibility.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { Card, SectionHeader } from '../components/index.ts';
 
@@ -47,6 +49,12 @@ export function Methodology() {
       <pre className="formula" tabIndex={0}>{`R         = fill - stop\n` + STYLES.map((x) => `${x.label.padEnd(9)} T1 = fill + ${x.t1} x R   T2 = fill + ${x.t2} x R   (${x.sessions})`).join('\n')}</pre>
       <p className="mute" style={{ margin: '8px 0 0' }}>In words: Target 1 sits {STYLES.map((x) => `${x.t1} times the risk above the fill for ${x.label.toLowerCase()}`).join(', ')}. Half is booked there; the rest exits at Target 2 or at its stop. All paper.</p></Card>
 
+    <Head>What the screen's flag level measures</Head>
+    <div className="card small"><p style={{ margin: '0 0 6px' }} data-risk-scope><b>{RISK_NAME}</b> (the published LOW, MEDIUM or HIGH) is a count of warning flags, not a safety rating. {RISK_SCOPE.replace('Scope: this counts', 'It counts')}</p>
+      <p style={{ margin: 0 }}>{NO_FLAGS_SENTENCE} A name can be LOW and still be in a downtrend or well below its high: in the 26 Oct screen 187 of the 290 LOW names were under their 200-day average.</p></div>
+    <Head>Exchange holidays and price labels</Head>
+    <div className="card small"><p style={{ margin: '0 0 6px' }} data-holiday>{holidayStatement()}</p>
+      <p style={{ margin: 0 }}>A price is called Live only when the market is open and the exchange printed it under five minutes ago. Older while the market is open is Delayed; once the market is shut it is Last traded. Fetch time decides none of this.</p></div>
     <Head>Prices and charts</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}>Charts draw daily closes from Yahoo Finance, adjusted for splits and bonuses and not for dividends. Candles, volume and RSI use whole bars; when too many daily bars would be unreadable the chart draws weekly or monthly bars and says so, because thinning days would misstate each one.</p>
       <p style={{ margin: '0 0 6px' }}>The Nifty line is the index price without dividends, like the stock; both are indexed to 100 on the first day the Nifty is held. A live price is a separate print and never moves the chart.</p>
