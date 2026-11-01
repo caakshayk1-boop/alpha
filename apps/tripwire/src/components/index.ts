@@ -4,5 +4,7 @@
 export { SectionHeader, EmptyState, SkeletonBlock, RecordStat, RecordStats, TweenNumber, Card, CardRaised, Button, GateCard } from './layout.tsx';
 export { Pill, StatusPill, SessionPill, GatePill, type Tone } from './pills.tsx';
 export { gateLine, holdoutOf, type GateLine } from './gate.ts';
+export { TargetLadder, PositionCard, HitCard, ThroughPills, type PositionCardProps } from './book.tsx';
+export { ladderModel, ladderInputFor, shortDay, type LadderInput, type LadderModel } from '../ladder.ts';
 export { useTween, tweenAt, easeOut, motionOn } from './tween.ts';
 export { Sheet as FilterSheet } from '../ui.tsx';

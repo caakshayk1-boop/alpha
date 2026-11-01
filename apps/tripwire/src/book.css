@@ -1,0 +1,107 @@
+/* The Paper Book and the Record: position cards, the target ladder, the hit card, the unified Record. Colours and sizes come from tokens.css only (no hex).
+   Nothing here moves unless it is under html.fx (the motion switch, default off); the only properties animated are transform and opacity. */
+
+/* ---- position card ---- */
+.pcard{position:relative;margin:0 0 var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-grad);box-shadow:var(--shadow-raised);overflow:hidden}
+.pcard.is-closed{background:var(--surface)}
+.pc-head{display:grid;gap:var(--sp-3);width:100%;min-height:var(--hit);padding:var(--card-pad) var(--card-pad) var(--sp-3);text-align:left;color:inherit;background:none;border:0;position:relative}
+.pc-head .pc-chev{position:absolute;right:var(--card-pad);bottom:var(--sp-3);width:var(--icon);height:var(--icon);color:var(--ink-3)}
+.pc-head[aria-expanded=true] .pc-chev{transform:rotate(180deg)}
+.pc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);min-width:0}
+.pc-id{display:grid;min-width:0}
+.pc-sym{font:600 var(--fs-h2)/var(--lh-h2) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+.pc-name{color:var(--ink-2);font-size:var(--fs-data);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-tags{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
+.pc-nums{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-4);align-items:start}
+.pc-px,.pc-pnl{display:grid;gap:var(--sp-1);min-width:0}
+.pc-pnl{text-align:right;justify-items:end}
+.pc-big{font:600 var(--fs-num-s)/1.15 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums lining-nums;overflow-wrap:anywhere}
+.pc-big.up,.pc-r.up{color:var(--up)}.pc-big.down,.pc-r.down{color:var(--down)}
+.pc-journey,.pc-r{font-size:var(--fs-data);color:var(--ink-2)}
+.pc-r{font-weight:600}.pc-r .dim{font-weight:400;color:var(--ink-3)}
+.pc-line{font-size:var(--fs-data);color:var(--ink-2);padding-right:calc(var(--icon) + var(--sp-3))}
+@media(min-width:520px){.pc-big{font-size:var(--fs-num-l)}.pc-head{gap:var(--sp-4)}}
+
+/* ---- target ladder: one rule, four levels, the price on it ---- */
+.tl{padding:0 var(--card-pad) var(--card-pad);--rowh:calc(var(--lines,2) * 16px + 6px)}
+.tl-vis{position:relative;height:calc(60px + var(--rows,1) * var(--rowh));margin:0 var(--sp-2)}
+.tl-rule{position:absolute;left:0;right:0;top:41px;height:6px;border-radius:var(--radius-pill);background:var(--surface-3)}
+.tl-fill{position:absolute;top:41px;height:6px;border-radius:var(--radius-pill);background:var(--accent)}
+.tl-fill.down{background:var(--down)}
+.tl-ratchet{position:absolute;top:41px;height:6px;background:repeating-linear-gradient(90deg,var(--ink-3) 0 4px,transparent 4px 8px);opacity:.85}
+.tl-tick{position:absolute;top:34px;width:0;height:0}
+.tl-tick::before{content:"";position:absolute;left:-.5px;top:10px;width:1px;height:12px;background:var(--line-2)}
+.tl-tick.row1::before{height:calc(12px + var(--rowh))}
+.tl-tick .pin{position:absolute;left:-6px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--ink-3);border:2px solid var(--surface);box-sizing:border-box;display:grid;place-items:center}
+.tl-tick.stop .pin{background:var(--down)}
+.tl-tick.stop.moved .pin{background:var(--surface);border-color:var(--down);border-style:dashed}
+.tl-tick.entry .pin{background:var(--ink)}
+.tl-tick.ref .pin{background:var(--surface);border:2px dashed var(--ink-3)}
+.tl-tick.hit .pin{width:20px;height:20px;left:-10px;top:0;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.tl-tick.hit .pin .ic{width:14px;height:14px;stroke-width:2.25}
+.tl-tick .lab{position:absolute;top:22px;left:0;transform:translateX(-50%);display:grid;justify-items:center;text-align:center;white-space:nowrap;line-height:16px}
+.tl-tick.row1 .lab{top:calc(22px + var(--rowh))}
+.tl-tick .lab b{font-size:var(--fs-label);font-weight:600;color:var(--ink-2)}
+.tl-tick.stop .lab b{color:var(--down)}
+.tl-tick.hit .lab b{color:var(--accent)}
+.tl-tick .lab em{font-style:normal;font-size:var(--fs-data);color:var(--ink)}
+.tl-tick .lab small{font-size:var(--fs-label);color:var(--ink-3)}
+.tl-tick.ref .lab em,.tl-tick.ref .lab b{color:var(--ink-3)}
+.tl-tick.l .lab{transform:none;justify-items:start;text-align:left}
+.tl-tick.r .lab{transform:translateX(-100%);justify-items:end;text-align:right}
+.tl-mk-track{position:absolute;inset:0;container-type:inline-size;pointer-events:none}
+.tl-marker{position:absolute;top:0;left:0;width:0;height:60px}
+.tl-marker .dot{position:absolute;left:-8px;top:36px;width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);box-sizing:border-box}
+.tl-marker.down .dot{background:var(--down);box-shadow:0 0 0 1px var(--down)}
+.tl-marker.exit .dot{background:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.tl-marker .tip{position:absolute;left:0;top:0;transform:translateX(-50%);display:flex;align-items:baseline;gap:var(--sp-2);height:26px;padding:0 var(--sp-2);border-radius:var(--radius-input);background:var(--surface-3);white-space:nowrap;line-height:26px}
+.tl-marker .tip small{font-size:var(--fs-label);color:var(--ink-3)}
+.tl-marker .tip b{font-size:var(--fs-data);font-weight:600;color:var(--ink)}
+.tl-mk-track.l .tip{transform:translateX(-20px)}
+.tl-mk-track.r .tip{transform:translateX(calc(-100% + 20px))}
+.tl-notes{list-style:none;margin:var(--sp-2) 0 0;padding:0;display:grid;gap:var(--sp-1)}
+.tl-notes li{font-size:var(--fs-data);color:var(--ink-2);line-height:1.45}
+.tl.is-ref .tl-notes li:first-child{color:var(--ink)}
+.pc-more{padding:var(--sp-4) var(--card-pad) var(--card-pad);border-top:1px solid var(--line)}
+
+/* ---- target-hit card ---- */
+.hitcard{margin:0 0 var(--sp-5);padding:var(--card-pad);border:1px solid var(--line-2);border-radius:var(--radius-card);background:var(--surface-grad);box-shadow:var(--shadow-raised)}
+.hitcard h2{margin:0 0 var(--sp-2);font:600 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight)}
+.hitcard ul{list-style:none;margin:0;padding:0}
+.hitcard li+li{border-top:1px solid var(--line)}
+.hitcard li a{display:grid;gap:var(--sp-1);min-height:var(--hit);padding:var(--sp-3) 0;color:inherit;text-decoration:none}
+.hc-top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.hc-top .pc-sym{font-size:var(--fs-h3);line-height:var(--lh-h3)}
+.hc-fig{font-size:var(--fs-data);color:var(--ink-2)}
+.hc-note{margin:var(--sp-2) 0 0;font-size:var(--fs-label);color:var(--ink-3)}
+
+/* ---- the Record ---- */
+.rec{display:grid;gap:var(--section-gap)}
+.rec-hero{padding:var(--card-pad);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-grad);box-shadow:var(--shadow-raised);display:grid;gap:var(--sp-4)}
+.rec-hero .rec-since{margin:0;font-size:var(--fs-label);color:var(--ink-3)}
+.rec-prog{display:flex;gap:var(--sp-1);height:6px}
+.rec-prog i{flex:1;border-radius:var(--radius-pill);background:var(--surface-3)}
+.rec-prog i.on{background:var(--accent)}
+.rec-through{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.rec-line{margin:0;font-size:var(--fs-data);color:var(--ink-2);line-height:1.5}
+.rec-line b{color:var(--ink)}
+.rec-sec{display:grid;gap:var(--sp-3)}
+.rec-eng{display:grid;gap:var(--sp-1);padding:var(--card-pad);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);margin:0 0 var(--sp-3)}
+.rec-eng .top{display:flex;justify-content:space-between;gap:var(--sp-3);align-items:center}
+.rec-eng .fig{font-size:var(--fs-data);color:var(--ink-2)}
+.rec-eng .fig b{color:var(--ink)}
+.rec-eng .sub{font-size:var(--fs-label);color:var(--ink-3)}
+.rec-more{width:100%}
+.rec-gate{display:grid;gap:var(--sp-3)}
+
+/* ---- motion: only under html.fx, only transform and opacity ---- */
+html.fx .pc-head .pc-chev{transition:transform var(--dur-1) var(--ease)}
+html.fx .tl-marker{animation:tl-travel 600ms var(--ease) both}
+@keyframes tl-travel{from{transform:translateX(calc((var(--e) - var(--p)) * 1cqw))}}
+html.fx .tl-fill{transform-origin:left center}
+html.fx .tl-fill.sweep{animation:tl-sweep 400ms var(--ease) both}
+@keyframes tl-sweep{from{transform:scaleX(0)}}
+html.fx .tl-tick.fresh .pin{animation:tl-pin 400ms var(--ease) 200ms both}
+@keyframes tl-pin{from{opacity:0}to{opacity:1}}
+html.fx .pc-head:active{transform:scale(.995)}
+html.fx .pc-head{transition:transform var(--dur-1) var(--ease)}

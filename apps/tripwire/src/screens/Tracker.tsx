@@ -10,8 +10,10 @@ import { summarize } from '../tracker.ts';
 import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
-import { BASIS_NOTE, targetPrices } from '../levels.ts';
-import { REFERENCE_ONLY, TARGETS_BACKFILL_ON, styleDef, styleOf, targetBasis } from '../exits.ts';
+import { TARGETS_BACKFILL_ON, styleDef, styleOf, targetBasis } from '../exits.ts';
+import { ladderInputFor } from '../ladder.ts';
+import { PositionCard, Pill, type Tone } from '../components/index.ts';
+import type { Outcome } from '../ledger.ts';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const R = (v: number | null | undefined) => sgn(v, (n) => n.toFixed(2) + 'R');
@@ -58,7 +60,7 @@ export function Tracker() {
   </>;
 }
 
-export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: BookRow; cost: number; expanded: boolean; onToggle: () => void; onHide?: () => void; live: boolean }) {
+export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }: { r: BookRow; cost: number; expanded: boolean; onToggle: () => void; onHide?: () => void; live: boolean; /** the ledger's own record of this pick, for the hit days and prices of a position it has already finished */ outcome?: Outcome | null }) {
   const scr = useScreen(); const row = scr.data?.rows.find((x) => x.sym === r.p.sym);
   const { p: p0, v, q } = r; const adj = v.adjFactor && v.adjFactor !== 1 ? v.adjFactor : null;
   /* after a split or bonus the bars are quoted on the new basis: the stop and the share count move with them, so every figure below is on one basis */
@@ -71,19 +73,15 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
   const price = wi ?? mark; const w = isOpen ? pnlAt(p, entry, price, cost) : null;
   const rl = (x: number) => rLevel(x, entry, p.stop); const pos = (x: number | null) => `${Math.min(100, Math.max(0, (((x ?? 0) + 1.2) / 4.2) * 100))}%`;
   const spark = q && q.c.length > 1 ? q.c : null;
-  return <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-    <button className="tcard-head" aria-expanded={expanded} onClick={onToggle} style={{ width: '100%', textAlign: 'left', padding: 13 }}>
-      <div className="row between"><span><span className="sym">{p.sym}</span> <span className="tag">{eng}</span> <span className="tag">{styleDef(styleOf(p.horizon)).label}</span> {row && <TrendTag r={row} />}</span><span className={`tag ${isOpen ? 'lime' : v.status === 'skipped' ? 'peach' : ''}`}>{W[v.status]}</span></div>
-      {(isOpen || done) ? <div className="row between" style={{ marginTop: 8, alignItems: 'flex-end' }}>
-        <div><div className="k">{isOpen ? (v.markKind === 'live' ? 'Live' : 'Last close') : 'Exit'}</div><div className="num" style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={isOpen ? v.mark : v.exit}>{inr(isOpen ? v.mark : v.exit)}</Tick></div>
-          {isOpen && q && <div className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</div>}</div>
-        <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num amt ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={v.pnl}>{money(v.pnl)}</Tick></div><div className="small dim num">{R(v.r)} · {pct(v.pct)}</div></div></div>
-        : <p className="small dim num" style={{ margin: '8px 0 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit{v.status === 'skipped' ? '' : ''}</p>}
-      {(isOpen || v.status === 'pending' || v.status === 'waiting') && (() => { const t = targetPrices({ asOf: p.asOf, horizon: p.horizon, ref: v.signal ?? p.ref, stop: p.stop }, false, v.entry); const L = v.ladder; const stopNow = L ? L.stop : p.stop;
-        return <p className="small num" style={{ margin: '6px 0 0' }}><span className="down">stop {inr(stopNow)}{L && L.t1Hit && Math.abs(L.stop - (v.entry ?? 0)) < 0.01 ? ' (at the fill)' : ''}</span>{L ? <> · <span className={L.t1Hit ? 'up' : ''}>T1 {inr(L.t1)}{L.t1Hit ? ' ✓' : ''}</span> · <span className={L.t2Hit ? 'up' : ''}>T2 {inr(L.t2)}{L.t2Hit ? ' ✓' : ''}</span></> : t ? <span className="dim" title={REFERENCE_ONLY}> · T1 {inr(t.t1)} · T2 {inr(t.t2)}{t.ref || !p.targets ? ' (ref)' : ` (${BASIS_NOTE[t.basis]})`}</span> : null}</p>; })()}
-      {v.status === 'skipped' && <p className="small down" style={{ margin: '8px 0 0' }}>{v.skipReason}. No trade was opened, and none is counted.</p>}
-    </button>
-    {expanded && (isOpen || done) && <div style={{ padding: '0 13px 13px' }}>
+  const ladder = ladderInputFor(p, v, outcome);
+  const tone: Tone = done ? ((v.r ?? 0) > 0 ? 'up' : (v.r ?? 0) < 0 ? 'down' : 'neutral') : 'neutral';
+  return <PositionCard id={p.id} sym={p.sym} name={row?.name} closed={done} expanded={expanded} onToggle={onToggle} ladder={ladder}
+    tags={<><Pill>{eng}</Pill><Pill>{styleDef(styleOf(p.horizon)).label}</Pill>{row && <TrendTag r={row} />}</>}
+    status={{ label: W[v.status], tone }} entry={v.entry ?? null}
+    price={isOpen || done ? { label: isOpen ? (v.markKind === 'live' ? 'Live' : 'Last close') : 'Exit', value: isOpen ? v.mark : v.exit ?? null, sub: isOpen && q ? <span className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</span> : undefined } : null}
+    pnl={v.pnl} r={v.r} pct={v.pct}
+    line={isOpen || done ? undefined : v.status === 'skipped' ? <span className="down">{v.skipReason}. No trade was opened, and none is counted.</span> : <>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</>}>
+    {(isOpen || done) && <div>
       {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today, five-minute' : 'Last session, five-minute'}</div><Spark c={q!.c} up={q!.px >= q!.prev} refs={[{ v: q!.prev, kind: 'prev' }, ...(v.entry ? [{ v: v.entry, kind: 'entry' as const }] : []), { v: p.stop, kind: 'stop' }]} label={`${p.sym} today, with the previous close, your entry and your stop`} h={48} /><div className="small mute">dashed: previous close, your entry, your stop</div></div>}
       {v.ladder && <div className="small num" style={{ marginTop: 10 }}>
         <div className="k">Profit booking · {styleDef(styleOf(p.horizon)).label}</div>
@@ -102,7 +100,8 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         <p style={{ margin: '0 0 6px' }}><b>Signal</b> {inr(p.ref)}: the engine's close on {dayWord(p.asOf)}. The stop is measured from here.</p>
         <p style={{ margin: '0 0 6px' }}><b>Fill</b> {v.entry != null ? inr(v.entry) : 'not yet'}: the next session's open plus {SLIPPAGE_PCT}% slippage. A paper fill is never at the signal close.</p>
         <p style={{ margin: '0 0 6px' }}><b>{done ? 'Exit' : 'Latest'}</b> {inr(done ? v.exit : v.mark)}: {done ? v.reason?.toLowerCase() : v.markKind === 'live' ? 'the last live print' : 'the last close'}.</p>
-        <p style={{ margin: 0 }}><b>P&L basis</b>: fill to {done ? 'exit' : 'latest'}, times {Math.round(p.qty * 100) / 100} shares, minus {cost}% of the entry value (costs) and {SLIPPAGE_PCT}% of the exit value (slippage). Dividends are not received.</p>
+        {p.qty > 0 ? <p style={{ margin: 0 }}><b>P&L basis</b>: fill to {done ? 'exit' : 'latest'}, times {Math.round(p.qty * 100) / 100} shares, minus {cost}% of the entry value (costs) and {SLIPPAGE_PCT}% of the exit value (slippage). Dividends are not received.</p>
+          : <p style={{ margin: 0 }}><b>Result basis</b>: R only. This pick is in the forward record but the paper book did not take it, so there is no rupee figure. Costs of {cost}% round trip and {SLIPPAGE_PCT}% slippage each side are in the R.</p>}
         {adj && <p style={{ margin: '6px 0 0' }}>A split or bonus was found since the signal (the price history is now quoted ×{adj.toFixed(3)}). The stop and the share count were moved to match, so value and risk are unchanged.</p>}
         {v.basis === 'unverified' && <p className="down" style={{ margin: '6px 0 0' }}>The signal day's bar was not available, so a split since the signal could not be checked.</p>}</div></details>
       {isOpen && <><div className="small dim num">Stop {inr(v.ladder?.stop ?? p.stop)} is {pct((((v.ladder?.stop ?? p.stop) / mark) - 1) * 100)} from here · session {v.sessions} of {p.horizon}, {v.left} left</div>
@@ -113,6 +112,6 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
       {done && <p className="small dim num" style={{ margin: '8px 0 0' }}>{v.reason} · {v.sessions} session{v.sessions === 1 ? '' : 's'} held{v.exitT ? ` · ${dayWord(new Date((v.exitT + 19800) * 1000).toISOString())}` : ''}</p>}
       <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{(done || v.status === 'skipped') && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div>
     </div>}
-    {expanded && !isOpen && !done && <div style={{ padding: '0 13px 13px' }}><div className="row" style={{ gap: 8 }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{v.status === 'skipped' && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div></div>}
-  </div>;
+    {!isOpen && !done && <div><div className="row" style={{ gap: 8 }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{v.status === 'skipped' && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div></div>}
+  </PositionCard>;
 }

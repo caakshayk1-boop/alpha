@@ -9,6 +9,8 @@ import { Empty } from '../ui.tsx';
 import { Head, Loading } from './common.tsx';
 import { inr0 } from '../fmt.ts';
 import { dayWord } from '../fmt.ts';
+import { HitCard, ThroughPills } from '../components/index.ts';
+import { throughOf } from '../recordview.ts';
 
 const sgn = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const R = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`;
@@ -28,7 +30,11 @@ export function AutoBook() {
   const log = b.plan.log; const shownLog = allLog ? log : log.slice(0, 25);
   const total = openPnl + b.sum.closedPnl;
   const toggle = (id: string) => setOpenId(openId === id ? null : id);
+  const outcomeOf = (id: string) => b.ledger.data?.ledger.outcomes[id] ?? null;
+  const ledgerNow = b.ledger.data?.ledger ?? null;
   return <>
+    <HitCard hits={b.hits} />
+    <ThroughPills through={ledgerNow ? throughOf(ledgerNow, Date.now()) : null} />
     <div className="note" style={{ margin: '0 0 10px' }}><b>Experimental.</b> This book takes every pick of engines that have not passed their tests. {evHead ? `${evHead} ` : ''}Its P&L is a record of an experiment, not a track record.</div>
     <div className="card glass">
       <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
@@ -51,11 +57,11 @@ export function AutoBook() {
 
     {!b.rows.length ? <Empty title="No position yet">Picks are written into the record each night after the market closes and taken here at once. The first one enters at the next open.</Empty> : <>
       {open.length > 0 && <Head aside={<span className="tag num">{open.length}</span>}>Open</Head>}
-      {open.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}
+      <div className="ds-stagger">{open.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {wait.length > 0 && <Head aside={<span className="tag num">{wait.length}</span>}>Enters at the next open</Head>}
-      {wait.map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}
+      <div className="ds-stagger">{wait.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {closed.length > 0 && <Head aside={<span className="tag num">{closed.length}</span>}>Closed</Head>}
-      {(allClosed ? closed : closed.slice(0, 6)).map((r) => <TradeCard key={r.p.id} r={r} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}
+      <div className="ds-stagger">{(allClosed ? closed : closed.slice(0, 6)).map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {closed.length > 6 && !allClosed && <button className="btn" style={{ width: '100%' }} onClick={() => setAllClosed(true)}>Show all {closed.length} closed</button>}
       {skipped.length > 0 && <p className="mute small">{skipped.length} pick{skipped.length === 1 ? ' was' : 's were'} skipped at the open by the entry rule and never counted; they are in the log.</p>}
     </>}

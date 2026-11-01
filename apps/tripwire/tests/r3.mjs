@@ -34,8 +34,8 @@ ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'To
 await pg.waitForSelector('.nw .nw-tabs', { timeout: 15000 });
 ok(/All\s*\d+/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Following/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Paper book/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Market/.test(await pg.locator('.nw .nw-tabs').innerText()), 'Today: news can be read as All, Market, Following or Paper book');
 
-await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.tcard-head'); 
-ok(/stop ₹[\d,.]+ · T1 ₹[\d,.]+ · T2 ₹[\d,.]+ \(ref\)/.test(await pg.locator('.tcard-head').first().innerText()), 'a paper position card shows its stop and its two targets (reference ones for a pick filed before profit booking began)');
+await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [data-ladder]');
+ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');
 /* chart */
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
 for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole(['VOLUME', 'RSI 14'].includes(name) ? 'button' : 'radio', { name, exact: true }).count() === 1, `chart: a ${name} control`);
