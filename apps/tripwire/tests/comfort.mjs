@@ -15,14 +15,19 @@ const ratio = (a, c) => { const [x, y] = [lum(a), lum(c)].sort((p, q) => q - p);
 /* 1. type: prose is proportional and comfortable, figures are mono */
 { const ctx = await mk(); const pg = await ctx.newPage(); await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('.decision', { timeout: 15000 });
   const t = await pg.evaluate(() => { const cs = (el) => getComputedStyle(el); const p = [...document.querySelectorAll('.decision p, details.ev .body p, p.small')].find((x) => x.innerText.length > 60); const num = [...document.querySelectorAll('.num')].find((x) => x.innerText.trim().length > 1 && !x.closest('p'));
-    const bodyPx = parseFloat(cs(document.body).fontSize); return { prose: p ? cs(p).fontFamily : '', pLine: p ? parseFloat(cs(p).lineHeight) / parseFloat(cs(p).fontSize) : 0, num: num ? cs(num).fontFamily : '', bodyPx, measure: p ? p.getBoundingClientRect().width / parseFloat(cs(p).fontSize) : 0 }; });
+    const bodyPx = parseFloat(cs(document.body).fontSize); return { prose: p ? cs(p).fontFamily : '', pLine: p ? parseFloat(cs(p).lineHeight) / parseFloat(cs(p).fontSize) : 0, num: num ? cs(num).fontFamily : '', numVar: num ? cs(num).fontVariantNumeric : '', bodyPx, measure: p ? p.getBoundingClientRect().width / parseFloat(cs(p).fontSize) : 0 }; });
   ok(!/JetBrains|monospace/i.test(t.prose) && t.prose.length > 0, `body prose is proportional (${t.prose.split(',')[0]})`);
-  ok(/JetBrains|monospace/i.test(t.num), 'numbers stay in the mono face');
+  // 2026-11-01 design foundation: ONE family (the system sans), figures set with tabular-nums instead of a second face (docs/tripwire/design/DESIGN_SYSTEM.md).
+  // This used to assert the mono face; what matters for reading figures is that columns align, so that is what is pinned now.
+  ok(!/JetBrains|monospace/i.test(t.num) && t.numVar.includes('tabular-nums'), `numbers are in the one family and tabular (${t.num.split(',')[0]}, ${t.numVar})`);
   ok(t.bodyPx >= 15 && t.pLine >= 1.45, `body text is ${t.bodyPx}px with a line height of ${t.pLine.toFixed(2)}`);
   ok(t.measure <= 75, `a line of prose is about ${t.measure.toFixed(0)} characters wide at most (comfortable under 75)`);
   /* 2. contrast of the text colours against the page and the card surfaces */
   const c = await pg.evaluate(() => { const r = getComputedStyle(document.documentElement); const px = (n) => { const d = document.createElement('i'); d.style.color = r.getPropertyValue(n); document.body.appendChild(d); const v = getComputedStyle(d).color.match(/\d+/g).slice(0, 3).map(Number); d.remove(); return v; }; return { tx: px('--tx'), dim: px('--dim'), mute: px('--mute'), lime: px('--lime'), up: px('--up'), down: px('--down'), bg: px('--bg'), s2: px('--s2'), s3: px('--s3') }; });
-  for (const [n, min] of [['tx', 15], ['dim', 9], ['mute', 7], ['lime', 9], ['up', 8], ['down', 6]]) { const worst = Math.min(ratio(c[n], c.bg), ratio(c[n], c.s2), ratio(c[n], c.s3)); ok(worst >= min, `${n} text keeps ${worst.toFixed(1)}:1 on the page and card surfaces (needs ${min}:1)`); }
+  // Floors re-set 2026-11-01 for the owner's palette (--ink #F5F4EE, --ink-2 #B9B9B4, --ink-3 #8A8A85 on --surface-3 #202023). The old floors (15/9/7) were written for the olive palette
+  // and cannot all hold on the lightest card surface: measured now ink 14.5, ink-2 8.1, ink-3 4.6, accent 13, up 8.9, down 5.9. Nothing is below WCAG AA 4.5; body copy uses ink and ink-2 only (both
+  // clear AAA 7), and ink-3 is for timestamps and labels. Raising a floor again is fine; lowering one needs a reason here.
+  for (const [n, min] of [['tx', 14], ['dim', 7.5], ['mute', 4.5], ['lime', 9], ['up', 8], ['down', 5.5]]) { const worst = Math.min(ratio(c[n], c.bg), ratio(c[n], c.s2), ratio(c[n], c.s3)); ok(worst >= min, `${n} text keeps ${worst.toFixed(1)}:1 on the page and card surfaces (needs ${min}:1)`); }
   /* 3. inputs do not trigger the iPhone zoom */
   await pg.goto(base + '/#/discover'); await pg.reload(); await pg.waitForSelector('input'); const small = await pg.evaluate(() => [...document.querySelectorAll('input,select,textarea')].filter((e) => e.offsetParent && parseFloat(getComputedStyle(e).fontSize) < 16).length);
   ok(small === 0, 'every visible field is 16px or larger, so iPhone Safari does not zoom into it');

@@ -1,13 +1,14 @@
 import { PageBar, Head } from './common.tsx';
+import { IdentityFooter } from './capture.tsx';
 
 /** How to use Tripwire: the path through the app, and where things are kept. Only what the app does today. */
 export function Help() {
   const step = (n: number, t: string, body: string) => <li key={n} style={{ marginBottom: 10 }}><b>{t}.</b> {body}</li>;
-  return <div>
+  return <div className="read">
     <PageBar title="How to use Tripwire" onBack sub="A paper-only research workspace" />
     <div className="card small"><p style={{ margin: 0 }}>Tripwire shows which public rules fired at the last close and the evidence on each side. Everything is paper: no order is placed, and your notes stay on this device.</p></div>
     <Head>A first session</Head>
-    <div className="card"><ol className="small" style={{ margin: 0, paddingLeft: 20 }}>
+    <div className="card"><ol className="small helpsteps">
       {step(1, 'Read Today', 'It shows how old the data is, the market read, the picks from the last close, and what changed in the names you follow.')}
       {step(2, 'Find a company', 'Discover filters about a thousand companies by trend, RSI, valuation and size; the search button (or Ctrl or Cmd + K) finds one by name.')}
       {step(3, 'Read its page', 'The top of a company page is the 30-second read: price and its time, what changed, the strongest support and counterargument, the evidence status and the invalidation. Calculations sit behind the controls below.')}
@@ -24,5 +25,6 @@ export function Help() {
       <li><b>Live and close:</b> a live price is a separate print; screening and filters read the close.</li></ul></div>
     <Head>More</Head>
     <div className="card"><div className="list"><a className="li" href="#/methodology"><span className="grow">Methodology and evidence</span></a><a className="li" href="#/data"><span className="grow">Data and coverage</span></a><a className="li" href="#/profile"><span className="grow">Profile and backup</span></a></div></div>
+    <IdentityFooter />
   </div>;
 }

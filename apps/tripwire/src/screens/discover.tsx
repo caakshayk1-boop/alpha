@@ -2,7 +2,8 @@ import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, use
 import { go, isQuiet, replaceHash, setState, useAppState, useLoc, wantsRestore } from '../app.tsx';
 import { useScreen, useJson, type RsiSheet } from '../data.ts';
 import { throughWord } from '../freshness.ts';
-import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
+import { Icon, useUi, Empty } from '../ui.tsx';
+import { FilterSheet } from '../components/index.ts';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
 import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
@@ -178,13 +179,13 @@ export function Discover() {
             <th scope="col" className="sticky" aria-sort={st.sort.key === 'name' ? (st.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button className="sortb" onClick={() => patch({ sort: nextSort(st.sort, 'name') })}>COMPANY{st.sort.key === 'name' ? (st.sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
             <th scope="col" className="acts"><span className="sr">Compare and follow</span></th>
             {cols.map((c) => { const m = metricOf(c)!; const on = st.sort.key === c; const has = st.cond.some((x) => x.m === c); return <th scope="col" key={c} aria-sort={on ? (st.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-              <button className="sortb" title={m.label} onClick={() => patch({ sort: nextSort(st.sort, c) })}>{m.short}{on ? (st.sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button>
+              <button className="sortb" title={`${m.label}: ${m.hint}`} onClick={() => patch({ sort: nextSort(st.sort, c) })}>{m.short}{on ? (st.sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button>
               <button className={`thf ${has ? 'on' : ''}`} aria-label={`Filter ${m.label}`} aria-pressed={has} title={`Filter by ${m.label}`} onClick={() => setFigureM({ m: c, back: false })}><span className="fi"><Icon n="filter" /></span></button></th>; })}
           </tr></thead>
           <tbody>{shown.map((r) => { const d = disp(r); const on = st.pick.includes(r.sym); return <tr key={r.sym} data-sym={r.sym} className={selected === r.sym ? 'sel' : ''}>
             <th scope="row" className="sticky"><a href={`#/c/${encodeURIComponent(r.sym)}`} className="symlink">{r.sym}</a><small className="trunc">{r.name}</small></th>
             <td className="acts"><button className="icon-btn" aria-pressed={on} disabled={!on && st.pick.length >= MAX_PICK} aria-label={`${on ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={() => togglePick(r.sym)}><Icon n="compare" /></button><FollowButton sym={r.sym} name={r.name} /></td>
-            {cols.map((c) => <td key={c} className={`num ${metricOf(c)!.signed && cellOf(r, d, c).v !== null ? (cellOf(r, d, c).v! > 0 ? 'up' : cellOf(r, d, c).v! < 0 ? 'down' : '') : ''}`}><FigCell r={r} d={d} id={c} pm={pm} /></td>)}</tr>; })}</tbody></table>
+            {cols.map((c) => <td key={c} data-label={metricOf(c)!.short} className={`num ${metricOf(c)!.signed && cellOf(r, d, c).v !== null ? (cellOf(r, d, c).v! > 0 ? 'up' : cellOf(r, d, c).v! < 0 ? 'down' : '') : ''}`}><FigCell r={r} d={d} id={c} pm={pm} /></td>)}</tr>; })}</tbody></table>
       </div></>}
     {scr.data && run.ordered.length > 0 && <div className="more"><p className="small mute num" role="status">Showing {Math.min(st.show, run.ordered.length).toLocaleString('en-IN')} of {run.ordered.length.toLocaleString('en-IN')}</p>
       {run.ordered.length > st.show && <button className="btn" style={{ width: '100%' }} onClick={() => patch({ show: st.show + PAGE }, true)}>Show {Math.min(PAGE, run.ordered.length - st.show)} more</button>}</div>}
@@ -192,7 +193,7 @@ export function Discover() {
 
     {figure && <CondSheet rows={rows} initial={figure.m} existing={st.cond} allowUnknown blocked={blocked} count={countWith} onClose={() => { setFigureM(null); if (figure.back) setSheet('filters'); }}
       onAdd={(cs) => { setSt((x) => setFigure(x, cs[0].m, cs)); setFigureM(null); if (figure.back) setSheet('filters'); tick(); }} />}
-    {sheet === 'filters' && !figure && <Sheet title="Filters" onClose={() => setSheet('')}>
+    {sheet === 'filters' && !figure && <FilterSheet title="Filters" onClose={() => setSheet('')}>
       <label className="l" htmlFor="f-sec">Sector</label>
       <select id="f-sec" className="field" value={st.sector} onChange={(e) => patch({ sector: e.target.value })}><option value="">All sectors</option>{sectors.map((x) => <option key={x}>{x}</option>)}</select>
       <label className="l" htmlFor="f-size">Size</label>
@@ -211,12 +212,12 @@ export function Discover() {
           <span className="fn">{m.label}</span><span className="fs small mute">{cs.length ? cs.map(describeCond).join(' · ') : note || 'any'}{cs.length && note ? ` · ${note}` : ''}</span></button>; })}</div></div>)}
       <p className="small dim">Every figure: last close. PE is trailing and absent for loss-makers. ROCE is the median of up to four fiscal years. A name with no figure is left out unless a condition says to include it.</p>
       <div className="row" style={{ marginTop: 12 }}><button className="btn grow" onClick={clearAll}>Clear all</button><button className="btn pri grow" onClick={() => setSheet('')}>Show {run.ordered.length.toLocaleString('en-IN')}</button></div>
-    </Sheet>}
-    {sheet === 'columns' && <Sheet title="Columns" onClose={() => setSheet('')}>
+    </FilterSheet>}
+    {sheet === 'columns' && <FilterSheet title="Columns" onClose={() => setSheet('')}>
       <p className="small mute" style={{ margin: '0 0 8px' }}>Which figures the table shows, and the CSV exports. The list view has its own fixed figures.</p>
       <div role="radiogroup" aria-label="Column preset" className="colset">{COLUMN_SETS.map((c) => <label key={c.id} className={`opt ${st.cols === c.id ? 'on' : ''}`}><input type="radio" name="cols" checked={st.cols === c.id} onChange={() => patch({ cols: c.id }, true)} /><span><b>{c.label}</b><small className="mute">{c.cols.map((k) => metricOf(k)?.short).join(' · ')}</small></span></label>)}</div>
       <button className="btn pri" style={{ width: '100%', marginTop: 12 }} onClick={() => setSheet('')}>Done</button>
-    </Sheet>}
+    </FilterSheet>}
   </div>;
 }
 
