@@ -1,0 +1,32 @@
+/* The motion layer. EVERYTHING that moves in the foundation is in this file and under html.fx, which the app sets only when the person has motion on AND the device
+   has not asked for reduced motion. With motion off (or html.fx absent) no rule here applies, so every state change is instant and nothing animates.
+   Spec: durations 160 / 240 / 360 ms, cubic-bezier(.22,1,.36,1), transform and opacity only, nothing bounces, nothing auto-plays except a skeleton's shimmer. */
+
+/* a view arrives: it fades in and rises 8px (360 ms) */
+html.fx .view{animation:ds-rise var(--dur-3) var(--ease) both}
+@keyframes ds-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* press: 0.98, on pointer-down, 160 ms */
+html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,.ds-hover,.tm-btn,.mini-seg button):active{transform:scale(.98)}
+html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,.ds-hover,.tm-btn,.mini-seg button){transition:transform var(--dur-1) var(--ease),opacity var(--dur-1) var(--ease)}
+
+/* hover: the surface steps up one level. An overlay that fades in (opacity), so no colour is animated */
+html.fx .ds-hover::before{transition:opacity var(--dur-1) var(--ease)}
+
+/* the tab indicator slides (240 ms); with motion off it jumps */
+html.fx .tabs .pill{transition:transform var(--dur-2) var(--ease)!important}
+
+/* a skeleton shimmers at 8% (transform on a pseudo-element; nothing else on the page loops) */
+html.fx .ds-skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--shimmer),transparent);transform:translateX(-100%);animation:ds-shimmer 1.6s var(--ease) infinite}
+@keyframes ds-shimmer{to{transform:translateX(100%)}}
+
+/* a list or a row of cards arrives in order: 30 ms apart, the first eight only (the rest arrive with the eighth) */
+html.fx .ds-stagger>*{animation:ds-rise var(--dur-2) var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
+html.fx .ds-stagger>:nth-child(1){--i:0}html.fx .ds-stagger>:nth-child(2){--i:1}html.fx .ds-stagger>:nth-child(3){--i:2}html.fx .ds-stagger>:nth-child(4){--i:3}
+html.fx .ds-stagger>:nth-child(5){--i:4}html.fx .ds-stagger>:nth-child(6){--i:5}html.fx .ds-stagger>:nth-child(7){--i:6}html.fx .ds-stagger>:nth-child(n+8){--i:7}
+
+/* nothing loops: the older live-dot pulses are switched off (the live state is a word, not a heartbeat) */
+html.fx .livebadge.on i,html.fx .dot-live{animation:none}
+
+/* belt and braces: the device setting also removes html.fx in the app, and this keeps a stale class from ever moving anything */
+@media(prefers-reduced-motion:reduce){html.fx *,html.fx *::before,html.fx *::after{animation:none!important;transition:none!important}}

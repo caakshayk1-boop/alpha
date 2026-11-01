@@ -24,6 +24,9 @@
   --max:1120px;--max-read:720px;
   /* radius and elevation */
   --radius-card:20px;--radius-input:14px;--radius-pill:999px;
+  --surface-grad:linear-gradient(180deg,#17171A,#101012);   /* raised surfaces only */
+  --glow-cta:0 8px 24px -10px rgba(204,255,67,.45);          /* the one restrained glow, on the primary button */
+  --shimmer:rgba(255,255,255,.08);
   --shadow-raised:0 1px 0 rgba(255,255,255,.04) inset,0 12px 32px rgba(0,0,0,.35);
   /* icons: 1.5px stroke, 20px */
   --icon:20px;--icon-stroke:1.5;

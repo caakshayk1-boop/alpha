@@ -1,0 +1,113 @@
+/* Design foundation (1 Nov 2026): the shell and the shared components, written against tokens.css only. It loads after style.css and restyles what is there.
+   Nothing in this file moves: transitions and animations live in motion.css under html.fx. */
+:root{--tab:60px}
+
+/* ---- base ---- */
+body{font-size:var(--fs-body);line-height:var(--lh-body);letter-spacing:0}
+.ic{width:var(--icon);height:var(--icon);stroke-width:var(--icon-stroke)}
+.small{font-size:var(--fs-data);line-height:1.5}
+.k,.dk,.wide small{font-size:var(--fs-label);color:var(--ink-3)}
+.tag,.metatag{font-size:var(--fs-label)}
+.tbl{font-size:var(--fs-data)}
+/* focus: a 2px accent ring, offset 2px, on every interactive element, including fields that hide the browser's own outline */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:inherit}
+input.field:focus-visible,select.field:focus-visible,textarea.field:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs a:focus-visible{outline-offset:-4px}
+/* headings: one h1 per view (the page bar), then the scale */
+.bar h1{font:600 var(--fs-h2)/var(--lh-h2) var(--font);letter-spacing:var(--track-tight);text-transform:none;color:var(--ink)}
+h2.sec,.ds-sh h2{font:600 var(--fs-h2)/var(--lh-h2) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+h2.h{font:600 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight);color:var(--ink);margin:var(--section-gap) 0 var(--sp-3)}
+h2.h::before{display:none}
+@media(min-width:700px){.bar h1{font-size:var(--fs-h1);line-height:var(--lh-h1)}}
+.read{max-width:var(--max-read);margin-inline:auto}
+
+/* ---- surfaces ---- */
+.card,.card.glass{padding:var(--card-pad);background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--radius-card)}
+.card + .card{margin-top:var(--sp-4)}
+.today,.todaydesk,.dsk,.dsk-grid{gap:var(--section-gap)}
+.note,.banner,.tile,.lens,.heat a,.sheet{border-radius:var(--rad-md)}
+.sheet{border-radius:var(--radius-card) var(--radius-card) 0 0;background:var(--surface);border-color:var(--line-2)}
+input,select,textarea,.field{border-radius:var(--radius-input)}
+input.field,select.field,textarea.field{background:var(--surface-2);border-color:var(--line-2)}
+.btn,.chip,.icon-btn,.seg,.mini-seg{border-radius:var(--radius-input)}
+.chip,.cchip,.tag,.metatag{border-radius:var(--radius-pill)}
+
+/* ---- the shell: top bar ---- */
+.statusbar{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-3);height:52px;margin:0 calc(var(--pad,var(--gut)) * -1) var(--sp-3);padding:0 var(--pad,var(--gut));border-bottom:1px solid var(--line);background:var(--bg);font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap;overflow:hidden}
+.statusbar b{font-weight:600}
+.statusbar .brand{display:inline-flex;align-items:center;gap:var(--sp-2);font:700 var(--fs-body)/1 var(--font);letter-spacing:var(--track-tight);text-transform:none;color:var(--ink)}
+.statusbar .brand i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent)}
+.statusbar .sp{display:block;flex:1;min-width:0}
+.statusbar .data{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* on a phone the clock state is read aloud and the Today brief says it in words; there is no room for it beside the two pills */
+@media(min-width:700px){.statusbar .data{position:static;width:auto;height:auto;overflow:visible;clip:auto}}
+.statusbar .on{color:var(--up)}.statusbar .off{color:var(--ink-2)}.statusbar .pre{color:var(--amber)}
+
+/* ---- the shell: tab bar (bottom on a phone, a compact rail on the left from 900px) ---- */
+.tabs{left:0;right:0;bottom:0;transform:none;width:auto;height:auto;min-height:calc(var(--tab) + env(safe-area-inset-bottom));padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);border-radius:0;border:0;border-top:1px solid var(--line);background:var(--bg);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;gap:0}
+.tabs .pill{top:0;bottom:auto;left:env(safe-area-inset-left);height:2px;width:calc((100% - env(safe-area-inset-left) - env(safe-area-inset-right)) / 4);border:0;border-radius:0;background:transparent;box-shadow:none;transform:translateX(calc(var(--i,0) * 100%))}
+.tabs .pill::after{content:"";display:block;width:32px;height:2px;margin:0 auto;border-radius:0 0 2px 2px;background:var(--accent)}
+.tabs a{min-height:var(--hit);padding:4px 2px;text-align:center;overflow-wrap:anywhere;gap:3px;border-radius:var(--radius-input);font:500 var(--fs-label)/1.2 var(--font);letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.tabs a[aria-current=page]{color:var(--accent)}
+.tabs .ic{width:var(--icon);height:var(--icon)}
+@media(min-width:900px){
+  .app{padding-left:72px}
+  .tabs{top:0;bottom:0;left:0;right:auto;width:72px;height:auto;padding:var(--sp-9) var(--sp-2) 0;border-top:0;border-right:1px solid var(--line);grid-template-columns:1fr;grid-template-rows:repeat(4,56px);align-content:start;gap:var(--sp-1)}
+  .tabs .pill{top:var(--sp-9);left:0;right:auto;width:2px;height:56px;transform:translateY(calc(var(--i,0) * 60px))}
+  .tabs .pill::after{width:2px;height:24px;margin:16px 0 0;border-radius:0 2px 2px 0}
+  .main{padding-bottom:var(--sp-9)}
+}
+@media(min-width:1100px){
+  .app{padding-left:72px}
+  .tabs{left:0;width:72px;grid-template-rows:repeat(4,56px)}
+  .main{--pad:var(--gutter);max-width:calc(var(--max) + 2 * var(--gutter))}
+}
+.main{padding-bottom:calc(var(--tab) + env(safe-area-inset-bottom) + var(--sp-6))}
+@media(min-width:900px){.main{padding-bottom:var(--sp-9)}}
+
+/* ---- pills ---- */
+.ds-pill{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:var(--radius-pill);border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);font:500 var(--fs-label)/1 var(--font);white-space:nowrap;max-width:100%;text-decoration:none;position:relative}
+.ds-pill .ic{width:14px;height:14px;stroke-width:var(--icon-stroke)}
+.ds-status.up{color:var(--up);background:var(--up-tint);border-color:transparent}
+.ds-status.down{color:var(--down);background:var(--down-tint);border-color:transparent}
+.ds-status.amber{color:var(--amber);background:var(--amber-tint);border-color:transparent}
+.ds-status.neutral{color:var(--ink-2)}
+.ds-hold{width:7.5rem;border-color:transparent;background:var(--surface)}
+.ds-fresh-day{display:none;color:var(--ink-2);font-weight:400}
+@media(min-width:520px){.ds-fresh-day{display:inline}.ds-fresh-day::before{content:"· "}}
+a.ds-gate::after{content:"";position:absolute;inset:-8px -4px}   /* a 28px pill, a 44px target */
+
+/* ---- section header, empty state, stat, skeleton, card, button ---- */
+.ds-sh{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-4);margin:0 0 var(--sp-4)}
+.ds-sh>div{min-width:0}
+.ds-sh h2,.ds-sh h3{margin:0}
+.ds-sh h3{font:600 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight)}
+.ds-sh p{margin:var(--sp-1) 0 0;max-width:60ch;color:var(--ink-2);font-size:var(--fs-body);line-height:var(--lh-body)}
+.ds-sh .act{flex:none}
+.ds-empty{display:grid;justify-items:center;gap:var(--sp-3);padding:var(--sp-7) var(--card-pad);text-align:center;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface)}
+.ds-empty .ico{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--surface-2);color:var(--ink-2)}
+.ds-empty p{margin:0;max-width:44ch;color:var(--ink-2);font-size:var(--fs-body);line-height:var(--lh-body)}
+.ds-stat{display:grid;gap:var(--sp-1);min-width:0}
+.ds-stat .v{font:600 var(--fs-num-l)/1.1 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums lining-nums}
+.ds-stat .v.up{color:var(--up)}.ds-stat .v.down{color:var(--down)}
+.ds-stat .l{font-size:var(--fs-data);color:var(--ink-2)}
+.ds-stat .n{font-size:var(--fs-label);color:var(--ink-3)}
+.ds-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:var(--sp-5)}
+.ds-skel{display:block;position:relative;overflow:hidden;border-radius:var(--rad-md);background:var(--surface-2);min-height:16px}
+.ds-card{display:block;padding:var(--card-pad);border-radius:var(--radius-card);border:1px solid var(--line);background:var(--surface);color:inherit;text-decoration:none}
+.ds-card.raised{background:var(--surface-grad);box-shadow:var(--shadow-raised)}
+.ds-hover{position:relative;isolation:isolate}
+.ds-hover::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--surface-2);opacity:0;pointer-events:none}
+@media(hover:hover){.ds-hover:hover::before{opacity:1}}
+.btn{min-height:var(--hit);border-radius:var(--radius-input);font-size:var(--fs-data);font-weight:600;background:var(--surface-2);border:1px solid var(--line-2);color:var(--ink)}
+.btn.pri,.btn.pri[disabled]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);box-shadow:var(--glow-cta)}
+.btn.pri:active{background:var(--accent-press);border-color:var(--accent-press)}
+.btn.quiet{background:transparent;border-color:transparent;color:var(--ink-2)}
+@media(hover:hover){.btn.quiet:hover{background:var(--surface-2);color:var(--ink)}.btn.sec:hover,.btn:not(.pri):not(.quiet):hover{background:var(--surface-3)}}
+.btn.sm{min-height:var(--hit);padding:0 14px}
+.btn[aria-busy=true]{opacity:.7;pointer-events:none}
+.chip[aria-pressed=true],.chip.on,.mini-seg button[aria-pressed=true]{color:var(--accent);border-color:var(--accent);background:var(--accent-tint)}
+.ds-gatecard{display:flex;align-items:center;gap:var(--sp-3);min-height:var(--hit);padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-card)}
+.ds-gatetext{flex:1;min-width:0;font-size:var(--fs-data);color:var(--ink-2);line-height:1.4}
+.ds-go{flex:none;transform:rotate(-90deg);color:var(--ink-3)}
+/* motion off: every state change is instant. The older rules kept colour and opacity transitions with a duration; those are cut to zero here, so "off" means off */
+html:not(.fx) *,html:not(.fx) *::before,html:not(.fx) *::after{transition-duration:0s!important;transition-delay:0s!important;animation-duration:0s!important;animation-delay:0s!important}
