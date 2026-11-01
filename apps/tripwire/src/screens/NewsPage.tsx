@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppState } from '../app.tsx';
 import { useAutoBook } from '../book.ts';
 import { lastVisitSec, markVisited, useNewsBoard } from '../news.ts';
-import { plural } from '../newshealth.ts';
-import { archiveList, tabCounts, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
+import { newsViewState, plural } from '../newshealth.ts';
+import { archiveList, archiveTabCounts, countsLine, newsCounts, COUNT_DEFINITION, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
 import { PageBar } from './common.tsx';
 import { NewsHealthLine, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab } from './News.tsx';
 import { REJECT } from '../../news/rules.js';
@@ -23,14 +23,15 @@ export function NewsPage() {
   const b = useNewsBoard(lists); const [seen] = useState(() => lastVisitSec());
   const [f, setF] = useState<ArchiveFilter>({ tab: 'all', types: [], days: 7, includeOther: false, covered: false, text: '' }); const [shown, setShown] = useState(PAGE);
   useEffect(() => { document.title = 'News · Tripwire'; const t = window.setTimeout(() => markVisited(), 4000); return () => window.clearTimeout(t); }, []);
-  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const counts = useMemo(() => tabCounts(b.pool, lists, b.at), [b.pool, lists, b.at]);
+  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const counts = useMemo(() => archiveTabCounts(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const nc = useMemo(() => newsCounts(rows), [rows]);
   const types = useMemo(() => EVENT_TYPES.filter((t: string) => t !== 'Update' && b.pool.some((e) => e.eventType === t)), [b.pool]);
   const set = (p: Partial<ArchiveFilter>) => { setF({ ...f, ...p }); setShown(PAGE); };
   const snap = b.snapshot;
   return <div className="nw">
     <PageBar title="News" onBack sub={`${b.health.word}${b.health.lastGood ? ` · last good check ${b.health.lastGood}` : ''}`} />
     <NewsHealthLine h={b.health} full />
-    <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={f.tab === t.id} onClick={() => set({ tab: t.id as Tab })}>{t.label} <span className="num mute">{counts[t.id as Tab]}</span></button>)}</div>
+    <p className="sr" data-news-view>{view}</p>
+    <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={f.tab === t.id} aria-label={`${t.label}: ${counts[t.id as Tab]} ${counts[t.id as Tab] === 1 ? 'event' : 'events'}`} onClick={() => set({ tab: t.id as Tab })}>{t.label} <span className="num mute">{counts[t.id as Tab]}</span></button>)}</div>
     <div className="nwp-filters">
       <label>Event type <select value={f.types[0] ?? ''} onChange={(e) => set({ types: e.target.value ? [e.target.value] : [] })}><option value="">All types</option>{types.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></label>
       <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
@@ -39,11 +40,12 @@ export function NewsPage() {
       <label><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
     </div>
     <UpdateOffer n={b.pending} apply={b.apply} />
-    <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : `${plural(rows.length, 'update')}${f.includeOther ? '' : ' (events only)'}`}</p><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
+    <p className="small mute" style={{ margin: '0 0 4px' }} data-news-definition>{COUNT_DEFINITION}</p>
+    <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : `${countsLine(nc)}${f.includeOther ? '' : ' (events only)'}`}</p><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
     <div className="card" style={{ padding: '2px 14px 8px' }}>
       {b.loading ? <div className="nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '90%' }} /><div className="sk" style={{ height: 14, width: '65%' }} /></div>
         : rows.length ? <ul className="nw-list">{rows.slice(0, shown).map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} label />)}</ul>
-        : <EmptyTab tab={f.tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} />}
+        : <EmptyTab tab={f.tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} view={view} />}
       {rows.length > shown && <div className="nw-foot"><button className="btn sm" onClick={() => setShown(shown + PAGE)}>{`Show ${Math.min(PAGE, rows.length - shown)} more`}</button><span className="small mute">{shown} of {rows.length}</span></div>}
     </div>
     <NewsMethod extra={snap ? <>

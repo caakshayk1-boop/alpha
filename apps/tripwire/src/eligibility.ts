@@ -53,12 +53,22 @@ export function eligibilityOf(row: Pick<Row, 'sector' | 'tier' | 'cfo_pat' | 'eb
 }
 export const meaningful = (e: Eligibility, id: MetricId) => e.metrics[id].ok;
 
+/** WHAT THE GRADE MEASURES. The screen's LOW / MEDIUM / HIGH is a weighted count of the warning flags the screen raised: statement quality (return on capital, margins, cash conversion, free cash flow,
+ *  interest cover, leverage, working capital, a share-count break), valuation against industry peers, daily range (flagged from 5% a day), thin trading and a fall of 40% or more from the
+ *  52-week high. In the published screen LOW is a score of 0 to 2, MEDIUM 3 to 5 and HIGH 6 or more. It does NOT read the price trend, a fall smaller than the flag, the market, your position size or anything
+ *  about the future: of the 290 LOW names in the 26 Oct screen, 187 were below their 200-day average and 130 were more than 25% under their 52-week high. So it is named for what it counts. */
+export const RISK_NAME = 'Screen flag level';
+export const RISK_SCOPE = 'Scope: this counts the warning flags the screen raised on the latest annual statements (return on capital, margins, cash flow, interest cover, leverage), valuation against industry peers, daily range, thin trading and a fall of 40% or more from the 52-week high. It does not read the price trend, smaller falls, the market, your position size or the future.';
+/** "Screen flag level LOW: no flags raised." / "... HIGH: 7 flags raised." An unknown count says only the level. */
+export function riskSentence(level: string, flags: number | null): string { return `${RISK_NAME} ${level}${flags == null ? '' : `: ${flags === 0 ? 'no flags' : flags === 1 ? '1 flag' : `${flags} flags`} raised`}.`; }
+/** What an empty flag list may be called. It is never "no risk". */
+export const NO_FLAGS_SENTENCE = 'No screen flag was raised. That is not a finding that there are no risks: the screen reads only the ratios and price measures in the scope line, so read the filings and the chart anyway.';
 /** The screen's risk grade is built from the ratios above. When any of them is withheld the grade is not a clean finding, so it is not printed as one. */
 export function riskGradeOf(row: Pick<Row, 'risk_lvl'>, e: Eligibility): { level: string | null; note: string | null } {
   if (!row.risk_lvl) return { level: null, note: null };
   if (e.financial) return { level: null, note: 'Risk grade not shown: it is built from ratios that do not apply to financial-sector companies.' };
   const bad = IDS.filter((i) => !e.metrics[i].ok);
-  return bad.length ? { level: row.risk_lvl, note: 'This grade leans on figures flagged not meaningful here, so read it as partial.' } : { level: row.risk_lvl, note: null };
+  return bad.length ? { level: row.risk_lvl, note: `This grade leans on figures flagged not meaningful here, so read it as partial. ${RISK_SCOPE}` } : { level: row.risk_lvl, note: `${RISK_NAME}, counting flags only. ${RISK_SCOPE}` };
 }
 
 /* ---------- the case and the countercase ---------- */

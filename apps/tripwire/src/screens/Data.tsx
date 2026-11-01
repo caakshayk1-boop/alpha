@@ -9,11 +9,12 @@ import { dayWord } from '../fmt.ts';
 import { Head, Loading, Failed, PageBar } from './common.tsx';
 import { fmtIst } from '../stamp.ts';
 import { useNewsHealth } from '../news.ts';
-import { CALENDAR, calendarNote } from '../calendar.ts';
+import { CALENDAR, calendarNote, holidayStatement } from '../calendar.ts';
 import { useFreshness } from '../freshdata.ts';
 import { throughWord, builtWord, type Status } from '../freshness.ts';
 import { StatusPill, type Tone } from '../components/index.ts';
 import { BreadthGapText, BreadthGapTable } from './gapnote.tsx';
+import { ObservationNote } from './obsnote.tsx';
 
 const N = (v: number) => v.toLocaleString('en-IN');
 const STATUS_WORD: Record<Status, string> = { current: 'Current', pending: 'Build due', stale: 'Behind', unknown: 'Date unreadable', missing: 'Not published' };
@@ -34,7 +35,7 @@ export function DataPage() {
     <section className="card glass">
       <div className="k">The screen</div>
       <p className="lead" style={{ margin: '6px 0 0' }}><em className="ed num">{N(u.total)}</em> companies, with prices through the close of <b>{dayWord(u.asOf)}</b>.</p>
-      <p className="small dim" style={{ margin: '8px 0 0' }}>{fr.word === 'Current' ? 'That is the last finished session.' : `That is ${fr.word.toLowerCase()} the last finished session.`} The screen was built {built ? dayWord(built) : 'on an unknown date'}. Exchange holidays are not modelled.</p>
+      <p className="small dim" style={{ margin: '8px 0 0' }}>{fr.word === 'Current' ? 'That is the last finished session.' : `That is ${fr.word.toLowerCase()} the last finished session.`} The screen was built {built ? dayWord(built) : 'on an unknown date'}. {holidayStatement()}</p>
       <div className="note" style={{ marginTop: 10 }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}, {((u.tiers.unknown / u.total) * 100).toFixed(1)}% of the screen). A missing class is stated, not filled in: the feed's classes follow index membership rather than a market-cap cut-off (their market-cap ranges overlap), so none can be worked out from a company's value, and the engines require a published class that is not micro (rule elig-2, D1).</div>
     </section>
 
@@ -73,6 +74,9 @@ export function DataPage() {
       <tr><td>Financial sector (statement ratios not judged)</td><td className="num" style={{ textAlign: 'right' }}>{N(u.financial)}</td></tr></tbody></table>
       <p className="small dim" style={{ margin: '8px 0 10px' }}>{N(u.liquid - u.liquidWithAverages)} liquid names have no 200-day average yet (recent listings), so the trend map counts {N(u.liquidWithAverages)}, not {N(u.liquid)}.</p></div>
 
+    <Head>Observations and positions</Head>
+    <div className="card" style={{ padding: '10px 14px' }}><ObservationNote className="small" /><p className="small mute" style={{ margin: '8px 0 0' }}>The Signals gate file and the engines' Picks are different files: the gate file can hold no rows while the engines still record picks (see the table of files above).</p></div>
+
     <Head>Why the trend map counts fewer names than the screen</Head>
     <div className="card" style={{ padding: '10px 14px' }}><p className="small" style={{ margin: '0 0 8px' }}><BreadthGapText g={u.breadthGap} /></p><BreadthGapTable g={u.breadthGap} /></div>
 
@@ -94,11 +98,11 @@ export function DataPage() {
 
     <Head>Sources and ages</Head>
     <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Sources and ages, scrolls sideways"><table className="tbl" style={{ width: '100%' }}><thead><tr><th scope="col">Figure</th><th scope="col">Source</th><th scope="col">Observed</th><th scope="col">Delay</th></tr></thead><tbody>
-      <tr><td>Live prices, indices, gold, currencies, Bitcoin</td><td>Yahoo Finance, through this app's Worker</td><td>The exchange's own print time, shown beside every live figure</td><td>Measured on each figure: the age of its latest print</td></tr>
+      <tr><td>Price quotes (Live, Delayed or Last traded): shares, indices, gold, currencies, Bitcoin</td><td>Yahoo Finance, through this app's Worker</td><td>The exchange's own print time, shown beside every live figure</td><td>Measured on each figure: the age of its latest print</td></tr>
       <tr><td>Screen, scores, trend, averages</td><td>Published daily screen, built from Yahoo Finance daily bars and annual statements</td><td>Close of {dayWord(u.asOf)}</td><td>{fr.word === 'Current' ? 'None: the last finished session' : `${fr.word}${fr.behind ? ` (${fr.behind})` : ''}`}</td></tr>
       <tr><td>Financial statements</td><td>Annual statements via Yahoo Finance</td><td>Latest fiscal year held per company (shown on its page)</td><td>Annual, months after a year ends</td></tr>
       <tr><td>Forward record and automatic book</td><td>Nightly job, daily bars via yfinance</td><td>{led.data?.ledger ? `Written ${fmtIst(Date.parse(led.data.ledger.updated) / 1000)}` : 'Not available'}</td><td>One night</td></tr>
-      <tr><td>News</td><td>Google News and Bing News search feeds, RBI and SEBI release feeds; admitted only if a story names a covered company or an India-wide event</td><td>Each story carries its own publication time (published); the check has its own time (checked): {nh.state === 'unavailable' ? 'no check has succeeded yet' : `last successful check ${nh.lastGood}`}</td><td>{nh.word}{nh.next && nh.state === 'fresh' ? `, next check about ${nh.next}` : ''}; scheduled every 15 minutes in the NSE session, 30 otherwise. The scheduler is best effort and can start late: when it does the page says delayed, and may add stories refreshed on demand, labelled as such</td></tr></tbody></table></div></div>
+      <tr><td>News</td><td>Google News and Bing News search feeds, RBI and SEBI release feeds; admitted only if a story names a covered company or an India-wide event</td><td>Each story carries its own publication time (published); the check has its own time (checked): {nh.state === 'loading' ? 'checking now' : nh.lastGood ? `last successful check ${nh.lastGood}` : 'no check has succeeded yet'}</td><td>{nh.word}{nh.next && nh.state === 'fresh' ? `, next check about ${nh.next}` : ''}; scheduled every 15 minutes in the NSE session, 30 otherwise. The scheduler is best effort and can start late: when it does the page says delayed, and may add stories refreshed on demand, labelled as such</td></tr></tbody></table></div></div>
     <p className="small mute" style={{ marginTop: 10 }}>Times are Indian Standard Time. A figure's age is measured from when it was printed, never from when this app last asked.</p>
   </div>;
 }

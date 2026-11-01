@@ -65,7 +65,7 @@ ok((await pg.locator('#c-m').inputValue()) === 'rsi_m', 'Discover: the column fi
 await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
 await pg.setViewportSize({ width: 390, height: 844 });
 await pg.goto(base + '/#/discover?view=table'); await pg.waitForFunction(() => document.querySelectorAll('.stbl tbody tr').length > 20); await pg.waitForSelector('.ldot', { timeout: 15000 }); await pg.waitForTimeout(800);
-ok((await pg.locator('.stbl .ldot').count()) > 3 && /marks a figure worked out at today's live price/.test(await text()), 'Discover: price-derived cells use the live print and are marked, and the page says filters and sorting stay on the close');
+ok((await pg.locator('.stbl .ldot').count()) > 3 && /marks a figure worked out at (today's live|the last traded) price/.test(await text()), 'Discover: price-derived cells use the live print and are marked, and the page says filters and sorting stay on the close');
 
 /* robots and llms */
 const robots = await (await pg.request.get(base + '/robots.txt')).text(); const llms = await pg.request.get(base + '/llms.txt'); const html = await (await pg.request.get(base + '/')).text();

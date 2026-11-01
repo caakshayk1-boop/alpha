@@ -8,6 +8,7 @@ import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common
 import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
+import { isLiveQuote } from '../stamp.ts';
 import { dayWord, initials, inr, pct, tone } from '../fmt.ts';
 import { askInWords, ASK_EXAMPLES } from '../ask.ts';
 import { avatarStyle } from '../widgets.tsx';
@@ -64,7 +65,7 @@ export function Discover() {
   const cols = (COLUMN_SETS.find((c) => c.id === st.cols) ?? COLUMN_SETS[0]).cols;
   useWatchQuotes(shown.map((r) => r.sym)); const quotes = useQuotes(shown.map((r) => r.sym));
   const disp = (r: Row) => displayRow(r, livePrice(r, quotes[r.sym] ?? null));
-  const anyLive = shown.some((r) => disp(r).live);
+  const anyLive = shown.some((r) => disp(r).live); const anyPrintLive = shown.some((r) => isLiveQuote(quotes[r.sym] ?? null));
   const active = describeFilters(filtersOf(st)); const total = rows.length; const stale = dst !== st;
   const asOf = scr.data?.as_of ?? null;
 
@@ -162,7 +163,7 @@ export function Discover() {
     <div className="dcount">
       <p className="small num" role="status" aria-live="polite" data-testid="count">{scr.data ? <><b>{run.ordered.length.toLocaleString('en-IN')}</b> of {total.toLocaleString('en-IN')} {total === 1 ? 'company' : 'companies'}{stale ? ' …' : ''} · {sortLine}</> : ''}</p>
       {scr.data && (noFig > 0 || run.unknownIncluded > 0) && <p className="small mute">{run.unmeasured - run.notApplicable > 0 ? `${plural(run.unmeasured - run.notApplicable, 'name')} left out for having no figure for a filter. ` : ''}{run.notApplicable > 0 ? `${plural(run.notApplicable, 'financial-sector name')} left out of a ratio that is not defined for them. ` : ''}{run.unknownIncluded > 0 ? `${plural(run.unknownIncluded, 'name')} included although they have no figure, as asked.` : ''}</p>}
-      {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at today's live price. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
+      {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at {anyPrintLive ? "today's live price" : 'the last traded price'}. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
     </div>
 
     {scr.loading && <Loading what="the screen" />}
@@ -227,7 +228,7 @@ function FigCell({ r, d, id, pm }: { r: Row; d: { row: Row; live: boolean }; id:
   const m = metricOf(id)!; const c = cellOf(r, d, id);
   if (c.state === 'na') return <span title="Not defined for this company (a financial-sector ratio)" aria-label="not applicable">n/a</span>;
   if (c.state === 'missing') return <span title="No figure published" aria-label="no figure">—</span>;
-  return <>{fmtMetric(m, c.v)}{c.live && <i className="ldot" aria-label="live" title="Worked out at today's live price" />}{c.live && c.differs && pm.has(id) && <small className="atclose" title="The filter and the sort used the close">close {fmtMetric(m, c.close)}</small>}</>;
+  return <>{fmtMetric(m, c.v)}{c.live && <i className="ldot" aria-label="price print" title="Worked out at the latest price print: live while the market is open, otherwise the last traded price" />}{c.live && c.differs && pm.has(id) && <small className="atclose" title="The filter and the sort used the close">close {fmtMetric(m, c.close)}</small>}</>;
 }
 function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d: { row: Row; live: boolean }; pm: Set<MetricKey>; sort: SortId; picked: boolean; full: boolean; onPick: () => void; selected: boolean }) {
   const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const sm = sort === 'name' || sort === 'sym' ? null : metricOf(sort);
@@ -238,7 +239,7 @@ function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d
       <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />
         {sm && closeVal && closeVal.state === 'value' && <span className="metatag" style={{ '--mc': 'var(--a4)' } as React.CSSProperties} title="The figure the list is sorted by, at the close">{sm.short} {fmtMetric(sm, closeVal.v)}</span>}<span className="dim small trunc">{r.name}</span></span></span>
       <span className="wide num">{(['pe', 'roce_med', 'rs3m', 'from_high'] as MetricKey[]).map((id) => <span key={id}><small>{id === 'pe' ? 'PE' : id === 'roce_med' ? 'ROCE' : id === 'rs3m' ? 'vs Nifty 3m' : 'From high'}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}</span>
-      <span className="px num" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="live" title="Live price" />}</b><span className={tone(dc.v)}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>
+      <span className="px num" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="price print" title="Latest price print: live while the market is open, otherwise the last traded price" />}</b><span className={tone(dc.v)}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>
     </a>
     <button className="icon-btn" aria-pressed={picked} disabled={full && !picked} aria-label={`${picked ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={onPick}><Icon n="compare" /></button>
     <FollowButton sym={r.sym} name={r.name} />

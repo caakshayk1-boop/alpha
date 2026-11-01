@@ -122,7 +122,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   T.pulse = { NIFTY: old(22600, 22700), BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief'); await pg.clock.runFor(20000); await pg.waitForTimeout(300);
   const t = await text(pg);
-  ok(/No print since 13:\d\d IST/.test(t) && /holiday, or the price source is quiet/.test(t), 'a 40-minute-old print in a live session is called stale, with its own time, even though the app refreshed');
+  ok(/no print since 13:\d\d IST/.test(t) && /not a listed holiday: the price source is quiet/.test(t), 'a 40-minute-old print in a live session is called stale, with its own time, even though the app refreshed');
   ok(!(await pg.locator('.brief .livebadge.on').count()), 'no LIVE badge on a stale print');
   T.pulse = { NIFTY: { ...quoteOf(22600, 22700), pt: Math.floor(NOW.getTime() / 1000) - 20, live: true }, BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
   await pg.clock.runFor(20000); await pg.waitForTimeout(400);

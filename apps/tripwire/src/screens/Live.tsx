@@ -7,6 +7,7 @@ import { styleDef } from '../exits.ts';
 import { ENGINES } from '../quant.ts';
 import { inr, inr0, pct } from '../fmt.ts';
 import { LiveBadge, Observed, Tick } from '../live.tsx';
+import { freshestPrint, quoteWord } from '../stamp.ts';
 import { Empty } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
 
@@ -55,13 +56,13 @@ export function Live() {
   const closes = { ...(own.bars.data?.bars ?? {}), ...(auto.bars.data?.bars ?? {}) };
   const risk = useMemo(() => riskLens(ls, sectorOf, closes), [ls, closes, scr.data]);     // eslint-disable-line react-hooks/exhaustive-deps
   const sorted = useMemo(() => [...ls].sort((a, b) => { if (key === 'sym') return (dir === 'asc' ? 1 : -1) * a.sym.localeCompare(b.sym); const x = a[key], y = b[key]; if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (dir === 'asc' ? 1 : -1) * (x - y); }), [ls, key, dir]);
-  const live = auto.session.phase === 'open'; const waiting = rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').length;
+  const live = auto.session.phase === 'open'; const word = quoteWord(freshestPrint([auto.intra.obs, own.intra.obs]), Date.now(), { loading: (auto.intra.loading || own.intra.loading) && !auto.intra.err }); const waiting = rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').length;
   const sort = (k: Key) => { if (k === key) setDir(dir === 'asc' ? 'desc' : 'asc'); else { setKey(k); setDir(k === 'toStop' || k === 'sym' ? 'asc' : 'desc'); } };
   if (!rows.length && !auto.ledger.loading) return <div><PageBar title="Live P&L" onBack /><Empty title="No paper position yet">When the first pick enters at its next open, it appears here with its own live P&L.</Empty></div>;
   return <div>
     <PageBar title="Live P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
     <section className={`card hero${live ? ' livecard' : ''}`}>
-      <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : auto.session.label} /><span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></div>
+      <div className="row between"><LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} /><span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 10 }}>
         <div><div className="k">Open P&L (paper)</div><div className={`num amt ${tone(tot.pnl)}`} style={{ font: '700 1.75rem/1.1 var(--mono)' }}><Tick v={ls.length ? tot.pnl : null}>{ls.length ? money(tot.pnl) : '—'}</Tick></div>
           <div className={`small num ${tone(tot.pct)}`}>{tot.pct == null ? '' : `${pct(tot.pct)} on ${inr0(tot.cost)} invested`}</div></div>
@@ -77,7 +78,7 @@ export function Live() {
         <div className="row between"><b>{l.sym}</b><span className="tag">{styleDef(l.style).label}</span></div>
         <div className={`num amt big ${tone(l.pnl)}`}>{money(l.pnl)} <span className="small">{pct(l.pct)}</span></div>
         <Road l={l} />
-        <div className="row between small mute num"><span>{inr(l.entry)} in</span><span>{l.live ? 'live' : 'close'} {inr(l.last)}</span></div>
+        <div className="row between small mute num"><span>{inr(l.entry)} in</span><span title={l.wordDetail}>{l.word} {inr(l.last)}</span></div>
         <div className="row between small num" style={{ marginTop: 2 }}><span className="down">stop {inr0(l.stop)}</span>{l.t1 != null ? <span className={l.ref ? 'dim' : 'up'} title={l.ref ? 'Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit.' : 'Profit-booking targets'}>{l.t1Hit ? 'T1 ✓ · ' : ''}T1 {inr0(l.t1)}{l.t2 != null ? ` · T2 ${inr0(l.t2)}` : ''}{l.ref ? ' (ref)' : ''}</span> : <span className="dim">no targets</span>}</div>
       </a>)}</div></>}
     {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Waiting ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
@@ -88,7 +89,7 @@ export function Live() {
         {COLS.map((c) => <th scope="col" key={c.k} aria-sort={key === c.k ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button onClick={() => sort(c.k)}>{c.h}{key === c.k ? (dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>)}<th scope="col">R</th><th scope="col">TARGETS</th></tr></thead>
       <tbody>{sorted.map((l: Line) => <tr key={l.id}>
         <th scope="row" className="sticky"><a href={`#/c/${l.sym}`}>{l.sym}</a><span className="sub2">{styleDef(l.style).label}</span></th>
-        <td className="num">{Math.round(l.qty * 100) / 100}</td><td className="num">{inr(l.entry)}</td><td className="num"><Tick v={l.last}>{inr(l.last)}</Tick>{!l.live && <span className="sub2">close</span>}</td>
+        <td className="num">{Math.round(l.qty * 100) / 100}</td><td className="num">{inr(l.entry)}</td><td className="num"><Tick v={l.last}>{inr(l.last)}</Tick>{!l.live && <span className="sub2" title={l.wordDetail}>{l.word}</span>}</td>
         <td className={`num amt ${tone(l.pnl)}`}>{money(l.pnl)}</td><td className={`num ${tone(l.pct)}`}>{pct(l.pct)}</td><td className={`num amt ${tone(l.dayPnl)}`}>{money(l.dayPnl)}</td><td className="num amt">{inr0(l.value)}</td>
         <td className="num down">{l.toStop == null ? '—' : pct(l.toStop)}<span className="sub2">{inr(l.stop)}</span></td><td className={`num ${tone(l.r)}`}>{R(l.r)}</td>
         <td className="num">{l.t1Hit ? <span className="up">T1 ✓</span> : l.t1 != null ? <span className={l.ref ? 'dim' : ''} title={l.ref ? 'Reference level, not traded' : undefined}>T1 {inr0(l.t1)}{l.toT1 != null ? ` (${pct(l.toT1)})` : ''}</span> : '—'}{l.t2 != null && <span className="sub2">T2 {inr0(l.t2)}{l.toT2 != null ? ` (${pct(l.toT2)})` : ''}{l.ref ? ' ref' : ''}</span>}</td></tr>)}</tbody></table></div>
@@ -105,6 +106,6 @@ export function Live() {
           <div style={{ textAlign: 'right' }}><div className="k">1 day in 20 was worse than</div><div className={`num ${tone(risk.badDay)}`}>{risk.badDay == null ? '—' : pct(risk.badDay)}</div></div></div>
         <p className="small dim" style={{ margin: '10px 0 0' }}>{risk.effectiveBets != null && risk.effectiveBets < ls.length * 0.6 ? `The book behaves like ${risk.effectiveBets} equal positions, not ${ls.length}: a few names carry most of the weight. ` : ''}{risk.avgCorrelation != null && risk.avgCorrelation > 0.5 ? 'These names have been moving together, so owning many of them diversifies less than it looks. ' : ''}{risk.sessions ? `The last ${risk.sessions} sessions applied to today's weights. ` : 'Daily history for every name is needed (40 shared sessions) before the day figures can be drawn. '}This describes the past of this book. It is not a forecast, and paper money is not real.</p>
       </section></>}
-    <p className="mute small" style={{ marginTop: 12 }}>Costs ({auto.cost}% round trip) and slippage are inside every P&L. A figure labelled "close" is the last close, not a live print.</p>
+    <p className="mute small" style={{ marginTop: 12 }}>Costs ({auto.cost}% round trip) and slippage are inside every P&L. A price is called Live only while the market is open and its latest print is under five minutes old; otherwise it is Delayed or Last traded, with the time of the print.</p>
   </div>;
 }

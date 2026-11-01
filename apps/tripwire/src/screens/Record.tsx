@@ -9,6 +9,8 @@ import { closedItems, definitionLines, figuresOf, throughOf, viewOfClosed } from
 import { dayWord, inr0 } from '../fmt.ts';
 import { Empty } from '../ui.tsx';
 import { Loading } from './common.tsx';
+import { ObservationNote } from './obsnote.tsx';
+import { basisCounts, basisLine } from '../provenance.ts';
 import { EmptyState, RecordStat, RecordStats, SectionHeader, StatusPill, ThroughPills, Button } from '../components/index.ts';
 import { gateLine } from '../components/gate.ts';
 import type { BookRow } from '../book.ts';
@@ -41,7 +43,9 @@ export function RecordScreen() {
         <RecordStat value={fig.totalR == null ? null : fmtR(fig.totalR)} label="Total R" tone={fig.totalR == null ? undefined : fig.totalR > 0 ? 'up' : fig.totalR < 0 ? 'down' : undefined} note="sum of closed trades" />
       </RecordStats>
       <div className="rec-prog" role="img" aria-label={`${fig.closed} of ${MIN_TRADES} trades closed`}>{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < Math.floor((Math.min(fig.closed, MIN_TRADES) / MIN_TRADES) * 10) ? 'on' : ''} />)}</div>
-      <p className="rec-line"><b>{fig.closed}</b> of {MIN_TRADES} trades closed · {fig.nights} night{fig.nights === 1 ? '' : 's'} recorded · {fig.picks} picks · {fig.open} open · {fig.skipped} skipped · {fig.pending} waiting for prices.</p>
+      <p className="rec-line"><b>{fig.closed}</b> of {MIN_TRADES} trades closed · {fig.nights} night{fig.nights === 1 ? '' : 's'} recorded · {fig.picks} pick observations · {fig.open} open · {fig.skipped} skipped · {fig.pending} waiting for prices.</p>
+      <ObservationNote />
+      {basisLine(basisCounts(l)) && <p className="rec-line" data-basis-line>{basisLine(basisCounts(l))}</p>}
       <ThroughPills through={through} />
       <p className="rec-line">{fig.enough ? <>Average <b className="num">{fmtR(fig.avgR)}</b> a trade{sum.all.avgExcess != null ? <> · <span className="num">{sum.all.avgExcess > 0 ? '+' : '−'}{Math.abs(sum.all.avgExcess).toFixed(2)}%</span> against the Nifty over the same days</> : null}.</> : <span>Average R, win rate and the comparison with the Nifty stay hidden until {MIN_TRADES} trades have closed. Fewer than that says nothing.</span>}</p>
     </section>
@@ -78,6 +82,7 @@ export function RecordScreen() {
       <p className="rec-line"><b>One R.</b> {def.r}</p>
       <p className="rec-line"><b>One T2.</b> {def.targets} The same levels are drawn on every card in the Book and here.</p>
       <p className="rec-line">It is a forward record: nothing before the first night counts. Each night's picks are replayed with the same rules as your own paper trades (next-open fill, stop first, time exit, costs {l.cost}% round trip), and a closed outcome is never rewritten. {inr0(book.cfg.ticket)} is the most the paper book puts in any one position, so a rupee figure depends on size and R does not. Thirty trades is a minimum, not proof.</p>
+      <p className="rec-line"><b>Original and restated.</b> A result is labelled by the rule it was produced under: <i>As filed</i> (written on or after 27 Oct 2026, under the profit-booking ladder from the start), <i>Original rule</i> (written earlier and finished under stop-and-time only, never re-evaluated) or <i>Restated rule</i> (written earlier, still open on 1 Nov 2026, so the ladder was applied to it from its entry bar). A restated position's earlier figure was never stored, so it is labelled, not shown beside an invented one.</p>
       <p className="rec-line">Eligibility rule by night: {Object.entries(by).map(([v, ds]) => `${v} (${ds.length} ${ds.length === 1 ? 'night' : 'nights'}, ${dayWord(ds[0])}${ds.length > 1 ? ` to ${dayWord(ds[ds.length - 1])}` : ''})`).join(' · ')}. A night keeps the version it was written under.</p>
       {voided > 0 && <p className="rec-line"><b>{voided} pick{voided === 1 ? '' : 's'} voided.</b> They are kept in the record, left out of every total, and the reason is stated: {[...new Set(Object.values(l.voided!))][0]}</p>}
       {RETIRED.size > 0 && <p className="rec-line">Retired engines stay in the stored record and are left out of every figure above.</p>}
