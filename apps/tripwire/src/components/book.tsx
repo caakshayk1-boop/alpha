@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Icon } from '../ui.tsx';
 import { inr } from '../fmt.ts';
 import { ladderModel, shortDay, type LadderInput, type LadderModel } from '../ladder.ts';
-import { bookingKey, markSeen, newBookings } from '../bookingseen.ts';
+import { bookingKey, markSeen, newBookings, pageStore } from '../bookingseen.ts';
 import { StatusPill, Pill, type Tone } from './pills.tsx';
 import { TweenNumber } from './layout.tsx';
 import type { HitAlert } from '../alerts.ts';
@@ -70,8 +70,8 @@ export function PositionCard(p: PositionCardProps) {
   // bookings new since the last visit sweep once; everything shown is then remembered
   const keys = useMemo(() => (p.ladder && !p.ladder.reference ? ([['T1', p.ladder.t1Hit, p.ladder.t1Day], ['T2', p.ladder.t2Hit, p.ladder.t2Day]] as const).filter(([, h, d]) => h && d).map(([k, , d]) => ({ k, key: bookingKey(p.id, k, d as string) })) : []), [p.ladder, p.id]);
   const fresh = useRef<Set<'t1' | 't2'> | null>(null);
-  if (fresh.current == null) { const nb = typeof localStorage !== 'undefined' ? newBookings(keys.map((x) => x.key), localStorage) : new Set<string>(); fresh.current = new Set(keys.filter((x) => nb.has(x.key)).map((x) => x.k.toLowerCase() as 't1' | 't2')); }
-  useEffect(() => { if (typeof localStorage !== 'undefined') markSeen(keys.map((x) => x.key), localStorage); }, [keys]);
+  if (fresh.current == null) { const st = pageStore(); const nb = st ? newBookings(keys.map((x) => x.key), st) : new Set<string>(); fresh.current = new Set(keys.filter((x) => nb.has(x.key)).map((x) => x.k.toLowerCase() as 't1' | 't2')); }
+  useEffect(() => { const st = pageStore(); if (st) markSeen(keys.map((x) => x.key), st); }, [keys]);
   const up = (p.pnl ?? 0) > 0 ? 'up' : (p.pnl ?? 0) < 0 ? 'down' : '';
   /* a position the paper book never took has a result in R but no rupee figure: say so rather than print a rupee zero */
   const rOnly = p.pnl == null && p.r != null && !!p.closed; const upR = (p.r ?? 0) > 0 ? 'up' : (p.r ?? 0) < 0 ? 'down' : '';

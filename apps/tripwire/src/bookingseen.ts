@@ -13,3 +13,6 @@ export function newBookings(keys: readonly string[], s: Store): Set<string> {
 export function markSeen(keys: readonly string[], s: Store): void {
   try { const seen = read(s) ?? []; const next = [...new Set([...seen, ...keys])].slice(-300); s.setItem(SEEN_KEY, JSON.stringify(next)); } catch { /* private mode: a sweep may repeat once */ }
 }
+
+/** The page's localStorage, or null when the browser refuses it: merely READING `localStorage` throws a SecurityError when storage is blocked, so the access itself is inside the try. */
+export function pageStore(): Store | null { try { return typeof localStorage === 'undefined' ? null : localStorage; } catch { return null; } }

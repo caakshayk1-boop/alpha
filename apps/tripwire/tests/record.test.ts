@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { emptyLedger, summarizeLedger, voidOutcomes, pickId, MIN_TRADES, type Ledger, type LedgerPick, type Outcome } from '../src/ledger.ts';
 import { closedItems, definitionLines, figuresOf, throughOf, viewOfClosed } from '../src/recordview.ts';
 import { STYLES } from '../src/exits.ts';
-import { bookingKey, markSeen, newBookings, SEEN_KEY } from '../src/bookingseen.ts';
+import { bookingKey, markSeen, newBookings, SEEN_KEY, pageStore } from '../src/bookingseen.ts';
 
 const pick = (asOf: string, sym: string, engine = 'QLT', o: Partial<LedgerPick> = {}): LedgerPick => ({ id: pickId(asOf, engine, sym), engine, sym, asOf, ref: 1700, stop: 1650, horizon: 60, score: 80, rank: 1, ...o });
 const closed = (r: number, exitDay: string, o: Partial<Outcome> = {}): Outcome => ({ status: 'closed', final: true, entry: 1700, entryDay: '2026-10-27', exit: 1700 + r * 50, exitDay, reason: r > 0 ? 'Time' : 'Stop', r, pct: r * 3, sessions: 4, markDay: exitDay, ...o });
@@ -95,4 +95,10 @@ test('book.css: every animation and transition sits under html.fx, and only tran
 test('book.css reads the design tokens: no literal font family, no new palette', () => {
   const css = readFileSync(new URL('../src/book.css', import.meta.url), 'utf8');
   assert.ok(!/font-family\s*:/.test(css)); assert.ok(!/rgb\(|rgba\(|hsl\(/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')));
+});
+
+test('pageStore: a browser that throws on merely reading localStorage gives null, not a crash', () => {
+  const g = globalThis as Record<string, unknown>; const had = Object.getOwnPropertyDescriptor(g, 'localStorage');
+  Object.defineProperty(g, 'localStorage', { configurable: true, get() { throw new Error('SecurityError: access denied'); } });
+  try { assert.equal(pageStore(), null); } finally { if (had) Object.defineProperty(g, 'localStorage', had); else delete g.localStorage; }
 });
