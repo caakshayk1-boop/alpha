@@ -1,9 +1,9 @@
 // 3.2 in a real browser: the freshness pill on Today and the per-file table on the Data screen, judged by the one module with the clock pinned to the evening of the screen's data day.
 // Usage: node apps/tripwire/tests/fresh.mjs [baseUrl]
 import { chromium } from 'playwright';
-import { STATE, mockApi } from './fixtures.mjs';
+import { STATE, mockApi, SCREEN_DAY } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
-const scr = await (await fetch(base + '/data/screen.json')).json(); const DAY = scr.as_of;
+const scr = await (await fetch(base + '/data/screen.json')).json(); const DAY = SCREEN_DAY;   // the screen the app is served is the FROZEN fixture (mockApi), not whatever the server holds today
 const prevSession = (d) => { const t = new Date(d + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() - 1); while ([0, 6].includes(t.getUTCDay())); return t.toISOString().slice(0, 10); };
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
