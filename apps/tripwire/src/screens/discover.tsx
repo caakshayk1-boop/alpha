@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKey } from 'react';
 import { go, isQuiet, replaceHash, setState, useAppState, useLoc, wantsRestore } from '../app.tsx';
-import { useScreen } from '../data.ts';
+import { useScreen, useJson, type RsiSheet } from '../data.ts';
+import { throughWord } from '../freshness.ts';
 import { Icon, Sheet, useUi, Empty } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
 import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
@@ -37,7 +38,7 @@ const KIND_C: Record<string, string> = { sector: 'var(--a6)', tier: 'var(--a6)',
 const symSel = (s: string) => `[data-sym="${s.replace(/["\\]/g, '')}"]`;
 
 export function Discover() {
-  const scr = useScreen(); const app = useAppState(); const { toast, tick } = useUi(); const loc = useLoc();
+  const scr = useScreen(); const rsiSheet = useJson<RsiSheet>('/api/rsi'); const app = useAppState(); const { toast, tick } = useUi(); const loc = useLoc();
   const [init] = useState(() => parseDiscover(loc.q));
   const [st, setSt] = useState<DiscoverState>(init.state); const [ignored, setIgnored] = useState<string[]>(init.ignored);
   const stRef = useRef(st); stRef.current = st;
@@ -107,7 +108,7 @@ export function Discover() {
   const noFig = run.unmeasured + run.notApplicable;
 
   return <div className="disc" onClickCapture={onOpen}>
-    <PageBar title="Discover" sub={scr.data ? <>{plural(scr.data.count, 'company', 'companies')} in the published screen · <a href="#/data" style={{ textDecoration: 'underline' }}>coverage</a></> : undefined} />
+    <PageBar title="Discover" sub={scr.data ? <>{plural(scr.data.count, 'company', 'companies')} in the published screen, prices through {throughWord(scr.data.as_of)}{rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <> · weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : null} · <a href="#/data" style={{ textDecoration: 'underline' }}>coverage</a></> : undefined} />
     {ignored.length > 0 && <p className="small mute" role="status" style={{ margin: '0 0 6px' }}>Left out of the link, not understood: {ignored.slice(0, 4).join(', ')}.</p>}
 
     <div className="dtool" role="group" aria-label="Search, filters, sort, columns and view">

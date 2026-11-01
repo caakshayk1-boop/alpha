@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { nseClockOpen } from './stamp.ts';
+import { throughWord } from './freshness.ts';
 import { OPEN_MIN, closureToday, istClock, isTradingDay } from './calendar.ts';
 
 /** One line under the page bar: whether the NSE clock says open, the IST time, and when the screen data was built.
@@ -16,6 +17,6 @@ export function StatusBar({ asOf }: { asOf?: string | null }) {
     <span>NSE <b className={phase === 'open' ? 'on' : phase === 'pre' ? 'pre' : 'off'} title={holiday ?? undefined}>{phase === 'open' ? 'OPEN' : phase === 'pre' ? 'PRE-OPEN' : phase === 'holiday' ? 'HOLIDAY' : 'CLOSED'}</b></span>
     <span>IST <b>{hm}</b></span>
     <span className="sp" />
-    {asOf ? <span className="data">Data through <b>{asOf}</b></span> : null}
+    {asOf ? <span className="data">Data through <b>{throughWord(asOf)}</b></span> : null}
   </div>;
 }

@@ -39,12 +39,12 @@ export function builtWord(iso: string | null | undefined): string | null {
 }
 
 /* ---- the old one-word label, kept for the surfaces that print it (screen header, company page) ---- */
-export type Fresh = { word: 'Current' | 'One session behind' | 'Behind' | 'Unknown'; behind: number | null; tone: 'lime' | 'peach' | ''; pending: boolean };
+export type Fresh = { word: 'Current' | 'One session behind' | 'Behind' | 'Unknown'; /** the word a tag prints: while the finished session's own build is still due it says so instead of calling the data late */ label: string; behind: number | null; tone: 'lime' | 'peach' | ''; pending: boolean };
 export function freshness(dataDay: string | null | undefined, now: Date | number = new Date()): Fresh {
   const ms = typeof now === 'number' ? now : now.getTime(); const s = statusOf(dataDay ?? null, ms);
-  if (s.behind === null) return { word: 'Unknown', behind: null, tone: 'peach', pending: false };
-  if (s.behind === 0) return { word: 'Current', behind: 0, tone: 'lime', pending: false };
-  return { word: s.behind === 1 ? 'One session behind' : 'Behind', behind: s.behind, tone: 'peach', pending: s.status === 'pending' };
+  if (s.behind === null) return { word: 'Unknown', label: 'Unknown', behind: null, tone: 'peach', pending: false };
+  if (s.behind === 0) return { word: 'Current', label: 'Current', behind: 0, tone: 'lime', pending: false };
+  const word = s.behind === 1 ? 'One session behind' : 'Behind'; return { word, label: s.status === 'pending' ? 'Build due' : word, behind: s.behind, tone: s.status === 'pending' ? '' : 'peach', pending: s.status === 'pending' };
 }
 
 /* ---- the files ---- */
