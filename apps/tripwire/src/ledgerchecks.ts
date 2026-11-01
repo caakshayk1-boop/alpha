@@ -26,6 +26,8 @@ export function stageSessions(l: Ledger): { pick: string | null; marked: string 
 export function checkStagesAgree(l: Ledger): Violation[] {
   const { pick, marked } = stageSessions(l);
   if (!pick) return [];
+  /* Only unfinished picks are replayed. When every live pick is final (or none exist) the outcome stage has nothing to advance, so a quiet night is not a fault. */
+  if (!live(l).some((p) => { const o = l.outcomes[p.id]; return !o || !o.final; })) return [];
   if (!marked) return [{ check: 'a', id: 'stages', message: `the pick stage reached ${pick} but no outcome was replayed against any bar` }];
   if (marked === pick) return [];
   return [{ check: 'a', id: 'stages', message: marked < pick ? `the outcome stage is behind the pick stage: picks are written through ${pick}, outcomes were marked only through ${marked}` : `the outcome stage is ahead of the pick stage: outcomes were marked through ${marked}, the last night recorded is ${pick} (the screen is stale)` }];
@@ -76,5 +78,5 @@ export const formatViolations = (vs: readonly Violation[]): string[] => vs.map((
 /** For any other job that stamps a data day (the screen builder, for one): how many completed NSE sessions lie between `asOf` and the last one. 0 is current; null for an unreadable date. */
 export function sessionLag(asOf: string, nowMs: number): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null; const last = lastFinishedSession(nowMs);
-  return asOf >= last ? 0 : sessionsBetween(asOf, last);
+  if (asOf > last) return null; return asOf === last ? 0 : sessionsBetween(asOf, last);
 }

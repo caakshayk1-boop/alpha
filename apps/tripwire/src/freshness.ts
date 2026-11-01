@@ -22,7 +22,7 @@ export function inBuildWindow(nowMs = Date.now()): boolean { const { day, mins }
 /** Whole sessions between a data day and the expected one; 0 when current; null when the date is unreadable. */
 export function sessionsBehind(dataDay: string | null | undefined, now: Date | number = new Date()): number | null {
   if (!dataDay || !ISO.test(dataDay)) return null;
-  const ms = typeof now === 'number' ? now : now.getTime(); const last = expectedSession(ms); return dataDay >= last ? 0 : sessionsBetween(dataDay, last);
+  const ms = typeof now === 'number' ? now : now.getTime(); const last = expectedSession(ms); if (dataDay > last) return null; /* a session that has not closed yet cannot be data: unreadable, never 'current' */ return dataDay === last ? 0 : sessionsBetween(dataDay, last);
 }
 export function statusOf(dataDay: string | null | undefined, nowMs = Date.now()): { status: Status; behind: number | null } {
   if (dataDay === undefined || dataDay === null) return { status: 'missing', behind: null };

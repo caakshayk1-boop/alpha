@@ -78,3 +78,9 @@ test('check-data: a good build passes; a deliberately staled build FAILS with a 
   assert.ok(checkDist(dir, now, { STRICT_SIGNALS: '1' }).errors.some((m: string) => /signals/.test(m)));
   assert.match(checkDist(join(dir, 'nope'), now, {}).errors[0], /build first/);
 });
+
+test('a data day later than the expected session is unreadable, not current', () => {
+  const now = ist('2026-10-30', 10);
+  assert.equal(sessionsBehind('2026-12-31', now), null); assert.equal(statusOf('2026-12-31', now).status, 'unknown'); assert.equal(statusOf('2026-10-29', now).status, 'current');
+  assert.match(assertScreen({ as_of: '2026-12-31', rows: [] }, now)[0], /unreadable/);
+});

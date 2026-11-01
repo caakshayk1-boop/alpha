@@ -31,7 +31,7 @@ test('(a) outcomes ahead of the picks (the published screen is stale) is also a 
   const a = pick('2026-10-28', 'HCLTECH');
   assert.match(checkStagesAgree(led(['2026-10-28'], [a], { [a.id]: open('2026-10-29') }))[0].message, /ahead of the pick stage/);
   assert.match(checkStagesAgree(led(['2026-10-28'], [a], { [a.id]: pending() }))[0].message, /no outcome was replayed/);
-  assert.deepEqual(checkStagesAgree(led(['2026-10-28'], [a], { [a.id]: open('2026-10-29') }, { [a.id]: 'void' })), [{ check: 'a', id: 'stages', message: 'the pick stage reached 2026-10-28 but no outcome was replayed against any bar' }]);
+  assert.deepEqual(checkStagesAgree(led(['2026-10-28'], [a], { [a.id]: open('2026-10-29') }, { [a.id]: 'void' })), [], 'every pick voided: nothing is replayed, so nothing can lag');
   assert.deepEqual(checkStagesAgree(led([], [], {})), []);
 });
 test('(b) an open position marked older than the last completed session fails, per position; a pick still pending after its entry session finished fails; the latest night may be pending', () => {
@@ -88,4 +88,13 @@ test('end to end on real bars: evaluateLedger stamps each outcome with the sessi
 });
 test('sessionLag: the number of completed sessions a data day trails by, for any job that stamps one', () => {
   assert.equal(sessionLag('2026-10-30', SAT), 0); assert.equal(sessionLag('2026-10-29', SAT), 1); assert.equal(sessionLag('2026-10-26', SAT), 4); assert.equal(sessionLag('garbage', SAT), null);
+});
+test('(a) a quiet night is not a fault: when every live pick is final there is no outcome to advance', () => {
+  const a = pick('2026-10-27', 'HCLTECH');
+  const fin: Outcome = { status: 'closed', final: true, entry: 1700, entryDay: '2026-10-28', exitDay: '2026-10-28', markDay: '2026-10-28' };
+  assert.deepEqual(checkStagesAgree(led(['2026-10-27', '2026-10-29'], [a], { [a.id]: fin })), []);
+  const b = pick('2026-10-29', 'TCS'); assert.equal(checkStagesAgree(led(['2026-10-27', '2026-10-29'], [a, b], { [a.id]: fin, [b.id]: pending('2026-10-28') })).length, 1, 'an unfinished pick still must reach the night');
+});
+test('sessionLag: a date later than the last finished session is unreadable, never 0', () => {
+  assert.equal(sessionLag('2026-12-31', FRI_MORNING), null); assert.equal(sessionLag('2026-10-29', FRI_MORNING), 0);
 });
