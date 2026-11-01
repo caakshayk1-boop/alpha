@@ -9,6 +9,7 @@ import { engineEvidence, evidenceHeadline } from '../evidence.ts';
 import { RANK_NOTE } from '../decision.ts';
 import { DEFAULT_COST, useAutoBook } from '../book.ts';
 import { Seg, Empty, Icon, useUi } from '../ui.tsx';
+import { ObservationNote } from './obsnote.tsx';
 import { Failed, Head, Loading, PageBar, TrendTag } from './common.tsx';
 import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
@@ -57,6 +58,7 @@ function Picks() {
   const state = (p: Pick) => { if (!auto.plan) return { k: 'no' as const, text: 'The record could not be read, so the auto book cannot take it yet' }; const t = auto.plan?.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); if (t) return { k: 'in' as const, text: 'In the auto book' }; const r = auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); return r ? { k: 'no' as const, text: `Not taken: ${r.why}` } : { k: 'wait' as const, text: 'Taken automatically when tonight is written to the record' }; };
   return <>
     <div className="note" style={{ margin: '0 0 12px' }}><b>These are experiments, not recommendations.</b> Two engines, each a published factor idea with fixed rules, run on the close of {dayWord(scr.data!.as_of)}. {headline ? `${headline} ` : ''}The forward record is the real test. <a href="#/signals?v=evidence" style={{ textDecoration: 'underline' }}>See the evidence</a>.</div>
+    <ObservationNote parts={['observed', 'positions']} className="small dim" />
     {all.length > 0 && <p className="small dim" style={{ margin: '0 0 6px' }}>Every pick below is taken on paper automatically (up to 30 positions, at most ₹1,00,000 each: a quarter of that for Momentum and half for Quality, and four to a sector, from the 27 Oct picks). A pick the auto book refuses can be taken by hand. <a href="#/signals?v=auto" style={{ textDecoration: 'underline' }}>See the auto book</a></p>}
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; return <section key={run.id} aria-label={def.name}>
       <Head aside={<span className="tag num">{run.picks.length}</span>}>{def.name}</Head>
