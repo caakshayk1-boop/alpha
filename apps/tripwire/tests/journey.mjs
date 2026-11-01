@@ -1,6 +1,7 @@
 // Browser journeys against the served build (default http://localhost:8801). Prints PASS/FAIL per step and exits 1 on any FAIL.
 // Usage: node apps/tripwire/tests/journey.mjs [baseUrl] [shotDir]
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
 import { mockLab } from './labmock.mjs';
@@ -16,7 +17,9 @@ if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env
 const now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 const mq = (prev, px) => quote(prev, px);
-const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;      // the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
+// the suites run on a FROZEN copy of the published screen (see fixtures.mjs); the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
+const SCREEN_JSON = readFileSync(new URL('./fixtures/screen-2026-10-26.json', import.meta.url), 'utf8'); const SCREEN_DAY = JSON.parse(SCREEN_JSON).as_of;
+await ctx.route('**/data/screen.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: SCREEN_JSON }));
 const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, macro: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, breadth: { ok: true, t: Date.now(), as_of: SCREEN_DAY, n: 100, up: 40, mixed: 40, down: 20, sectors: [{ k: 'Industrials', n: 202, up: 60, down: 10 }, { k: 'Consumer Cyclical', n: 155, up: 35, down: 40 }, { k: 'Financial Services', n: 130, up: 45, down: 20 }], repriced: 12, near: 30 } });
 await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: '2026-10-23', order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66], INFY: [48, 52, null] } }) }));
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
@@ -36,7 +39,7 @@ await pg.waitForSelector('.welcome h1', { timeout: 15000 }).catch(() => {}); ok(
 await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore as a guest' }).click();
 await pg.waitForSelector('nav.tabs');
-ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Discover|Signals|My Desk|Profile', 'five destinations: Today, Discover, Signals, My Desk, Profile');
+ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Discover|My Desk|More', 'four destinations: Today, Discover, My Desk, More');
 await pg.waitForSelector('.brief-ix', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
 await pg.waitForTimeout(600); await shot('01-today');
 ok(/Screen: close of/.test(await text()), 'Today states the data date');
@@ -52,6 +55,9 @@ ok(/Open|closed|Pre-open|No live/i.test(await pg.locator('header.bar .sub').inne
 ok(await pg.locator('.rangebar').count() === 0 && /of liquid names are in an uptrend/.test(await text()), 'Today gives the breadth in one line; the trend map itself is on the Markets page');
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 ok(/Gold \$2,650\.50/.test(await pg.locator('.brief-macro').innerText().then((s) => s.replace(/\s+/g, ' '))), 'Today keeps one compact line of gold, Brent and the rupee');
+ok(/Start with one company/.test(await text()) && !/What matters now|Picks from the close/.test(await text()), 'a new user\'s Today is the setup card and the brief: no news, picks or book until they have something of their own');
+await pg.goto(base + '/#/c/HDFCBANK'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row button[aria-pressed]').click(); await pg.waitForTimeout(300);   // one explicit follow makes this a returning user
+await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief-ix');
 await pg.waitForSelector('.nw-row'); ok(/What matters now/.test(await text()) && /RBI keeps repo rate unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(await text()) && /Policy|Results/.test(await pg.locator('.nw-row').first().innerText()), 'Today shows What matters now with verified events, their tags, and when the news was last checked (IST)');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 await pg.getByText('How to read these picks').click();
@@ -72,7 +78,7 @@ ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) >
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.brief-ix');
 
 // the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
-const scr = await (await fetch(base + '/data/screen.json')).json();
+const scr = JSON.parse(SCREEN_JSON);
 const grades = scr.rows.reduce((a, r) => { a[String(r.risk_lvl)] = (a[String(r.risk_lvl)] ?? 0) + 1; return a; }, {});
 ok(Object.keys(grades).every((g) => ['LOW', 'MEDIUM', 'HIGH', 'undefined'].includes(g)) && grades.LOW > 0 && grades.MEDIUM > 0 && grades.HIGH > 0, `every risk grade is LOW, MEDIUM or HIGH (${JSON.stringify(grades)})`);
 
@@ -113,8 +119,8 @@ await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline
 ok(/Published screen/.test(await text()) && /Forward ledger, last night recorded/.test(await text()) && /Live quotes/.test(await text()) && /NSE holiday calendar/.test(await text()), 'the Data screen shows each pipeline stage against the exchange calendar');
 ok(/The eligibility rule, by version/i.test(await text()) && /elig-[12]/.test(await text()) && /Three gaps between the written spec and the code/i.test(await text()), 'the Data screen names the rule version in force and how D1 to D3 were resolved');
 ok(/Back-test runs, and why a result changed/i.test(await text()), 'the Data screen lists the study runs and why they changed');
-await pg.goto(base + '/#/profile'); await pg.reload(); await pg.getByText('Services and integrations').first().waitFor({ timeout: 15000 });
-ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()) && /Not built/i.test(await text()) && /Working/i.test(await text()), 'Profile lists each service as working, not set up or not built');
+await pg.goto(base + '/#/ops'); await pg.reload(); await pg.getByText('News checks').first().waitFor({ timeout: 15000 });
+ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()) && /Not built/i.test(await text()) && /Services/.test(await text()) && !/\bWorking\b/.test(await text()), 'Operations lists each service with its evidence, as checked, not set up or not built, and nothing is called Working');
 ok(!/coming soon/i.test(await text()), 'no service is described as coming soon');
 pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
@@ -211,7 +217,9 @@ ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('radio
 await pg.getByRole('radio', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
 // compare starting from a single company: it asks for the second one instead of dead-ending
-await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
+// Compare pairs a followed company with another followed one when there is one, so this step starts from a single follow
+await pg.evaluate(() => { const k = 'tripwire:v1'; const st = JSON.parse(localStorage.getItem(k) || '{}'); st.follows = ['TCS']; localStorage.setItem(k, JSON.stringify(st)); });
+await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
 await pg.waitForSelector('#cmp-add'); ok(/Compare TCS with/.test(await text()), 'Compare from a company page asks which company to put beside it');
 await pg.locator('#cmp-add').fill('infosys'); await pg.locator('.pick-row', { hasText: 'INFY' }).first().click();
 await pg.waitForSelector('table.tbl'); await pg.waitForSelector('.cchart svg path');
@@ -362,8 +370,8 @@ await shot('10-search'); await pg.keyboard.press('Escape');
 
 // profile
 await pg.goto(base + '/#/profile'); await shot('11-profile');
-ok(/Sign-in is not available yet/.test(await text()), 'profile is honest that no account exists');
-ok(/Notifications and alerts/i.test(await text()) && /Not built/i.test(await text()) && /Free/.test(await text()), 'notifications and billing are shown as unavailable, not faked');
+ok(/There is no sign-in/.test(await text()) && /Notifications are not built/.test(await text()), 'settings are honest that no account exists and notifications are not built, in one short paragraph');
+ok(!/Services and integrations|Accounts and sign-in|Sync between devices|Broker connection/.test(await text()) && !/binding|secret/i.test(await text()), 'settings carry no service list and no infrastructure detail');
 await pg.getByRole('button', { name: /Delete all my data/ }).click();
 await pg.getByRole('button', { name: 'Erase now' }).click();
 await pg.goto(base + '/#/desk?v=journal');

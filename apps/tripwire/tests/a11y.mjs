@@ -9,7 +9,7 @@ import { mockNews } from './newsmock.mjs';
 const require = createRequire(import.meta.url);
 const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const base = process.argv[2] ?? 'http://localhost:8801';
-const ROUTES = ['/#/today', '/#/news', '/#/discover', '/#/signals', '/#/signals?v=tracker', '/#/signals?v=auto', '/#/signals?v=record', '/#/m/GOLD', '/#/compare?s=TCS', '/#/desk', '/#/desk?v=journal', '/#/desk?v=plans', '/#/desk?v=saved', '/#/profile', '/#/c/TCS', '/#/c/HDFCBANK', '/#/compare?s=TCS,INFY,HDFCBANK', '/#/report/TCS', '/#/data', '/#/c/GCSL', '/#/methodology', '/#/help', '/#/ops', '/#/c/PETRONET'];
+const ROUTES = ['/#/today', '/#/news', '/#/discover', '/#/signals', '/#/signals?v=tracker', '/#/signals?v=auto', '/#/signals?v=record', '/#/m/GOLD', '/#/compare?s=TCS', '/#/desk', '/#/desk?v=journal', '/#/desk?v=plans', '/#/desk?v=saved', '/#/profile', '/#/more', '/#/c/TCS', '/#/c/HDFCBANK', '/#/compare?s=TCS,INFY,HDFCBANK', '/#/report/TCS', '/#/data', '/#/c/GCSL', '/#/methodology', '/#/help', '/#/ops', '/#/c/PETRONET'];
 const state = { v: 1, follows: ['TCS'], plans: [], compares: [], screens: [], snaps: {}, onboarded: true, reviews: [], paper: [{ id: 'pp1', sym: 'TCS', engine: 'MOM', asOf: '2026-10-23', ref: 2530, stop: 2400, horizon: 20, qty: 10, takenAt: 1761000000 }], prefs: { motion: 'off', haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
   entries: [{ id: 'x1', sym: 'TCS', created: '2026-10-01T00:00:00Z', archived: false, versions: [{ at: '2026-10-01T00:00:00Z', thesis: 'Seed', support: '', counter: '', decision: '', invalidation: '', trigger: '', reviewOn: '2026-10-10' }] }] };
 const problems = []; const b = await chromium.launch(); let n = 0;
@@ -52,7 +52,7 @@ for (const [pct, tag] of [[150, '150%'], [200, '200%']]) {
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, state);
   await ctx.route('**/api/**', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
   const pg = await ctx.newPage();
-  for (const r of ['/#/today', '/#/news', '/#/discover', '/#/signals', '/#/signals?v=auto', '/#/c/TCS', '/#/desk', '/#/profile']) {
+  for (const r of ['/#/today', '/#/news', '/#/discover', '/#/signals', '/#/signals?v=auto', '/#/c/TCS', '/#/desk', '/#/profile', '/#/more']) {
     await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); await pg.waitForSelector('nav.tabs'); n++;
     await pg.addStyleTag({ content: `html{font-size:${pct}% !important}` }); await pg.waitForTimeout(500);
     const over = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

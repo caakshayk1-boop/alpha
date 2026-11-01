@@ -4,7 +4,7 @@ name: tripwire-news
 #
 # SCHEDULE. The cron lines are a coarse grid; the exchange calendar decides (apps/tripwire/news/schedule.js): every 15 minutes while the NSE session is on, every 30 otherwise, and a tick
 # that arrives inside its cadence does nothing. The 15-minute line covers 08:30 to 16:29 IST on weekdays, a little wider than the session, so a holiday weekday inside it works at the 30-minute pace.
-# GitHub cron is BEST EFFORT: runs start late (minutes, sometimes tens of minutes at busy hours) and an occasional run is dropped. The page therefore calls the news "delayed" when the last
+# GitHub cron is BEST EFFORT: runs start late (this repository measured 2 to 7 hours on its other scheduled jobs, see docs/tripwire/launch/RELIABILITY.md) and an occasional run is dropped. When the last good check is older than two cadences the Worker can refresh the market stories on demand (apps/tripwire/news/catchup.js), labelled as such. The page therefore calls the news "delayed" when the last
 # successful check is older than two cadences plus ten minutes, rather than trusting this file. Scheduled workflows are also switched off after 60 days without repository activity.
 #
 # A source being down is a status in the snapshot, not a failed job: the steps below are continue-on-error and the script exits 0 whenever it ran to the end.
@@ -16,6 +16,11 @@ on:
     - cron: '*/15 3-10 * * 1-5'
     - cron: '*/30 0-2,11-23 * * 1-5'
     - cron: '*/30 * * * 0,6'
+    # A SECOND, OFFSET GRID. GitHub starts each cron line independently and late (the other repository's scheduled jobs started 2 to 5 hours after their time), and drops some. Two lines 7 minutes apart
+    # give each cadence two chances to start on time; the guard in schedule.js (shouldRun) turns the spare tick into a no-op when the first one already ran, so it costs a few seconds of runner time and no extra check.
+    - cron: '7,22,37,52 3-10 * * 1-5'
+    - cron: '7,37 0-2,11-23 * * 1-5'
+    - cron: '7,37 * * * 0,6'
 concurrency:
   group: tripwire-news
   cancel-in-progress: false
@@ -41,6 +46,7 @@ jobs:
           NEWS_UNIVERSE_URL: https://alpha.askakshay.com/universe.json
         run: node --experimental-strip-types --no-warnings apps/tripwire/news/run.mjs --out news-out --prev prev ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
       - name: Publish (force-push the orphan branch; no history on main)
+        id: pub
         if: steps.run.outputs.publish == 'true'
         continue-on-error: true
         run: |
@@ -52,3 +58,8 @@ jobs:
           git add -A
           git commit -q -m "news snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
           git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" tripwire-data
+      # The two steps above are continue-on-error so that a source being down is not a red run. A CRASH of the job script, or a publish that did not land, is a different thing: before this step the
+      # run stayed green while nothing was published, and GitHub sent no failure mail. It is red now.
+      - name: Fail the run if the job crashed or the snapshot was not published
+        if: ${{ steps.run.outcome == 'failure' || steps.pub.outcome == 'failure' }}
+        run: echo '::error::The news job crashed or could not publish its snapshot. The site keeps the last published one and says it is delayed.' && exit 1

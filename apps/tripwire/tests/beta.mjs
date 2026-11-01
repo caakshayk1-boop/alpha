@@ -18,10 +18,9 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1');
   const w = await text(pg);
   ok(!/Ten plain rules|Nifty 500 names/.test(w) && /two experimental ranking engines/.test(w), 'the welcome screen states what the product is, with no claim the data does not back');
-  await pg.getByRole('button', { name: 'Explore as a guest' }).click(); await pg.waitForSelector('.journey');
-  ok(/Your path · 0 of 4/i.test(await text(pg)) && /Follow a name/i.test(await pg.locator('.journey li.now').innerText()), 'Today starts a new user on step 1 of 4: follow a name');
-  await pg.getByRole('button', { name: 'Find a name to follow' }).click(); await pg.waitForSelector('input.field[type=search]');
-  await pg.getByLabel('Search companies').fill('GCSL'); await pg.waitForTimeout(250); await pg.locator('.li a[href="#/c/GCSL"]').first().click(); await pg.waitForSelector('.decision', { timeout: 15000 });
+  await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('button', { name: /GCSL/ }).first().click(); await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
+  ok(!(await saved(pg)).follows.length, 'choosing a company during first use does not follow it');
+  await pg.getByRole('button', { name: 'Not now' }).click(); await pg.waitForSelector('.decision', { timeout: 15000 });
   await pg.locator('.decision .dqd summary').click();   // data quality sits behind its own control now, with the count of notes on the summary
   const d = await pg.locator('.decision').innerText();
   for (const k of ['Why it surfaced', 'Strongest counterargument', 'Evidence status', 'Data quality', 'Invalidation', 'Next review']) ok(new RegExp(k, 'i').test(d), `the decision summary answers "${k}"`);
@@ -50,7 +49,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   ok(/If it opens 2% higher/.test(await pg.locator('.sheet').innerText()), 'the planner shows what a higher open does to the planned risk');
   await pg.getByRole('button', { name: 'Save plan' }).click(); await pg.waitForTimeout(500);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief');
-  ok((await pg.locator('.journey').count()) === 0, 'all four steps done: the path card is gone from Today');
+  ok((await pg.locator('.journey').count()) === 0 && (await pg.locator('[data-sec="setup"]').count()) === 0, 'a returning user has neither the path card nor the setup card on Today');
   ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : ''));
   // closing the browser and opening it again: the saved state travels in the profile, and the journal, follow and plan are still there
   const profile = await ctx.storageState(); await ctx.close();
@@ -67,7 +66,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const { ctx, pg } = await mk(); await ctx.addInitScript((s) => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; void s; }, 0);
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore as a guest/ }).click(); await pg.waitForTimeout(800);
   const banner = await pg.locator('.banner[role=alert]').innerText().catch(() => '');
-  ok(/not keeping Tripwire's data/.test(banner), 'when storage refuses to write, a banner says the data is not being kept: ' + banner.slice(0, 70)); await ctx.close();
+  ok(/could not save: this browser's storage is full/.test(banner) && /Download a backup now/.test(banner), 'when storage refuses to write, a banner says why and offers a backup: ' + banner.slice(0, 70)); await ctx.close();
 }
 
 /* ---- 2. backup round trip through the real screens ---- */
@@ -81,7 +80,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.locator('input[type=file]').setInputFiles(path); await pg.waitForTimeout(500);
   const back = await saved(pg); ok(JSON.stringify(back.entries) === JSON.stringify(STATE.entries) && JSON.stringify(back.paper) === JSON.stringify(STATE.paper) && back.follows.length === 2, 'import on a new device restores the journal, trades and follows exactly');
   await pg.setInputFiles('input[type=file]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":99}') }); await pg.waitForTimeout(400);
-  ok(/Not a Tripwire backup\. Nothing was changed\./.test(await text(pg)) && (await saved(pg)).entries.length === 1, 'a file that is not ours is refused and nothing changes');
+  ok(/version 99 of Tripwire; this one reads version 1\. Nothing was changed\./.test(await text(pg)) && (await saved(pg)).entries.length === 1, 'a file that is not ours is refused, says why, and nothing changes');
   await pg.evaluate(() => localStorage.setItem('tripwire:v1', '{"v":7,corrupt')); await pg.reload(); await pg.waitForTimeout(800);
   ok(/could not be read/.test(await text(pg)) && (await pg.evaluate(() => localStorage.getItem('tripwire:v1:unreadable'))) === '{"v":7,corrupt', 'unreadable saved data is flagged and a copy is kept before anything is written over it'); await ctx.close();
 }

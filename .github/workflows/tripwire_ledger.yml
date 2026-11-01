@@ -1,13 +1,18 @@
 name: tripwire-ledger
-# The forward record of the three Tripwire engines. Runs after the screen is built (21:00 IST, with a retry at 23:00 IST), writes down every
+# The forward record of the three Tripwire engines. Runs after the screen has been published (see WHEN below), writes down every
 # pick once per data day, and replays unfinished picks against real daily bars. Paper only: nothing is sent and nothing is published to a site.
 # A run that cannot fetch most of its prices fails (red), so a blind night is visible. The commit is [skip ci]; the app reads the file live
 # through its /api/ledger route, so no deploy is needed.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * 1-5'      # 00:00 IST, after the 21:00 and 23:00 IST screen builds
-    - cron: '30 22 * * 1-5'      # 04:00 IST, a retry; the job records a data day once
+    # WHEN. The screen this job reads (docs/screen.json in the research repository) is committed by the newspaper job, observed at 23:45 to 01:05 UTC (05:15 to 06:35 IST) in each of the 12 most recent commits to it (16 to 27 Oct),
+    # AFTER the 21:00 IST screen build has reached the database (that build itself starts 2 to 5 hours late). The earlier slots, 18:30 and 22:30 UTC, were both BEFORE that commit, so a run on time
+    # recorded no new data day, and only a run GitHub delayed by 3 hours or more did: 23 Oct was recorded on 25 Oct (by hand), 26 Oct at 01:36 UTC on 27 Oct from a slot 3 hours late
+    # (docs/tripwire/launch/RELIABILITY.md). These slots sit after the commit, and the job records a data day once, so the retry is a no-op when the first already did it.
+    # Tuesday to Saturday: Monday to Friday's closes are published the next morning.
+    - cron: '45 1 * * 2-6'       # 07:15 IST, before the 09:15 IST open
+    - cron: '15 3 * * 2-6'       # 08:45 IST, a retry
 concurrency:
   group: tripwire-ledger
   cancel-in-progress: false

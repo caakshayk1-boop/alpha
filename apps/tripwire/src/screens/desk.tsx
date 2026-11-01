@@ -6,17 +6,27 @@ import { CompanyRow, Head, PageBar } from './common.tsx';
 import { useWatchQuotes } from '../quotes.ts';
 import { closePlan, current, editEntry, istDay, journalCsv, markPaperFill, reviewDue, setArchived, weeklyReview, type Entry, type State } from '../store.ts';
 import { lastChange } from '../sincevisit.ts';
+import { deskHas } from '../home.ts';
 import { dayWord, inr } from '../fmt.ts';
 import { download } from './profile.tsx';
 
 export function Desk({ seg }: { seg: string }) {
-  const loc = useLoc(); const explicit = loc.q.get('v');
+  const loc = useLoc(); const explicit = loc.q.get('v'); const st = useAppState(); const has = deskHas(st);
   const v = ['follow', 'journal', 'plans', 'saved'].includes(seg) && explicit ? seg : 'desk';
+  // a view is offered when it holds something, or when the person has opened it on purpose (its link always works)
+  const items = [{ id: 'desk', label: 'Desk' }, ...([['follow', 'Following'], ['journal', 'Journal'], ['plans', 'Plans'], ['saved', 'Saved']] as const).filter(([id]) => has[id] || v === id).map(([id, label]) => ({ id, label }))];
   return <div>
     <PageBar title="My Desk" sub="Kept on this device" />
-    <Seg label="Desk view" value={v as 'desk'} onChange={(x) => go(x === 'desk' ? '/desk' : `/desk?v=${x}`)} items={[{ id: 'desk', label: 'Desk' }, { id: 'follow', label: 'Following' }, { id: 'journal', label: 'Journal' }, { id: 'plans', label: 'Plans' }, { id: 'saved', label: 'Saved' }]} />
-    {v === 'desk' ? <Workspace /> : v === 'follow' ? <Following /> : v === 'journal' ? <Journal /> : v === 'plans' ? <Plans /> : <Saved />}
+    {items.length > 1 && <Seg label="Desk view" value={v as 'desk'} onChange={(x) => go(x === 'desk' ? '/desk' : `/desk?v=${x}`)} items={items} />}
+    {v === 'desk' ? (has.any ? <Workspace /> : <NewDesk />) : v === 'follow' ? <Following /> : v === 'journal' ? <Journal /> : v === 'plans' ? <Plans /> : <Saved />}
   </div>;
+}
+/** A desk with nothing on it says so once and offers the ways to put something there. No panel of zeros. */
+function NewDesk() {
+  const { open } = useSheets();
+  return <div className="dsk" data-desk="new"><section className="card" aria-labelledby="dsk-new"><h2 id="dsk-new" className="sec">Nothing on your desk yet</h2>
+    <p className="dim" style={{ margin: '6px 0 12px' }}>Companies you follow, your thoughts and theses, paper plans and saved comparisons collect here, on this device, as you add them.</p>
+    <div className="dsk-add" role="group" aria-label="Add to your desk"><button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div></section></div>;
 }
 const DAY = 86400000;
 const addD = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
@@ -35,35 +45,36 @@ function Workspace() {
   const upcoming = active.filter((e) => { const r = current(e).reviewOn; return r && r <= addD(today, 14); }).sort((a, b) => current(a).reviewOn!.localeCompare(current(b).reviewOn!));
   const withQ = active.filter((e) => (current(e).question ?? '').trim()); const withoutQ = active.filter((e) => !(current(e).question ?? '').trim());
   const decisions = recentDecisions(s); const overdue = active.filter((e) => reviewDue(e, today) === 'overdue').length;
-  const [qFor, setQFor] = useState<string>(''); const [qText, setQText] = useState('');
-  const saveQ = (e: Entry) => { const t = qText.trim(); if (!t) return; setState((x) => editEntry(x, e.id, { ...(({ at: _a, ...rest }) => rest)(current(e)), question: t })); setQText(''); setQFor(''); toast('Question saved as a new version. The earlier one is kept.'); };
+  const [qFor, setQFor] = useState<string>(''); const [qText, setQText] = useState(''); const [addQ, setAddQ] = useState(false);
+  const saveQ = (e: Entry) => { const t = qText.trim(); if (!t) return; setState((x) => editEntry(x, e.id, { ...(({ at: _a, ...rest }) => rest)(current(e)), question: t })); setQText(''); setQFor(''); setAddQ(false); toast('Question saved as a new version. The earlier one is kept.'); };
   const reviewTag = (e: Entry) => { const d = reviewDue(e, today); const r = current(e).reviewOn; return d === 'overdue' ? <span className="tag peach">Overdue · {dayWord(r)}</span> : d === 'today' ? <span className="tag peach">Today</span> : r ? <span className="tag">{dayWord(r)}</span> : <span className="tag">No date</span>; };
+  const left = upcoming.length > 0 || withQ.length > 0 || decisions.length > 0, right = s.follows.length > 0 || active.length > 0;
   return <div className="dsk" data-desk="workspace">
-    <section className="card" aria-label="Summary"><div className="dsk-sum num">
-      <div><b>{s.follows.length}</b><span className="small dim">followed</span></div><div><b>{active.length}</b><span className="small dim">theses</span></div><div><b>{overdue}</b><span className="small dim">reviews overdue</span></div><div><b>{withQ.length}</b><span className="small dim">open questions</span></div></div></section>
-    <div className="dsk-grid"><div className="dsk">
-      <section aria-labelledby="dsk-rev"><h2 id="dsk-rev" className="sec" style={{ marginBottom: 8 }}>Upcoming reviews</h2>
-        {upcoming.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">{upcoming.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow dim small">{current(e).trigger || current(e).thesis.slice(0, 80)}</span>{reviewTag(e)}</button>)}</div></div>
-          : <div className="card dim small">No review falls due in the next 14 days.{active.length ? '' : ' Write a thesis with a review date and it appears here.'}</div>}</section>
-      <section aria-labelledby="dsk-q"><h2 id="dsk-q" className="sec" style={{ marginBottom: 8 }}>Open questions</h2>
-        <div className="card" style={{ padding: '2px 14px' }}>{withQ.length ? <div className="list">{withQ.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow">{current(e).question}</span></button>)}</div> : <p className="small dim" style={{ margin: '10px 0' }}>No open questions. A question is what you still need to find out before you would act.</p>}
-          {withoutQ.length > 0 && <div className="dsk-q"><label className="small dim" htmlFor="dsk-qsel">Add a question to a thesis</label>
-            <form onSubmit={(ev) => { ev.preventDefault(); const e = active.find((x) => x.id === qFor); if (e) saveQ(e); }}>
-              <select id="dsk-qsel" className="field" value={qFor} onChange={(ev) => setQFor(ev.target.value)} style={{ flex: '0 1 10rem' }}><option value="">Choose a thesis</option>{withoutQ.map((e) => <option key={e.id} value={e.id}>{e.sym}</option>)}</select>
-              <input className="field" aria-label="Question" maxLength={300} placeholder="What do you still need to find out?" value={qText} onChange={(ev) => setQText(ev.target.value)} />
-              <button className="btn sm" type="submit" disabled={!qFor || !qText.trim()}>Save</button></form></div>}</div></section>
-      <section aria-labelledby="dsk-dec"><h2 id="dsk-dec" className="sec" style={{ marginBottom: 8 }}>Recent decisions</h2>
-        {decisions.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">{decisions.map((d, i) => <a key={d.at + d.sym + i} className="dsk-row" href={d.href}><span className="sym">{d.sym}</span><span className="grow small">{d.what}</span><span className="mute small">{dayWord(d.at)}</span></a>)}</div></div> : <div className="card dim small">Nothing decided yet. Theses, plans and paper trades you record appear here.</div>}</section>
-    </div><div className="dsk">
-      <section aria-labelledby="dsk-fol"><h2 id="dsk-fol" className="sec" style={{ marginBottom: 8 }}>Followed companies</h2>
-        {s.follows.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">{s.follows.map((sym) => { const c = lastChange(s, sym); const r = scr.data?.rows.find((x) => x.sym === sym);
-          return <a key={sym} className="dsk-row" href={`#/c/${sym}`}><span className="sym">{sym}</span><span className="grow small dim">{r?.name ?? 'not in the current screen'}</span><span className="small" data-lastchange>{c ? <>{c.title} <span className="mute">· {dayWord(c.curDay)}</span></> : <span className="mute">No change recorded yet</span>}</span></a>; })}</div></div>
-          : <div className="card"><p style={{ margin: 0 }}>Nothing followed.</p><p className="small dim" style={{ margin: '6px 0 10px' }}>Follow a name from Discover or its research page. Today then reports what changed in it.</p><a className="btn pri" href="#/discover">Find a company</a></div>}</section>
-      <section aria-labelledby="dsk-th"><h2 id="dsk-th" className="sec" style={{ marginBottom: 8 }}>Saved theses</h2>
-        {active.length ? <div className="card" style={{ padding: '2px 14px' }}><div className="list">{active.slice(0, 6).map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow small">{current(e).thesis || 'No thesis written'}{current(e).invalidation ? <span className="dim"> · wrong if: {current(e).invalidation}</span> : null}</span>{reviewTag(e)}</button>)}</div>
-          {active.length > 6 && <a className="small" href="#/desk?v=journal" style={{ display: 'block', padding: '8px 0 12px', textDecoration: 'underline' }}>All {active.length} in the Journal</a>}</div>
-          : <div className="card dim small">No theses yet. Open a company and tap Thesis.</div>}</section>
-    </div></div>
+    {(left || right) && <div className={`dsk-grid${left && right ? '' : ' one'}`}>
+      {left && <div className="dsk">
+        {upcoming.length > 0 && <section aria-labelledby="dsk-rev"><h2 id="dsk-rev" className="sec" style={{ marginBottom: 8 }}>Upcoming reviews</h2>
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{upcoming.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow dim small">{current(e).trigger || current(e).thesis.slice(0, 80)}</span>{reviewTag(e)}</button>)}</div></div></section>}
+        {withQ.length > 0 && <section aria-labelledby="dsk-q"><h2 id="dsk-q" className="sec" style={{ marginBottom: 8 }}>Open questions</h2>
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{withQ.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow">{current(e).question}</span></button>)}</div></div></section>}
+        {decisions.length > 0 && <section aria-labelledby="dsk-dec"><h2 id="dsk-dec" className="sec" style={{ marginBottom: 8 }}>Recent decisions</h2>
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{decisions.map((d, i) => <a key={d.at + d.sym + i} className="dsk-row" href={d.href}><span className="sym">{d.sym}</span><span className="grow small">{d.what}</span><span className="mute small">{dayWord(d.at)}</span></a>)}</div></div></section>}
+      </div>}
+      {right && <div className="dsk">
+        {s.follows.length > 0 && <section aria-labelledby="dsk-fol"><h2 id="dsk-fol" className="sec" style={{ marginBottom: 8 }}>Followed companies</h2>
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{s.follows.map((sym) => { const c = lastChange(s, sym); const r = scr.data?.rows.find((x) => x.sym === sym);
+            return <a key={sym} className="dsk-row" href={`#/c/${sym}`}><span className="sym">{sym}</span><span className="grow small dim">{r?.name ?? 'not in the current screen'}</span><span className="small" data-lastchange>{c ? <>{c.title} <span className="mute">· {dayWord(c.curDay)}</span></> : <span className="mute">No change recorded yet</span>}</span></a>; })}</div></div></section>}
+        {active.length > 0 && <section aria-labelledby="dsk-th"><h2 id="dsk-th" className="sec" style={{ marginBottom: 8 }}>Saved theses</h2>
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{active.slice(0, 6).map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow small">{current(e).thesis || 'No thesis written'}{current(e).invalidation ? <span className="dim"> · wrong if: {current(e).invalidation}</span> : null}</span>{reviewTag(e)}</button>)}</div>
+            {active.length > 6 && <a className="small" href="#/desk?v=journal" style={{ display: 'block', padding: '8px 0 12px', textDecoration: 'underline' }}>All {active.length} in the Journal</a>}</div></section>}
+      </div>}
+    </div>}
+    {addQ && withoutQ.length > 0 && <section className="card dsk-q" aria-labelledby="dsk-addq"><h2 id="dsk-addq" className="sec">Add a question to a thesis</h2>
+      <form onSubmit={(ev) => { ev.preventDefault(); const e = active.find((x) => x.id === qFor); if (e) saveQ(e); }}>
+        <select id="dsk-qsel" className="field" aria-label="Thesis" value={qFor} onChange={(ev) => setQFor(ev.target.value)} style={{ flex: '0 1 10rem' }}><option value="">Choose a thesis</option>{withoutQ.map((e) => <option key={e.id} value={e.id}>{e.sym}</option>)}</select>
+        <input className="field" aria-label="Question" maxLength={300} placeholder="What do you still need to find out?" value={qText} onChange={(ev) => setQText(ev.target.value)} />
+        <button className="btn sm" type="submit" disabled={!qFor || !qText.trim()}>Save</button><button className="btn sm" type="button" onClick={() => setAddQ(false)}>Cancel</button></form></section>}
+    <div className="dsk-add" role="group" aria-label="Add to your desk"><button className="btn" onClick={() => open({ k: 'search' })}>Find a company</button>
+      {withoutQ.length > 0 && !addQ && <button className="btn" onClick={() => setAddQ(true)}>Add a question</button>}<button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
   </div>;
 }
 function Following() {

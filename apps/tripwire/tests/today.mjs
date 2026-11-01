@@ -2,9 +2,9 @@
 // recording rule), layout at six widths, sticky-bar clearance, keyboard use, and layout shift on a throttled first load. AUTOMATED checks, not user research.
 // Usage: node apps/tripwire/tests/today.mjs [baseUrl]
 import { chromium } from 'playwright';
-import { STATE, mockApi } from './fixtures.mjs';
+import { STATE, mockApi, SCREEN_DAY } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
-const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;   // the served screen's own day, never a literal
+// SCREEN_DAY comes from the frozen fixture the mocks serve (fixtures.mjs)   // the served screen's own day, never a literal
 const DAYWORD = new Date(SCREEN_DAY + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', '');
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
@@ -21,22 +21,27 @@ const open = async (state, route = '/#/today', o = {}) => {
 const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1') ?? 'null'));
 const text = (pg) => pg.locator('body').innerText();
 
-/* ---- 1. guest with zero follows ---- */
+/* ---- 1. a new user: one setup action and the brief; nothing counted that does not exist ---- */
 {
-  const { ctx, pg, errs } = await open(GUEST); await pg.waitForSelector('.guest'); const t = await text(pg);
+  const { ctx, pg, errs } = await open(GUEST); await pg.waitForSelector('[data-sec="setup"]'); const t = await text(pg);
   const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
-  ok(secs.indexOf('brief') === 0 && secs.indexOf('news') === 1 && secs.indexOf('changes') === 2, `section order starts brief, news, changes (got ${secs.join(', ')})`);
-  ok(secs.indexOf('picks') > secs.indexOf('changes') && (secs.indexOf('book') === -1 || secs.indexOf('book') < secs.indexOf('picks')), 'the paper book (when there is one) sits before the picks, both after the changes');
+  ok(secs.join() === 'setup,brief', `a new user sees the setup card then the brief, nothing else (got ${secs.join(', ')})`);
+  ok(await pg.getByRole('button', { name: 'Find a company' }).count() === 1, 'exactly one setup action: Find a company');
   ok(/Your market brief/.test(t) && /Screen data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('[data-brief]').innerText()) && /IST/.test(t), 'the brief states its data day and times in IST');
-  ok(/Follow companies in Discover to see changes here/.test(t) && (await pg.locator('.guest a[href="#/discover"]').count()) === 1, 'the guest state asks to follow companies in Discover, with a link');
-  ok(/Following\s*0/i.test(t.replace(/\n/g, ' ')), 'the news tab "Following" is empty for a guest: nothing is followed for them');
-  ok(!(await pg.locator('.tchg').innerText()).match(/\b[A-Z]{3,}\b.*\b(RSI|Uptrend|crossed)/), 'no company is presented in the guest changes area');
-  ok(!/Needs you|Since you last looked/.test(t), 'retired headings are gone');
-  ok(await pg.locator('.tpicks .pickrow').count() <= 5 && await pg.locator('.tpicks .pickrow').count() >= 1 && /Picks from the close of/.test(t), 'picks are compact (at most five), dated');
-  ok(!(await pg.locator('.trendmap').count()) && !(await pg.locator('.strip .tile').count()), 'the trend map and the commodity grid are not on Today any more');
+  ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(t.replace(/\n/g, ' ')), 'no zero-count panel, no path card, no empty section');
+  ok(!(await pg.locator('.guest, .journey').count()), 'the old guest card and path card are gone');
+  await pg.getByRole('button', { name: 'Find a company' }).click(); await pg.waitForSelector('[role=dialog] input'); ok(true, 'Find a company opens the search sheet'); await pg.keyboard.press('Escape');
+  ok(!(await pg.locator('.trendmap').count()) && !(await pg.locator('.strip .tile').count()), 'the trend map and the commodity grid are not on Today');
   await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.trendmap', { timeout: 15000 });
   ok(await pg.locator('.strip .tile').count() >= 6 && /trend map/i.test(await text(pg)), 'the Markets page carries the indices, the commodity grid and the trend map');
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
+}
+/* ---- 1b. a returning user: changes and reviews first, then the brief, then the news (one heading), picks ---- */
+{
+  const { ctx, pg } = await open(WITH); await pg.waitForSelector('.nw-row'); const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
+  ok(secs.indexOf('changes') === 0 && secs.indexOf('brief') === 1 && secs.indexOf('news') === 2, `returning order: changes, brief, news (got ${secs.join(', ')})`);
+  ok((await pg.getByRole('heading', { name: 'What matters now' }).count()) === 1, 'the news block has one "What matters now" heading, not two');
+  ok(!(await pg.locator('.journey, [data-sec="setup"]').count()), 'no path card and no setup card for a returning user'); await ctx.close();
 }
 
 /* ---- 2. first visit with follows: tracking starts, nothing invented, recorded only after 3 s ---- */
@@ -108,10 +113,11 @@ const text = (pg) => pg.locator('body').innerText();
 {
   const st = { ...WITH, entries: [{ ...STATE.entries[0], versions: [{ ...STATE.entries[0].versions[0], reviewOn: '2026-10-30' }] }] };
   const { ctx, pg } = await open(st, '/#/desk'); await pg.waitForSelector('[data-desk="workspace"]'); const t = await text(pg);
-  for (const h of ['Upcoming reviews', 'Open questions', 'Recent decisions', 'Followed companies', 'Saved theses']) ok(t.includes(h), `My Desk shows "${h}"`);
-  await pg.locator('#dsk-qsel').selectOption({ label: 'TCS' }); await pg.getByRole('textbox', { name: 'Question' }).fill('Will deal wins hold margins?'); await pg.getByRole('button', { name: 'Save' }).click(); await pg.waitForTimeout(300);
+  for (const h of ['Upcoming reviews', 'Recent decisions', 'Followed companies', 'Saved theses']) ok(t.includes(h), `My Desk shows "${h}" because it holds something`);
+  ok(!t.includes('Open questions') && !(await pg.locator('#dsk-qsel').count()), 'Open questions and the question form stay hidden until there is one or it is opened');
+  await pg.getByRole('button', { name: 'Add a question' }).click(); await pg.locator('#dsk-qsel').selectOption({ label: 'TCS' }); await pg.getByRole('textbox', { name: 'Question' }).fill('Will deal wins hold margins?'); await pg.getByRole('button', { name: 'Save', exact: true }).click(); await pg.waitForTimeout(300);
   const sv = await saved(pg); ok(sv.entries[0].versions.length === 2 && sv.entries[0].versions[1].question === 'Will deal wins hold margins?' && sv.entries[0].versions[0].question === undefined, 'a question is saved as a new thesis version; the earlier one is untouched');
-  ok(/Will deal wins hold margins\?/.test(await pg.locator('[data-desk]').innerText()), 'the question is listed');
+  ok(/Will deal wins hold margins\?/.test(await pg.locator('[data-desk]').innerText()) && (await text(pg)).includes('Open questions'), 'the question is listed and its section now appears');
   for (const v of ['follow', 'journal', 'plans', 'saved']) { await pg.goto(base + `/#/desk?v=${v}`); await pg.waitForTimeout(500); ok(await pg.locator(`.seg [aria-selected=true]`).count() === 1 && (await pg.locator('.seg [aria-selected=true]').innerText()).length > 0, `#/desk?v=${v} still opens its tab`); }
   await ctx.close();
 }

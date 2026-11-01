@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { go, useAppState, useSheets, setState } from '../app.tsx';
+import { go, useAppState, useLoc, useSheets, setState } from '../app.tsx';
 import { useCompany, useScreen } from '../data.ts';
 import { Icon, Empty, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
@@ -24,9 +24,10 @@ import { CompanyNews } from './News.tsx';
 import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 import { fmtIst } from '../stamp.ts';
 import { changeLine } from '../overview.ts';
+import { FirstThought } from './firstthought.tsx';
 
 export function Company({ sym }: { sym: string }) {
-  useWatchQuotes([sym]); const quote = useQuote(sym);
+  useWatchQuotes([sym]); const quote = useQuote(sym); const first = useLoc().q.get('first') === '1';   // set only by first use: the case and countercase come first, with the optional thought beneath them
   const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
   const row = c.data?.row; const el = row ? eligibilityOf(row, c.data?.years ?? []) : null;
   const day = scr.data?.as_of ?? null;
@@ -43,6 +44,18 @@ export function Company({ sym }: { sym: string }) {
   const pxAt = at(px);
   const swot = c.data.swot; const flags = c.data.risk?.flags ?? [];
   const cur = curateCase({ strengths: swot?.s ?? [], flags, weaknesses: swot?.w ?? [] }, el!); const cases = cur.strengths; const counters = cur.counters; const grade = riskGradeOf(row, el!);
+  const caseBlock = <>
+    <Head>Case and countercase</Head>
+    <details className="ev" open={first || undefined}><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">
+      {cases.length ? cases.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">The screen found no strengths clear enough to list. That is not a negative finding.</span>}</div></details>
+    <details className="ev" open={first || undefined}><summary><span className="down">●</span> Countercase ({counters.length})<span className="chev">▾</span></summary><div className="body">
+      {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">No risk flag or weakness was raised. Read the filings anyway; the screen only sees ratios.</span>}</div></details>
+    <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours.{grade.level ? ` Risk grade: ${grade.level}.` : ''}{grade.note ? ` ${grade.note}` : ''}</p>
+    {el!.notes.length > 0 && <div className="note info" style={{ marginTop: 8 }}>{el!.notes.map((t, k) => <p key={t} style={{ margin: k === el!.notes.length - 1 ? 0 : '0 0 6px' }}>{t}</p>)}</div>}
+    {(cur.hidden.length > 0 || cur.merged > 0) && <details className="more"><summary>How the case and countercase were listed</summary><div>{cur.hidden.length > 0 ? `${plural(cur.hidden.length, 'statement-based line')} left out because ${cur.hidden.length === 1 ? 'its figure is' : 'their figures are'} not meaningful for this company. ` : ''}{cur.merged > 0 ? `${plural(cur.merged, 'line')} on a topic already listed ${cur.merged === 1 ? 'was' : 'were'} merged into the first.` : ''}</div></details>}
+  </>;
+  const mainRisk = counters[0] ? { line: counters[0].t, note: counters[0].k } : { line: 'The screen raised no risk flag or weakness for this company.', note: 'It only sees ratios, so read the filings anyway.' };
+  const riskNote = [grade.level ? `Risk grade: ${grade.level}.` : null, mainRisk.note].filter(Boolean).join(' ') || null;
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
@@ -63,19 +76,18 @@ export function Company({ sym }: { sym: string }) {
         <div className="small num mute" style={{ marginTop: 4 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ')}</div></> : <p className="dim small">52-week range not available.</p>}
     </section>
 
+    {first && <>
+      <div className="note info ft-strip" data-first="strip">First look at {row.name}. Read the case and the countercase, then save a thought if you want one. Nothing here is a recommendation.</div>
+      {caseBlock}
+      <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
+    </>}
+
     <DecisionCard c={c.data} lp={lp} />
 
     <Head>Price history</Head>
     <PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} />
 
-    <Head>Case and countercase</Head>
-    <details className="ev"><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">
-      {cases.length ? cases.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">The screen found no strengths clear enough to list. That is not a negative finding.</span>}</div></details>
-    <details className="ev"><summary><span className="down">●</span> Countercase ({counters.length})<span className="chev">▾</span></summary><div className="body">
-      {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">No risk flag or weakness was raised. Read the filings anyway; the screen only sees ratios.</span>}</div></details>
-    <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours.{grade.level ? ` Risk grade: ${grade.level}.` : ''}{grade.note ? ` ${grade.note}` : ''}</p>
-    {el!.notes.length > 0 && <div className="note info" style={{ marginTop: 8 }}>{el!.notes.map((t, k) => <p key={t} style={{ margin: k === el!.notes.length - 1 ? 0 : '0 0 6px' }}>{t}</p>)}</div>}
-    {(cur.hidden.length > 0 || cur.merged > 0) && <details className="more"><summary>How the case and countercase were listed</summary><div>{cur.hidden.length > 0 ? `${plural(cur.hidden.length, 'statement-based line')} left out because ${cur.hidden.length === 1 ? 'its figure is' : 'their figures are'} not meaningful for this company. ` : ''}{cur.merged > 0 ? `${plural(cur.merged, 'line')} on a topic already listed ${cur.merged === 1 ? 'was' : 'were'} merged into the first.` : ''}</div></details>}
+    {!first && caseBlock}
 
     {(() => { const peers = scr.data ? sectorPeers(sym, scr.data.rows, 5) : null; return peers && <><Head>Same sector</Head>
       <section className="card" aria-label="Companies in the same sector">{peers.list.length > 0 ? <>{peers.list.map((r) => <a key={r.sym} className="li" href={`#/c/${encodeURIComponent(r.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{r.sym}</b> <span className="mute small">{r.name}</span></span><span className="small mute num">{cr(r.turnover_cr)} a day</span></a>)}
@@ -89,6 +101,7 @@ export function Company({ sym }: { sym: string }) {
       <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }} aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
         {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
     {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
+    <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p>
 
     </div><div className="col">
     <Head>News</Head>
