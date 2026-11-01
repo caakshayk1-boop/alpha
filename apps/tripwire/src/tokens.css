@@ -10,6 +10,8 @@
   /* colour: meaning. Accent is for actions and highlights only; up/down are data semantics; amber is staleness and warnings */
   --accent:#CCFF43;--accent-press:#B3E03A;--accent-tint:rgba(204,255,67,.1);--on-accent:#0A0A0B;
   --up:#4ADE80;--down:#F87171;--amber:#FBBF24;
+  /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
+  --series-1:#7DD3FC;--series-2:#C4B5FD;--series-3:#F9A8D4;
   --down-tint:rgba(248,113,113,.1);--up-tint:rgba(74,222,128,.1);--amber-tint:rgba(251,191,36,.1);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
