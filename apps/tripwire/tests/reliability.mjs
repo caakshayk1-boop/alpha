@@ -130,6 +130,15 @@ let exportPath = join(tmp, 'tw-backup.json');
   ok(ontime.calls === 0 && /Fresh/.test(await ontime.pg.locator('.nw-state').first().innerText()), 'when the scheduled check is on time the page makes no on-demand request and says Fresh'); await ontime.ctx.close();
 }
 
+/* ---- 6b. nothing was ever published (no status file): the page still asks the Worker for on-demand market stories while the session is open ---- */
+{
+  const T0 = Date.parse('2026-10-27T06:00:00Z');
+  const x = await mk(STATE, { at: T0, news: {} }); x.ctl.status = { ok: false, reason: 'absent', error: 'the first news check has not been published yet' }; x.calls = 0;
+  await x.ctx.route('**/api/news/catchup*', (r) => { x.calls++; r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-news-ondemand/1', onDemand: false, reason: 'not needed' }) }); });
+  await x.pg.goto(base + '/#/today'); await x.pg.waitForTimeout(4000);
+  ok(x.calls >= 1, 'with no status ever published the page asks the Worker for the on-demand refresh (the Worker decides)'); await x.ctx.close();
+}
+
 /* ---- 7. service honesty: Operations shows evidence or "Not verified"; Settings carries no infrastructure ---- */
 {
   const bad = await mk(STATE); await bad.ctx.route('**/api/health*', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));

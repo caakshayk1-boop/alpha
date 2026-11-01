@@ -48,7 +48,7 @@ export async function pollVersion(force = false): Promise<'changed' | 'same' | '
   if (!force && Date.now() < core.retryUntil) return 'held';
   const v = await getJson(`/api/news/version${force ? '?force=1' : ''}`, force); holdFor(v.retryAfterSec); core.polledAt = Date.now();
   if (!v.ok || !v.data) { set({ unreachable: true, loaded: true }); return 'failed'; }
-  if (v.data.ok === false) { if (v.data.reason === 'absent') { set({ doc: null, unreachable: false, loaded: true }); return 'same'; } set({ unreachable: true, loaded: true }); return 'failed'; }
+  if (v.data.ok === false) { if (v.data.reason === 'absent') { set({ doc: null, unreachable: false, loaded: true }); void maybeCatchup(); return 'same'; } set({ unreachable: true, loaded: true }); return 'failed'; }
   const doc = v.data as StatusDoc; const had = core.snapshot?.snapshotVersion;
   if (had == null || doc.snapshotVersion !== had) {
     const s = await getJson(`/api/news?v=${doc.snapshotVersion}`, force); holdFor(s.retryAfterSec);
@@ -62,8 +62,9 @@ export async function pollVersion(force = false): Promise<'changed' | 'same' | '
  *  onDemand:false clears any earlier one. A failure is silent: the page then says only what the published snapshot says, which is already "delayed". */
 let catchupAt = 0;
 async function maybeCatchup(): Promise<void> {
-  if (!core.doc) return;
-  const h = newsHealth({ doc: core.doc, unreachable: false, remembered: core.remembered, nowMs: Date.now() }); if (h.state !== 'delayed' || h.reason !== 'older than the schedule allows') { if (core.onDemand) set({ onDemand: null }); return; }
+  // nothing was ever published (the status file is absent): the Worker may still refresh market stories on demand while the session is open
+  if (!core.doc) { if (!core.loaded || core.unreachable) return; }
+  else { const h = newsHealth({ doc: core.doc, unreachable: false, remembered: core.remembered, nowMs: Date.now() }); if (h.state !== 'delayed' || h.reason !== 'older than the schedule allows') { if (core.onDemand) set({ onDemand: null }); return; } }
   if (Date.now() - catchupAt < 5 * 60_000) return;
   catchupAt = Date.now(); const r = await getJson('/api/news/catchup');
   if (r.ok && r.data?.ok && r.data.onDemand === true && Array.isArray(r.data.events) && r.data.schema === 'tripwire-news-ondemand/1') set({ onDemand: { refreshedAt: String(r.data.refreshedAt), events: r.data.events as NewsEvent[], status: r.data.status === 'partial' ? 'partial' : 'ok' } });

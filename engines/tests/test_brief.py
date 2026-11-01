@@ -1,6 +1,6 @@
 """Signal brief tests (no network, nothing sent). Run: python tests/test_brief.py"""
 import copy, json, pathlib, sys
-from datetime import date
+from datetime import date, timedelta
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import brief as B
 
@@ -22,7 +22,8 @@ check("it ends by saying nothing awaits approval and no order is sent", "sends n
 check("fits one Telegram message", len(real["text"]) <= 4096)
 check("a brief with no Sunday flag has no weekly block", "weekly" not in real)
 
-stale = B.build_brief(feed, date.fromisoformat(through).replace(day=min(28, int(through[-2:]) + 3)))
+# four calendar days after the feed's date, always later than it (the old replace(day=min(28, ...)) went BACKWARDS whenever the data was from the 26th onward)
+stale = B.build_brief(feed, date.fromisoformat(through) + timedelta(days=4))
 check("data older than the last finished session is flagged first", stale["stale_sessions_behind"] and stale["text"].splitlines()[1].startswith("⚠"))
 
 f = copy.deepcopy(feed)
