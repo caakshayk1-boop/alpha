@@ -11,7 +11,7 @@ import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
 import { targetPrices } from '../levels.ts';
-import { styleDef, styleOf } from '../exits.ts';
+import { REFERENCE_ONLY, TARGETS_BACKFILL_ON, styleDef, styleOf, targetBasis } from '../exits.ts';
 
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const R = (v: number | null | undefined) => sgn(v, (n) => n.toFixed(2) + 'R');
@@ -80,7 +80,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         <div style={{ textAlign: 'right' }}><div className="k">P&L</div><div className={`num amt ${(v.pnl ?? 0) > 0 ? 'up' : (v.pnl ?? 0) < 0 ? 'down' : ''}`} style={{ font: '600 1.25rem/1.2 var(--sans)' }}><Tick v={v.pnl}>{money(v.pnl)}</Tick></div><div className="small dim num">{R(v.r)} · {pct(v.pct)}</div></div></div>
         : <p className="small dim num" style={{ margin: '8px 0 0' }}>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit{v.status === 'skipped' ? '' : ''}</p>}
       {(isOpen || v.status === 'pending' || v.status === 'waiting') && (() => { const t = targetPrices({ asOf: p.asOf, horizon: p.horizon, ref: v.signal ?? p.ref, stop: p.stop }); const L = v.ladder; const stopNow = L ? L.stop : p.stop;
-        return <p className="small num" style={{ margin: '6px 0 0' }}><span className="down">stop {inr(stopNow)}{L && L.t1Hit && Math.abs(L.stop - (v.entry ?? 0)) < 0.01 ? ' (at the fill)' : ''}</span>{L ? <> · <span className={L.t1Hit ? 'up' : ''}>T1 {inr(L.t1)}{L.t1Hit ? ' ✓' : ''}</span> · <span className={L.t2Hit ? 'up' : ''}>T2 {inr(L.t2)}{L.t2Hit ? ' ✓' : ''}</span></> : t ? <span className="dim" title="Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit."> · T1 {inr(t.t1)} · T2 {inr(t.t2)}{t.ref ? ' (ref)' : ''}</span> : null}</p>; })()}
+        return <p className="small num" style={{ margin: '6px 0 0' }}><span className="down">stop {inr(stopNow)}{L && L.t1Hit && Math.abs(L.stop - (v.entry ?? 0)) < 0.01 ? ' (at the fill)' : ''}</span>{L ? <> · <span className={L.t1Hit ? 'up' : ''}>T1 {inr(L.t1)}{L.t1Hit ? ' ✓' : ''}</span> · <span className={L.t2Hit ? 'up' : ''}>T2 {inr(L.t2)}{L.t2Hit ? ' ✓' : ''}</span></> : t ? <span className="dim" title={REFERENCE_ONLY}> · T1 {inr(t.t1)} · T2 {inr(t.t2)}{t.ref ? ' (ref)' : ''}</span> : null}</p>; })()}
       {v.status === 'skipped' && <p className="small down" style={{ margin: '8px 0 0' }}>{v.skipReason}. No trade was opened, and none is counted.</p>}
     </button>
     {expanded && (isOpen || done) && <div style={{ padding: '0 13px 13px' }}>
@@ -90,6 +90,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live }: { r: Bo
         <div>Target 1 {inr(v.ladder.t1)} · {v.ladder.t1Hit ? 'filled, half sold, stop moved to the fill' : 'not reached'}</div>
         <div>Target 2 {inr(v.ladder.t2)} · {v.ladder.t2Hit ? 'filled, the rest sold' : 'not reached'}</div>
         <div className="dim">Banked {money(v.ladder.booked)} before costs · {Math.round(v.ladder.qtyLeft * 100) / 100} of {Math.round(p.qty * 100) / 100} shares still held · stop {inr(v.ladder.stop)}</div>
+        {targetBasis(p) === 'backfilled' && <div className="mute">Filed before profit booking began; the ladder was applied from its entry bar on {dayWord(TARGETS_BACKFILL_ON)}, so any target already crossed is booked on the day it filled.</div>}
         <div className="mute">These targets are a chosen rule, not a tested one: the back-test never used targets.</div></div>}
       <div className="k" style={{ marginTop: 12 }}>Risk ladder</div>
       <div className="ladder" role="img" aria-label={`${p.sym} is at ${R(rl(mark))} of risk relative to your entry; the stop is at minus 1R`}>

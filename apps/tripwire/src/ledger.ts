@@ -8,7 +8,7 @@ import { targetsFor } from './exits.ts';
 import { rulesFor } from './rules.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null }
-export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean }
+export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean; /** the session (India date) and the price at which each target filled */ t1Day?: string; t1Px?: number; t2Day?: string; t2Px?: number }
 export interface Day { asOf: string; recorded: string; /** the eligibility rule version this night was written under; absent on nights written before versions existed (those are elig-1) */ rules?: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
 export interface Ledger { schema: 'tripwire-ledger/1'; started: string; updated: string; cost: number; days: Day[]; picks: LedgerPick[]; outcomes: Record<string, Outcome>;
   /** picks struck from the record, with the reason. A pick is never deleted or edited: it is voided in the open and left out of every total. */
@@ -49,7 +49,7 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
     const v = evaluatePaper(paper, b, null, l.cost);
     const o: Outcome = { status: v.status === 'waiting' || v.status === 'pending' ? 'pending' : v.status, final: v.status === 'closed' || v.status === 'skipped' };
     if (v.status === 'skipped') o.skipReason = v.skipReason;
-    if (v.ladder) { o.t1Hit = v.ladder.t1Hit; o.t2Hit = v.ladder.t2Hit; }
+    if (v.ladder) { o.t1Hit = v.ladder.t1Hit; o.t2Hit = v.ladder.t2Hit; if (v.ladder.t1T != null) { o.t1Day = isoOf(v.ladder.t1T); o.t1Px = v.ladder.t1Px; } if (v.ladder.t2T != null) { o.t2Day = isoOf(v.ladder.t2T); o.t2Px = v.ladder.t2Px; } }
     if (v.status === 'open' || v.status === 'closed') {
       Object.assign(o, { entry: v.entry, entryDay: isoOf(v.entryT!), sessions: v.sessions, r: v.r, pct: v.pct });
       if (v.status === 'closed') Object.assign(o, { exit: v.exit, exitDay: isoOf(v.exitT!), reason: v.reason }); else o.mark = v.mark ?? undefined;

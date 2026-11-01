@@ -66,7 +66,7 @@ function viewFromOutcome(pos: AutoPos, o: Outcome): View {
   if (o.status === 'skipped') return { id: pos.pick.id, status: 'skipped', sessions: 0, left: null, mark: null, markKind: null, pnl: null, r: null, pct: null, skipReason: o.skipReason };
   return { id: pos.pick.id, status: 'closed', entry: o.entry, entryT: t(o.entryDay), exit: o.exit, exitT: t(o.exitDay), reason: o.reason, sessions: o.sessions ?? 0, left: 0, mark: o.exit ?? null, markKind: 'close', pnl: realised(o, pos.qty), r: o.r ?? null, pct: o.pct ?? null };
 }
-const paperOf = (t: AutoPos): Paper => ({ id: t.pick.id, sym: t.pick.sym, engine: t.pick.engine, asOf: t.pick.asOf, ref: t.pick.ref, stop: t.pick.stop, horizon: t.pick.horizon, qty: t.qty, takenAt: t.takenAt, targets: targetsFor(t.pick) });
+const paperOf = (t: AutoPos, final = false): Paper => ({ id: t.pick.id, sym: t.pick.sym, engine: t.pick.engine, asOf: t.pick.asOf, ref: t.pick.ref, stop: t.pick.stop, horizon: t.pick.horizon, qty: t.qty, takenAt: t.takenAt, targets: targetsFor(t.pick, final) });
 
 /** The automatic paper book: the nightly record's picks, 30 at a time at most, ₹1,00,000 each at most. Positions the record has already
  *  finished come from it; every other one is followed live with the same tracker the manual book uses. */
@@ -75,9 +75,9 @@ export function useAutoBook(on = true) {
   const plan = useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG) : null), [ledger.data]);
   const outcomes = ledger.data?.ledger.outcomes;
   const liveSet = useMemo(() => (plan ? plan.taken.filter((t) => { const o = outcomes?.[t.pick.id]; return !(o && o.final); }) : []), [plan, outcomes]);
-  const papers = useMemo(() => liveSet.map(paperOf), [liveSet]);
+  const papers = useMemo(() => liveSet.map((t) => paperOf(t)), [liveSet]);
   const live = useLivePapers(papers, on);
-  const done: BookRow[] = useMemo(() => (plan ? plan.taken.filter((t) => outcomes?.[t.pick.id]?.final).map((t) => ({ p: paperOf(t), v: viewFromOutcome(t, outcomes![t.pick.id]), q: null, dayPnl: null })) : []), [plan, outcomes]);
+  const done: BookRow[] = useMemo(() => (plan ? plan.taken.filter((t) => outcomes?.[t.pick.id]?.final).map((t) => ({ p: paperOf(t, true), v: viewFromOutcome(t, outcomes![t.pick.id]), q: null, dayPnl: null })) : []), [plan, outcomes]);
   const rows = useMemo(() => [...live.rows, ...done], [live.rows, done]); useWinCelebration(rows);
   const sum = summarize(rows.map((r) => r.v));
   const slots = rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').length;
@@ -88,5 +88,5 @@ export function useAutoBook(on = true) {
 /** Every pick the record has filed, for drawing a name's levels on its chart. No price polling: it reads the ledger only. */
 export function useAutoPicks() {
   const ledger = useLedger();
-  return useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG).taken.map((t) => t.pick) : []), [ledger.data]);
+  return useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG).taken.map((t) => ({ ...t.pick, final: !!ledger.data!.ledger.outcomes[t.pick.id]?.final })) : []), [ledger.data]);
 }

@@ -4,6 +4,8 @@ import { useBacktest } from '../data.ts';
 import { engineEvidence } from '../evidence.ts';
 import { CURRENT_RULES, rulesDef } from '../rules.ts';
 import { TREND_RULE_TEXT } from '../screen.ts';
+import { POLICY_FROM, STYLES, TARGETS_BACKFILL_ON } from '../exits.ts';
+import { dayWord } from '../fmt.ts';
 
 /** Methodology and evidence: the long explanations that used to sit inside cards, in one place, read from the same constants the app computes with
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
@@ -27,6 +29,10 @@ export function Methodology() {
 
     <Head>Trend</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p></div>
+
+    <Head>Profit booking</Head>
+    <div className="card small"><p style={{ margin: '0 0 6px' }}>A position's holding period sets its two targets, in multiples of its risk: {STYLES.map((x) => `${x.label.toLowerCase()} (${x.sessions}) ${x.t1}R and ${x.t2}R`).join('; ')}. At Target 1 half the shares are sold and the stop on the rest moves up to the fill; at Target 2 the rest is sold. The stop and the time limit still end whatever is left. These multiples were chosen, not tested: the back-test never used targets.</p>
+      <p style={{ margin: 0 }}><b>Note, {dayWord(TARGETS_BACKFILL_ON)} {TARGETS_BACKFILL_ON.slice(0, 4)}:</b> the ladder began with the picks filed on {dayWord(POLICY_FROM)}. On {dayWord(TARGETS_BACKFILL_ON)} it was applied, retroactively, to every earlier pick that was still open or waiting to enter, replayed bar by bar from its entry, so a target already crossed is booked on the day and at the price it filled. No multiple, engine rule or threshold changed. A position that had already closed under the old stop-and-time rule was not re-evaluated, and its target levels, where shown, are marked "reference only — predates target tracking".</p></div>
 
     <Head>Prices and charts</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}>Charts draw daily closes from Yahoo Finance, adjusted for splits and bonuses and not for dividends. Candles, volume and RSI use whole bars; when too many daily bars would be unreadable the chart draws weekly or monthly bars and says so, because thinning days would misstate each one.</p>
