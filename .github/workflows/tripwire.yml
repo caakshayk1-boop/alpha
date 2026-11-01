@@ -41,6 +41,8 @@ jobs:
       - name: Fetch the published company data (the same step the website's build runs)
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
+      - name: Freshness and completeness assertions (screen = last completed NSE session, no stale or sector-less rows; see apps/tripwire/tools/check-data.mjs)
+        run: npm run tripwire:verify-data
       - run: npm run tripwire:check
       - name: Deploy (manual, or the scheduled refresh on main)
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main') }}

@@ -4,6 +4,8 @@ import { build } from 'esbuild';
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sessionsBetween } from './src/calendar.ts';
+import { FILE_IDS } from './src/freshness.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', '..', 'public');
 const DIST = join(HERE, 'dist');
@@ -16,7 +18,11 @@ await build({ entryPoints: [join(HERE, 'src/main.tsx')], bundle: true, minify: t
 await build({ entryPoints: [join(HERE, 'src/style.css')], bundle: true, minify: true, external: ['/fonts/*'], outfile: join(DIST, `app.${stamp}.css`), logLevel: 'warning' });
 
 // The screen rows: one compact file for Discover, the rules and Today. Fields not listed here are not shipped.
-const KEEP = ['sym', 'name', 'sector', 'tier', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'rs3m', 'from_high', 'high52', 'low52', 'sma20', 'sma50', 'sma200', 'rsi', 'vol_spike', 'liquid', 'turnover_cr', 'pe', 'pb', 'roce_med', 'rev_cagr', 'eps_cagr', 'de', 'net_margin', 'ebit_margin', 'div_yield', 'risk_lvl', 'next_earnings', 'last_date', 'fy', 'has_stmts', 'r6m', 'r1y', 'sd1y', 'atr_pct', 'piotroski', 'comp', 'q', 'g', 'v', 'tech', 'pe_pctile', 'roe', 'icover', 'cfo_pat', 'fcf_margin', 'margin_delta', 'em_label', 'rank_move', 'insiders', 'instis', 'shares_changed'];
+const KEEP = ['sym', 'name', 'sector', 'tier', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'rs3m', 'from_high', 'high52', 'low52', 'sma20', 'sma50', 'sma200', 'rsi', 'vol_spike', 'liquid', 'turnover_cr', 'pe', 'pb', 'roce_med', 'rev_cagr', 'eps_cagr', 'de', 'net_margin', 'ebit_margin', 'div_yield', 'risk_lvl', 'next_earnings', 'last_date', 'stale', 'fy', 'has_stmts', 'r6m', 'r1y', 'sd1y', 'atr_pct', 'piotroski', 'comp', 'q', 'g', 'v', 'tech', 'pe_pctile', 'roe', 'icover', 'cfo_pat', 'fcf_margin', 'margin_delta', 'em_label', 'rank_move', 'insiders', 'instis', 'shares_changed'];
+// Sector the feed does not publish for a name, mapped here (dated, one line each; assertScreen allows exactly these and fails on any other null sector).
+// ARTEMISMED (Artemis Medicare Services, a hospital operator) has had no sector or size class upstream since it entered the universe; its peers APOLLOHOSP, MAXHEALTH, FORTIS and KIMS are 'Healthcare'.
+export const SECTOR_FIX = { ARTEMISMED: 'Healthcare' };
+const uni0 = JSON.parse(readFileSync(join(PUB, 'universe.json'), 'utf8'));
 const files = readdirSync(join(PUB, 'c')).filter((f) => f.endsWith('.json'));
 const rows = []; let built = null;
 for (const f of files) {
@@ -24,6 +30,9 @@ for (const f of files) {
   built = built ?? d.built_on;
   const r = d.row ?? {}; const o = {};
   for (const k of KEEP) if (r[k] !== undefined) o[k] = r[k];
+  if (!o.sector && SECTOR_FIX[d.sym]) { o.sector = SECTOR_FIX[d.sym]; }
+  // a row whose last close is more than one session older than the file's data day is marked, so every surface can say so (checked by tools/check-data.mjs)
+  if (o.last_date && uni0.as_of && sessionsBetween(o.last_date, uni0.as_of) > 1) o.stale = true;
   const flag = (r.risk?.flags ?? []).find((x) => x.s === 'high') ?? (r.risk?.flags ?? [])[0];
   // the published grade is a number (0 low, 1 medium, 2 high) beside a word in risk.level: carry the word, and refuse anything else, because code
   // that compares the grade to 'HIGH' silently gets it backwards when handed a number
@@ -38,9 +47,18 @@ for (const f of files) {
   writeFileSync(join(DIST, 'data', 'c', f), JSON.stringify(keep));
 }
 rows.sort((a, b) => a.sym.localeCompare(b.sym));
-const uni = JSON.parse(readFileSync(join(PUB, 'universe.json'), 'utf8'));
-writeFileSync(join(DIST, 'data', 'screen.json'), JSON.stringify({ built_on: built, as_of: uni.as_of, count: rows.length, rows }));
+const uni = uni0;
+writeFileSync(join(DIST, 'data', 'screen.json'), JSON.stringify({ built_on: built, built_at: uni.built_at ?? null, as_of: uni.as_of, count: rows.length, rows }));
 for (const f of ['signals.json', 'engines_v3.json']) if (existsSync(join(PUB, f))) cpSync(join(PUB, f), join(DIST, 'data', f));
+// The static half of the freshness table (the Data screen and the pill add the API files). One fact per file, read from the file's own date; the status is NEVER stored here,
+// it is computed from the clock by src/freshness.ts in the browser and in tools/check-data.mjs, so a file cannot keep saying "current" after the day has moved on.
+const lastDates = rows.map((r) => r.last_date).filter(Boolean).sort();
+const sig = existsSync(join(PUB, 'signals.json')) ? JSON.parse(readFileSync(join(PUB, 'signals.json'), 'utf8')) : null;
+writeFileSync(join(DIST, 'data', 'freshness.json'), JSON.stringify({ schema: 'tripwire-freshness/1', files: [
+  { id: 'screen', asOf: uni.as_of, built: uni.built_at ?? built, rows: rows.length },
+  { id: 'companies', asOf: lastDates.length ? lastDates[lastDates.length - 1] : null, oldest: lastDates[0] ?? null, built: uni.built_at ?? built, rows: files.length },
+  { id: 'signals', asOf: sig?.data_through ?? null, built: sig?.generated ?? null, rows: Array.isArray(sig?.signals) ? sig.signals.length : null },
+], ids: FILE_IDS }));
 
 // the study results (apps/tripwire/research/results), so every screen can say what the history says
 mkdirSync(join(DIST, 'data', 'research'), { recursive: true });
@@ -61,4 +79,4 @@ writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nDisallow: /ap
 writeFileSync(join(DIST, 'llms.txt'), readFileSync(join(HERE, 'static/llms.txt'), 'utf8'));
 const size = (p) => statSync(p).size;
 console.log(`tripwire: ${rows.length} companies, data through ${uni.as_of}, js ${(size(join(DIST, `app.${stamp}.js`)) / 1024).toFixed(0)} kB, css ${(size(join(DIST, `app.${stamp}.css`)) / 1024).toFixed(0)} kB`);
-writeFileSync(join(DIST, 'build.json'), JSON.stringify({ stamp, built: new Date().toISOString(), data_built_on: built, data_as_of: uni.as_of, companies: rows.length }));
+writeFileSync(join(DIST, 'build.json'), JSON.stringify({ stamp, built: new Date().toISOString(), data_built_on: built, data_as_of: uni.as_of, data_built_at: uni.built_at ?? null, companies: rows.length }));
