@@ -35,9 +35,12 @@ def sheet(p: Panel, as_of: str, verdicts: dict | None = None) -> dict:
 if __name__ == "__main__":
     from study import load_real
     screen, out = sys.argv[1], pathlib.Path(sys.argv[2])
+    from study import expected_universe, publishable_factors
     p = load_real(screen, years=2)
     verdicts = None
     if len(sys.argv) > 3 and pathlib.Path(sys.argv[3]).exists(): verdicts = json.loads(pathlib.Path(sys.argv[3]).read_text()).get("verdict")
     s = sheet(p, str(p.dates[-1])[:10], verdicts)
+    print(f"factor sheet: {len(s['rows'])} names, universe {s['universe']}, as of {s['as_of']}")
+    ok, why = publishable_factors(s, out)
+    if not ok: raise SystemExit(f"FAIL: not written, the last good sheet stays: {why}")
     out.write_text(json.dumps(s, separators=(",", ":")))
-    print(f"factor sheet: {len(s['rows'])} names, as of {s['as_of']}")

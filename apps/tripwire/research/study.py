@@ -22,7 +22,7 @@ from __future__ import annotations
 import json, sys, pathlib, datetime as dt
 import numpy as np
 import pandas as pd
-from indicators import FEATURES, COMMON, CONTROL, MODIFIERS, Panel
+from indicators import FEATURES, COMMON, CONTROL, MODIFIERS, Panel, settle_panel
 
 COST = 0.0045
 STEP, HORIZON, MIN_HIST = 5, 20, 260
@@ -140,22 +140,62 @@ def verdict(out: dict) -> dict:
     return v
 
 
+def panel_symbols(rows: list) -> list:
+    """The names the nightly sheets cover: the screen's liquid names that are not micro cap. ONE definition, read by the fetch and by the coverage check."""
+    return [r["sym"] for r in rows if r.get("liquid") and r.get("tier") != "micro"]
+
+
+def expected_universe(screen_path: str) -> int:
+    return len(panel_symbols(json.loads(pathlib.Path(screen_path).read_text())["rows"]))
+
+
+MIN_SHARE = 0.75    # under three quarters of the names it should have is a failed fetch, not a smaller universe (a full sheet is ~86%: names under 400 sessions of history are not in the panel)
+
+
+def publishable(n: int, expected: int, as_of: str, out: pathlib.Path) -> tuple:
+    """May this RSI sheet replace the one on disk? Not when it covers under 85% of the expected names, and not when it would swap a fuller sheet of the same
+    or a later day for a thinner one. Before this guard a run on 30 Oct 2026 published ONE row, and a run on 31 Oct published 395 of ~650 over a sheet of 651."""
+    if expected and n < MIN_SHARE * expected: return False, f"{n} names is under {int(MIN_SHARE * 100)}% of the {expected} expected"
+    try:
+        old = json.loads(pathlib.Path(out).read_text()); on = len(old.get("rows", {}))
+        if str(old.get("as_of", "")) >= as_of and on > n * 1.1: return False, f"the sheet on disk for {old.get('as_of')} has {on} names, this one {n}"
+    except Exception: pass
+    return True, ""
+
+
+def publishable_factors(sheet: dict, out: pathlib.Path) -> tuple:
+    """The same guard for the factor sheet: a universe under 200 is a failed fetch (the study eligibility keeps roughly 500), and a sheet under 75% of the one on disk for the same or a later day does not replace it."""
+    u = int(sheet.get("universe", 0))
+    if u < 200: return False, f"universe {u} is under 200; the fetch or the last session was incomplete"
+    try:
+        old = json.loads(pathlib.Path(out).read_text()); ou = int(old.get("universe", 0))
+        if str(old.get("as_of", "")) >= str(sheet.get("as_of", "")) and u < MIN_SHARE * ou: return False, f"universe {u} against {ou} in the sheet on disk for {old.get('as_of')}"
+    except Exception: pass
+    return True, ""
+
+
 def load_real(screen_path: str, years: int = 11) -> Panel:
-    import yfinance as yf
+    import time, yfinance as yf
     rows = json.loads(pathlib.Path(screen_path).read_text())["rows"]
-    syms = [r["sym"] for r in rows if r.get("liquid") and r.get("tier") != "micro"]
+    syms = panel_symbols(rows)
     print(f"{len(syms)} symbols to fetch", flush=True)
     frames = {}
-    tickers = [s + ".NS" for s in syms] + ["^NSEI"]
-    for k in range(0, len(tickers), 40):
-        chunk = tickers[k:k + 40]
+    def fetch(chunk: list) -> None:
         try:
             df = yf.download(chunk, period=f"{years}y", interval="1d", auto_adjust=True, group_by="column", progress=False, threads=True)
         except Exception as e:
-            print(f"chunk {k // 40} failed: {e}", file=sys.stderr); continue
+            print(f"chunk of {len(chunk)} failed: {e}", file=sys.stderr); return
         for t in chunk:
             try: frames[t] = pd.DataFrame({f: df[(f, t)] for f in ("Open", "High", "Low", "Close", "Volume")}).dropna(subset=["Close"])
             except Exception: pass
+    tickers = [s + ".NS" for s in syms] + ["^NSEI"]
+    for k in range(0, len(tickers), 40): fetch(tickers[k:k + 40])
+    # Yahoo drops names from a big batch under load (a run on 31 Oct fetched 395 of ~650): ask again for exactly the ones that did not come, in smaller batches, after a pause
+    for attempt in (1, 2):
+        miss = [t for t in tickers if t not in frames]
+        if not miss or len(miss) > 0.6 * len(tickers): break
+        print(f"retry {attempt}: {len(miss)} not fetched", flush=True); time.sleep(20 * attempt)
+        for k in range(0, len(miss), 10): fetch(miss[k:k + 10])
     if "^NSEI" not in frames: raise SystemExit("FAIL: the Nifty could not be fetched")
     got = [t for t in frames if t != "^NSEI" and len(frames[t]) >= 400]
     print(f"{len(got)} of {len(syms)} symbols fetched with enough history", flush=True)
@@ -163,7 +203,8 @@ def load_real(screen_path: str, years: int = 11) -> Panel:
     idx = frames["^NSEI"].index
     def col(f): return np.column_stack([frames[t][f].reindex(idx).to_numpy(float) for t in got])
     O, H, L, C, V = col("Open"), col("High"), col("Low"), col("Close"), col("Volume")
-    return Panel(idx.to_numpy("datetime64[D]"), [t[:-3] for t in got], O, H, L, C, V, frames["^NSEI"]["Close"].to_numpy(float))
+    # a trailing row that fewer than half the names have printed is not a session yet (see indicators.settled_rows)
+    return settle_panel(Panel(idx.to_numpy("datetime64[D]"), [t[:-3] for t in got], O, H, L, C, V, frames["^NSEI"]["Close"].to_numpy(float)))
 
 
 def to_markdown(res: dict, meta: dict) -> str:

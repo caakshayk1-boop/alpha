@@ -9,6 +9,7 @@ can differ from a chart of raw closes by a fraction of a point. tests: test_rese
 from __future__ import annotations
 import json, sys, pathlib
 import numpy as np, pandas as pd
+from indicators import settled_rows
 
 
 def wilder(closes, n: int = 14) -> list:
@@ -34,21 +35,26 @@ def last_rsi(dates, col, frame: str):
 
 def sheet(dates, syms, C, as_of: str) -> dict:
     # a trailing row in which no name has a close (a session still being written) is not a session yet: the sheet is as of the last row that has prices
-    live = np.where(~np.isnan(C).all(axis=1))[0]
-    if len(live): C = C[: live[-1] + 1]; dates = dates[: live[-1] + 1]; as_of = str(pd.Timestamp(dates[-1]).date())
+    # ... and neither is a row that only a few names have (a quorum is needed; indicators.settled_rows): the sheet is as of the last SETTLED session
+    live = settled_rows(C)
+    if live: C = C[:live]; dates = dates[:live]; as_of = str(pd.Timestamp(dates[-1]).date())
     rows = {}
     for j, sym in enumerate(syms):
         col = C[:, j]
         if np.isnan(col[-1]): continue          # no close on the last session: no figure, never a stale one
         r = [last_rsi(dates, col, f) for f in ("daily", "weekly", "monthly")]
         if any(v is not None for v in r): rows[sym] = [None if v is None else round(float(v), 1) for v in r]
-    return {"schema": "tripwire-rsi/1", "as_of": as_of, "basis": "RSI 14, Wilder, adjusted closes; the current week and month are to date", "order": ["daily", "weekly", "monthly"], "rows": rows}
+    return {"schema": "tripwire-rsi/1", "as_of": as_of, "coverage": {"names": len(rows), "panel": len(syms)}, "basis": "RSI 14, Wilder, adjusted closes; the current week and month are to date", "order": ["daily", "weekly", "monthly"], "rows": rows}
 
 
 if __name__ == "__main__":
     from study import load_real
     screen, out = sys.argv[1], pathlib.Path(sys.argv[2])
+    from study import load_real, expected_universe, publishable
     p = load_real(screen, years=3)
     s = sheet(p.dates, list(p.syms), p.C, str(p.dates[-1])[:10])
+    expected = expected_universe(screen); s["coverage"]["expected"] = expected
+    print(f"rsi sheet: {len(s['rows'])} names of {expected} expected, as of {s['as_of']}")
+    ok, why = publishable(len(s["rows"]), expected, s["as_of"], out)
+    if not ok: raise SystemExit(f"FAIL: not written, the last good sheet stays: {why}")
     out.write_text(json.dumps(s, separators=(",", ":")))
-    print(f"rsi sheet: {len(s['rows'])} names, as of {s['as_of']}")

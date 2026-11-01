@@ -26,6 +26,12 @@ export function checkDist(dist, nowMs = Date.now(), env = process.env) {
     const g = by.signals;
     if (g) { const s = statusOf(g.asOf, nowMs); if (s.status !== 'current' && s.status !== 'pending') (env.STRICT_SIGNALS === '1' ? errors : warnings).push(`signals.json carries ${g.asOf ?? 'no date'}, ${s.behind ?? '?'} sessions behind ${throughWord(expectedSession(nowMs))} (its own workflow, engines.yml, publishes it)`); }
   }
+  // the committed nightly sheets (served by /api/rsi and /api/factors) against the screen they were built from: WARN, fatal with STRICT_SHEETS=1
+  const ledgerDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger'); const expected = screen.rows.filter((r) => r.liquid && r.tier !== 'micro').length;
+  for (const [f, count, floor] of [['rsi.json', (j) => Object.keys(j.rows ?? {}).length, 0.75], ['factors.json', (j) => j.universe ?? 0, 0.6]]) {
+    if (!existsSync(join(ledgerDir, f))) continue; const j = JSON.parse(readFileSync(join(ledgerDir, f), 'utf8')); const n = count(j);
+    if (expected && n < floor * expected) (env.STRICT_SHEETS === '1' ? errors : warnings).push(`ledger/${f} (as of ${j.as_of}) covers ${n} names, under ${Math.round(floor * 100)}% of the ${expected} the screen says it should (liquid, not micro); the generator's guard keeps a thin sheet from replacing a good one`);
+  }
   return { errors, warnings };
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
