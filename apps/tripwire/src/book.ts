@@ -10,6 +10,7 @@ import type { Outcome } from './ledger.ts';
 import { hasCelebrated, markCelebrated } from './celebrate.ts';
 import { useUi } from './ui.tsx';
 import { isLiveQuote } from './stamp.ts';
+import { alertsNow, inputFromRow } from './alerts.ts';
 
 import { DEFAULT_COST } from './tracker.ts';
 export { DEFAULT_COST };
@@ -80,9 +81,11 @@ export function useAutoBook(on = true) {
   const done: BookRow[] = useMemo(() => (plan ? plan.taken.filter((t) => outcomes?.[t.pick.id]?.final).map((t) => ({ p: paperOf(t, true), v: viewFromOutcome(t, outcomes![t.pick.id]), q: null, dayPnl: null })) : []), [plan, outcomes]);
   const rows = useMemo(() => [...live.rows, ...done], [live.rows, done]); useWinCelebration(rows);
   const sum = summarize(rows.map((r) => r.v));
+  /** targets that filled in the last completed session, from the same views the book shows (a list, not a notification) */
+  const hits = useMemo(() => alertsNow(rows.map((r) => inputFromRow(r.p, r.v, outcomes?.[r.p.id]))), [rows, outcomes]);
   const slots = rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').length;
   const deployed = rows.filter((r) => r.v.status === 'open').reduce((a, r) => a + (r.v.entry ?? r.p.ref) * r.p.qty, 0);
-  return { ledger, plan, rows, sum, slots, deployed, dayTotal: live.dayTotal, session: live.session, intra: live.intra, bars: live.bars, cost: live.cost, anyLive: live.anyLive, cfg: DEFAULT_CFG };
+  return { ledger, plan, rows, sum, hits, slots, deployed, dayTotal: live.dayTotal, session: live.session, intra: live.intra, bars: live.bars, cost: live.cost, anyLive: live.anyLive, cfg: DEFAULT_CFG };
 }
 
 /** Every pick the record has filed, for drawing a name's levels on its chart. No price polling: it reads the ledger only. */

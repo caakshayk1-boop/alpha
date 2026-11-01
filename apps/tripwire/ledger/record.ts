@@ -12,6 +12,7 @@ import { applyCorrections, emptyLedger, evaluateLedger, record, summarizeLedger,
 import type { Bar } from '../src/tracker.ts';
 import { formatViolations, runChecks } from '../src/ledgerchecks.ts';
 import { lastFinishedSession } from '../src/calendar.ts';
+import { alertLine, alertsNow, inputFromOutcome } from '../src/alerts.ts';
 
 const here = (f: string) => new URL(f, import.meta.url);
 const mode = process.argv[2];
@@ -44,4 +45,7 @@ if (mode === 'record') {
   const faults = runChecks(ledger, got, Date.parse(now));
   if (faults.length) { for (const line of formatViolations(faults)) console.error(line); console.error(`FAIL: ${faults.length} ledger assertion${faults.length === 1 ? '' : 's'} failed (the ledger was written; the next run re-replays every unfinished pick)`); process.exit(1); }
   console.log(`ledger assertions: ok (picks and outcomes both reach ${lastFinishedSession(Date.parse(now))})`);
+  // targets that filled in the last completed session, in the log (a list; nothing is sent anywhere)
+  const hits = alertsNow(ledger.picks.filter((p) => !ledger.voided?.[p.id]).map((p) => inputFromOutcome(p, ledger.outcomes[p.id])), Date.parse(now));
+  console.log(hits.length ? hits.map((a) => `TARGET HIT: ${alertLine(a)}`).join('\n') : 'no target filled in the last completed session');
 } else { console.error('usage: record.ts record | evaluate'); process.exit(2); }

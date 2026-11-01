@@ -3,7 +3,7 @@ import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
 import { freshness } from '../fresh.ts';
 import { istDay, reviewDue, current } from '../store.ts';
-import { dayWord, initials, inr0, pct, tone } from '../fmt.ts';
+import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
@@ -23,6 +23,7 @@ import { isLiveQuote } from '../stamp.ts';
 import { pickFacts, factLine } from '../pickfacts.ts';
 import { BASIS_NOTE, targetPrices } from '../levels.ts';
 import { pickId } from '../ledger.ts';
+import { alertLine, type HitAlert } from '../alerts.ts';
 import { briefLines } from '../brief.ts';
 import { useTrendSummary } from '../trendsummary.ts';
 import { WhatMattersNowSlot } from '../todaynews.tsx';
@@ -31,6 +32,18 @@ import { SinceVisit } from './SinceVisit.tsx';
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const TOP = 5;
 const addDays = (d: string, n: number) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
+
+/** Positions whose Target 1 or Target 2 filled in the last completed session. Small and plain on purpose; nothing is sent to anyone. */
+function TargetHits({ hits }: { hits: HitAlert[] }) {
+  const session = hits[0].session;
+  return <section className="tsec card thits" aria-labelledby="t-hits" data-sec="hits">
+    <h2 id="t-hits" className="sec">Targets hit at the close of {dayWord(session)}</h2>
+    <ul className="list" style={{ margin: 0, padding: 0, listStyle: 'none' }}>{hits.map((a) => <li key={`${a.id}|${a.kind}`} className="li" data-hit={a.kind}>
+      <a className="grow" href={`#/c/${a.sym}`}><span className="sym">{a.sym}</span> <span className="tag">{a.engine}</span> <b className="up">{a.text}</b>
+        <span className="small dim num" style={{ display: 'block' }}>{a.kind} {inr(a.level)} · filled at {inr(a.price)}</span></a></li>)}</ul>
+    <p className="small mute" style={{ margin: '6px 0 0' }} title={hits.map(alertLine).join(' ')}>Paper positions only. This list is worked out from the book each time the page loads; nothing is sent to you.</p>
+  </section>;
+}
 
 /** Today, in the order of what a person needs: the market in a paragraph, what matters now, what changed in the companies they follow and what is due,
  *  the paper book in one card, and the last close's picks. Detail lives behind links: Markets (indices, commodities, trend map), Signals, Live P&L. */
@@ -64,6 +77,8 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
+      {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
+      {auto.hits.length > 0 && <TargetHits hits={auto.hits} />}
       {/* (a) the market, in a paragraph of measured facts, with its freshness stated */}
       <section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
