@@ -23,6 +23,26 @@ class Panel:
     M: np.ndarray            # (T,) the market index close (Nifty 50)
 
 
+QUORUM = 0.5
+
+
+def settled_rows(C: np.ndarray, quorum: float = QUORUM) -> int:
+    """How many leading rows of a (T, N) close matrix are SETTLED: the last row in which at least `quorum` of the names have a close, plus one.
+    A trailing row that only a handful of names have printed (a late bar, or one name with a bar the rest do not yet have) is not a session
+    for the panel. On 30 Oct 2026 such a row held a close for ONE name (ARTEMISMED): the RSI sheet published that one row and the factor sheet
+    published a universe of 0, because both read the last row as if every name were on it."""
+    if C.shape[0] == 0 or C.shape[1] == 0: return 0
+    have = (~np.isnan(C)).mean(axis=1) >= quorum
+    idx = np.where(have)[0]
+    return int(idx[-1]) + 1 if len(idx) else 0
+
+
+def settle_panel(p: "Panel", quorum: float = QUORUM) -> "Panel":
+    n = settled_rows(p.C, quorum)
+    if n == 0 or n == p.C.shape[0]: return p
+    return Panel(p.dates[:n], p.syms, p.O[:n], p.H[:n], p.L[:n], p.C[:n], p.V[:n], p.M[:n])
+
+
 def _w(a: np.ndarray, i: int, n: int) -> np.ndarray:
     """The n rows ending at i inclusive; empty-shaped (0, N) when there is not enough history."""
     return a[i - n + 1: i + 1] if i - n + 1 >= 0 else a[:0]

@@ -1,14 +1,18 @@
 import { PageBar, Head } from './common.tsx';
 import { ENGINES } from '../quant.ts';
-import { useBacktest } from '../data.ts';
+import { useBacktest, useJson, type ScreenFeed } from '../data.ts';
+import { universeReport } from '../universe.ts';
+import { BreadthGapText } from './gapnote.tsx';
 import { engineEvidence } from '../evidence.ts';
 import { CURRENT_RULES, rulesDef } from '../rules.ts';
 import { TREND_RULE_TEXT } from '../screen.ts';
+import { POLICY_FROM, STYLES, TARGETS_BACKFILL_ON } from '../exits.ts';
+import { dayWord } from '../fmt.ts';
 
 /** Methodology and evidence: the long explanations that used to sit inside cards, in one place, read from the same constants the app computes with
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
 export function Methodology() {
-  const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES);
+  const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES); const scr = useJson<ScreenFeed>('/data/screen.json'); const gap = scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on).breadthGap : null;
   return <div>
     <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />
     <div className="note info"><b>Paper only, and experimental.</b> Nothing here is advice and no order is ever placed. A pick is a starting point for your own research; a rank is a position among eligible names, not a chance of winning.</div>
@@ -26,7 +30,14 @@ export function Methodology() {
       <p className="mute" style={{ margin: '8px 0 0' }}>Rule version {rules.id}. A night keeps the rules it was filed under; older nights are not re-judged.</p></div>
 
     <Head>Trend</Head>
-    <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p></div>
+    <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p>
+      {gap && <p className="mute" style={{ margin: '8px 0 0' }}><b>Why the trend map has fewer names than the screen.</b> <BreadthGapText g={gap} /> <a href="#/data" style={{ textDecoration: 'underline' }}>Sector by sector, on the Data screen</a>.</p>}</div>
+
+    <Head>Profit booking</Head>
+    <div className="card small"><p style={{ margin: '0 0 6px' }}>A position's holding period sets its two targets, in multiples of its risk: {STYLES.map((x) => `${x.label.toLowerCase()} (${x.sessions}) ${x.t1}R and ${x.t2}R`).join('; ')}. At Target 1 half the shares are sold and the stop on the rest moves up to the fill; at Target 2 the rest is sold. The stop and the time limit still end whatever is left. These multiples were chosen, not tested: the back-test never used targets.</p>
+      <p style={{ margin: '0 0 6px' }}><b>Same bar.</b> A daily bar does not say which price came first, so if one bar's high reaches both targets but it opened below Target 2, only Target 1 books on that bar and Target 2 can book from the next bar on; a bar that opens at or above Target 2 books both at the open. The stop is tested before either target.</p>
+      <p style={{ margin: '0 0 6px' }}><b>R</b> is the risk actually taken, the fill (the next session's open plus slippage) minus the stop; every target, progress marker and R figure for a position that has entered is measured from that fill, and a level shown before a pick has entered is worked from its signal close and says "at signal close".</p>
+      <p style={{ margin: 0 }}><b>Note, {dayWord(TARGETS_BACKFILL_ON)} {TARGETS_BACKFILL_ON.slice(0, 4)}:</b> the ladder began with the picks filed on {dayWord(POLICY_FROM)}. On {dayWord(TARGETS_BACKFILL_ON)} it was applied, retroactively, to every earlier pick that was still open or waiting to enter, replayed bar by bar from its entry, so a target already crossed is booked on the day and at the price it filled. No multiple, engine rule or threshold changed. A position that had already closed under the old stop-and-time rule was not re-evaluated, and its target levels, where shown, are marked "reference only — predates target tracking".</p></div>
 
     <Head>Prices and charts</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}>Charts draw daily closes from Yahoo Finance, adjusted for splits and bonuses and not for dividends. Candles, volume and RSI use whole bars; when too many daily bars would be unreadable the chart draws weekly or monthly bars and says so, because thinning days would misstate each one.</p>

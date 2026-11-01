@@ -1,24 +1,33 @@
 /** The price lines a chart can draw for a name: where a paper pick was filed, its stop and its two targets.
- *  Taken from the pick as written (the signal close and the stop), because the fill happens at the next open and is not known yet:
- *  the targets are the signal close plus the style's multiples of risk, so they move by the gap between the close and the fill. */
-import { styleDef, styleOf, targetsFor } from './exits.ts';
+ *
+ *  ONE R. Once a pick has ENTERED, R is the fill minus the stop and the targets are the fill plus 1.5R / 3R (or the style's multiples): exactly the prices the tracker books
+ *  (`ladderPrices` in exits.ts is the one definition both use). Before it has entered there is no fill, so the levels are worked from the signal close and are labelled
+ *  "at signal close"; they move by the gap between that close and the next open. Signal-close levels are never shown beside an entered position. */
+import { ladderPrices, styleDef, styleOf, targetsFor } from './exits.ts';
 
 export interface Level { label: string; v: number; kind: 'signal' | 'stop' | 'target'; ref?: boolean }
-interface PickLike { sym: string; asOf: string; horizon: number; ref: number; stop: number }
+interface PickLike { sym: string; asOf: string; horizon: number; ref: number; stop: number; /** the position has finished (closed or skipped); an earlier pick that finished before the backfill keeps reference-only levels */ final?: boolean;
+  /** the fill, once the pick has entered (from the ledger's outcome); absent while it is waiting for its open */ entry?: number | null }
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
+export type LevelBasis = 'entry' | 'signal';
 
-/** The two profit-booking prices for a pick, from its signal close and stop: `ref` is true when the pick was filed before profit booking began, so the prices are shown for orientation and never traded. */
-export function targetPrices(p: { asOf: string; horizon: number; ref: number; stop: number }): { t1: number; t2: number; ref: boolean } | null {
-  if (!(p.ref > p.stop) || !(p.stop > 0)) return null; const risk = p.ref - p.stop; const t = targetsFor(p); const sd = styleDef(styleOf(p.horizon));
-  return t ? { t1: r2(p.ref + t.t1R * risk), t2: r2(p.ref + t.t2R * risk), ref: false } : { t1: r2(p.ref + sd.t1 * risk), t2: r2(p.ref + sd.t2 * risk), ref: true };
+/** The two profit-booking prices for a pick. With `entry` (the fill) they are the booked ones, basis 'entry'. Without it they are worked from the signal close, basis 'signal', and the screen must say "at signal close".
+ *  `ref` is true when the pick finished before the ladder was extended to it (see TARGETS_BACKFILL_ON), so the prices are shown for orientation and never traded. */
+export function targetPrices(p: { asOf: string; horizon: number; ref: number; stop: number }, final = false, entry?: number | null): { t1: number; t2: number; ref: boolean; basis: LevelBasis } | null {
+  const base = entry != null && entry > p.stop ? entry : p.ref; const basis: LevelBasis = base === entry ? 'entry' : 'signal';
+  if (!(base > p.stop) || !(p.stop > 0)) return null; const t = targetsFor(p, final); const sd = styleDef(styleOf(p.horizon));
+  const x = ladderPrices(base, p.stop, t ? t.t1R : sd.t1, t ? t.t2R : sd.t2);
+  return { t1: x.t1, t2: x.t2, ref: !t, basis };
 }
+export const BASIS_NOTE: Record<LevelBasis, string> = { entry: 'from the fill', signal: 'at signal close' };
+
 export function levelsFor(sym: string, picks: readonly PickLike[]): Level[] {
   const p = picks.filter((x) => x.sym === sym && x.ref > x.stop && x.stop > 0).sort((a, b) => (a.asOf < b.asOf ? 1 : -1))[0];
   if (!p) return [];
-  const out: Level[] = [{ label: 'Signal close', v: r2(p.ref), kind: 'signal' }, { label: 'Stop', v: r2(p.stop), kind: 'stop' }];
-  const t = targetsFor(p); const risk = p.ref - p.stop;
-  if (t) out.push({ label: 'T1', v: r2(p.ref + t.t1R * risk), kind: 'target' }, { label: 'T2', v: r2(p.ref + t.t2R * risk), kind: 'target' });
-  else { const sd = styleDef(styleOf(p.horizon)); out.push({ label: 'T1 ref', v: r2(p.ref + sd.t1 * risk), kind: 'target', ref: true }, { label: 'T2 ref', v: r2(p.ref + sd.t2 * risk), kind: 'target', ref: true }); }   // filed before profit booking began: orientation only
-  return out;
+  const t = targetPrices(p, p.final, p.entry); if (!t) return [];
+  const sfx = t.ref ? ' ref' : ''; const note = t.basis === 'signal' ? ' at signal close' : '';
+  const head: Level[] = t.basis === 'entry' ? [{ label: 'Entry', v: r2(p.entry!), kind: 'signal' }] : [{ label: 'Signal close', v: r2(p.ref), kind: 'signal' }];
+  return [...head, { label: 'Stop', v: r2(p.stop), kind: 'stop' },
+    { label: `T1${sfx}${note}`, v: t.t1, kind: 'target', ...(t.ref ? { ref: true } : {}) }, { label: `T2${sfx}${note}`, v: t.t2, kind: 'target', ...(t.ref ? { ref: true } : {}) }];   // a finished earlier pick: orientation only
 }

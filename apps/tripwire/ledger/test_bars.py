@@ -3,7 +3,7 @@ import pathlib, sys
 from datetime import datetime, timezone
 import numpy as np, pandas as pd
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from bars import frame_to_bars
+from bars import frame_to_bars, last_day, partial_last_row, refresh_stale
 
 idx = pd.date_range("2026-10-12", periods=8, freq="B", tz="Asia/Kolkata")
 def frame(tick="TCS.NS", drop=None):
@@ -22,4 +22,19 @@ assert frame_to_bars(frame(), "TCS.NS", now=last.replace(hour=7, minute=0))["for
 assert frame_to_bars(frame(), "TCS.NS", now=last.replace(hour=11, minute=0))["forming"] is False, "16:30 IST: closed"
 assert frame_to_bars(frame(), "MISSING.NS") is None
 assert frame_to_bars(frame().iloc[:3], "TCS.NS") is None, "three bars are too thin to replay"
-print("bars.py: 7 checks passed")
+# the silent lag: a newest row missing a price is dropped (correct) and now REPORTED; a bar set that ends before the last completed session is fetched again, never invented
+assert partial_last_row(frame(drop=7), "TCS.NS") == idx[7].date().isoformat(), "the dropped newest row is named"
+assert partial_last_row(frame(drop=3), "TCS.NS") is None, "an incomplete row in the middle is not the lag"
+assert partial_last_row(frame(), "TCS.NS") is None
+short = frame_to_bars(frame().iloc[:7], "TCS.NS"); full = frame_to_bars(frame(), "TCS.NS")
+assert last_day(short) == idx[6].date().isoformat() and last_day(full) == idx[7].date().isoformat()
+out = {"A.NS": short, "B.NS": full}; calls = []
+def fetch(ts): calls.append(list(ts)); return {t: full for t in ts}
+waits = []
+left = refresh_stale(fetch, out, idx[7].date().isoformat(), ["A.NS", "B.NS"], tries=2, wait=5, sleep=waits.append)
+assert left == [] and calls == [["A.NS"]] and waits == [5] and out["A.NS"] is full, "only the behind ticker is refetched, once it catches up the loop stops"
+out = {"A.NS": short}; waits = []
+left = refresh_stale(lambda ts: {t: short for t in ts}, out, idx[7].date().isoformat(), ["A.NS"], tries=2, wait=5, sleep=waits.append)
+assert left == ["A.NS"] and waits == [5, 5] and out["A.NS"] is short, "a ticker that never catches up is reported, and its bars are left as they were"
+assert refresh_stale(fetch, {"A.NS": short}, None, ["A.NS"], sleep=waits.append) == [], "no expected session, nothing to compare"
+print("bars.py: 15 checks passed")

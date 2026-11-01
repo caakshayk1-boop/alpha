@@ -11,12 +11,15 @@ import { FEEDS, QUERY_SCHEMA } from './news/config.js';
 import { ALIASES } from './news/aliases.js';
 import { catchupDecision, runCatchup } from './news/catchup.js';
 import { nudge } from './news/nudge.js';
+import { inBreadth, MIN_SECTOR } from './shared/breadthrule.js';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
 const MAX = 30;                              // symbols a call may ask for (list quotes, the paper books): one Yahoo call each, cached 60 s (quotes) or 5 min (bars)
 const MAX_QUOTES = MAX;
 // Macro instruments, by the name the app uses. Yahoo's symbols: COMEX futures for gold, silver, WTI; ICE for Brent; spot FX; Bitcoin in dollars.
 export const MACRO = { GOLD: 'GC=F', SILVER: 'SI=F', BRENT: 'BZ=F', WTI: 'CL=F', USDINR: 'INR=X', MYRINR: 'MYRINR=X', USDMYR: 'MYR=X', BTC: 'BTC-USD' };
-const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff' };
+// Security headers every response from this Worker carries. Static assets get the same two from static/_headers; the /data/* passthrough below sets them itself, so no path is without them.
+export const SECURITY = { 'strict-transport-security': 'max-age=31536000; includeSubDomains', 'cross-origin-opener-policy': 'same-origin' };
+const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', ...SECURITY };
 const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...H, ...extra } });
 const r2 = (x) => Math.round(x * 100) / 100;
 const istParts = (ms) => { const d = new Date(ms + 330 * 60000); return { day: d.toISOString().slice(0, 10), mins: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
@@ -204,11 +207,11 @@ export function trendOfRow(price, sma20, sma50, sma200, r3m) {
 export function aggregateBreadth(rows, live = {}) {
   const c = { up: 0, mixed: 0, down: 0 }; const by = new Map();
   for (const r of rows) {
-    if (!r.liquid) continue; const lp = live[r.sym]; const t = trendOfRow(lp ?? r.price, r.sma20, r.sma50, r.sma200, lp != null && r.price > 0 && typeof r.r3m === 'number' ? ((lp / r.price) * (1 + r.r3m / 100) - 1) * 100 : r.r3m); if (!t) continue;
+    if (!inBreadth(r)) continue; const lp = live[r.sym]; const t = trendOfRow(lp ?? r.price, r.sma20, r.sma50, r.sma200, lp != null && r.price > 0 && typeof r.r3m === 'number' ? ((lp / r.price) * (1 + r.r3m / 100) - 1) * 100 : r.r3m); if (!t) continue;
     c[t]++; const k = r.sector || 'Other'; const e = by.get(k) ?? { n: 0, up: 0, down: 0 }; e.n++; if (t === 'up') e.up++; if (t === 'down') e.down++; by.set(k, e);
   }
   const n = c.up + c.mixed + c.down;
-  const sectors = [...by.entries()].filter(([, e]) => e.n >= 8).map(([k, e]) => ({ k, n: e.n, up: Math.round((e.up / e.n) * 1000) / 10, down: Math.round((e.down / e.n) * 1000) / 10 })).sort((a, b) => b.n - a.n);
+  const sectors = [...by.entries()].filter(([, e]) => e.n >= MIN_SECTOR).map(([k, e]) => ({ k, n: e.n, up: Math.round((e.up / e.n) * 1000) / 10, down: Math.round((e.down / e.n) * 1000) / 10 })).sort((a, b) => b.n - a.n);
   return { n, ...c, sectors };
 }
 // GET /api/breadth -> { ok, t, as_of, n, up, mixed, down, sectors:[{k,n,up,down}], repriced, near }. Only a name within 8% of its 50-day average can change class in a
@@ -218,7 +221,7 @@ async function breadth(request, env, ctx) {
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=30, s-maxage=60' } });
     const scr = await (await env.ASSETS.fetch(new Request(new URL('/data/screen.json', request.url)))).json();
-    const rows = (scr.rows || []).filter((r) => r.liquid && r.price > 0 && r.sma20 > 0 && r.sma50 > 0 && r.sma200 > 0 && typeof r.r3m === 'number');
+    const rows = (scr.rows || []).filter(inBreadth);       // the same predicate the Data screen explains (shared/breadthrule.js)
     // only a name close to one of the lines the rule reads (the 20-day, the 50-day, or a 3-month return near zero) can change class in a day
     const near = rows.filter((r) => Math.abs(r.price / r.sma20 - 1) <= 0.06 || Math.abs(r.price / r.sma50 - 1) <= 0.08 || Math.abs(r.r3m) <= 6).slice(0, 400);
     const { out } = await sparkMany(near.map((r) => [r.sym, `${r.sym}.NS`]), ctx);
@@ -402,6 +405,16 @@ async function health(env, ctx) {
   if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
 }
 
+/** /data/* is a set of files, not pages. The asset layer answers an unknown path with the app shell (HTTP 200, text/html) because the app is a single-page app; for data that
+ *  is a lie (a missing company file looked like a success and failed later as a JSON parse error). Here a path that resolves to the shell, or to nothing, is a real 404 with a JSON body. */
+export async function dataAsset(request, env) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return json({ ok: false, error: 'GET only' }, 405);
+  const res = await env.ASSETS.fetch(request); const type = res.headers.get('content-type') || '';
+  if (res.status === 404 || res.status >= 500 || /text\/html/i.test(type)) return json({ ok: false, error: 'not found', path: new URL(request.url).pathname }, 404, { 'cache-control': 'no-store' });
+  const out = new Response(res.body, res); for (const [k, v] of Object.entries(SECURITY)) if (!out.headers.has(k)) out.headers.set(k, v);
+  if (!out.headers.has('x-content-type-options')) out.headers.set('x-content-type-options', 'nosniff'); return out;
+}
+
 export default {
   /** Cloudflare cron trigger (wrangler.tripwire.jsonc): asks GitHub to start the news job. Does nothing at all until the secret GITHUB_DISPATCH_TOKEN is set (news/nudge.js). */
   async scheduled(_event, env, ctx) {
@@ -471,6 +484,7 @@ export default {
       return rsiSheet(ctx);
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
+    if (url.pathname.startsWith('/data/')) return dataAsset(request, env);
     return env.ASSETS.fetch(request);
   },
 };

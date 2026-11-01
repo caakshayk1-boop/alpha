@@ -17,7 +17,8 @@ import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
 import { pickFacts } from '../pickfacts.ts';
-import { targetPrices } from '../levels.ts';
+import { BASIS_NOTE, targetPrices } from '../levels.ts';
+import { REFERENCE_ONLY } from '../exits.ts';
 import { takePaper } from '../store.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
@@ -69,7 +70,7 @@ function Picks() {
       {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
         <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num" title={RANK_NOTE}>Rank {p.score} of 100</span></div>
         {(() => { const fx = pickFacts(p.engine, scr.data!.rows.find((x) => x.sym === p.sym)); return fx.length ? <div className="factstrip num" role="list" aria-label={`What ranked ${p.sym} in ${def.name}`}>{fx.map((x) => <span key={x.k} role="listitem"><small>{x.k}</small><b className={x.tone ?? ''}>{x.v}</b></span>)}</div> : null; })()}
-        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}{(() => { const t = targetPrices(p); return t ? <> · T1 <b>{inr(t.t1)}</b> · T2 <b>{inr(t.t2)}</b>{t.ref ? ' (reference only: filed before profit booking began)' : ''}</> : null; })()}</div>
+        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}{(() => { const t = targetPrices(p); return t ? <> · T1 <b>{inr(t.t1)}</b> · T2 <b>{inr(t.t2)}</b>{t.ref ? ` (${REFERENCE_ONLY})` : ` (${BASIS_NOTE[t.basis]}; the fill sets the booked levels)`}</> : null; })()}</div>
         {(p.flags ?? []).map((f) => <p key={f} className="small" style={{ margin: '0 0 6px', color: 'var(--a4)' }}>⚠ {f}</p>)}
         <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}<p className="small dim" style={{ margin: '8px 0 0' }}>{RANK_NOTE}</p></div></details>
         <div className="pickfoot"><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}><EvidenceChip id={p.engine} />{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);

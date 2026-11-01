@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Row } from './screen.ts';
 import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
 import { nseClockOpen } from './stamp.ts';
+import { voidOutcomes } from './ledger.ts';
 export { useLiveMacro };
 
-export interface ScreenFeed { built_on: string; as_of: string; count: number; rows: Row[] }
+export interface ScreenFeed { built_on: string; /** the instant the screen was built, when the feed carries it */ built_at?: string | null; as_of: string; count: number; rows: Row[] }
 export interface Gate { date: string; on: boolean; passed: number; checks: { rule: string; ok: boolean; value?: string }[] }
 export interface SignalsFeed { schema: string; generated: string; data_through: string; launched: string; gate: Gate; alertable: boolean; alert_why: string; record: { closed: number; avg_r: number | null }; signals: unknown[]; cost_round_trip_pct?: number; rules?: { gate?: string[] } }
 export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null; cfo_pat?: number | null; fcf_cr?: number | null }
@@ -86,7 +87,12 @@ export function useChart(sym: string): Loaded<ChartFeed> {
 }
 
 export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger }
-export const useLedger = () => useJson<LedgerFeed>('/api/ledger');
+/** The nightly record. A voided pick is served with no live outcome even from a file written before that rule (see voidOutcomes). */
+export function useLedger(): Loaded<LedgerFeed> {
+  const r = useJson<LedgerFeed>('/api/ledger');
+  const data = useMemo(() => (r.data?.ledger ? { ...r.data, ledger: voidOutcomes(r.data.ledger) } : r.data), [r.data]);
+  return { ...r, data };
+}
 
 export interface Quote { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean }
 export interface QuotesFeed { ok: boolean; fetched_at: string; quotes: Record<string, Quote>; missing: string[] }
