@@ -14,7 +14,9 @@ const MAX = 30;                              // symbols a call may ask for (list
 const MAX_QUOTES = MAX;
 // Macro instruments, by the name the app uses. Yahoo's symbols: COMEX futures for gold, silver, WTI; ICE for Brent; spot FX; Bitcoin in dollars.
 export const MACRO = { GOLD: 'GC=F', SILVER: 'SI=F', BRENT: 'BZ=F', WTI: 'CL=F', USDINR: 'INR=X', MYRINR: 'MYRINR=X', USDMYR: 'MYR=X', BTC: 'BTC-USD' };
-const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff' };
+// Security headers every response from this Worker carries. Static assets get the same two from static/_headers; the /data/* passthrough below sets them itself, so no path is without them.
+export const SECURITY = { 'strict-transport-security': 'max-age=31536000; includeSubDomains', 'cross-origin-opener-policy': 'same-origin' };
+const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', ...SECURITY };
 const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...H, ...extra } });
 const r2 = (x) => Math.round(x * 100) / 100;
 const istParts = (ms) => { const d = new Date(ms + 330 * 60000); return { day: d.toISOString().slice(0, 10), mins: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
@@ -385,6 +387,16 @@ async function health(env, ctx) {
   if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
 }
 
+/** /data/* is a set of files, not pages. The asset layer answers an unknown path with the app shell (HTTP 200, text/html) because the app is a single-page app; for data that
+ *  is a lie (a missing company file looked like a success and failed later as a JSON parse error). Here a path that resolves to the shell, or to nothing, is a real 404 with a JSON body. */
+export async function dataAsset(request, env) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return json({ ok: false, error: 'GET only' }, 405);
+  const res = await env.ASSETS.fetch(request); const type = res.headers.get('content-type') || '';
+  if (res.status === 404 || res.status >= 500 || /text\/html/i.test(type)) return json({ ok: false, error: 'not found', path: new URL(request.url).pathname }, 404, { 'cache-control': 'no-store' });
+  const out = new Response(res.body, res); for (const [k, v] of Object.entries(SECURITY)) if (!out.headers.has(k)) out.headers.set(k, v);
+  if (!out.headers.has('x-content-type-options')) out.headers.set('x-content-type-options', 'nosniff'); return out;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -444,6 +456,7 @@ export default {
       return rsiSheet(ctx);
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
+    if (url.pathname.startsWith('/data/')) return dataAsset(request, env);
     return env.ASSETS.fetch(request);
   },
 };

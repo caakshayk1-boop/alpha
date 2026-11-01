@@ -4,7 +4,7 @@
   "name": "tripwire",
   "main": "apps/tripwire/worker.js",
   "compatibility_date": "2026-05-01",
-  "assets": { "directory": "./apps/tripwire/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "assets": { "directory": "./apps/tripwire/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*", "/data/*"] },
   "routes": [{ "pattern": "tripwire.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
   "observability": { "enabled": true }

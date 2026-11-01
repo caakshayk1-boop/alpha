@@ -75,7 +75,9 @@ cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp);
 writeFileSync(join(DIST, 'sw.js'), sw);
 // The page itself may be indexed; the data and the live-price routes are not pages and are not crawled.
-writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nDisallow: /api/\nDisallow: /data/\n');
+// The app is hash-routed (#/c/TCS, #/data ...): a crawler sees one page, so the sitemap lists the canonical root only. Its lastmod is the data day, not the build clock.
+writeFileSync(join(DIST, 'sitemap.xml'), readFileSync(join(HERE, 'static/sitemap.xml'), 'utf8').replaceAll('__LASTMOD__', uni.as_of ?? new Date().toISOString().slice(0, 10)));
+writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nAllow: /sitemap.xml\nDisallow: /api/\nDisallow: /data/\n\nSitemap: https://tripwire.askakshay.com/sitemap.xml\n');
 writeFileSync(join(DIST, 'llms.txt'), readFileSync(join(HERE, 'static/llms.txt'), 'utf8'));
 const size = (p) => statSync(p).size;
 console.log(`tripwire: ${rows.length} companies, data through ${uni.as_of}, js ${(size(join(DIST, `app.${stamp}.js`)) / 1024).toFixed(0)} kB, css ${(size(join(DIST, `app.${stamp}.css`)) / 1024).toFixed(0)} kB`);
