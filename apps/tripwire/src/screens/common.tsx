@@ -40,7 +40,7 @@ export function CompanyRow({ r, extra, meta, compare }: { r: Row; extra?: ReactN
       <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
       <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />{meta}<span className="dim small trunc">{r.name}</span></span></span>
       <span className="wide num"><span><small>PE</small>{x1(r.pe)}</span><span><small>ROCE</small>{meaningful(eligibilityOf(r), 'roce') ? pct(r.roce_med, 0, false) : 'n/a'}</span><span><small>vs Nifty 3m</small>{isNum(r.rs3m) ? pct(r.rs3m, 0) : '—'}</span><span><small>From high</small>{pct(r.from_high, 0)}</span></span>
-      <span className="px num" style={{ flex: 'none' }} title={lp.fromQuote ? `${lp.live ? 'Live' : 'Last price'}, as of ${asOfTime(lp.t)} IST` : 'Close of the last session in the published data'}><b>{inr(lp.px)}</b><span className={tone(lp.ch)}>{pct(lp.ch)}</span></span>
+      <span className="px num" style={{ flex: 'none' }} title={lp.fromQuote ? `${lp.word}, exchange print ${asOfTime(lp.t)} IST` : 'Close of the last session in the published data'}><b>{inr(lp.px)}</b><span className={tone(lp.ch)}>{pct(lp.ch)}</span></span>
     </a>
     {extra}
     {compare && <button className="icon-btn" aria-pressed={compare.on} disabled={compare.disabled && !compare.on} aria-label={`${compare.on ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={compare.toggle}><Icon n="compare" /></button>}

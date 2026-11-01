@@ -66,9 +66,10 @@ T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluat
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
 await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.trendmap');   // the live trend map is on the Markets page since 27 Oct 2026
-for (let k = 0; k < 6 && !(await pg.locator('.dot-live').count()); k++) { await pg.waitForSelector('.dot-live', { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
-await pg.waitForSelector('.dot-live', { timeout: 10000 });
-ok(/live ·/i.test(await text()), 'the trend map (Markets page) is live and says so, with how many names were re-priced');
+const mapSaid = async () => (await pg.locator('.dot-live').count()) > 0 || /last prices · fetched/.test(await text());   // 1 Nov 2026: shut market = "last prices"; open = the live dot
+for (let k = 0; k < 6 && !(await mapSaid()); k++) { await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
+await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 10000 });
+ok(/live ·/i.test(await text()) || /last prices · fetched/i.test(await text()), 'the trend map (Markets page) says which it is, live inside the session or last prices outside it, with how many names were re-priced');
 await pg.goBack(); await pg.waitForSelector('.brief-ix');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 ok(!/Your names|Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0, 'Today carries no empty-state cards, no per-name news block and no duplicate ticker');
@@ -164,12 +165,13 @@ await pg.waitForSelector('.nw-company'); ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d
 ok(/Close of /.test(t), 'company price carries its date');
 // a live quote from today replaces the published close, and says when it printed
 T.stock = (s) => (s === 'TCS' ? quote(2500, 2600) : null);
-await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(500);
-ok(/₹2,600\.00/.test(await text()) && /\+4\.0% today/.test(await text()), 'a live quote replaces the published close on the company page, with its time and the day\'s change');
+await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(500);
+// 1 Nov 2026: outside the NSE session the same print is Last traded and its change is the last session's
+ok(/₹2,600\.00/.test(await text()) && /\+4\.0% (today|last session)/.test(await text()), 'a live quote replaces the published close on the company page, with its time and the day\'s change');
 T.stock = null;
 // GCSL, the name that exposed it: a live print beyond the published 52-week high must move the high, and a financial-sector name must not show a margin the page says it withholds
 T.stock = (s) => (s === 'GCSL' ? quote(726, 100000) : null);
-await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/Live · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(400);
+await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(400);
 ok(/a new 52-week high/.test(await text()) && /· live/.test(await text()) && /at the live price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price');
 ok(!/Net margin/.test(await text()) && /withheld for this company/.test(await text()), 'GCSL: the page that says margins are withheld for a financial-sector name does not print one');
 T.stock = null;
@@ -293,9 +295,10 @@ T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Take it myself' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
 await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
-await pg.waitForFunction(() => /\d\d:\d\d IST · \d+ (s|min) old/.test(document.body.innerText), null, { timeout: 15000 });
+await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
-ok(/LIVE/.test(await text()) && /today/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a live badge and today\'s P&L');
+// 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
+ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('.card.glass .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
 ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[aria-label*="today"]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));

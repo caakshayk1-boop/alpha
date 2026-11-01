@@ -2,7 +2,7 @@
  *
  *    published   when the SOURCE put the story out (a story's own time).                    "Published 10:12 IST"
  *    checked     when this app last SUCCESSFULLY looked for news (the scheduled check).      "Checked 10:40 IST"
- *    quote       when the EXCHANGE printed the price (the quote's own timestamp).            "Price 14:32 IST" / "Last print 15:29 IST"
+ *    quote       when the EXCHANGE printed the price (the quote's own timestamp).            "Live 14:32 IST" / "Last traded 15:29 IST"
  *
  *  plus the two facts that are not times of a fetch: the screen's close ("Screen: close of Fri 23 Oct"), which is a trading day, and an on-demand refresh ("Refreshed on demand 14:40 IST"),
  *  which is the Worker looking because the scheduled check was late, and which never replaces the checked time.
@@ -10,7 +10,7 @@
  *  Rules these helpers keep (pinned by tests/timelabels.test.ts):
  *    - "checked" is never "published": a check time is never printed beside a story as if the story were that new.
  *    - a time that is missing, unreadable or in the future is said to be unknown, never "just now" and never invented.
- *    - nothing here says "live". Only a price whose own print is recent (stamp.ts, five minutes) may be called live, and that decision is made there, not here.
+ *    - nothing here says "live". Only a price whose own print is recent AND whose session is on (stamp.ts, five minutes) may be called live, and that decision is made there, not here.
  *    - a screen is a close, never a moment: its label names the trading day, not a clock time. */
 import { dayWord } from './fmt.ts';
 import { fmtIst, quoteAge } from './stamp.ts';
@@ -35,9 +35,10 @@ export function onDemandLabel(at: string | null | undefined, nowMs: number): str
 /** The price's own time. Live only when the print is recent (five minutes, by the quote's own timestamp); otherwise the last print, with its time, never "now". `nse` false for round-the-clock markets. */
 export function quoteLabel(printSec: number | null | undefined, nowMs: number, nse = true): { text: string; live: boolean } {
   const a = quoteAge(printSec ?? null, nowMs, nse); if (!a) return { text: 'No price time', live: false };
-  if (a.state === 'live') return { text: `Price ${fmtIst(printSec as number, nowMs)}`, live: true };
-  if (a.state === 'lagging') return { text: `Price ${fmtIst(printSec as number, nowMs)}, ${Math.round(a.lagSec / 60)} min old`, live: false };
-  return { text: a.state === 'stale' ? `No print since ${fmtIst(printSec as number, nowMs)}` : `Last print ${fmtIst(printSec as number, nowMs)}`, live: false };
+  const t = fmtIst(printSec as number, nowMs);
+  if (a.state === 'live') return { text: `Live ${t}`, live: true };
+  if (a.state === 'lagging') return { text: `Delayed ${t}, ${Math.round(a.lagSec / 60)} min old`, live: false };
+  return { text: a.state === 'stale' ? `Delayed, no print since ${t}` : `Last traded ${t}`, live: false };
 }
 /** The screen is a close. "Screen: close of Fri 23 Oct", with how far behind the last finished session it is when it is. */
 export function screenLabel(asOf: string | null | undefined, behind: number | null = null): string {

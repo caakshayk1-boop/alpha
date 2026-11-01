@@ -28,10 +28,10 @@ test('on demand: its own words and its own time; absent when there is none; neve
 });
 test('quote: live only for a print under five minutes old by the exchange\'s own time; older is the last print with its time, never "now"', () => {
   const at = (minAgo: number) => Math.floor(NOW / 1000) - minAgo * 60;
-  assert.deepEqual(quoteLabel(at(1), NOW), { text: 'Price 11:29 IST', live: true });
-  assert.equal(quoteLabel(at(12), NOW).live, false); assert.match(quoteLabel(at(12), NOW).text, /^Price 11:18 IST, 12 min old$/);
-  assert.match(quoteLabel(at(40), NOW).text, /^No print since 10:50 IST/);
-  const shut = Date.UTC(2026, 9, 27, 12, 0); assert.deepEqual(quoteLabel(Math.floor(Date.UTC(2026, 9, 27, 9, 59) / 1000), shut), { text: 'Last print 15:29 IST', live: false }, 'after the close the last print is the last print');
+  assert.deepEqual(quoteLabel(at(1), NOW), { text: 'Live 11:29 IST', live: true });   // 1 Nov 2026: the quote words are Live / Delayed / Last traded
+  assert.equal(quoteLabel(at(12), NOW).live, false); assert.match(quoteLabel(at(12), NOW).text, /^Delayed 11:18 IST, 12 min old$/);
+  assert.match(quoteLabel(at(40), NOW).text, /^Delayed, no print since 10:50 IST/);
+  const shut = Date.UTC(2026, 9, 27, 12, 0); assert.deepEqual(quoteLabel(Math.floor(Date.UTC(2026, 9, 27, 9, 59) / 1000), shut), { text: 'Last traded 15:29 IST', live: false }, 'after the close the last print is the last print');
   assert.deepEqual(quoteLabel(null, NOW), { text: 'No price time', live: false }); assert.equal(quoteLabel(at(2000), NOW, false).live, false);
 });
 test('screen: a close, named by its trading day, never a clock time and never "live"', () => {

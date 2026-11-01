@@ -5,7 +5,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { Quote, QuotesFeed } from './data.ts';
 import type { Row } from './screen.ts';
-import { isLiveQuote, nseClockOpen } from './stamp.ts';
+import { isLiveQuote, nseClockOpen, quoteWord, type QWord } from './stamp.ts';
 
 const store = new Map<string, Quote>(); let pulse: Record<string, Quote> = {}; let macro: Record<string, Quote> = {};
 const want = new Map<string, number>(); let wantI = 0, wantM = 0; const subs = new Set<() => void>();
@@ -91,12 +91,12 @@ export function useLiveMacro(on = true): FeedState { useWatchFlag(on, 'm'); useS
 export function useLiveSymbols(syms: string[], on = true): FeedState { useWatchQuotes(on ? syms : []); useSyncExternalStore(sub, snap, () => 0); return feedOf('s', on ? [...syms].sort() : []); }
 export const liveStatus = () => ({ lastAt, err: errMsg });
 
-export interface LivePx { px: number | null; prev: number | null; ch: number | null; live: boolean; t: number | null; fromQuote: boolean }
+export interface LivePx { px: number | null; prev: number | null; ch: number | null; live: boolean; /** Live / Delayed / Last traded for a quote; Unavailable when there is none */ word: QWord; t: number | null; fromQuote: boolean }
 const istDay = (sec: number) => new Date((sec + 19800) * 1000).toISOString().slice(0, 10);
 /** Pure. The quote replaces the published close only when it is from the same Indian day or later; an older quote is ignored, never blended. */
 export function livePrice(row: Pick<Row, 'price' | 'r1d' | 'last_date'>, q: Quote | null, nowMs = Date.now()): LivePx {
-  if (q && q.px > 0 && q.prev > 0 && (!row.last_date || istDay(q.pt) >= row.last_date.slice(0, 10))) return { px: q.px, prev: q.prev, ch: (q.px / q.prev - 1) * 100, live: isLiveQuote(q, nowMs), t: q.pt, fromQuote: true };
-  return { px: row.price ?? null, prev: null, ch: row.r1d ?? null, live: false, t: null, fromQuote: false };
+  if (q && q.px > 0 && q.prev > 0 && (!row.last_date || istDay(q.pt) >= row.last_date.slice(0, 10))) return { px: q.px, prev: q.prev, ch: (q.px / q.prev - 1) * 100, live: isLiveQuote(q, nowMs), word: quoteWord(q.pt, nowMs) as QWord, t: q.pt, fromQuote: true };
+  return { px: row.price ?? null, prev: null, ch: row.r1d ?? null, live: false, word: 'Unavailable', t: null, fromQuote: false };
 }
 export const useLivePrice = (row: Pick<Row, 'sym' | 'price' | 'r1d' | 'last_date'>): LivePx => livePrice(row, useQuote(row.sym));
 /** "as of 14:32" in Indian time, for a tooltip or a small caption. */
