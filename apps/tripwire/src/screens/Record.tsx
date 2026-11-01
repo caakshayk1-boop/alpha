@@ -9,7 +9,7 @@ import { closedItems, definitionLines, figuresOf, throughOf, viewOfClosed } from
 import { dayWord, inr0 } from '../fmt.ts';
 import { Empty } from '../ui.tsx';
 import { Loading } from './common.tsx';
-import { EmptyState, GateCard, RecordStat, RecordStats, SectionHeader, StatusPill, ThroughPills, Button } from '../components/index.ts';
+import { EmptyState, RecordStat, RecordStats, SectionHeader, StatusPill, ThroughPills, Button } from '../components/index.ts';
 import { gateLine } from '../components/gate.ts';
 import type { BookRow } from '../book.ts';
 import { targetsFor } from '../exits.ts';
@@ -68,7 +68,7 @@ export function RecordScreen() {
 
     <section className="rec-sec rec-gate" aria-labelledby="rec-gate" data-sec="gate">
       <SectionHeader id="rec-gate" title="Signals gate" description="A separate test, kept here so there is one record. No pick is promoted to an alert until the gate passes; it is off today." />
-      <GateCard />
+      {g && <div className="ds-card ds-gatecard"><StatusPill tone={g.on ? "up" : "neutral"} icon={g.on ? "check" : "lock"}>{g.on ? "ON" : "OFF"}</StatusPill><span className="ds-gatetext">{g.text}</span></div>}
       {g && sig.data?.gate ? <ul className="tl-notes" aria-label="The gate's checks">{sig.data.gate.checks.map((c) => <li key={c.rule}><StatusPill tone={c.ok ? 'up' : 'neutral'} icon={c.ok ? 'check' : 'x'}>{c.ok ? 'Passed' : 'Not passed'}</StatusPill> {c.rule}{c.value ? ` — ${c.value}` : ''}</li>)}</ul>
         : <p className="rec-line">The gate has not been published yet.</p>}
     </section>

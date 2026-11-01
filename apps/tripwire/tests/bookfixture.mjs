@@ -14,8 +14,8 @@ export const outcomes = {
 export const ledger = { schema: 'tripwire-ledger/1', started: '2026-10-20', updated: `${last}T20:00:00Z`, cost: 0.25, days: [{ asOf: '2026-10-20', recorded: 'x', engines: { MOM: { eligible: 700, passed: 9, picked: 1, skippedWideStop: 0 } } }, { asOf: '2026-10-28', recorded: 'x', engines: { MOM: { eligible: 700, passed: 9, picked: 3, skippedWideStop: 0 } } }, { asOf: last, recorded: 'x', engines: { MOM: { eligible: 700, passed: 0, picked: 0, skippedWideStop: 0 } } }], picks: [A, B, C, D], outcomes };
 export const signals = { schema: 'tripwire-signals/1', generated: 'x', data_through: last, launched: '2026-10-23', gate: { date: last, on: false, passed: 1, checks: [{ rule: 'Holdout t at least +2.0', ok: false, value: 't = -0.62' }, { rule: 'At least 30 closed trades', ok: true }] }, alertable: false, alert_why: 'Alerts off: the holdout month-clustered t is -0.62, needs +2.0.', record: { closed: 0, avg_r: null }, signals: [], cost_round_trip_pct: 0.25 };
 /** A browser context with the saved state, the shared API mocks, the ledger above (or `led`) and the signals feed. */
-export async function openCtx(b, width, led = ledger) {
-  const ctx = await b.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, serviceWorkers: 'block' });
+export async function openCtx(b, width, led = ledger, bypassCSP = false) {
+  const ctx = await b.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, serviceWorkers: 'block', bypassCSP });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, { ...STATE, paper: [] });
   await mockApi(ctx);
   await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
