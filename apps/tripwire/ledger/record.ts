@@ -1,6 +1,7 @@
 // The nightly job, in two steps around a Python fetch (bars.py, through yfinance: a raw request to Yahoo from a CI runner is refused).
 //   record    run the three engines on the latest published screen, write down every pick once per data day, list the symbols still needed
-//   evaluate  replay every unfinished pick against the fetched daily bars and the Nifty
+//   evaluate  replay every unfinished pick against the fetched daily bars and the Nifty, then ASSERT (src/ledgerchecks.ts) that the outcome stage reached the same session
+//             as the pick stage, that no open position is marked older than the last completed NSE session, and that no closed outcome contradicts its bars
 // Writes apps/tripwire/ledger/ledger.json. `evaluate` exits non-zero when it could not get most of the prices it needed, so a blind night
 // turns the workflow red instead of passing quietly.
 // Usage: node apps/tripwire/build.mjs && node --experimental-strip-types apps/tripwire/ledger/record.ts record
@@ -9,6 +10,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { runAll, type Q } from '../src/quant.ts';
 import { applyCorrections, emptyLedger, evaluateLedger, record, summarizeLedger, type Correction, type Ledger } from '../src/ledger.ts';
 import type { Bar } from '../src/tracker.ts';
+import { formatViolations, runChecks } from '../src/ledgerchecks.ts';
+import { lastFinishedSession } from '../src/calendar.ts';
 
 const here = (f: string) => new URL(f, import.meta.url);
 const mode = process.argv[2];
@@ -25,7 +28,7 @@ if (mode === 'record') {
   const rec = record(ledger, runs, screen.as_of, now); ledger = rec.ledger;
   console.log(rec.skipped ? `not recorded: ${rec.skipped} (data through ${screen.as_of})` : `recorded ${rec.added} picks for ${screen.as_of}`);
   writeFileSync(here('./ledger.json'), JSON.stringify(ledger));
-  writeFileSync(here('./need.json'), JSON.stringify({ symbols: unfinished() }));
+  writeFileSync(here('./need.json'), JSON.stringify({ symbols: unfinished(), expect: lastFinishedSession(Date.parse(now)) }));   // `expect`: the newest session whose bar bars.py should be able to return
   console.log(`${unfinished().length} symbols still need prices`);
 } else if (mode === 'evaluate') {
   const need = unfinished();
@@ -38,4 +41,7 @@ if (mode === 'record') {
   const s = summarizeLedger(ledger).all; const ok = need.filter((x) => got[x]).length;
   console.log(`bars for ${ok} of ${need.length} symbols; nifty ${nifty ? 'ok' : 'MISSING'}; ledger: ${ledger.days.length} days, ${s.picks} picks, ${s.closed} closed, ${s.open} open, ${s.skipped} skipped, ${s.pending} pending`);
   if (need.length && (ok < need.length / 2 || !nifty)) { console.error('FAIL: most price data could not be fetched; outcomes were left as they were'); process.exit(1); }
+  const faults = runChecks(ledger, got, Date.parse(now));
+  if (faults.length) { for (const line of formatViolations(faults)) console.error(line); console.error(`FAIL: ${faults.length} ledger assertion${faults.length === 1 ? '' : 's'} failed (the ledger was written; the next run re-replays every unfinished pick)`); process.exit(1); }
+  console.log(`ledger assertions: ok (picks and outcomes both reach ${lastFinishedSession(Date.parse(now))})`);
 } else { console.error('usage: record.ts record | evaluate'); process.exit(2); }
