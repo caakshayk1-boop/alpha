@@ -8,7 +8,7 @@ import { targetsFor } from './exits.ts';
 import { rulesFor } from './rules.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null }
-export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean; /** the session (India date) and the price at which each target filled */ t1Day?: string; t1Px?: number; t2Day?: string; t2Px?: number; /** the India date of the last daily bar this outcome was replayed against: the session the outcome stage reached (absent on outcomes written before this field) */ markDay?: string }
+export interface Outcome { status: 'pending' | 'open' | 'closed' | 'skipped' | 'void'; final: boolean; entry?: number; entryDay?: string; exit?: number; exitDay?: string; reason?: string; r?: number | null; pct?: number | null; sessions?: number; mark?: number; niftyPct?: number | null; skipReason?: string; /** the profit ladder, when the pick traded under one */ t1Hit?: boolean; t2Hit?: boolean; /** the session (India date) and the price at which each target filled */ t1Day?: string; t1Px?: number; t2Day?: string; t2Px?: number; /** the India date of the last daily bar this outcome was replayed against: the session the outcome stage reached (absent on outcomes written before this field) */ markDay?: string }
 export interface Day { asOf: string; recorded: string; /** the eligibility rule version this night was written under; absent on nights written before versions existed (those are elig-1) */ rules?: string; engines: Record<string, { eligible: number; passed: number; picked: number; skippedWideStop: number }> }
 export interface Ledger { schema: 'tripwire-ledger/1'; started: string; updated: string; cost: number; days: Day[]; picks: LedgerPick[]; outcomes: Record<string, Outcome>;
   /** picks struck from the record, with the reason. A pick is never deleted or edited: it is voided in the open and left out of every total. */
@@ -43,6 +43,7 @@ const isoOf = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0,
 export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, nifty: Bar[] | null, now: string): Ledger {
   const outcomes = { ...l.outcomes };
   for (const p of l.picks) {
+    if (l.voided?.[p.id]) continue;                       // struck from the record: never replayed, and voidOutcomes() below leaves it with no live outcome
     if (outcomes[p.id]?.final) continue;
     const b = bars[p.sym]; if (!b) { outcomes[p.id] = outcomes[p.id] ?? { status: 'pending', final: false }; continue; }
     const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf), targets: targetsFor(p) };
@@ -64,7 +65,15 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
     }
     outcomes[p.id] = o;
   }
-  return { ...l, updated: now, outcomes };
+  return voidOutcomes({ ...l, updated: now, outcomes });
+}
+/** A voided pick carries NO outcome: status 'void', final, and none of the live fields (entry, mark, r, pct, ladder). It was struck from the record, so a price, a mark or an R beside it would read as a live result.
+ *  Applied by the writer (evaluateLedger) and again by the reader (useLedger), so a file written before this rule is also served clean. Idempotent; a pick that is not voided is untouched. */
+export function voidOutcomes(l: Ledger): Ledger {
+  const ids = Object.keys(l.voided ?? {}).filter((id) => l.outcomes[id]?.status !== 'void' && (l.outcomes[id] || l.picks.some((p) => p.id === id)));
+  if (!ids.length) return l;
+  const outcomes = { ...l.outcomes }; for (const id of ids) outcomes[id] = { status: 'void', final: true };
+  return { ...l, outcomes };
 }
 /** An engine that has been retired is not part of any total or list shown to the reader; its rows stay in the stored record. */
 export const RETIRED = new Set(ENGINES.filter((e) => e.retired).map((e) => e.id as string));
