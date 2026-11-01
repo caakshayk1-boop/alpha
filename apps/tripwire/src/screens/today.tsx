@@ -1,4 +1,6 @@
 import { SessionPill } from '../components/pills.tsx';
+import { EmptyState, GateCard } from '../components/index.ts';
+import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
@@ -9,7 +11,7 @@ import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
-import { useBacktest, usePulse } from '../data.ts';
+import { useBacktest, usePulse, useSignals } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { isNewUser } from '../home.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
@@ -74,6 +76,7 @@ export function Today() {
   const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
   const hasChanges = s.follows.length > 0 || needs;
   const hold = !fresh && s.follows.length > 0 && scr.loading;   // what changed leads, so nothing is drawn beneath it until it can be: content that arrives above moves what is already there   // returning users read what changed before the market
+  const sig = useSignals();
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
@@ -82,7 +85,12 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
-      <FreshnessPill />
+      {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
+      <section className="t-hero" data-hero aria-label="What Tripwire is">
+        <p className="t-def">Tripwire fires published rules on NSE stocks, and shows you the evidence.</p>
+        <FreshnessPill />
+        <div className="t-gate" data-loading={sig.loading || undefined}><GateCard /></div>
+      </section>
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <TargetHits hits={auto.hits} />}
 
@@ -148,7 +156,15 @@ export function Today() {
           <a className="btn sm picks-all" href="#/signals">{allPicks.length > TOP ? `All ${allPicks.length} picks in Signals` : 'Open Signals'}</a></div>
       </section>}
 
+      {/* nothing fired is a finding, said plainly */}
+      {!fresh && scr.data && allPicks.length === 0 && <section className="tsec tpicks" aria-labelledby="t-nopicks" data-sec="picks-empty">
+        <h2 id="t-nopicks" className="sec">Fired at the last close</h2>
+        <EmptyState icon="info" action={<a className="btn sec" href="#/signals">Open Signals</a>}>No rules fired at the last close. The gate is doing its job.</EmptyState>
+      </section>}
+
+      <div className="t-capture"><CaptureModule source="tripwire-today" /></div>
       {scr.data && <p className="mute small tfoot">{scr.data.count} companies in the screen · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>{fresh ? '' : '. Picks are starting points, not recommendations.'}</p>}
+      <IdentityFooter />
     </div>
   </div>;
 }

@@ -24,6 +24,7 @@ import { CompanyNews } from './News.tsx';
 import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 import { fmtIst } from '../stamp.ts';
 import { changeLine } from '../overview.ts';
+import { Pill } from '../components/index.ts';
 import { FirstThought } from './firstthought.tsx';
 
 export function Company({ sym }: { sym: string }) {
@@ -60,9 +61,9 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <div className="split"><div className="col">
-    <section className="card glass">
+    <section className="card glass c-head">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
-        <div style={{ textAlign: 'right' }}>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.live ? 'Live' : 'Last price'} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
+        <div style={{ textAlign: 'right' }}><div className="c-pills" aria-label="Sector and size">{row.sector && <Pill>{row.sector}</Pill>}{row.tier && <Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill>}</div>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.live ? 'Live' : 'Last price'} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
       <p className="small" style={{ margin: '12px 0 0' }}><span className="k">What changed</span><br />{changeLine(row, lp.ch ?? null, lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day')}</p>
       {(() => { const tr = trendOf(row); const short = { up: 'All four trend rules hold.', down: 'All four mirrored rules hold.', mixed: 'It meets neither the uptrend nor the downtrend rule.' };
         return tr.trend ? <div style={{ margin: '12px 0 0' }}><p className="small" style={{ margin: 0 }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{short[tr.trend]}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p>
@@ -98,7 +99,7 @@ export function Company({ sym }: { sym: string }) {
 
     <Head>Engine check</Head>
     {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>
-      <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }} aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
+      <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }}><span aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="sr">{c.pass === true ? 'Passes: ' : c.pass === false ? 'Fails: ' : 'Not measured: '}</span></span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
         {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
     {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
     <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p>

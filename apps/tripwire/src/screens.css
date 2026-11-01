@@ -1,0 +1,74 @@
+/* The screens work (1 Nov 2026): Today's hero and capture slot, Discover's result cards and refined table, the reading layout of Methodology and Help,
+   the Data freshness table and the Company header. Tokens only (no hex); nothing here moves (motion lives in motion.css under html.fx). */
+
+/* ---- Today: hero, gate card, capture slot, identity line ---- */
+.today>.t-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3);align-content:start}
+.t-hero>*{min-width:0;max-width:100%}
+.t-def{margin:0;font:650 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight);color:var(--ink);max-width:min(34ch,100%);overflow-wrap:anywhere}
+@media(min-width:700px){.t-def{font-size:var(--fs-h2);line-height:var(--lh-h2)}}
+.t-gate[data-loading]{min-height:calc(var(--hit) + var(--sp-3)*2)}   /* the gate card's slot is held while the signals file loads, so it arriving moves nothing */
+.t-gate:empty{display:none}
+.today .ds-gatecard{flex-wrap:wrap;min-width:0;max-width:100%}.today .ds-gatetext{flex:1 1 10rem;overflow-wrap:anywhere}
+.today>.t-capture:empty{display:none}
+.capture{display:grid;gap:var(--sp-3)}
+.capture-h{margin:0;font:650 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight)}
+.capture-row{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.capture-row .field{flex:1 1 14rem;min-height:var(--hit)}
+.capture-p{margin:0}
+.ident{margin:0;line-height:1.7}
+.ident a{text-decoration:underline;display:inline-block;min-height:var(--hit);line-height:var(--hit)}
+@media(min-width:1024px){.today>.t-hero,.today>.t-capture,.today>.ident{grid-column:1/-1}.today>.t-hero{order:-1}.today>.t-capture{order:8}.today>.ident{order:10}}
+.today .tsec+.tsec{margin-top:0}
+
+/* ---- Discover: on a phone the result table is a stack of cards (symbol, price, the figures, a chevron); the same markup, so sort, count, parity and keyboard use are unchanged ---- */
+@media(max-width:699px){
+  .disc .stbl-wrap{max-height:none;overflow:visible;border:0;background:none;box-shadow:none!important}
+  .disc .stbl{display:block;width:100%;min-width:0}
+  .disc .stbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .disc .stbl tbody{display:grid;gap:var(--sp-3)}
+  .disc .stbl tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--sp-2);padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);min-width:0}
+  .disc .stbl tbody tr.sel{background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+  .disc .stbl tbody th.sticky{position:static;display:block;grid-column:1;min-width:0;max-width:none;border:0;padding:0;background:none;text-align:left;font-size:var(--fs-h3);line-height:var(--lh-h3)}
+  .disc .stbl tbody th.sticky small{max-width:none;font-size:var(--fs-data);color:var(--ink-2)}
+  .disc .stbl tbody th.sticky .symlink{display:flex;align-items:center;min-height:var(--hit)}
+  .disc .stbl tbody td.acts{grid-column:2;grid-row:1;display:flex;justify-content:flex-end;min-width:0;padding:0;border:0}
+  .disc .stbl tbody td.num{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-2);min-width:0;padding:var(--sp-2) 0;border:0;border-top:1px solid var(--line);font-size:var(--fs-body);text-align:right}
+  .disc .stbl tbody td.num::before{content:attr(data-label);color:var(--ink-3);font-size:var(--fs-label);letter-spacing:.04em}
+  .disc .stbl tbody td.num:nth-of-type(odd){grid-column:1}
+  .disc .stbl tbody td.num:nth-of-type(even){grid-column:2}
+  .disc .stbl tbody td.num:first-of-type{border-top:1px solid var(--line);margin-top:var(--sp-3)}
+}
+/* a desktop refinement: rows at least 52px, hairlines only, a header that blurs the rows scrolling under it */
+@media(min-width:700px){
+  .disc .stbl tbody th,.disc .stbl tbody td{padding-top:var(--sp-3);padding-bottom:var(--sp-3);height:52px;font-size:var(--fs-data);border-bottom:1px solid var(--line)}
+  .disc .stbl tbody tr:nth-child(even) td,.disc .stbl tbody tr:nth-child(even) th{background:none}
+  .disc .stbl thead th:not(.sticky){background:color-mix(in srgb,var(--bg) 78%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .disc .stbl td.num{font-variant-numeric:tabular-nums;text-align:right}
+}
+.disc .li{min-height:56px}
+
+/* ---- Methodology and Help: a 720px reading column; rules as numbered cards; formulas in a code block on the second surface ---- */
+.read.meth>h2.h,.read>h2.h{margin-top:var(--sp-7)}
+.rulecards{list-style:none;margin:var(--sp-3) 0 0;padding:0;display:grid;gap:var(--sp-2)}
+.rulecards li{display:grid;grid-template-columns:2rem minmax(0,1fr);gap:var(--sp-3);align-items:start;padding:var(--sp-3);border-radius:var(--radius-input);background:var(--surface-2);font-size:var(--fs-data);line-height:1.5}
+.rulecards .n{display:grid;place-items:center;width:2rem;height:2rem;border-radius:var(--radius-pill);background:var(--surface-3);color:var(--ink);font-weight:650}
+pre.formula{margin:0;padding:var(--sp-4);border-radius:var(--radius-input);background:var(--surface-2);color:var(--ink);font:var(--fs-data)/1.7 var(--code);overflow-x:auto;white-space:pre;max-width:100%}
+pre.formula:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.helpsteps{margin:0;padding-left:1.25rem;display:grid;gap:var(--sp-3)}
+
+/* ---- Data: the freshness table as clean rows; one row is a card on a phone ---- */
+.fresh-tbl th,.fresh-tbl td{padding:var(--sp-3) var(--sp-2);border-bottom:1px solid var(--line);vertical-align:middle}
+.fresh-tbl tbody tr:last-child th,.fresh-tbl tbody tr:last-child td{border-bottom:0}
+@media(max-width:699px){
+  .fresh-tbl,.fresh-tbl tbody{display:block}
+  .fresh-tbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .fresh-tbl tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-1) var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+  .fresh-tbl tr:last-child{border-bottom:0}
+  .fresh-tbl th,.fresh-tbl td{display:block;padding:0;border:0;text-align:left!important;min-width:0}
+  .fresh-tbl th{grid-column:1/-1;font-size:var(--fs-body)}
+  .fresh-tbl td[data-label]::before{content:attr(data-label);display:block;color:var(--ink-3);font-size:var(--fs-label)}
+  .fresh-tbl td[colspan]{grid-column:1/-1}
+}
+
+/* ---- Company: the header block ---- */
+.c-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-2);margin:0 0 var(--sp-2)}

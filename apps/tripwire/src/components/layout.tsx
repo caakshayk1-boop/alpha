@@ -54,8 +54,8 @@ export function Button({ variant = 'secondary', busy = false, children, classNam
 export function GateCard() {
   const sig = useSignals(); const g = gateLine(sig.data);
   if (!g) return null;
-  return <a className="ds-card ds-hover ds-gatecard" href="#/signals" aria-label={`${g.text}. Open the Signals page.`}>
-    <span className={`ds-pill ds-status ${g.on ? 'up' : 'neutral'}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'ON' : 'OFF'}</span>
+  return <a className="ds-card ds-hover ds-gatecard" href="#/signals">
+    <span className="sr">Signals gate: </span><span className={`ds-pill ds-status ${g.on ? 'up' : 'neutral'}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'ON' : 'OFF'}</span>
     <span className="ds-gatetext">{g.text.replace(/^Signals gate: (ON|OFF) — /, '')}</span>
     <Icon n="chev" className="ds-go" />
   </a>;

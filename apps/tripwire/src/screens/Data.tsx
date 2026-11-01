@@ -12,11 +12,12 @@ import { useNewsHealth } from '../news.ts';
 import { CALENDAR, calendarNote } from '../calendar.ts';
 import { useFreshness } from '../freshdata.ts';
 import { throughWord, builtWord, type Status } from '../freshness.ts';
+import { StatusPill, type Tone } from '../components/index.ts';
 import { BreadthGapText, BreadthGapTable } from './gapnote.tsx';
 
 const N = (v: number) => v.toLocaleString('en-IN');
 const STATUS_WORD: Record<Status, string> = { current: 'Current', pending: 'Build due', stale: 'Behind', unknown: 'Date unreadable', missing: 'Not published' };
-const STATUS_TONE: Record<Status, string> = { current: 'lime', pending: '', stale: 'amber', unknown: 'amber', missing: 'amber' };
+const STATUS_PILL: Record<Status, Tone> = { current: 'up', pending: 'neutral', stale: 'amber', unknown: 'amber', missing: 'amber' };
 interface RunStamp { id: string; when?: string; git: string; data: { first_day: string; last_day: string; sessions: number; symbols: number }; code: { hash: string }; changes: string[]; previous: string | null }
 /** What the screen holds, counted from its own rows, and where every kind of figure comes from and how old it is. Nothing here is typed in: it is all read from the data. */
 export function DataPage() {
@@ -38,10 +39,10 @@ export function DataPage() {
     </section>
 
     <Head aside={<span className={`tag ${fx.worst === 'current' ? 'lime' : fx.worst === 'pending' ? '' : 'amber'}`}>{fx.loading ? 'Checking' : fx.worst === 'current' ? 'All current' : fx.worst === 'pending' ? 'Build due' : 'Something is behind'}</span>}>Every data file, and how current it is</Head>
-    <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Every data file, scrolls sideways"><table className="tbl" data-fresh-table style={{ width: '100%' }}><caption className="sr">Each published data file: the session it carries, when it was built, its rows and its status against the last finished session</caption>
+    <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Every data file, scrolls sideways"><table className="tbl fresh-tbl" data-fresh-table style={{ width: '100%' }}><caption className="sr">Each published data file: the session it carries, when it was built, its rows and its status against the last finished session</caption>
       <thead><tr><th scope="col">File</th><th scope="col">As of</th><th scope="col">Built</th><th scope="col" style={{ textAlign: 'right' }}>Rows</th><th scope="col">Status</th></tr></thead><tbody>
-      {fx.files.map((f) => <tr key={f.id} data-file={f.id}><th scope="row" style={{ textAlign: 'left' }}>{f.label}{f.note ? <span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{f.note}</span> : null}</th><td className="num">{f.asOf ? `${throughWord(f.asOf)} close` : 'none'}</td><td className="num">{f.built ? (builtWord(f.built) ? `${f.built.slice(0, 10)} ${builtWord(f.built)}` : f.built.slice(0, 10)) : 'not stated'}</td><td className="num" style={{ textAlign: 'right' }}>{f.rows != null ? N(f.rows) : '—'}</td>
-        <td><span className={`tag ${STATUS_TONE[f.status]}`}>{STATUS_WORD[f.status]}</span>{f.status === 'stale' && f.behind ? <span className="small dim" style={{ display: 'block' }}>{f.behind} session{f.behind === 1 ? '' : 's'} behind {throughWord(fx.expected)}</span> : null}</td></tr>)}
+      {fx.files.map((f) => <tr key={f.id} data-file={f.id}><th scope="row" style={{ textAlign: 'left' }}>{f.label}{f.note ? <span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{f.note}</span> : null}</th><td className="num" data-label="As of">{f.asOf ? `${throughWord(f.asOf)} close` : 'none'}</td><td className="num" data-label="Built">{f.built ? (builtWord(f.built) ? `${f.built.slice(0, 10)} ${builtWord(f.built)}` : f.built.slice(0, 10)) : 'not stated'}</td><td className="num" data-label="Rows" style={{ textAlign: 'right' }}>{f.rows != null ? N(f.rows) : '—'}</td>
+        <td data-label="Status"><StatusPill tone={STATUS_PILL[f.status]} icon={f.status === 'current' ? 'check' : f.status === 'pending' ? 'clock' : 'alert'}>{STATUS_WORD[f.status]}</StatusPill>{f.status === 'stale' && f.behind ? <span className="small dim" style={{ display: 'block' }}>{f.behind} session{f.behind === 1 ? '' : 's'} behind {throughWord(fx.expected)}</span> : null}</td></tr>)}
       {fx.waiting.map((id) => <tr key={id}><th scope="row" style={{ textAlign: 'left' }}>{id}</th><td colSpan={4} className="dim">Loading…</td></tr>)}</tbody></table></div>
       <p className="small mute" style={{ margin: '6px 0 10px' }}>The last finished session is {throughWord(fx.expected)} ({CALENDAR.version}). Dates are closes, not live prices; "built" is when the file was written, in Indian time. A file one session behind is "build due" only between the close and 23:30 IST on that day; after that it is behind. Weekends and NSE holidays are not lateness.</p></div>
 
