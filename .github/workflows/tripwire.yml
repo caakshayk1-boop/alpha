@@ -42,6 +42,11 @@ jobs:
       - name: Fetch the published company data (the same step the website's build runs)
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
+      - name: Freshness and completeness assertions (screen = last completed NSE session, no stale or sector-less rows; see apps/tripwire/tools/check-data.mjs)
+        if: ${{ github.event_name != 'pull_request' }}   # a data-freshness gate belongs to the build that publishes data; a pull request is not stopped because last night's screen build ran late
+        run: npm run tripwire:verify-data
+      - name: Performance budget (initial JS <= 250 KB gzip, no render-blocking CSS, modulepreload, lazy heavy views; see apps/tripwire/tools/budget.mjs)
+        run: npm run tripwire:budget
       # The browser gate drives a real page against mocks and has failed on a slow runner with nothing wrong (run 40433652756: a 15 s wait for a live dot, and an immediate read of a summary).
       # A scheduled run gets ONE more attempt before it gives up, because a flaky gate otherwise leaves the site on yesterday's data. Pull requests and manual runs fail on the first failure, as before.
       - name: Browser gate

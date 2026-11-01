@@ -1,6 +1,8 @@
 import { PageBar, Head } from './common.tsx';
 import { ENGINES } from '../quant.ts';
-import { useBacktest } from '../data.ts';
+import { useBacktest, useJson, type ScreenFeed } from '../data.ts';
+import { universeReport } from '../universe.ts';
+import { BreadthGapText } from './gapnote.tsx';
 import { engineEvidence } from '../evidence.ts';
 import { CURRENT_RULES, rulesDef } from '../rules.ts';
 import { TREND_RULE_TEXT } from '../screen.ts';
@@ -10,7 +12,7 @@ import { dayWord } from '../fmt.ts';
 /** Methodology and evidence: the long explanations that used to sit inside cards, in one place, read from the same constants the app computes with
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
 export function Methodology() {
-  const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES);
+  const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES); const scr = useJson<ScreenFeed>('/data/screen.json'); const gap = scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on).breadthGap : null;
   return <div>
     <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />
     <div className="note info"><b>Paper only, and experimental.</b> Nothing here is advice and no order is ever placed. A pick is a starting point for your own research; a rank is a position among eligible names, not a chance of winning.</div>
@@ -28,7 +30,8 @@ export function Methodology() {
       <p className="mute" style={{ margin: '8px 0 0' }}>Rule version {rules.id}. A night keeps the rules it was filed under; older nights are not re-judged.</p></div>
 
     <Head>Trend</Head>
-    <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p></div>
+    <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p>
+      {gap && <p className="mute" style={{ margin: '8px 0 0' }}><b>Why the trend map has fewer names than the screen.</b> <BreadthGapText g={gap} /> <a href="#/data" style={{ textDecoration: 'underline' }}>Sector by sector, on the Data screen</a>.</p>}</div>
 
     <Head>Profit booking</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}>A position's holding period sets its two targets, in multiples of its risk: {STYLES.map((x) => `${x.label.toLowerCase()} (${x.sessions}) ${x.t1}R and ${x.t2}R`).join('; ')}. At Target 1 half the shares are sold and the stop on the rest moves up to the fill; at Target 2 the rest is sold. The stop and the time limit still end whatever is left. These multiples were chosen, not tested: the back-test never used targets.</p>

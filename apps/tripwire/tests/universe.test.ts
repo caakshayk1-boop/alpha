@@ -29,3 +29,20 @@ test('universe on the built screen (runs after a build; skipped before one)', { 
   assert.equal(u.total, s.count); assert.equal(u.engineEligible, s.rows.filter((x: Q) => eligible(x, u.rules)).length);
   assert.equal(u.tiers.large + u.tiers.mid + u.tiers.small + u.tiers.micro + u.tiers.unknown, u.total);
 });
+
+import { aggregateBreadth } from '../worker.js';
+test('2.2 the trend map gap: every row has one reason, the lines add up, and the count is exactly the Worker\'s own n', () => {
+  const base = { liquid: true, price: 100, sma20: 99, sma50: 95, sma200: 90, r3m: 5, sector: 'Industrials' };
+  const rows: any[] = [...Array.from({ length: 12 }, (_, i) => ({ sym: 'A' + i, ...base })), { sym: 'NL', ...base, liquid: false }, { sym: 'N200', ...base, sma200: null }, { sym: 'N50', ...base, sma50: null }, { sym: 'N3M', ...base, r3m: null },
+    { sym: 'BANK', ...base, sector: 'Financial Services' }, { sym: 'NOSEC', ...base, sector: null }];
+  const g = universeReport(rows as any, '2026-10-30', '2026-11-01').breadthGap;
+  assert.deepEqual([g.total, g.notLiquid, g.noShortAverage, g.no200, g.no3m, g.counted], [18, 1, 1, 1, 1, 14]);
+  assert.equal(g.total, g.counted + g.notLiquid + g.noShortAverage + g.no200 + g.no3m, 'the lines add up');
+  assert.equal(aggregateBreadth(rows).n, g.counted, 'the explanation counts what the Worker counts');
+  const ind = g.sectors.find((s) => s.k === 'Industrials')!; assert.deepEqual([ind.screen, ind.counted], [16, 12]);
+  assert.deepEqual(aggregateBreadth(rows).sectors.map((s: any) => [s.k, s.n]), [['Industrials', 12]], 'a sector under 8 counted names is not listed');
+});
+test('2.2 on the real screen, when one is built: the gap lines add up and equal the Worker\'s n', { skip: !existsSync(new URL('../dist/data/screen.json', import.meta.url)) }, () => {
+  const scr = JSON.parse(readFileSync(new URL('../dist/data/screen.json', import.meta.url), 'utf8')); const g = universeReport(scr.rows, scr.as_of, scr.built_on).breadthGap;
+  assert.equal(g.total, scr.rows.length); assert.equal(g.total, g.counted + g.notLiquid + g.noShortAverage + g.no200 + g.no3m); assert.equal(aggregateBreadth(scr.rows).n, g.counted);
+});

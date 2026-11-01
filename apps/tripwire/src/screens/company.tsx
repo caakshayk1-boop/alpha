@@ -135,7 +135,7 @@ export function Company({ sym }: { sym: string }) {
 
     <Head>Timeline</Head>
     <div className="card"><div className="list">
-      <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data</span></div>
+      <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data{row.stale ? <b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b> : null}</span></div>
       <div className="li"><span className="tag">{row.next_earnings ? dayWord(row.next_earnings) : 'Unknown'}</span><span className="grow dim">{row.next_earnings ? 'Next results, estimated date' : 'No results date is published'}</span></div>
       <div className="li"><span className="tag">{row.fy ?? 'Unknown'}</span><span className="grow dim">Latest fiscal year held</span></div>
     </div><p className="mute small" style={{ margin: '8px 0 0' }}>Announcements and corporate actions are not in this data yet. Read the exchange filings for those.</p></div>

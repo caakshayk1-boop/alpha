@@ -5,7 +5,7 @@ import { nseClockOpen } from './stamp.ts';
 import { voidOutcomes } from './ledger.ts';
 export { useLiveMacro };
 
-export interface ScreenFeed { built_on: string; as_of: string; count: number; rows: Row[] }
+export interface ScreenFeed { built_on: string; /** the instant the screen was built, when the feed carries it */ built_at?: string | null; as_of: string; count: number; rows: Row[] }
 export interface Gate { date: string; on: boolean; passed: number; checks: { rule: string; ok: boolean; value?: string }[] }
 export interface SignalsFeed { schema: string; generated: string; data_through: string; launched: string; gate: Gate; alertable: boolean; alert_why: string; record: { closed: number; avg_r: number | null }; signals: unknown[]; cost_round_trip_pct?: number; rules?: { gate?: string[] } }
 export interface Year { fy: string; end?: string; rev_cr?: number | null; ebit_cr?: number | null; pat_cr?: number | null; eps?: number | null; roce?: number | null; roe?: number | null; ebit_margin?: number | null; de?: number | null; cfo_cr?: number | null; cfo_pat?: number | null; fcf_cr?: number | null }

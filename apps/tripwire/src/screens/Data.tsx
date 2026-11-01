@@ -10,8 +10,13 @@ import { Head, Loading, Failed, PageBar } from './common.tsx';
 import { fmtIst } from '../stamp.ts';
 import { useNewsHealth } from '../news.ts';
 import { CALENDAR, calendarNote } from '../calendar.ts';
+import { useFreshness } from '../freshdata.ts';
+import { throughWord, builtWord, type Status } from '../freshness.ts';
+import { BreadthGapText, BreadthGapTable } from './gapnote.tsx';
 
 const N = (v: number) => v.toLocaleString('en-IN');
+const STATUS_WORD: Record<Status, string> = { current: 'Current', pending: 'Build due', stale: 'Behind', unknown: 'Date unreadable', missing: 'Not published' };
+const STATUS_TONE: Record<Status, string> = { current: 'lime', pending: '', stale: 'amber', unknown: 'amber', missing: 'amber' };
 interface RunStamp { id: string; when?: string; git: string; data: { first_day: string; last_day: string; sessions: number; symbols: number }; code: { hash: string }; changes: string[]; previous: string | null }
 /** What the screen holds, counted from its own rows, and where every kind of figure comes from and how old it is. Nothing here is typed in: it is all read from the data. */
 export function DataPage() {
@@ -19,6 +24,7 @@ export function DataPage() {
   const rs = runs.map(([, f]) => useJson<{ meta?: { when?: string; run?: RunStamp } }>(`/data/research/${f}.json`));   // eslint-disable-line react-hooks/rules-of-hooks
   const nh = useNewsHealth(); const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
   const u = useMemo(() => (scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on) : null), [scr.data]);
+  const fx = useFreshness();
   if (scr.loading) return <div><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
   if (scr.err || !u || !scr.data) return <div><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
   const fr = freshness(u.asOf); const built = u.builtOn;
@@ -28,8 +34,16 @@ export function DataPage() {
       <div className="k">The screen</div>
       <p className="lead" style={{ margin: '6px 0 0' }}><em className="ed num">{N(u.total)}</em> companies, with prices through the close of <b>{dayWord(u.asOf)}</b>.</p>
       <p className="small dim" style={{ margin: '8px 0 0' }}>{fr.word === 'Current' ? 'That is the last finished session.' : `That is ${fr.word.toLowerCase()} the last finished session.`} The screen was built {built ? dayWord(built) : 'on an unknown date'}. Exchange holidays are not modelled.</p>
-      <div className="note" style={{ marginTop: 10 }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}).</div>
+      <div className="note" style={{ marginTop: 10 }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}, {((u.tiers.unknown / u.total) * 100).toFixed(1)}% of the screen). A missing class is stated, not filled in: the feed's classes follow index membership rather than a market-cap cut-off (their market-cap ranges overlap), so none can be worked out from a company's value, and the engines require a published class that is not micro (rule elig-2, D1).</div>
     </section>
+
+    <Head aside={<span className={`tag ${fx.worst === 'current' ? 'lime' : fx.worst === 'pending' ? '' : 'amber'}`}>{fx.loading ? 'Checking' : fx.worst === 'current' ? 'All current' : fx.worst === 'pending' ? 'Build due' : 'Something is behind'}</span>}>Every data file, and how current it is</Head>
+    <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Every data file, scrolls sideways"><table className="tbl" data-fresh-table style={{ width: '100%' }}><caption className="sr">Each published data file: the session it carries, when it was built, its rows and its status against the last finished session</caption>
+      <thead><tr><th scope="col">File</th><th scope="col">As of</th><th scope="col">Built</th><th scope="col" style={{ textAlign: 'right' }}>Rows</th><th scope="col">Status</th></tr></thead><tbody>
+      {fx.files.map((f) => <tr key={f.id} data-file={f.id}><th scope="row" style={{ textAlign: 'left' }}>{f.label}{f.note ? <span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{f.note}</span> : null}</th><td className="num">{f.asOf ? `${throughWord(f.asOf)} close` : 'none'}</td><td className="num">{f.built ? (builtWord(f.built) ? `${f.built.slice(0, 10)} ${builtWord(f.built)}` : f.built.slice(0, 10)) : 'not stated'}</td><td className="num" style={{ textAlign: 'right' }}>{f.rows != null ? N(f.rows) : '—'}</td>
+        <td><span className={`tag ${STATUS_TONE[f.status]}`}>{STATUS_WORD[f.status]}</span>{f.status === 'stale' && f.behind ? <span className="small dim" style={{ display: 'block' }}>{f.behind} session{f.behind === 1 ? '' : 's'} behind {throughWord(fx.expected)}</span> : null}</td></tr>)}
+      {fx.waiting.map((id) => <tr key={id}><th scope="row" style={{ textAlign: 'left' }}>{id}</th><td colSpan={4} className="dim">Loading…</td></tr>)}</tbody></table></div>
+      <p className="small mute" style={{ margin: '6px 0 10px' }}>The last finished session is {throughWord(fx.expected)} ({CALENDAR.version}). Dates are closes, not live prices; "built" is when the file was written, in Indian time. A file one session behind is "build due" only between the close and 23:30 IST on that day; after that it is behind. Weekends and NSE holidays are not lateness.</p></div>
 
     {(() => { const L = led.data?.ledger; const od = L ? overduePending(L) : null; const q = liveStatus(); const last = L?.days[L.days.length - 1];
       const ph = pipelineHealth({ screenAsOf: u.asOf, screenBuiltOn: u.builtOn, ledgerLastNight: last?.asOf ?? null, ledgerUpdated: L?.updated ?? null, ledgerRules: last ? rulesOfRecord(last.rules) : null, pendingOld: od?.old ?? 0, pendingTotal: od?.total ?? 0, quoteLastAt: q.lastAt || null, quoteErr: q.err ?? null, panelLastDay: panel.data?.dates?.[panel.data.dates.length - 1] ?? null, panelBuilt: panel.data?.built ?? null });
@@ -57,6 +71,9 @@ export function DataPage() {
       <tr><td>With financial statements</td><td className="num" style={{ textAlign: 'right' }}>{N(u.withStatements)} of {N(u.total)}</td></tr>
       <tr><td>Financial sector (statement ratios not judged)</td><td className="num" style={{ textAlign: 'right' }}>{N(u.financial)}</td></tr></tbody></table>
       <p className="small dim" style={{ margin: '8px 0 10px' }}>{N(u.liquid - u.liquidWithAverages)} liquid names have no 200-day average yet (recent listings), so the trend map counts {N(u.liquidWithAverages)}, not {N(u.liquid)}.</p></div>
+
+    <Head>Why the trend map counts fewer names than the screen</Head>
+    <div className="card" style={{ padding: '10px 14px' }}><p className="small" style={{ margin: '0 0 8px' }}><BreadthGapText g={u.breadthGap} /></p><BreadthGapTable g={u.breadthGap} /></div>
 
     <Head>The eligibility rule, by version</Head>
     <div className="card" style={{ padding: '10px 14px' }}>

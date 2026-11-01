@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
 import { freshness } from '../fresh.ts';
+import { FreshnessPill } from './FreshnessPill.tsx';
 import { istDay, reviewDue, current } from '../store.ts';
 import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
@@ -80,6 +81,7 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
+      <FreshnessPill />
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <TargetHits hits={auto.hits} />}
 
@@ -109,7 +111,7 @@ export function Today() {
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.word}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
+        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.label}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
       </section>}
 
       {/* (b) what matters now */}

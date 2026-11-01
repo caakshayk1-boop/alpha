@@ -15,7 +15,7 @@ import type { Row } from './screen.ts';
 
 export type Basis = 'identity' | 'price' | 'reprice' | 'close' | 'statement';
 export const BASIS: Record<string, Basis> = {
-  sym: 'identity', name: 'identity', sector: 'identity', tier: 'identity', fy: 'identity', last_date: 'identity', has_stmts: 'identity', liquid: 'close', next_earnings: 'statement', shares_changed: 'statement',
+  sym: 'identity', name: 'identity', sector: 'identity', tier: 'identity', fy: 'identity', last_date: 'identity', stale: 'identity', has_stmts: 'identity', liquid: 'close', next_earnings: 'statement', shares_changed: 'statement',
   price: 'price',
   from_high: 'reprice', high52: 'reprice', low52: 'reprice', pe: 'reprice', pb: 'reprice', div_yield: 'reprice',
   r1d: 'close', r1w: 'close', r1m: 'close', r3m: 'close', r6m: 'close', r1y: 'close', rs3m: 'close', rsi: 'close', rsi_w: 'close', rsi_m: 'close', sma20: 'close', sma50: 'close', sma200: 'close',
