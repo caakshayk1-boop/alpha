@@ -1,0 +1,10 @@
+/* More, the update prompt and the install hint. The tab bar itself lives in style.css (the "tab bar" section). */
+.more-row{min-height:56px;align-items:center;gap:10px}
+.more-row .grow{display:flex;flex-direction:column;gap:2px;min-width:0}
+.more-t{font-weight:650;color:var(--tx)}
+.more-n{line-height:1.35}
+.more-go{transform:rotate(-90deg);color:var(--mute);width:18px;height:18px}
+.ic.inl{display:inline-block;vertical-align:-4px;width:18px;height:18px}
+.banner.upd{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 12px;background:var(--s2);color:var(--tx);border-bottom:1px solid var(--line2);text-align:left}
+.banner.upd .btn{min-height:44px}
+.banner.upd .why{flex-basis:100%;font-weight:500;color:var(--dim)}

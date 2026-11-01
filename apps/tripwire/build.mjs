@@ -54,7 +54,9 @@ for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HE
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
-const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp);
+// every hashed script and style (the lazy screens are separate chunks) and the fonts go into the worker's precache list, so the shell opens offline
+const precache = [...readdirSync(DIST).filter((f) => /^app\..+\.(js|css)$/.test(f)).map((f) => `/${f}`), ...readdirSync(join(DIST, 'fonts')).filter((f) => f.endsWith('.woff2')).map((f) => `/fonts/${f}`)].sort();
+const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp).replace('__ASSETS__', JSON.stringify(precache));
 writeFileSync(join(DIST, 'sw.js'), sw);
 // The page itself may be indexed; the data and the live-price routes are not pages and are not crawled.
 writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nDisallow: /api/\nDisallow: /data/\n');
