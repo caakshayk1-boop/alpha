@@ -31,3 +31,11 @@ export function targetsFor(pick: { asOf: string; horizon: number }, final = fals
 export type TargetBasis = 'filed' | 'backfilled' | 'reference';
 export const targetBasis = (pick: { asOf: string }, final = false): TargetBasis => (pick.asOf >= POLICY_FROM ? 'filed' : final ? 'reference' : 'backfilled');
 export const REFERENCE_ONLY = 'reference only — predates target tracking';
+
+/** THE definition of R and of the two target prices, used by the tracker that books them and by every screen that shows them, so a displayed level cannot differ from a booked one.
+ *  R is the risk actually taken: the FILL (the entry) minus the stop. A target is the fill plus its multiple of R. (Before a position enters there is no fill; a level shown then is
+ *  worked from the signal close instead and must say so: see levels.ts.) */
+export function ladderPrices(entry: number, stop: number, t1R: number, t2R: number): { risk: number; t1: number; t2: number } {
+  const r2 = (x: number) => Math.round(x * 100) / 100; const risk = entry - stop;
+  return { risk, t1: r2(entry + t1R * risk), t2: r2(entry + t2R * risk) };
+}

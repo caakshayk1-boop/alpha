@@ -13,6 +13,7 @@
  *  LATEST (the last close, or a live print while the session is on) and the P&L BASIS (fill to latest or exit, minus costs and exit slippage).
  *  Sessions are the bars that exist: an exchange holiday has no bar, so it is never counted. Dividends are not received (bars are not dividend-adjusted, so
  *  an ex-dividend drop is a real price move here and the payout is ignored: conservative). Splits and bonuses are handled by `rebase`. */
+import { ladderPrices } from './exits.ts';
 export interface Bar { t: number; o: number; h: number; l: number; c: number; forming?: boolean }
 /** two profit targets in R: half is sold at T1 (stop to the fill), the rest at T2. Absent: the original stop-and-time rule. */
 export interface PaperTargets { t1R: number; t2R: number }
@@ -77,7 +78,7 @@ export function evaluatePaper(p0: Paper, bars: readonly Bar[] | null, live: { px
  *  Order inside one bar is unknowable from a daily bar, so the cautious one is used: the stop is tested first; Target 2 cannot fill in the bar that filled Target 1
  *  unless that bar opened at or above it. Targets are limit orders (no slippage); a stop or the time exit is a market order (slippage on its value). Round-trip costs are on the whole entry. */
 function ladderRun(p: Paper, bars: readonly Bar[], i0: number, fill: number, risk: number, live: { px: number; t: number } | null, cost: number, base: View, firstT: number): View {
-  const T1 = r2(fill + p.targets!.t1R * risk), T2 = r2(fill + p.targets!.t2R * risk);
+  const { t1: T1, t2: T2 } = ladderPrices(fill, p.stop, p.targets!.t1R, p.targets!.t2R);   // the one definition of R and of a target (exits.ts)
   const q1 = Math.floor(p.qty / 2); let left = p.qty; let stop = p.stop; let booked = 0; let t1Hit = false, t2Hit = false; let t1T: number | undefined, t1Px: number | undefined;
   const fees = (cost / 100) * fill * p.qty;
   const view = (status: 'open' | 'closed', mark: number, exitT: number | undefined, reason: string, sessions: number, market: boolean, gap = false): View => {

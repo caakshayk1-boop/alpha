@@ -88,5 +88,5 @@ export function useAutoBook(on = true) {
 /** Every pick the record has filed, for drawing a name's levels on its chart. No price polling: it reads the ledger only. */
 export function useAutoPicks() {
   const ledger = useLedger();
-  return useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG).taken.map((t) => ({ ...t.pick, final: !!ledger.data!.ledger.outcomes[t.pick.id]?.final })) : []), [ledger.data]);
+  return useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG).taken.map((t) => { const o = ledger.data!.ledger.outcomes[t.pick.id]; return { ...t.pick, final: !!o?.final, entry: o && (o.status === 'open' || o.status === 'closed') ? o.entry ?? null : null }; }) : []), [ledger.data]);
 }
