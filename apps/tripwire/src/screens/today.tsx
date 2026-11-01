@@ -1,4 +1,6 @@
 import { SessionPill } from '../components/pills.tsx';
+import { EmptyState, GateCard, HitCard } from '../components/index.ts';
+import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
@@ -9,7 +11,7 @@ import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
-import { useBacktest, usePulse } from '../data.ts';
+import { useBacktest, usePulse, useSignals } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { isNewUser } from '../home.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
@@ -34,18 +36,6 @@ import { SinceVisit } from './SinceVisit.tsx';
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const TOP = 5;
 const addDays = (d: string, n: number) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
-
-/** Positions whose Target 1 or Target 2 filled in the last completed session. Small and plain on purpose; nothing is sent to anyone. */
-function TargetHits({ hits }: { hits: HitAlert[] }) {
-  const session = hits[0].session;
-  return <section className="tsec card thits" aria-labelledby="t-hits" data-sec="hits">
-    <h2 id="t-hits" className="sec">Targets hit at the close of {dayWord(session)}</h2>
-    <ul className="list" style={{ margin: 0, padding: 0, listStyle: 'none' }}>{hits.map((a) => <li key={`${a.id}|${a.kind}`} className="li" data-hit={a.kind}>
-      <a className="grow" href={`#/c/${a.sym}`}><span className="sym">{a.sym}</span> <span className="tag">{a.engine}</span> <b className="up">{a.text}</b>
-        <span className="small dim num" style={{ display: 'block' }}>{a.kind} {inr(a.level)} · filled at {inr(a.price)}</span></a></li>)}</ul>
-    <p className="small mute" style={{ margin: '6px 0 0' }} title={hits.map(alertLine).join(' ')}>Paper positions only. This list is worked out from the book each time the page loads; nothing is sent to you.</p>
-  </section>;
-}
 
 /** Today, in the order of what a person needs: the market in a paragraph, what matters now, what changed in the companies they follow and what is due,
  *  the paper book in one card, and the last close's picks. Detail lives behind links: Markets (indices, commodities, trend map), Signals, Live P&L. */
@@ -74,6 +64,7 @@ export function Today() {
   const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
   const hasChanges = s.follows.length > 0 || needs;
   const hold = !fresh && s.follows.length > 0 && scr.loading;   // what changed leads, so nothing is drawn beneath it until it can be: content that arrives above moves what is already there   // returning users read what changed before the market
+  const sig = useSignals();
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
@@ -82,9 +73,14 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
-      <FreshnessPill />
+      {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
+      <section className="t-hero" data-hero aria-label="What Tripwire is">
+        <p className="t-def">Tripwire fires published rules on NSE stocks, and shows you the evidence.</p>
+        <FreshnessPill />
+        <div className="t-gate" data-loading={sig.loading || undefined}><GateCard /></div>
+      </section>
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
-      {auto.hits.length > 0 && <TargetHits hits={auto.hits} />}
+      {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
@@ -148,7 +144,15 @@ export function Today() {
           <a className="btn sm picks-all" href="#/signals">{allPicks.length > TOP ? `All ${allPicks.length} picks in Signals` : 'Open Signals'}</a></div>
       </section>}
 
+      {/* nothing fired is a finding, said plainly */}
+      {!fresh && scr.data && allPicks.length === 0 && <section className="tsec tpicks" aria-labelledby="t-nopicks" data-sec="picks-empty">
+        <h2 id="t-nopicks" className="sec">Fired at the last close</h2>
+        <EmptyState icon="info" action={<a className="btn sec" href="#/signals">Open Signals</a>}>No rules fired at the last close. The gate is doing its job.</EmptyState>
+      </section>}
+
+      <div className="t-capture"><CaptureModule source="tripwire-today" /></div>
       {scr.data && <p className="mute small tfoot">{scr.data.count} companies in the screen · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>{fresh ? '' : '. Picks are starting points, not recommendations.'}</p>}
+      <IdentityFooter />
     </div>
   </div>;
 }

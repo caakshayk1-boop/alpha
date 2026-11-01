@@ -8,14 +8,16 @@ import { CURRENT_RULES, rulesDef } from '../rules.ts';
 import { TREND_RULE_TEXT } from '../screen.ts';
 import { POLICY_FROM, STYLES, TARGETS_BACKFILL_ON } from '../exits.ts';
 import { dayWord } from '../fmt.ts';
+import { CaptureModule, IdentityFooter } from './capture.tsx';
+import { Card, SectionHeader } from '../components/index.ts';
 
 /** Methodology and evidence: the long explanations that used to sit inside cards, in one place, read from the same constants the app computes with
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
 export function Methodology() {
   const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES); const scr = useJson<ScreenFeed>('/data/screen.json'); const gap = scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on).breadthGap : null;
-  return <div>
+  return <div className="read meth">
     <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />
-    <div className="note info"><b>Paper only, and experimental.</b> Nothing here is advice and no order is ever placed. A pick is a starting point for your own research; a rank is a position among eligible names, not a chance of winning.</div>
+    <div className="note info"><b>Paper only, and experimental.</b> Tripwire is a research tool: it places no orders and gives no advice. Nothing here is advice and no order is ever placed. A pick is a starting point for your own research; a rank is a position among eligible names, not a chance of winning.</div>
 
     <Head>Engines</Head>
     {ENGINES.filter((e) => !e.retired).map((e) => { const ev = engineEvidence(e.id, bt.data, bt.loading);
@@ -25,9 +27,10 @@ export function Methodology() {
           <p className="mute" style={{ margin: 0 }}>Idea from: {e.theory}. A published idea is not evidence that it works here; the back-test and the forward record are.</p></div></details>; })}
     {ENGINES.some((e) => e.retired) && <p className="small mute" style={{ margin: '8px 0 0' }}>Retired: {ENGINES.filter((e) => e.retired).map((e) => `${e.name} (${e.retired})`).join(', ')}. Its past record stays on file.</p>}
 
-    <Head>Who is eligible</Head>
-    <div className="card small"><p style={{ margin: '0 0 6px' }}>{rules.summary}</p><ul style={{ margin: 0, paddingLeft: 18 }}>{rules.steps.map((x) => <li key={x.id}>{x.label}</li>)}</ul>
-      <p className="mute" style={{ margin: '8px 0 0' }}>Rule version {rules.id}. A night keeps the rules it was filed under; older nights are not re-judged.</p></div>
+    <SectionHeader title="Who is eligible" description="The steps a company passes, in order, before an engine may pick it." />
+    <Card className="small"><p style={{ margin: '0 0 6px' }}>{rules.summary}</p>
+      <ol className="rulecards">{rules.steps.map((x, i) => <li key={x.id}><span className="n num" aria-hidden="true">{i + 1}</span><span>{x.label}</span></li>)}</ol>
+      <p className="mute" style={{ margin: '8px 0 0' }}>Rule version {rules.id}. A night keeps the rules it was filed under; older nights are not re-judged.</p></Card>
 
     <Head>Trend</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}><b>Uptrend:</b> {TREND_RULE_TEXT.up}.</p><p style={{ margin: '0 0 6px' }}><b>Downtrend:</b> {TREND_RULE_TEXT.down}.</p><p style={{ margin: 0 }}><b>Sideways:</b> {TREND_RULE_TEXT.mixed}. A trend describes the past and forecasts nothing.</p>
@@ -39,6 +42,11 @@ export function Methodology() {
       <p style={{ margin: '0 0 6px' }}><b>R</b> is the risk actually taken, the fill (the next session's open plus slippage) minus the stop; every target, progress marker and R figure for a position that has entered is measured from that fill, and a level shown before a pick has entered is worked from its signal close and says "at signal close".</p>
       <p style={{ margin: 0 }}><b>Note, {dayWord(TARGETS_BACKFILL_ON)} {TARGETS_BACKFILL_ON.slice(0, 4)}:</b> the ladder began with the picks filed on {dayWord(POLICY_FROM)}. On {dayWord(TARGETS_BACKFILL_ON)} it was applied, retroactively, to every earlier pick that was still open or waiting to enter, replayed bar by bar from its entry, so a target already crossed is booked on the day and at the price it filled. No multiple, engine rule or threshold changed. A position that had already closed under the old stop-and-time rule was not re-evaluated, and its target levels, where shown, are marked "reference only — predates target tracking".</p></div>
 
+    <Card className="small" aria-label="The target arithmetic, written out">
+      <p style={{ margin: '0 0 8px' }}><b>The arithmetic, in one block.</b> R is the risk taken; each target is a multiple of it, above the fill.</p>
+      <pre className="formula" tabIndex={0}>{`R         = fill - stop\n` + STYLES.map((x) => `${x.label.padEnd(9)} T1 = fill + ${x.t1} x R   T2 = fill + ${x.t2} x R   (${x.sessions})`).join('\n')}</pre>
+      <p className="mute" style={{ margin: '8px 0 0' }}>In words: Target 1 sits {STYLES.map((x) => `${x.t1} times the risk above the fill for ${x.label.toLowerCase()}`).join(', ')}. Half is booked there; the rest exits at Target 2 or at its stop. All paper.</p></Card>
+
     <Head>Prices and charts</Head>
     <div className="card small"><p style={{ margin: '0 0 6px' }}>Charts draw daily closes from Yahoo Finance, adjusted for splits and bonuses and not for dividends. Candles, volume and RSI use whole bars; when too many daily bars would be unreadable the chart draws weekly or monthly bars and says so, because thinning days would misstate each one.</p>
       <p style={{ margin: '0 0 6px' }}>The Nifty line is the index price without dividends, like the stock; both are indexed to 100 on the first day the Nifty is held. A live price is a separate print and never moves the chart.</p>
@@ -49,5 +57,7 @@ export function Methodology() {
 
     <Head>More</Head>
     <div className="card"><div className="list"><a className="li" href="#/data"><span className="grow">Data and coverage<span className="small dim" style={{ display: 'block' }}>What is in the screen and how old each figure is</span></span></a><a className="li" href="#/help"><span className="grow">How to use Tripwire</span></a></div></div>
+    <div className="t-capture"><CaptureModule source="tripwire-methodology" /></div>
+    <IdentityFooter />
   </div>;
 }
