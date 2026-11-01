@@ -139,6 +139,6 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   ok(bad.length === 0, `360, 390, 430, 768, 1024 and 1440: no horizontal page overflow ${bad.join('; ')}`); }
 
 /* ---- 11. the stack above the first result ---- */
-{ const { ctx, pg } = await mk(1280, 900); await open(pg, '?trend=up'); const y = await pg.evaluate(() => Math.round(document.querySelector('.list .li').getBoundingClientRect().top + scrollY)); ok(y < 400, `desktop: the first result starts ${y} px down (it was about 540 px)`); await ctx.close(); }
+{ const { ctx, pg } = await mk(1280, 900); await open(pg, '?trend=up'); const y = await pg.evaluate(() => Math.round(document.querySelector('.list .li').getBoundingClientRect().top + scrollY)); ok(y < 440, `desktop: the first result starts ${y} px down (it was about 540 px; limit 440 since the shell gained a status bar with a reserved freshness slot)`); await ctx.close(); }
 
 await b.close(); console.log(fails ? `\ndiscover: ${fails} failed` : '\ndiscover: all passed'); process.exit(fails ? 1 : 0);
