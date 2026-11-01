@@ -6,9 +6,22 @@
 import type { Q } from './quant.ts';
 import { CURRENT_RULES, eligibleUnder, rulesDef, rulesFor, stepsFor, type RulesId } from './rules.ts';
 import type { Row } from './screen.ts';
+import { breadthExclusion, MIN_SECTOR } from '../shared/breadthrule.js';
 
 export interface Waterfall { label: string; id: string; removed: number; left: number }
 export interface Conflict { id: string; title: string; spec: string; actual: string; /** names the elig-1 rule admitted that this test removes */ count: number; decision: string; resolvedIn: RulesId; from: string }
+/** Why the trend map (/api/breadth) counts fewer names than the screen holds, with the real numbers: each row has ONE reason (the first rule that removes it, shared/breadthrule.js,
+ *  the predicate the Worker itself applies), so the lines add up: total = counted + the four reasons. */
+export interface BreadthGap { total: number; counted: number; notLiquid: number; noShortAverage: number; no200: number; no3m: number; sectors: { k: string; screen: number; counted: number }[]; minSector: number }
+export function breadthGap(rows: readonly Row[]): BreadthGap {
+  const c = { not_liquid: 0, no_short_average: 0, no_200: 0, no_3m: 0 }; let counted = 0; const by = new Map<string, { screen: number; counted: number }>();
+  for (const r of rows) {
+    const why = breadthExclusion(r); const k = r.sector || 'Other'; const e = by.get(k) ?? { screen: 0, counted: 0 }; e.screen++; by.set(k, e);
+    if (why === null) { counted++; e.counted++; } else c[why as keyof typeof c]++;
+  }
+  const sectors = [...by.entries()].map(([k, e]) => ({ k, ...e })).sort((a, b) => b.screen - a.screen);
+  return { total: rows.length, counted, notLiquid: c.not_liquid, noShortAverage: c.no_short_average, no200: c.no_200, no3m: c.no_3m, sectors, minSector: MIN_SECTOR };
+}
 export interface UniverseReport {
   total: number; asOf: string | null; builtOn: string | null;
   tiers: { large: number; mid: number; small: number; micro: number; unknown: number };
@@ -17,6 +30,7 @@ export interface UniverseReport {
   liquid: number; notLiquid: number; withStatements: number; withAverages: number; liquidWithAverages: number;
   engineEligible: number; /** how many the previous rule version would have admitted on the same rows */ engineEligibleElig1: number; rules: RulesId; rulesFrom: string; rulesSummary: string; waterfall: Waterfall[]; financial: number;
   conflicts: Conflict[];
+  breadthGap: BreadthGap;
 }
 const n = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -37,5 +51,5 @@ export function universeReport(rows: readonly Row[], asOf: string | null, builtO
     { id: 'D3', title: 'Price floor', spec: 'The spec: priced at ₹50 or more.', actual: `elig-1 applied no floor; ${d3} engine-eligible names traded under ₹50.`, count: d3, decision: `Resolved in ${e2.id} from ${from}: price at least ₹50.`, resolvedIn: 'elig-2', from },
   ];
   return { total: rows.length, asOf, builtOn, tiers, indexSized: tiers.large + tiers.mid + tiers.small, liquid, notLiquid: rows.length - liquid, withStatements: c((r) => r.has_stmts === true), withAverages: c(hasAvg),
-    liquidWithAverages: c((r) => r.liquid === true && hasAvg(r)), engineEligible: left, engineEligibleElig1: v1.length, rules, rulesFrom: rulesDef(rules).from, rulesSummary: rulesDef(rules).summary, waterfall, financial: c((r) => r.sector === 'Financial Services'), conflicts };
+    liquidWithAverages: c((r) => r.liquid === true && hasAvg(r)), engineEligible: left, engineEligibleElig1: v1.length, rules, rulesFrom: rulesDef(rules).from, rulesSummary: rulesDef(rules).summary, waterfall, financial: c((r) => r.sector === 'Financial Services'), conflicts, breadthGap: breadthGap(rows) };
 }

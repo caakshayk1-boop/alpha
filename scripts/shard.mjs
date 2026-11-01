@@ -59,7 +59,7 @@ async function main() {
   // breadth inputs, as of the screen build), read by /api/live (worker) and lib/live.ts. Sorted, so the Worker's two halves
   // are stable between requests.
   const uni = screen.rows.filter((r) => SYM.test(r.sym)).map((r) => [r.sym, r.sector ?? '', r.name ?? r.sym, Number.isFinite(r.sma200) ? r.sma200 : null, Number.isFinite(r.high52) ? r.high52 : null]).sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  writeFileSync('public/universe.json', JSON.stringify({ built_on: screen.built_on, as_of: screen.breadth?.as_of ?? null, count: uni.length, rows: uni }));
+  writeFileSync('public/universe.json', JSON.stringify({ built_on: screen.built_on, built_at: screen.built_at ?? null, as_of: screen.breadth?.as_of ?? null, count: uni.length, rows: uni }));
   console.log(`shard: universe.json with ${uni.length} symbols`);
   // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.
   const slug = (sym) => sym.replace(/&/g, '_');

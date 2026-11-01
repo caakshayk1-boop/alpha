@@ -216,3 +216,28 @@ print("rsi sheet: matches the shared golden vectors; to-date periods; no last cl
 _Cn = _np.vstack([_C, _np.full((1, 3), _np.nan)]); _dn = _pd.bdate_range("2025-01-01", periods=len(_Cn))
 _sn = _rsi_sheet(_dn, ["A", "B", "C"], _Cn, "x"); assert set(_sn["rows"]) == {"A", "B"} and _sn["as_of"] == str(_dn[-2].date()), "a trailing row with no prices is not a session"
 print("rsi sheet: an unfinished trailing session is ignored")
+
+# ---- the sheets under a thin last session (30 Oct 2026: /api/rsi served ONE row, /api/factors a universe of 0) ----
+from indicators import settled_rows, settle_panel
+import study as _study, tempfile as _tf
+_N = 40; _T = 330; _dd = _pd.bdate_range(end="2026-10-30", periods=_T); _r2 = _np.random.default_rng(11)
+_Cb = _np.column_stack([100 * _np.cumprod(1 + _r2.normal(0.0005, 0.012, _T)) for _ in range(_N)]); _Vb = _np.full((_T, _N), 5e6)
+_Cb[-1, 1:] = _np.nan          # the last row exists for the index, and ONE name has a close on it; every other name has not printed yet
+assert settled_rows(_Cb) == _T - 1, "a row only one name has printed is not settled"
+_bad = _rsi_sheet(_dd, [f"S{i}" for i in range(_N)], _Cb, "x")
+assert len(_bad["rows"]) == _N and _bad["as_of"] == str(_dd[-2].date()), (len(_bad["rows"]), _bad["as_of"])   # was: 1 row, as of the thin day
+_pn = Panel(_dd.to_numpy("datetime64[D]"), [f"S{i}" for i in range(_N)], _Cb, _Cb, _Cb, _Cb, _Vb, _Cb[:, 0]); _ps = settle_panel(_pn)
+_sh = fx.sheet(_ps, str(_ps.dates[-1])[:10]); assert _sh["universe"] > 0 and len(_sh["rows"]) == _sh["universe"], _sh["universe"]   # was: universe 0
+assert fx.sheet(_pn, "x")["universe"] <= 1, "the unsettled panel is exactly the 30 Oct failure (one name on the last row, everyone else out): this is what the guard removes"
+# the sheet has the screen's size: every expected name (liquid, not micro) is in it, within 5%
+_scr = [{"sym": f"S{i}", "liquid": i % 10 != 0, "tier": "micro" if i % 7 == 0 else "large"} for i in range(_N)]
+_exp = len(_study.panel_symbols(_scr)); assert 0 < _exp < _N
+_ok, _why = _study.publishable(len(_bad["rows"]), _exp, "2026-10-29", _pl.Path("/nonexistent/rsi.json")); assert _ok
+_ok, _why = _study.publishable(1, 650, "2026-10-29", _pl.Path("/nonexistent/rsi.json")); assert not _ok and "650" in _why, _why
+_td = _pl.Path(_tf.mkdtemp()); (_td / "rsi.json").write_text(_json.dumps({"as_of": "2026-10-30", "rows": {f"S{i}": [1, 2, 3] for i in range(651)}}))
+assert not _study.publishable(395, 400, "2026-10-30", _td / "rsi.json")[0], "a thinner sheet never replaces a fuller one of the same day"
+assert _study.publishable(640, 650, "2026-10-30", _td / "rsi.json")[0]
+(_td / "f.json").write_text(_json.dumps({"as_of": "2026-10-30", "universe": 526}))
+assert not _study.publishable_factors({"universe": 0, "as_of": "2026-10-30"}, _td / "f.json")[0] and not _study.publishable_factors({"universe": 341, "as_of": "2026-10-30"}, _td / "f.json")[0]
+assert _study.publishable_factors({"universe": 520, "as_of": "2026-10-30"}, _td / "f.json")[0]
+print("sheets: a thin last session no longer yields one RSI row or a factor universe of 0; a thin or empty sheet is never written over a good one")
