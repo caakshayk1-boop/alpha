@@ -10,6 +10,7 @@ import { eligibilityOf, isFinancialSector, meaningful, type MetricId } from '../
 import { cr, dash, inr, initials, isNum, pct, x1 } from '../fmt.ts';
 import { saveCompare } from '../store.ts';
 import type { Company } from '../data.ts';
+import { tradeoffs, type TradeoffLine } from '../charts/index.ts';
 
 type View = 'overview' | 'growth' | 'profit' | 'value' | 'balance' | 'risk';
 type Line = { live?: 'px' | 'ch'; label: string; get: (c: Company) => number | null | undefined | string; fmt: (v: never) => string; best?: 'high' | 'low'; metric?: MetricId };
@@ -56,7 +57,7 @@ function Picker({ syms }: { syms: string[] }) {
     return (t.length >= 2 ? ok : ok.sort((a, b) => (b.turnover_cr ?? 0) - (a.turnover_cr ?? 0))).slice(0, 6);
   }, [rows, q, syms.join()]);   // eslint-disable-line react-hooks/exhaustive-deps
   if (syms.length >= 3) return null;
-  return <div className="card" style={{ marginBottom: 10 }}>
+  const body = <div className="card" style={{ marginBottom: 10 }}>
     <label className="l" htmlFor="cmp-add" style={{ marginTop: 0 }}>{syms.length < 2 ? `Compare ${syms[0] ?? 'a company'} with…` : 'Add a third company'}</label>
     <input id="cmp-add" className="field" type="search" placeholder="Company or symbol" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
     {scr.loading && <div className="sk" style={{ height: 40, marginTop: 8 }} />}
@@ -64,6 +65,8 @@ function Picker({ syms }: { syms: string[] }) {
     <div className="list">{list.map((r) => <button key={r.sym} className="pick-row" onClick={() => { setSyms([...syms, r.sym]); setQ(''); }}>
       <span className="avatar" aria-hidden="true">{initials(r.sym)}</span><span className="grow" style={{ minWidth: 0 }}><span className="sym" style={{ display: 'block' }}>{r.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>{r.name}</span></span><span className="tag lime">Add</span></button>)}
       {q.trim().length >= 2 && !list.length && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”.</p>}</div></div>;
+  // with one name chosen the search IS the page; with two, a third is a compact control that opens on demand
+  return syms.length < 2 ? body : <details className="cmp-add"><summary>+ Add a third company</summary>{body}</details>;
 }
 
 export function Compare({ syms }: { syms: string[] }) {
@@ -76,10 +79,11 @@ export function Compare({ syms }: { syms: string[] }) {
   return <div>
     <PageBar title="Compare" onBack sub={syms.join(' · ') || undefined} />
     {syms.length > 0 && <div className="cchips" role="list" aria-label="Companies being compared">{syms.map((x) => <span key={x} role="listitem" className="cchip">{x}<button aria-label={`Remove ${x} from the comparison`} onClick={() => setSyms(syms.filter((y) => y !== x))}>×</button></span>)}</div>}
-    <Picker syms={syms} />
+    {syms.length < 2 && <Picker syms={syms} />}
     {syms.length < 2 ? <Empty title={syms.length ? `Add one more to compare with ${syms[0]}` : 'Pick two companies'}>Search above, or take a peer from the same sector. Up to three. You can also tick the compare button on rows in Discover.</Empty> : <>
       {Object.entries(errs).filter(([, e]) => e).map(([k, e]) => <Failed key={k} what={k} err={e} retry={() => location.reload()} />)}
       <CompareChart syms={syms} />
+      <div style={{ marginTop: 12 }}><Picker syms={syms} /></div>
       <div className="chips" role="group" aria-label="Comparison view" style={{ margin: '12px 0 10px' }}>{(Object.keys(VIEWS) as View[]).map((id) => <button key={id} className="chip" aria-pressed={view === id} onClick={() => setView(id)}>{VIEWS[id].label}</button>)}</div>
       {!ready ? <div className="card"><div className="sk" style={{ height: 120 }} /></div> : <div className="card cmp" style={{ padding: '0 14px 6px' }}><table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
         <thead><tr><th className="s" scope="col" style={{ width: '34%' }}><span className="sr">Measure</span></th>{cs.map((c) => <th key={c!.sym} className="s" scope="col"><a href={`#/c/${c!.sym}`}>{c!.sym}</a></th>)}</tr></thead>
@@ -87,13 +91,23 @@ export function Compare({ syms }: { syms: string[] }) {
           const vals = cs.map((c) => { if (ln.metric) { const e = eligibilityOf(c!.row, c!.years); if (!meaningful(e, ln.metric)) return { v: null as null, why: `not meaningful: ${e.metrics[ln.metric].reason}` }; } const lp = ln.live ? livePrice(c!.row, quotes[c!.sym]) : null; const v = lp ? (ln.live === 'px' ? lp.px : lp.ch) : ln.get(c!); return { v: v === undefined || v === '' ? null : v, why: 'not reported' }; });
           const nums = vals.map((x) => (isNum(x.v) ? x.v : null)); const meas = nums.filter(isNum);
           const top = ln.best && meas.length > 1 ? (ln.best === 'high' ? Math.max(...meas) : Math.min(...meas)) : null;
-          return <tr key={ln.label}><td>{ln.label}</td>{vals.map((x, i) => <td key={i} className="num" style={isNum(top) && nums[i] === top ? { color: 'var(--lime)', fontWeight: 700 } : undefined}>{x.v === null ? <span className="mute small">{x.why}</span> : (ln.fmt as (v: unknown) => string)(x.v)}</td>)}</tr>;
+          return <tr key={ln.label}><td>{ln.label}</td>{vals.map((x, i) => <td key={i} className="num" style={isNum(top) && nums[i] === top ? { color: 'var(--lime)', fontWeight: 700 } : undefined}>{isNum(top) && nums[i] === top ? <span aria-label={ln.best === 'high' ? 'highest: ' : 'lowest: '}>{ln.best === 'high' ? '▲ ' : '▼ '}</span> : null}{x.v === null ? <span className="mute small">{x.why}</span> : (ln.fmt as (v: unknown) => string)(x.v)}</td>)}</tr>;
         })}</tbody></table></div>}
-      {ready && <p className="small dim" style={{ marginTop: 10 }}>{diffs(cs as Company[])} Highlighted figures are the highest or lowest among those measured. They are not a verdict: they carry different risks.</p>}
+      {ready && <p className="small dim" style={{ marginTop: 10 }}>{diffs(cs as Company[])} Figures marked ▲ are the highest and ▼ the lowest among those measured. They are not a verdict: they carry different risks.</p>}
+      {ready && <p className="small cmp-trade" data-tradeoffs><b>Trade-offs on the measured figures.</b> {tradeoffsOf(cs as Company[], syms).sentence}</p>}
       <div className="row" style={{ marginTop: 14 }}>
         <button className="btn grow" disabled={saved} onClick={() => { setState((x) => saveCompare(x, syms)); toast('Comparison saved to My Desk'); }}>{saved ? 'Saved' : 'Save comparison'}</button>
       </div></>}
   </div>;
+}
+/** Where each name is ahead on the rows that have a direction, across every view. No total, no ranking. */
+function tradeoffsOf(cs: Company[], syms: string[]) {
+  const lines: TradeoffLine[] = [];
+  for (const g of Object.values(VIEWS)) for (const ln of g.lines) {
+    if (!ln.best) continue;
+    lines.push({ group: g.label, label: ln.label.replace(/ \(pts\)$/, '').replace(/^Against the Nifty, 3m$/, 'strength against the Nifty (3m)').toLowerCase(), best: ln.best, vals: cs.map((c) => { if (ln.metric && !meaningful(eligibilityOf(c.row, c.years), ln.metric)) return { id: c.sym, v: null }; const v = ln.get(c); return { id: c.sym, v: isNum(v) ? v : null }; }) });
+  }
+  return tradeoffs(lines, syms);
 }
 function diffs(cs: Company[]): string {
   const best = (f: (c: Company) => number | null | undefined, hi = true) => { const m = cs.map((c) => ({ s: c.sym, v: f(c) })).filter((x) => isNum(x.v)) as { s: string; v: number }[]; if (m.length < 2) return null; return m.sort((a, b) => (hi ? b.v - a.v : a.v - b.v))[0]; };

@@ -9,7 +9,7 @@ export interface Version { at: string; thesis: string; support: string; counter:
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
-export interface Prefs { motion: 'auto' | 'off'; /** 2 = the owner's 27 Oct decision: motion is OFF unless the person turns it on. A device saved before that is moved to off once. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number }
+export interface Prefs { motion: 'auto' | 'off'; /** 2 = the owner's 27 Oct decision: motion is OFF unless the person turns it on. A device saved before that is moved to off once. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
@@ -153,6 +153,7 @@ function checkPrefs(raw: unknown): Prefs {
   if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
   out.interests = Array.isArray(p.interests) ? p.interests.filter(isStr) : D.interests;
   if (p.motionV !== 2) { out.motion = 'off'; out.motionV = 2; }   // 27 Oct decision (PR #41): a backup from before it is moved to off once, as an ordinary load is
+    if (p.chart !== undefined) { const c = p.chart as Record<string, unknown>; if (!isObj(p.chart) || (c.range !== undefined && !['1Y', '3Y', '5Y', '10Y', 'Max'].includes(String(c.range))) || (c.vs !== undefined && typeof c.vs !== 'boolean')) delete out.chart; }
     if (p.hideAmounts !== undefined && typeof p.hideAmounts !== 'boolean') delete out.hideAmounts; if (p.theme !== undefined && !isStr(p.theme)) delete out.theme;
   return out as unknown as Prefs;
 }
