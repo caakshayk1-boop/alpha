@@ -2,9 +2,9 @@
 // recording rule), layout at six widths, sticky-bar clearance, keyboard use, and layout shift on a throttled first load. AUTOMATED checks, not user research.
 // Usage: node apps/tripwire/tests/today.mjs [baseUrl]
 import { chromium } from 'playwright';
-import { STATE, mockApi } from './fixtures.mjs';
+import { STATE, mockApi, SCREEN_DAY } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
-const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;   // the served screen's own day, never a literal
+// SCREEN_DAY comes from the frozen fixture the mocks serve (fixtures.mjs)   // the served screen's own day, never a literal
 const DAYWORD = new Date(SCREEN_DAY + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', '');
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();

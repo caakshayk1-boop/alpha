@@ -1,6 +1,7 @@
 // Browser journeys against the served build (default http://localhost:8801). Prints PASS/FAIL per step and exits 1 on any FAIL.
 // Usage: node apps/tripwire/tests/journey.mjs [baseUrl] [shotDir]
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
 import { mockLab } from './labmock.mjs';
@@ -16,7 +17,9 @@ if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env
 const now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 const mq = (prev, px) => quote(prev, px);
-const SCREEN_DAY = (await (await fetch(base + '/data/screen.json')).json()).as_of;      // the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
+// the suites run on a FROZEN copy of the published screen (see fixtures.mjs); the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
+const SCREEN_JSON = readFileSync(new URL('./fixtures/screen-2026-10-26.json', import.meta.url), 'utf8'); const SCREEN_DAY = JSON.parse(SCREEN_JSON).as_of;
+await ctx.route('**/data/screen.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: SCREEN_JSON }));
 const T = await mockTick(ctx, { pulse: { NIFTY: quote(24000, 24120), BANKNIFTY: quote(52000, 51800), VIX: quote(14, 14.6) }, macro: { GOLD: mq(2600, 2650.5), SILVER: mq(30, 31.2), BRENT: mq(80, 79.1), WTI: mq(76, 75.2), USDINR: mq(88.2, 88.5), MYRINR: mq(20.1, 20.2), USDMYR: mq(4.4, 4.38), BTC: mq(67000, 68000) }, breadth: { ok: true, t: Date.now(), as_of: SCREEN_DAY, n: 100, up: 40, mixed: 40, down: 20, sectors: [{ k: 'Industrials', n: 202, up: 60, down: 10 }, { k: 'Consumer Cyclical', n: 155, up: 35, down: 40 }, { k: 'Financial Services', n: 130, up: 45, down: 20 }], repriced: 12, near: 30 } });
 await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: '2026-10-23', order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66], INFY: [48, 52, null] } }) }));
 await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: '2026-10-23', universe: 700, rows: { TCS: { mom12_1: 80, smooth_fip: 70, eff_ratio60: 20, resid_mom: 55, max5: 90, overnight60: 10 } }, study: { mom12_1: { adopt: false, kind: 'common baseline' }, smooth_fip: { adopt: false, kind: 'candidate' }, eff_ratio60: { adopt: false, kind: 'candidate' }, resid_mom: { adopt: false, kind: 'candidate' }, max5: { adopt: false, kind: 'candidate' }, overnight60: { adopt: false, kind: 'candidate' } } }) }));
@@ -75,7 +78,7 @@ ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) >
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.brief-ix');
 
 // the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
-const scr = await (await fetch(base + '/data/screen.json')).json();
+const scr = JSON.parse(SCREEN_JSON);
 const grades = scr.rows.reduce((a, r) => { a[String(r.risk_lvl)] = (a[String(r.risk_lvl)] ?? 0) + 1; return a; }, {});
 ok(Object.keys(grades).every((g) => ['LOW', 'MEDIUM', 'HIGH', 'undefined'].includes(g)) && grades.LOW > 0 && grades.MEDIUM > 0 && grades.HIGH > 0, `every risk grade is LOW, MEDIUM or HIGH (${JSON.stringify(grades)})`);
 

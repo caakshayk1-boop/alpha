@@ -1,12 +1,17 @@
 // Shared fixtures for screenshots and beta checks: one saved state and one set of API mocks, so before/after pictures differ only in the app.
 import { mockTick } from './tickmock.mjs';
 import { mockNews } from './newsmock.mjs';
+import { readFileSync } from 'node:fs';
+/** The browser suites run on a FROZEN copy of the published screen (26 Oct 2026), never the night's live one: several checks name real companies (TCS is above its 200-day, GCSL is a Momentum pick), and a new nightly screen changes who is a pick and who crossed what. The live data is validated by the build (scripts/shard.mjs), not by these tests. */
+const SCREEN_FIXTURE = readFileSync(new URL('./fixtures/screen-2026-10-26.json', import.meta.url), 'utf8');
+export const SCREEN_DAY = JSON.parse(SCREEN_FIXTURE).as_of;
 export const STATE = { v: 1, follows: ['TCS', 'GCSL'], plans: [], compares: [], screens: [], snaps: {}, onboarded: true, reviews: [],
   paper: [{ id: 'pp1', sym: 'TCS', engine: 'MOM', asOf: '2026-10-23', ref: 2530, stop: 2400, horizon: 20, qty: 10, takenAt: 1792000000 }],
   prefs: { motion: 'auto', motionV: 2, haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
   entries: [{ id: 'x1', sym: 'TCS', created: '2026-10-01T00:00:00Z', archived: false, versions: [{ at: '2026-10-01T00:00:00Z', thesis: 'Seed thesis', support: 'Steady compounder', counter: 'Slow growth', decision: 'watch', invalidation: 'Close below 2,400', trigger: '', reviewOn: '2026-10-10' }] }] };
 export const quoteOf = (prev, px, seed = 1) => { const now = Math.floor(Date.now() / 1000); return { t: Array.from({ length: 40 }, (_, i) => now - (40 - i) * 300), c: Array.from({ length: 40 }, (_, i) => +(prev + (px - prev) * (i / 39) + Math.sin(i / 3 + seed) * prev * 0.002).toFixed(2)), px, pt: now - 20, prev, live: true }; };
 export async function mockApi(ctx) {
+  await ctx.route('**/data/screen.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: SCREEN_FIXTURE }));
   const q = quoteOf;
   const T = await mockTick(ctx, { pulse: { NIFTY: q(22600, 22910.4, 1), BANKNIFTY: q(54287, 54830, 2), VIX: q(16.86, 16.1, 3) },
     macro: { GOLD: q(4310, 4388.6, 4), SILVER: q(52, 54.9, 5), BRENT: q(79.4, 78.1, 6), WTI: q(75.9, 74.8, 7), USDINR: q(88.2, 88.5, 8), MYRINR: q(20.1, 20.24, 9), USDMYR: q(4.4, 4.372, 10), BTC: q(67000, 69420, 11) },
