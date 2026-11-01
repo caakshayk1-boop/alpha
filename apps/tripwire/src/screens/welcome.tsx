@@ -1,29 +1,31 @@
-import { useState } from 'react';
-import { setState } from '../app.tsx';
+import { useMemo, useState } from 'react';
+import { go, setState } from '../app.tsx';
+import { useScreen } from '../data.ts';
 import { Icon } from '../ui.tsx';
 
+/** First use: choose ONE company, read its case and countercase on the company page, optionally save a thought there. Nothing is followed for the person.
+ *  Skip and the guest door both leave with nothing chosen. The company list is the real screen, never a made-up example. */
 export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
-  const [step, setStep] = useState(0);
-  const finish = (h?: string) => setState((x) => ({ ...x, onboarded: true, prefs: { ...x.prefs, horizon: h ?? x.prefs.horizon } }));
+  const scr = useScreen(); const [q, setQ] = useState('');
+  const t = q.trim().toLowerCase();
+  const hits = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 6)), [t, scr.data]);
+  const leave = () => setState((x) => ({ ...x, onboarded: true }));
+  const choose = (sym: string) => { go(`/c/${encodeURIComponent(sym)}?first=1`); leave(); };
   return <div className="welcome">
     {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore as a guest, then import a backup from Profile to restore your notes.</div>}
     <div className="k">Tripwire</div>
-    {step === 0 ? <>
-      <h1>See what <em className="ed">fired</em>.<br />Decide what matters.</h1>
-      <p className="dim" style={{ fontSize: '0.9688rem', margin: 0 }}>Public rules, run on the last close. The case and the countercase side by side. Your own decisions, with the date you promised to review them.</p>
-      <div className="pts">
-        <div><Icon n="signals" /><span>A screen over listed Indian companies, two experimental ranking engines, and the case and countercase for every name. Nothing here is a recommendation.</span></div>
-        <div><Icon n="note" /><span>Follow a name, write why and what would make you wrong, size a paper plan, set a date to look again. Your journal keeps every version.</span></div>
-        <div><Icon n="lock" /><span>No account needed. Your notes stay on this device.</span></div>
-      </div>
-      <button className="btn pri" style={{ height: 54 }} onClick={() => setStep(1)}>Continue</button>
-      <button className="btn" onClick={() => finish()}>Explore as a guest</button>
-    </> : <>
-      <h1>How long do you <em className="ed">hold</em>?</h1>
-      <p className="dim" style={{ margin: 0 }}>Optional. It only changes which wording Tripwire leads with. You can change or skip it any time in Profile.</p>
-      <div className="pts">{['Days to weeks', 'Months', 'Years'].map((h) => <button key={h} className="btn" style={{ justifyContent: 'flex-start', height: 54 }} onClick={() => finish(h)}>{h}</button>)}</div>
-      <button className="btn" onClick={() => finish()}>Skip</button>
-    </>}
-    <p className="mute small" style={{ margin: 0 }}>Paper analysis only. Not investment advice. No order is ever placed.</p>
+    <h1>Start with one company.</h1>
+    <p className="dim" style={{ fontSize: '0.9688rem', margin: 0 }}>Search a listed Indian company to read the case and the countercase side by side. A screen over listed companies and two experimental ranking engines. Nothing here is a recommendation, and nothing is followed for you.</p>
+    <form className="wl-find" role="search" onSubmit={(e) => { e.preventDefault(); if (hits[0]) choose(hits[0].sym); }}>
+      <label className="l" htmlFor="wl-q">Company name or symbol</label>
+      <div className="search"><Icon n="search" /><input id="wl-q" className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="For example TCS or Infosys" autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
+      {scr.loading && <p className="small dim" style={{ margin: '8px 0 0' }}>Reading the company list…</p>}
+      {scr.err && <p className="small down" role="alert" style={{ margin: '8px 0 0' }}>The company list could not be loaded ({scr.err}). You can still explore as a guest and search later.</p>}
+      <p className="sr" role="status" aria-live="polite">{t && scr.data ? `${hits.length} ${hits.length === 1 ? 'company matches' : 'companies match'}` : ''}</p>
+      {hits.length > 0 && <div className="list wl-hits">{hits.map((r) => <button type="button" key={r.sym} className="li" style={{ textAlign: 'left' }} onClick={() => choose(r.sym)}><span className="avatar" aria-hidden="true">{r.sym.slice(0, 2)}</span><span className="grow"><b>{r.sym}</b><span className="dim small trunc" style={{ display: 'block' }}>{r.name}{r.sector ? ` · ${r.sector}` : ''}</span></span></button>)}</div>}
+      {t && scr.data && hits.length === 0 && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”. Search covers the Nifty 500 screen only.</p>}
+    </form>
+    <div className="wl-out"><button className="btn" onClick={leave}>Skip</button><button className="btn" onClick={leave}>Explore as a guest</button></div>
+    <p className="mute small" style={{ margin: 0 }}>No account needed. Notes stay on this device. Paper analysis only: not investment advice, and no order is ever placed.</p>
   </div>;
 }

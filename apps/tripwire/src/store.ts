@@ -21,6 +21,8 @@ export interface State {
   inbox?: SeenChange[];
   /** change id to the time the user dismissed it. Reversible: removing the key restores the item. Optional. */
   dismissed?: Record<string, string>;
+  /** True once the one-line "your notes stay on this device, here is the backup" has been shown at a first save. Optional: absent in every state saved before 28 Oct 2026. */
+  storageNote?: boolean;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
   prefs: { motion: 'off', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
@@ -174,7 +176,7 @@ export function checkBackup(text: string): BackupCheck {
   const inbox = Array.isArray(d.inbox) ? (d.inbox as unknown[]).filter((c): c is SeenChange => isObj(c) && isStr(c.id) && isStr(c.sym) && isStr(c.curAt)) : [];
   const dismissed: Record<string, string> = {}; if (isObj(d.dismissed)) for (const [k, v] of Object.entries(d.dismissed)) if (isStr(v)) dismissed[k] = v;
   // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
-  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs) } };
+  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs), ...(d.storageNote ? { storageNote: true } : {}) } };
 }
 export function parseState(text: string): State | null { const c = checkBackup(text); return c.ok ? c.state : null; }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
@@ -192,6 +194,7 @@ export function mergeStates(a: State, b: State): State {
     seen: (() => { const out: NonNullable<State['seen']> = { ...(a.seen ?? {}) }; for (const [sym, list] of Object.entries(b.seen ?? {})) { const m = new Map((out[sym] ?? []).map((x) => [x.at, x])); for (const x of list) if (!m.has(x.at)) m.set(x.at, x); out[sym] = [...m.values()].sort((p, q) => p.at.localeCompare(q.at)).slice(-5); } return out; })(),
     inbox: (() => { const m = new Map((a.inbox ?? []).map((c) => [c.id, c])); for (const c of b.inbox ?? []) if (!m.has(c.id)) m.set(c.id, c); return [...m.values()].sort((p, q) => q.curAt.localeCompare(p.curAt)).slice(0, 50); })(),
     dismissed: { ...(b.dismissed ?? {}), ...(a.dismissed ?? {}) },
+    ...(a.storageNote || b.storageNote ? { storageNote: true } : {}),
     // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
     prefs: JSON.stringify(a.prefs) === JSON.stringify(DEFAULTS.prefs) || JSON.stringify({ ...a.prefs, haptics: true }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
 }

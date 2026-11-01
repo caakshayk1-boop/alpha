@@ -9,7 +9,7 @@ import { ACTIVE, ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
 import { useBacktest, usePulse } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
-import { journeyOf } from '../journey.ts';
+import { isNewUser } from '../home.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
 import { useAutoBook, useLiveBook } from '../book.ts';
 import { useMacro, MACRO, fmtMacro } from '../macro.ts';
@@ -37,7 +37,8 @@ export function Today() {
   const s = useAppState(); const { open } = useSheets();
   const { scr, out } = useEngines();
   const rows = useMemo(() => scr.data?.rows ?? [], [scr.data]); const day = scr.data?.as_of ?? null; const fr = freshness(day); const today = istDay();
-  const pulse = usePulse(true); const book = useLiveBook(true); const auto = useAutoBook(true); const macro = useMacro();
+  const fresh = isNewUser(s);   // a new user gets the setup card and the brief; the book, picks, news and changes need something of theirs to be about
+  const pulse = usePulse(true); const book = useLiveBook(!fresh); const auto = useAutoBook(!fresh); const macro = useMacro();
   const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null;
   const sess = sessionNow(Date.now(), anyLive); const live = sess.phase === 'open' && !!anyLive;
   const t = useTrendSummary(rows, day, true);
@@ -54,8 +55,10 @@ export function Today() {
   const openN = (showAuto ? auto.sum.open : 0) + ownOpen.length; const pnl = (showAuto ? auto.sum.openPnl : 0) + ownPnl;
   const autoState = (p: { sym: string; engine: string; asOf: string }) => dupOf(p) ? 'in' : auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf)?.why ? 'no' : 'wait';
   const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score); const shownPicks = allPicks.slice(0, TOP);
-  const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, pickSyms.length > 0);
-  const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading); const jr = journeyOf(s, today);
+  const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
+  const hasChanges = s.follows.length > 0 || needs;
+  const hold = !fresh && s.follows.length > 0 && scr.loading;   // what changed leads, so nothing is drawn beneath it until it can be: content that arrives above moves what is already there   // returning users read what changed before the market
+  const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
   const macroLine = ['GOLD', 'BRENT', 'USDINR'].map((k) => MACRO.find((d) => d.key === k)).filter((d): d is NonNullable<typeof d> => !!d).map((d) => { const q = macro.data?.quotes[d.key]; return q ? { k: d.label, v: fmtMacro(d, q.px), ch: (q.px / q.prev - 1) * 100 } : null; }).filter(Boolean) as { k: string; v: string; ch: number | null }[];
@@ -63,37 +66,42 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
+      {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
+      {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
+        <h2 id="t-setup" className="sec">Start with one company</h2>
+        <p className="dim" style={{ margin: '6px 0 12px' }}>Search a listed company, read the case and the countercase side by side, and save a thought if you want to. Nothing is followed for you.</p>
+        <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button>
+      </section>}
+
+      {/* the followed companies: what changed, and what is due. Rendered only when there is something it can be about. */}
+      {!fresh && hasChanges && <div className="tsec tchg" data-sec="changes">
+        {scr.loading && s.follows.length > 0 && <Loading what="the market read" />}
+        {scr.err && <Failed what="the market data" err={scr.err} retry={scr.retry} />}
+        {scr.data && s.follows.length > 0 && <SinceVisit rows={rows} day={day} today={today} />}
+        {scr.data && needs && <section className="needs" aria-labelledby="t-needs"><h2 id="t-needs" className="sec">Due for review</h2><div className="card" style={{ padding: '2px 14px' }}><div className="list">
+          {reviews.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left', width: '100%' }} onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="tag peach">{reviewDue(e) === 'overdue' ? 'Overdue' : 'Today'}</span><span className="grow"><span className="sym">{e.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>Review: {current(e).trigger || current(e).thesis}</span></span></button>)}
+          {events.map((r) => <a key={r.sym} className="li" href={`#/c/${r.sym}`}><span className="tag">{dayWord(r.next_earnings)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="dim small" style={{ display: 'block' }}>Results, estimated date</span></span></a>)}
+        </div></div></section>}
+      </div>}
+
       {/* (a) the market, in a paragraph of measured facts, with its freshness stated */}
-      <section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
+      {!hold && <section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
         <p className="brief-text" data-brief>{lines.length ? lines.join(' ') : scr.loading ? 'Reading the market…' : 'No market figures are available right now.'}</p>
         <div className="brief-ix num" role="list" aria-label="Indices">
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.word}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a> · <a href="#/data">Data and coverage</a></p>
-      </section>
+        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <span className={`tag ${fr.tone}`}>{fr.word}</span> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
+      </section>}
 
       {/* (b) what matters now */}
-      <section className="tsec tnews" aria-label="What matters now" data-sec="news">
+      {!fresh && !hold && <section className="tsec tnews" aria-label="What matters now" data-sec="news">
         <div className="newsslot">{late && <WhatMattersNowSlot syms={s.follows} />}</div>
-      </section>
-
-      {/* (c) the followed companies: what changed, and what is due */}
-      <div className="tsec tchg" data-sec="changes">
-        {scr.loading && <Loading what="the market read" />}
-        {scr.err && <Failed what="the market data" err={scr.err} retry={scr.retry} />}
-        {scr.data && s.follows.length > 0 && <SinceVisit rows={rows} day={day} today={today} />}
-        {scr.data && s.follows.length === 0 && <section aria-labelledby="sv-h"><h2 id="sv-h" className="sec">Since your last visit</h2>
-          <div className="guest card"><p style={{ margin: 0 }}>Follow companies in Discover to see changes here.</p><p className="small dim" style={{ margin: '6px 0 12px' }}>Changes in the names you follow, and thesis reviews that fall due, are collected here. Nothing is followed for you.</p><a className="btn pri" href="#/discover">Open Discover</a></div></section>}
-        {scr.data && needs && <section className="needs" aria-labelledby="t-needs"><h2 id="t-needs" className="sec">Due for review</h2><div className="card" style={{ padding: '2px 14px' }}><div className="list">
-          {reviews.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left', width: '100%' }} onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="tag peach">{reviewDue(e) === 'overdue' ? 'Overdue' : 'Today'}</span><span className="grow"><span className="sym">{e.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>Review: {current(e).trigger || current(e).thesis}</span></span></button>)}
-          {events.map((r) => <a key={r.sym} className="li" href={`#/c/${r.sym}`}><span className="tag">{dayWord(r.next_earnings)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="dim small" style={{ display: 'block' }}>Results, estimated date</span></span></a>)}
-        </div></div></section>}
-      </div>
+      </section>}
 
       {/* (d) the paper book, one card */}
-      {scr.data && (showAuto || ownRows.length > 0) && <section className="tsec tbook" aria-labelledby="t-book" data-sec="book">
+      {!fresh && scr.data && (showAuto || ownRows.length > 0) && <section className="tsec tbook" aria-labelledby="t-book" data-sec="book">
         <h2 id="t-book" className="sec">Paper book</h2>
         <div className="card bookcard">
           <div className="row between" style={{ alignItems: 'flex-start' }}>
@@ -105,7 +113,7 @@ export function Today() {
       </section>}
 
       {/* (e) the last close's picks, compact */}
-      {scr.data && allPicks.length > 0 && <section className="tsec tpicks" aria-labelledby="t-picks" data-sec="picks">
+      {!fresh && scr.data && allPicks.length > 0 && <section className="tsec tpicks" aria-labelledby="t-picks" data-sec="picks">
         <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="row small" style={{ gap: 6 }}><span className={`tag ${fr.tone}`} title="How old the screen these picks came from is, by the exchange calendar">{fr.word}</span><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span></div>
         <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
@@ -120,13 +128,7 @@ export function Today() {
           <a className="btn sm picks-all" href="#/signals">{allPicks.length > TOP ? `All ${allPicks.length} picks in Signals` : 'Open Signals'}</a></div>
       </section>}
 
-      {scr.data && jr.next && <section className="tsec card journey" aria-label="Your first steps" data-sec="journey">
-        <div className="row between"><span className="k">Your path · {jr.done} of 4</span><span className="small mute">follow, think, size, review</span></div>
-        <ol className="jsteps">{jr.steps.map((x) => <li key={x.id} className={x.done ? 'done' : x.id === jr.next!.id ? 'now' : ''} aria-current={x.id === jr.next!.id ? 'step' : undefined}><span className="jn" aria-hidden="true">{x.done ? '✓' : x.n}</span><span className="jt">{x.title}</span></li>)}</ol>
-        <p className="small dim" style={{ margin: '8px 0 10px' }}>{jr.next.why}</p>
-        <button className="btn pri" onClick={() => { const n = jr.next!; if (n.id === 'follow' || !jr.sym) go('/discover'); else if (n.id === 'plan') open({ k: 'plan', sym: jr.sym }); else open({ k: 'thesis', sym: jr.sym, id: s.entries.find((e) => e.sym === jr.sym && !e.archived)?.id }); }}>{jr.next.id === 'follow' ? 'Find a name to follow' : jr.next.id === 'thesis' ? `Write why you like ${jr.sym ?? 'it'}` : jr.next.id === 'plan' ? `Size a plan for ${jr.sym}` : 'Set a review date'}</button></section>}
-
-      {scr.data && <p className="mute small tfoot">Screen: close of {dayWord(day)} ({fr.word.toLowerCase()}) · {scr.data.count} companies · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>. Picks are starting points, not recommendations.</p>}
+      {scr.data && <p className="mute small tfoot">{scr.data.count} companies in the screen · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>{fresh ? '' : '. Picks are starting points, not recommendations.'}</p>}
     </div>
   </div>;
 }

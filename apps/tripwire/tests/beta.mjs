@@ -18,10 +18,9 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1');
   const w = await text(pg);
   ok(!/Ten plain rules|Nifty 500 names/.test(w) && /two experimental ranking engines/.test(w), 'the welcome screen states what the product is, with no claim the data does not back');
-  await pg.getByRole('button', { name: 'Explore as a guest' }).click(); await pg.waitForSelector('.journey');
-  ok(/Your path · 0 of 4/i.test(await text(pg)) && /Follow a name/i.test(await pg.locator('.journey li.now').innerText()), 'Today starts a new user on step 1 of 4: follow a name');
-  await pg.getByRole('button', { name: 'Find a name to follow' }).click(); await pg.waitForSelector('input.field[type=search]');
-  await pg.getByLabel('Search companies').fill('GCSL'); await pg.waitForTimeout(250); await pg.locator('.li a[href="#/c/GCSL"]').first().click(); await pg.waitForSelector('.decision', { timeout: 15000 });
+  await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('button', { name: /GCSL/ }).first().click(); await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
+  ok(!(await saved(pg)).follows.length, 'choosing a company during first use does not follow it');
+  await pg.getByRole('button', { name: 'Not now' }).click(); await pg.waitForSelector('.decision', { timeout: 15000 });
   await pg.locator('.decision .dqd summary').click();   // data quality sits behind its own control now, with the count of notes on the summary
   const d = await pg.locator('.decision').innerText();
   for (const k of ['Why it surfaced', 'Strongest counterargument', 'Evidence status', 'Data quality', 'Invalidation', 'Next review']) ok(new RegExp(k, 'i').test(d), `the decision summary answers "${k}"`);
@@ -50,7 +49,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   ok(/If it opens 2% higher/.test(await pg.locator('.sheet').innerText()), 'the planner shows what a higher open does to the planned risk');
   await pg.getByRole('button', { name: 'Save plan' }).click(); await pg.waitForTimeout(500);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief');
-  ok((await pg.locator('.journey').count()) === 0, 'all four steps done: the path card is gone from Today');
+  ok((await pg.locator('.journey').count()) === 0 && (await pg.locator('[data-sec="setup"]').count()) === 0, 'a returning user has neither the path card nor the setup card on Today');
   ok(errs.length === 0, 'no script errors through the whole journey' + (errs.length ? ': ' + errs[0] : ''));
   // closing the browser and opening it again: the saved state travels in the profile, and the journal, follow and plan are still there
   const profile = await ctx.storageState(); await ctx.close();
