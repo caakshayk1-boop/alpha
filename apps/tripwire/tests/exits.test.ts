@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluatePaper, type Bar, type Paper } from '../src/tracker.ts';
 import { takenAtFor } from '../src/ledger.ts';
-import { targetsFor, styleOf, STYLES, POLICY_FROM } from '../src/exits.ts';
+import { targetsFor, targetBasis, styleOf, STYLES, POLICY_FROM, TARGETS_BACKFILL_ON } from '../src/exits.ts';
 
 const day = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000 - 19800 + 9 * 3600 + 15 * 60;
 const bar = (iso: string, o: number, h: number, l: number, c: number, forming = false): Bar => ({ t: day(iso), o, h, l, c, forming });
@@ -51,11 +51,15 @@ test('ladder: without targets the original stop-and-time rule is unchanged', () 
   const v = evaluatePaper(P({ targets: null }), [sig, d1, bar('2026-10-27', 101, 120, 100.5, 119)], null, COST);
   assert.equal(v.status, 'open'); assert.equal(v.ladder, undefined);
 });
-test('styles: the holding period picks the sleeve and the ladder; picks filed before the policy keep the old rule', () => {
+test('styles: the holding period picks the sleeve and the ladder; an earlier pick gets it too while unfinished (backfill), and keeps the old rule once finished', () => {
   assert.deepEqual([styleOf(5), styleOf(10), styleOf(11), styleOf(30), styleOf(31), styleOf(60)], ['short', 'short', 'swing', 'swing', 'long', 'long']);
   assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 5 }), { style: 'short', t1R: 1, t2R: 2 });
   assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 20 }), { style: 'swing', t1R: 1.5, t2R: 3 });
   assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 60 }), { style: 'long', t1R: 2, t2R: 4 });
-  assert.equal(targetsFor({ asOf: '2026-10-26', horizon: 20 }), null);
+  assert.equal(TARGETS_BACKFILL_ON, '2026-11-01');
+  assert.deepEqual(targetsFor({ asOf: '2026-10-26', horizon: 20 }), { style: 'swing', t1R: 1.5, t2R: 3 }, 'an unfinished earlier pick trades the ladder');
+  assert.equal(targetsFor({ asOf: '2026-10-26', horizon: 20 }, true), null, 'a finished earlier pick is never re-evaluated');
+  assert.deepEqual(targetsFor({ asOf: POLICY_FROM, horizon: 20 }, true), { style: 'swing', t1R: 1.5, t2R: 3 });
+  assert.deepEqual([targetBasis({ asOf: '2026-10-27' }, false), targetBasis({ asOf: '2026-10-26' }, false), targetBasis({ asOf: '2026-10-26' }, true)], ['filed', 'backfilled', 'reference']);
   assert.equal(STYLES.length, 3);
 });
