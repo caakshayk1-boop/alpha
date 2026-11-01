@@ -26,7 +26,7 @@
 .cf-basis{margin:var(--sp-3) 0 0}
 .cf-sk{height:200px}
 .c-end{position:absolute;right:2px;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;padding:1px 4px;border-radius:var(--sp-1);background:var(--surface);font-size:var(--fs-label);line-height:1.2;color:var(--ink);pointer-events:none;white-space:nowrap;z-index:1}
-.c-end svg{flex:none}
+.chart-plot .c-end svg{flex:none;width:12px;height:12px;overflow:visible}
 .c-tip{position:absolute;top:4px;z-index:2;padding:var(--sp-1) var(--sp-2);border-radius:var(--sp-2);background:var(--surface-3);border:1px solid var(--line-2);font-size:var(--fs-label);line-height:1.35;color:var(--ink);pointer-events:none;white-space:nowrap}
 .c-adv{margin-top:var(--sp-3)}
 .c-adv>summary{min-height:var(--hit);display:flex;align-items:center;cursor:pointer;color:var(--ink-2);font-size:var(--fs-data)}

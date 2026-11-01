@@ -35,7 +35,7 @@ for (const w of [390, 1280]) {
   const tenY = pg.locator('[role=radiogroup][aria-label="Range"] [role=radio]', { hasText: '10Y' });
   ok((await tenY.isDisabled()) && /^10Y: only 1[34] months of history$/.test((await tenY.getAttribute('aria-label')) ?? ''), `10Y is disabled and says why (${await tenY.getAttribute('aria-label')})`);
   ok(/only 1[34] months of history/.test(await pg.locator('.chart').innerText()), 'the same reason is printed under the controls');
-  await radio(pg, 'Range', 'MAX').click(); await radio(pg, 'Range', 'MAX').focus(); await pg.keyboard.press('ArrowLeft');   // 1 Nov 2026: start from MAX explicitly, the default is now 1Y
+  await radio(pg, 'Range', 'MAX').click(); await radio(pg, 'Range', 'MAX').focus(); await pg.keyboard.press('ArrowLeft'); /* 1 Nov 2026: start from MAX explicitly, the default is now 1Y */
   ok((await pg.evaluate(() => document.activeElement.textContent)) === '1Y' || (await pg.evaluate(() => document.activeElement.textContent)) === '3Y' || (await pg.evaluate(() => document.activeElement.textContent)) === '5Y', 'ArrowLeft from MAX moves to the previous enabled range, skipping the disabled ones');
   const act = await pg.evaluate(() => document.activeElement.textContent); ok((await radio(pg, 'Range', act).getAttribute('aria-checked')) === 'true', 'the arrow key also chooses it (aria-checked follows focus)');
   await pg.keyboard.press('End'); ok((await pg.evaluate(() => document.activeElement.textContent)) === 'MAX', 'End goes to the last range');
@@ -101,7 +101,7 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
   const ctx = await newCtx(b, w, ohlcSeries(1500, 'TCS')); const pg = await ctx.newPage(); const bad = [];
   for (const r of ['/#/today', '/#/c/TCS', '/#/profile', '/#/methodology', '/#/help', '/#/ops']) { await open(pg, r); const o = await pg.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: innerWidth })); if (o.sw > o.iw + 1) bad.push(`${r} ${o.sw}>${o.iw}`); }
   ok(bad.length === 0, `${w}px: no horizontal overflow${bad.length ? ' (' + bad.join(', ') + ')' : ''}`);
-  if (w === 360 || w === 1440) { await open(pg, '/#/c/TCS', '.c-prim');   // 1 Nov 2026: .c-bar is folded under Chart options until open() unfolds it const ov = await pg.evaluate(() => { const bars = [...document.querySelectorAll('.c-bar > *')].map((e) => e.getBoundingClientRect()); const hits = []; for (let i = 0; i < bars.length; i++) for (let j = i + 1; j < bars.length; j++) { const a = bars[i], c = bars[j]; if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) hits.push([i, j]); } return hits.length; }); ok(ov === 0, `${w}px: the chart control groups do not overlap each other`); }
+  if (w === 360 || w === 1440) { await open(pg, '/#/c/TCS', '.c-prim' /* 1 Nov 2026: .c-bar is folded under Chart options until open() unfolds it */); const ov = await pg.evaluate(() => { const bars = [...document.querySelectorAll('.c-bar > *')].map((e) => e.getBoundingClientRect()); const hits = []; for (let i = 0; i < bars.length; i++) for (let j = i + 1; j < bars.length; j++) { const a = bars[i], c = bars[j]; if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) hits.push([i, j]); } return hits.length; }); ok(ov === 0, `${w}px: the chart control groups do not overlap each other`); }
   await ctx.close(); }
 
 /* 9. a sheet restores focus when it closes (Escape, the close button) and closes on Escape */
@@ -117,13 +117,14 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
 /* 10. the 30-second company read, the counterargument first-class, ownership and same-sector wording */
 { const ctx = await newCtx(b, 390, ohlcSeries(300, 'GCSL')); const pg = await ctx.newPage(); await open(pg, '/#/c/GCSL', '.decision');
   const top = await pg.evaluate(() => { const d = document.querySelector('.decision'); const lab = (t) => [...d.querySelectorAll('.dk')].find((e) => e.textContent === t); const y = (e) => (e ? e.getBoundingClientRect().top + scrollY : 9e9); return { counter: y(lab('Strongest counterargument')), inval: y(lab('Invalidation')), evid: y(lab('Evidence status')), btn: y(d.querySelector('.nextstep .btn')), price: y(document.querySelector('.roll')) }; });
-  ok(top.counter < 1100 && top.inval < 1300 && top.evid < 1300 && top.btn < 1400 && top.price < 300, `price, counterargument, evidence, invalidation and one primary action sit in the first screens (${Math.round(top.counter)}, ${Math.round(top.inval)}, ${Math.round(top.btn)})`);
+  // 1 Nov 2026: the principal chart (about 1,000px on a phone, with its takeaway and controls) now sits ABOVE the decision summary, so these depths moved down by about that much; the order is chart, then summary
+  ok(top.counter < 2200 && top.inval < 2400 && top.evid < 2400 && top.btn < 2500 && top.price < 300, `price, counterargument, evidence, invalidation and one primary action sit in the first screens (${Math.round(top.counter)}, ${Math.round(top.inval)}, ${Math.round(top.btn)})`);
   ok((await pg.locator('.decision .nextstep .btn.pri').count()) === 1, 'one primary action'); ok(!/Why it surfaced/.test(await pg.locator('.decision').evaluate((e) => [...e.querySelectorAll('.dk')].filter((x) => x.checkVisibility({ contentVisibilityAuto: true })).map((x) => x.textContent).join())), 'why it surfaced, next review and data quality sit behind a control');
   ok(/Experimental|Old data/.test(await pg.locator('.decision > .row').first().innerText()) || true, 'warnings sit in the summary header');
   const t = await pg.locator('body').innerText(); ok(/Same sector/.test(t) && /Similar measured patterns/.test(t) && !/Stocks like this/.test(t), 'peers are split into "Same sector" and "Similar measured patterns"; the cross-sector list is no longer "Stocks like this"');
   ok(!/\b1 companies\b|statement-based line s|repeated line s/.test(t), 'no broken plurals on the company page');
   await ctx.close();
-  const c2 = await newCtx(b, 390, ohlcSeries(300, 'PETRONET')); const p2 = await c2.newPage(); await open(p2, '/#/c/PETRONET', '.decision');
+  const c2 = await newCtx(b, 390, ohlcSeries(300, 'PETRONET')); const p2 = await c2.newPage(); await open(p2, '/#/c/PETRONET', '.decision'); await p2.getByRole('tab', { name: 'Ownership', exact: true }).click();   // ownership has its own section since 1 Nov 2026
   const own = await p2.locator('details', { hasText: 'Who owns it' }).first().innerText(); ok(/Institutions/.test(own) && /Other public holders/.test(own) && /worked out/.test(own) && /Nested because/.test(own), 'PETRONET ownership is drawn nested, with the derived line marked and the basis stated'); await c2.close(); }
 
 await b.close(); console.log(fails ? `\nui: ${fails} failed` : '\nui: all passed'); process.exit(fails ? 1 : 0);
