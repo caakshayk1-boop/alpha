@@ -10,6 +10,7 @@ import { Head, Loading, Failed, PageBar } from './common.tsx';
 import { fmtIst } from '../stamp.ts';
 import { useNewsHealth } from '../news.ts';
 import { CALENDAR, calendarNote } from '../calendar.ts';
+import { BreadthGapText, BreadthGapTable } from './gapnote.tsx';
 
 const N = (v: number) => v.toLocaleString('en-IN');
 interface RunStamp { id: string; when?: string; git: string; data: { first_day: string; last_day: string; sessions: number; symbols: number }; code: { hash: string }; changes: string[]; previous: string | null }
@@ -57,6 +58,9 @@ export function DataPage() {
       <tr><td>With financial statements</td><td className="num" style={{ textAlign: 'right' }}>{N(u.withStatements)} of {N(u.total)}</td></tr>
       <tr><td>Financial sector (statement ratios not judged)</td><td className="num" style={{ textAlign: 'right' }}>{N(u.financial)}</td></tr></tbody></table>
       <p className="small dim" style={{ margin: '8px 0 10px' }}>{N(u.liquid - u.liquidWithAverages)} liquid names have no 200-day average yet (recent listings), so the trend map counts {N(u.liquidWithAverages)}, not {N(u.liquid)}.</p></div>
+
+    <Head>Why the trend map counts fewer names than the screen</Head>
+    <div className="card" style={{ padding: '10px 14px' }}><p className="small" style={{ margin: '0 0 8px' }}><BreadthGapText g={u.breadthGap} /></p><BreadthGapTable g={u.breadthGap} /></div>
 
     <Head>The eligibility rule, by version</Head>
     <div className="card" style={{ padding: '10px 14px' }}>

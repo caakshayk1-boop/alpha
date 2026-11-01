@@ -9,6 +9,7 @@ import { buildRegistry } from './news/entities.js';
 import { parseFeed } from './news/feed.js';
 import { FEEDS, QUERY_SCHEMA } from './news/config.js';
 import { ALIASES } from './news/aliases.js';
+import { inBreadth, MIN_SECTOR } from './shared/breadthrule.js';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
 const MAX = 30;                              // symbols a call may ask for (list quotes, the paper books): one Yahoo call each, cached 60 s (quotes) or 5 min (bars)
 const MAX_QUOTES = MAX;
@@ -204,11 +205,11 @@ export function trendOfRow(price, sma20, sma50, sma200, r3m) {
 export function aggregateBreadth(rows, live = {}) {
   const c = { up: 0, mixed: 0, down: 0 }; const by = new Map();
   for (const r of rows) {
-    if (!r.liquid) continue; const lp = live[r.sym]; const t = trendOfRow(lp ?? r.price, r.sma20, r.sma50, r.sma200, lp != null && r.price > 0 && typeof r.r3m === 'number' ? ((lp / r.price) * (1 + r.r3m / 100) - 1) * 100 : r.r3m); if (!t) continue;
+    if (!inBreadth(r)) continue; const lp = live[r.sym]; const t = trendOfRow(lp ?? r.price, r.sma20, r.sma50, r.sma200, lp != null && r.price > 0 && typeof r.r3m === 'number' ? ((lp / r.price) * (1 + r.r3m / 100) - 1) * 100 : r.r3m); if (!t) continue;
     c[t]++; const k = r.sector || 'Other'; const e = by.get(k) ?? { n: 0, up: 0, down: 0 }; e.n++; if (t === 'up') e.up++; if (t === 'down') e.down++; by.set(k, e);
   }
   const n = c.up + c.mixed + c.down;
-  const sectors = [...by.entries()].filter(([, e]) => e.n >= 8).map(([k, e]) => ({ k, n: e.n, up: Math.round((e.up / e.n) * 1000) / 10, down: Math.round((e.down / e.n) * 1000) / 10 })).sort((a, b) => b.n - a.n);
+  const sectors = [...by.entries()].filter(([, e]) => e.n >= MIN_SECTOR).map(([k, e]) => ({ k, n: e.n, up: Math.round((e.up / e.n) * 1000) / 10, down: Math.round((e.down / e.n) * 1000) / 10 })).sort((a, b) => b.n - a.n);
   return { n, ...c, sectors };
 }
 // GET /api/breadth -> { ok, t, as_of, n, up, mixed, down, sectors:[{k,n,up,down}], repriced, near }. Only a name within 8% of its 50-day average can change class in a
@@ -218,7 +219,7 @@ async function breadth(request, env, ctx) {
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=30, s-maxage=60' } });
     const scr = await (await env.ASSETS.fetch(new Request(new URL('/data/screen.json', request.url)))).json();
-    const rows = (scr.rows || []).filter((r) => r.liquid && r.price > 0 && r.sma20 > 0 && r.sma50 > 0 && r.sma200 > 0 && typeof r.r3m === 'number');
+    const rows = (scr.rows || []).filter(inBreadth);       // the same predicate the Data screen explains (shared/breadthrule.js)
     // only a name close to one of the lines the rule reads (the 20-day, the 50-day, or a 3-month return near zero) can change class in a day
     const near = rows.filter((r) => Math.abs(r.price / r.sma20 - 1) <= 0.06 || Math.abs(r.price / r.sma50 - 1) <= 0.08 || Math.abs(r.r3m) <= 6).slice(0, 400);
     const { out } = await sparkMany(near.map((r) => [r.sym, `${r.sym}.NS`]), ctx);
