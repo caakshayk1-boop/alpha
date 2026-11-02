@@ -105,3 +105,12 @@ test('clocks: publication and collection are separate words; an unknown publicat
   assert.equal(timeLabels({ publishedAt: '2026-10-28T06:00:00Z', firstSeenAt: null }, now).published, 'Publication time unknown', 'a future time is not shown');
   assert.equal(timeLabels({ publishedAt: null, firstSeenAt: null }, now).collected, 'Collection time unknown');
 });
+
+test('overflow outlets are not lost: moreSources survives a merge and the article count includes it (the producer keeps six links and counts the rest)', () => {
+  const six = ['p', 'q', 'r', 's', 't', 'u'].map((i) => src(i, i.toUpperCase()));
+  const big = ev('s1', 'TCS Q2 net profit rises 5%', { sources: six, moreSources: 9 });   // 10 outlets in all, six links kept
+  const live = ev('l1', 'Tata Consultancy Services Q2 profit up 5%', { sourceId: 'b', sources: [src('b', 'B')] });
+  const m = mergePools([big], [live]); assert.equal(m.length, 1);
+  assert.ok(m[0].moreSources >= 9, 'the snapshot event already knew of ten outlets; the merged total is never below that');
+  assert.equal(newsCounts([big]).articles, 10, 'ten outlets are ten articles, not six');
+});

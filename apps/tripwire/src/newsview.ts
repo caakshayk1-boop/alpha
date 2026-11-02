@@ -75,7 +75,7 @@ export function mergeCoverage(a: NewsEvent, b: NewsEvent): NewsEvent {
   const times = [a.publishedAt, b.publishedAt].filter((x): x is string => ms(x) != null).sort(); const upd = [a.updatedAt, b.updatedAt].filter((x): x is string => ms(x) != null).sort();
   const seenEnt = new Map<string, NewsEntity>(); for (const x of [...a.entities, ...b.entities]) { const k = x.sym ?? x.name ?? ''; const o = seenEnt.get(k); if (!o || x.confidence > o.confidence) seenEnt.set(k, x); }
   const kept = sources.slice(0, LIMITS.sourcesPerEvent);
-  return { ...first, eventClusterId: a.eventClusterId, sources: kept, moreSources: Math.max(0, sources.length - 1), publishedAt: times[0] ?? null, updatedAt: upd[upd.length - 1] ?? first.updatedAt,
+  return { ...first, eventClusterId: a.eventClusterId, sources: kept, moreSources: Math.max(0, sources.length - 1, a.moreSources, b.moreSources),   /* each input's own total is a floor the capped links cannot show; the merged total is never below any of them */ publishedAt: times[0] ?? null, updatedAt: upd[upd.length - 1] ?? first.updatedAt,
     firstSeenAt: [a.firstSeenAt, b.firstSeenAt].filter((x): x is string => !!x).sort()[0] ?? null, entities: [...seenEnt.values()].sort((x, y) => y.confidence - x.confidence), todayEligible: a.todayEligible || b.todayEligible,
     qualityFlags: [...new Set([...a.qualityFlags, ...b.qualityFlags])], rank: a.rank ?? b.rank, relevanceScore: Math.max(a.relevanceScore ?? 0, b.relevanceScore ?? 0) };
 }
@@ -136,7 +136,7 @@ export interface NewsCounts { events: number; articles: number; companies: numbe
 export function newsCounts(events: readonly NewsEvent[]): NewsCounts {
   const cos = new Set<string>(); let articles = 0, market = 0;
   for (const e of events) {
-    articles += Math.max(1, e.sources.length); if (isMarket(e)) market++;
+    articles += Math.max(1, e.sources.length, (e.moreSources ?? 0) + 1);   /* the producer keeps six links and counts the rest in moreSources */ if (isMarket(e)) market++;
     for (const x of e.entities) { const k = x.sym ?? x.name; if (k) cos.add(k); }
   }
   return { events: events.length, articles, companies: cos.size, marketEvents: market };
