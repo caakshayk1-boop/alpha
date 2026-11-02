@@ -21,3 +21,7 @@ export async function newCtx(browser, width, series, extra = {}) {
   return ctx;
 }
 export { chromium, STATE };
+
+/** 1 Nov 2026: Detail, Style, Scale and the overlays live in the "Chart options" bottom sheet. These open and close it; the sheet is modal, so close it before touching the range or the chart. */
+export async function openOptions(pg) { if (await pg.locator('.sheet').count()) return; await pg.getByRole('button', { name: /^Chart options/ }).click(); await pg.waitForSelector('.sheet'); }
+export async function closeOptions(pg) { if (!(await pg.locator('.sheet').count())) return; await pg.keyboard.press('Escape'); await pg.waitForSelector('.sheet', { state: 'detached' }); await pg.waitForTimeout(80); }

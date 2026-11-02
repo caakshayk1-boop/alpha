@@ -142,7 +142,7 @@ await pg.getByRole('button', { name: /^Add to comparison: INFY/ }).first().click
 await pg.getByLabel('Search companies').fill('tata consultancy'); await pg.waitForTimeout(150);
 await pg.getByRole('button', { name: /^Add to comparison: TCS/ }).first().click();
 await pg.getByRole('button', { name: /Compare 2/ }).click();
-await pg.waitForSelector('table.tbl'); await pg.waitForTimeout(500);
+await pg.waitForSelector('.cmp table.tbl'); await pg.waitForTimeout(500);
 ok((await pg.locator('th.s').allInnerTexts()).join('|').replace(/\s+/g, '') .includes('INFY') , 'compare shows both companies as column headings');
 await shot('03-compare');
 await pg.getByRole('button', { name: 'Save comparison' }).click();
@@ -152,17 +152,20 @@ ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view
 
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
-ok(/Case and countercase/i.test(t) && /Countercase/i.test(t), 'company page has case and countercase');
+// 1 Nov 2026 (charts work): the company page is split into Overview / Financials / Ownership / Risks / Thesis, so each check below opens the section that now holds it
+const tab = (n) => pg.getByRole('tab', { name: n, exact: true }).click();
 await pg.getByText('Why this trend').click();   // the four-rule calculation now sits behind this control, not in the overview
 ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(await text()), 'the company page tags its trend and, behind "Why this trend", shows the averages behind it');
-ok(/Who owns it/i.test(t) && /Seasonality/i.test(t) && /Risk map/i.test(t), 'the company page carries ownership, seasonality and a risk map');
+ok(/Seasonality/i.test(await text()), 'the company page carries seasonality (Overview)');
+await tab('Ownership'); ok(/Who owns it/i.test(await text()), 'the Ownership section carries who owns it');
+await tab('Risks'); { const tr = await text(); ok(/Case and countercase/i.test(tr) && /Countercase/i.test(tr), 'the Risks section has the case and countercase'); ok(/Risk map/i.test(tr), 'the Risks section carries a risk map'); }
 await pg.waitForSelector('text=Indicator fingerprint', { timeout: 10000 });
 await pg.locator('summary', { hasText: 'Indicator fingerprint' }).click();
 ok(/did not pass the study/.test(await text()) && /description, not as a signal/.test(await text()), 'the indicator fingerprint says which indicators failed the study');
 ok((await pg.locator('a[href*="tradingview.com/chart"]').count()) >= 2, 'the company page links to TradingView');
 ok(!/Not a live quote|delayed/i.test(t) && /Live price not available|Live|Last price/.test(t), 'the company price does not call itself delayed or not live: it is live, or says a live price is not available');
-await pg.waitForSelector('.nw-company'); ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
-ok(/Close of /.test(t), 'company price carries its date');
+await tab('Overview'); await pg.waitForSelector('.nw-company'); ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
+ok(/Close of /.test(t), 'company price carries its date');   // t was read before the tab changes, and the header is on every tab
 // a live quote from today replaces the published close, and says when it printed
 T.stock = (s) => (s === 'TCS' ? quote(2500, 2600) : null);
 await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(500);
@@ -172,7 +175,7 @@ T.stock = null;
 // GCSL, the name that exposed it: a live print beyond the published 52-week high must move the high, and a financial-sector name must not show a margin the page says it withholds
 T.stock = (s) => (s === 'GCSL' ? quote(726, 100000) : null);
 await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(400);
-ok(/a new 52-week high/.test(await text()) && /· live/.test(await text()) && /at the live price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price');
+{ const ov = await text(); await tab('Financials'); ok(/a new 52-week high/.test(ov) && /· (live|last traded)/.test(ov) && /at the (live|last traded) price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price'); }   // the range is on Overview, the PE on Financials since 1 Nov 2026
 ok(!/Net margin/.test(await text()) && /withheld for this company/.test(await text()), 'GCSL: the page that says margins are withheld for a financial-sector name does not print one');
 T.stock = null;
 
@@ -181,25 +184,31 @@ const series = () => { const t = [], c = []; let d = Date.UTC(2014, 0, 1, 4) / 1
 const feedBody = JSON.stringify(series());
 await pg.route('**/api/chart*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: feedBody }));
 await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
-ok(/Last 10 years/i.test(await text()) && /a year/.test(await text()), 'chart opens on ten years and states the period return and the yearly rate');
+// 1 Nov 2026: a new reader starts on one year, stock against the Nifty 50 (a saved choice wins), instead of ten years of price
+ok(/Last year/i.test(await text()) && /against the Nifty/i.test(await text()) && /Relative to the Nifty 50/.test(await text()), 'chart opens on one year against the Nifty and separates the absolute change from the relative one');
+await pg.getByRole('radio', { name: /^price$/i }).click(); await pg.getByRole('radio', { name: '10Y', exact: true }).click();
+ok(/Last 10 years/i.test(await text()) && /a year/.test(await text()), 'ten years states the period return and the yearly rate');
+// 2 Nov 2026: interval, style, scale and the overlays are in the Chart options bottom sheet; it is modal, so it is closed again before the range or the chart is touched
+const opts = async () => { await pg.getByRole('button', { name: /^Chart options/ }).click(); await pg.waitForSelector('.sheet'); };
+const closeOpts = async () => { await pg.keyboard.press('Escape'); await pg.waitForSelector('.sheet', { state: 'detached' }); };
 const d0 = await pg.locator('.chart-plot path.c-line').getAttribute('d');
 await pg.getByRole('radio', { name: /^max$/i }).click();
 ok(/Since listing in this data/i.test(await text()), 'Max shows everything held and says it starts at listing');
 await pg.getByRole('radio', { name: '1Y', exact: true }).click();
 ok(/Last year/i.test(await text()) && (await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== d0, 'switching range redraws the line');
 await pg.getByRole('radio', { name: '5Y', exact: true }).click();
-await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
+await opts(); await pg.getByRole('checkbox', { name: /50 and 200-day averages/ }).check(); await pg.getByRole('checkbox', { name: /Drawdown from the running peak/ }).check(); await closeOpts();
 ok(await pg.locator('.chart-plot path.c-ma').count() === 2 && /Drawdown from the running peak/i.test(await pg.locator('.chart').innerText()) && /50-day/.test(await pg.locator('.chart').innerText()), 'the chart can overlay the 50 and 200-day averages and a drawdown panel, with a key');
-await pg.getByRole('button', { name: /^MA 50\/200$/i }).click(); await pg.getByRole('button', { name: /^drawdown$/i }).click();
+await opts(); await pg.getByRole('checkbox', { name: /50 and 200-day averages/ }).uncheck(); await pg.getByRole('checkbox', { name: /Drawdown from the running peak/ }).uncheck(); await closeOpts();
 ok(await pg.locator('.chart-plot path.c-ma').count() === 0, 'the overlays switch off again');
 const daily = await pg.locator('.chart-plot path.c-line').getAttribute('d');
-await pg.getByRole('radio', { name: 'Monthly' }).click();
+await opts(); await pg.getByRole('radio', { name: 'Monthly' }).click(); await closeOpts();
 ok((await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== daily && /[A-Z][a-z]{2} 20\d\d/.test(await pg.locator('.chart').innerText()), 'monthly view uses month-end closes and month labels');
-await pg.getByRole('radio', { name: 'Log' }).click();
-ok(await pg.getByRole('radio', { name: 'Log' }).getAttribute('aria-checked') === 'true', 'log scale can be switched on');
+await opts(); await pg.getByRole('radio', { name: 'Log' }).click();
+ok(await pg.getByRole('radio', { name: 'Log' }).getAttribute('aria-checked') === 'true', 'log scale can be switched on'); await closeOpts();
 await pg.getByRole('radio', { name: 'vs Nifty' }).click();
 ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.chart-plot path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
-ok(/both indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
+ok(/indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded(); const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2); await pg.waitForTimeout(150);
 ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');
 await pg.getByRole('radio', { name: /^price$/i }).click();
@@ -216,7 +225,7 @@ await shot('04b-chart');
 await pg.goto(base + '/#/m/GOLD'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 }); await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 await pg.getByText('About this chart').first().click();
 ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('radio', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
-await pg.getByRole('radio', { name: 'Log' }).click(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
+await opts(); await pg.getByRole('radio', { name: 'Log' }).click(); await closeOpts(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');
 // compare starting from a single company: it asks for the second one instead of dead-ending
 // Compare pairs a followed company with another followed one when there is one, so this step starts from a single follow
@@ -224,7 +233,7 @@ await pg.evaluate(() => { const k = 'tripwire:v1'; const st = JSON.parse(localSt
 await pg.goto(base + '/#/c/TCS'); await pg.reload(); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row').getByRole('button', { name: /Compare/ }).click();
 await pg.waitForSelector('#cmp-add'); ok(/Compare TCS with/.test(await text()), 'Compare from a company page asks which company to put beside it');
 await pg.locator('#cmp-add').fill('infosys'); await pg.locator('.pick-row', { hasText: 'INFY' }).first().click();
-await pg.waitForSelector('table.tbl'); await pg.waitForSelector('.cchart svg path');
+await pg.waitForSelector('.cmp table.tbl'); await pg.waitForSelector('.cchart svg path');
 ok(await pg.locator('.cchip').count() === 2 && await pg.locator('.cchart svg path').count() >= 2 && /indexed to 100/.test(await text()), 'the comparison draws both stocks on one indexed chart with a table beneath');
 await pg.getByRole('button', { name: 'Remove INFY from the comparison' }).click(); await pg.waitForSelector('text=Add one more to compare with TCS'); ok(true, 'a name can be removed from the comparison');
 await pg.unroute('**/api/chart*'); await pg.route('**/api/chart*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
