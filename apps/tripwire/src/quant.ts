@@ -12,7 +12,7 @@
  *  Missing data is never a pass. Ranks are percentiles inside the eligible set, not probabilities. */
 import type { Row } from './screen.ts';
 import { CURRENT_RULES, eligibleUnder, rulesFor, stepsFor, type RulesId } from './rules.ts';
-import { isFinancialSector, eligibilityOf, riskGradeOf, topicOf } from './eligibility.ts';
+import { isFinancialSector, eligibilityOf, riskGradeOf, topicOf, RISK_NAME } from './eligibility.ts';
 
 export type EngineId = 'MOM' | 'QLT' | 'LVT';
 export type Q = Row & { r6m?: number | null; r1y?: number | null; sd1y?: number | null; atr_pct?: number | null; piotroski?: number | null; mf?: { rank?: number; of?: number } | null };
@@ -107,7 +107,7 @@ function pickRisk(r: Q): string | null {
   const el = eligibilityOf(r); const g = riskGradeOf(r, el);
   if (el.financial) return 'Risk grade not applied: it is built from ratios that do not apply to financial-sector companies.';
   if (r.risk_top) { const tp = topicOf({ t: r.risk_top, k: '' }); if (!tp.metric || el.metrics[tp.metric].ok) return r.risk_top; }
-  return g.level ? `Screen risk grade ${g.level}.${g.note ? ` ${g.note}` : ''}` : null;
+  return g.level ? `${RISK_NAME} ${g.level} (a count of screen flags, not a safety rating).${g.note ? ` ${g.note}` : ''}` : null;
 }
 function pickFlags(r: Q): string[] {
   const out: string[] = []; const el = eligibilityOf(r);

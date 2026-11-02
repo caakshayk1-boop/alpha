@@ -94,7 +94,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.locator('.chart-plot').focus(); const before = await pg.locator('.chart-plot').getAttribute('aria-valuetext');
   await pg.keyboard.press('ArrowLeft'); await pg.keyboard.press('ArrowLeft'); const after = await pg.locator('.chart-plot').getAttribute('aria-valuetext');
   ok(before !== after && /₹|\d/.test(after ?? ''), 'the chart can be read with the arrow keys, and says what each position is');
-  ok((await pg.locator('details', { hasText: 'The same chart as a table' }).count()) === 1, 'the chart has a table alternative');
+  ok((await pg.locator('details', { hasText: 'The same chart as a table' }).count()) === 1, 'the chart has a table alternative' /* a disclosure under the chart (owner, 2 Nov 2026) */); await pg.locator('.chart-plot').focus(); await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one
   const ring = await pg.evaluate(() => { const e = document.querySelector('.chart-plot'); const c = getComputedStyle(e); return c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) >= 2; });
   ok(ring, 'a focused control shows a visible 2px focus ring');
   await pg.keyboard.press('Control+k'); await pg.waitForSelector('.sheet'); await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
@@ -121,7 +121,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   T.pulse = { NIFTY: old(22600, 22700), BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
   await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief'); await pg.clock.runFor(20000); await pg.waitForTimeout(300);
   const t = await text(pg);
-  ok(/No print since 13:\d\d IST/.test(t) && /holiday, or the price source is quiet/.test(t), 'a 40-minute-old print in a live session is called stale, with its own time, even though the app refreshed');
+  ok(/no print since 13:\d\d IST/.test(t) && /not a listed holiday: the price source is quiet/.test(t), 'a 40-minute-old print in a live session is called stale, with its own time, even though the app refreshed');
   ok(!(await pg.locator('.brief .livebadge.on').count()), 'no LIVE badge on a stale print');
   T.pulse = { NIFTY: { ...quoteOf(22600, 22700), pt: Math.floor(NOW.getTime() / 1000) - 20, live: true }, BANKNIFTY: old(54000, 54100), VIX: old(16, 16.2) };
   await pg.clock.runFor(20000); await pg.waitForTimeout(400);
@@ -159,7 +159,7 @@ for (const [w, h] of [[360, 740], [390, 844], [430, 932], [768, 1024], [1440, 90
   ok(bad.length === 0, `${w}px: no sideways scroll on Today, Discover, a company, Signals and Data${bad.length ? ' (' + bad.join(', ') + ')' : ''}`);
   if (w === 1440) {
     await pg.goto(base + '/#/today'); await pg.waitForSelector('.today .tnews'); await pg.waitForTimeout(800);   // 27 Oct 2026: Today's two columns are a grid (news beside changes), no longer .split
-    const cols = await pg.evaluate(() => { const a = document.querySelector('.today > .tnews').getBoundingClientRect(), c = document.querySelector('.today > .tchg').getBoundingClientRect(); return Math.abs(a.top - c.top) < 4 ? [Math.round(a.width), Math.round(c.width)] : []; });
+    const cols = await pg.evaluate(() => { const a = document.querySelector('.today > .tnews'), c = document.querySelector('.today > .tchg'); /* 2 Nov 2026: layout positions (offsetTop/offsetWidth), not transformed rects: with motion on, a section below the fold sits mid scroll-reveal (translate + scale .985), which moves a rect by a few px without moving the layout */ return Math.abs(a.offsetTop - c.offsetTop) < 4 ? [a.offsetWidth, c.offsetWidth] : []; });
     ok(cols.length === 2 && cols[0] >= 340 && cols[1] >= 340, `1440px: Today is a two-column workspace (${cols.join(' + ')} px)`);
     await pg.goto(base + '/#/discover'); await pg.waitForSelector('.adv summary'); await pg.locator('.adv summary').click(); await pg.waitForSelector('.lens'); const lensW = await pg.locator('.lens').evaluateAll((e) => e.map((x) => Math.round(x.getBoundingClientRect().width)));
     ok(lensW.length === 5 && lensW.every((x) => x > 150) && (await pg.locator('.li .wide').first().isVisible()), '1440px: Discover shows its five lenses side by side and a figure table on each row');

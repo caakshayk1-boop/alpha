@@ -72,3 +72,15 @@ export function hapticsNote(kind: 'vibrate' | 'ios-switch' | 'none'): string {
     'ios-switch': 'This iPhone browser reports the system switch control, which Tripwire toggles to ask for the system tap. That route is not documented by Apple and has not been verified on a real device.',
     none: 'Not supported in this browser or device, so this switch is off.' }[kind];
 }
+
+/** The one-sentence health of the services that are actually checked, for the top of Operations. Only services with a runtime check (`probe`) are counted; "not set up" and "not built" are listed apart because
+ *  they are not faults. The screen lock is a device capability, not a service, so it is not counted. "Not verified" (no check has answered yet) is its own number and is never folded into "fine" or into "needs attention". */
+export interface ServiceSummary { headline: string; detail: string; fine: number; attention: string[]; unverified: number; checked: number; notSetUp: number; notBuilt: number }
+export function serviceSummary(list: Service[], e: Evidence): ServiceSummary {
+  const probes = list.filter((v) => v.kind === 'probe' && v.id !== 'lock'); let fine = 0, unverified = 0; const attention: string[] = [];
+  for (const v of probes) { const st = serviceStatus(v, e); if (st.word === 'Not verified') unverified++; else if (st.tone === 'lime') fine++; else attention.push(v.label); }
+  const notSetUp = list.filter((v) => v.kind === 'not set up').length, notBuilt = list.filter((v) => v.kind === 'not built').length; const n = probes.length;
+  const headline = attention.length ? `${attention.length} of ${n} checked services need attention: ${attention.join(', ')}.` : unverified ? `${fine} of ${n} checked services are fine; ${unverified} not verified yet.` : `All ${n} checked services report fine.`;
+  const detail = `${notSetUp} features are not set up and ${notBuilt} are not built; they are listed below and are not counted as faults.${unverified && attention.length ? ` ${unverified} more ${unverified === 1 ? 'is' : 'are'} not verified yet.` : ''}`;
+  return { headline, detail, fine, attention, unverified, checked: n, notSetUp, notBuilt };
+}

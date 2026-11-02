@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useAutoBook } from '../book.ts';
 import { TradeCard } from './Tracker.tsx';
+import { ContributionBars } from './contribution.tsx';
+import { PnlAttribution } from './attribution.tsx';
 import { LiveBadge, Observed, Tick } from '../live.tsx';
 import { useBacktest } from '../data.ts';
-import { ACTIVE } from '../quant.ts';
+import { ACTIVE, ENGINES } from '../quant.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { Empty } from '../ui.tsx';
 import { Head, Loading } from './common.tsx';
@@ -12,6 +14,7 @@ import { dayWord } from '../fmt.ts';
 import { HitCard, ThroughPills } from '../components/index.ts';
 import { throughOf } from '../recordview.ts';
 
+const engineName = (id: string) => ENGINES.find((e) => e.id === id)?.name ?? id;
 const sgn = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const R = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`;
 
@@ -37,7 +40,7 @@ export function AutoBook() {
     <ThroughPills through={ledgerNow ? throughOf(ledgerNow, Date.now()) : null} />
     <div className="note" style={{ margin: '0 0 10px' }}><b>Experimental.</b> This book takes every pick of engines that have not passed their tests. {evHead ? `${evHead} ` : ''}Its P&L is a record of an experiment, not a track record.</div>
     <div className="card glass">
-      <div className="row between"><LiveBadge live={live} label={live ? 'LIVE' : b.session.label} /><span className="small mute">{b.session.detail}</span></div>
+      <div className="row between"><LiveBadge live={b.priceWord === 'Live'} label={b.priceWord ?? 'Checking prices'} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
         <div><div className="k">Open P&L (paper)</div>
           <div className={`num amt ${openPnl > 0 ? 'up' : openPnl < 0 ? 'down' : ''}`} style={{ font: '600 2rem/1.1 var(--sans)' }}><Tick v={open.length ? openPnl : null}>{open.length ? sgn(openPnl) : '—'}</Tick></div></div>
@@ -51,9 +54,11 @@ export function AutoBook() {
       <div className="row between small dim" style={{ marginTop: 10 }}>
         <span>{open.length} open · {wait.length} waiting for an open · <span className="amt">{inr0(b.deployed)}</span> invested</span>
         <span><Observed sec={b.intra.obs} err={b.intra.err} /></span></div>
-      {open.length > 1 && <div style={{ marginTop: 10 }} aria-label="Contribution to open P&L by position">{open.slice(0, 8).map((r) => { const w = (Math.abs(r.v.pnl ?? 0) / maxAbs) * 50; const pos = (r.v.pnl ?? 0) >= 0; return <div key={r.p.id} className="contrib"><span className="sym trunc">{r.p.sym}</span><span className="bar2"><i style={{ width: `${w}%`, left: pos ? '50%' : `${50 - w}%`, background: pos ? 'var(--up)' : 'var(--down)' }} /></span><span className={`num amt ${pos ? 'up' : 'down'}`}>{sgn(r.v.pnl)}</span></div>; })}{open.length > 8 && <div className="small mute">Largest 8 of {open.length} shown.</div>}</div>}
+      <ContributionBars label="Contribution to open P&L by position" items={open.filter((r) => r.v.pnl != null).map((r) => ({ key: r.p.id, label: r.p.sym, value: r.v.pnl as number }))} />
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </div>
+
+    <PnlAttribution rows={b.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r }))} nameOf={engineName} />
 
     {!b.rows.length ? <Empty title="No position yet">Picks are written into the record each night after the market closes and taken here at once. The first one enters at the next open.</Empty> : <>
       {open.length > 0 && <Head aside={<span className="tag num">{open.length}</span>}>Open</Head>}

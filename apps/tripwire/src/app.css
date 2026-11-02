@@ -4,4 +4,8 @@
 @import "./foundation.css";
 @import "./book.css";
 @import "./screens.css";
+@import "./pagesb.css";
+@import "./pagesa.css";
+@import "./charts.css";
 @import "./motion.css";
+@import "./print.css";

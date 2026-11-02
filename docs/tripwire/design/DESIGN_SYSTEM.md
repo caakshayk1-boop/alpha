@@ -123,3 +123,14 @@ Styles in `src/screens.css` (tokens only). Pinned by `tests/screens.mjs` (browse
 - **Methodology and Help.** A 720px reading column (`.read`); eligibility steps are numbered cards; the target arithmetic is a code block on `--surface-2` with the same thresholds stated in words beside it, read from `exits.ts`. The capture slot and identity line close the page.
 - **Data.** The per-file freshness table uses `StatusPill` (word plus icon, never colour alone); on a phone each file is a labelled card.
 - **Company.** Sector and size are pills beside the price; rule checks read "Passes:" / "Fails:" / "Not measured:" to a screen reader as well as showing a mark.
+
+## Charts (shared frame, 1 Nov 2026)
+
+`src/charts/` holds the chart system; `src/charts.css` its styles (tokens only). Pure logic is pinned by `tests/charts.test.ts`, the browser behaviour by `tests/charts.mjs`.
+
+- `frame.tsx`: `ChartFrame` (title with timeframe, units and data-through date; Chart / Table switch; factual takeaway; legend; notes; one source-and-basis line), `SeriesLegend`, `ChartTable`, `ChartState`.
+- `takeaway.ts`: the takeaway sentences, from the DRAWN series only: window return, the benchmark over the same days, percentage-point gap, deepest fall from a peak, data-through date. No cause, forecast, score or recommendation (a test scans for them).
+- `compare.ts`: coverage notes for a shared window (new listings, an earlier last close, days left out), drawdown lines, trade-offs with no overall ranking. `table.ts`: the table is built from the drawn arrays and always lists the first, last, highest and lowest point. `defaults.ts`: opens on 1Y against the Nifty 50 where the history fills a year and the Nifty covers 90% of it; a saved choice (`prefs.chart`, additive) wins.
+- Series identity: slot 1 to 3 are `--series-1..3` with a circle, square and triangle; the benchmark is always `--ink-3`, dashed, with a diamond. Lime is not a series colour. Direction is an arrow and a sign beside the number; hollow up candles and volume bars, solid down ones.
+- Adjustment basis (printed under every price chart): split and bonus adjusted, dividends neither reinvested nor added back, Nifty 50 is the price index.
+- Event annotations: only `row.next_earnings` is a dated event in the data, and it is a provider estimate; no dividend, split or announcement dates are held, so none are drawn and the page says so. Valuation history: only a single PE percentile is held, so there is no chart, a "not enough data" line instead.

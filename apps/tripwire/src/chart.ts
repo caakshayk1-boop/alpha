@@ -130,7 +130,7 @@ export function dateLabel(t: number, monthlyView = false): string { const d = is
  *  previous close forward on the plot (a holiday the stock did not share); days before the first Nifty figure are left out and reported. */
 export interface Compare { a: Pt[]; b: Pt[]; from: Pt; trimmed: boolean; stock: number; nifty: number; diff: number }
 export function compareSeries(pts: readonly Pt[]): Compare | null {
-  const k = pts.findIndex((p) => typeof p.n === 'number' && p.n > 0);
+  const k = pts.findIndex((p) => typeof p.n === 'number' && p.n > 0 && p.c > 0);   // a close of zero or less cannot be the base of an index
   if (k < 0 || pts.length - k < 2) return null;
   const w = pts.slice(k), c0 = w[0].c, n0 = w[0].n as number; let carry = n0;
   const a = w.map((p) => ({ t: p.t, c: (p.c / c0) * 100 }));
@@ -139,12 +139,12 @@ export function compareSeries(pts: readonly Pt[]): Compare | null {
   return { a, b, from: w[0], trimmed: k > 0, stock, nifty, diff: stock - nifty };
 }
 /** Two lines on one shared scale and one shared time axis. */
-export function geometryPair(a: readonly Pt[], b: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12): { lineA: string; lineB: string; area: string; xs: number[]; ysA: number[]; ysB: number[]; W: number; H: number } | null {
+export function geometryPair(a: readonly Pt[], b: readonly Pt[], log: boolean, W = 1000, H = 300, pad = 12, gutter = 0): { lineA: string; lineB: string; area: string; xs: number[]; ysA: number[]; ysB: number[]; W: number; H: number } | null {
   if (a.length < 2 || a.length !== b.length) return null;
   const f = (c: number) => (log ? Math.log(c) : c); const all = [...a, ...b].map((p) => f(p.c));
   let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
   const t0 = a[0].t, t1 = a[a.length - 1].t, span = Math.max(1, t1 - t0); const r = (v: number) => Math.round(v * 10) / 10;
-  const xs = a.map((p) => ((p.t - t0) / span) * W); const y = (c: number) => pad + (1 - (f(c) - lo) / (hi - lo)) * (H - 2 * pad);
+  const xs = a.map((p) => ((p.t - t0) / span) * (W - Math.max(0, gutter))); const y = (c: number) => pad + (1 - (f(c) - lo) / (hi - lo)) * (H - 2 * pad);
   const ysA = a.map((p) => y(p.c)), ysB = b.map((p) => y(p.c));
   const path = (ys: number[]) => xs.map((x, i) => `${i ? 'L' : 'M'}${r(x)} ${r(ys[i])}`).join('');
   const lineA = path(ysA);

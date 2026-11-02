@@ -4,6 +4,7 @@ import { App } from './app.tsx';
 import { followSystemTextSize } from './dyntype.ts';
 import { registerWebMcp } from './webmcp.ts';
 import { registerSw } from './pwa.ts';
+import { installPrintExpand } from './printmode.ts';
 
 class Boundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false };
@@ -22,3 +23,4 @@ void fullStyles().then(() => createRoot(document.getElementById('root')!).render
 followSystemTextSize();
 registerWebMcp();
 registerSw();
+installPrintExpand();

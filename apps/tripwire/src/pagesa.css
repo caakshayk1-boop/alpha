@@ -1,0 +1,74 @@
+/* Phase 4, lane A: Today, Markets, Discover, Signals, Auto and Record. Tokens only (no hex), no motion here (motion.css is the only place anything moves, under html.fx),
+   every target 44px (--hit), heights reserved where content arrives late. */
+
+/* the market takeaway: Today's brief and the top of Markets */
+.t-take{margin:0 0 var(--sp-3);font:650 1.0625rem/1.5 var(--font);color:var(--ink);max-width:60ch;min-height:7.6em;overflow-wrap:anywhere}
+@media(min-width:700px){.t-take{min-height:3.2em}}
+.mk-glance{margin-bottom:var(--sp-4)}
+.mk-glance .t-take{min-height:4.7em}
+@media(min-width:700px){.mk-glance .t-take{min-height:3.2em}}
+.mk-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(6.4rem,1fr));gap:var(--sp-2)}
+.mk-chips span{display:block;padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-input);min-width:0}
+.mk-chips small{display:block;color:var(--ink-3);font-size:var(--fs-label);line-height:1.25}
+.mk-chips b{display:block;font-size:var(--fs-num-s);line-height:1.2}
+
+.today .t-gate,.today .t-gate:empty{display:block;min-height:64px}
+.today .brief-text{min-height:6em}
+@media(min-width:700px){.today .brief-text{min-height:4.5em}}
+
+/* the sample walkthrough (new users) */
+.sample{padding:var(--sp-4)}
+.sample summary{display:flex;align-items:center;min-height:var(--hit);cursor:pointer;list-style:none}
+.sample summary::-webkit-details-marker{display:none}
+.sample-pill{white-space:normal}
+.sample-steps{margin:0;padding-left:var(--sp-5);display:grid;gap:var(--sp-3)}
+.sample-steps li{padding-left:var(--sp-1)}
+.sample-steps b{display:block;color:var(--ink)}
+.sample-steps .dim{display:block;font-size:var(--fs-data);line-height:1.5}
+.sample-ex{display:block;margin-top:var(--sp-1);padding:var(--sp-2) var(--sp-3);border:1px dashed var(--line-2);border-radius:var(--radius-input);color:var(--ink-2);font-size:var(--fs-data);font-style:normal}
+@media(min-width:1024px){.today>.sample{grid-column:1/-1;order:2}}
+
+/* sectors ranked, with the sample size on every row */
+.sbars-list{list-style:none;margin:0;padding:0}
+.sbar{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) auto;gap:var(--sp-3);align-items:center;min-height:var(--hit);padding:var(--sp-1) 0;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+.sbars-list li:first-child .sbar{border-top:0}
+.sb-n{display:flex;flex-direction:column;min-width:0}
+.sb-name{font-size:var(--fs-data);color:var(--ink)}
+.sb-n small{font-size:var(--fs-label)}
+.sb-bar{position:relative;height:8px;border-radius:2px;background:var(--surface-3)}
+.sb-mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line-2)}
+.sb-fill{position:absolute;top:0;bottom:0;border-radius:2px}
+.sb-fill.pos{background:var(--up)}.sb-fill.neg{background:var(--down)}
+.sb-v{font-size:var(--fs-data);min-width:4.2ch;text-align:right}
+.sb-v small{color:var(--ink-3);font-size:var(--fs-label)}
+
+/* Discover: research presets */
+.presets{margin:var(--sp-2) 0}
+.presets>summary{display:flex;align-items:center;min-height:var(--hit);cursor:pointer;font-weight:600;color:var(--ink)}
+.presgrid{display:grid;grid-template-columns:1fr;gap:var(--sp-2)}
+@media(min-width:700px){.presgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1100px){.presgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.preset{display:flex;flex-direction:column;gap:var(--sp-1);align-items:flex-start;min-height:var(--hit);padding:var(--sp-3) var(--sp-4);text-align:left;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-input)}
+.preset.on{border-color:var(--accent);background:var(--accent-tint)}
+.preset .pt{font-weight:650}
+.preset .pc{margin:var(--sp-1) 0 0;padding-left:var(--sp-4);color:var(--ink-2)}
+.preset .pn{min-height:1.25em}
+.preset-on{margin:var(--sp-2) 0;color:var(--ink-2)}
+
+/* Signals: a pick card */
+.pickcard .tl{margin-top:var(--sp-2)}
+.pickcard .pickfoot{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+
+/* Auto and Record: attribution and the realised curve */
+.attr-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2) var(--sp-4);margin:var(--sp-2) 0 var(--sp-3)}
+.attr-total b{font-size:var(--fs-num-l);line-height:1.1}
+.attr .tbl th,.attr .tbl td{white-space:nowrap}
+.attr-sum th,.attr-sum td{border-top:1px solid var(--line-2);font-weight:650}
+.attr-sub{margin:var(--sp-4) 0 0;font-size:var(--fs-body);font-weight:650}
+.rec-sec.attr{padding:var(--card-pad)}
+.curve{display:block;width:100%;height:96px;margin:var(--sp-2) 0}
+.curve-zero{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.curve-line{fill:none;stroke:var(--ink-2);stroke-width:2;vector-effect:non-scaling-stroke}
+.curve-dot{fill:var(--ink);stroke:var(--bg);stroke-width:1;vector-effect:non-scaling-stroke}
+@media(max-width:480px){.sbar{grid-template-columns:minmax(0,7rem) minmax(0,1fr) auto;gap:var(--sp-2)}.sb-v small{display:none}.mk-chips{grid-template-columns:repeat(2,minmax(0,1fr))}.attr-total b{font-size:var(--fs-num-s)}}
+.presh{margin:0 0 var(--sp-2);font-size:var(--fs-body);font-weight:650}

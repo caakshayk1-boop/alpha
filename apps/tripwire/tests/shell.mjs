@@ -41,7 +41,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 /* ---- 2. More lists every destination, and each row opens its page ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/more');
   const rows = await pg.locator('[data-more-row]').evaluateAll((r) => r.map((x) => [x.getAttribute('data-more-row'), x.getAttribute('href'), x.getBoundingClientRect().height]));
-  const want = { signals: '#/signals', markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/profile', ops: '#/ops' };
+  const want = { signals: '#/signals', markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/settings', ops: '#/ops' };
   ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 8, `More lists Signals, Markets, News, Data and coverage, Methodology, Help, Settings, Operations (${rows.map((r) => r[0]).join(', ')})`);
   ok(rows.every((r) => r[2] >= 44), 'every More row is a 44 px target');
   ok(/Experimental/.test(await pg.locator('[data-about]').innerText()) && /paper trade/i.test(await pg.locator('[data-about]').innerText()), 'More states the experimental, paper-only status');
@@ -189,6 +189,27 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
       ok((await pg.evaluate(() => window.__marker)) === undefined && (await pg.locator('.banner.upd').count()) === 0, 'after the person taps Reload, the new version runs and the prompt is gone');
     } finally { writeFileSync(swPath, orig); await ctx.close(); }
   } }
+
+/* ---- the stale-data banner holds its slot: it arrives with the screen feed and moves nothing, and it is never hidden ---- */
+for (const hint of [null, 'stale']) {
+  const { ctx, pg } = await mk(390, 844);
+  await ctx.route('**/data/screen.json', async (r) => { await new Promise((x) => setTimeout(x, 1500)); const res = await r.fetch(); const j = JSON.parse(await res.text()); j.as_of = '2026-10-26'; /* 2 Nov 2026: pin the day to an old one so the banner test is about the banner, not about how fresh the screen the server happens to hold is (CI serves the real build, which was current on a Monday morning) */ await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
+  await pg.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); });
+  if (hint) await pg.addInitScript(() => { try { localStorage.setItem('tripwire:banner-hint', '2026-10-26'); } catch { /* none */ } });
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 });
+  const y1 = await pg.evaluate(() => document.querySelector('.view').offsetTop); const ghost = await pg.locator('[data-banner-slot]').count();
+  await pg.waitForSelector('.banner[role=status]', { timeout: 15000 }); await pg.waitForTimeout(400);
+  const y2 = await pg.evaluate(() => document.querySelector('.view').offsetTop);
+  ok(ghost === 1 && Math.abs(y1 - y2) < 1, `banner slot (${hint ? 'remembered stale' : 'nothing remembered'}): reserved while the answer is pending, the view did not move (${y1} to ${y2})`);
+  ok(/The data stops \d+ sessions before the last finished one/.test(await pg.locator('.banner[role=status]').innerText()) && (await pg.locator('[data-banner-slot]').count()) === 0, 'banner slot: the real banner is shown to the person, and the placeholder is gone');
+  ok((await pg.evaluate(() => window.__cls)) < 0.01, `banner slot: layout shift from the banner is 0 (CLS ${(await pg.evaluate(() => window.__cls)).toFixed(4)})`); await ctx.close();
+}
+{ const { ctx, pg } = await mk(390, 844);   // current data: nothing is reserved once the device has seen a current answer, and no banner appears
+  const day = (() => { const d = new Date(Date.now() + 330 * 60000); while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })();
+  await ctx.route('**/data/screen.json', async (r) => { const res = await r.fetch(); const j = JSON.parse(await res.text()); j.as_of = day; await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
+  await pg.addInitScript((d) => { try { localStorage.setItem('tripwire:banner-hint', d); } catch { /* none */ } }, day);
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 }); await pg.waitForTimeout(1200);
+  ok((await pg.locator('[data-banner-slot]').count()) === 0 && (await pg.locator('.banner[role=status]').count()) === 0, 'banner slot: with current data and a current answer remembered, no banner and no empty slot'); await ctx.close(); }
 
 await b.close();
 console.log(fails ? `\n${fails} FAILED` : '\nall shell checks passed'); process.exit(fails ? 1 : 0);

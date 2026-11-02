@@ -23,7 +23,7 @@ import { mood } from '../mood.ts';
 import { Icon } from '../ui.tsx';
 import { sessionNow } from '../market.ts';
 import { rulesFor } from '../rules.ts';
-import { isLiveQuote } from '../stamp.ts';
+import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { pickFacts, factLine } from '../pickfacts.ts';
 import { BASIS_NOTE, targetPrices } from '../levels.ts';
 import { pickId } from '../ledger.ts';
@@ -32,6 +32,8 @@ import { briefLines } from '../brief.ts';
 import { useTrendSummary } from '../trendsummary.ts';
 import { WhatMattersNowSlot } from '../todaynews.tsx';
 import { SinceVisit } from './SinceVisit.tsx';
+import { marketTakeaway } from '../takeaway.ts';
+import { SampleWalkthrough } from './samplewalk.tsx';
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const TOP = 5;
@@ -46,11 +48,12 @@ export function Today() {
   const fresh = isNewUser(s);   // a new user gets the setup card and the brief; the book, picks, news and changes need something of theirs to be about
   const pulse = usePulse(true); const book = useLiveBook(!fresh); const auto = useAutoBook(!fresh); const macro = useMacro();
   const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null;
-  const sess = sessionNow(Date.now(), anyLive); const live = sess.phase === 'open' && !!anyLive;
+  const sess = sessionNow(Date.now(), anyLive); const pw = quoteWord(pulse.obs, Date.now(), { loading: pulse.loading && !pulse.err }); const live = sess.phase === 'open' && !!anyLive;
   const t = useTrendSummary(rows, day, true);
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const niftyCh = chOf('NIFTY'), bankCh = chOf('BANKNIFTY'), vixCh = chOf('VIX'); const md = mood(niftyCh, bankCh, vixCh);
   const lines = briefLines({ niftyCh, bankCh, vixCh, upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, day, behind: fr.behind, live });
+  const take = marketTakeaway({ niftyCh, vixCh, upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: fr.behind });
   const events = s.follows.map((sym) => rows.find((r) => r.sym === sym)).filter((r): r is Row => !!r && !!r.next_earnings && r.next_earnings >= today && r.next_earnings <= addDays(today, 30)).sort((a, b) => a.next_earnings!.localeCompare(b.next_earnings!));
   const reviews = s.entries.filter((e) => ['overdue', 'today'].includes(reviewDue(e) ?? ''));
   const needs = reviews.length > 0 || events.length > 0;
@@ -63,7 +66,6 @@ export function Today() {
   const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score); const shownPicks = allPicks.slice(0, TOP);
   const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
   const hasChanges = s.follows.length > 0 || needs;
-  const hold = !fresh && s.follows.length > 0 && scr.loading;   // what changed leads, so nothing is drawn beneath it until it can be: content that arrives above moves what is already there   // returning users read what changed before the market
   const sig = useSignals();
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
@@ -82,12 +84,25 @@ export function Today() {
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
+      {/* (a) the market takeaway FIRST, then the paragraph of measured facts, with its freshness stated */}
+      {<section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
+        <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
+        <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
+        <p className="brief-text" data-brief>{lines.length ? lines.filter((l) => !(take?.parts.breadth && /liquid names are in an uptrend/.test(l))).join(' ') : scr.loading ? 'Reading the market…' : 'No market figures are available right now.'}</p>
+        <div className="brief-ix num" role="list" aria-label="Indices">
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
+        </div>
+        <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
+        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <SessionPill asOf={day} /> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
+      </section>}
+
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
         <h2 id="t-setup" className="sec">Start with one company</h2>
         <p className="dim" style={{ margin: '6px 0 12px' }}>Search a listed company, read the case and the countercase side by side, and save a thought if you want to. Nothing is followed for you.</p>
         <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button>
       </section>}
+      {fresh && <SampleWalkthrough />}
 
       {/* the followed companies: what changed, and what is due. Rendered only when there is something it can be about. */}
       {!fresh && hasChanges && <div className="tsec tchg" data-sec="changes">
@@ -100,19 +115,8 @@ export function Today() {
         </div></div></section>}
       </div>}
 
-      {/* (a) the market, in a paragraph of measured facts, with its freshness stated */}
-      {!hold && <section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
-        <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={live} label={live ? 'LIVE' : sess.phase === 'open' ? 'No live print' : sess.phase === 'pre' ? 'Pre-open' : 'Market closed'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
-        <p className="brief-text" data-brief>{lines.length ? lines.join(' ') : scr.loading ? 'Reading the market…' : 'No market figures are available right now.'}</p>
-        <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
-        </div>
-        <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <SessionPill asOf={day} /> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
-      </section>}
-
       {/* (b) what matters now */}
-      {!fresh && !hold && <section className="tsec tnews" aria-label="What matters now" data-sec="news">
+      {!fresh && <section className="tsec tnews" aria-label="What matters now" data-sec="news">
         <div className="newsslot">{late && <WhatMattersNowSlot syms={s.follows} />}</div>
       </section>}
 

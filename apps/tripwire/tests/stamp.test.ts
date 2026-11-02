@@ -11,12 +11,12 @@ test('stamp: age is measured from the exchange print, so a refresh that returns 
   assert.equal(quoteAge(print, MON_1432 + 4 * 60e3)!.state, 'live');         // 4 min later: still inside five minutes
   assert.equal(quoteAge(print, MON_1432 + 10 * 60e3)!.state, 'lagging');     // the app has refreshed many times since; the print has not moved
   const stale = quoteAge(print, MON_1432 + 40 * 60e3)!;
-  assert.equal(stale.state, 'stale'); assert.match(stale.text, /No print since 14:31 IST/); assert.match(stale.text, /holiday, or the price source is quiet/);
+  assert.equal(stale.state, 'stale'); assert.match(stale.text, /no print since 14:31 IST/); assert.match(stale.text, /not a listed holiday: the price source is quiet/);   // 1 Nov 2026: holidays ARE modelled (calendar.ts), so a quiet weekday is not blamed on one
 });
 test('stamp: outside the session an old print is the last print, not an error; round-the-clock markets are never "stale" by the Indian clock', () => {
   const fri = Date.UTC(2026, 9, 23, 9, 59, 0) / 1000;                         // Fri 15:29 IST
   const sun = Date.UTC(2026, 9, 25, 12, 0, 0);
-  const a = quoteAge(fri, sun)!; assert.equal(a.state, 'last'); assert.match(a.text, /Last print Fri 23 Oct 15:29 IST/);
+  const a = quoteAge(fri, sun)!; assert.equal(a.state, 'last'); assert.match(a.text, /Last traded Fri 23 Oct 15:29 IST/);   // 1 Nov 2026: one vocabulary, Live / Delayed / Last traded / Unavailable
   assert.equal(quoteAge(sec(MON_1432) - 3 * 3600, MON_1432, false)!.state, 'last');
   assert.equal(quoteAge(null, MON_1432), null); assert.equal(quoteAge(Number.NaN, MON_1432), null);
 });

@@ -1,0 +1,76 @@
+/* The shared chart frame (src/charts/frame.tsx). Tokens only. Motion for lines lives in style.css/motion.css under html.fx; nothing here animates. */
+.cf{padding:var(--sp-4) var(--card-pad) var(--card-pad);min-height:560px}
+.cf .chart-head{min-height:0}
+.cf .chart-plot{margin-top:var(--sp-2)}
+.cf.cf-state{min-height:0}
+.cf.cf-state[aria-busy=true]{min-height:1100px}
+@media(min-width:700px){.cf.cf-state[aria-busy=true]{min-height:800px}}
+.cf-head{display:flex;gap:var(--sp-3);justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.cf-title{min-width:0;flex:1 1 200px}
+.cf-h{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:600;color:var(--ink)}
+.cf-meta{font-size:var(--fs-label);line-height:1.4;color:var(--ink-3);margin-top:2px}
+.cf-view button{min-height:var(--hit);min-width:var(--hit)}
+.cf-take{margin:var(--sp-1) 0 0}
+.cf-take2{margin:var(--sp-2) 0 0}
+.cf-lead{margin:0;font-size:var(--fs-body);line-height:var(--lh-body);color:var(--ink)}
+.cf-line{margin:var(--sp-1) 0 0;font-size:var(--fs-data);line-height:1.45;color:var(--ink-2)}
+.cf-through{margin:var(--sp-1) 0 0;font-size:var(--fs-label);color:var(--ink-3)}
+.cf-legend{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);margin:var(--sp-1) 0 0;padding:0;font-size:var(--fs-data)}
+.cf-legend li{display:inline-flex;align-items:center;gap:6px}
+.cf-sw{flex:none}
+.cf-ln{color:var(--ink)}.cf-lv{color:var(--ink-2)}
+.cf-figs{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);margin-top:var(--sp-2)}
+.cf-fig .k{display:block}.cf-fig b{font:600 var(--fs-num-s)/1.2 var(--font);font-variant-numeric:tabular-nums}
+.cf-table{margin-top:var(--sp-3)}
+.cf-table .scroll-x{max-height:360px;overflow:auto}
+.cf-basis{margin:var(--sp-3) 0 0}
+.cf-sk{height:200px}
+.c-end{position:absolute;right:2px;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;padding:1px 4px;border-radius:var(--sp-1);background:var(--surface);font-size:var(--fs-label);line-height:1.2;color:var(--ink);pointer-events:none;white-space:nowrap;z-index:1}
+.chart-plot .c-end svg{flex:none;width:12px;height:12px;overflow:visible}
+.c-tip{position:absolute;top:4px;z-index:2;padding:var(--sp-1) var(--sp-2);border-radius:var(--sp-2);background:var(--surface-3);border:1px solid var(--line-2);font-size:var(--fs-label);line-height:1.35;color:var(--ink);pointer-events:none;white-space:nowrap}
+.c-adv{margin-top:var(--sp-3)}
+.c-adv>summary{min-height:var(--hit);display:flex;align-items:center;cursor:pointer;color:var(--ink-2);font-size:var(--fs-data)}
+.c-adv .c-bar{margin-top:var(--sp-2)}
+.c-prim{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin-top:var(--sp-3)}
+.c-prim .mini-seg button{min-height:var(--hit);min-width:var(--hit)}
+.fin-grid{display:grid;gap:var(--sp-4);grid-template-columns:minmax(0,1fr)}
+.fin-panel .k{display:block;margin-bottom:var(--sp-1)}
+.fin-svg{display:block;width:100%;height:120px;overflow:visible}
+.fin-axis{display:grid;font-size:var(--fs-label);color:var(--ink-3);margin-top:2px}
+.fin-axis span{text-align:center}
+.fin-val{display:grid;font-size:var(--fs-label);color:var(--ink-2)}
+.fin-val span{text-align:center}
+@media(min-width:900px){.fin-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.co-grid{display:grid;gap:var(--sp-5);grid-template-columns:minmax(0,1fr)}
+.co-grid>*{min-width:0}
+@media(min-width:1000px){.co-grid.has-side{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start}.co-side{position:sticky;top:var(--sp-4)}}
+.co-tabs{margin:var(--sp-5) 0 var(--sp-3)}
+.co-tabs .seg{overflow-x:auto;grid-auto-columns:minmax(max-content,1fr)}
+.co-tabs .seg .thumb{display:none}
+.co-tabs .seg button[aria-selected=true]{background:var(--accent);color:var(--on-accent)}
+.co-tabs .seg button{min-height:var(--hit);white-space:nowrap;overflow-wrap:normal;padding-inline:var(--sp-2);font-size:var(--fs-data)}
+@media(max-width:480px){.co-tabs .seg button{font-size:var(--fs-label);padding-inline:2px;letter-spacing:-.01em}}
+@media(max-width:400px){.co-tabs .seg button{font-size:.6875rem}}
+.cmp-add{margin:0 0 var(--sp-3)}
+.cmp-add>summary{list-style:none;min-height:var(--hit);display:inline-flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-4);border-radius:var(--radius-pill);border:1px solid var(--line-2);cursor:pointer;font-size:var(--fs-data);color:var(--ink)}
+.cmp-add[open]>summary{margin-bottom:var(--sp-3)}
+.cmp-trade{margin:var(--sp-3) 0 0}
+/* controls: two rows at most on a phone (range, then compare and options); everything else is in the Chart options sheet */
+.c-prim{align-items:center}
+.c-prim2{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);min-width:0}
+.c-optbtn{min-height:var(--hit);display:inline-flex;align-items:center;gap:var(--sp-2);white-space:nowrap}
+.c-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-pill);background:var(--accent);color:var(--on-accent);font-size:var(--fs-label);font-weight:700}
+.c-sheet{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-2)}
+.c-sheet .mini-seg{flex-wrap:wrap}
+.c-sheet .mini-seg button{min-height:var(--hit);min-width:var(--hit)}
+.c-checks{border:0;margin:0;padding:0;display:grid;gap:var(--sp-1)}
+.c-checks legend{padding:0;margin:0 0 var(--sp-1);font-size:var(--fs-label);color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
+.c-check{display:flex;align-items:center;gap:var(--sp-3);min-height:var(--hit);cursor:pointer;font-size:var(--fs-body)}
+.c-check input{width:22px;height:22px;flex:none;accent-color:var(--accent)}
+.c-check input:disabled+span{color:var(--ink-3)}
+.cf-tbl{margin-top:var(--sp-3)}
+.cf-tbl>summary{min-height:var(--hit)}
+@media(max-width:480px){.cf{padding:var(--sp-4)}.c-prim .mini-seg button{padding-inline:var(--sp-2)}}
+/* the sticky action bar must not hide the last controls: a focused or scrolled-to control stops above it */
+html:has(.fab-row){scroll-padding-bottom:calc(var(--tab) + 96px)}
+.cf{scroll-margin-bottom:calc(var(--tab) + 96px)}

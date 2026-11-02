@@ -9,7 +9,7 @@ import { planAutoBook, realised, DEFAULT_CFG, type AutoPos } from './autobook.ts
 import type { Outcome } from './ledger.ts';
 import { hasCelebrated, markCelebrated } from './celebrate.ts';
 import { useUi } from './ui.tsx';
-import { isLiveQuote } from './stamp.ts';
+import { isLiveQuote, quoteWord } from './stamp.ts';
 import { alertsNow, inputFromRow } from './alerts.ts';
 
 import { DEFAULT_COST } from './tracker.ts';
@@ -17,7 +17,7 @@ export { DEFAULT_COST };
 export function useCost(): number { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
 const day = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
 
-export interface BookRow { p: Paper; v: View; q: Quote | null; dayPnl: number | null }
+export interface BookRow { p: Paper; v: View; q: Quote | null; dayPnl: number | null; /** the exchange print time (epoch s) of the price used as the mark, when the mark is a print; absent for a closed or daily-close mark */ markT?: number | null }
 /** Papers with their live prices: bars decide the state of each trade, the five-minute feed gives the live mark, the previous close and the
  *  day's line. Day P&L is measured from the entry price on the day a trade was entered, and from the previous close after that. */
 function useLivePapers(active: Paper[], on: boolean) {
@@ -33,13 +33,15 @@ function useLivePapers(active: Paper[], on: boolean) {
     const v = evaluatePaper(p, arr, live, cost);
     let dayPnl: number | null = null;
     if (v.status === 'open' && q && v.mark != null && v.entryT != null) { const base = day(v.entryT) === day(q.pt) ? v.entry! : q.prev; dayPnl = Math.round((v.mark - base) * p.qty * 100) / 100; }
-    return { p, v, q, dayPnl };
+    return { p, v, q, dayPnl, markT: v.markKind === 'live' && live ? live.t : null };
   }), [active, bars.data, intra.data, cost]);
   const anyLive = intra.data ? Object.values(intra.data.quotes).some((q) => isLiveQuote(q)) : null;
+  /** ONE word for the whole book: the newest exchange print among its quotes (Live / Delayed / Last traded / Unavailable); null while the first answer is loading */
+  const priceWord = active.length ? quoteWord(intra.obs, Date.now(), { loading: intra.loading && !intra.err }) : null;
   const session: Session = sessionNow(Date.now(), active.length ? anyLive : null);
   const sum = summarize(rows.map((r) => r.v));
   const dayTotal = rows.some((r) => r.dayPnl != null) ? rows.reduce((a, r) => a + (r.dayPnl ?? 0), 0) : null;
-  return { rows, sum, dayTotal, session, bars, intra, cost, anyLive };
+  return { rows, sum, dayTotal, session, bars, intra, cost, anyLive, priceWord };
 }
 
 /** The first time a trade is seen closed at +1R or better it is noted once, in words. Then every win seen so far is remembered,
@@ -85,7 +87,7 @@ export function useAutoBook(on = true) {
   const hits = useMemo(() => alertsNow(rows.map((r) => inputFromRow(r.p, r.v, outcomes?.[r.p.id]))), [rows, outcomes]);
   const slots = rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').length;
   const deployed = rows.filter((r) => r.v.status === 'open').reduce((a, r) => a + (r.v.entry ?? r.p.ref) * r.p.qty, 0);
-  return { ledger, plan, rows, sum, hits, slots, deployed, dayTotal: live.dayTotal, session: live.session, intra: live.intra, bars: live.bars, cost: live.cost, anyLive: live.anyLive, cfg: DEFAULT_CFG };
+  return { ledger, plan, rows, sum, hits, slots, deployed, dayTotal: live.dayTotal, session: live.session, intra: live.intra, bars: live.bars, cost: live.cost, anyLive: live.anyLive, priceWord: live.priceWord, cfg: DEFAULT_CFG };
 }
 
 /** Every pick the record has filed, for drawing a name's levels on its chart. No price polling: it reads the ledger only. */

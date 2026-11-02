@@ -9,8 +9,9 @@ import { STATE, mockApi } from '../tests/fixtures.mjs';
 export const VIEWS = [[390, 844], [1280, 800]];
 export async function renderedClasses(base, view = '/#/today', sizes = VIEWS) {
   const b = await chromium.launch(); const found = new Set();
-  for (const [w, h] of sizes) {
-    const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' });
+  /* Two fixed clocks, so the list covers both states of the clock-dependent classes (a live badge is `on` only while the NSE session is on): Mon 26 Oct 2026 11:00 IST (open) and Sun 1 Nov 2026 11:00 IST (shut). 2 Nov 2026: capturing on a Sunday alone left `on` out and CI, running on a Monday morning, failed. */
+  for (const at of ['2026-10-26T05:30:00Z', '2026-11-01T05:30:00Z']) for (const [w, h] of sizes) {
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' }); await ctx.clock.setFixedTime(new Date(at));
     await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, { ...STATE, follows: [], entries: [], paper: [] }); await mockApi(ctx);
     const pg = await ctx.newPage(); await pg.goto(base + view); await pg.waitForSelector('[data-sec="brief"], .dsk', { timeout: 20000 }); await pg.waitForTimeout(1200);
     for (const c of await pg.evaluate((vh) => { const out = []; document.querySelectorAll('body *').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top < vh + 60 && r.bottom > -10 && r.width > 0) out.push(...e.classList); }); return out; }, h)) found.add(c);

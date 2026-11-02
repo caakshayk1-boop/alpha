@@ -39,7 +39,7 @@ Branch `tripwire-beta`, based on `main` at 1ea9b05. **Not deployed.** Evidence b
 
 ## Known limits of the checks
 - axe finds about a third of accessibility problems. No screen reader (VoiceOver, TalkBack, NVDA) was run by a person.
-- The size and stale-data checks use a controlled clock; real holidays are not modelled and the app says so.
+- The size and stale-data checks use a controlled clock; the exchange calendar (`calendar.ts`, 2026) models real holidays; the controlled clock only fixes the date.
 - Core Web Vitals above are synthetic. INP in particular needs field data from real use.
 
 ## Momentum: tested forward through time (2026-10-26)

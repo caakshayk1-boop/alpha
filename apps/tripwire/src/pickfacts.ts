@@ -28,7 +28,7 @@ export function pickFacts(engine: EngineId, r: Row | undefined | null): Fact[] {
   } else {
     if (n((r as Row & { sd1y?: number | null }).sd1y)) out.push({ k: 'Volatility', v: `${(r as Row & { sd1y?: number }).sd1y!.toFixed(0)}% a year` });
     if (n((r as Row & { r6m?: number | null }).r6m)) out.push({ k: '6 months', v: sg((r as Row & { r6m?: number }).r6m!), tone: tone((r as Row & { r6m?: number }).r6m!) });
-    if (r.risk_lvl) out.push({ k: 'Risk grade', v: r.risk_lvl });
+    if (r.risk_lvl) out.push({ k: 'Flag level', v: r.risk_lvl });
   }
   return out;
 }

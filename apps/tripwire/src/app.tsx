@@ -10,7 +10,7 @@ const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ defa
 const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
 const Desk = lazy(() => import('./screens/desk.tsx').then((m) => ({ default: m.Desk })));
 const More = lazy(() => import('./screens/More.tsx').then((m) => ({ default: m.More })));
-const Profile = lazy(() => import('./screens/profile.tsx').then((m) => ({ default: m.Profile })));
+const Settings = lazy(() => import('./screens/settings.tsx').then((m) => ({ default: m.Settings })));
 const Company = lazy(() => import('./screens/company.tsx').then((m) => ({ default: m.Company })));
 const Compare = lazy(() => import('./screens/compare.tsx').then((m) => ({ default: m.Compare })));
 const DataPage = lazy(() => import('./screens/Data.tsx').then((m) => ({ default: m.DataPage })));
@@ -20,7 +20,7 @@ const Markets = lazy(() => import('./screens/markets.tsx').then((m) => ({ defaul
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
 const Methodology = lazy(() => import('./screens/Methodology.tsx').then((m) => ({ default: m.Methodology })));
 const Help = lazy(() => import('./screens/Help.tsx').then((m) => ({ default: m.Help })));
-const Operations = lazy(() => import('./screens/profile.tsx').then((m) => ({ default: m.Operations })));
+const Operations = lazy(() => import('./screens/ops.tsx').then((m) => ({ default: m.Operations })));
 const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
 import { MacroPage } from './screens/Macro.tsx';
 const Welcome = lazy(() => import('./screens/welcome.tsx').then((m) => ({ default: m.Welcome })));
@@ -29,6 +29,7 @@ const PlannerSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m
 const ThesisSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ThesisSheet })));
 const ExplainSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ExplainSheet })));
 import { freshness } from './fresh.ts';
+import { bannerSlot, readHint, writeHint } from './bannerslot.ts';
 import { applyTheme } from './theme.ts';
 import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
@@ -96,9 +97,9 @@ export const useSheets = () => useContext(SheetCtx);
 
 /** Four destinations. Today and Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
-const MORE_HEADS = ['more', 'signals', 'profile', 'data', 'methodology', 'help', 'ops'];
+const MORE_HEADS = ['more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
-const TITLES: Record<string, string> = { signals: 'Signals', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro' };
+const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 
@@ -110,6 +111,8 @@ export function App(): ReactNode {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const screen = useScreen();
+  const hint = useRef<string | null>(null); if (hint.current === null) hint.current = readHint() ?? '';   // read once, before the screen answers; '' = nothing remembered
+  useEffect(() => { writeHint(screen.data?.as_of); }, [screen.data?.as_of]);
   const close = useCallback(() => setSheet(null), []);
   useEffect(() => { const a = () => setOnline(true), b = () => setOnline(false); window.addEventListener('online', a); window.addEventListener('offline', b); return () => { window.removeEventListener('online', a); window.removeEventListener('offline', b); }; }, []);
   useEffect(() => {
@@ -135,7 +138,7 @@ export function App(): ReactNode {
   useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
   // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
-  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/profile.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
+  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/settings.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   if (!isQuiet(loc.raw) && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
@@ -159,6 +162,7 @@ export function App(): ReactNode {
   if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
+  const slot = bannerSlot({ online, loading: screen.loading, hasData: !!screen.data, behind: f ? f.behind : null, hintDay: hint.current });
   let view: ReactNode;
   if (head === 'c' && vl.path[1]) view = <Company sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'm' && vl.path[1]) view = <MacroPage k={decodeURIComponent(vl.path[1]).toUpperCase()} />;
@@ -166,7 +170,7 @@ export function App(): ReactNode {
   else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'more') view = <More />;
   else if (head === 'signals') view = <Signals seg={vl.q.get('v') ?? 'picks'} />;
-  else if (head === 'profile') view = <Profile />;
+  else if (head === 'settings' || head === 'profile') view = <Settings />;   // #/profile is the older address of the same screen
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
   else if (head === 'help') view = <Help />;
@@ -187,7 +191,8 @@ export function App(): ReactNode {
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Settings (More) to restore your notes.</div>}
         {pwa.updateReady && <div className="banner upd" role="status"><span>Update ready.</span><button className="btn sm" onClick={() => { const r = applyUpdate(); setUpdMsg(r === 'busy' ? 'Finish what you are editing first, then reload.' : ''); }}>Reload</button>{updMsg && <span className="why small">{updMsg}</span>}</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
-        {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
+        {slot === 'show' && <div className="banner" role="status">The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>}
+        {slot === 'reserve' && <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div>}
         <div className="view" key={vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>

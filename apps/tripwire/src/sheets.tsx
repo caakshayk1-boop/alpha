@@ -3,6 +3,7 @@ import { go, setState, useAppState } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
 import { useScreen, useSignals } from './data.ts';
 import { sizePlan } from './planner.ts';
+import { planCaveats, planFigures } from './planview.ts';
 import { useEngines } from './useEngines.ts';
 import { DEFAULT_COST, SLIPPAGE_PCT } from './tracker.ts';
 import { addEntry, current, editEntry, savePlan, istDay } from './store.ts';
@@ -36,14 +37,22 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
     {row && isNum(row.sma50) && <button className="chip" style={{ marginTop: 8 }} onClick={() => setStop(String(Math.round(row.sma50! * 100) / 100))}>Use the 50-day average ({inr(row.sma50)}) as my stop</button>}
     <div className="row"><div className="grow"><label className="l" htmlFor="pl-r">Risk, % of equity</label><input id="pl-r" className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} /></div>
       <div className="grow"><label className="l" htmlFor="pl-m">Largest position, %</label><input id="pl-m" className="field num" inputMode="decimal" value={maxp} onChange={(e) => setMaxp(e.target.value)} /></div></div>
-    <div className="small dim" style={{ marginTop: 8 }}>Hypothetical equity {inr0(st.prefs.equity)}, cash {inr0(st.prefs.cash)}. Costs assumed at {cost}% a round trip. Change defaults in Profile.</div>
+    <div className="small dim" style={{ marginTop: 8 }}>Hypothetical equity {inr0(st.prefs.equity)}, cash {inr0(st.prefs.cash)}. Costs assumed at {cost}% a round trip. Change defaults in Settings.</div>
     {have && !out.ok && <div className="note" style={{ marginTop: 12 }} role="alert">{out.error}</div>}
     {have && out.ok && <div className="card glass" style={{ marginTop: 12 }}>
       <div className="row between"><div><div className="k">Quantity</div><div className="num" style={{ font: '600 1.75rem/1.1 var(--sans)' }}>{out.qty}</div></div><div style={{ textAlign: 'right' }}><div className="k">Capital</div><div className="num" style={{ fontSize: '1.25rem', fontWeight: 650 }}>{inr0(out.capital)}</div></div></div>
       <p className="small dim" style={{ margin: '8px 0' }}>Sized by {BIND[out.binding]}. Caps: risk {out.caps.risk} · cash {out.caps.cash} · position {out.caps.position} · liquidity {out.caps.liquidity ?? 'unknown'}.</p>
       <div className="num small">Planned risk <b>{inr0(out.risk)}</b> ({inr(out.riskPerShare)} a share) · costs about <b>{inr0(out.costs)}</b></div>
+      {(() => { const f = planFigures({ qty: out.qty, entry: Number(entry), stop: Number(stop) }, st.prefs.equity, st.prefs.cash, cost); const pc = (n: number | null) => (n == null ? '' : ` (${n < 10 ? n.toFixed(1) : Math.round(n)}% of equity)`);
+        return <dl className="pl-alloc" data-plan-figures>
+          <div><dt>Hypothetical allocation</dt><dd>{inr0(f.capital)}{pc(f.allocationPct)}</dd></div>
+          <div><dt>Cash remaining</dt><dd>{f.cashLeft == null ? 'not known' : inr0(f.cashLeft)}</dd></div>
+          <div><dt>Modelled loss at your assumed stop</dt><dd className="loss">{inr0(f.lossAtStop)}{pc(f.lossAtStopPct)}</dd></div>
+          {f.lossWithCosts != null && <div><dt>The same, with the cost assumption</dt><dd className="loss">{inr0(f.lossWithCosts)}</dd></div>}
+        </dl>; })()}
       <table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>If it reaches</th><th>Price</th><th>After costs</th></tr></thead><tbody>{out.targets.map((t) => <tr key={t.r}><td>+{t.r}R</td><td className="num">{inr(t.price)}</td><td className="num up">{inr0(t.net)}</td></tr>)}</tbody></table>
       {(() => { const hi = sizePlan({ equity: st.prefs.equity, cash: st.prefs.cash, riskPct: Number(risk), entry: Number(entry) * 1.02, stop: Number(stop), maxPositionPct: Number(maxp), costRoundTripPct: cost }); return hi.ok ? <p className="small dim" style={{ margin: '8px 0 0' }}>If it opens 2% higher (the most the tracker will accept), the same {out.qty} shares risk about <b>{inr0(out.qty * (Number(entry) * 1.02 - Number(stop)))}</b> to the stop, not {inr0(out.risk)}.</p> : null; })()}
+      <div className="pl-caveats" data-plan-caveats><b>What this does not tell you</b><ul className="small">{planCaveats(cost, SLIPPAGE_PCT).map((c) => <li key={c}>{c}</li>)}{out.limits.filter((l) => !/gap through|Costs are an assumption/.test(l)).map((l) => <li key={l}>{l}</li>)}</ul></div>
       <p className="small down" style={{ margin: '10px 0 0' }}>{out.limits.join(' ')} Targets are conditional outcomes on the engine’s plan, not predictions.</p>
     </div>}
     <label className="l" htmlFor="pl-d">Expires (optional)</label><input id="pl-d" className="field" type="date" min={istDay()} value={expiry} onChange={(e) => setExpiry(e.target.value)} />

@@ -42,3 +42,12 @@ export function marketOpenNow(nowMs = Date.now()): boolean { const { day, mins }
 /** Why the market is shut today, in words, or null when it is an ordinary trading day (or a weekend). */
 export function closureToday(nowMs = Date.now()): string | null { const { day } = istClock(nowMs); const h = holidayName(day); return h ? `NSE holiday: ${h}` : null; }
 export const calendarNote = (nowMs = Date.now()): string | null => { const { day } = istClock(nowMs); return covered(day) ? null : `The session calendar covers ${CALENDAR.from.slice(0, 4)} only; for ${day.slice(0, 4)} every weekday is treated as a session.`; };
+
+/** ONE statement about exchange holidays, for every screen that has to say whether they are handled (Data, Methodology, Help). It is built from this file's own tables, so it cannot drift from what
+ *  the clocks do: the number of listed holidays, the version, the special session and the year the table stops. A screen quotes it; it never writes its own. */
+export function holidayStatement(): string {
+  const n = Object.keys(HOLIDAYS).length; const sp = Object.keys(SPECIAL)[0];
+  return `Exchange holidays are modelled. The session calendar (${CALENDAR.version}) lists the ${n} NSE equity-market holidays of ${CALENDAR.year}, read from the exchange's own circular, so a listed holiday is never counted as a session or as lateness, and a shut market is never expected to be printing.${sp ? ` The Muhurat session on ${sp.slice(8)}/${sp.slice(5, 7)} is listed but not modelled: its hours are announced separately.` : ''} The calendar covers ${CALENDAR.year} only; for any other year every weekday is treated as a session, and the app says so.`;
+}
+/** True on a day the calendar lists as a special (Muhurat) session: a print then can be current although the ordinary clock says shut. Its hours are not modelled. */
+export const isSpecialDay = (day: string): boolean => !!SPECIAL[day];

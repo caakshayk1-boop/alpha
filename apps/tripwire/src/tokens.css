@@ -10,6 +10,8 @@
   /* colour: meaning. Accent is for actions and highlights only; up/down are data semantics; amber is staleness and warnings */
   --accent:#CCFF43;--accent-press:#B3E03A;--accent-tint:rgba(204,255,67,.1);--on-accent:#0A0A0B;
   --up:#4ADE80;--down:#F87171;--amber:#FBBF24;
+  /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
+  --series-1:#7DD3FC;--series-2:#C4B5FD;--series-3:#F9A8D4;
   --down-tint:rgba(248,113,113,.1);--up-tint:rgba(74,222,128,.1);--amber-tint:rgba(251,191,36,.1);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -49,7 +51,25 @@
   --gut:var(--gutter);
   --mask-on:rgb(0 0 0);--mask-half:rgb(0 0 0/.35);   /* alpha masks, not colours */
 }
-@media print{:root{--print-bg:#fff;--print-ink:#111;--print-ink-2:#444;--print-line:#bbb;--print-up:#2d6a00;--print-down:#a04000}}
+/* Print: white paper, dark ink. The --print-* tokens are the paper palette (contrast on white: ink 18.9, ink-2 9.7, ink-3 7.0, series 1/2/3 at least 7.5/6.5/6.6); inside @media print the live tokens are
+   re-pointed at them, so every rule and every SVG that reads var(--ink), var(--series-1), var(--surface) ... prints in paper colours with no print-only copy of any component. Series identity
+   survives greyscale through the dash and the marker shape (series.ts), not the hue: the three lines are also three different greys. Lime has no paper equivalent, so the accent prints as ink. */
+:root{--print-bg:#fff;--print-surface:#f4f4f4;--print-ink:#111;--print-ink-2:#3d3d3d;--print-ink-3:#555;--print-line:#bbb;--print-line-2:#888;--print-up:#1d5b00;--print-down:#9a3b00;--print-amber:#7a4b00;--print-series-1:#0a3d5c;--print-series-2:#5b3fb0;--print-series-3:#a1245f}
+@media print{:root{
+  --bg:var(--print-bg);--bg-2:var(--print-bg);--surface:var(--print-bg);--surface-2:var(--print-surface);--surface-3:var(--print-surface);
+  --line:var(--print-line);--line-2:var(--print-line-2);
+  --ink:var(--print-ink);--ink-2:var(--print-ink-2);--ink-3:var(--print-ink-3);
+  --accent:var(--print-ink);--accent-press:var(--print-ink);--accent-tint:transparent;--on-accent:var(--print-bg);
+  --up:var(--print-up);--down:var(--print-down);--amber:var(--print-amber);
+  --series-1:var(--print-series-1);--series-2:var(--print-series-2);--series-3:var(--print-series-3);
+  --down-tint:transparent;--up-tint:transparent;--amber-tint:transparent;--surface-grad:none;--shadow-raised:none;--glow-cta:none;--shimmer:transparent;--elev-1:none
+}}
 @media(min-width:700px){:root{--section-gap:var(--sp-8);--card-pad:24px}}
 @media(min-width:1100px){:root{--section-gap:var(--sp-9);--gutter:48px}}
 @media(prefers-contrast:more){:root{--line:rgba(245,244,238,.3);--line-2:rgba(245,244,238,.5)}}
+
+/* Squircle corners (continuous curvature, the iOS icon shape). A progressive enhancement: where the browser supports `corner-shape` the SAME radii above are drawn as superellipses;
+   where it does not, the plain rounded rectangle is drawn, so nothing breaks. Listed by component, never `*`: a pill, a dot or a circle must stay a pill, a dot or a circle. */
+@supports (corner-shape: squircle){
+  :where(.card,.tcard,.pcard,.hitcard,.tsec,.sheet,.sheet-body,.btn,.icon-btn,.tile,.read,.gatecard,.ds-card,input,select,textarea,details){corner-shape:squircle}
+}

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { lastVisitSec, markVisited, useNameNews, useNewsBoard, type RefreshState } from '../news.ts';
-import { isNewStory, plural, storyTime, type NewsHealth } from '../newshealth.ts';
+import { isNewStory, newsViewState, type NewsView, plural, storyTime, type NewsHealth } from '../newshealth.ts';
 import { fmtIst } from '../stamp.ts';
 import { checkedLabel } from '../timelabels.ts';
-import { entityLine, inTab, labelsOf, safeHref, tabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
+import { categoryOf, COUNT_DEFINITION, entityLine, inTab, labelsOf, safeHref, timeLabels, todayTabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
 import { RANKING_VERSION, PIPELINE_VERSION, TIERS, WEIGHTS, HALF_LIFE_H, TODAY_WINDOW_H, DIVERSITY, CADENCE, DELAY_AFTER, MAX_AGE_DAYS } from '../../news/config.js';
 import { EVENT_TYPES, SIGNIFICANCE } from '../../news/events.js';
 
@@ -12,8 +12,8 @@ const FLAG_WORD: Record<string, string> = { date_unknown: 'Publication time unkn
 
 /** One line saying how current the news is, in the one vocabulary (newshealth.ts). */
 export function NewsHealthLine({ h, full }: { h: NewsHealth; full?: boolean }) {
-  return <div className={`nw-health ${h.state}`} role="status"><span className="nw-state"><span className="nw-dot" aria-hidden="true" />{h.word}</span><span className="nw-hline">{h.line}</span>
-    {full && <dl className="nw-times"><div><dt>Last successful check</dt><dd>{h.lastGood ?? 'none yet'}</dd></div>{h.onDemand && <div><dt>Refreshed on demand</dt><dd>{h.onDemand}</dd></div>}<div><dt>Latest check</dt><dd>{h.checked ?? 'none yet'}</dd></div><div><dt>Next check due</dt><dd>{h.state === 'unavailable' ? 'unknown' : h.next ?? 'unknown'}</dd></div></dl>}</div>;
+  return <div className={`nw-health ${h.state}`} role="status" data-news-state={h.state}><span className="nw-state"><span className="nw-dot" aria-hidden="true" />{h.word}</span><span className="nw-hline">{h.line}</span>
+    {full && <dl className="nw-times"><div><dt>Last successful check</dt><dd>{h.state === 'loading' ? 'checking…' : h.lastGood ?? 'none yet'}</dd></div>{h.onDemand && <div><dt>Refreshed on demand</dt><dd>{h.onDemand}</dd></div>}<div><dt>Latest check</dt><dd>{h.state === 'loading' ? 'checking…' : h.checked ?? 'none yet'}</dd></div><div><dt>Next check due</dt><dd>{h.state === 'loading' ? 'checking…' : h.state === 'unavailable' || h.state === 'error' ? 'unknown' : h.next ?? 'unknown'}</dd></div></dl>}</div>;
 }
 const REFRESH_LABEL: Record<RefreshState, string> = { idle: 'Check for updates', checking: 'Checking…', updated: 'Updated', none: 'No new stories', failed: 'Failed, try again' };
 export function RefreshControl({ state, message, onClick }: { state: RefreshState; message: string; onClick: () => void }) {
@@ -26,22 +26,25 @@ export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
 /** One event. `lead` draws the first row larger and gives its summary room; every row carries the same facts: headline (a link), source and publication age, one event tag, the company, an optional one-line summary, and a drawer. */
 export function NewsRow({ ev, lists, lead, seenSec, nowMs, label }: { ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean }) {
   const t = storyTime(ev.publishedAt, nowMs); const href = safeHref(ev.canonicalUrl); const fresh = isNewStory(ev, seenSec); const tags = label ? labelsOf(ev, lists) : [];
-  const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known;
+  const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known; const clk = timeLabels(ev, nowMs);
   return <li className={`nw-row${lead ? ' lead' : ''}`}>
     {href ? <a className="nw-head" href={href} target="_blank" rel="noopener noreferrer">{ev.headline}<span className="sr"> (opens in a new tab)</span></a> : <span className="nw-head">{ev.headline}</span>}
     <span className="nw-meta">
       {fresh && <span className="tag aqua nw-tag" title="Published, and first seen by the news check, since you last looked">New</span>}
       <span>{ev.sourceTitle}{ev.moreSources > 0 ? ` +${plural(ev.moreSources, 'more source')}` : ''}</span><span aria-hidden="true">·</span>
-      <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''}>{t.ageWord}</time>
+      <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''} data-clock="published"><span className="sr">Published </span>{t.ageWord}</time>
       <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`}>{ev.eventType}</span>
       <span className="nw-entity" title="The company this story was matched to by name or symbol">{entityLine(ev)}</span>
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
+    {ev.sources.length > 1 && <p className="nw-cover" data-cover aria-label={`${plural(ev.sources.length, 'outlet')} carried this event`}><span className="nw-cover-k">{ev.sources.length} outlets on this event</span>{ev.sources.map((x) => { const h = safeHref(x.canonicalUrl); return h ? <a key={x.sourceId} href={h} target="_blank" rel="noopener noreferrer">{x.sourceTitle}<span className="sr"> (opens in a new tab)</span></a> : <span key={x.sourceId}>{x.sourceTitle}</span>; })}</p>}
+    <p className="nw-clocks" data-clocks><span className={unknownDate ? 'nw-unknown' : ''}>{clk.published}</span><span aria-hidden="true"> · </span><span>{clk.collected}</span></p>
     {ev.summary && <p className="nw-summary" title={`Source: the publisher's own description in ${ev.summary.provenance.feedId}, retrieved ${ev.summary.provenance.retrievedAt ?? 'at an unknown time'}`}>{ev.summary.text}</p>}
     <details className="nw-more"><summary>Coverage and ranking</summary><div className="nw-body">
       <p><b>{ev.sources.length > 1 ? `${plural(ev.sources.length, 'outlet')} carried this` : '1 outlet'}</b>{ev.sources.length > 1 ? '; the first listed is the primary source.' : '.'}</p>
       <ul className="nw-src">{ev.sources.map((s) => { const h = safeHref(s.canonicalUrl); const st = storyTime(s.publishedAt, nowMs); return <li key={s.sourceId}>{h ? <a href={h} target="_blank" rel="noopener noreferrer">{s.sourceTitle}</a> : s.sourceTitle} <span className="mute">· {s.tier} · {st.known ? st.ist : 'publication time unknown'}</span></li>; })}</ul>
-      <p><b>Dates.</b> {t.known ? `First reported ${fmtIst(Date.parse(ev.publishedAt as string) / 1000, nowMs)}.` : 'The feed gave no usable publication time, so none is shown and the story is kept off Today.'} {first.known ? `First seen by the news check ${fmtIst(Date.parse(ev.firstSeenAt as string) / 1000, nowMs)}.` : ''}</p>
+      <dl className="nw-dates" data-dates><div><dt>Published (the outlet's own time)</dt><dd>{t.known ? fmtIst(Date.parse(ev.publishedAt as string) / 1000, nowMs) : 'not given by the feed'}</dd></div><div><dt>Collected (first seen by Tripwire's check)</dt><dd>{first.known ? fmtIst(Date.parse(ev.firstSeenAt as string) / 1000, nowMs) : 'unknown'}</dd></div><div><dt>Category</dt><dd>{categoryOf(ev.eventType)}</dd></div></dl>
+      <p className="mute small">{t.known ? 'Publication and collection are two clocks: a story can be collected hours after it was published, and the age shown in the row is always the publication one.' : 'The feed gave no usable publication time, so none is shown (the collection time is not a substitute) and the story is kept off Today.'}{clk.gap ? ` ${clk.gap}.` : ''}</p>
       {ev.rank && <><p><b>Why it ranks here.</b> {ev.rank.reason}.</p><table className="nw-factors"><caption className="sr">Ranking factors</caption><thead><tr><th scope="col">Factor</th><th scope="col">Value</th><th scope="col">Weight</th><th scope="col">Points</th></tr></thead><tbody>{ev.rank.factors.map((f) => <tr key={f.k}><th scope="row">{f.k}</th><td className="num">{f.value.toFixed(2)}</td><td className="num">{f.weight.toFixed(2)}</td><td className="num">{f.points.toFixed(1)}</td></tr>)}</tbody></table><p className="mute small">Ranking {ev.rankingVersion}. A keyword rule typed this as {ev.eventType}; it says what the story is about, never whether it is good news.</p></>}
       {ev.qualityFlags.length > 0 && <p className="small">{ev.qualityFlags.map((f) => FLAG_WORD[f] ?? f).join(' · ')}</p>}
     </div></details>
@@ -55,6 +58,7 @@ export function NewsMethod({ extra }: { extra?: ReactNode }) {
     <p><b>Schedule.</b> Every {CADENCE.session} minutes while the NSE cash session is on (by the exchange calendar, holidays included), every {CADENCE.off} minutes otherwise. The page calls the news delayed after {DELAY_AFTER.cadences} cadences plus {DELAY_AFTER.graceMin} minutes without a successful check. It never calls anything live: these are free feeds and may lag the sources, and no promise of real-time delivery is made.</p>
     <p><b>What is admitted.</b> A dated story with a readable link, a publication time that is not in the future and is under {MAX_AGE_DAYS} days old, in English, that names a covered company (by its name, an alias, or its symbol with an exchange marker; never inside another word, and a symbol that is also a common word such as SAIL, PAGE or IDEA needs "NSE:" beside it), or an India-wide event (RBI, SEBI, rates, inflation, tariffs, flows, crude, the rupee). Share-price and quote pages, announcements index pages, technical-price commentary, "stocks to watch", Gift Nifty and market-wrap previews, tip-sheet language, other countries' markets and mixed-language filler are refused, and each refusal is counted. A dated exchange or regulator document is admitted. Nothing is ever admitted by a "wider match".</p>
     <p><b>Same story, once.</b> Links are canonicalised (trackers, www, amp and fragments removed). Items about the same company within three days that share most of their words, or state the same figure for the same kind of event, are one event: the most authoritative outlet is primary and the rest are counted as more sources. A buyback and a results night, or "profit up 5%" and "profit down 3%", stay separate events.</p>
+    <p><b>What the numbers count.</b> {COUNT_DEFINITION} A number on a tab is the number of events listed once you press it, under the same filters.</p>
     <p><b>Order.</b> {RANKING_VERSION}, a fixed weighted sum, not a model: significance {WEIGHTS.significance}, verified company match {WEIGHTS.entity}, source reliability {WEIGHTS.source}, recency {WEIGHTS.recency}, novelty {WEIGHTS.novelty}, your lists {WEIGHTS.user}. Significance by type: {EVENT_TYPES.filter((x: string) => x !== 'Update').map((x: string) => `${x} ${(SIGNIFICANCE[x] ?? 0).toFixed(2)}`).join(', ')}. Recency halves every {HALF_LIFE_H.default} hours ({HALF_LIFE_H.Policy} for policy and macro). Source tiers: {Object.entries(TIERS as Record<string, number>).map(([k, v]) => `${k} ${v}`).join(', ')}. The wording of a headline (surges, slumps) never changes its rank.</p>
     <p><b>Today.</b> Company events up to {TODAY_WINDOW_H.company} hours old and India-wide events up to {TODAY_WINDOW_H.market} hours old, at most {DIVERSITY.perCompanyDefault} per company in the first {DIVERSITY.firstPage} ({DIVERSITY.perCompanyExtended} in the extended list; a regulator, policy or deal event carried by an official source or three outlets may take a third place). If three qualify, three are shown. The News page keeps the whole archive.</p>
     <p><b>Summaries.</b> Shown only when the publisher's own feed description is available and permitted (official release feeds); otherwise a story is its headline alone, with no summary and no judgement of its tone. Article bodies are never fetched.</p>
@@ -62,10 +66,12 @@ export function NewsMethod({ extra }: { extra?: ReactNode }) {
 }
 
 function Tabs({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void; counts: Record<Tab, number> }) {
-  return <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>{t.label} <span className="num mute">{counts[t.id]}</span></button>)}</div>;
+  return <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={tab === t.id} aria-label={`${t.label}: ${counts[t.id]} ${counts[t.id] === 1 ? 'event' : 'events'}`} onClick={() => setTab(t.id)}>{t.label} <span className="num mute">{counts[t.id]}</span></button>)}</div>;
 }
 /** What an empty tab says. Following never borrows the paper book's names. */
-export function EmptyTab({ tab, lists, haveSnapshot, anyOther }: { tab: Tab; lists: Lists; haveSnapshot: boolean; anyOther: boolean }) {
+export function EmptyTab({ tab, lists, haveSnapshot, anyOther, view }: { tab: Tab; lists: Lists; haveSnapshot: boolean; anyOther: boolean; view?: NewsView }) {
+  if (view === 'error') return <div className="nw-empty" data-news-empty="error"><b>News could not be loaded.</b><p>The news service did not answer and no earlier copy is saved on this device. This is a failure to load, not a quiet day. Nothing is shown in its place; use Check for updates to try again.</p></div>;
+  if (view === 'delayed') return <div className="nw-empty" data-news-empty="delayed"><b>No stories to show, and the news check is delayed.</b><p>The last good check is older than its schedule allows, so this list may be missing recent stories. It is not a statement that nothing happened.</p></div>;
   if (tab === 'following' && lists.follows.length === 0) return <div className="nw-empty"><b>You follow no companies yet.</b><p>Follow a company in Discover and its verified updates appear here. Following is only the names you choose; it is never filled from the paper book.</p><a className="btn sm pri" href="#/discover">Find companies in Discover</a></div>;
   if (tab === 'paper' && lists.paper.length === 0) return <div className="nw-empty"><b>The paper book holds no names right now.</b><p>Names in the paper book get their own tab. Nothing is borrowed from your follows.</p></div>;
   if (!haveSnapshot) return <div className="nw-empty"><b>No news has been published yet.</b><p>The first scheduled check has not completed. Nothing is shown in its place.</p></div>;
@@ -77,18 +83,19 @@ export function EmptyTab({ tab, lists, haveSnapshot, anyOther }: { tab: Tab; lis
 export function WhatMattersNow({ follows, paper }: { follows: string[]; paper: string[] }) {
   const lists = useMemo<Lists>(() => ({ follows, paper }), [follows.join(), paper.join()]);   // eslint-disable-line react-hooks/exhaustive-deps
   const b = useNewsBoard(lists); const [tab, setTab] = useState<Tab>('all'); const [more, setMore] = useState(false); const [seen] = useState(() => lastVisitSec());
-  const list = useMemo(() => todayList(b.pool, tab, lists, b.at), [b.pool, tab, lists, b.at]); const counts = useMemo(() => tabCounts(b.pool, lists, b.at), [b.pool, lists, b.at]);
+  const list = useMemo(() => todayList(b.pool, tab, lists, b.at), [b.pool, tab, lists, b.at]); const counts = useMemo(() => todayTabCounts(b.pool, lists, b.at), [b.pool, lists, b.at]);
   const shown = more ? list : list.slice(0, 5); const rest = list.length - 5;
   useEffect(() => { if (!list.length) return; const t = window.setTimeout(() => markVisited(), 4000); return () => window.clearTimeout(t); }, [list.length]);
-  const anyOther = (['market', 'following', 'paper'] as Tab[]).some((x) => x !== tab && counts[x] > 0);
+  const view = newsViewState(b.health, { loading: b.loading, rows: list.length }); const anyOther = (['market', 'following', 'paper'] as Tab[]).some((x) => x !== tab && counts[x] > 0);
   return <section className="nw" aria-labelledby="nw-title">
     <div className="nw-bar"><h2 id="nw-title" className="nw-title">What matters now</h2><a className="nw-all" href="#/news">All news</a></div>
     <NewsHealthLine h={b.health} />
+    <p className="sr" data-news-view>{view}</p>
     <Tabs tab={tab} setTab={(t) => { setTab(t); setMore(false); }} counts={counts} />
     <UpdateOffer n={b.pending} apply={b.apply} />
     {b.loading ? <div className="nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '92%' }} /><div className="sk" style={{ height: 14, width: '60%' }} /><div className="sk" style={{ height: 14, width: '80%' }} /></div>
       : shown.length ? <ul className="nw-list">{shown.map((ev, i) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} lead={i === 0} seenSec={seen} nowMs={b.at} label={tab === 'all'} />)}</ul>
-      : <EmptyTab tab={tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={anyOther} />}
+      : <EmptyTab tab={tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={anyOther} view={view} />}
     {!b.loading && shown.length > 0 && list.length <= shown.length && list.length < 10 && <p className="nw-quiet">{plural(list.length, 'verified update')}. There are no more right now.</p>}
     <div className="nw-foot">{rest > 0 ? <button className="btn sm" onClick={() => setMore(!more)} aria-expanded={more}>{more ? 'Show fewer' : `Show ${rest} more`}</button> : <span />}
       <RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
