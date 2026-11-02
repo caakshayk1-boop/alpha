@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAutoBook } from '../book.ts';
 import { TradeCard } from './Tracker.tsx';
 import { ContributionBars } from './contribution.tsx';
+import { PnlAttribution } from './attribution.tsx';
 import { LiveBadge, Observed, Tick } from '../live.tsx';
 import { useBacktest } from '../data.ts';
-import { ACTIVE } from '../quant.ts';
+import { ACTIVE, ENGINES } from '../quant.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { Empty } from '../ui.tsx';
 import { Head, Loading } from './common.tsx';
@@ -13,6 +14,7 @@ import { dayWord } from '../fmt.ts';
 import { HitCard, ThroughPills } from '../components/index.ts';
 import { throughOf } from '../recordview.ts';
 
+const engineName = (id: string) => ENGINES.find((e) => e.id === id)?.name ?? id;
 const sgn = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const R = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`;
 
@@ -55,6 +57,8 @@ export function AutoBook() {
       <ContributionBars label="Contribution to open P&L by position" items={open.filter((r) => r.v.pnl != null).map((r) => ({ key: r.p.id, label: r.p.sym, value: r.v.pnl as number }))} />
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </div>
+
+    <PnlAttribution rows={b.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r }))} nameOf={engineName} />
 
     {!b.rows.length ? <Empty title="No position yet">Picks are written into the record each night after the market closes and taken here at once. The first one enters at the next open.</Empty> : <>
       {open.length > 0 && <Head aside={<span className="tag num">{open.length}</span>}>Open</Head>}
