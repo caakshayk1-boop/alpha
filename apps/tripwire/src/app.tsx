@@ -10,7 +10,7 @@ const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ defa
 const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
 const Desk = lazy(() => import('./screens/desk.tsx').then((m) => ({ default: m.Desk })));
 const More = lazy(() => import('./screens/More.tsx').then((m) => ({ default: m.More })));
-const Profile = lazy(() => import('./screens/profile.tsx').then((m) => ({ default: m.Profile })));
+const Settings = lazy(() => import('./screens/settings.tsx').then((m) => ({ default: m.Settings })));
 const Company = lazy(() => import('./screens/company.tsx').then((m) => ({ default: m.Company })));
 const Compare = lazy(() => import('./screens/compare.tsx').then((m) => ({ default: m.Compare })));
 const DataPage = lazy(() => import('./screens/Data.tsx').then((m) => ({ default: m.DataPage })));
@@ -20,7 +20,7 @@ const Markets = lazy(() => import('./screens/markets.tsx').then((m) => ({ defaul
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
 const Methodology = lazy(() => import('./screens/Methodology.tsx').then((m) => ({ default: m.Methodology })));
 const Help = lazy(() => import('./screens/Help.tsx').then((m) => ({ default: m.Help })));
-const Operations = lazy(() => import('./screens/profile.tsx').then((m) => ({ default: m.Operations })));
+const Operations = lazy(() => import('./screens/ops.tsx').then((m) => ({ default: m.Operations })));
 const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
 import { MacroPage } from './screens/Macro.tsx';
 const Welcome = lazy(() => import('./screens/welcome.tsx').then((m) => ({ default: m.Welcome })));
@@ -96,9 +96,9 @@ export const useSheets = () => useContext(SheetCtx);
 
 /** Four destinations. Today and Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
-const MORE_HEADS = ['more', 'signals', 'profile', 'data', 'methodology', 'help', 'ops'];
+const MORE_HEADS = ['more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
-const TITLES: Record<string, string> = { signals: 'Signals', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro' };
+const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 
@@ -135,7 +135,7 @@ export function App(): ReactNode {
   useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
   // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
-  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/profile.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
+  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/settings.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   if (!isQuiet(loc.raw) && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
@@ -166,7 +166,7 @@ export function App(): ReactNode {
   else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'more') view = <More />;
   else if (head === 'signals') view = <Signals seg={vl.q.get('v') ?? 'picks'} />;
-  else if (head === 'profile') view = <Profile />;
+  else if (head === 'settings' || head === 'profile') view = <Settings />;   // #/profile is the older address of the same screen
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
   else if (head === 'help') view = <Help />;

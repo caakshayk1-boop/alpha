@@ -1,4 +1,4 @@
-/** ONE model of how current the news is, used by Today, the News page, Profile's service line and the Data screen. Pure: the clock and the documents are arguments.
+/** ONE model of how current the news is, used by Today, the News page, the Operations page's service line and the Data screen. Pure: the clock and the documents are arguments.
  *
  *  Six states. `loading` (the first answer has not arrived: nothing is known yet, so nothing is claimed) and `error` (the service could not be reached and no earlier copy is saved) join the four below. There is no "live": the sources are free feeds read on a schedule, so the best the page can honestly say is that a check succeeded recently.
  *   fresh        the last check succeeded, within what its schedule allows, and every source answered
@@ -50,7 +50,7 @@ export function newsHealth({ doc, unreachable = false, remembered = null, nowMs,
   return out('fresh', `Checked ${lastGood}${next && next > nowSec ? ` · next check about ${fmtIst(next, nowMs)}` : ''}`);
 }
 
-/** Profile and Data: the same model in the words of a service list. */
+/** Operations and Data: the same model in the words of a service list. */
 export function newsServiceView(h: NewsHealth): { tag: string; tone: 'lime' | 'peach'; line: string } { return { tag: h.word, tone: h.state === 'fresh' ? 'lime' : 'peach', line: h.line }; }
 
 /** A story's own time. Missing, unreadable or in the future is "time unknown", never "just now". `ageWord` is relative; `ist` is the explicit Indian time. */

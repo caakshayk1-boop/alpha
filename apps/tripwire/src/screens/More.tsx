@@ -17,7 +17,7 @@ const GROUPS: { head: string; rows: Row[] }[] = [
     { id: 'help', href: '#/help', title: 'Help', note: 'How to use Tripwire' },
   ] },
   { head: 'This device', rows: [
-    { id: 'settings', href: '#/profile', title: 'Settings', note: 'Your defaults, backup and restore, privacy, app lock' },
+    { id: 'settings', href: '#/settings', title: 'Settings', note: 'Stored on this device only: backup and restore, defaults, privacy, app lock' },
     { id: 'ops', href: '#/ops', title: 'Operations and status', note: 'Which services are connected, and whether they answered' },
   ] },
 ];
