@@ -193,7 +193,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 /* ---- the stale-data banner holds its slot: it arrives with the screen feed and moves nothing, and it is never hidden ---- */
 for (const hint of [null, 'stale']) {
   const { ctx, pg } = await mk(390, 844);
-  await ctx.route('**/data/screen.json', async (r) => { await new Promise((x) => setTimeout(x, 1500)); const res = await r.fetch(); await r.fulfill({ response: res }); });
+  await ctx.route('**/data/screen.json', async (r) => { await new Promise((x) => setTimeout(x, 1500)); const res = await r.fetch(); const j = JSON.parse(await res.text()); j.as_of = '2026-10-26'; /* 2 Nov 2026: pin the day to an old one so the banner test is about the banner, not about how fresh the screen the server happens to hold is (CI serves the real build, which was current on a Monday morning) */ await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
   await pg.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); });
   if (hint) await pg.addInitScript(() => { try { localStorage.setItem('tripwire:banner-hint', '2026-10-26'); } catch { /* none */ } });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 });
