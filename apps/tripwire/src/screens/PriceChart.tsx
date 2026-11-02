@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { setState, useAppState } from '../app.tsx';
-import { useChart } from '../data.ts';
+import { SLOW_DOWN, useChart } from '../data.ts';
 import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
 import { inr, pct } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
@@ -76,7 +76,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const solo = (fn: () => void) => { fn(); if (vs) setVs(false); setCur(null); };
 
   if (feed.loading) return <ChartState title="Price history" busy />;
-  if (feed.err || !feed.data || all.length < 30) return <ChartState title="Price history" action={<button className="btn sm" onClick={feed.retry}>Try again</button>}>{feed.err === 'not published' || feed.err === 'no price history for this symbol' ? 'No price history is held for this symbol.' : feed.data ? 'Too little history to draw.' : `Could not load the price history${feed.err ? ` (${feed.err})` : ''}. Nothing is drawn in its place.`}</ChartState>;
+  if (feed.err || !feed.data || all.length < 30) return <ChartState title="Price history" action={<button className="btn sm" onClick={feed.retry}>Try again</button>}>{feed.err === SLOW_DOWN ? `${SLOW_DOWN}, then try again. Nothing is drawn in its place.` : feed.err === 'not published' || feed.err === 'no price history for this symbol' ? 'No price history is held for this symbol.' : feed.data ? 'Too little history to draw.' : `Could not load the price history${feed.err ? ` (${feed.err})` : ''}. Nothing is drawn in its place.`}</ChartState>;
   const optCount = [view !== 'daily', kind !== 'line', logOn, ma, vol, rsi, dd, lvOn && levels.length > 0, evOn && events.length > 0].filter(Boolean).length;
   const yrs = st ? spanWord(st.years) : '';
   const cmpYears = cmp ? (cmp.a[cmp.a.length - 1].t - cmp.a[0].t) / (365.25 * 86400) : 0;
