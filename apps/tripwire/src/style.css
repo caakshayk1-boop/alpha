@@ -167,10 +167,6 @@ html.fx .sk{animation:sh 1.3s linear infinite}
 .welcome .pts{display:grid;gap:12px}
 .welcome .pts div{display:flex;gap:12px;align-items:flex-start;color:var(--dim)}
 .welcome .pts .ic{color:var(--lime);margin-top:2px}
-@media print{
-  body{background:var(--print-bg);color:var(--print-ink)}.tabs,.fab-row,.bar .icon-btn,.noprint,.banner{display:none!important}
-  .card,details.ev{background:var(--print-bg);border:1px solid var(--print-line);color:var(--print-ink)}.dim,.mute{color:var(--print-ink-2)}.up,em.ed{color:var(--print-up)}.down{color:var(--print-down)}.main{max-width:none;padding:0}
-}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* price chart */
