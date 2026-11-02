@@ -77,3 +77,8 @@ a.nw-head:hover{text-decoration:underline;text-underline-offset:2px}
 .nw-clocks{margin:5px 0 0;font-size:.75rem;color:var(--mute)}
 .nw-clocks span{font-variant-numeric:tabular-nums}
 .nw-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:6px 14px;margin:0 0 6px;padding:0}.nw-dates div{min-width:0}.nw-dates dt{font-size:.6875rem;color:var(--mute)}.nw-dates dd{margin:0;font-variant-numeric:tabular-nums;color:var(--tx)}
+.nwp-more{margin:0 0 10px}
+.nwp-more>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;font-size:.8125rem;color:var(--dim)}
+.nwp-more>summary::-webkit-details-marker{display:none}
+.nwp-more>summary::after{content:"▾";margin-left:6px}
+.nwp-more[open]>summary::after{content:"▴"}

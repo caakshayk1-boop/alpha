@@ -53,7 +53,7 @@ for (const w of [390, 1280]) {
 
 /* 4. the skip link goes to the main landmark of the current page */
 { const ctx = await newCtx(b, 390, null); const pg = await ctx.newPage();
-  for (const r of ['/#/profile', '/#/discover', '/#/signals?v=evidence', '/#/c/TCS', '/#/methodology']) { await open(pg, r); await pg.keyboard.press('Tab');
+  for (const r of ['/#/settings', '/#/discover', '/#/signals?v=evidence', '/#/c/TCS', '/#/methodology']) { await open(pg, r); await pg.keyboard.press('Tab');
     const t = await pg.evaluate(() => document.activeElement.textContent); await pg.keyboard.press('Enter'); await pg.waitForTimeout(150);
     const a = await pg.evaluate(() => ({ id: document.activeElement.id, tag: document.activeElement.tagName, hash: location.hash }));
     ok(t === 'Skip to main content' && a.id === 'main' && a.tag === 'MAIN' && a.hash === r.slice(1), `${r}: the first Tab stop is "Skip to main content" and it lands on the main landmark without changing the page (${a.hash})`); }
@@ -70,7 +70,7 @@ for (const w of [390, 1280]) {
   ok(!(await p2.getByRole('switch', { name: /Lock with Face ID/ }).isDisabled()), 'where the browser reports a platform authenticator the switch is enabled (stubbed)');
   ok(/not been verified|Not supported/.test(await p2.locator('body').innerText()), 'the haptics row says what was not verified'); await c2.close();
   const c3 = await newCtx(b, 390, null); const p3 = await c3.newPage(); await open(p3, '/#/ops', 'text=Operations'); await p3.waitForTimeout(800);
-  ok(/This page is not protected/.test(await p3.locator('body').innerText()) && /Real protection needs authentication/.test(await p3.locator('body').innerText()), 'Operations says plainly that it is not access-protected');
+  ok(/This page is not access-protected/.test(await p3.locator('body').innerText()) && /hides nothing/.test(await p3.locator('body').innerText()), 'Operations says plainly that it is not access-protected');
   const lockRow = p3.locator('details.ev', { hasText: 'Screen lock' }).first(); await lockRow.locator('summary').click(); const lt = await lockRow.innerText();
   ok(/Not supported here/i.test(lt) && !/Working/i.test(lt) && /How this is known/.test(lt), 'the Screen lock service on Operations says Not supported here, names how it is known, and is never Working');
   ok(!/\bWorking\b/.test(await p3.locator('body').innerText()), 'nothing on Operations is called Working merely because it is configured'); await c3.close(); }

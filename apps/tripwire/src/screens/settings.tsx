@@ -42,7 +42,7 @@ export function Settings() {
     <PageBar title="Settings" />
     <section className="card glass" aria-labelledby="set-dev" data-settings="device">
       <div className="row"><span className="avatar" aria-hidden="true"><Icon n="lock" /></span><div className="grow"><h2 id="set-dev" className="sec" style={{ margin: 0 }}>Stored on this device only</h2>
-        <div className="small dim" style={{ marginTop: 4 }}>There is no sign-in: Tripwire has no accounts and no sync. What you write is saved in this browser only. Clearing site data erases it, and another device starts empty, so a backup file is how you keep a copy or move. Currently held: {contents(s)}.</div></div></div>
+        <div className="small dim" style={{ marginTop: 4 }}>There is no sign-in: Tripwire has no accounts and no sync. What you write is saved in this browser only. Clearing site data erases it, and another device starts empty, so a backup file is how you keep a copy or move. Currently held: {contents(s)}. Notifications are not built.</div></div></div>
       {saving === false && <div className="note warn" role="alert" style={{ marginTop: 12 }}><b>This browser is not saving.</b> A private window, or full or blocked storage. What you write will be lost when this tab closes. <button className="btn sm" onClick={backUp}>Download a backup now</button></div>}
       <div className="set-backup" data-backup-status={bs.recorded ? 'recorded' : 'none'} role="status">
         <b>{bs.headline}</b><span className="small dim">{bs.note}</span>
