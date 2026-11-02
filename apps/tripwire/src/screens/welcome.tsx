@@ -26,6 +26,6 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
       {t && scr.data && hits.length === 0 && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”. Search covers the Nifty 500 screen only.</p>}
     </form>
     <div className="wl-out"><button className="btn" onClick={leave}>Skip</button><button className="btn" onClick={leave}>Explore as a guest</button></div>
-    <p className="mute small" style={{ margin: 0 }}>No account needed. Notes stay on this device. Paper analysis only: not investment advice, and no order is ever placed.</p>
+    <p className="mute small" style={{ margin: 0 }}>No account needed. Notes stay on this device. Paper analysis only: not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>
   </div>;
 }

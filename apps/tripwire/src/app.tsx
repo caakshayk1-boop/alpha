@@ -22,6 +22,9 @@ const Methodology = lazy(() => import('./screens/Methodology.tsx').then((m) => (
 const Help = lazy(() => import('./screens/Help.tsx').then((m) => ({ default: m.Help })));
 const Operations = lazy(() => import('./screens/ops.tsx').then((m) => ({ default: m.Operations })));
 const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default: m.Report })));
+const Privacy = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Privacy })));
+const Terms = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Terms })));
+const NotFound = lazy(() => import('./screens/notfound.tsx').then((m) => ({ default: m.NotFound })));
 import { MacroPage } from './screens/Macro.tsx';
 const Welcome = lazy(() => import('./screens/welcome.tsx').then((m) => ({ default: m.Welcome })));
 const SearchSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.SearchSheet })));
@@ -36,6 +39,7 @@ import { lockId } from './lock.ts';
 import { lastDiscoverQuery } from './discoverstate.ts';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
+import { resolveRoute } from './route.ts';
 
 /* ---- state: this device only, until an identity provider is configured ---- */
 const KEY = 'tripwire:v1';
@@ -97,9 +101,9 @@ export const useSheets = () => useContext(SheetCtx);
 
 /** Four destinations. Today and Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
-const MORE_HEADS = ['more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops'];
-export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : 'today');
-const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro' };
+const MORE_HEADS = ['more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
+export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
+const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 
@@ -141,13 +145,13 @@ export function App(): ReactNode {
   useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/settings.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
-  if (!isQuiet(loc.raw) && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
+  if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
   const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
   useEffect(() => {
     const own = loc.path[0] === 'discover' && isRestoring(loc.raw);   // Discover puts itself back
     if (!own && !(isRestoring(loc.raw) && restoreScroll(loc.raw))) window.scrollTo(0, 0);
-    document.title = `${TITLES[loc.path[0]] ?? TABS[ti].label} · Tripwire`;
+    document.title = `${resolveRoute(loc.path).kind === 'notfound' ? 'Not found' : TITLES[loc.path[0]] ?? TABS[ti].label} · Tripwire`;
   }, [nav.current, ti]); // eslint-disable-line react-hooks/exhaustive-deps
   /** A tap on a tab. On the tab you are in: back to the top, and if you are already there, back to the tab's first screen. On another: where you left it, scroll and all. */
   const onTab = (id: string) => (e: React.MouseEvent) => {
@@ -159,12 +163,15 @@ export function App(): ReactNode {
   };
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
-  if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
+  const legalHead = vl.path[0] === 'privacy' || vl.path[0] === 'terms';   // a first-time visitor can read both pages from a link before choosing anything
+  if (!s.onboarded && !legalHead) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   const slot = bannerSlot({ online, loading: screen.loading, hasData: !!screen.data, behind: f ? f.behind : null, hintDay: hint.current });
   let view: ReactNode;
-  if (head === 'c' && vl.path[1]) view = <Company sym={decodeURIComponent(vl.path[1])} />;
+  const route = resolveRoute(vl.path);
+  if (route.kind === 'notfound') view = <NotFound asked={route.asked} />;
+  else if (head === 'c' && vl.path[1]) view = <Company sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'm' && vl.path[1]) view = <MacroPage k={decodeURIComponent(vl.path[1]).toUpperCase()} />;
   else if (head === 'compare') view = <Compare syms={(vl.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
@@ -175,6 +182,8 @@ export function App(): ReactNode {
   else if (head === 'methodology') view = <Methodology />;
   else if (head === 'help') view = <Help />;
   else if (head === 'ops') view = <Operations />;
+  else if (head === 'privacy') view = <Privacy />;
+  else if (head === 'terms') view = <Terms />;
   else if (head === 'live') view = <Live />;
   else if (head === 'news') view = <NewsPage />;
   else if (head === 'markets') view = <Markets />;
