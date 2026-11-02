@@ -15,6 +15,7 @@ import { avatarStyle } from '../widgets.tsx';
 import { plural } from '../plural.ts';
 import { COLUMN_SETS, METRICS, coverage, describeCond, fmtMetric, metricOf, sameCond, toCsv, type Cond, type MetricKey, type SortId } from '../screener.ts';
 import { CondSheet } from './condsheet.tsx';
+import { PRESETS, PRESET_FOOTNOTE, activePreset, applyPreset, clearPreset, presetCount, presetCriteria } from '../presets.ts';
 import { DEFAULT_STATE, MAX_PICK, PAGE, canonConds, cellOf, clearFilters, discoverPath, displayRow, filtersOf, hasAnyFilter, isDefaultSort, lastDiscoverQuery, loadPlace, nextSort, parseDiscover, predicateMetrics, rememberDiscover, revealed, runScreen, sameDiscover, savePlace, serialiseDiscover, setFigure, sortName, sortWords, withFilters, type DiscoverState, type View } from '../discoverstate.ts';
 export { CondSheet } from './condsheet.tsx';
 
@@ -88,7 +89,8 @@ export function Discover() {
 
   const toggleSet = <K extends 'trend' | 'quality' | 'momentum' | 'value' | 'sector' | 'tier'>(k: K, v: DiscoverState[K]) => patch({ [k]: st[k] === v ? '' : v } as Partial<DiscoverState>);
   const lensOn = (l: (typeof LENSES)[number]) => (Object.entries(l.f) as [keyof Filters, string][]).every(([k, v]) => (filtersOf(st)[k] ?? '') === v);
-  const [advOpen, setAdvOpen] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false); const presOpen = advOpen; const preset = activePreset(st);
+  const presetNs = useMemo(() => Object.fromEntries(PRESETS.map((p) => [p.id, rows.length && presOpen ? presetCount(rows, p) : null])), [rows, presOpen]);
   // the idea cards count their names only once Advanced is open: five filter passes over the screen are not paid on every visit
   const counts = useMemo(() => Object.fromEntries(LENSES.map((l) => [l.id, rows.length && advOpen ? filterRows(rows, { ...NO_FILTER, ...l.f }).rows.length : null])) as Record<string, number | null>, [rows, advOpen]);
   const applyLens = (l: (typeof LENSES)[number]) => { if (lensOn(l)) patch(Object.fromEntries(Object.keys(l.f).map((k) => [k, ''])) as Partial<DiscoverState>); else patch({ trend: '', momentum: '', value: '', quality: '', ...l.f } as Partial<DiscoverState>); tick(); };
@@ -135,9 +137,24 @@ export function Discover() {
       {hasAnyFilter(st) && <button className="chip" onClick={clearAll}>Clear all</button>}
     </div>
 
+    {preset && <p className="small preset-on" role="status" data-preset-active><b>Preset: {preset.title}.</b> Criteria: {presetCriteria(preset).join('; ')}. <button className="linkbtn" onClick={() => { setSt(clearPreset); tick(); }}>Clear preset</button></p>}
+
     <details className="adv" onToggle={(e) => setAdvOpen(e.currentTarget.open)}>
       <summary>Advanced</summary>
       <div className="advbody">
+      <div className="presets" data-presets>
+        <h3 className="presh">Research presets</h3>
+        <div className="presbody">
+          <p className="small dim" style={{ margin: '0 0 8px' }}>Each preset only sets filters you can see and change. Its criteria are printed in words. These are screens, not recommendations.</p>
+          <div className="presgrid" role="group" aria-label="Research presets">{PRESETS.map((p) => { const on = preset?.id === p.id; const n = presetNs[p.id];
+            return <button key={p.id} className={`preset ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => { if (on) setSt(clearPreset); else setSt((x) => applyPreset(x, p)); tick(); }}>
+              <span className="pt">{p.title}</span><span className="pl small dim">{p.line}</span>
+              <ul className="pc small" aria-label="Criteria">{presetCriteria(p).map((c) => <li key={c}>{c}</li>)}</ul>
+              <span className="pn small mute num">{n == null ? ' ' : `${n.n.toLocaleString('en-IN')} of ${n.of.toLocaleString('en-IN')} names meet every test${n.unmeasured ? `; ${n.unmeasured.toLocaleString('en-IN')} had no figure for one` : ''}`}</span></button>; })}</div>
+          <p className="small mute" style={{ margin: '8px 0 0' }}>{PRESET_FOOTNOTE}</p>
+        </div>
+      </div>
+
         <div className="strip lenses" role="group" aria-label="Ideas">{LENSES.map((l) => { const on = lensOn(l); const n = counts[l.id];
           return <button key={l.id} className={`lens ${on ? 'on' : ''}`} style={{ '--lc': l.c } as React.CSSProperties} aria-pressed={on} onClick={() => applyLens(l)} title={l.line}>
             <span className="lt">{l.title}</span><span className="ln num">{n == null ? '…' : n}<small> names</small></span><span className="ll">{l.line}</span></button>; })}</div>

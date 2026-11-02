@@ -10,6 +10,8 @@ import { dayWord, inr0 } from '../fmt.ts';
 import { Empty } from '../ui.tsx';
 import { Loading } from './common.tsx';
 import { ObservationNote } from './obsnote.tsx';
+import { RealisedCurve, RecordReading } from './attribution.tsx';
+import { ContributionBars } from './contribution.tsx';
 import { basisCounts, basisLine } from '../provenance.ts';
 import { EmptyState, RecordStat, RecordStats, SectionHeader, StatusPill, ThroughPills, Button } from '../components/index.ts';
 import { gateLine } from '../components/gate.ts';
@@ -61,6 +63,15 @@ export function RecordScreen() {
         {items.length > SHOWN && !all && <Button className="rec-more" onClick={() => setAll(true)}>Show all {items.length} closed</Button>}
       </>}
     </section>
+
+    <RecordReading rs={items.map((x) => x.outcome.r as number)} min={MIN_TRADES} />
+
+    {items.length > 0 && <section className="rec-sec card attr" aria-labelledby="rec-attr" data-record-attr>
+      <SectionHeader id="rec-attr" title="Where the R came from" description="Every closed trade as a signed contribution, largest first. The rows and Other add up to the total." />
+      <ContributionBars label="R by closed trade" noun="trade" fmt={fmtR} items={items.map((x) => ({ key: x.pick.id, label: x.pick.sym, value: x.outcome.r as number }))} />
+    </section>}
+
+    <RealisedCurve items={items.map((x) => ({ id: x.pick.id, exitDay: x.outcome.exitDay, r: x.outcome.r }))} />
 
     <section className="rec-sec" aria-labelledby="rec-eng">
       <SectionHeader id="rec-eng" title="By engine" description="The same closed trades, split by the rule that picked them." />
