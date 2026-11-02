@@ -21,5 +21,5 @@ export function CaptureModule({ source, cfg = DEFAULT_CAPTURE }: { source: strin
 
 /** The identity footer: where the person behind Tripwire writes. A plain link; no tracking. */
 export function IdentityFooter() {
-  return <p className="small mute ident">Tripwire is paper-only research from {IDENTITY_LINKS.map((l, i) => <span key={l.href}>{i ? ' · ' : ''}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></span>)}.</p>;
+  return <p className="small mute ident">Tripwire is paper-only research from {IDENTITY_LINKS.map((l, i) => <span key={l.href}>{i ? ' · ' : ''}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></span>)}. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
 }

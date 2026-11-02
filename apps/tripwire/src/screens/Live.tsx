@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppState } from '../app.tsx';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
-import { useScreen } from '../data.ts';
+import { SLOW_DOWN, useScreen } from '../data.ts';
 import { dayCurve, lines, riskLens, totals, type Line } from '../blotter.ts';
 import { styleDef } from '../exits.ts';
 import { ENGINES } from '../quant.ts';
@@ -70,7 +70,7 @@ export function Live() {
       <DayChart pts={curve} />
       <div className="row between small dim num" style={{ marginTop: 10 }}><span>{tot.open} open · {waiting} waiting for an open</span><span className="amt">value {inr0(tot.value)}</span></div>
       {tot.best && tot.worst && ls.length > 1 && <div className="row between small num" style={{ marginTop: 6 }}><span>Best <b>{tot.best.sym}</b> <span className={tone(tot.best.pnl)}>{money(tot.best.pnl)}</span></span><span>Worst <b>{tot.worst.sym}</b> <span className={tone(tot.worst.pnl)}>{money(tot.worst.pnl)}</span></span></div>}
-      {auto.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {auto.intra.err}. {own.bars.data || auto.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
+      {auto.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>{auto.intra.err === SLOW_DOWN ? `${SLOW_DOWN}: live prices will refresh on their own.` : `Live prices are unavailable: ${auto.intra.err}.`} {own.bars.data || auto.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </section>
 
     {ls.length > 0 && <><Head aside={<span className="small mute">stop · entry · targets{ls.some((l) => l.ref) ? ' (ref = shown for orientation, not traded)' : ''}</span>}>Positions</Head>

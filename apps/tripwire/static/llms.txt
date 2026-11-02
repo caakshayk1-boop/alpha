@@ -8,6 +8,7 @@
 - Company pages: price chart, figures with their dates, risks, news.
 - Signals: how each rule has performed in a back-test and forward, including the results that did not support it.
 - Data: how current each dataset is, the eligibility rule versions and the back-test run history.
+- Privacy (https://tripwire.askakshay.com/#/privacy) and Terms (https://tripwire.askakshay.com/#/terms): what stays on the device, which public sources the server asks, and the paper-only, not-advice terms.
 
 ## Limits you should state if you summarise this site
 - Prices come from Yahoo Finance and can lag the exchange; every figure says its date.

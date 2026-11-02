@@ -1,7 +1,7 @@
 /** The shared chart frame. Every major chart (price, comparison, financials) sits in this one: a title with its timeframe, units and data-through date; a Chart / Table switch;
  *  the factual takeaway (from takeaway.ts, never typed in a screen); the legend with direct values and shapes; the drawing; the coverage notes; and one source-and-basis line.
  *  The frame holds the chart's height while it loads, so nothing moves when it arrives. Motion is not here: lines draw under html.fx in motion.css and style.css only. */
-import { useId, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { markerPath, type SeriesStyle } from './series.ts';
 import { cellText, rowDate, tableNote, type ChartTableData } from './table.ts';
 
@@ -18,13 +18,22 @@ export function ChartFrame({ title, meta, takeaway, legend, children, table, tab
   legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
 }) {
   const id = useId().replace(/:/g, '');
+  // On a phone the lead sentence is held to two lines so the plot starts on the first screen (charts.css). When the words do not fit, the whole sentence is printed again under the plot
+  // (visual copy only, hidden from assistive technology: the clamped paragraph above already holds every word in the page), so nothing is ever only half-readable.
+  const lead = useRef<HTMLParagraphElement>(null); const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const el = lead.current; if (!el) { setCut(false); return; }
+    const measure = () => setCut(el.scrollHeight > el.clientHeight + 1); measure();
+    if (typeof ResizeObserver === 'undefined') return; const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
+  }, [takeaway?.headline]);
   return <section className={`card chart cf ${className}`.trim()} aria-label={label} aria-busy={busy || undefined}>
     <div className="cf-head">
-      <div className="cf-title"><div className="cf-h">{title}</div>{meta && <div className="cf-meta">{meta}</div>}</div>
+      <div className="cf-top"><div className="cf-h">{title}</div>{legend}</div>
+      {meta && <div className="cf-meta">{meta}</div>}
     </div>
-    {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead">{takeaway.headline}</p></div>}
-    {legend}
+    {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead" ref={lead}>{takeaway.headline}</p></div>}
     {children}
+    {takeaway && cut && <p className="cf-full" aria-hidden="true" data-clamped-copy>{takeaway.headline}</p>}
     {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
     {notes}
     {basis && <p className="cf-basis small mute">{basis}</p>}

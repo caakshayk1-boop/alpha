@@ -4,6 +4,8 @@ import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
 import { nseClockOpen } from './stamp.ts';
 import { voidOutcomes } from './ledger.ts';
 export { useLiveMacro };
+import { SLOW_DOWN, retryAfterOf } from './slowdown.ts';
+export { SLOW_DOWN, retryAfterOf };
 
 export interface ScreenFeed { built_on: string; /** the instant the screen was built, when the feed carries it */ built_at?: string | null; as_of: string; count: number; rows: Row[] }
 export interface Gate { date: string; on: boolean; passed: number; checks: { rule: string; ok: boolean; value?: string }[] }
@@ -19,7 +21,7 @@ export function getJson<T>(url: string, timeout = 20000): Promise<T> {
   const hit = memo.get(url) as Promise<T> | undefined; if (hit) return hit;
   const p = (async () => {
     const c = new AbortController(); const t = setTimeout(() => c.abort(), timeout);
-    try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(r.status === 404 ? 'not published' : `HTTP ${r.status}`); return (await r.json()) as T; }
+    try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(r.status === 404 ? 'not published' : r.status === 429 ? SLOW_DOWN : `HTTP ${r.status}`); return (await r.json()) as T; }
     finally { clearTimeout(t); }
   })();
   memo.set(url, p); p.catch(() => memo.delete(url));
@@ -57,17 +59,17 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
   const [st, set] = useState<{ data: BarsFeed | null; err: string | null; at: number | null; loading: boolean }>({ data: null, err: null, at: null, loading: false });
   useEffect(() => {
     if (!on || !key) { set({ data: null, err: null, at: null, loading: false }); return; }
-    let live = true; let timer: number | undefined; let got = false;
+    let live = true; let timer: number | undefined; let got = false; let wait: number | null = null;
     const load = async () => {
       if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, 60000); return; }
       set((s) => ({ ...s, loading: true }));
       try {
         const r = await fetch(`/api/bars?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20000) });
-        const d = (await r.json()) as BarsFeed;
-        if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no bars returned');
+        const d = (await r.json().catch(() => null)) as BarsFeed | null; if (r.status === 429) wait = retryAfterOf(r, d as never);
+        if (!live) return; if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : r.status === 429 ? SLOW_DOWN : 'no bars returned');
         set({ data: d, err: null, at: Date.now(), loading: false }); got = true;
       } catch (e) { if (live) set((s) => ({ data: s.data, err: (e as Error).message || 'unreachable', at: s.at, loading: false })); }
-      if (live) timer = window.setTimeout(wake, 60000);
+      if (live) timer = window.setTimeout(wake, Math.max(60000, (wait ?? 0) * 1000)); wait = null;
     };
     // with the exchange shut the daily bars cannot change: after one good load, wake once a minute to look at the clock and fetch nothing until it opens
     const wake = () => { if (!live) return; if (got && !nseClockOpen(Date.now())) { timer = window.setTimeout(wake, 60000); return; } void load(); };
@@ -104,16 +106,16 @@ export function usePoll<T extends { ok: boolean }>(url: string | null, every: nu
   const [st, set] = useState<{ data: T | null; err: string | null; at: number | null; loading: boolean; tick: number }>({ data: null, err: null, at: null, loading: false, tick: 0 });
   useEffect(() => {
     if (!url) { set({ data: null, err: null, at: null, loading: false, tick: 0 }); return; }
-    let live = true; let timer: number | undefined; let got = false;
+    let live = true; let timer: number | undefined; let got = false; let wait: number | null = null;
     // an NSE-only feed is not asked again while the market is shut: the clock is looked at once a minute (no request), and the feed resumes when it opens
     const idle = () => nseOnly && !nseClockOpen(Date.now());
-    const next = () => { if (!live) return; const waiting = idle(); timer = window.setTimeout(() => { if (waiting && idle()) next(); else void load(); }, waiting ? 60000 : every); };
+    const next = () => { if (!live) return; const waiting = idle(); const w = wait; wait = null; timer = window.setTimeout(() => { if (waiting && idle()) next(); else void load(); }, waiting ? 60000 : Math.max(every, (w ?? 0) * 1000)); };
     const load = async () => {
       if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, every); return; }
       set((s) => ({ ...s, loading: true }));
       try {
-        const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json()) as T;
-        if (!live) return; if (!r.ok || !d.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : 'no prices returned');
+        const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json().catch(() => null)) as T | null; if (r.status === 429) wait = retryAfterOf(r, d as never);
+        if (!live) return; if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : r.status === 429 ? SLOW_DOWN : 'no prices returned');
         got = true; set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
       } catch (e) { if (live) set((s) => ({ ...s, err: (e as Error).message || 'unreachable', loading: false })); }
       next();

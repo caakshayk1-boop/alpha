@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { go, useAppState, useLoc, useSheets, setState } from '../app.tsx';
 import { useCompany, useScreen } from '../data.ts';
-import { Icon, Empty, Seg, useUi } from '../ui.tsx';
+import { Icon, Seg, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
 import { trendOf, TREND_RULE_TEXT, TREND_WORD } from '../screen.ts';
 import { curateCase, eligibilityOf, meaningful, riskGradeOf, riskSentence, NO_FLAGS_SENTENCE } from '../eligibility.ts';
@@ -27,6 +27,7 @@ import { fmtIst } from '../stamp.ts';
 import { changeLine } from '../overview.ts';
 import { Pill } from '../components/index.ts';
 import { FirstThought } from './firstthought.tsx';
+import { NotFound } from './notfound.tsx';
 
 type Tab = 'overview' | 'financials' | 'ownership' | 'risks' | 'thesis';
 export function Company({ sym }: { sym: string }) {
@@ -41,7 +42,8 @@ export function Company({ sym }: { sym: string }) {
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
-  if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack />{c.err === 'not published' ? <Empty title={`${sym} is not in the screen`}>It is not among the {scr.data ? plural(scr.data.count, 'company', 'companies') : 'published companies'} in this screen. Check the symbol, or search by name.</Empty> : <Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} />}</div>;
+  if (c.err === 'not published') return <NotFound asked={sym} company total={scr.data?.count ?? null} />;
+  if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack /><Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} /></div>;
   const fr = freshness(row.last_date ?? day);
   const lp = livePrice(row, quote); const rp = reprice(row, lp.fromQuote ? lp.px : null); const lo = rp.low52, hi = rp.high52, px = lp.px;   // figures that are a function of the price follow the live print; the rest stay at the close (basis.ts)
   const pxWord = lp.live ? 'live' : 'last traded';   // a figure worked out at a print says LIVE only while the market is open and the print is fresh (lp.live)

@@ -9,6 +9,7 @@ import { sessionsBetween } from './src/calendar.ts';
 import { FILE_IDS } from './src/freshness.ts';
 import { criticalCss } from './tools/critical.mjs';
 import { staticClosure } from './tools/budget.mjs';
+import { SUPPORT_EMAIL, contactView } from './src/contact.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', '..', 'public');
 const DIST = join(HERE, 'dist');
@@ -84,6 +85,16 @@ writeFileSync(join(DIST, 'index.html'), html);
 writeFileSync(join(DIST, '404.html'), html);
 for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
+// The link-preview image is copied by the .png loop above; the build refuses to ship without it, or with one over the 120 KB the share previews allow (tools/make-og.mjs draws it).
+if (!existsSync(join(DIST, 'og.png'))) throw new Error('static/og.png is missing: run node apps/tripwire/tools/make-og.mjs');
+if (statSync(join(DIST, 'og.png')).size >= 120 * 1024) throw new Error('static/og.png is 120 KB or more');
+// security.txt (RFC 9116) is published ONLY once the owner has set SUPPORT_EMAIL in src/contact.ts: a security contact that does not exist is worse than none. Expires is a year from the build.
+const contact = contactView(SUPPORT_EMAIL);
+if (contact.email) {
+  mkdirSync(join(DIST, '.well-known'), { recursive: true });
+  const expires = new Date(Date.now() + 365 * 86400000).toISOString().replace(/\.\d+Z$/, 'Z');
+  writeFileSync(join(DIST, '.well-known', 'security.txt'), `Contact: mailto:${contact.email}\nExpires: ${expires}\nPreferred-Languages: en\nCanonical: https://tripwire.askakshay.com/.well-known/security.txt\n`);
+}
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 // every hashed script and style (the lazy screens are separate chunks) and the fonts go into the worker's precache list, so the shell opens offline

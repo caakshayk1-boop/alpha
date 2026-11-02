@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { setState, useAppState } from '../app.tsx';
-import { getJson, hasHistory, type ChartFeed } from '../data.ts';
+import { SLOW_DOWN, getJson, hasHistory, type ChartFeed } from '../data.ts';
 import { RANGES, alignIndexed, dateLabel, nearestX, xTicks, yTicks, type RangeId, type Series } from '../chart.ts';
 import { pct } from '../fmt.ts';
 import { Radios } from '../ui.tsx';
@@ -41,7 +41,7 @@ export function CompareChart({ syms }: { syms: string[] }) {
     const paths = L.map((l) => l.v.map((v, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)} ${y(v).toFixed(1)}`).join(''));
     return { W, H, xs, y, paths, L, ticks: yTicks(Math.min(...all), Math.max(...all, metric === 'drawdown' ? 0 : -Infinity), useLog, 4), zeroY: metric === 'drawdown' ? y(0) : y(100) };
   }, [al, lines, log, metric, wpx]);
-  if (failed.length) return <ChartState title="Price comparison">{`Could not load the price history for ${failed.join(', ')} (${err[failed[0]]}). Nothing is drawn in its place.`}</ChartState>;
+  if (failed.length) return <ChartState title="Price comparison">{failed.every((f) => err[f] === SLOW_DOWN) ? `${SLOW_DOWN}, then reload this page. Nothing is drawn in its place.` : `Could not load the price history for ${failed.join(', ')} (${err[failed[0]]}). Nothing is drawn in its place.`}</ChartState>;
   if (!ready) return <ChartState title="Price comparison" busy />;
   if (!al || !geo || !lines) return <ChartState title="Price comparison" action={<Radios label="Range" value={range} onChange={(r) => setRange(r)} items={RANGES.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id }))} />}>These names do not share enough trading days in this window to compare. Try a longer range.</ChartState>;
   const last = al.t.length - 1; const i = cur == null ? last : Math.min(cur, last);

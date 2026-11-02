@@ -1,0 +1,14 @@
+/* Privacy, Terms and the Not found view. Tokens only; nothing here moves (no motion outside html.fx). */
+details.fold>.fold-body>.legal-body{background:none;border:0;box-shadow:none;padding:var(--sp-2) 0 0;border-radius:0}
+.legal-body p{margin:0 0 var(--sp-3);overflow-wrap:anywhere}
+.legal-body p:last-child{margin-bottom:0}
+.legal-body ul{margin:0 0 var(--sp-3);padding-left:var(--sp-5)}
+.legal-body ul:last-child{margin-bottom:0}
+.legal-body li{margin:0 0 var(--sp-2);overflow-wrap:anywhere}
+.legal-body li:last-child{margin-bottom:0}
+.legal-body code{font-size:var(--fs-data);overflow-wrap:anywhere}
+.legal-body a,.legal-end a{text-decoration:underline;overflow-wrap:anywhere}
+.legal-end{margin-top:var(--sp-5);padding-bottom:var(--sp-4)}
+.nf-asked{overflow-wrap:anywhere;word-break:break-word}
+.nf .ds-empty p{overflow-wrap:anywhere}
+@media print{.legal-end{break-inside:avoid;page-break-inside:avoid}}

@@ -15,6 +15,8 @@ const GROUPS: { head: string; rows: Row[] }[] = [
     { id: 'data', href: '#/data', title: 'Data and coverage', note: 'How current each dataset is, and what it covers' },
     { id: 'methodology', href: '#/methodology', title: 'Methodology and evidence', note: 'How picks and trends are worked out, and what the tests found' },
     { id: 'help', href: '#/help', title: 'Help', note: 'How to use Tripwire' },
+    { id: 'privacy', href: '#/privacy', title: 'Privacy', note: 'What stays on your device, and what the server is asked' },
+    { id: 'terms', href: '#/terms', title: 'Terms of use', note: 'Paper only, not advice, no order placed' },
   ] },
   { head: 'This device', rows: [
     { id: 'settings', href: '#/settings', title: 'Settings', note: 'Stored on this device only: backup and restore, defaults, privacy, app lock' },

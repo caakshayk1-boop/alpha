@@ -1,5 +1,6 @@
 // Shared helpers for the UI suite and the before/after screenshots: an OHLC+volume daily series and a context with the saved state and API mocks.
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 /** A daily series (weekdays only) of `n` bars ending near today, with open, high, low and volume. */
 export function ohlcSeries(n = 1400, sym = 'TCS', opts = {}) {
@@ -21,6 +22,13 @@ export async function newCtx(browser, width, series, extra = {}) {
   return ctx;
 }
 export { chromium, STATE };
+
+/** Serve the frozen screen with `as_of` a fixed number of CALENDAR days before today, so the "data is behind" banner is on screen whatever day or hour the suite runs (CI runs on weekday market hours, when the frozen 26 Oct copy is
+ *  only one session behind and the banner can be absent or in its grace period). Register it AFTER newCtx: the later route wins. The check that uses it also asserts the banner is really there. */
+export async function staleBanner(ctx, days = 21) {
+  const scr = JSON.parse(readFileSync(new URL('./fixtures/screen-2026-10-26.json', import.meta.url), 'utf8')); scr.as_of = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+  const body = JSON.stringify(scr); await ctx.route('**/data/screen.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body }));
+}
 
 /** 1 Nov 2026: Detail, Style, Scale and the overlays live in the "Chart options" bottom sheet. These open and close it; the sheet is modal, so close it before touching the range or the chart. */
 export async function openOptions(pg) { if (await pg.locator('.sheet').count()) return; await pg.getByRole('button', { name: /^Chart options/ }).click(); await pg.waitForSelector('.sheet'); }

@@ -5,12 +5,13 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { Quote, QuotesFeed } from './data.ts';
 import type { Row } from './screen.ts';
+import { SLOW_DOWN, retryAfterOf } from './slowdown.ts';
 import { isLiveQuote, nseClockOpen, quoteWord, type QWord } from './stamp.ts';
 
 const store = new Map<string, Quote>(); let pulse: Record<string, Quote> = {}; let macro: Record<string, Quote> = {};
 const want = new Map<string, number>(); let wantI = 0, wantM = 0; const subs = new Set<() => void>();
 const asked = new Set<string>();   // names already requested while the exchange has been shut: one with no quote is not asked for every minute
-let version = 0, timer: number | undefined, busy = false, lastAt = 0, errMsg: string | null = null, okN = 0, started = false;
+let version = 0, timer: number | undefined, busy = false, lastAt = 0, holdMs = 0, errMsg: string | null = null, okN = 0, started = false;
 const PER_CALL = 40, CAP = 160, FAST = 8000, SLOW = 45000, MACRO_CLOSED = 60000, CLOCK = 60000;
 const emit = () => { version++; subs.forEach((f) => f()); };
 
@@ -27,14 +28,15 @@ async function tick() {
     const syms = [...want.keys()].filter((x) => !closed || fresh(x)).slice(0, CAP); const calls: { s: string[]; i: boolean; m: boolean }[] = [];
     const needI = wantI > 0 && (!closed || !Object.keys(pulse).length); const needM = wantM > 0;
     for (let k = 0; k < Math.max(1, Math.ceil(syms.length / PER_CALL)); k++) calls.push({ s: syms.slice(k * PER_CALL, (k + 1) * PER_CALL), i: k === 0 && needI, m: k === 0 && needM });
+    let limited = false;
     const got = await Promise.all(calls.map(async (c) => {
       if (!c.s.length && !c.i && !c.m) return null;
-      try { const r = await fetch(`/api/tick?s=${encodeURIComponent(c.s.join(','))}${c.i ? '&i=1' : ''}${c.m ? '&m=1' : ''}`, { signal: AbortSignal.timeout(15000) }); const d = await r.json(); return r.ok && d.ok ? d : null; } catch { return null; }
+      try { const r = await fetch(`/api/tick?s=${encodeURIComponent(c.s.join(','))}${c.i ? '&i=1' : ''}${c.m ? '&m=1' : ''}`, { signal: AbortSignal.timeout(15000) }); const d = await r.json().catch(() => null); if (r.status === 429) { limited = true; holdMs = Math.max(holdMs, (retryAfterOf(r, d) ?? 30) * 1000); } return r.ok && d?.ok ? d : null; } catch { return null; }
     }));
     let any = false;
     if (closed) got.forEach((d, k) => { if (d) calls[k].s.forEach((x) => asked.add(x)); });   // only an answer counts as asking: a failed request is tried again
     for (const d of got) if (d) { any = true; for (const [k, v] of Object.entries(d.quotes ?? {})) store.set(k, v as Quote); if (d.pulse) pulse = { ...pulse, ...d.pulse }; if (d.macro) macro = { ...macro, ...d.macro }; }
-    if (any) { lastAt = Date.now(); errMsg = null; okN++; } else errMsg = 'the price service did not answer';
+    if (any) { lastAt = Date.now(); errMsg = null; okN++; } else errMsg = limited ? SLOW_DOWN : 'the price service did not answer';
     emit();
   } finally { busy = false; schedule(); }
 }
@@ -43,7 +45,8 @@ function schedule() {
   window.clearTimeout(timer); timer = undefined; if (!want.size && !wantI && !wantM) return;
   // open: fast while prints arrive, slow when none do (a holiday). Shut: look at the clock once a minute (no network) and fetch only round-the-clock markets.
   const closed = !nseClockOpen(Date.now());
-  timer = window.setTimeout(() => { void tick(); }, closed ? (wantM > 0 ? MACRO_CLOSED : CLOCK) : anyLive() || !lastAt ? FAST : SLOW);
+  const hold = holdMs; holdMs = 0;          // the Worker asked us to wait (HTTP 429): the next look is no sooner than that
+  timer = window.setTimeout(() => { void tick(); }, Math.max(hold, closed ? (wantM > 0 ? MACRO_CLOSED : CLOCK) : anyLive() || !lastAt ? FAST : SLOW));
 }
 function kick() { window.setTimeout(() => { if (!busy) void tick(); }, 60); }
 function start() {
