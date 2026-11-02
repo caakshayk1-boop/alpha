@@ -1,7 +1,7 @@
 // The shared chart system in a browser: the first screen, the factual takeaway, the Chart / Table agreement, keyboard and touch, series identity beyond colour,
 // reduced motion, the saved range, missing and non-positive data, the comparison (coverage notes, drawdown, compact add control), the financial panels, no overflow at 360 and 1280.
 // AUTOMATED checks in a desktop Chromium; they do not replace a real phone or a screen reader. Usage: node apps/tripwire/tests/charts.mjs [baseUrl]
-import { chromium, newCtx, ohlcSeries, openOptions, closeOptions } from './uimock.mjs';
+import { chromium, newCtx, ohlcSeries, openOptions, closeOptions, staleBanner } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
@@ -18,7 +18,9 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
   ok(/^TCS (rose|fell|was flat) [\d.]+% over the last year, against [+−]?[\d.]+% for the Nifty 50/.test(take) && /percentage points|level with it/.test(take) && /Closes through \d+ \w{3} \d{4}/.test(take), `the takeaway is a factual sentence with the benchmark and the data-through date (${take.split('\n')[0].slice(0, 90)})`);
   ok(!/because|will |likely|expect|forecast|confidence/i.test(take), 'the takeaway makes no causal claim, forecast or confidence statement');
   ok((await radio(pg, 'Range', '1Y').getAttribute('aria-checked')) === 'true' && (await radio(pg, 'Compare', 'VS NIFTY').getAttribute('aria-checked')) === 'true', 'a new person starts on 1Y, stock against the Nifty');
-  const head = await pg.locator('.chart-head').innerText(); ok(/Price change \(absolute\)/.test(head) && /Relative to the Nifty 50/.test(head) && /pts/.test(head), 'absolute change and relative performance are two labelled figures');
+  // 2 Nov 2026 (owner: "too congested"): the two figures are now two chips BELOW the plot, labelled "Absolute change" and "Relative to the Nifty 50" (was "Price change (absolute)", too long for a half-width chip)
+  const head = await pg.locator('.chart-head').innerText(); ok(/Absolute change/.test(head) && /Relative to the Nifty 50/.test(head) && /pts/.test(head), 'absolute change and relative performance are two labelled figures');
+  ok(await pg.locator('.cf-chips .cf-chip').count() === 2, 'the two figures are one compact row of two chips');
   const leg = await pg.locator('.cf-legend li').count(); const shapes = await pg.locator('.cf-legend li svg path').count(); ok(leg === 2 && shapes === 2 && (await pg.locator('.cf-legend li svg line[stroke-dasharray]').count()) === 1, 'the legend gives each line its own marker, and the benchmark a dash');
   ok(/[▲▼■]/.test(await pg.locator('.chart-head').innerText()) && /[▲▼■]/.test(await pg.locator('.c-end').first().innerText()), 'direction is carried by an arrow and a sign, not by colour alone');
   const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
@@ -27,6 +29,29 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
   ok(await pg.locator('.cf-tbl > summary').count() === 1 && (await pg.locator('.cf-tbl > summary').boundingBox()).height >= 43.5, 'the table is a disclosure with a 44px summary');
   ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
   await ctx.close(); }
+
+/* 1b. 2 Nov 2026, owner feedback "too congested": on a phone the plot must start inside the first screen even with the stale-data banner on, and the header is title + legend, one meta line, a two-line takeaway */
+for (const [w, h] of [[390, 844], [360, 800]]) {
+  const ctx = await newCtx(b, w, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: w, height: h }); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok(await pg.locator('.banner[role=status]').filter({ hasText: 'Treat everything as old' }).count() === 1, `${w}: the stale-data banner is on screen for this check (the fixture is pinned stale, not left to the clock)`);
+  const m = await pg.evaluate(() => { const top = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; }; const lead = document.querySelector('.cf-lead'); const lh = parseFloat(getComputedStyle(lead).lineHeight);
+    const sty = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const lg = sty('.cf-legend'), tt = sty('.cf-h');
+    return { plot: top('.chart-plot'), card: top('.cf'), leadLines: Math.round(lead.clientHeight / lh), clamped: lead.scrollHeight > lead.clientHeight + 1, copy: document.querySelectorAll('[data-clamped-copy]').length, legendBelowTitle: lg && tt ? lg.top >= tt.bottom - 1 : null, chipsBelowPlot: top('.cf-chips') > top('.chart-plot'), ctrlRows: document.querySelectorAll('.c-prim > .mini-seg, .c-prim > .c-prim2, .c-prim > [role=radiogroup]').length }; });
+  ok(m.plot != null && m.plot < 700, `${w}x${h}: with the stale-data banner the plot starts at ${m.plot}px, under 700 (the card starts at ${m.card})`);
+  ok(m.leadLines <= 2, `${w}: the takeaway is held to at most 2 lines (${m.leadLines})`);
+  ok(!m.clamped || m.copy === 1, `${w}: when the takeaway is cut, the whole sentence is printed once more under the plot (cut ${m.clamped}, copies ${m.copy})`);
+  ok(m.chipsBelowPlot, `${w}: the two figures sit below the plot`);
+  ok(await pg.locator('.cf-legend').count() === 1 && await pg.locator('.cf-legend li').count() === 2, `${w}: the legend is still there, with both lines`);
+  ok(await pg.locator('.cf-lead').innerText().then((t) => /^TCS (rose|fell|was flat)/.test(t) && /percentage points|level with it|Nifty/.test(t)), `${w}: the takeaway text is whole in the page (clamping is only visual)`);
+  ok(await pg.locator('.cf-tbl > summary').count() === 1, `${w}: the table alternative is still there`);
+  await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home'); const before = await pg.locator('.chart-plot').boundingBox(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight'); await pg.waitForTimeout(80);
+  const after = await pg.locator('.chart-plot').boundingBox(); const hd = await pg.locator('.chart-head').boundingBox();
+  ok(Number(await pg.locator('.chart-plot').getAttribute('aria-valuenow')) === 2 && Math.abs(after.y - before.y) < 0.5 && Math.abs(after.height - before.height) < 0.5, `${w}: the keyboard still moves along the line, and the plot does not move while it does`);
+  ok(hd.height >= 70, `${w}: the figures row holds its height while the hover wording changes (${Math.round(hd.height)}px)`);
+  ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow`);
+  await ctx.close(); }
+{ const ctx = await newCtx(b, 320, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: 320, height: 640 }); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok((await overflow(pg)) <= 0, '320: the compact header does not overflow'); const t320 = await pg.evaluate(() => Math.round(document.querySelector('.chart-plot').getBoundingClientRect().top + scrollY)); ok(t320 < 700, `320: the plot starts at ${t320}px, under 700`); await ctx.close(); }
 
 /* 2. chart and table agree; the last price on the chart is the last row of the table */
 { const ctx = await newCtx(b, 1280, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
