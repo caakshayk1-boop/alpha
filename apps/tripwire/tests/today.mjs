@@ -25,7 +25,7 @@ const text = (pg) => pg.locator('body').innerText();
 {
   const { ctx, pg, errs } = await open(GUEST); await pg.waitForSelector('[data-sec="setup"]'); const t = await text(pg);
   const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
-  ok(secs.join() === 'setup,brief', `a new user sees the setup card then the brief, nothing else (got ${secs.join(', ')})`);
+  ok(secs.join() === 'brief,setup,sample', `a new user sees the market brief, then the setup card, then the labelled sample walkthrough, nothing else (got ${secs.join(', ')})`);
   ok(await pg.getByRole('button', { name: 'Find a company' }).count() === 1, 'exactly one setup action: Find a company');
   ok(/Your market brief/.test(t) && /Screen data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('[data-brief]').innerText()) && /IST/.test(t), 'the brief states its data day and times in IST');
   ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(t.replace(/\n/g, ' ')), 'no zero-count panel, no path card, no empty section');
@@ -36,10 +36,10 @@ const text = (pg) => pg.locator('body').innerText();
   ok(await pg.locator('.strip .tile').count() >= 6 && /trend map/i.test(await text(pg)), 'the Markets page carries the indices, the commodity grid and the trend map');
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
 }
-/* ---- 1b. a returning user: changes and reviews first, then the brief, then the news (one heading), picks ---- */
+/* ---- 1b. a returning user: the market takeaway first (Phase 4, 1 Nov 2026), then changes and reviews, then the news (one heading), picks ---- */
 {
   const { ctx, pg } = await open(WITH); await pg.waitForSelector('.nw-row'); const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
-  ok(secs.indexOf('changes') === 0 && secs.indexOf('brief') === 1 && secs.indexOf('news') === 2, `returning order: changes, brief, news (got ${secs.join(', ')})`);
+  ok(secs.indexOf('brief') === 0 && secs.indexOf('changes') === 1 && secs.indexOf('news') === 2, `returning order: market takeaway (brief), changes, news (got ${secs.join(', ')})`);
   ok((await pg.getByRole('heading', { name: 'What matters now' }).count()) === 1, 'the news block has one "What matters now" heading, not two');
   ok(!(await pg.locator('.journey, [data-sec="setup"]').count()), 'no path card and no setup card for a returning user'); await ctx.close();
 }
