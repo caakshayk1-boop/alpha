@@ -8,6 +8,7 @@ import type { Paper, View } from './tracker.ts';
 import { REFERENCE_ONLY, targetBasis } from './exits.ts';
 import { targetPrices } from './levels.ts';
 import { dayWord } from './fmt.ts';
+import { DEFAULT_COST, GAP_SKIP_PCT, SLIPPAGE_PCT } from './tracker.ts';
 
 export type LadderTickId = 'stop' | 'entry' | 't1' | 't2';
 export interface LadderInput {
@@ -116,4 +117,20 @@ export function ladderInputFor(p: Pick<Paper, 'asOf' | 'horizon' | 'ref' | 'stop
   return { basis: t.basis, entry: t.basis === 'entry' ? (v.entry as number) : (v.signal ?? p.ref), stop: p.stop, curStop: t1Hit && t.basis === 'entry' ? (v.entry as number) : null, t1: r2(t.t1), t2: r2(t.t2), t1Hit, t2Hit,
     t1Day: o?.t1Day ?? null, t2Day: o?.t2Day ?? null, t1Px: o?.t1Px ?? null, t2Px: o?.t2Px ?? null,
     mark: v.mark, exit: v.exit ?? null, exitDay: o?.exitDay ?? null, status: v.status, reference };
+}
+
+/** The ladder for a pick that has not entered: levels worked from the SIGNAL close (basis 'signal'), nothing hit, no price on the journey. Uses the same `targetPrices` the tracker books from, so the stop
+ *  and the two targets drawn are the ones the paper book would use (the fill at the next open then sets the booked targets). Null when the levels cannot be worked out. */
+export function pickLadderInput(p: { asOf: string; horizon: number; ref: number; stop: number }): LadderInput | null {
+  const t = targetPrices(p, false, null); if (!t) return null;
+  return { basis: 'signal', entry: p.ref, stop: p.stop, curStop: null, t1: r2(t.t1), t2: r2(t.t2), t1Hit: false, t2Hit: false, mark: null, status: 'waiting', reference: t.ref };
+}
+/** The paper assumptions printed with a pick's levels, from the constants the tracker applies, so the sentence cannot differ from the rule. */
+export function paperAssumptions(horizon: number, cost: number = DEFAULT_COST): string[] {
+  return [
+    'Paper only: no order is placed and nothing is bought for you.',
+    `Enters at the next session's open plus ${SLIPPAGE_PCT}% slippage, not at the signal close. Skipped if that open is more than ${GAP_SKIP_PCT}% above the signal close.`,
+    `Costs ${cost}% round trip. Exits at the stop, a target, or the time limit of session ${horizon}, whichever comes first.`,
+    'The targets drawn are worked from the signal close; the fill sets the booked ones.',
+  ];
 }

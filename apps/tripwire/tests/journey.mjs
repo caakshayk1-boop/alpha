@@ -52,7 +52,7 @@ await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'the Markets page shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
 await pg.goBack(); await pg.waitForSelector('.brief-ix');
 ok(/Open|closed|Pre-open|No live/i.test(await pg.locator('header.bar .sub').innerText()), 'the header states the trading session');
-ok(await pg.locator('.rangebar').count() === 0 && /of liquid names are in an uptrend/.test(await text()), 'Today gives the breadth in one line; the trend map itself is on the Markets page');
+ok(await pg.locator('.rangebar').count() === 0 && /liquid names are in an uptrend/.test(await text()), 'Today gives the breadth in one line; the trend map itself is on the Markets page');
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
 ok(/Gold \$2,650\.50/.test(await pg.locator('.brief-macro').innerText().then((s) => s.replace(/\s+/g, ' '))), 'Today keeps one compact line of gold, Brent and the rupee');
 ok(/Start with one company/.test(await text()) && !/What matters now|Picks from the close/.test(await text()), 'a new user\'s Today is the setup card and the brief: no news, picks or book until they have something of their own');
@@ -292,7 +292,7 @@ const mock = (route) => {
 };
 await pg.route('**/api/bars*', mock);
 T.stock = () => quote(ref * 1.0, ref * 1.03);
-await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Take it myself' }).first().click();
+await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Add paper trade' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
 await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });

@@ -15,8 +15,9 @@ import { ACTIVE, ENGINES, type Pick } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { sizePlan } from '../planner.ts';
 import { pickFacts } from '../pickfacts.ts';
-import { BASIS_NOTE, targetPrices } from '../levels.ts';
-import { REFERENCE_ONLY } from '../exits.ts';
+import { pickLadderInput, paperAssumptions } from '../ladder.ts';
+import { TargetLadder } from '../components/index.ts';
+import { useCost } from '../book.ts';
 import { takePaper } from '../store.ts';
 import { dayWord, inr, inr0, pct } from '../fmt.ts';
 
@@ -26,7 +27,7 @@ export function Signals({ seg }: { seg: string }) {
   const s = useAppState();
   return <div>
     <PageBar title="Signals" sub="Paper only. Not advice." />
-    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: 'Mine' }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Proof' }]} />
+    <Seg label="Signals view" value={v} onChange={(x) => go(`/signals?v=${x}`)} items={[{ id: 'picks', label: 'Picks' }, { id: 'auto', label: 'Auto' }, { id: 'tracker', label: 'Mine' }, { id: 'record', label: 'Record' }, { id: 'evidence', label: 'Evidence' }]} />
     {v === 'picks' ? <Picks /> : v === 'auto' ? <AutoBook /> : v === 'tracker' ? <Tracker /> : v === 'record' ? <RecordScreen /> : <Evidence />}
   </div>;
 }
@@ -51,7 +52,7 @@ export function EvidenceChip({ id }: { id: string }) {
   return <span className={`tag ${ev.tone === 'bad' ? 'peach' : ev.tone === 'ok' ? 'lime' : ''}`} title={ev.line}>{ev.short}</span>;
 }
 function Picks() {
-  const { scr, out } = useEngines(); const bt = useBacktest(); const auto = useAutoBook(true); const take = usePaperTake(); const mine = useAppState().paper;
+  const { scr, out } = useEngines(); const bt = useBacktest(); const auto = useAutoBook(true); const take = usePaperTake(); const mine = useAppState().paper; const cost = useCost();
   if (scr.loading) return <Loading what="the engines" />;
   if (scr.err || !out) return <Failed what="the engines" err={scr.err ?? 'no data'} retry={scr.retry} />;
   const all = out.picks; const headline = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
@@ -66,14 +67,14 @@ function Picks() {
         <p className="mute small" style={{ margin: '6px 0 0' }}>{def.theory}</p>
         <details className="ev" style={{ marginTop: 10 }}><summary>How it picks<span className="chev">▾</span></summary><div className="body"><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
           <p className="small dim" style={{ marginBottom: 0 }}>Funnel tonight: {run.funnel.universe} names → {run.funnel.eligible} eligible → {run.funnel.passed} passed every filter → {run.funnel.skippedWideStop} skipped for a stop wider than {def.maxStopPct}% → {run.funnel.picked} shown.</p></div></details></div>
-      {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card">
+      {run.picks.length ? run.picks.map((p) => <div key={p.sym} className="card pickcard" data-pick={p.sym}>
         <div className="row between"><a href={`#/c/${p.sym}`} className="grow" style={{ minWidth: 0 }}><span className="sym">{p.rank}. {p.sym} {(() => { const r = scr.data!.rows.find((x) => x.sym === p.sym); return r ? <TrendTag r={r} /> : null; })()}</span><span className="dim small trunc" style={{ display: 'block' }}>{p.name}</span></a><span className="tag lime num" title={RANK_NOTE}>Rank {p.score} of 100</span></div>
-        {(() => { const fx = pickFacts(p.engine, scr.data!.rows.find((x) => x.sym === p.sym)); return fx.length ? <div className="factstrip num" role="list" aria-label={`What ranked ${p.sym} in ${def.name}`}>{fx.map((x) => <span key={x.k} role="listitem"><small>{x.k}</small><b className={x.tone ?? ''}>{x.v}</b></span>)}</div> : null; })()}
-        <div className="num small" style={{ margin: '10px 0 4px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}{(() => { const t = targetPrices(p); return t ? <> · T1 <b>{inr(t.t1)}</b> · T2 <b>{inr(t.t2)}</b>{t.ref ? ` (${REFERENCE_ONLY})` : ` (${BASIS_NOTE[t.basis]}; the fill sets the booked levels)`}</> : null; })()}</div>
+        <div className="num small" style={{ margin: '10px 0 2px' }}>Signal close <b>{inr(p.ref)}</b> · stop <b>{inr(p.stop)}</b> ({p.stopPct}% below) · exit by session {p.horizon}</div>
+        <TargetLadder sym={p.sym} input={pickLadderInput(p) ?? undefined} />
         {(p.flags ?? []).map((f) => <p key={f} className="small" style={{ margin: '0 0 6px', color: 'var(--a4)' }}>⚠ {f}</p>)}
-        <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}<p className="small dim" style={{ margin: '8px 0 0' }}>{RANK_NOTE}</p></div></details>
-        <div className="pickfoot"><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}><EvidenceChip id={p.engine} />{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser);
-          return <span className={`tag ${st.k === 'in' ? 'lime' : st.k === 'no' ? 'peach' : ''}`}>{st.text}</span>; })()}</div><div className="row" style={{ gap: 8 }}>{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser); return st.k === 'no' ? <button className="btn sm" disabled={own} onClick={() => take(p)}>{own ? 'In your book' : 'Take it myself'}</button> : null; })()}<TvButton sym={p.sym} className="btn sm" label="Chart" /></div></div></div>)
+        <details className="ev"><summary>Why it qualified<span className="chev">▾</span></summary><div className="body">{(() => { const fx = pickFacts(p.engine, scr.data!.rows.find((x) => x.sym === p.sym)); return fx.length ? <div className="factstrip num" role="list" aria-label={`What ranked ${p.sym} in ${def.name}`}>{fx.map((x) => <span key={x.k} role="listitem"><small>{x.k}</small><b className={x.tone ?? ''}>{x.v}</b></span>)}</div> : null; })()}{p.why.map((w) => <div key={w} className="small" style={{ marginBottom: 4 }}>✓ {w}</div>)}{p.risk && <p className="small down" style={{ margin: '8px 0 0' }}>Main risk · {p.risk}</p>}<p className="small dim" style={{ margin: '8px 0 0' }}>{RANK_NOTE}</p></div></details>
+        <details className="ev" data-assumptions><summary>Paper assumptions<span className="chev">▾</span></summary><div className="body"><ul className="small dim" style={{ margin: 0, paddingLeft: 18 }}>{paperAssumptions(p.horizon, cost).map((x) => <li key={x} style={{ marginBottom: 4 }}>{x}</li>)}</ul></div></details>
+        <div className="pickfoot">{(() => { const st = state(p); return <span className={`tag ${st.k === 'in' ? 'lime' : st.k === 'no' ? 'peach' : ''}`}>{st.text}</span>; })()}<div className="row" style={{ gap: 8 }}>{(() => { const st = state(p); const own = mine.some((x) => x.sym === p.sym && x.engine === p.engine && x.asOf === p.asOf && !x.closedByUser); return st.k === 'no' ? <button className="btn sm" disabled={own} onClick={() => take(p)}>{own ? 'In your book' : 'Add paper trade'}</button> : null; })()}<TvButton sym={p.sym} className="btn sm" label="Chart" /></div></div></div>)
         : <Empty title="No pick tonight">{run.funnel.passed ? `${run.funnel.passed} names passed, but each needed a stop wider than the engine allows.` : 'No name passed every filter. Rules are never loosened to fill this list.'}</Empty>}
     </section>; })}
     <p className="mute small" style={{ marginTop: 14 }}>A pick is a starting point for your own research, never an instruction. Entry in the tracker is the open of the next session, so a pick published after the close is never filled at that close.</p>
