@@ -207,7 +207,8 @@ ok((await pg.locator('.chart-plot path.c-line').getAttribute('d')) !== daily && 
 await opts(); await pg.getByRole('radio', { name: 'Log' }).click();
 ok(await pg.getByRole('radio', { name: 'Log' }).getAttribute('aria-checked') === 'true', 'log scale can be switched on'); await closeOpts();
 await pg.getByRole('radio', { name: 'vs Nifty' }).click();
-ok(/against the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.chart-plot path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
+// 2 Nov 2026: the figures row says "Relative to the Nifty 50" (the "Last year · against the Nifty" caption was dropped to give the plot the first screen; the window is in the title row and the takeaway)
+ok(/relative to the Nifty/i.test(await pg.locator('.chart-head').innerText()) && /pts/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.chart-plot path.c-line').count() === 2, 'vs Nifty draws two lines and states the gap in points');
 ok(/indexed to 100/.test(await pg.locator('.chart').innerText()) && /Nifty 50/.test(await pg.locator('.chart').innerText()), 'the comparison is labelled and indexed');
 await pg.locator('.chart-plot').scrollIntoViewIfNeeded(); const bx = await pg.locator('.chart-plot').boundingBox(); await pg.mouse.move(bx.x + bx.width * 0.4, bx.y + bx.height / 2); await pg.waitForTimeout(150);
 ok(/Nifty/.test(await pg.locator('.chart-head').innerText()) && await pg.locator('.c-dot').count() === 2, 'scrubbing in compare mode reads both lines');

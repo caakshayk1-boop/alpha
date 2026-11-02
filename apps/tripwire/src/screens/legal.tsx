@@ -78,7 +78,7 @@ export function Privacy() {
       <Body><ul>
         <li><b>No stored user data.</b> The server has no database and no user storage. Its only stored files are the app and the published data.</li>
         <li><b>Short-lived caches.</b> Public answers (a company's prices, a chart, a news search) are kept in Cloudflare's cache for between a few seconds and about six hours so the same question is not sent to the source again. A copy is stored under the company or search words, not under who asked.</li>
-        <li><b>One exception.</b> When you press Refresh now on News, a marker keyed by your IP address is kept in the cache for 30 seconds to stop repeated presses. Nothing else is keyed to you.</li>
+        <li><b>Two exceptions, both to stop abuse.</b> The Worker keeps a short-lived counter keyed by your IP address, for about a minute at a time, so one device cannot flood the price and news sources; and when you press Refresh now on News, a marker keyed by your IP address is kept for 30 seconds to stop repeated presses. These are kept in Cloudflare's cache only and expire on their own. Nothing else is keyed to you.</li>
         <li><b>Request logs: not verified.</b> The server's configuration turns on Cloudflare's request observability, so Cloudflare keeps request logs for the owner. Which fields they hold (such as the address requested, time, status and timing), whether your IP address is among them, and how long they are kept are set by Cloudflare and the owner's account, and were not verified for this page. The server's own code writes no log lines about visitors.</li>
         <li><b>Scheduled work.</b> Every 15 minutes the server may ask GitHub to run the news job. That request carries no visitor information.</li>
       </ul></Body>

@@ -82,8 +82,8 @@ test('the privacy page names every host the code calls, and the claims it makes 
   assert.match(read('../../wrangler.tripwire.jsonc'), /"observability": \{ "enabled": true \}/, 'the page says request observability is on, and that its retention was not verified');
   assert.match(page, /not verified/i);
   assert.match(page, /Contact/); assert.match(read('src/screens/legal.tsx'), /contactView\(\)/);
-  // the one place the Worker keys anything to a visitor is the Refresh-now marker, and the page says so
-  assert.equal([...read('worker.js').matchAll(/cf-connecting-ip/g)].length, 1); assert.match(page, /keyed by your IP address/);
+  // the places the Worker keys anything to a visitor are the Refresh-now marker and the per-minute abuse counters, and the page says so (2 Nov 2026: the limiter added the second)
+  const ipUses = [...read('worker.js').matchAll(/cf-connecting-ip/g)].length; assert.ok(ipUses >= 1 && ipUses <= 2, `the Worker reads the client address in ${ipUses} places; the privacy page names two uses, so a third needs the page updated`); assert.match(page, /keyed by your IP address/); assert.match(page, /short-lived counter keyed by your IP address/);
   // the backup and the erase button say what they do
   assert.match(read('src/screens/settings.tsx'), /Delete all my data/); assert.match(page, /Delete all my data/);
   assert.match(page, /Settings, Erase data, Delete all my data/);

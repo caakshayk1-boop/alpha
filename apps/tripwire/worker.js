@@ -22,6 +22,52 @@ export const SECURITY = { 'strict-transport-security': 'max-age=31536000; includ
 const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', ...SECURITY };
 const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...H, ...extra } });
 const r2 = (x) => Math.round(x * 100) / 100;
+
+// ---- Shared limits, input caps and coalescing (docs/tripwire/beta/WORKER_LIMITS.md) ---------------------------------------------------
+// Every limiter and cache here lives in the data centre's edge cache (the Cache API): no binding, no storage, no paid service. A limit is BEST-EFFORT: each data centre counts its own
+// clients, a count can be missed under a burst, and nothing here is a security control. The platform-level rule (a Cloudflare dashboard step) is the real ceiling; see the doc.
+/** Per-client allowances, [requests, window in seconds]. Set well above what a person does (the Today poll is one /api/tick every 8 s, about 8 a minute; a compare of three names is three chart reads). */
+export const LIMITS = { quote: [90, 60], history: [40, 60], news: [20, 60], file: [60, 60], health: [20, 60] };
+/** The route -> allowance class table. A route that calls an upstream is listed here or it is not served. */
+export const ROUTE_CLASS = { '/api/tick': 'quote', '/api/intraday': 'quote', '/api/pulse': 'quote', '/api/macro': 'quote', '/api/breadth': 'quote', '/api/news/catchup': 'quote',
+  '/api/chart': 'history', '/api/bars': 'history', '/api/news': 'news', '/api/news/version': 'file', '/api/ledger': 'file', '/api/factors': 'file', '/api/rsi': 'file', '/api/health': 'health' };
+const MAX_RAW_LIST = 1400;           // characters of a symbol list: sixty 20-character symbols and their commas, so a hundred-thousand-comma list is refused before it is split
+const MAX_SEARCH = 2000;             // characters of any /api query string
+/** Pure. A symbol list from its raw query value: upper-cased, trimmed, de-duplicated and SORTED (so `B,A` and `A,B` are one cache entry). null when it is too long, too many, or any symbol is not
+ *  1 to 20 of A-Z 0-9 & -. `min` 0 allows an empty list. */
+export function normSymbols(raw, max, min = 1) {
+  const text = String(raw ?? ''); if (text.length > MAX_RAW_LIST) return null;
+  const list = [...new Set(text.toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))].sort();
+  if (list.length < min || list.length > max || !list.every((s) => SYM.test(s))) return null; return list;
+}
+const isLocal = (url) => ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+/** Best-effort per-client limiter: a counter per class, client address and window, kept in the edge cache of the data centre that served the request (the same mechanism as "Refresh now").
+ *  Returns 0 when the call may go on, or the seconds to wait. Local development (no client address, or a localhost URL) is never limited. */
+export async function overLimit(request, cls, nowMs = Date.now()) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const lim = LIMITS[cls]; if (!cache || !lim) return 0;
+  const ip = request.headers.get('cf-connecting-ip'); if (!ip || isLocal(new URL(request.url))) return 0;
+  const [max, win] = lim; const slot = Math.floor(nowMs / (win * 1000)); const left = Math.max(1, Math.ceil(((slot + 1) * win * 1000 - nowMs) / 1000));
+  const key = new Request(`https://tripwire.internal/__rl_v1/${cls}/${encodeURIComponent(ip)}/${slot}`);
+  try {
+    const hit = await cache.match(key); const n = hit ? Number(await hit.text()) || 0 : 0; if (n >= max) return left;
+    await cache.put(key, new Response(String(n + 1), { headers: { 'cache-control': `max-age=${left + 1}` } }));
+  } catch { /* the counter is unavailable: fail open, this is not a security control */ }
+  return 0;
+}
+/** The 429 every limited route answers: JSON, Retry-After, never cached, and the same security headers as every other response. */
+export const slowDown = (retryAfter) => json({ ok: false, error: 'too many requests', retryAfter }, 429, { 'retry-after': String(retryAfter), 'cache-control': 'no-store' });
+/** Request coalescing within one isolate: concurrent callers that need the same upstream answer share ONE fetch. The shared value must be plain data. */
+const INFLIGHT = new Map();
+export function coalesce(key, fn) {
+  let p = INFLIGHT.get(key);
+  if (!p) { p = Promise.resolve().then(fn).finally(() => { if (INFLIGHT.get(key) === p) INFLIGHT.delete(key); }); INFLIGHT.set(key, p); }
+  return p;
+}
+/** coalesce() for a handler that answers with a Response: each caller gets its own copy. */
+async function coalesceResponse(key, fn) {
+  const s = await coalesce(key, async () => { const r = await fn(); return { status: r.status, headers: [...r.headers], body: await r.text() }; });
+  return new Response(s.body, { status: s.status, headers: s.headers });
+}
 const istParts = (ms) => { const d = new Date(ms + 330 * 60000); return { day: d.toISOString().slice(0, 10), mins: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
 
 /** Pure: turn a Yahoo chart result into the shape above. Exported for the tests. */
@@ -88,14 +134,20 @@ const FROM = 631152000;   // 1 Jan 1990, before any NSE listing; Yahoo starts at
 async function chart(url, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase().trim();
   if (!SYM.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
+  return coalesceResponse('chart:' + sym, () => chartOne(sym, ctx));
+}
+async function chartOne(sym, ctx) {
   const macro = Object.prototype.hasOwnProperty.call(MACRO, sym);          // an instrument, not an NSE share: its own Yahoo symbol, and no Nifty line
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const key = new Request(`https://tripwire.internal/__chart_v3/${sym}`);
   try {
-    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=1800, s-maxage=21600' } });
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { status: hit.status, headers: { ...H, 'cache-control': hit.status === 200 ? 'public, max-age=1800, s-maxage=21600' : 'public, max-age=60, s-maxage=600' } });
     const get = (s) => fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?period1=${FROM}&period2=${Math.floor(Date.now() / 1000) + 86400}&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
     const [r, nr] = await Promise.all([get(macro ? MACRO[sym] : `${sym}.NS`), macro ? Promise.resolve(null) : get('^NSEI').catch(() => null)]);
-    if (!r.ok) return json({ ok: false, error: r.status === 404 ? 'no price history for this symbol' : 'the price source did not answer' }, r.status === 404 ? 404 : 502);
+    if (r.status === 404) {          // an unknown symbol is remembered for ten minutes, so a bad client cannot make one Yahoo call per request
+      const miss = json({ ok: false, error: 'no price history for this symbol' }, 404, { 'cache-control': 'public, max-age=60, s-maxage=600' }); if (cache && ctx) ctx.waitUntil(cache.put(key, miss.clone())); return miss;
+    }
+    if (!r.ok) return json({ ok: false, error: 'the price source did not answer' }, 502);
     const niftyRes = nr && nr.ok ? (await nr.json().catch(() => null))?.chart?.result?.[0] : null;
     const p = parseChart((await r.json())?.chart?.result?.[0], niftyRes);
     if (!p) return json({ ok: false, error: 'too little history' }, 404);
@@ -135,7 +187,8 @@ export function parseIntraday(res, nowMs = Date.now()) {
   if (!(px > 0) || !(prev > 0) || t.length < 2) return null;
   return { t, c, px, pt, prev: r2(prev), live: nowMs / 1000 - pt < 25 * 60 };
 }
-async function fetchIntraday(yahooSymbol, cache, ctx) {
+const fetchIntraday = (yahooSymbol, cache, ctx) => coalesce('intra:' + yahooSymbol, () => fetchIntradayOne(yahooSymbol, cache, ctx));
+async function fetchIntradayOne(yahooSymbol, cache, ctx) {
   const key = new Request(`https://tripwire.internal/__intra_v2/${yahooSymbol}`);
   const hit = cache && await cache.match(key); if (hit) return hit.json();
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
@@ -157,16 +210,18 @@ const SPARK = 20;
  *  every open copy of the app shares it. A batch that fails falls back to one request per symbol. `pairs` is [[ourKey, yahooSymbol], ...]. */
 async function sparkMany(pairs, ctx) {
   const cache = typeof caches !== 'undefined' ? caches.default : null; const out = {}; const missing = [];
-  const chunks = []; for (let i = 0; i < pairs.length; i += SPARK) chunks.push(pairs.slice(i, i + SPARK));
+  const sorted = [...pairs].sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));          // one order for every caller, so the same set is the same cache entry
+  const chunks = []; for (let i = 0; i < sorted.length; i += SPARK) chunks.push(sorted.slice(i, i + SPARK));
   await Promise.all(chunks.map(async (ch) => {
     const key = new Request(`https://tripwire.internal/__spark_v1/${ch.map((p) => p[1]).sort().join(',')}`);
     try {
-      let body = null; const hit = cache && await cache.match(key); if (hit) body = await hit.json();
-      if (!body) {
+      const body = await coalesce(key.url, async () => {
+        const hit = cache && await cache.match(key); if (hit) return hit.json();
         const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(ch.map((p) => p[1]).join(','))}&range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
-        if (!r.ok) throw new Error('spark ' + r.status); body = await r.json();
-        if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=6' } })));
-      }
+        if (!r.ok) throw new Error('spark ' + r.status); const b = await r.json();
+        if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=6' } })));
+        return b;
+      });
       for (const [k, y] of ch) { const p = parseSpark(body?.[y]); if (p) out[k] = p; else missing.push(k); }
     } catch {
       await Promise.all(ch.map(async ([k, y]) => { try { const p = await fetchIntraday(y, cache, ctx); if (p) out[k] = p; else missing.push(k); } catch { missing.push(k); } }));
@@ -186,8 +241,8 @@ async function quotes(list, map, ctx) {
 }
 const TICK_MAX = 60;
 async function tick(url, ctx) {
-  const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
-  if (list.length > TICK_MAX || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give up to ${TICK_MAX} valid symbols` }, 400);
+  const list = normSymbols(url.searchParams.get('s'), TICK_MAX, 0);
+  if (!list) return json({ ok: false, error: `give up to ${TICK_MAX} valid symbols` }, 400);
   const wantI = url.searchParams.get('i') === '1', wantM = url.searchParams.get('m') === '1';
   const pairs = [...list.map((s) => ['s:' + s, `${s}.NS`]), ...(wantI ? Object.entries(INDICES).map(([k, y]) => ['i:' + k, y]) : []), ...(wantM ? Object.entries(MACRO).map(([k, y]) => ['m:' + k, y]) : [])];
   const { out, missing } = await sparkMany(pairs, ctx); const pick = (pre) => Object.fromEntries(Object.entries(out).filter(([k]) => k.startsWith(pre)).map(([k, v]) => [k.slice(2), v]));
@@ -216,7 +271,8 @@ export function aggregateBreadth(rows, live = {}) {
 }
 // GET /api/breadth -> { ok, t, as_of, n, up, mixed, down, sectors:[{k,n,up,down}], repriced, near }. Only a name within 8% of its 50-day average can change class in a
 // day, so only those are re-priced (about twenty requests); the rest keep the published close. Cached 60 s and shared by every open copy of the app.
-async function breadth(request, env, ctx) {
+const breadth = (request, env, ctx) => coalesceResponse('breadth', () => breadthOne(request, env, ctx));
+async function breadthOne(request, env, ctx) {
   const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__breadth_v1');
   try {
     const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=30, s-maxage=60' } });
@@ -313,7 +369,7 @@ async function news(url, ctx, request) {
   if (!q) { if (force && await forcedTooSoon(request, ctx)) return tooMany(); return newsFile('snapshot', ctx, force, Number(url.searchParams.get('v')) || 0); }
   if (!QOK.test(q)) return json({ ok: false, error: 'give a short search phrase' }, 400);
   const sym = (url.searchParams.get('sym') || '').toUpperCase(); if (sym && !SYM.test(sym)) return json({ ok: false, error: 'not a valid symbol' }, 400);
-  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_q_v2/${encodeURIComponent(q.toLowerCase())}/${sym}`);
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request(`https://tripwire.internal/__news_q_v2/${encodeURIComponent(q.toLowerCase().replace(/\s+/g, ' '))}/${sym}`);
   const H1 = { 'cache-control': 'public, max-age=60, s-maxage=300' };      // five minutes at the edge
   try {
     const hit = cache && await cache.match(key);
@@ -321,6 +377,12 @@ async function news(url, ctx, request) {
       if (!(force && age >= 60)) return new Response(body, { headers: { ...H, ...H1 } });
       if (await forcedTooSoon(request, ctx)) return tooMany(); }
     else if (force && await forcedTooSoon(request, ctx)) return tooMany();
+    return await coalesceResponse('nq:' + key.url, () => newsLive(q, sym, key, cache, ctx, H1));
+  } catch { return json({ ok: false, error: 'the news source did not answer' }, 200, { 'cache-control': 'no-store' }); }
+}
+/** The live query itself: Google News, then Bing News. Concurrent identical queries share one run. */
+async function newsLive(q, sym, key, cache, ctx, H1) {
+  try {
     const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 7); const tried = []; let retryAfter = 0;
     const order = [FEEDS.google, FEEDS.bing];                                   // Google News first; Bing News with the same words when Google refuses or has nothing
     for (const feed of order) {
@@ -347,38 +409,42 @@ async function catchup(ctx) {
   if (!d.run) return json({ ok: true, onDemand: false, reason: d.reason, ageMin: d.ageMin }, 200, { 'cache-control': 'public, max-age=60, s-maxage=60' });
   const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__news_catchup_v1');
   const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=60, s-maxage=300' } });
+  return coalesceResponse('catchup', () => catchupRun(nowMs, status, d, cache, key, ctx));
+}
+async function catchupRun(nowMs, status, d, cache, key, ctx) {
   const snap = status ? await (await newsFile('snapshot', ctx, false)).json().catch(() => null) : null;
   let body; try { body = await runCatchup({ fetchImpl: fetch, nowMs, status, snapshot: snap?.ok ? snap : null, decision: d }); } catch { body = { ok: false, error: 'the on-demand refresh failed' }; }
   const ttl = body.ok ? 900 : 120; const res = json(body, 200, { 'cache-control': `public, max-age=60, s-maxage=${ttl}` }); if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone())); return res;
 }
 
 async function bars(url, ctx) {
-  const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
-  if (!list.length || list.length > MAX || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give 1 to ${MAX} valid symbols` }, 400);
+  const list = normSymbols(url.searchParams.get('s'), MAX);
+  if (!list) return json({ ok: false, error: `give 1 to ${MAX} valid symbols` }, 400);
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const out = {}; const missing = [];
   await Promise.all(list.map(async (s) => {
-    const key = new Request(`https://tripwire.internal/__bars_v2/${s}`);
-    try {
-      const hit = cache && await cache.match(key); if (hit) { out[s] = await hit.json(); return; }
-      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=6mo&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
-      if (!r.ok) { missing.push(s); return; }
-      const res = (await r.json())?.chart?.result?.[0]; const p = parseYahoo(res);
-      if (!p) { missing.push(s); return; }
-      const gaps = incompleteSessions(res, p);
-      if (gaps.length) {                 // a finished session Yahoo's daily row has no complete bar for: rebuild it from the five-minute chart, and say so
-        try {
-          const r5 = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=5d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
-          const add = r5.ok ? rebuildSessions((await r5.json())?.chart?.result?.[0], gaps) : [];
-          for (const b of add) { p.t.push(b.t); p.o.push(b.o); p.h.push(b.h); p.l.push(b.l); p.c.push(b.c); }
-          if (add.length) p.rebuilt = add.map((b) => b.day);
-        } catch { /* the sessions stay missing */ }
-      }
-      out[s] = p;
-      if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(p), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } })));
-    } catch { missing.push(s); }          // absent, never zero
+    try { const p = await coalesce('bars:' + s, () => barsOne(s, cache, ctx)); if (p) out[s] = p; else missing.push(s); } catch { missing.push(s); }          // absent, never zero
   }));
   return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), bars: out, missing }, 200);
+}
+/** One symbol's six months of daily bars from Yahoo, or null when it has none. Cached five minutes at the edge; concurrent callers share one fetch. */
+async function barsOne(s, cache, ctx) {
+  const key = new Request(`https://tripwire.internal/__bars_v2/${s}`);
+  const hit = cache && await cache.match(key); if (hit) return hit.json();
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=6mo&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
+  if (!r.ok) return null;
+  const res = (await r.json())?.chart?.result?.[0]; const p = parseYahoo(res); if (!p) return null;
+  const gaps = incompleteSessions(res, p);
+  if (gaps.length) {                 // a finished session Yahoo's daily row has no complete bar for: rebuild it from the five-minute chart, and say so
+    try {
+      const r5 = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?range=5d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(9000) });
+      const add = r5.ok ? rebuildSessions((await r5.json())?.chart?.result?.[0], gaps) : [];
+      for (const b of add) { p.t.push(b.t); p.o.push(b.o); p.h.push(b.h); p.l.push(b.l); p.c.push(b.c); }
+      if (add.length) p.rebuilt = add.map((b) => b.day);
+    } catch { /* the sessions stay missing */ }
+  }
+  if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(p), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } })));
+  return p;
 }
 
 /** Pure: the health answer, from the probe results and the NAMES of the bindings the Worker was given. A binding's value, and any secret's, never appears: only that it exists. */
@@ -424,6 +490,11 @@ export default {
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) {
+      if (url.search.length > MAX_SEARCH) return json({ ok: false, error: 'request too long' }, 414, { 'cache-control': 'no-store' });
+      const cls = request.method === 'GET' ? ROUTE_CLASS[url.pathname.length > 5 ? url.pathname.replace(/\/$/, '') : url.pathname] : null;
+      if (cls) { const wait = await overLimit(request, cls); if (wait) return slowDown(wait); }
+    }
     if (url.pathname === '/api/bars' || url.pathname === '/api/bars/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return bars(url, ctx);
@@ -438,8 +509,8 @@ export default {
     }
     if (url.pathname === '/api/intraday' || url.pathname === '/api/intraday/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      const list = [...new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))];
-      if (!list.length || list.length > MAX_QUOTES || !list.every((s) => SYM.test(s))) return json({ ok: false, error: `give 1 to ${MAX_QUOTES} valid symbols` }, 400);
+      const list = normSymbols(url.searchParams.get('s'), MAX_QUOTES);
+      if (!list) return json({ ok: false, error: `give 1 to ${MAX_QUOTES} valid symbols` }, 400);
       return quotes(list, (s) => `${s}.NS`, ctx);
     }
     if (url.pathname === '/api/pulse' || url.pathname === '/api/pulse/') {
