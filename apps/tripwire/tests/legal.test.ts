@@ -14,9 +14,13 @@ const read = (p: string) => readFileSync(join(APP, p), 'utf8');
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
 
 test('route resolution: every address the app routes is ok, anything else is not found with what was asked', () => {
-  for (const h of ['today', 'discover', 'desk', 'more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'live', 'news', 'markets', 'lab', 'c', 'm', 'compare', 'report', 'privacy', 'terms']) {
+  for (const h of ['today', 'discover', 'desk', 'more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'live', 'news', 'markets', 'lab', 'compare', 'privacy', 'terms']) {
     assert.deepEqual(resolveRoute([h]), { kind: 'ok', head: h }, h);
   }
+  // heads that need an argument are not routes without one, and heads that take none are not routes with one (they used to fall through to another screen)
+  for (const h of ['c', 'm', 'report']) { assert.equal(resolveRoute([h]).kind, 'notfound', `#/${h} alone`); assert.equal(resolveRoute([h, '']).kind, 'notfound', `#/${h}/ with nothing after it`); assert.equal(resolveRoute([h, 'X', 'extra']).kind, 'notfound', `#/${h}/X/extra`); assert.deepEqual(resolveRoute([h, 'X']), { kind: 'ok', head: h }, `#/${h}/X`); }
+  for (const h of ['today', 'desk', 'more', 'privacy']) assert.equal(resolveRoute([h, 'extra']).kind, 'notfound', `#/${h}/extra`);
+  assert.deepEqual(resolveRoute(['today', '']), { kind: 'ok', head: 'today' }, 'a trailing slash is the same address');
   assert.deepEqual(resolveRoute([]), { kind: 'ok', head: '' }, '#/ is Today');
   assert.deepEqual(resolveRoute(['c', 'TCS']), { kind: 'ok', head: 'c' });
   assert.deepEqual(resolveRoute(['nope']), { kind: 'notfound', asked: '/nope' });

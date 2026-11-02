@@ -11,7 +11,13 @@ export function askedPath(path: readonly string[]): string {
   return raw.length > TOO_LONG ? raw.slice(0, TOO_LONG - 1) + '…' : raw;
 }
 /** Addresses are lower case: `#/Today` is not a route (it used to open Today by accident, and a link that works by accident breaks the day the accident is fixed). */
+/** The heads that take exactly one more segment (a symbol or an instrument). Every other head takes none: the rest of its address is the query string. */
+export const NEEDS_ARGUMENT: readonly string[] = ['c', 'm', 'report'];
 export function resolveRoute(path: readonly string[]): Resolved {
-  const head = path[0] ?? '';
-  return KNOWN_HEADS.includes(head) ? { kind: 'ok', head } : { kind: 'notfound', asked: askedPath(path) };
+  const segs = [...path]; while (segs.length && segs[segs.length - 1] === '') segs.pop();   // `#/today/` is `#/today`
+  const head = segs[0] ?? '';
+  /* a known first word is not enough: `#/c` (no company), `#/m`, `#/report` and `#/today/extra` each used to fall through to another screen by accident */
+  const want = NEEDS_ARGUMENT.includes(head) ? 2 : 1;
+  const shapeOk = head === '' ? segs.length === 0 : segs.length === want && (want === 1 || !!segs[1]);
+  return KNOWN_HEADS.includes(head) && shapeOk ? { kind: 'ok', head } : { kind: 'notfound', asked: askedPath(path) };
 }
