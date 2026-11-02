@@ -29,6 +29,7 @@ const PlannerSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m
 const ThesisSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ThesisSheet })));
 const ExplainSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ExplainSheet })));
 import { freshness } from './fresh.ts';
+import { bannerSlot, readHint, writeHint } from './bannerslot.ts';
 import { applyTheme } from './theme.ts';
 import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
@@ -110,6 +111,8 @@ export function App(): ReactNode {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const screen = useScreen();
+  const hint = useRef<string | null>(null); if (hint.current === null) hint.current = readHint() ?? '';   // read once, before the screen answers; '' = nothing remembered
+  useEffect(() => { writeHint(screen.data?.as_of); }, [screen.data?.as_of]);
   const close = useCallback(() => setSheet(null), []);
   useEffect(() => { const a = () => setOnline(true), b = () => setOnline(false); window.addEventListener('online', a); window.addEventListener('offline', b); return () => { window.removeEventListener('online', a); window.removeEventListener('offline', b); }; }, []);
   useEffect(() => {
@@ -159,6 +162,7 @@ export function App(): ReactNode {
   if (!s.onboarded) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
+  const slot = bannerSlot({ online, loading: screen.loading, hasData: !!screen.data, behind: f ? f.behind : null, hintDay: hint.current });
   let view: ReactNode;
   if (head === 'c' && vl.path[1]) view = <Company sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'm' && vl.path[1]) view = <MacroPage k={decodeURIComponent(vl.path[1]).toUpperCase()} />;
@@ -187,7 +191,8 @@ export function App(): ReactNode {
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Settings (More) to restore your notes.</div>}
         {pwa.updateReady && <div className="banner upd" role="status"><span>Update ready.</span><button className="btn sm" onClick={() => { const r = applyUpdate(); setUpdMsg(r === 'busy' ? 'Finish what you are editing first, then reload.' : ''); }}>Reload</button>{updMsg && <span className="why small">{updMsg}</span>}</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
-        {online && f && f.behind !== null && f.behind > 1 && <div className="banner" role="status">The data stops {f.behind} sessions before the last finished one. Treat everything as old.</div>}
+        {slot === 'show' && <div className="banner" role="status">The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>}
+        {slot === 'reserve' && <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div>}
         <div className="view" key={vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>
