@@ -1,0 +1,96 @@
+/* Print. Last in the cascade (app.css), tokens only. The paper palette is in tokens.css: inside @media print the live colour tokens point at it, so no component needs a print copy.
+   What this file does: white page and dark ink; the app's own navigation, sticky bars, sheets and toasts do not print; every disclosure prints open (printmode.ts opens the <details>, and the
+   ::details-content rule below is the CSS-only fallback where the browser supports it); a card, a chart, a table row and a heading are not split across pages; one page-width, nothing clipped. */
+@page{margin:14mm 12mm}
+@media print{
+  html,body{background:var(--print-bg)!important;background-image:none!important;color:var(--print-ink)!important;color-scheme:light;-webkit-print-color-adjust:economy;print-color-adjust:economy}
+  body{font-size:11pt;line-height:1.45}
+  *,*::before,*::after{box-shadow:none!important;text-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important}
+
+  /* the app's own chrome: navigation, the status bar, the sticky action bar, banners, sheets, toasts, the skip link and anything marked noprint */
+  .tabs,.statusbar,.skip,.fab-row,.banner,.scrim,.sheet,.toast,.noprint,.routewait,.co-tabs,.c-prim,.c-adv,.cf-view,.c-optbtn,.chev,.sr.skip,[data-noprint]{display:none!important}
+  .bar .icon-btn{display:none!important}
+  .bar{position:static!important;background:none!important;border:0!important;margin:0 0 var(--sp-3)!important;padding:0!important;min-height:0!important}
+  .bar h1{font-size:14pt!important;line-height:1.2;display:block;-webkit-line-clamp:unset;overflow:visible;white-space:normal;color:var(--print-ink)!important}
+  .bar .sub{color:var(--print-ink-2);white-space:normal}
+
+  /* one page-width: the app is a column on a phone and a rail plus a column on a desktop; on paper it is the page */
+  .app{display:block!important;min-height:0!important}
+  .main{max-width:none!important;width:auto!important;margin:0!important;padding:0!important}
+  .view{animation:none!important;transform:none!important;opacity:1!important}
+  .co-grid,.co-grid.has-side{display:block!important}
+  .co-side{position:static!important}
+  .main *{max-width:100%;box-sizing:border-box}
+  .main img,.main svg{max-width:100%}
+  .scroll-x{overflow:visible!important;max-height:none!important;margin:0!important;padding:0!important}
+  .cf-table .scroll-x{max-height:none!important}
+  table{width:100%!important;table-layout:auto}
+  th,td{overflow-wrap:anywhere;min-width:0}
+  thead{display:table-header-group}
+  .tbl th{position:static!important}
+  tr,img{break-inside:avoid;page-break-inside:avoid}
+  pre,code{white-space:pre-wrap;overflow-wrap:anywhere}
+  a[href]{color:inherit;text-decoration:underline}
+
+  /* surfaces: white paper with a hairline, no fills */
+  .card,.cf,details.ev,details.more,.fold,.note,.tile,.li,.gatecard,.ds-card,.tcard,.pcard,.hitcard,.rp-card{background:var(--print-bg)!important;border:1px solid var(--print-line)!important;color:var(--print-ink)!important;border-radius:var(--rad-sm)!important}
+  .dim,.mute,.k{color:var(--print-ink-2)}
+  .up,em.ed{color:var(--print-up)}.down{color:var(--print-down)}
+  .cf{min-height:0!important}
+  .cf.cf-state[aria-busy=true]{min-height:0!important}
+  .tag,.pill,.chip{background:transparent!important;border:1px solid var(--print-line-2)!important;color:var(--print-ink)!important}
+
+  /* never split a card, a chart, a disclosure, a figure or a heading from what follows it */
+  .card,.cf,.chart,details,.fold,.note,.tile,.meter,.rp-card,.cf-take,.cf-take2,.cf-legend,.c-hl,figure,.rp-head,.rp-dates{break-inside:avoid;page-break-inside:avoid}
+  h1,h2,h3,.rp-h,.fold-t,.k,caption,summary{break-after:avoid;page-break-after:avoid}
+  .rp-sec{break-inside:auto}
+  .rp-sec>.rp-h{break-after:avoid}
+  .cf,.chart-plot,.chart-plot svg{break-inside:avoid;page-break-inside:avoid}
+
+  /* a disclosure prints open. printmode.ts sets [open] for the length of the print; where the browser exposes the content slot (::details-content) it is also made visible in CSS alone */
+  details:not([data-print-closed])::details-content{content-visibility:visible!important;display:block!important;height:auto!important;overflow:visible!important}
+  details>summary{list-style:none;cursor:default;min-height:0!important}
+  details>summary::-webkit-details-marker{display:none}
+  details:not([open]):not([data-print-closed])>:not(summary){display:block!important}
+  details[data-print-closed]>:not(summary){display:none!important}
+
+  /* the chart: crisp vector strokes, paper-ink labels, filled marks keep their fill on paper */
+  .chart-plot{overflow:visible!important;height:auto;min-height:180px}
+  .chart-plot svg{shape-rendering:geometricPrecision}
+  .c-line{stroke-dashoffset:0!important}
+  .c-end,.c-last,.c-tip,.c-ylab,.c-lvl{background:var(--print-bg)!important;color:var(--print-ink)!important}
+  .c-last{border:1px solid var(--print-ink)}
+  .cf-sw,.c-end svg,.meter,.meter *,.c-key{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .meter{background:var(--print-surface)!important;border:1px solid var(--print-line)}
+  .meter .fill{background:var(--print-ink-3)!important;opacity:1}
+  .meter .mk{background:var(--print-ink)!important}
+
+  /* the report page's own layout */
+  .rp{max-width:none}
+  .rp-head{border-bottom:2px solid var(--print-ink);padding-bottom:var(--sp-3);margin-bottom:var(--sp-4)}
+  .rp-name{font-size:20pt!important;line-height:1.15;margin:0}
+  .rp-sec{margin:var(--sp-4) 0}
+  .rp-h{font-size:13pt;margin:0 0 var(--sp-2)}
+}
+
+/* on screen the report is the same document, drawn in the app's own dark palette */
+.rp-head{margin:0 0 var(--sp-4)}
+.rp-name{margin:0 0 var(--sp-1);font-size:var(--fs-h2);line-height:var(--lh-h2)}
+.rp-sym{color:var(--ink-2);font-weight:500}
+.rp-sub{margin:0}
+.rp-dates{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);margin:var(--sp-3) 0 0}
+.rp-dates>div{min-width:0}
+.rp-dates dt{font-size:var(--fs-label);color:var(--ink-3)}
+.rp-dates dd{margin:0;font-size:var(--fs-data);color:var(--ink)}
+.rp-disc{margin:var(--sp-3) 0 0;color:var(--ink-2)}
+.rp-sec{margin:var(--sp-5) 0}
+.rp-h{font-size:var(--fs-h3);line-height:var(--lh-h3);margin:0 0 var(--sp-2)}
+.rp-h2{margin-top:var(--sp-4)}
+.rp-line{margin:var(--sp-2) 0 0}
+.rp-list{margin:var(--sp-2) 0 0;padding-left:20px}
+.rp-list li{margin:0 0 var(--sp-2)}
+.rp-points,.rp-facts{margin-top:var(--sp-3)}
+.rp-points caption{text-align:left;padding:0 0 var(--sp-1)}
+.rp-foot{margin-top:var(--sp-5)}
+/* the stale-data banner's reserved slot: the same box as the banner, drawn invisibly, so the banner's arrival moves nothing (bannerslot.ts) */
+.banner-ghost{visibility:hidden;pointer-events:none}

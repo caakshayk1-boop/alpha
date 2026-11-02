@@ -4,6 +4,7 @@ import { useChart } from '../data.ts';
 import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
 import { inr, pct } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
+import { keyPoints } from '../reportview.ts';
 import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, chartStart, markerPath, priceTakeaway, signedPts, spreadLabels, styleOf, windowWords } from '../charts/index.ts';
 import type { Level } from '../levels.ts';
 
@@ -13,7 +14,7 @@ const compact = (v: number) => (v >= 1e7 ? `${(v / 1e7).toFixed(2)} cr` : v >= 1
 const FRAME_WORD: Record<Frame, string> = { daily: 'day', weekly: 'week', monthly: 'month' };
 /** A dated event drawn on the time axis. Only ever built from a date the data holds, with the source said in `basis`; the chart invents none. */
 export interface ChartEvent { t: number; label: string; basis: string }
-export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: string; fmt?: (v: number) => string; name?: string; levels?: Level[]; events?: ChartEvent[] }) {
+export function PriceChart({ sym, fmt, name, levels = [], events = [], report }: { sym: string; fmt?: (v: number) => string; name?: string; levels?: Level[]; events?: ChartEvent[]; /** the printable report's copy: the same chart in the person's saved range, with no controls, and a compact first/last/high/low table in place of the long one */ report?: boolean }) {
   const f = fmt ?? ((v: number) => inr(v)); const instrument = !!fmt;      // an index, metal, currency or coin: no Nifty line, no adjustment note
   const feed = useChart(sym); const gid = useId().replace(/:/g, ''); void gid;
   const app = useAppState(); const savedPref = app.prefs.chart;
@@ -163,7 +164,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
         <svg viewBox={`0 0 ${geo.W} ${H2}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={geo.W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" vectorEffect="non-scaling-stroke" /><path d={`${d}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${y(0)}L${geo.xs[0].toFixed(1)} ${y(0)}Z`} fill="var(--down)" fillOpacity=".12" /><path d={d} fill="none" stroke="var(--down)" strokeWidth="1.25" strokeDasharray="6 2" vectorEffect="non-scaling-stroke" /></svg></div></div>; })()}
   </>;
 
-  return <ChartFrame label="Price history"
+  return <ChartFrame label="Price history" printTableClosed={!!report}
     title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={metaBits.join(' · ')} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
     basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
    
@@ -180,14 +181,15 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
       {evOn && evIn.length > 0 && <p className="small mute" style={{ margin: '6px 0 0' }}>{evIn.map((e) => `${dateLabel(e.t)}: ${e.label} (${e.basis})`).join(' · ')}. No other dated events (dividend, split, announcement) are held in this data, so none are marked.</p>}
       {!win.covers && range !== 'Max' && <p className="small mute" style={{ margin: '6px 0 0' }}>Data starts {dateLabel(all[0].t)}: {range} shows all of it.</p>}
       {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
-      <div className="c-prim" role="group" aria-label="Chart controls">
+      {!report && <div className="c-prim" role="group" aria-label="Chart controls">
         <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
         <div className="c-prim2">
           {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
           <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" onClick={() => setOptsOpen(true)}>Chart options{optCount > 0 && <span className="c-badge" aria-label={`${optCount} changed`}>{optCount}</span>}</button>
         </div>
-      </div>
-      {optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
+      </div>}
+      {report && <KeyPoints pts={win.pts} f={f} stockOnly={!!cmp} />}
+      {!report && optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
         <div className="c-sheet">
           <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
           {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => solo(() => setKind(v))} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', hint: vs ? 'Candles are drawn for the stock alone: this switches off the Nifty comparison' : undefined }] as { id: 'line' | 'candle'; label: string; hint?: string }[]} /> : null}
@@ -213,4 +215,12 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
     </>}>
     {chart}
   </ChartFrame>;
+}
+
+/** The compact table that prints with the report: the first, last, highest and lowest close of the window drawn. The long table stays a collapsed disclosure; this one is always open. */
+function KeyPoints({ pts, f, stockOnly }: { pts: readonly Pt[]; f: (v: number) => string; stockOnly: boolean }) {
+  const kp = keyPoints(pts); if (!kp.length) return null;
+  return <table className="tbl rp-points" data-keypoints><caption className="k">Key points of the window drawn{stockOnly ? ' (the stock\'s own closes; the chart above is indexed to 100)' : ''}</caption>
+    <thead><tr><th scope="col" style={{ textAlign: 'left' }}>Point</th><th scope="col" style={{ textAlign: 'left' }}>Date</th><th scope="col" style={{ textAlign: 'right' }}>Close</th></tr></thead>
+    <tbody>{kp.map((k) => <tr key={k.id}><th scope="row" style={{ textAlign: 'left', fontWeight: 500 }}>{k.label}</th><td>{dateLabel(k.t)}</td><td className="num" style={{ textAlign: 'right' }}>{f(k.c)}</td></tr>)}</tbody></table>;
 }

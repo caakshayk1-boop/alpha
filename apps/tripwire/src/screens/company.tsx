@@ -167,7 +167,7 @@ export function Company({ sym }: { sym: string }) {
       <button className="btn" onClick={() => open({ k: 'thesis', sym })}><Icon n="note" />Thesis</button>
       <button className="btn pri" onClick={() => open({ k: 'plan', sym })}><Icon n="plan" />Paper plan</button>
     </div>
-    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><TvButton sym={sym} label="Full chart on TradingView" /> <a href={`#/report/${sym}`} style={{ textDecoration: 'underline' }}>Report for printing or saving as PDF</a></p>
+    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><TvButton sym={sym} label="Full chart on TradingView" /> <a href={`#/report/${sym}`} data-print-report style={{ textDecoration: 'underline' }}>Print report</a> <span className="mute">(a white-paper version you can print or save as PDF)</span></p>
   </div>;
   function FollowText({ sym }: { sym: string }) {
     const on = s.follows.includes(sym);

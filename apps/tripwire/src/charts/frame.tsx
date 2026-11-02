@@ -13,9 +13,9 @@ export const BASIS = {
   statements: 'Source: annual statements from the data provider, in ₹ crore, by fiscal year ending 31 March. Figures are as reported, not adjusted; a year without a figure is left blank, not drawn as zero.',
 } as const;
 
-export function ChartFrame({ title, meta, takeaway, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, className = '' }: {
+export function ChartFrame({ title, meta, takeaway, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, printTableClosed, className = '' }: {
   title: ReactNode; meta?: ReactNode; takeaway?: { headline: string; lines: string[]; dataThrough: string } | null;
-  legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; className?: string;
+  legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
 }) {
   const id = useId().replace(/:/g, '');
   return <section className={`card chart cf ${className}`.trim()} aria-label={label} aria-busy={busy || undefined}>
@@ -28,7 +28,7 @@ export function ChartFrame({ title, meta, takeaway, legend, children, table, tab
     {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
     {notes}
     {basis && <p className="cf-basis small mute">{basis}</p>}
-    {table && <details className="ev cf-tbl" open={tableOpen}><summary>{tableLabel ?? 'The same chart as a table'}<span className="chev">▾</span></summary><div className="body">{table}</div></details>}
+    {table && <details className="ev cf-tbl" open={tableOpen} data-print-closed={printTableClosed ? '' : undefined}><summary>{tableLabel ?? 'The same chart as a table'}<span className="chev">▾</span></summary><div className="body">{table}</div></details>}
   </section>;
 }
 
