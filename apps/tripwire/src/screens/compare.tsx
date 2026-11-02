@@ -32,7 +32,7 @@ const VIEWS: Record<View, { label: string; lines: Line[] }> = {
   balance: { label: 'Balance sheet', lines: [
     { label: 'Debt to equity', get: (c) => c.row.de, fmt: ((v: number) => v.toFixed(2)) as never, metric: 'leverage' } ] },
   risk: { label: 'Risk', lines: [
-    { label: 'Screen risk grade', get: (c) => c.row.risk_lvl, fmt: ((v: string) => v) as never }, { label: 'Flags raised', get: (c) => (c.risk ? c.risk.flags.length : null), fmt: ((v: number) => String(v)) as never },
+    { label: 'Screen flag level', get: (c) => c.row.risk_lvl, fmt: ((v: string) => v) as never }, { label: 'Flags raised', get: (c) => (c.risk ? c.risk.flags.length : null), fmt: ((v: number) => String(v)) as never },
     { label: 'Main flag', get: (c) => c.row.risk_top, fmt: ((v: string) => v) as never } ] },
 };
 /** Loads each chosen company's file. The set can change as names are added or removed, so this is an effect, not a hook per name. */

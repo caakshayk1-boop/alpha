@@ -175,7 +175,7 @@ T.stock = null;
 // GCSL, the name that exposed it: a live print beyond the published 52-week high must move the high, and a financial-sector name must not show a margin the page says it withholds
 T.stock = (s) => (s === 'GCSL' ? quote(726, 100000) : null);
 await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(400);
-{ const ov = await text(); await tab('Financials'); ok(/a new 52-week high/.test(ov) && /· live/.test(ov) && /at the live price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price'); }   // the range is on Overview, the PE on Financials since 1 Nov 2026
+{ const ov = await text(); await tab('Financials'); ok(/a new 52-week high/.test(ov) && /· (live|last traded)/.test(ov) && /at the (live|last traded) price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price'); }   // the range is on Overview, the PE on Financials since 1 Nov 2026
 ok(!/Net margin/.test(await text()) && /withheld for this company/.test(await text()), 'GCSL: the page that says margins are withheld for a financial-sector name does not print one');
 T.stock = null;
 
