@@ -41,7 +41,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 /* ---- 2. More lists every destination, and each row opens its page ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/more');
   const rows = await pg.locator('[data-more-row]').evaluateAll((r) => r.map((x) => [x.getAttribute('data-more-row'), x.getAttribute('href'), x.getBoundingClientRect().height]));
-  const want = { signals: '#/signals', markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/profile', ops: '#/ops' };
+  const want = { signals: '#/signals', markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/settings', ops: '#/ops' };
   ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 8, `More lists Signals, Markets, News, Data and coverage, Methodology, Help, Settings, Operations (${rows.map((r) => r[0]).join(', ')})`);
   ok(rows.every((r) => r[2] >= 44), 'every More row is a 44 px target');
   ok(/Experimental/.test(await pg.locator('[data-about]').innerText()) && /paper trade/i.test(await pg.locator('[data-about]').innerText()), 'More states the experimental, paper-only status');

@@ -116,7 +116,7 @@ ok(/Different rules tried on this device: 2/.test(await text()), 'a changed rule
 await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('radio', { name: 'At most' }).click(); await pg.locator('#c-v').fill('45'); await pg.getByRole('button', { name: 'Add', exact: true }).click();
 ok(await pg.getByRole('button', { name: /Remove condition: RSI ≤ 45/ }).count() === 1, 'the Lab takes a condition built with the same sheet as Discover');
 // the Data screen: pipeline health by the calendar, the eligibility version and the three resolved discrepancies, the runs and what changed in them
-await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline health').first().waitFor({ timeout: 15000 });
+await pg.goto(base + '/#/data'); await pg.reload(); await pg.getByText('Pipeline health').first().waitFor({ timeout: 15000 }); await pg.locator('details.fold').evaluateAll((d) => d.forEach((x) => { x.open = true; }));
 ok(/Published screen/.test(await text()) && /Forward ledger, last night recorded/.test(await text()) && /Live quotes/.test(await text()) && /NSE holiday calendar/.test(await text()), 'the Data screen shows each pipeline stage against the exchange calendar');
 ok(/The eligibility rule, by version/i.test(await text()) && /elig-[12]/.test(await text()) && /Three gaps between the written spec and the code/i.test(await text()), 'the Data screen names the rule version in force and how D1 to D3 were resolved');
 ok(/Back-test runs, and why a result changed/i.test(await text()), 'the Data screen lists the study runs and why they changed');

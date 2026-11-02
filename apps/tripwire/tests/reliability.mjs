@@ -152,7 +152,7 @@ let exportPath = join(tmp, 'tw-backup.json');
   await good.pg.locator('details.ev', { hasText: 'Live prices' }).first().locator('summary').click(); const body = await good.pg.locator('details.ev', { hasText: 'Live prices' }).first().innerText();
   ok(/How this is known/.test(body) && /Right now: Answered at \d\d:\d\d IST/.test(body), 'and the row prints its evidence and the time it was checked');
   ok(/Notifications and alerts.*Not built/i.test(await sum(good.pg, "Notifications")) && /Accounts and sign-in.*Not set up/i.test(await sum(good.pg, 'Accounts')), 'unbuilt and unconfigured services say so');
-  const ot = await good.pg.locator('body').innerText(); ok(/Schedules and caches/.test(ot) && /Best effort/i.test(ot) && /binding/i.test(ot), 'schedules, cache lifetimes and bindings are on Operations');
+  await good.pg.locator('[data-ops-dev] > summary').click(); const ot = await good.pg.locator('body').innerText(); ok(/Schedules and caches/.test(ot) && /Best effort/i.test(ot) && /binding/i.test(ot), 'schedules, cache lifetimes and bindings are on Operations');
   await good.pg.goto(base + '/#/profile'); await good.pg.waitForSelector('text=Export all (JSON)'); const st = await text(good.pg);
   ok(!/binding|secret|probe|cron|TTL|Worker|GitHub|\bms\b|Services and integrations/i.test(st), 'Settings carries no bindings, secrets, probe timings, job schedules or cache lifetimes');
   ok(/There is no sign-in/.test(st) && /Notifications are not built/.test(st) && !/Sync between devices|Broker connection|E-mail/.test(st), 'the account note is one short paragraph, with no list of unbuilt features');

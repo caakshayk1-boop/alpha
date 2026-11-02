@@ -45,7 +45,7 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
 { const { ctx, pg } = await mk(1280, 900); await go(pg, '/#/methodology', '.rulecards');
   const w = await pg.evaluate(() => Math.round(document.querySelector('.read').getBoundingClientRect().width)); ok(w <= 720, `Methodology: the reading column is at most 720 px (${w})`);
   ok(await pg.locator('.rulecards li .n').count() >= 3 && await pg.locator('pre.formula').count() === 1, 'Methodology: rules are numbered cards and the formula sits in a code block');
-  ok(/fill - stop/.test(await pg.locator('pre.formula').innerText()) && /paper/i.test(await pg.locator('body').innerText()), 'Methodology: the formula is stated, in paper-only wording');
+  ok(/fill - stop/.test(await pg.locator('pre.formula').textContent()) && /paper/i.test(await pg.locator('body').innerText()), 'Methodology: the formula is stated, in paper-only wording');
   ok(await pg.locator('[data-capture="off"]').count() === 1 && await pg.locator('.ident').count() === 1, 'Methodology: capture slot (off) and the identity footer sit at the end');
   await go(pg, '/#/help', '.helpsteps'); const w2 = await pg.evaluate(() => Math.round(document.querySelector('.read').getBoundingClientRect().width)); ok(w2 <= 720, `Help: the reading column is at most 720 px (${w2})`); await ctx.close(); }
 /* ---- Data and Company ---- */

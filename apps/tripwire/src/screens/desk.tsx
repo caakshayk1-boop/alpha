@@ -8,7 +8,9 @@ import { closePlan, current, editEntry, istDay, journalCsv, markPaperFill, revie
 import { lastChange } from '../sincevisit.ts';
 import { deskHas } from '../home.ts';
 import { dayWord, inr } from '../fmt.ts';
-import { download } from './profile.tsx';
+import { download } from '../backupfile.ts';
+import { Fold, Workflow } from './fold.tsx';
+import { planFigures } from '../planview.ts';
 
 export function Desk({ seg }: { seg: string }) {
   const loc = useLoc(); const explicit = loc.q.get('v'); const st = useAppState(); const has = deskHas(st);
@@ -24,9 +26,13 @@ export function Desk({ seg }: { seg: string }) {
 /** A desk with nothing on it says so once and offers the ways to put something there. No panel of zeros. */
 function NewDesk() {
   const { open } = useSheets();
-  return <div className="dsk" data-desk="new"><section className="card" aria-labelledby="dsk-new"><h2 id="dsk-new" className="sec">Nothing on your desk yet</h2>
-    <p className="dim" style={{ margin: '6px 0 12px' }}>Companies you follow, your thoughts and theses, paper plans and saved comparisons collect here, on this device, as you add them.</p>
-    <div className="dsk-add" role="group" aria-label="Add to your desk"><button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div></section></div>;
+  return <div className="dsk dsk-empty" data-desk="new"><section className="card" aria-labelledby="dsk-new"><h2 id="dsk-new" className="sec">Nothing on your desk yet</h2>
+    <p className="dim" style={{ margin: '6px 0 0' }}>This is where your research collects, on this device only: companies you follow, your theses, paper plans and saved comparisons. Nothing is added for you.</p></section>
+    <Workflow />
+    <div className="dsk-ways" role="group" aria-label="Ways to start">
+      <div className="dsk-way"><h3>Start with a company</h3><p className="small dim">Find one by name, read its page, then follow it or write a thesis.</p><button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></div>
+      <div className="dsk-way"><h3>Try the planner</h3><p className="small dim">Size a hypothetical position to see the cash used and the modelled loss at a stop you choose. Paper only.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
+    </div></div>;
 }
 const DAY = 86400000;
 const addD = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
@@ -73,6 +79,7 @@ function Workspace() {
         <select id="dsk-qsel" className="field" aria-label="Thesis" value={qFor} onChange={(ev) => setQFor(ev.target.value)} style={{ flex: '0 1 10rem' }}><option value="">Choose a thesis</option>{withoutQ.map((e) => <option key={e.id} value={e.id}>{e.sym}</option>)}</select>
         <input className="field" aria-label="Question" maxLength={300} placeholder="What do you still need to find out?" value={qText} onChange={(ev) => setQText(ev.target.value)} />
         <button className="btn sm" type="submit" disabled={!qFor || !qText.trim()}>Save</button><button className="btn sm" type="button" onClick={() => setAddQ(false)}>Cancel</button></form></section>}
+    <Fold id="workflow" title="How the desk fits the research workflow" summary="Understand, check evidence and risks, compare, write a thesis, track."><Workflow compact heading="The five steps" /></Fold>
     <div className="dsk-add" role="group" aria-label="Add to your desk"><button className="btn" onClick={() => open({ k: 'search' })}>Find a company</button>
       {withoutQ.length > 0 && !addQ && <button className="btn" onClick={() => setAddQ(true)}>Add a question</button>}<button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
   </div>;
@@ -107,10 +114,11 @@ function Journal() {
 }
 function Plans() {
   const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
-  if (!s.plans.length) return <Empty title="No paper plans" action={<button className="btn pri" onClick={() => open({ k: 'plan' })}>Size a position</button>}>A plan is a saved calculation. It is not a fill and not a holding.</Empty>;
+  if (!s.plans.length) return <Empty title="No paper plans" action={<button className="btn pri" onClick={() => open({ k: 'plan' })}>Size a position</button>}>A plan is a saved calculation on hypothetical money: how many shares, how much cash, and the modelled loss at a stop you assume. It is not a fill and not a holding.</Empty>;
   const W = { saved: 'Saved plan', 'paper-filled': 'Paper fill (you recorded it)', closed: 'Closed' } as const;
   return <>{s.plans.map((p) => <div key={p.id} className="card"><div className="row between"><a href={`#/c/${p.sym}`}><b>{p.sym}</b></a><span className={`tag ${p.status === 'paper-filled' ? 'lime' : ''}`}>{W[p.status]}</span></div>
     <p className="num small" style={{ margin: '8px 0' }}>{p.qty} shares · entry {inr(p.entry)} · stop {inr(p.stop)} · risk {p.riskPct}% · revision {p.rev}{p.expiry ? ` · expires ${dayWord(p.expiry)}` : ''}</p>
+    {(() => { const f = planFigures(p, s.prefs.equity, s.prefs.cash, null); return <p className="small dim" style={{ margin: '0 0 8px' }} data-plan-saved>Hypothetical allocation {inr(f.capital)}{f.allocationPct != null ? ` (${f.allocationPct < 10 ? f.allocationPct.toFixed(1) : Math.round(f.allocationPct)}% of equity)` : ''} · modelled loss at your assumed stop {inr(f.lossAtStop)}. A gap can lose more.</p>; })()}
     {p.note && <p className="dim small" style={{ margin: '0 0 8px' }}>{p.note}</p>}
     <div className="row">{p.status === 'saved' && <button className="btn sm" onClick={() => { setState((x) => markPaperFill(x, p.id)); toast('Marked as a paper fill'); }}>Record paper fill</button>}
       {p.status === 'paper-filled' && <button className="btn sm" onClick={() => { setState((x) => closePlan(x, p.id)); toast('Plan closed'); }}>Close</button>}
@@ -120,7 +128,7 @@ function Plans() {
 function Saved() {
   const s = useAppState();
   return <>
-    <Head>Comparisons</Head>{s.compares.length ? <div className="card"><div className="list">{s.compares.map((c) => <a key={c.join()} className="li" href={`#/compare?s=${c.join(',')}`}><span className="grow sym">{c.join(' · ')}</span></a>)}</div></div> : <div className="card dim">None saved. Compare two or three names and save the result.</div>}
+    <Head>Comparisons</Head>{s.compares.length ? <div className="card"><div className="list">{s.compares.map((c) => <a key={c.join()} className="li" href={`#/compare?s=${c.join(',')}`}><span className="grow sym">{c.join(' · ')}</span></a>)}</div></div> : <div className="card dim">None saved. Compare two or three names and save the result. <a href="#/compare" style={{ textDecoration: 'underline' }}>Open Compare</a></div>}
     <Head>Screens</Head>{s.screens.length ? <div className="card"><div className="list">{s.screens.map((x) => <a key={x.name} className="li" href="#/discover"><span className="grow">{x.name}</span></a>)}</div></div> : <div className="card dim">None saved. Set filters in Discover, then save them.</div>}
   </>;
 }

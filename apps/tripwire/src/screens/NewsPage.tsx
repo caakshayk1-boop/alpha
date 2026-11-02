@@ -3,7 +3,7 @@ import { useAppState } from '../app.tsx';
 import { useAutoBook } from '../book.ts';
 import { lastVisitSec, markVisited, useNewsBoard } from '../news.ts';
 import { newsViewState, plural } from '../newshealth.ts';
-import { archiveList, archiveTabCounts, countsLine, newsCounts, COUNT_DEFINITION, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
+import { archiveList, archiveTabCounts, countsLine, newsCounts, COUNT_DEFINITION, NEWS_CATEGORIES, typeFilterValue, typesFromValue, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
 import { PageBar } from './common.tsx';
 import { NewsHealthLine, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab } from './News.tsx';
 import { REJECT } from '../../news/rules.js';
@@ -33,12 +33,16 @@ export function NewsPage() {
     <p className="sr" data-news-view>{view}</p>
     <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={f.tab === t.id} aria-label={`${t.label}: ${counts[t.id as Tab]} ${counts[t.id as Tab] === 1 ? 'event' : 'events'}`} onClick={() => set({ tab: t.id as Tab })}>{t.label} <span className="num mute">{counts[t.id as Tab]}</span></button>)}</div>
     <div className="nwp-filters">
-      <label>Event type <select value={f.types[0] ?? ''} onChange={(e) => set({ types: e.target.value ? [e.target.value] : [] })}><option value="">All types</option>{types.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></label>
-      <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
+      <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
+        return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
       <label><input type="search" placeholder="Search headline or symbol" aria-label="Search headline or symbol" value={f.text} onChange={(e) => set({ text: e.target.value })} /></label>
+    </div>
+    <details className="nwp-more" data-more-filters open={f.days !== 7 || f.includeOther || f.covered}><summary>More filters{f.days !== 7 || f.includeOther || f.covered ? ` (${[f.days !== 7, f.includeOther, f.covered].filter(Boolean).length} changed)` : ''}</summary>
+    <div className="nwp-filters">
+      <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
       <label><input type="checkbox" checked={f.includeOther} onChange={(e) => set({ includeOther: e.target.checked })} /> Include other updates</label>
       <label><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
-    </div>
+    </div></details>
     <UpdateOffer n={b.pending} apply={b.apply} />
     <p className="small mute" style={{ margin: '0 0 4px' }} data-news-definition>{COUNT_DEFINITION}</p>
     <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : `${countsLine(nc)}${f.includeOther ? '' : ' (events only)'}`}</p><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>

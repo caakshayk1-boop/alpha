@@ -3,7 +3,7 @@ import { lastVisitSec, markVisited, useNameNews, useNewsBoard, type RefreshState
 import { isNewStory, newsViewState, type NewsView, plural, storyTime, type NewsHealth } from '../newshealth.ts';
 import { fmtIst } from '../stamp.ts';
 import { checkedLabel } from '../timelabels.ts';
-import { COUNT_DEFINITION, entityLine, inTab, labelsOf, safeHref, todayTabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
+import { categoryOf, COUNT_DEFINITION, entityLine, inTab, labelsOf, safeHref, timeLabels, todayTabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
 import { RANKING_VERSION, PIPELINE_VERSION, TIERS, WEIGHTS, HALF_LIFE_H, TODAY_WINDOW_H, DIVERSITY, CADENCE, DELAY_AFTER, MAX_AGE_DAYS } from '../../news/config.js';
 import { EVENT_TYPES, SIGNIFICANCE } from '../../news/events.js';
 
@@ -26,22 +26,25 @@ export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
 /** One event. `lead` draws the first row larger and gives its summary room; every row carries the same facts: headline (a link), source and publication age, one event tag, the company, an optional one-line summary, and a drawer. */
 export function NewsRow({ ev, lists, lead, seenSec, nowMs, label }: { ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean }) {
   const t = storyTime(ev.publishedAt, nowMs); const href = safeHref(ev.canonicalUrl); const fresh = isNewStory(ev, seenSec); const tags = label ? labelsOf(ev, lists) : [];
-  const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known;
+  const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known; const clk = timeLabels(ev, nowMs);
   return <li className={`nw-row${lead ? ' lead' : ''}`}>
     {href ? <a className="nw-head" href={href} target="_blank" rel="noopener noreferrer">{ev.headline}<span className="sr"> (opens in a new tab)</span></a> : <span className="nw-head">{ev.headline}</span>}
     <span className="nw-meta">
       {fresh && <span className="tag aqua nw-tag" title="Published, and first seen by the news check, since you last looked">New</span>}
       <span>{ev.sourceTitle}{ev.moreSources > 0 ? ` +${plural(ev.moreSources, 'more source')}` : ''}</span><span aria-hidden="true">·</span>
-      <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''}>{t.ageWord}</time>
+      <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''} data-clock="published"><span className="sr">Published </span>{t.ageWord}</time>
       <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`}>{ev.eventType}</span>
       <span className="nw-entity" title="The company this story was matched to by name or symbol">{entityLine(ev)}</span>
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
+    {ev.sources.length > 1 && <p className="nw-cover" data-cover aria-label={`${plural(ev.sources.length, 'outlet')} carried this event`}><span className="nw-cover-k">{ev.sources.length} outlets on this event</span>{ev.sources.map((x) => { const h = safeHref(x.canonicalUrl); return h ? <a key={x.sourceId} href={h} target="_blank" rel="noopener noreferrer">{x.sourceTitle}<span className="sr"> (opens in a new tab)</span></a> : <span key={x.sourceId}>{x.sourceTitle}</span>; })}</p>}
+    <p className="nw-clocks" data-clocks><span className={unknownDate ? 'nw-unknown' : ''}>{clk.published}</span><span aria-hidden="true"> · </span><span>{clk.collected}</span></p>
     {ev.summary && <p className="nw-summary" title={`Source: the publisher's own description in ${ev.summary.provenance.feedId}, retrieved ${ev.summary.provenance.retrievedAt ?? 'at an unknown time'}`}>{ev.summary.text}</p>}
     <details className="nw-more"><summary>Coverage and ranking</summary><div className="nw-body">
       <p><b>{ev.sources.length > 1 ? `${plural(ev.sources.length, 'outlet')} carried this` : '1 outlet'}</b>{ev.sources.length > 1 ? '; the first listed is the primary source.' : '.'}</p>
       <ul className="nw-src">{ev.sources.map((s) => { const h = safeHref(s.canonicalUrl); const st = storyTime(s.publishedAt, nowMs); return <li key={s.sourceId}>{h ? <a href={h} target="_blank" rel="noopener noreferrer">{s.sourceTitle}</a> : s.sourceTitle} <span className="mute">· {s.tier} · {st.known ? st.ist : 'publication time unknown'}</span></li>; })}</ul>
-      <p><b>Dates.</b> {t.known ? `First reported ${fmtIst(Date.parse(ev.publishedAt as string) / 1000, nowMs)}.` : 'The feed gave no usable publication time, so none is shown and the story is kept off Today.'} {first.known ? `First seen by the news check ${fmtIst(Date.parse(ev.firstSeenAt as string) / 1000, nowMs)}.` : ''}</p>
+      <dl className="nw-dates" data-dates><div><dt>Published (the outlet's own time)</dt><dd>{t.known ? fmtIst(Date.parse(ev.publishedAt as string) / 1000, nowMs) : 'not given by the feed'}</dd></div><div><dt>Collected (first seen by Tripwire's check)</dt><dd>{first.known ? fmtIst(Date.parse(ev.firstSeenAt as string) / 1000, nowMs) : 'unknown'}</dd></div><div><dt>Category</dt><dd>{categoryOf(ev.eventType)}</dd></div></dl>
+      <p className="mute small">{t.known ? 'Publication and collection are two clocks: a story can be collected hours after it was published, and the age shown in the row is always the publication one.' : 'The feed gave no usable publication time, so none is shown (the collection time is not a substitute) and the story is kept off Today.'}{clk.gap ? ` ${clk.gap}.` : ''}</p>
       {ev.rank && <><p><b>Why it ranks here.</b> {ev.rank.reason}.</p><table className="nw-factors"><caption className="sr">Ranking factors</caption><thead><tr><th scope="col">Factor</th><th scope="col">Value</th><th scope="col">Weight</th><th scope="col">Points</th></tr></thead><tbody>{ev.rank.factors.map((f) => <tr key={f.k}><th scope="row">{f.k}</th><td className="num">{f.value.toFixed(2)}</td><td className="num">{f.weight.toFixed(2)}</td><td className="num">{f.points.toFixed(1)}</td></tr>)}</tbody></table><p className="mute small">Ranking {ev.rankingVersion}. A keyword rule typed this as {ev.eventType}; it says what the story is about, never whether it is good news.</p></>}
       {ev.qualityFlags.length > 0 && <p className="small">{ev.qualityFlags.map((f) => FLAG_WORD[f] ?? f).join(' · ')}</p>}
     </div></details>
