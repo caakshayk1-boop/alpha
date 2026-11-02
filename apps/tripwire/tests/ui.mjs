@@ -1,22 +1,21 @@
 // UI revamp checks: the candle geometry in the browser, radio semantics and arrow keys, one accessible price, the skip link, Profile truth about this device,
 // reduced motion (device setting and in-app switch), 44px primary targets, no overflow at six widths, focus restore after a sheet, the 30-second company read, ownership, Operations.
 // AUTOMATED checks in a desktop Chromium; they do not replace a real phone. Usage: node apps/tripwire/tests/ui.mjs [baseUrl]
-import { chromium, newCtx, ohlcSeries, STATE } from './uimock.mjs';
+import { chromium, newCtx, ohlcSeries, STATE, openOptions, closeOptions } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
 const wait = (pg) => pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {});
 const open = async (pg, route, sel) => { await pg.goto(base + '/'); await pg.goto(base + route); await pg.reload(); await wait(pg); if (sel) await pg.waitForSelector(sel, { timeout: 20000 }); await pg.waitForTimeout(400);
-  // 1 Nov 2026: Detail, Style, Scale and the indicators sit under "Chart options", folded by default; these checks are about the controls, so unfold them
-  await pg.evaluate(() => document.querySelectorAll('details.c-adv').forEach((d) => { d.open = true; })); };
+  };
 const radio = (pg, group, name) => pg.locator(`[role=radiogroup][aria-label="${group}"]`).getByRole('radio', { name, exact: true });
 
 /* 1. the last candle is whole, and the price tag is clear of it, at 390 and 1280, for daily, weekly and monthly */
 for (const w of [390, 1280]) {
   const ctx = await newCtx(b, w, ohlcSeries(2600, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  await radio(pg, 'Style', 'CANDLES').click(); await pg.waitForSelector('.c-candles rect');
+  await openOptions(pg); await radio(pg, 'Style', 'CANDLES').click(); await closeOptions(pg); await pg.waitForSelector('.c-candles rect');   // Style is in the Chart options sheet since 1 Nov 2026
   for (const [range, frame] of [['1Y', 'DAILY'], ['5Y', 'WEEKLY'], ['5Y', 'MONTHLY'], ['MAX', 'MONTHLY']]) {
-    await radio(pg, 'Range', range).click(); await radio(pg, 'Detail', frame).click(); await pg.waitForTimeout(250);
+    await radio(pg, 'Range', range).click(); await openOptions(pg); await radio(pg, 'Detail', frame).click(); await closeOptions(pg); await pg.waitForTimeout(250);
     const m = await pg.evaluate(() => { const plot = document.querySelector('.chart-plot').getBoundingClientRect(); const gs = [...document.querySelectorAll('.c-candles > g')]; const box = (g) => { const r = [...g.children].map((c) => c.getBoundingClientRect()); return { l: Math.min(...r.map((x) => x.left)), r: Math.max(...r.map((x) => x.right)) }; };
       const first = box(gs[0]), last = box(gs[gs.length - 1]); const tag = document.querySelector('.c-last')?.getBoundingClientRect(); return { n: gs.length, pl: plot.left, pr: plot.right, first, last, tagL: tag ? tag.left : null }; });
     ok(m.n > 3 && m.first.l >= m.pl - 0.5 && m.last.r <= m.pr + 0.5, `${w}px ${range} ${frame}: first and last candle lie inside the plot (${m.first.l.toFixed(1)} >= ${m.pl.toFixed(1)}, ${m.last.r.toFixed(1)} <= ${m.pr.toFixed(1)})`);
@@ -27,9 +26,10 @@ for (const w of [390, 1280]) {
 
 /* 2. radio semantics, arrow keys, unavailable ranges and the default range */
 { const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  await openOptions(pg);   // Detail, Style and Scale are in the Chart options sheet
   const groups = await pg.evaluate(() => ['Range', 'Detail', 'Scale', 'Style', 'Compare'].map((g) => { const e = document.querySelector(`[role=radiogroup][aria-label="${g}"]`); return e ? [g, e.querySelectorAll('[role=radio]').length, e.querySelectorAll('[aria-pressed]').length] : [g, 0, 0]; }));
   ok(groups.every(([g, n, p]) => (n > 0 || g === 'Style') && p === 0), `mutually exclusive choices are radio groups with no aria-pressed (${groups.map((x) => x.join(':')).join(' ')})`);
-  ok(await pg.locator('[aria-label=Indicators] [aria-pressed]').count() >= 4, 'indicators stay independent toggles (aria-pressed)');
+  ok(await pg.locator('.c-checks input[type=checkbox]').count() >= 4, 'overlays are independent checkboxes in the sheet'); await closeOptions(pg);
   // 1 Nov 2026: a history that fills a year opens on 1Y (stock against the Nifty where held), no longer on the longest range
   ok((await radio(pg, 'Range', '1Y').getAttribute('aria-checked')) === 'true', 'about 14 months of history: the chart opens on 1Y, not 10Y');
   const tenY = pg.locator('[role=radiogroup][aria-label="Range"] [role=radio]', { hasText: '10Y' });
@@ -40,12 +40,11 @@ for (const w of [390, 1280]) {
   const act = await pg.evaluate(() => document.activeElement.textContent); ok((await radio(pg, 'Range', act).getAttribute('aria-checked')) === 'true', 'the arrow key also chooses it (aria-checked follows focus)');
   await pg.keyboard.press('End'); ok((await pg.evaluate(() => document.activeElement.textContent)) === 'MAX', 'End goes to the last range');
   ok((await pg.locator('[role=radiogroup][aria-label=Range] [role=radio][tabindex="0"]').count()) === 1, 'one tab stop per group (the chosen item)');
-  await radio(pg, 'Detail', 'MONTHLY').click(); ok((await radio(pg, 'Detail', 'DAILY').getAttribute('aria-checked')) === 'false', 'choosing one clears the others');
+  await openOptions(pg); await radio(pg, 'Detail', 'MONTHLY').click(); ok((await radio(pg, 'Detail', 'DAILY').getAttribute('aria-checked')) === 'false', 'choosing one clears the others'); await closeOptions(pg);
   const lg = await pg.locator('.chart-plot[role=slider]'); await lg.focus(); const v0 = await lg.getAttribute('aria-valuenow'); await pg.keyboard.press('ArrowLeft'); ok((await lg.getAttribute('aria-valuenow')) !== v0 && /\d/.test((await lg.getAttribute('aria-valuetext')) ?? ''), 'the crosshair moves with the arrow keys and speaks its value with units');
-  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click();   // 1 Nov 2026: Chart / Table switch
-  ok(/Close\s*₹/.test(await pg.locator('.cf-table').innerText()), 'the table alternative names its unit'); await pg.getByRole('radio', { name: 'CHART', exact: true }).click();
+  ok(/Close\s*₹/.test(await pg.locator('details', { hasText: 'The same chart as a table' }).evaluate((e) => e.textContent)), 'the table alternative names its unit');   // the table is a disclosure again (owner, 2 Nov 2026)
   /* the entry animation runs once: after the first reveal a range change draws nothing again */
-  await pg.waitForTimeout(1800); await radio(pg, 'Detail', 'DAILY').click(); await radio(pg, 'Range', '1Y').click(); await pg.waitForTimeout(100);
+  await pg.waitForTimeout(1800); await openOptions(pg); await radio(pg, 'Detail', 'DAILY').click(); await closeOptions(pg); await radio(pg, 'Range', '1Y').click(); await pg.waitForTimeout(100);
   ok(await pg.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.target?.classList?.contains('c-line')).length === 0), 'the line is not drawn again when range or frame changes');
   await ctx.close(); }
 
@@ -83,7 +82,7 @@ for (const w of [390, 1280]) {
 for (const mode of ['media', 'app', 'none']) {
   const st = { ...STATE, prefs: { ...STATE.prefs, motion: mode === 'app' ? 'off' : 'auto' } };
   const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS'), { state: st, ...(mode === 'media' ? { reducedMotion: 'reduce' } : { reducedMotion: 'no-preference' }) }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg'); await pg.waitForTimeout(1200);
-  await radio(pg, 'Detail', 'MONTHLY').click(); await pg.waitForTimeout(100);
+  await openOptions(pg); await radio(pg, 'Detail', 'MONTHLY').click(); await closeOptions(pg); await pg.waitForTimeout(100);
   const m = await pg.evaluate(() => { const els = [...document.querySelectorAll('.btn,.mini-seg button,.ms-ind,.tabs a,.tabs .pill,.view,details.ev>summary,.chip,.icon-btn')]; const moving = els.filter((e) => { const cs = getComputedStyle(e); return /transform|all/.test(cs.transitionProperty) && parseFloat(cs.transitionDuration) > 0; }).length; const anim = document.getAnimations().filter((a) => a.playState === 'running' && !a.effect?.target?.closest?.('.sk') && (a.animationName || /transform|translate|scale/.test(a.transitionProperty ?? ''))).length; window.__an = document.getAnimations().filter((a) => a.playState === 'running').map((a) => (a.animationName || a.transitionProperty || '?') + ' on ' + (a.effect?.target?.className?.baseVal ?? a.effect?.target?.className)); return { fx: document.documentElement.classList.contains('fx'), moving, anim, n: els.length }; });
   if (mode === 'none') ok(m.fx && m.moving > 0, `motion on: the motion layer is on and transform transitions exist (${m.moving} of ${m.n})`);
   else ok(!m.fx && m.moving === 0 && m.anim === 0, `reduced motion by ${mode === 'media' ? 'the device setting' : 'the in-app switch'}: no transform transition, ${m.anim} running animations`);
@@ -91,17 +90,17 @@ for (const mode of ['media', 'app', 'none']) {
   await ctx.close(); }
 
 /* 7. 44px primary targets on a phone; the exceptions are listed */
-{ const ctx = await newCtx(b, 390, ohlcSeries(1500, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision');
-  const sizes = await pg.evaluate(() => { const h = (sel) => [...document.querySelectorAll(sel)].filter((e) => !e.disabled).map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), (e.textContent || '').trim().slice(0, 14)]; }); return { tabs: h('nav.tabs a'), range: h('[aria-label=Range] [role=radio]'), detail: h('[aria-label=Detail] [role=radio]'), style: h('[aria-label=Style] [role=radio]'), pri: h('.btn.pri'), fab: h('.fab-row .btn'), scale: h('[aria-label=Scale] [role=radio]'), ind: h('[aria-label=Indicators] button') }; });
+{ const ctx = await newCtx(b, 390, ohlcSeries(1500, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision'); await openOptions(pg);
+  const sizes = await pg.evaluate(() => { const h = (sel) => [...document.querySelectorAll(sel)].filter((e) => !e.disabled).map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), (e.textContent || '').trim().slice(0, 14)]; }); return { tabs: h('nav.tabs a'), range: h('[aria-label=Range] [role=radio]'), detail: h('[aria-label=Detail] [role=radio]'), style: h('[aria-label=Style] [role=radio]'), pri: h('.btn.pri'), fab: h('.fab-row .btn'), scale: h('[aria-label=Scale] [role=radio]'), ind: h('.c-check') }; });
   for (const k of ['tabs', 'range', 'detail', 'style', 'pri', 'fab']) ok(sizes[k].length > 0 && sizes[k].every(([w, hh]) => w >= 43.5 && hh >= 43.5), `${k}: every target is at least 44 x 44 (${sizes[k].map((x) => x[0] + 'x' + x[1]).join(' ')})`);
-  ok(sizes.scale.every(([, hh]) => hh >= 35.5) && sizes.ind.every(([, hh]) => hh >= 35.5), `exceptions: the Scale and Indicators groups under a chart are 36px tall, as designed (${sizes.scale[0]} ${sizes.ind[0]})`); await ctx.close(); }
+  ok(sizes.scale.every(([, hh]) => hh >= 43.5) && sizes.ind.every(([, hh]) => hh >= 43.5), `the Scale radios and the overlay rows in the options sheet are 44px tall (${sizes.scale[0]} ${sizes.ind[0]})`); await ctx.close(); }
 
 /* 8. no horizontal overflow at six widths on the pages this work touches */
 for (const w of [360, 390, 430, 768, 1024, 1440]) {
   const ctx = await newCtx(b, w, ohlcSeries(1500, 'TCS')); const pg = await ctx.newPage(); const bad = [];
   for (const r of ['/#/today', '/#/c/TCS', '/#/profile', '/#/methodology', '/#/help', '/#/ops']) { await open(pg, r); const o = await pg.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: innerWidth })); if (o.sw > o.iw + 1) bad.push(`${r} ${o.sw}>${o.iw}`); }
   ok(bad.length === 0, `${w}px: no horizontal overflow${bad.length ? ' (' + bad.join(', ') + ')' : ''}`);
-  if (w === 360 || w === 1440) { await open(pg, '/#/c/TCS', '.c-prim' /* 1 Nov 2026: .c-bar is folded under Chart options until open() unfolds it */); const ov = await pg.evaluate(() => { const bars = [...document.querySelectorAll('.c-bar > *')].map((e) => e.getBoundingClientRect()); const hits = []; for (let i = 0; i < bars.length; i++) for (let j = i + 1; j < bars.length; j++) { const a = bars[i], c = bars[j]; if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) hits.push([i, j]); } return hits.length; }); ok(ov === 0, `${w}px: the chart control groups do not overlap each other`); }
+  if (w === 360 || w === 1440) { await open(pg, '/#/c/TCS', '.c-prim' /* 1 Nov 2026: .c-bar is folded under Chart options until open() unfolds it */); const ov = await pg.evaluate(() => { const bars = [...document.querySelectorAll('.c-prim > .radios, .c-prim2 > *')].map((e) => e.getBoundingClientRect()); const hits = []; for (let i = 0; i < bars.length; i++) for (let j = i + 1; j < bars.length; j++) { const a = bars[i], c = bars[j]; if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) hits.push([i, j]); } return hits.length; }); ok(ov === 0, `${w}px: the chart control groups do not overlap each other`); }
   await ctx.close(); }
 
 /* 9. a sheet restores focus when it closes (Escape, the close button) and closes on Escape */

@@ -39,17 +39,17 @@ ok(/Stop 鈧筟\d,.]+, signal close 鈧筟\d,.]+, T1 鈧筟\d,.]+ \(reference\), T2 鈧
 /* chart */
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 });
 // 1 Nov 2026: the chart opens on one year against the Nifty with its options folded; open them, and choose the longest price view the bar-width checks below were written for
-await pg.getByRole('radio', { name: 'PRICE', exact: true }).click(); await pg.getByRole('radio', { name: 'MAX', exact: true }).click(); await pg.locator('summary', { hasText: 'Chart options' }).click();
-for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole(['VOLUME', 'RSI 14'].includes(name) ? 'button' : 'radio', { name, exact: true }).count() === 1, `chart: a ${name} control`);
+await pg.getByRole('radio', { name: 'PRICE', exact: true }).click(); await pg.getByRole('radio', { name: 'MAX', exact: true }).click(); await pg.getByRole('button', { name: /^Chart options/ }).click(); await pg.waitForSelector('.sheet');   // 2 Nov 2026: the options are a bottom sheet; it stays open for this block
+for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole(name === 'VOLUME' ? 'checkbox' : name === 'RSI 14' ? 'checkbox' : 'radio', { name: name === 'RSI 14' ? 'RSI (14)' : name === 'VOLUME' ? 'Volume' : name, exact: true }).count() === 1, `chart: a ${name} control`);
 await pg.getByRole('radio', { name: 'CANDLES', exact: true }).click(); await pg.waitForSelector('.c-candles rect');
 ok((await pg.locator('.c-candles rect').count()) > 20 && (await pg.locator('.chart-plot path.c-line').count()) === 0, 'chart: candles replace the line');
 ok(/(week|month) bars/i.test(await pg.locator('.chart').innerText()), 'chart: when ten years of daily candles would be unreadable, it says it draws weekly or monthly bars');
-await pg.getByRole('button', { name: 'VOLUME', exact: true }).click(); ok(/Volume 路/i.test(await pg.locator('.chart').innerText()) && (await pg.locator('.chart-sub svg rect').count()) > 10, 'chart: a volume panel');
-await pg.getByRole('button', { name: 'RSI 14', exact: true }).click(); await pg.waitForSelector('.chart-sub [aria-label^="RSI 14"]');
+await pg.getByRole('checkbox', { name: 'Volume', exact: true }).click(); ok(/Volume 路/i.test(await pg.locator('.chart').innerText()) && (await pg.locator('.chart-sub svg rect').count()) > 10, 'chart: a volume panel');
+await pg.getByRole('checkbox', { name: 'RSI (14)', exact: true }).click(); await pg.waitForSelector('.chart-sub [aria-label^="RSI 14"]');
 const rsiTxt = await pg.locator('.chart').innerText(); ok(/RSI 14 路 (day|week|month) closes/i.test(rsiTxt) && /D \d+ 路 W \d+ 路 M \d+/.test(rsiTxt), 'chart: RSI 14 with the daily, weekly and monthly readings beside it');
 await pg.getByRole('radio', { name: 'MONTHLY', exact: true }).click(); await pg.waitForTimeout(300);
 ok(/RSI 14 路 month closes/i.test(await pg.locator('.chart').innerText()), 'chart: switching to monthly computes the RSI on monthly closes');
-await pg.getByRole('radio', { name: 'LINE', exact: true }).click(); await pg.getByRole('radio', { name: 'DAILY', exact: true }).click(); await pg.getByRole('button', { name: 'VOLUME', exact: true }).click(); await pg.getByRole('button', { name: 'RSI 14', exact: true }).click();
+await pg.getByRole('radio', { name: 'LINE', exact: true }).click(); await pg.getByRole('radio', { name: 'DAILY', exact: true }).click(); await pg.getByRole('checkbox', { name: 'Volume', exact: true }).click(); await pg.getByRole('checkbox', { name: 'RSI (14)', exact: true }).click();
 ok((await pg.locator('.chart-plot path.c-line').count()) === 1 && (await pg.locator('.chart-sub').count()) === 0, 'chart: the extras switch off again');
 
 /* Discover table */

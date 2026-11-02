@@ -2,11 +2,9 @@
  *  the factual takeaway (from takeaway.ts, never typed in a screen); the legend with direct values and shapes; the drawing; the coverage notes; and one source-and-basis line.
  *  The frame holds the chart's height while it loads, so nothing moves when it arrives. Motion is not here: lines draw under html.fx in motion.css and style.css only. */
 import { useId, type ReactNode } from 'react';
-import { Radios } from '../ui.tsx';
 import { markerPath, type SeriesStyle } from './series.ts';
 import { cellText, rowDate, tableNote, type ChartTableData } from './table.ts';
 
-export type FrameMode = 'chart' | 'table';
 /** The words every chart prints under it. Adjustment basis lives here, once: a price chart and a comparison must not describe the same series differently. */
 export const BASIS = {
   stock: 'Source: Yahoo Finance daily closes. Prices are adjusted for splits and bonuses, not for dividends: dividends are neither reinvested nor added back, so these are price returns and understate the total return of a company that pays them.',
@@ -15,22 +13,22 @@ export const BASIS = {
   statements: 'Source: annual statements from the data provider, in ₹ crore, by fiscal year ending 31 March. Figures are as reported, not adjusted; a year without a figure is left blank, not drawn as zero.',
 } as const;
 
-export function ChartFrame({ title, meta, mode, onMode, takeaway, legend, children, table, notes, basis, label, tableLabel, busy, className = '' }: {
-  title: ReactNode; meta?: ReactNode; mode: FrameMode; onMode: (m: FrameMode) => void; takeaway?: { headline: string; lines: string[]; dataThrough: string } | null;
-  legend?: ReactNode; children: ReactNode; table?: ReactNode; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; className?: string;
+export function ChartFrame({ title, meta, takeaway, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, className = '' }: {
+  title: ReactNode; meta?: ReactNode; takeaway?: { headline: string; lines: string[]; dataThrough: string } | null;
+  legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; className?: string;
 }) {
   const id = useId().replace(/:/g, '');
   return <section className={`card chart cf ${className}`.trim()} aria-label={label} aria-busy={busy || undefined}>
     <div className="cf-head">
       <div className="cf-title"><div className="cf-h">{title}</div>{meta && <div className="cf-meta">{meta}</div>}</div>
-      {table && <Radios label="Show as" value={mode} onChange={onMode} className="mini-seg cf-view" items={[{ id: 'chart', label: 'CHART' }, { id: 'table', label: 'TABLE', hint: tableLabel ?? 'The same figures as a table' }] as { id: FrameMode; label: string; hint?: string }[]} />}
     </div>
     {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead">{takeaway.headline}</p></div>}
     {legend}
-    {mode === 'table' && table ? table : children}
+    {children}
     {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
     {notes}
     {basis && <p className="cf-basis small mute">{basis}</p>}
+    {table && <details className="ev cf-tbl" open={tableOpen}><summary>{tableLabel ?? 'The same chart as a table'}<span className="chev">▾</span></summary><div className="body">{table}</div></details>}
   </section>;
 }
 

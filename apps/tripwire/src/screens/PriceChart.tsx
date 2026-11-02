@@ -3,8 +3,8 @@ import { setState, useAppState } from '../app.tsx';
 import { useChart } from '../data.ts';
 import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
 import { inr, pct } from '../fmt.ts';
-import { Radios } from '../ui.tsx';
-import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, chartStart, markerPath, priceTakeaway, signedPts, spreadLabels, styleOf, windowWords, type FrameMode } from '../charts/index.ts';
+import { Radios, Sheet } from '../ui.tsx';
+import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, chartStart, markerPath, priceTakeaway, signedPts, spreadLabels, styleOf, windowWords } from '../charts/index.ts';
 import type { Level } from '../levels.ts';
 
 /** Price history inside the shared chart frame. A one-year view against the Nifty 50 is where a new reader starts (a saved choice wins); candles, log scale, averages, volume, RSI,
@@ -18,8 +18,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
   const feed = useChart(sym); const gid = useId().replace(/:/g, ''); void gid;
   const app = useAppState(); const savedPref = app.prefs.chart;
   const [rangeSel, setRange] = useState<RangeId | null>(null); const [vsSel, setVs] = useState<boolean | null>(null); const [view, setView] = useState<Frame>('daily'); const [log, setLog] = useState(false); const [ma, setMa] = useState(false); const [dd, setDd] = useState(false);
-  const [lvOn, setLvOn] = useState(true); const [evOn, setEvOn] = useState(true); const [kind, setKind] = useState<'line' | 'candle'>('line'); const [vol, setVol] = useState(false); const [rsi, setRsi] = useState(false);
-  const [mode, setMode] = useState<FrameMode>('chart');
+  const [lvOn, setLvOn] = useState(false); const [evOn, setEvOn] = useState(false); /* the clean line first: no overlay is drawn until it is asked for */ const [kind, setKind] = useState<'line' | 'candle'>('line'); const [vol, setVol] = useState(false); const [rsi, setRsi] = useState(false);
+  const [optsOpen, setOptsOpen] = useState(false);
   const [cur, setCur] = useState<number | null>(null); const box = useRef<HTMLDivElement>(null);
   const all: Pt[] = useMemo(() => (feed.data ? feed.data.t.map((t, i) => ({ t, c: feed.data!.c[i], n: feed.data!.n ? feed.data!.n[i] : null, o: feed.data!.o?.[i] ?? null, h: feed.data!.h?.[i] ?? null, l: feed.data!.l?.[i] ?? null, v: feed.data!.v?.[i] ?? null })) : []), [feed.data]);
   const start = useMemo(() => chartStart(all, savedPref as { range?: RangeId; vs?: boolean } | undefined, instrument), [all, savedPref, instrument]);
@@ -44,7 +44,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
   const candles = kind === 'candle' && hasOhlc && !cmp;
   const barsMode = !cmp && (candles || (vol && hasVol));
   const [wpx, setWpx] = useState(340); const ready = !feed.loading && !!feed.data && all.length >= 30;
-  useLayoutEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx((x) => (Math.abs(x - w) < 1 ? x : w)); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready, mode]);
+  useLayoutEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx((x) => (Math.abs(x - w) < 1 ? x : w)); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready]);
   const lastLen = shown.length ? f(shown[shown.length - 1].c).length : 8;
   const gutU = candles ? Math.round((Math.min(wpx * 0.3, Math.max(54, lastLen * 6.4 + 18)) / wpx) * 1000) : 0;
   const pairGut = Math.round((64 / wpx) * 1000);          // room at the right of a two-line chart for the end labels
@@ -76,6 +76,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
 
   if (feed.loading) return <ChartState title="Price history" busy />;
   if (feed.err || !feed.data || all.length < 30) return <ChartState title="Price history" action={<button className="btn sm" onClick={feed.retry}>Try again</button>}>{feed.err === 'not published' || feed.err === 'no price history for this symbol' ? 'No price history is held for this symbol.' : feed.data ? 'Too little history to draw.' : `Could not load the price history${feed.err ? ` (${feed.err})` : ''}. Nothing is drawn in its place.`}</ChartState>;
+  const optCount = [view !== 'daily', kind !== 'line', logOn, ma, vol, rsi, dd, lvOn && levels.length > 0, evOn && events.length > 0].filter(Boolean).length;
   const yrs = st ? spanWord(st.years) : '';
   const cmpYears = cmp ? (cmp.a[cmp.a.length - 1].t - cmp.a[0].t) / (365.25 * 86400) : 0;
   const words = cmp?.trimmed ? `the ${spanWord(cmpYears)} since ${dateLabel(cmp.from.t)}` : windowWords(range, win.covers, st?.years ?? 0);
@@ -162,12 +163,12 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
         <svg viewBox={`0 0 ${geo.W} ${H2}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={geo.W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" vectorEffect="non-scaling-stroke" /><path d={`${d}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${y(0)}L${geo.xs[0].toFixed(1)} ${y(0)}Z`} fill="var(--down)" fillOpacity=".12" /><path d={d} fill="none" stroke="var(--down)" strokeWidth="1.25" strokeDasharray="6 2" vectorEffect="non-scaling-stroke" /></svg></div></div>; })()}
   </>;
 
-  return <ChartFrame label="Price history" mode={mode} onMode={(m) => { setMode(m); setCur(null); }}
+  return <ChartFrame label="Price history"
     title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={metaBits.join(' · ')} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
-    basis={cmp ? `${BASIS.stock} ${BASIS.nifty} Both lines are indexed to 100 on ${dateLabel(cmp.from.t)} (units: index points).` : instrument ? BASIS.instrument(name ?? sym) : `${BASIS.stock}${candles ? " Candles show each bar's open, high, low and close." : ''} The live price is not drawn here and never moves this chart.`}
-    tableLabel="The same figures as a table"
+    basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
+   
     notes={<>
-      {mode === 'chart' && <>
+      {<>
         {bars && eff !== view && !cmp && <p className="small mute" style={{ margin: '8px 0 0' }}>{kind === 'candle' ? 'Candles' : 'Volume'} are drawn as {FRAME_WORD[eff]} bars here: {win.pts.length.toLocaleString('en-IN')} daily bars would be too thin to read, and thinning them would misstate each day.</p>}
         {kind === 'candle' && candles && shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>{shown.filter((q) => q.o == null || q.h == null || q.l == null).length} bars have no open, high or low from the source and are drawn as a tick on the close. Up candles are hollow, down candles solid.</p>}
         {kind === 'candle' && candles && !shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>Up candles are hollow, down candles solid.</p>}
@@ -181,16 +182,33 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [] }: { sym: 
       {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
       <div className="c-prim" role="group" aria-label="Chart controls">
         <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
-        {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
+        <div className="c-prim2">
+          {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
+          <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" onClick={() => setOptsOpen(true)}>Chart options{optCount > 0 && <span className="c-badge" aria-label={`${optCount} changed`}>{optCount}</span>}</button>
+        </div>
       </div>
-      <details className="ev c-adv"><summary>Chart options<span className="chev">▾</span></summary><div className="c-bar" role="group" aria-label="Chart options">
-        <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
-        {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => solo(() => setKind(v))} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', hint: vs ? 'Candles are drawn for the stock alone: this switches off the Nifty comparison' : undefined }] as { id: 'line' | 'candle'; label: string; hint?: string }[]} /> : null}
-        <Radios label="Scale" value={logOn ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG', disabled: !canLog, hint: !canLog ? 'Log scale needs every close above zero' : undefined }]} />
-        <div className="mini-seg" role="group" aria-label="Indicators"><button aria-pressed={ma} onClick={() => setMa(!ma)}>MA 50/200</button><button aria-pressed={vol} disabled={!hasVol} title={!hasVol ? 'This series carries no volume' : vs ? 'Volume is drawn for the stock alone: this switches off the Nifty comparison' : undefined} onClick={() => solo(() => setVol(!vol))}>VOLUME</button><button aria-pressed={rsi} onClick={() => solo(() => setRsi(!rsi))}>RSI 14</button><button aria-pressed={dd} onClick={() => solo(() => setDd(!dd))}>DRAWDOWN</button>{levels.length > 0 && <button aria-pressed={lvOn} disabled={!!cmp} title="Entry, stop and targets of a position you hold or a pick, drawn only where they fall inside the price range shown" onClick={() => setLvOn(!lvOn)}>LEVELS</button>}{events.length > 0 && <button aria-pressed={evOn} disabled={evIn.length === 0} title={evIn.length === 0 ? 'No dated event falls inside this window' : undefined} onClick={() => setEvOn(!evOn)}>EVENTS</button>}</div>
-      </div></details>
+      {optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
+        <div className="c-sheet">
+          <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
+          {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => solo(() => setKind(v))} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', hint: vs ? 'Candles are drawn for the stock alone: this switches off the Nifty comparison' : undefined }] as { id: 'line' | 'candle'; label: string; hint?: string }[]} /> : null}
+          <Radios label="Scale" value={logOn ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG', disabled: !canLog, hint: !canLog ? 'Log scale needs every close above zero' : undefined }]} />
+          <fieldset className="c-checks"><legend>Overlays</legend>
+            {[
+              ['ma', '50 and 200-day averages', ma, () => setMa(!ma), false, undefined],
+              ['vol', 'Volume', vol, () => solo(() => setVol(!vol)), !hasVol, !hasVol ? 'This series carries no volume' : undefined],
+              ['rsi', 'RSI (14)', rsi, () => solo(() => setRsi(!rsi)), false, undefined],
+              ['dd', 'Drawdown from the running peak', dd, () => solo(() => setDd(!dd)), false, undefined],
+              ...(levels.length > 0 ? [['lv', 'Entry, stop and targets', lvOn, () => setLvOn(!lvOn), !!cmp, 'Drawn only where they fall inside the price range shown'] as const] : []),
+              ...(events.length > 0 ? [['ev', 'Dated events', evOn, () => setEvOn(!evOn), evIn.length === 0, evIn.length === 0 ? 'No dated event falls inside this window' : undefined] as const] : []),
+            ].map(([id, label, on, fn, off, why]) => <label key={id as string} className="c-check"><input type="checkbox" checked={on as boolean} disabled={off as boolean} onChange={fn as () => void} /><span>{label as string}{why ? <span className="mute small"> · {why as string}</span> : null}</span></label>)}
+          </fieldset>
+          {vs && <p className="small mute" style={{ margin: 0 }}>Candles, volume, RSI and drawdown are drawn for the stock alone: choosing one switches the Nifty comparison off.</p>}
+          <button type="button" className="btn pri" onClick={() => setOptsOpen(false)}>Done</button>
+        </div>
+      </Sheet>}
       <details className="ev" style={{ marginTop: 8 }}><summary>About this chart<span className="chev">▾</span></summary><div className="body small dim">
         <p style={{ margin: '0 0 6px' }}>{logOn ? 'Log scale: equal steps are equal percentage moves, so 100 to 200 looks the same as 200 to 400. Best for long ranges.' : `Linear scale: equal steps are equal amounts of price. Best for short ranges.${st && st.hi.c / Math.max(st.lo.c, 1e-9) >= 3 ? ' This window moved more than threefold, so older moves look small; LOG shows them in proportion.' : ''}`}</p>
+        <p style={{ margin: '0 0 6px' }}>{cmp ? `${BASIS.stock} ${BASIS.nifty} Both lines are indexed to 100 on ${dateLabel(cmp.from.t)} (units: index points).` : instrument ? BASIS.instrument(name ?? sym) : `${BASIS.stock}${candles ? " Candles show each bar's open, high, low and close." : ''} The live price is not drawn here and never moves this chart.`}</p>
         <p style={{ margin: 0 }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock. A price change is the stock on its own; the relative figure is the stock minus the Nifty in percentage points. Past prices say nothing certain about future ones.'}</p></div></details>
     </>}>
     {chart}

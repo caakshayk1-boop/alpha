@@ -94,8 +94,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.locator('.chart-plot').focus(); const before = await pg.locator('.chart-plot').getAttribute('aria-valuetext');
   await pg.keyboard.press('ArrowLeft'); await pg.keyboard.press('ArrowLeft'); const after = await pg.locator('.chart-plot').getAttribute('aria-valuetext');
   ok(before !== after && /₹|\d/.test(after ?? ''), 'the chart can be read with the arrow keys, and says what each position is');
-  // 1 Nov 2026: the table alternative is a Chart / Table switch in the chart frame, not a disclosure under it
-  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click(); ok((await pg.locator('.cf-table table').count()) === 1, 'the chart has a table alternative'); await pg.getByRole('radio', { name: 'CHART', exact: true }).click(); await pg.locator('.chart-plot').focus(); await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one
+  ok((await pg.locator('details', { hasText: 'The same chart as a table' }).count()) === 1, 'the chart has a table alternative' /* a disclosure under the chart (owner, 2 Nov 2026) */); await pg.locator('.chart-plot').focus(); await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one await pg.keyboard.press('ArrowLeft');   // a key press makes the ring a focus-visible one
   const ring = await pg.evaluate(() => { const e = document.querySelector('.chart-plot'); const c = getComputedStyle(e); return c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) >= 2; });
   ok(ring, 'a focused control shows a visible 2px focus ring');
   await pg.keyboard.press('Control+k'); await pg.waitForSelector('.sheet'); await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);

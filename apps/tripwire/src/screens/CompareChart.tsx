@@ -4,7 +4,7 @@ import { getJson, hasHistory, type ChartFeed } from '../data.ts';
 import { RANGES, alignIndexed, dateLabel, nearestX, xTicks, yTicks, type RangeId, type Series } from '../chart.ts';
 import { pct } from '../fmt.ts';
 import { Radios } from '../ui.tsx';
-import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, compareTakeaway, coverageOf, drawdownLines, isRangeId, markerPath, spreadLabels, styleOf, windowWords, type FrameMode } from '../charts/index.ts';
+import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, compareTakeaway, coverageOf, drawdownLines, isRangeId, markerPath, spreadLabels, styleOf, windowWords } from '../charts/index.ts';
 
 function useCharts(syms: string[]) {
   const key = syms.join(','); const [st, set] = useState<{ data: Record<string, ChartFeed>; err: Record<string, string> }>({ data: {}, err: {} });
@@ -21,10 +21,10 @@ type Metric = 'return' | 'drawdown';
 export function CompareChart({ syms }: { syms: string[] }) {
   const { data, err } = useCharts(syms); const app = useAppState(); const saved = app.prefs.chart?.range;
   const [rangeSel, setRange] = useState<RangeId | null>(null); const range: RangeId = rangeSel ?? (isRangeId(saved) ? saved : '1Y');
-  const [log, setLog] = useState(false); const [metric, setMetric] = useState<Metric>('return'); const [mode, setMode] = useState<FrameMode>('chart');
+  const [log, setLog] = useState(false); const [metric, setMetric] = useState<Metric>('return');
   const [cur, setCur] = useState<number | null>(null); const box = useRef<HTMLDivElement>(null); const [wpx, setWpx] = useState(340);
   const failed = Object.keys(err); const ready = syms.every((s) => data[s]);
-  useEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx(w); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready, mode, metric]);
+  useEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx(w); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready, metric]);
   const series: Series[] = useMemo(() => (ready ? syms.map((s) => ({ id: s, t: data[s].t, c: data[s].c, n: data[s].n })) : []), [ready, data, syms.join()]);   // eslint-disable-line react-hooks/exhaustive-deps
   const al = useMemo(() => (ready ? alignIndexed(series, range) : null), [ready, series, range]);
   const lines = useMemo(() => {
@@ -54,20 +54,21 @@ export function CompareChart({ syms }: { syms: string[] }) {
   const ends = spreadLabels(L.map((l) => geo.y(l.v[last]) / geo.H));
   const table = buildTable(al.t, L.map((l) => ({ key: l.id, label: l.id, unit: metric === 'return' ? '(index)' : '(% from peak)', digits: metric === 'return' ? 1 : 1, v: l.v })), { monthly: false });
   const setR = (r: RangeId) => { setRange(r); setCur(null); setState((x) => ({ ...x, prefs: { ...x.prefs, chart: { ...x.prefs.chart, range: r } } })); };
-  return <ChartFrame label="Price comparison" mode={mode} onMode={(m) => { setMode(m); setCur(null); }} tableLabel="The same figures as a table"
+  return <ChartFrame label="Price comparison"
     title={metric === 'return' ? 'Price change, each indexed to 100' : 'Fall from the running peak'} meta={`${range === 'Max' ? 'All shared history' : range} · daily closes · ${metric === 'return' ? 'index points (100 = the start)' : '% below the highest close so far'} · from ${dateLabel(al.t[0])} through ${dateLabel(al.t[last])}`}
     takeaway={take} busy={false}
     legend={<SeriesLegend items={L.map((l) => ({ style: l.st, value: value(l.v[i]), arrow: dir(l.v[i]), title: cur == null ? undefined : dateLabel(al.t[i]) }))} label={cur == null ? 'Lines on this chart, latest values' : `Lines on this chart at ${dateLabel(al.t[i])}`} />}
     table={<ChartTable data={table} caption={`${syms.join(', ')} ${metric === 'return' ? 'indexed to 100' : 'drawdown'}, ${range}`} unitWord="daily points" />}
-    basis={`${BASIS.stock} ${BASIS.nifty} Every line starts at 100 on the first day all of them traded together (${dateLabel(al.t[0])}).`}
+    basis="Daily closes, indexed to 100, split-adjusted, dividends not included"
     notes={<>
-      {mode === 'chart' && cov.notes.map((n) => <p key={n} className="small mute" role="note" style={{ margin: '8px 0 0' }}>{n}</p>)}
-      {mode === 'chart' && !al.nifty && <p className="small mute" style={{ margin: '8px 0 0' }}>The Nifty 50 line is missing: the first stock has no Nifty close on the first shared day.</p>}
+      {cov.notes.map((n) => <p key={n} className="small mute" role="note" style={{ margin: '8px 0 0' }}>{n}</p>)}
+      {!al.nifty && <p className="small mute" style={{ margin: '8px 0 0' }}>The Nifty 50 line is missing: the first stock has no Nifty close on the first shared day.</p>}
       <div className="c-prim" role="group" aria-label="Chart controls">
         <Radios label="Range" value={range} onChange={setR} items={RANGES.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id }))} />
-        <Radios label="Measure" value={metric} onChange={(m) => { setMetric(m); setCur(null); }} items={[{ id: 'return', label: 'RETURN' }, { id: 'drawdown', label: 'DRAWDOWN' }]} />
-        <Radios label="Scale" value={log && metric === 'return' ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG', disabled: metric !== 'return', hint: metric !== 'return' ? 'Log applies to the indexed return' : undefined }]} />
+        <div className="c-prim2"><Radios label="Measure" value={metric} onChange={(m) => { setMetric(m); setCur(null); }} items={[{ id: 'return', label: 'RETURN' }, { id: 'drawdown', label: 'DRAWDOWN' }]} />
+        <Radios label="Scale" value={log && metric === 'return' ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG', disabled: metric !== 'return', hint: metric !== 'return' ? 'Log applies to the indexed return' : undefined }]} /></div>
       </div>
+      <details className="ev" style={{ marginTop: 8 }}><summary>About this chart<span className="chev">▾</span></summary><div className="body small dim"><p style={{ margin: '0 0 6px' }}>{BASIS.stock}</p><p style={{ margin: '0 0 6px' }}>{BASIS.nifty}</p><p style={{ margin: 0 }}>Every line starts at 100 on the first day all of them traded together ({dateLabel(al.t[0])}).</p></div></details>
     </>}>
     <div ref={box} className="cchart chart-plot" tabIndex={0} role="slider" aria-label={`${syms.join(', ')} compared since ${dateLabel(al.t[0])}. Use the arrow keys to move along the lines.`} aria-valuemin={0} aria-valuemax={last} aria-valuenow={i}
       aria-valuetext={`${dateLabel(al.t[i])}: ${L.map((l) => `${l.id} ${value(l.v[i])}`).join(', ')}`} style={{ touchAction: 'pan-y', height: 220 }}

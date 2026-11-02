@@ -1,7 +1,7 @@
 // The shared chart system in a browser: the first screen, the factual takeaway, the Chart / Table agreement, keyboard and touch, series identity beyond colour,
 // reduced motion, the saved range, missing and non-positive data, the comparison (coverage notes, drawdown, compact add control), the financial panels, no overflow at 360 and 1280.
 // AUTOMATED checks in a desktop Chromium; they do not replace a real phone or a screen reader. Usage: node apps/tripwire/tests/charts.mjs [baseUrl]
-import { chromium, newCtx, ohlcSeries } from './uimock.mjs';
+import { chromium, newCtx, ohlcSeries, openOptions, closeOptions } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const b = await chromium.launch();
@@ -22,8 +22,9 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
   const leg = await pg.locator('.cf-legend li').count(); const shapes = await pg.locator('.cf-legend li svg path').count(); ok(leg === 2 && shapes === 2 && (await pg.locator('.cf-legend li svg line[stroke-dasharray]').count()) === 1, 'the legend gives each line its own marker, and the benchmark a dash');
   ok(/[▲▼■]/.test(await pg.locator('.chart-head').innerText()) && /[▲▼■]/.test(await pg.locator('.c-end').first().innerText()), 'direction is carried by an arrow and a sign, not by colour alone');
   const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
-  const basis = await pg.locator('.cf-basis').innerText(); ok(/split/i.test(basis) && /dividends/i.test(basis) && /Yahoo/.test(basis), 'the source and the adjustment basis, dividends included, are printed under the chart');
-  ok((await pg.locator('.cf-view button').first().boundingBox()).height >= 43.5, 'the Chart / Table switch is 44px tall');
+  const basis = await pg.locator('.cf-basis').innerText(); ok(basis.length < 110 && /split-adjusted/i.test(basis) && /dividends not included/i.test(basis), `one short basis line sits under the chart (${basis})`);
+  await pg.locator('summary', { hasText: 'About this chart' }).click(); ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in About this chart');
+  ok(await pg.locator('.cf-tbl > summary').count() === 1 && (await pg.locator('.cf-tbl > summary').boundingBox()).height >= 43.5, 'the table is a disclosure with a 44px summary');
   ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
   await ctx.close(); }
 
@@ -31,13 +32,12 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
 { const ctx = await newCtx(b, 1280, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
   await radio(pg, 'Compare', 'PRICE').click(); await pg.waitForSelector('.c-last');
   const tag = (await pg.locator('.c-last').innerText()).replace(/[₹,\s]/g, '');
-  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click(); await pg.waitForSelector('.cf-table table');
+  await pg.locator('.cf-tbl > summary').click(); await pg.waitForSelector('.cf-table table');
   const rows = await pg.locator('.cf-table tbody tr').count(); const lastRow = (await pg.locator('.cf-table tbody tr').last().locator('td').first().innerText()).replace(/[,\s]/g, '');
   ok(lastRow === tag, `the last row of the table (${lastRow}) is the price tagged on the chart (${tag})`);
   const closes = await pg.locator('.cf-table tbody tr td:first-of-type').allInnerTexts(); const nums = closes.map((x) => Number(x.replace(/,/g, '')));
   ok(rows <= 26 && rows >= 4 && /of the \d+ day closes drawn on the chart/.test(await pg.locator('.cf-table').innerText()), `the table lists ${rows} rows and says how many of the drawn points they are`);
   ok(await pg.locator('.cf-table caption.sr').count() === 1 && await pg.locator('.cf-table th[scope=col]').count() >= 2 && await pg.locator('.cf-table .scroll-x[tabindex="0"]').count() === 1, 'the table has a caption, column headers and a focusable scroll region');
-  await pg.getByRole('radio', { name: 'CHART', exact: true }).click(); await pg.waitForSelector('.chart-plot');
   /* the highest close of the window is among the rows (the chart's HIGH figure) */
   const high = Number((await pg.locator('.c-hl b').nth(1).innerText()).replace(/[₹,\s]/g, '')); ok(nums.includes(high) || Math.max(...nums) >= high - 0.005, 'the window high shown on the chart is among the table rows');
   await ctx.close(); }
@@ -69,8 +69,9 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
 
 /* 6. advanced controls are grouped; a stock-only indicator switches the benchmark view off and says so; no Nifty means a plain price line */
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  ok((await pg.locator('details.c-adv').getAttribute('open')) === null && !(await radio(pg, 'Style', 'CANDLES').isVisible().catch(() => false)), 'candles, scale, detail and indicators are folded under Chart options');
-  await pg.locator('summary', { hasText: 'Chart options' }).click(); await radio(pg, 'Style', 'CANDLES').click(); await pg.waitForSelector('.c-candles rect');
+  ok(await pg.locator('.sheet').count() === 0 && !(await radio(pg, 'Style', 'CANDLES').isVisible().catch(() => false)) && (await pg.locator('.c-ma, .c-sub, .chart-sub, .c-lvl').count()) === 0, 'candles, scale, interval and overlays are in the Chart options sheet, and the default is a clean line with no overlay');
+  await openOptions(pg); await radio(pg, 'Style', 'CANDLES').click(); await pg.waitForSelector('.c-candles rect');
+  ok(/^Chart options\s*1$/.test((await pg.locator('.c-optbtn').innerText()).replace(/\n/g, '').trim()), 'the options button carries a count badge when something differs from the default'); await closeOptions(pg);
   ok((await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'choosing candles switches the benchmark view off (candles are drawn for the stock alone)');
   const hollow = await pg.evaluate(() => { const r = [...document.querySelectorAll('.c-candles rect')]; const f = new Set(r.map((x) => x.getAttribute('fill'))); return f.size; }); ok(hollow >= 2, 'up candles are hollow and down candles solid (a second cue beside colour)');
   await ctx.close();
@@ -82,7 +83,7 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
 /* 7. a non-positive close: log scale is refused with the reason, nothing divides by zero */
 { const raw = JSON.parse(series(900, 'TCS', { nifty: true })); raw.c[raw.c.length - 5] = 0; raw.h = raw.h.map((x, i) => (i === raw.c.length - 5 ? 0 : x));
   const ctx = await newCtx(b, 390, JSON.stringify(raw)); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  await pg.locator('summary', { hasText: 'Chart options' }).click(); await radio(pg, 'Compare', 'PRICE').click();
+  await radio(pg, 'Compare', 'PRICE').click(); await openOptions(pg);
   ok(await pg.locator('[role=radiogroup][aria-label=Scale] [data-id=log]').isDisabled(), 'LOG is disabled when a close in the window is zero or negative');
   ok(!/NaN|Infinity/.test(await pg.locator('.chart').innerText()), 'no NaN or Infinity is printed'); await ctx.close(); }
 
@@ -99,7 +100,7 @@ for (const w of [360, 1280]) {
   await radio(pg, 'Measure', 'DRAWDOWN').click(); await pg.waitForTimeout(150);
   const legend = await pg.locator('.cf-legend').innerText(); ok(/Fall from the running peak/.test(await pg.locator('.cf-h').first().innerText()) && !/\+\d/.test(legend), `${w}: the drawdown view shows only falls (no positive figure)`);
   await radio(pg, 'Measure', 'RETURN').click();
-  await pg.getByRole('radio', { name: 'TABLE', exact: true }).click(); const cols = await pg.locator('.cf-table thead th').count(); ok(cols === 4, `${w}: the comparison table has a date and one column per line (${cols})`); await pg.getByRole('radio', { name: 'CHART', exact: true }).click();
+  await pg.locator('.cf-tbl > summary').click(); const cols = await pg.locator('.cf-table thead th').count(); ok(cols === 4, `${w}: the comparison table has a date and one column per line (${cols})`);
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Compare`);
   await open(pg, '/#/compare?s=TCS,NEWCO', '.cchart svg path'); await radio(pg, 'Range', '3Y').click(); await pg.waitForTimeout(250);
   const notes = await pg.locator('.cf [role=note]').allInnerTexts(); ok(notes.some((n) => /^The window is \d+ months, not 3Y: NEWCO \(from/.test(n)), `${w}: a new listing shortens the window and the note says which name and from when`);
@@ -111,11 +112,12 @@ for (const w of [360, 1280]) {
   const ctx = await newCtx(b, w, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
   ok((await pg.getByRole('tab').allInnerTexts()).join('|') === 'Overview|Financials|Ownership|Risks|Thesis', `${w}: the sections are Overview, Financials, Ownership, Risks, Thesis`);
   ok((await pg.locator('h1').count()) === 1, `${w}: one h1`);
+  ok(await pg.locator('.co-tabs [role=tab]').evaluateAll((els) => els.every((e) => e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().right <= innerWidth)), `${w}: no section tab label is clipped or wrapped`);
   await pg.getByRole('tab', { name: 'Financials', exact: true }).click(); await pg.waitForSelector('.fin-panel');
   const panels = await pg.locator('.fin-panel').count(); const labels = await pg.locator('.fin-panel').evaluateAll((els) => els.map((e) => [...e.querySelectorAll('.fin-axis span')].map((s) => s.textContent).join(',')));
   ok(panels === 3 && new Set(labels).size === 1, `${w}: revenue, profit and margin panels share the same fiscal years (${labels[0]})`);
   ok(/Revenue went from/.test((await pg.locator('.fin-frame [data-takeaway]').allInnerTexts()).join(' ')), `${w}: the financials takeaway is built from the statements`);
-  await pg.locator('.fin-frame').getByRole('radio', { name: 'TABLE', exact: true }).click(); const trs = await pg.locator('.fin-frame tbody tr').count(); ok(trs === labels[0].split(',').length, `${w}: the table has one row per drawn year (${trs})`);
+  await pg.locator('.fin-frame .cf-tbl > summary').click(); const trs = await pg.locator('.fin-frame tbody tr').count(); ok(trs === labels[0].split(',').length, `${w}: the table has one row per drawn year (${trs})`);
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Financials`);
   await pg.getByRole('tab', { name: 'Ownership', exact: true }).click(); ok(/Who owns it|not enough data/i.test(await pg.locator('[role=tabpanel]').innerText()), `${w}: Ownership shows the holding or says there is not enough data`);
   await pg.getByRole('tab', { name: 'Risks', exact: true }).click(); ok(/countercase/i.test(await pg.locator("[role=tabpanel]").innerText()), `${w}: Risks carries the countercase`);
@@ -123,6 +125,33 @@ for (const w of [360, 1280]) {
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow on Thesis`);
   await ctx.close();
 }
+
+
+/* 11. owner feedback 2 Nov 2026: at most two control rows on a phone, nothing overlaps or clips from 320 to 430, the action bar does not hide the controls */
+for (const w of [320, 360, 390, 430]) {
+  const ctx = await newCtx(b, w, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const m = await pg.evaluate(() => {
+    const cells = [...document.querySelectorAll('.c-prim .radios button, .c-prim .c-optbtn')].map((e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, txt: e.textContent.trim(), clip: e.scrollWidth > e.clientWidth + 1 }; });
+    const rows = new Set(cells.map((c) => Math.round(c.t / 10))).size; const hits = [];
+    for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) { const a = cells[i], c = cells[j]; if (a.l < c.r - 1 && c.l < a.r - 1 && a.t < c.b - 1 && c.t < a.b - 1) hits.push(a.txt + '/' + c.txt); }
+    const card = document.querySelector('section.cf').getBoundingClientRect();
+    return { rows, hits, clipped: cells.filter((c) => c.clip || c.l < card.left - 0.5 || c.r > card.right + 0.5).map((c) => c.txt), sw: document.documentElement.scrollWidth - innerWidth };
+  });
+  ok(m.hits.length === 0 && m.clipped.length === 0 && m.sw <= 0, `${w}: no control overlaps, clips or overflows (${m.hits.join(',')} ${m.clipped.join(',')} ${m.sw})`);
+  ok(m.rows <= (w >= 360 ? 2 : 3), `${w}: the chart shows ${m.rows} control rows by default (${w >= 360 ? 'at most 2' : 'at most 3 at 320'})`);
+  await openOptions(pg);
+  const sh = await pg.evaluate(() => { const s = document.querySelector('.sheet'); const r = s.getBoundingClientRect(); const bad = [...s.querySelectorAll('button, label')].filter((e) => { const q = e.getBoundingClientRect(); return q.right > r.right + 0.5 || q.left < r.left - 0.5; }).length; return { bad, sw: s.scrollWidth - s.clientWidth, labels: [...s.querySelectorAll('.c-check')].map((e) => e.textContent.trim()) }; });
+  ok(sh.bad === 0 && sh.sw <= 1, `${w}: the options sheet has no clipped control (${sh.bad} ${sh.sw})`);
+  ok(['50 and 200-day averages', 'Volume', 'RSI (14)', 'Drawdown from the running peak'].every((l) => sh.labels.some((x) => x.startsWith(l))), `${w}: the overlays carry plain labels`);
+  await closeOptions(pg); ok(await pg.locator('.sheet').count() === 0, `${w}: Escape closes the sheet`);
+  await ctx.close();
+}
+{ const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  await openOptions(pg); await pg.getByRole('checkbox', { name: 'Volume', exact: true }).check(); await pg.getByRole('checkbox', { name: 'RSI (14)', exact: true }).check(); await closeOptions(pg);
+  ok(/Chart options\s*2/.test((await pg.locator('.c-optbtn').innerText()).replace(/\n/g, ' ')) && (await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'two overlays: the badge says 2 and the benchmark view switches off');
+  const pad = await pg.evaluate(() => getComputedStyle(document.documentElement).scrollPaddingBottom); ok(parseFloat(pad) >= 90, `the page keeps scroll room above the sticky action bar (${pad})`);
+  await pg.locator('.c-optbtn').focus(); const vis = await pg.evaluate(() => { const r = document.querySelector('.c-optbtn').getBoundingClientRect(); const f = document.querySelector('.fab-row').getBoundingClientRect(); return r.bottom <= f.top + 1 || r.top >= f.bottom - 1; }); ok(vis, 'a focused chart control is not under the action bar');
+  await ctx.close(); }
 
 /* 10. reserved height: the chart card does not change height when the history arrives */
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await ctx.route('**/api/chart*', async (r) => { await new Promise((x) => setTimeout(x, 1200)); r.fulfill({ status: 200, contentType: 'application/json', body: series(900, 'TCS', { nifty: true }) }); });

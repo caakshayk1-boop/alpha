@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import type { Year } from '../data.ts';
-import { ChartFrame, BASIS, financialsTakeaway, netMargin, signedPct, type FrameMode } from '../charts/index.ts';
+import { ChartFrame, BASIS, financialsTakeaway, netMargin, signedPct } from '../charts/index.ts';
 import { dash } from '../fmt.ts';
 
 const isN = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -9,7 +8,6 @@ const lakh = (v: number) => Math.round(v).toLocaleString('en-IN');
  *  Each panel has its own zero line and its own scale (they are different units); a loss is drawn below zero, outlined and signed, never as a short positive bar; a year with no figure is a gap, not a zero.
  *  `margins` is false for a lender, whose margins the screen withholds. */
 export function FinancialCharts({ years, margins }: { years: readonly Year[]; margins: boolean }) {
-  const [mode, setMode] = useState<FrameMode>('chart');
   const ys = [...years].slice(0, 6).reverse();      // oldest first
   if (!ys.length) return <div className="card dim">No financial statements are held for this name. Every ratio that depends on them is missing, not zero.</div>;
   const n = ys.length; const colW = 100; const W = n * colW; const H = 120; const pad = 14;
@@ -47,7 +45,7 @@ export function FinancialCharts({ years, margins }: { years: readonly Year[]; ma
     <thead><tr><th scope="col" style={{ textAlign: 'left' }}>Fiscal year</th><th scope="col" style={{ textAlign: 'right' }}>Revenue (₹ cr)</th><th scope="col" style={{ textAlign: 'right' }}>Profit after tax (₹ cr)</th>{margins && <th scope="col" style={{ textAlign: 'right' }}>Net margin</th>}{margins && <th scope="col" style={{ textAlign: 'right' }}>EBIT margin</th>}</tr></thead>
     <tbody>{ys.map((y, i) => <tr key={y.fy}><th scope="row" style={{ textAlign: 'left', fontWeight: 500 }}>{y.fy}</th><td className="num" style={{ textAlign: 'right' }}>{rev[i] === null ? dash : lakh(rev[i] as number)}</td><td className="num" style={{ textAlign: 'right' }}>{pat[i] === null ? dash : (pat[i] as number) < 0 ? `−${lakh(-(pat[i] as number))}` : lakh(pat[i] as number)}</td>{margins && <td className="num" style={{ textAlign: 'right' }}>{nm[i] === null ? dash : `${(nm[i] as number).toFixed(1)}%`}</td>}{margins && <td className="num" style={{ textAlign: 'right' }}>{em[i] === null ? dash : `${(em[i] as number).toFixed(1)}%`}</td>}</tr>)}</tbody></table></div>
     <p className="small mute" style={{ margin: '8px 0 0' }}>All {n} fiscal years drawn on the chart.</p></div>;
-  return <ChartFrame className="fin-frame" label="Revenue, profit and margins" mode={mode} onMode={setMode} tableLabel="The same figures as a table"
+  return <ChartFrame className="fin-frame" label="Revenue, profit and margins"
     title="Revenue, profit and margins by fiscal year" meta={`${take.span ?? ''} · ₹ crore and % of revenue · latest year held ${last.fy}${last.end ? `, ended ${last.end}` : ''}`}
     takeaway={{ headline: take.lines[0], lines: take.lines.slice(1), dataThrough: `Statements through ${last.fy}` }} table={table}
     basis={BASIS.statements + (margins ? '' : ' Margins are withheld for this company (the screen does not measure them for a lender), not shown as zero.')}>
