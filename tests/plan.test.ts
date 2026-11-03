@@ -80,7 +80,8 @@ test('gate funnel: counts from gate_history, per-check counts only for the lates
 });
 
 test('empty setups: every reason is kept apart, and only the gate and stale input block a new setup', () => {
-  const off = { ...feed, gate: { ...feed.gate, on: false, passed: 1 }, alertable: false };
+  // The committed feed changes every night, and the sentence counts the checks that pass; fix them here so the test does not depend on the day's data (it said "1 of 4" until the 2 Nov feed had 2 passing).
+  const off = { ...feed, gate: { ...feed.gate, on: false, passed: 1, checks: feed.gate.checks.map((c, i) => ({ ...c, ok: i === 1 })) }, alertable: false };
   const r = setupReasons(off, { state: 'delayed', lagSessions: 1, reference: '2026-10-21' }, false);
   assert.deepEqual(r.map((x) => x.key), ['gate', 'data', 'validation', 'publication']);
   assert.deepEqual(r.filter((x) => x.blocking).map((x) => x.key), ['gate', 'data']);
