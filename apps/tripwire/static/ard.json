@@ -1,0 +1,27 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Tripwire"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:tripwire.askakshay.com:skills:tripwire",
+      "displayName": "Tripwire",
+      "type": "application/agent-skills+md",
+      "url": "https://tripwire.askakshay.com/.well-known/agent-skills/tripwire/SKILL.md",
+      "description": "How to find an Indian listed company on Tripwire, where its evidence, news and data dates are, and the limits to state when reporting back: prices can lag, paper only, not investment advice.",
+      "representativeQueries": [
+        "Find an NSE company and show the evidence for and against it",
+        "Is the data on Tripwire current",
+        "What does Tripwire say about the Nifty today"
+      ],
+      "tags": [
+        "india",
+        "nse",
+        "equities",
+        "research",
+        "paper-trading"
+      ]
+    }
+  ]
+}

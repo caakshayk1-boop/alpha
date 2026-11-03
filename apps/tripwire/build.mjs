@@ -95,6 +95,8 @@ if (contact.email) {
   const expires = new Date(Date.now() + 365 * 86400000).toISOString().replace(/\.\d+Z$/, 'Z');
   writeFileSync(join(DIST, '.well-known', 'security.txt'), `Contact: mailto:${contact.email}\nExpires: ${expires}\nPreferred-Languages: en\nCanonical: https://tripwire.askakshay.com/.well-known/security.txt\n`);
 }
+// The discovery manifest for AI agents (Agentic Resource Discovery) and the one skill it lists. They are served as real files: without it the SPA fallback answers /.well-known/ard.json with the app's HTML, which is not a manifest.
+mkdirSync(join(DIST, '.well-known'), { recursive: true }); cpSync(join(HERE, 'static', 'ard.json'), join(DIST, '.well-known', 'ard.json')); cpSync(join(HERE, 'static', 'agent-skills'), join(DIST, '.well-known', 'agent-skills'), { recursive: true });
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 // every hashed script and style (the lazy screens are separate chunks) and the fonts go into the worker's precache list, so the shell opens offline

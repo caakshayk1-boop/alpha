@@ -38,7 +38,7 @@ export function NewsRow({ ev, lists, lead, seenSec, nowMs, label }: { ev: NewsEv
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
     {ev.sources.length > 1 && <p className="nw-cover" data-cover aria-label={`${plural(ev.sources.length, 'outlet')} carried this event`}><span className="nw-cover-k">{ev.sources.length} outlets on this event</span>{ev.sources.map((x) => { const h = safeHref(x.canonicalUrl); return h ? <a key={x.sourceId} href={h} target="_blank" rel="noopener noreferrer">{x.sourceTitle}<span className="sr"> (opens in a new tab)</span></a> : <span key={x.sourceId}>{x.sourceTitle}</span>; })}</p>}
-    <p className="nw-clocks" data-clocks><span className={unknownDate ? 'nw-unknown' : ''}>{clk.published}</span><span aria-hidden="true"> · </span><span>{clk.collected}</span></p>
+    <p className="nw-clocks" data-clocks>{unknownDate && <><span className="nw-unknown">{clk.published}</span><span aria-hidden="true"> · </span></>}<span>{clk.collected}</span></p>
     {ev.summary && <p className="nw-summary" title={`Source: the publisher's own description in ${ev.summary.provenance.feedId}, retrieved ${ev.summary.provenance.retrievedAt ?? 'at an unknown time'}`}>{ev.summary.text}</p>}
     <details className="nw-more"><summary>Coverage and ranking</summary><div className="nw-body">
       <p><b>{ev.sources.length > 1 ? `${plural(ev.sources.length, 'outlet')} carried this` : '1 outlet'}</b>{ev.sources.length > 1 ? '; the first listed is the primary source.' : '.'}</p>

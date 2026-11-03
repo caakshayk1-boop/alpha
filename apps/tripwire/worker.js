@@ -326,7 +326,7 @@ async function rsiSheet(ctx) {
 // THREE routes, one pipeline (apps/tripwire/news/*, shared with the scheduled job):
 //   GET /api/news/version  -> the tiny status document the job writes every run: { ok, snapshotVersion, status, checkedAt, lastSuccessfulAt, nextScheduledAt, ... }  (edge copy 60 s)
 //   GET /api/news          -> the latest published snapshot for the browser: { ok, schema: 'tripwire-news/1', events, scopes, names, sources, rejections, ... }       (edge copy 5 min)
-//   GET /api/news/catchup  -> only when the published check is late and the session is on: a market-scope run of the same pipeline, labelled on demand, edge copy one cadence (news/catchup.js)
+//   GET /api/news/catchup  -> only when the published check is late (any hour): a market-scope run of the same pipeline, labelled on demand, edge copy one cadence (news/catchup.js)
 //   GET /api/news?q=<phrase>&sym=<SYMBOL>  -> a live query for one reader-chosen name, run through the SAME pipeline and gates, edge copy 5 minutes
 // The snapshot is written by .github/workflows/tripwire_news.yml on the orphan branch `tripwire-data` and read from raw.githubusercontent.com, like the ledger and the RSI sheet.
 // Absent or unreadable answers HTTP 200 with ok:false (a 404 or 5xx is a console error in every browser); `retry_after` (seconds) is passed through when the upstream gave one.
@@ -400,9 +400,9 @@ async function newsLive(q, sym, key, cache, ctx, H1) {
   } catch { return json({ ok: false, error: 'the news source did not answer' }, 200, { 'cache-control': 'no-store' }); }
 }
 
-/** GET /api/news/catchup: when the PUBLISHED snapshot is late (older than two cadences) and the NSE session is on, run the market scope of the same pipeline once and cache it at the edge for one
+/** GET /api/news/catchup: when the PUBLISHED snapshot is late (older than two cadences, at any hour), run the market scope of the same pipeline once and cache it at the edge for one
  *  cadence. Labelled `onDemand` in its own schema; the published snapshot's times and events are never changed or re-dated (apps/tripwire/news/catchup.js, docs/tripwire/launch/RELIABILITY.md).
- *  Not late, or the market is shut: answers `onDemand:false` with the reason and does no work. A failed attempt is remembered for two minutes so a stalled source is not asked on every page view. */
+ *  Not late: answers `onDemand:false` with the reason and does no work. A failed attempt is remembered for two minutes so a stalled source is not asked on every page view. */
 async function catchup(ctx) {
   const nowMs = Date.now(); const vr = await (await newsFile('version', ctx, false)).json().catch(() => null); const status = vr?.ok ? vr : null;
   const d = catchupDecision({ status, nowMs });

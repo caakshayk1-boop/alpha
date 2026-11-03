@@ -145,7 +145,8 @@ export function Company({ sym }: { sym: string }) {
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
-        <div style={{ textAlign: 'right' }}><div className="c-pills" aria-label="Sector and size">{row.sector && <Pill>{row.sector}</Pill>}{row.tier && <Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill>}</div>{lp.fromQuote ? <span className={`tag ${lp.live ? 'lime' : ''}`} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.word} · {fmtIst(lp.t!)}</span> : <span className={`tag ${fr.tone}`}>Close of {dayWord(row.last_date)}</span>}<div className="mute small" style={{ marginTop: 6 }}>{lp.fromQuote ? `Screen figures: close of ${dayWord(row.last_date)}` : 'Live price not available'}</div></div></div>
+        {row.tier && <div className="c-pills" role="group" aria-label="Size class"><Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill></div>}</div>
+      <div className="c-times small">{lp.fromQuote ? <span className={lp.live ? 'up' : 'mute'} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.word} · {fmtIst(lp.t!)}</span> : <span className={fr.tone === 'peach' ? '' : 'mute'} style={fr.tone === 'peach' ? { color: 'var(--a4)' } : undefined}>Close of {dayWord(row.last_date)}</span>}{lp.fromQuote ? <span className="mute">Screen figures: close of {dayWord(row.last_date)}</span> : <span className="mute">Live price not available</span>}</div>
     </section>
 
     {first && <>

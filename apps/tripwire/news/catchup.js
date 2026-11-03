@@ -1,6 +1,6 @@
 // Catch-up: what the Worker may do when the PUBLISHED news snapshot is late and the market is open.
 //
-// GitHub's cron is best effort (docs/tripwire/launch/RELIABILITY.md). When the last successful scheduled check is older than twice its cadence, the Worker may run the MARKET-SCOPE
+// GitHub's cron is best effort (docs/tripwire/launch/RELIABILITY.md). When the last successful scheduled check is older than twice its cadence, at any hour, the Worker may run the MARKET-SCOPE
 // part of the same pipeline once, cache it at the edge for one cadence, and hand the browser the result under its own schema and its own label ("refreshed on demand").
 // It never touches, replaces or re-dates the published snapshot: the snapshot's checkedAt / lastSuccessfulAt stay what the scheduled job wrote, and the page keeps saying the
 // scheduled check is late. Nothing here is a model, nothing is invented: the same gates, the same entity rules (the names come from the snapshot), the same feeds.
@@ -11,7 +11,6 @@ import { buildRegistry } from './entities.js';
 import { parseFeed } from './feed.js';
 import { compactEvent, runPipeline } from './pipeline.js';
 import { cadenceMin } from './schedule.js';
-import { marketOpenNow } from '../src/calendar.ts';
 import { ALIASES } from './aliases.js';
 
 export const CATCHUP_SCHEMA = 'tripwire-news-ondemand/1';
@@ -19,9 +18,9 @@ export const CATCHUP_SCHEMA = 'tripwire-news-ondemand/1';
 export const CATCHUP_AFTER_CADENCES = 2;
 
 /** Whether the Worker should run a catch-up now. `status` is the published status document, or null when none has been published yet.
- *  Run only while the NSE session is on (the exchange calendar decides, holidays included); outside it the published cadence is 30 minutes and nothing moves fast. */
+ *  News does not stop at the closing bell (RBI and SEBI release at any hour, and a filing can land overnight), so this runs at any hour, not only while the NSE session is on: late means older than two
+ *  cadences of the moment, which is 30 minutes in session and 60 outside it (news/schedule.js). It is the same rule the page uses to say "late", so the two cannot disagree. */
 export function catchupDecision({ status, nowMs }) {
-  if (!marketOpenNow(nowMs)) return { run: false, reason: 'market closed', ageMin: null, allowedMin: null };
   const allowedMin = CATCHUP_AFTER_CADENCES * cadenceMin(nowMs);
   const good = status?.lastSuccessfulAt ? Date.parse(status.lastSuccessfulAt) : NaN;
   if (!Number.isFinite(good)) return { run: true, reason: 'no scheduled check has succeeded yet', ageMin: null, allowedMin };

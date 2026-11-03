@@ -95,7 +95,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
   ok(await pg.locator('.sheet').count() === 0 && !(await radio(pg, 'Style', 'CANDLES').isVisible().catch(() => false)) && (await pg.locator('.c-ma, .c-sub, .chart-sub, .c-lvl').count()) === 0, 'candles, scale, interval and overlays are in the Chart options sheet, and the default is a clean line with no overlay');
   await openOptions(pg); await radio(pg, 'Style', 'CANDLES').click(); await pg.waitForSelector('.c-candles rect');
-  ok(/^Chart options\s*1$/.test((await pg.locator('.c-optbtn').innerText()).replace(/\n/g, '').trim()), 'the options button carries a count badge when something differs from the default'); await closeOptions(pg);
+  ok(/^Chart options, 1 changed$/.test((await pg.locator('.c-optbtn').getAttribute('aria-label')) ?? '') && (await pg.locator('.c-optbtn .c-badge').innerText()).trim() === '1', 'the options button carries a count badge when something differs from the default (its name says so too)'); await closeOptions(pg);
   ok((await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'choosing candles switches the benchmark view off (candles are drawn for the stock alone)');
   const hollow = await pg.evaluate(() => { const r = [...document.querySelectorAll('.c-candles rect')]; const f = new Set(r.map((x) => x.getAttribute('fill'))); return f.size; }); ok(hollow >= 2, 'up candles are hollow and down candles solid (a second cue beside colour)');
   await ctx.close();
@@ -172,7 +172,7 @@ for (const w of [320, 360, 390, 430]) {
 }
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
   await openOptions(pg); await pg.getByRole('checkbox', { name: 'Volume', exact: true }).check(); await pg.getByRole('checkbox', { name: 'RSI (14)', exact: true }).check(); await closeOptions(pg);
-  ok(/Chart options\s*2/.test((await pg.locator('.c-optbtn').innerText()).replace(/\n/g, ' ')) && (await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'two overlays: the badge says 2 and the benchmark view switches off');
+  ok(/^Chart options, 2 changed$/.test((await pg.locator('.c-optbtn').getAttribute('aria-label')) ?? '') && (await radio(pg, 'Compare', 'PRICE').getAttribute('aria-checked')) === 'true', 'two overlays: the badge says 2 and the benchmark view switches off');
   const pad = await pg.evaluate(() => getComputedStyle(document.documentElement).scrollPaddingBottom); ok(parseFloat(pad) >= 90, `the page keeps scroll room above the sticky action bar (${pad})`);
   await pg.locator('.c-optbtn').focus(); const vis = await pg.evaluate(() => { const r = document.querySelector('.c-optbtn').getBoundingClientRect(); const f = document.querySelector('.fab-row').getBoundingClientRect(); return r.bottom <= f.top + 1 || r.top >= f.bottom - 1; }); ok(vis, 'a focused chart control is not under the action bar');
   await ctx.close(); }

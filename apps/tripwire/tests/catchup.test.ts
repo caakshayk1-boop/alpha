@@ -12,13 +12,15 @@ const fx = (f: string) => readFileSync(new URL(`./fixtures/news/ok/${f}`, import
 const OPEN = Z('2026-10-27T06:00:00Z');                       // 11:30 IST, a Tuesday in session
 const status = (agoMin: number, now = OPEN) => ({ ok: true, schema: 'tripwire-news-status/1', snapshotVersion: 4, status: 'ok', checkedAt: new Date(now - agoMin * 60000).toISOString(), lastSuccessfulAt: new Date(now - agoMin * 60000).toISOString() });
 
-test('decision: late means older than two cadences (30 minutes in session), and only while the exchange is open', () => {
+test('decision: late means older than two cadences (30 minutes in session, 60 outside it), at any hour', () => {
   assert.equal(catchupDecision({ status: status(29), nowMs: OPEN }).run, false, '29 minutes is inside two 15-minute cadences');
   const late = catchupDecision({ status: status(46), nowMs: OPEN }); assert.equal(late.run, true); assert.equal(late.ageMin, 46); assert.match(late.reason, /46 minutes ago/);
-  assert.equal(catchupDecision({ status: status(300, Z('2026-10-27T11:00:00Z')), nowMs: Z('2026-10-27T11:00:00Z') }).run, false, '16:30 IST: the market is shut, nothing to catch up');
-  assert.equal(catchupDecision({ status: status(300, Z('2026-10-24T06:00:00Z')), nowMs: Z('2026-10-24T06:00:00Z') }).run, false, 'Saturday');
-  assert.equal(catchupDecision({ status: status(300, Z('2026-10-20T06:00:00Z')), nowMs: Z('2026-10-20T06:00:00Z') }).run, false, 'Dussehra, an NSE holiday');
-  assert.equal(catchupDecision({ status: null, nowMs: OPEN }).run, true, 'nothing ever published, market open');
+  const SHUT = Z('2026-10-27T11:00:00Z');                    // 16:30 IST, the session is over: the cadence is 30 minutes, so two cadences is 60
+  assert.equal(catchupDecision({ status: status(59, SHUT), nowMs: SHUT }).run, false, '59 minutes is inside two 30-minute cadences');
+  const eve = catchupDecision({ status: status(300, SHUT), nowMs: SHUT }); assert.equal(eve.run, true, 'news does not stop at the bell'); assert.equal(eve.allowedMin, 60);
+  const sat = Z('2026-10-24T06:00:00Z'); assert.equal(catchupDecision({ status: status(300, sat), nowMs: sat }).run, true, 'Saturday');
+  const hol = Z('2026-10-20T06:00:00Z'); assert.equal(catchupDecision({ status: status(300, hol), nowMs: hol }).run, true, 'Dussehra, an NSE holiday: RBI and SEBI still publish');
+  assert.equal(catchupDecision({ status: null, nowMs: OPEN }).run, true, 'nothing ever published');
   assert.equal(catchupDecision({ status: { lastSuccessfulAt: new Date(OPEN + 3600e3).toISOString() }, nowMs: OPEN }).run, false, 'a check time in the future is not trusted, so it is not acted on either');
 });
 

@@ -48,7 +48,7 @@ TTL is the shared edge-cache lifetime (`s-maxage` or the Cache API entry); "brow
 | `/api/news` (snapshot) | raw.githubusercontent.com `tripwire-data` branch | 5 min | unchanged; a reader knowing a newer `v` skips an older copy | only `force=1`, one per 30 s | `news` 20/min, force as before | `v` read as a number |
 | `/api/news?q=&sym=` | Google News RSS, then Bing News RSS | 5 min per query | 5 min; key now ignores case and repeated spaces; identical concurrent queries share one run | only `force=1` | `news` 20/min, force as before | `q` 2 to 110 characters from a fixed set, `sym` as a symbol |
 | `/api/news/version` | raw.githubusercontent.com | 60 s | unchanged | only `force=1` | `file` 60/min, force as before | none |
-| `/api/news/catchup` | Google/Bing News through the news pipeline, only when the snapshot is late and the session is on | 5 min (15 min on success) | unchanged; concurrent runs coalesced | none | `quote` 90/min | none |
+| `/api/news/catchup` | Google/Bing News through the news pipeline, only when the snapshot is late (at any hour, since 3 Nov 2026) | 5 min (15 min on success) | unchanged; concurrent runs coalesced | none | `quote` 90/min | none |
 | `/api/ledger` | raw.githubusercontent.com | 10 min | unchanged | none | `file` 60/min | none |
 | `/api/factors`, `/api/rsi` | raw.githubusercontent.com | 30 min | unchanged | none | `file` 60/min | none |
 | `/api/health` | Yahoo chart (`^NSEI`) and the published news status | 60 s | unchanged | none | `health` 20/min | none |

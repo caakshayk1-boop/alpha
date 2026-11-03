@@ -90,7 +90,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     const dv = drawdownSeries(shown); return buildTable(shown.map((q) => q.t), [{ key: 'c', label: 'Close', unit: instrument ? '' : '₹', v: shown.map((q) => q.c) }, { key: 'd', label: 'From peak', unit: '%', digits: 1, v: dv }], { monthly });
   })();
   const unitWord = `${FRAME_WORD[bars ? eff : view]} ${cmp ? 'points' : 'closes'}`;
-  const metaBits = [`${range === 'Max' ? 'All history held' : range}`, FRAME_WORD[bars ? eff : view] + ' closes', cmp ? 'indexed to 100' : instrument ? `${name ?? sym} units` : '₹ per share', `through ${dateLabel(all[all.length - 1].t)}`];
+  const frameNow = bars ? eff : view;   // "daily" is the default and the basis line under the chart says so; only a weekly or monthly view needs its frame named up here
+  const metaBits = [`${range === 'Max' ? 'All history held' : range}`, ...(frameNow === 'daily' ? [] : [FRAME_WORD[frameNow] + ' closes']), cmp ? 'indexed to 100' : instrument ? `${name ?? sym} units` : '₹ per share', `through ${dateLabel(all[all.length - 1].t)}`];
   const endLabs = (() => { if (!pair || !cmp) return []; const ws = spreadLabels([pair.ysA[pair.ysA.length - 1] / pair.H, pair.ysB[pair.ysB.length - 1] / pair.H]); return [{ s: S, y: ws[0], t: `${arrowOf(cmp.stock)} ${pct(cmp.stock)}` }, { s: B, y: ws[1], t: `${arrowOf(cmp.nifty)} ${pct(cmp.nifty)}` }]; })();
   const tipLeft = (geo ?? pair) && i != null ? ((geo ?? pair)!.xs[i] / (geo ?? pair)!.W) * 100 : 0;
   const tip = p && i != null ? (cmp ? `${dateLabel(p.t, view === 'monthly')} · ${sym} ${pct(cmpA)} · Nifty ${pct(cmpB)} · gap ${signedPts((cmpA ?? 0) - (cmpB ?? 0))} pts` : `${dateLabel(p.t, view === 'monthly')} · ${f(p.c)}`) : null;
@@ -209,7 +210,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
         <div className="c-prim2">
           {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
-          <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" onClick={() => setOptsOpen(true)}>Chart options{optCount > 0 && <span className="c-badge" aria-label={`${optCount} changed`}>{optCount}</span>}</button>
+          <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" aria-label={`Chart options${optCount > 0 ? `, ${optCount} changed` : ''}`} onClick={() => setOptsOpen(true)}><span className="c-opt-long" aria-hidden="true">Chart options</span><span className="c-opt-short" aria-hidden="true">Options</span>{optCount > 0 && <span className="c-badge" aria-hidden="true">{optCount}</span>}</button>
         </div>
       </div>}
     {chart}

@@ -67,6 +67,9 @@
 .c-prim{align-items:center}
 .c-prim2{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);min-width:0}
 .c-optbtn{min-height:var(--hit);display:inline-flex;align-items:center;gap:var(--sp-2);white-space:nowrap}
+.c-opt-short{display:none}
+/* on a phone the second row (Price / vs Nifty, then the options button) fits on one line only if the button says "Options"; its accessible name stays "Chart options" */
+@media(max-width:420px){.c-opt-long{display:none}.c-opt-short{display:inline}}
 .c-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-pill);background:var(--accent);color:var(--on-accent);font-size:var(--fs-label);font-weight:700}
 .c-sheet{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-2)}
 .c-sheet .mini-seg{flex-wrap:wrap}
