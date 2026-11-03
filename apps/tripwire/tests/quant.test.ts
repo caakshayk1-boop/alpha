@@ -50,7 +50,7 @@ test('sector cap: at most two picks from one sector in an engine', () => {
   const rows = universe().map((r) => ({ ...r, sector: 'Same' })); const run = runEngine('MOM', rows, buildCtx(rows), 'd'); assert.ok(run.picks.length <= 2);
 });
 test('three engines at most, with a stated theory, rules and horizon each', () => {
-  assert.equal(ENGINES.length, 3); for (const e of ENGINES) { assert.ok(e.theory.length > 10 && e.how.length === 3 && e.horizon > 0); assert.ok(!/guarantee|sure[- ]?shot|risk[- ]free|will (rise|fall)|win(ning)? probability/i.test(e.how.join(' ') + e.line)); }
+  assert.equal(ENGINES.length, 4); assert.equal(ENGINES.filter((e) => !e.retired).length, 3); for (const e of ENGINES) { assert.ok(e.theory.length > 10 && e.how.length === 3 && e.horizon > 0); assert.ok(!/guarantee|sure[- ]?shot|risk[- ]free|will (rise|fall)|win(ning)? probability/i.test(e.how.join(' ') + e.line)); }
 });
 
 // ---- tracker ----

@@ -22,7 +22,8 @@ export const styleOf = (horizon: number): Style => (horizon <= 10 ? 'short' : ho
 export interface Targets { style: Style; t1R: number; t2R: number }
 /** The ladder a pick trades under. Filed on or after POLICY_FROM: always. Filed before it: the backfill ladder while the position is unfinished,
  *  and null once it has finished (`final`), because a finished result keeps the stop-and-time rule it was closed under and is never re-evaluated. */
-export function targetsFor(pick: { asOf: string; horizon: number }, final = false): Targets | null {
+export function targetsFor(pick: { asOf: string; horizon: number; targets?: { t1R: number; t2R: number } | null }, final = false): Targets | null {
+  if (pick.targets !== undefined) return pick.targets === null ? null : { style: styleOf(pick.horizon), ...pick.targets };
   if (pick.asOf < POLICY_FROM && final) return null;
   const s = styleDef(styleOf(pick.horizon)); return { style: s.id, t1R: s.t1, t2R: s.t2 };
 }

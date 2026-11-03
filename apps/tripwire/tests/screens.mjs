@@ -13,7 +13,7 @@ const go = async (pg, route, sel) => { await pg.goto(base + route); await pg.wai
 const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /* ---- Signals: the market checks behind the gate are listed with their figures ---- */
-{ const { ctx, pg } = await mk(390); await go(pg, '/#/signals', '[data-gate-panel]');
+{ const { ctx, pg } = await mk(390); await go(pg, '/#/signals', 'details.signal-method summary'); await pg.locator('details.signal-method summary', { hasText: 'Legacy market context' }).click(); await pg.waitForSelector('[data-gate-panel]', { state: 'visible', timeout: 5000 });   // the legacy market checks sit in their own section, apart from the model votes
   const rows = await pg.locator('[data-gate-panel] .gp-list li').count(); const txt = await pg.locator('[data-gate-panel]').innerText();
   ok(rows >= 3 && /market checks pass/.test(txt) && /statistical validation are separate/.test(txt), `Signals: the gate panel lists ${rows} market checks and says statistical validation is separate from them`);
   ok((await pg.locator('[data-gate-panel] .gp-list li .gp-val').count()) >= 1, 'each check shows the figures it was judged on'); await ctx.close(); }
@@ -22,7 +22,7 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
 { const { ctx, pg, reqs } = await mk(390); await go(pg, '/#/today', '[data-sec="brief"]');
   await pg.waitForSelector('.ds-gate'); const gt = await pg.locator('.ds-gate').first().innerText(); const ga = await pg.locator('.ds-gate').first().getAttribute('aria-label');
   ok(await pg.locator('.research-status, .ds-gatecard').count() === 0 && (await pg.locator('.ds-gate').count()) === 1, 'Today: the gate is stated once, by the top-bar pill (no second row repeating it)');
-  ok(/^Market (supportive|cautious)$/.test(gt.trim()) && /\d of \d market checks pass/.test(ga) && !/validat/i.test(gt + ga), `the pill says what the gate is (a market filter for new setups), not "unvalidated": "${gt.trim()}" / "${ga.slice(0, 70)}"`);
+  ok(/^Market (supportive|cautious)$/.test(gt.trim()) && /\d of \d legacy market checks pass/.test(ga) && /not a model-vote count/.test(ga) && !/validat/i.test(gt + ga), `the pill says what the gate is (a market filter for new setups), not "unvalidated": "${gt.trim()}" / "${ga.slice(0, 70)}"`);
   ok(await pg.locator('.ds-gate .gate-dots i').count() === 4, 'one dot per market check');
   const hy = await pg.evaluate(() => { const h = document.querySelector('[data-hero]'); const b = document.querySelector('[data-sec="brief"]'); return h.getBoundingClientRect().top > b.getBoundingClientRect().top; });
   ok(hy, 'Today: the market brief leads, before research diagnostics');

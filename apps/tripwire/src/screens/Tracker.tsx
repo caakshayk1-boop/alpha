@@ -80,7 +80,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }
   const bs = resultBasis(p, done || v.status === 'skipped', outcome); const tone: Tone = done ? ((v.r ?? 0) > 0 ? 'up' : (v.r ?? 0) < 0 ? 'down' : 'neutral') : 'neutral';
   return <PositionCard id={p.id} sym={p.sym} name={row?.name} closed={done} expanded={expanded} onToggle={onToggle} ladder={ladder}
     tags={<><Pill>{eng}</Pill><Pill>{styleDef(styleOf(p.horizon)).label}</Pill>{bs.basis !== 'as-filed' && <Pill>{bs.short}</Pill>}{row && <TrendTag r={row} />}</>}
-    status={{ label: W[v.status], tone }} entry={v.entry ?? null}
+    status={{ label: `${W[v.status]}${v.dataNote ? ' · recorded state' : ''}`, tone }} entry={v.entry ?? null}
     price={isOpen || done ? { label: isOpen ? markWord(v.markKind, r.markT, Date.now()).word : 'Exit', value: isOpen ? v.mark : v.exit ?? null, sub: isOpen && q ? <span className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</span> : undefined } : null}
     pnl={v.pnl} r={v.r} pct={v.pct}
     line={isOpen || done ? undefined : v.status === 'skipped' ? <span className="down">{v.skipReason}. No trade was opened, and none is counted.</span> : <>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</>}>
@@ -113,6 +113,8 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }
         <input id={`wi-${p.id}`} className="slider" type="range" min={lo} max={hi} step={step} value={price} onChange={(e) => setWi(Number(e.target.value))} />
         <div className="row between num" style={{ fontSize: '0.8125rem' }}><span>{inr(price)}</span><span className={(w!.pnl) >= 0 ? 'up' : 'down'}>{money(w!.pnl)} · {R(w!.r)} · {pct(w!.pct)}</span></div>
         <div className="small mute">After costs and slippage. {wi != null ? <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => setWi(null)}>Back to live</button> : 'Drag to see any price.'}</div></>}
+      {v.dataNote && <p className="small dim" role="status">{v.dataNote}</p>}
+      {!!p.transitions?.length && <details className="ev"><summary>Position history</summary><div className="body">{p.transitions.map((t, i) => <p key={i} className="small dim">{t.at} · {t.from} → {t.to}: {t.reason}</p>)}</div></details>}
       {done && <p className="small dim num" style={{ margin: '8px 0 0' }}>{v.reason} · {v.sessions} session{v.sessions === 1 ? '' : 's'} held{v.exitT ? ` · ${dayWord(new Date((v.exitT + 19800) * 1000).toISOString())}` : ''}</p>}
       <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}><TvButton sym={p.sym} /><a className="btn sm" href={`#/c/${p.sym}`}>Research</a>{(done || v.status === 'skipped') && onHide && <button className="btn sm" onClick={onHide}>Hide</button>}</div>
     </div>}

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useAppState } from './app.tsx';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { setState, useAppState } from './app.tsx';
 import { useBars, useIntraday, useLedger, useSignals, type Quote } from './data.ts';
-import { evaluatePaper, summarize, type Bar, type Paper, type View } from './tracker.ts';
+import { summarize, type Bar, type Paper, type View } from './tracker.ts';
 import { sessionNow, type Session } from './market.ts';
-import { istDay } from './store.ts';
+import { istDay, recordPaperView } from './store.ts';
+import { outcomeView, preservePosition } from './positionstate.ts';
 import { targetsFor } from './exits.ts';
 import { planAutoBook, realised, DEFAULT_CFG, type AutoPos } from './autobook.ts';
 import type { Outcome } from './ledger.ts';
@@ -22,6 +23,7 @@ export interface BookRow { p: Paper; v: View; q: Quote | null; dayPnl: number | 
  *  day's line. Day P&L is measured from the entry price on the day a trade was entered, and from the previous close after that. */
 function useLivePapers(active: Paper[], on: boolean) {
   const cost = useCost();
+  const confirmed = useRef(new Map<string, View>());
   const [visible, setVisible] = useState(true);
   useEffect(() => { const f = () => setVisible(document.visibilityState === 'visible'); document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   const syms = active.map((p) => p.sym);
@@ -30,7 +32,8 @@ function useLivePapers(active: Paper[], on: boolean) {
     const b = bars.data?.bars[p.sym]; const q = intra.data?.quotes[p.sym] ?? null;
     const arr: Bar[] | null = b ? b.t.map((t, i) => ({ t, o: b.o[i], h: b.h[i], l: b.l[i], c: b.c[i], forming: b.forming && i === b.t.length - 1 })) : null;
     const live = q ? { px: q.px, t: q.pt } : b?.live ?? null;
-    const v = evaluatePaper(p, arr, live, cost);
+    const v = preservePosition(p, arr, live, cost, confirmed.current.get(p.id) ?? p.lastView);
+    if (['open', 'closed', 'skipped'].includes(v.status) && !v.dataNote) confirmed.current.set(p.id, v);
     let dayPnl: number | null = null;
     if (v.status === 'open' && q && v.mark != null && v.entryT != null) { const base = day(v.entryT) === day(q.pt) ? v.entry! : q.prev; dayPnl = Math.round((v.mark - base) * p.qty * 100) / 100; }
     return { p, v, q, dayPnl, markT: v.markKind === 'live' && live ? live.t : null };
@@ -60,6 +63,11 @@ export function useLiveBook(on = true) {
   const s = useAppState();
   const active = useMemo(() => s.paper.filter((p) => !p.closedByUser), [s.paper]);
   const live = useLivePapers(active, on); useWinCelebration(live.rows);
+  useEffect(() => {
+    const at = new Date().toISOString();
+    if (live.rows.reduce((next, r) => recordPaperView(next, r.p.id, r.v, at), s) !== s)
+      setState((state) => live.rows.reduce((next, r) => recordPaperView(next, r.p.id, r.v, at), state));
+  }, [live.rows, s]);
   return { ...live, active, today: istDay() };
 }
 
@@ -78,7 +86,7 @@ export function useAutoBook(on = true) {
   const plan = useMemo(() => (ledger.data?.ledger ? planAutoBook(ledger.data.ledger, DEFAULT_CFG) : null), [ledger.data]);
   const outcomes = ledger.data?.ledger.outcomes;
   const liveSet = useMemo(() => (plan ? plan.taken.filter((t) => { const o = outcomes?.[t.pick.id]; return !(o && o.final); }) : []), [plan, outcomes]);
-  const papers = useMemo(() => liveSet.map((t) => paperOf(t)), [liveSet]);
+  const papers = useMemo(() => liveSet.map((t) => { const p = paperOf(t); return { ...p, lastView: outcomeView(p, outcomes?.[p.id]) }; }), [liveSet, outcomes]);
   const live = useLivePapers(papers, on);
   const done: BookRow[] = useMemo(() => (plan ? plan.taken.filter((t) => outcomes?.[t.pick.id]?.final).map((t) => ({ p: paperOf(t, true), v: viewFromOutcome(t, outcomes![t.pick.id]), q: null, dayPnl: null })) : []), [plan, outcomes]);
   const rows = useMemo(() => [...live.rows, ...done], [live.rows, done]); useWinCelebration(rows);

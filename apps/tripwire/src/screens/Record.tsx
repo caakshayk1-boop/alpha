@@ -29,14 +29,16 @@ export function RecordScreen() {
   const l = feed.data?.ledger ?? null;
   const fig = useMemo(() => (l ? figuresOf(l) : null), [l]); const sum = useMemo(() => (l ? summarizeLedger(l) : null), [l]);
   const items = useMemo(() => (l ? closedItems(l) : []), [l]);
-  if (feed.loading) return <Loading what="the record" />;
-  if (feed.err || !l || !fig || !sum) return <Empty title="The record has not started" action={<button className="btn" onClick={feed.retry}>Check again</button>}>{feed.err === 'the first nightly run has not happened yet' || feed.err === 'not published' ? 'It starts with the first nightly run, which writes down every pick after each trading day. Nothing before that night counts.' : `The record could not be read (${feed.err ?? 'no data'}). Nothing is shown in its place.`}</Empty>;
+  if (feed.loading && !l) return <Loading what="the record" />;
+  if (!l || !fig || !sum) { const notStarted = feed.err === 'the first nightly run has not happened yet' || feed.err === 'not published';
+    return <Empty title={notStarted ? 'The record has not started' : 'Position record unavailable'} action={<button className="btn" onClick={feed.retry}>Check again</button>}>{notStarted ? 'It starts with the first nightly run, which writes down every pick after each trading day. Nothing before that night counts.' : `The record could not be read (${feed.err ?? 'no data'}). This does not mean positions have exited or history has been erased.`}</Empty>; }
   const through = throughOf(l, Date.now()); const def = definitionLines(); const g = gateLine(sig.data);
   const bookRow = (id: string): BookRow | undefined => book.rows.find((r) => r.p.id === id);
   const shown = all ? items : items.slice(0, SHOWN);
   const voided = l.voided ? Object.keys(l.voided).length : 0;
   const by: Record<string, string[]> = {}; for (const d of l.days) (by[rulesOfRecord(d.rules)] ??= []).push(d.asOf);
   return <div className="rec" data-record>
+    {feed.err && <p className="note" role="status">{feed.err} <button className="btn sm" onClick={feed.retry}>Refresh record</button></p>}
     <section className="rec-hero" aria-labelledby="rec-h">
       <SectionHeader id="rec-h" title="Forward record" description={`Every pick, every night since ${dayWord(fig.first)}, written down before anyone knew how it turned out, whether or not it was taken.`} />
       <RecordStats>

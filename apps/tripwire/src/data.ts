@@ -3,6 +3,7 @@ import type { Row } from './screen.ts';
 import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
 import { nseClockOpen } from './stamp.ts';
 import { voidOutcomes } from './ledger.ts';
+import { readLedgerCache, writeLedgerCache, validLedger } from './ledgercache.ts';
 export { useLiveMacro };
 import { SLOW_DOWN, retryAfterOf } from './slowdown.ts';
 export { SLOW_DOWN, retryAfterOf };
@@ -92,8 +93,12 @@ export interface LedgerFeed { ok: boolean; ledger: import('./ledger.ts').Ledger 
 /** The nightly record. A voided pick is served with no live outcome even from a file written before that rule (see voidOutcomes). */
 export function useLedger(): Loaded<LedgerFeed> {
   const r = useJson<LedgerFeed>('/api/ledger');
-  const data = useMemo(() => (r.data?.ledger ? { ...r.data, ledger: voidOutcomes(r.data.ledger) } : r.data), [r.data]);
-  return { ...r, data };
+  const [saved, setSaved] = useState(() => { try { return readLedgerCache(localStorage); } catch { return null; } });
+  const current = r.data?.ok && validLedger(r.data.ledger) ? r.data.ledger : null;
+  useEffect(() => { if (current) { setSaved(current); try { writeLedgerCache(localStorage, current); } catch { /* Private browsing. */ } } }, [current]);
+  const l = current ?? saved;
+  const data = useMemo(() => l ? { ok: true, ledger: voidOutcomes(l) } : null, [l]);
+  return { ...r, data, err: current ? null : saved ? `Using the saved position record from ${saved.updated}. ${r.err ?? 'Refreshing the published record.'}` : r.err ?? (!r.loading ? 'The position record is unreadable.' : null) };
 }
 
 export interface Quote { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean }
