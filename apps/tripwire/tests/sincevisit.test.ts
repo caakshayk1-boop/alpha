@@ -1,7 +1,7 @@
 // Since your last visit: thresholds, first visit, no fabrication, dismissal, the thesis rule, persistence, and the market brief's wording.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { THRESHOLDS, detect, parseLevel, snapOf, surface, recordSeen, lastSeen, dismissChange, restoreChange, type SeenSnap } from '../src/sincevisit.ts';
+import { THRESHOLDS, changeCopy, latestChanges, detect, parseLevel, snapOf, surface, recordSeen, lastSeen, dismissChange, restoreChange, type SeenSnap } from '../src/sincevisit.ts';
 import { briefLines, FORBIDDEN } from '../src/brief.ts';
 import { DEFAULTS, addEntry, exportJson, parseState, mergeStates, readSaved, current, editEntry, type State } from '../src/store.ts';
 import type { Row } from '../src/screen.ts';
@@ -35,12 +35,41 @@ test('each threshold fires on its own and only on its own', () => {
 });
 test('results inside 7 days are surfaced once, not every visit', () => {
   assert.deepEqual(kinds({ next_earnings: '2026-11-20' }, { next_earnings: '2026-11-02' }), ['results']);
-  assert.deepEqual(kinds({ next_earnings: '2026-11-02', day: '2026-10-28' }, { next_earnings: '2026-11-02' }, '2026-10-29'), [], 'it was already inside the window at the last snapshot');
+  assert.deepEqual(kinds({ next_earnings: '2026-11-02', day: '2026-10-28', at: '2026-10-28T10:00:00Z' }, { next_earnings: '2026-11-02' }, '2026-10-29'), [], 'it was already inside the window at the last snapshot');
   assert.deepEqual(kinds({ next_earnings: '2026-11-20' }, { next_earnings: '2026-11-20' }), [], 'far away');
   assert.deepEqual(kinds({}, { next_earnings: '2026-10-20' }), [], 'a past date is not upcoming');
 });
 test('missing figures never produce a change', () => {
   assert.deepEqual(kinds({ rsi: null, px: null, sma200: null, trend: null, risk: null, elig: null }, { rsi: 80, px: 50, low52: null, trend: 'down', risk: 'HIGH', elig: 'financial sector' }).filter((k) => !['elig'].includes(k)), []);
+});
+
+test('opposite crossings and repeated results dates collapse to the latest topic, with current countdowns', () => {
+  const old = detect({ sym: 'TARIL', prev: snap({ px: 89 }), cur: snap({ day: '2026-10-21', at: '2026-10-21T10:00:00Z', px: 91 }), today: '2026-10-21' }).find((c) => c.kind === 'sma200')!;
+  const recent = detect({ sym: 'TARIL', prev: snap({ px: 91 }), cur: snap({ day: '2026-10-23', at: T1, px: 89, rsi: 72 }), today: '2026-10-27' });
+  const result = latestChanges([old, ...recent]);
+  assert.equal(result.filter((c) => c.kind === 'sma200').length, 1);
+  assert.match(result.find((c) => c.kind === 'sma200')!.title, /Fell below/);
+  assert.ok(result.some((c) => c.kind === 'rsi'), 'independent information remains');
+  const reminder = detect({ sym: 'TCS', prev: snap(), cur: snap({ day: '2026-10-29', at: '2026-10-29T10:00:00Z', next_earnings: '2026-11-04' }), today: '2026-10-29' }).find((c) => c.kind === 'results')!;
+  assert.equal(changeCopy(reminder, '2026-11-03').title, 'Results expected tomorrow');
+  const newer = { ...reminder, id: reminder.id + '-new', curDay: '2026-10-30', curAt: '2026-11-01T10:00:00Z' };
+  const s = st({ inbox: [reminder, newer] });
+  const view = (date: string, earnings = '2026-11-04') => surface(s, { TCS: snapOf(row({ next_earnings: earnings }), '2026-10-30', '2026-11-03T10:00:00Z') }, [row({ next_earnings: earnings })], '2026-10-30', date, '2026-11-03T10:00:00Z');
+  assert.equal(view('2026-11-03').earlier.filter((c) => c.kind === 'results').length, 1);
+  assert.equal(view('2026-11-05').earlier.length, 0, 'past reminders disappear');
+  assert.equal(view('2026-11-03', '2026-11-10').earlier.length, 0, 'superseded dates disappear');
+  const dismissed = dismissChange(st({ inbox: [reminder] }), reminder.id, '2026-11-01T10:00:00Z');
+  const repeat = surface(dismissed, { TCS: snap() }, [row({ next_earnings: '2026-11-04' })], '2026-11-02', '2026-11-03', '2026-11-03T10:00:00Z');
+  assert.ok(!repeat.fresh.some((c) => c.kind === 'results'), 'the same reminder cannot return after dismissal just because the screen day advanced');
+  assert.equal(repeat.dismissed.find((c) => c.kind === 'results')?.id, reminder.id);
+  const thesis = { ...old, kind: 'invalidation' as const, entryId: 'a' };
+  assert.equal(latestChanges([thesis, { ...thesis, entryId: 'b' }]).length, 2, 'separate theses are retained');
+});
+
+test('a cached older screen cannot reverse a crossing or replace the newer baseline', () => {
+  const s = recordSeen(st(), [row({ price: 110 })], '2026-10-27', [], T1, '2026-10-27');
+  assert.equal(surface(s, lastSeen(s), [row({ price: 80 })], '2026-10-20', '2026-10-27', T1).fresh.length, 0);
+  assert.equal(recordSeen(s, [row({ price: 80 })], '2026-10-20', [], T1, '2026-10-27'), s);
 });
 
 test('thesis rule: only a stated price level in the invalidation text links a change to the thesis', () => {

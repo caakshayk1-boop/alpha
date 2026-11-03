@@ -1,6 +1,6 @@
 // The paper book's components: the target ladder, the position card and the target-hit card. Styles: book.css (motion under html.fx only). Logic: ../ladder.ts (pure, unit-tested).
 // Paper only. Nothing here advises, predicts or follows anything for anyone.
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Icon } from '../ui.tsx';
 import { inr } from '../fmt.ts';
 import { ladderModel, shortDay, type LadderInput, type LadderModel } from '../ladder.ts';
@@ -18,11 +18,29 @@ const price = (x: number) => inr(x);
 /** `quiet`: leave out the generic "levels are worked from the signal close" note, for a list that states it once above all of its cards. The basis stays on every card in the figures' own label. */
 export function TargetLadder({ sym, input, model: given, isNew, quiet }: { sym: string; input?: LadderInput; model?: LadderModel; isNew?: ReadonlySet<'t1' | 't2'>; quiet?: boolean }) {
   const m = useMemo(() => given ?? (input ? ladderModel(input) : null), [given, input]);
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = root.current; if (!el) return;
+    const place = () => {
+      const labels = [...el.querySelectorAll<HTMLElement>('.tl-tick .lab')].map((lab) => ({ lab, box: lab.getBoundingClientRect() })).sort((a, b) => a.box.left - b.box.left);
+      const ends: number[] = []; let height = 0;
+      for (const { lab, box } of labels) {
+        let row = ends.findIndex((right) => box.left >= right + 8); if (row < 0) row = ends.length;
+        ends[row] = box.right; height = Math.max(height, box.height);
+        lab.parentElement!.style.setProperty('--label-row', String(row));
+      }
+      el.style.setProperty('--rows', String(Math.max(1, ends.length)));
+      if (height) el.style.setProperty('--rowh', `${height + 8}px`);
+    };
+    place(); const ro = new ResizeObserver(place); ro.observe(el);
+    el.querySelectorAll('.lab').forEach((lab) => ro.observe(lab));
+    return () => ro.disconnect();
+  }, [m]);
   if (!m) return null;
   const rows = m.ticks.some((t) => t.row === 1) ? 2 : 1; const dated = m.ticks.some((t) => t.hit && t.day);
   const mk = m.marker; const entryPos = m.ticks.find((t) => t.id === 'entry')?.pos ?? 0;
   const edge = (p: number) => (p < 16 ? 'l' : p > 84 ? 'r' : '');
-  return <div className={`tl ${m.reference ? 'is-ref' : ''}`} data-ladder data-basis={m.basis} data-ref={m.reference ? '1' : undefined} style={{ ['--rows' as string]: rows, ['--lines' as string]: dated ? 3 : 2 }}>
+  return <div ref={root} className={`tl ${m.reference ? 'is-ref' : ''}`} data-ladder data-basis={m.basis} data-ref={m.reference ? '1' : undefined} style={{ ['--rows' as string]: rows, ['--lines' as string]: dated ? 3 : 2 }}>
     <div className="tl-vis" role="img" aria-label={`${sym} ladder. ${m.summary}`}>
       <div className="tl-rule" />
       {m.fill && <i className={`tl-fill ${m.fill.tone} ${isNew?.size ? 'sweep' : ''}`} style={{ left: `${m.fill.from}%`, width: `${m.fill.to - m.fill.from}%` }} />}

@@ -7,7 +7,7 @@ import type { Outcome } from './ledger.ts';
 import type { Paper, View } from './tracker.ts';
 import { REFERENCE_ONLY, targetBasis } from './exits.ts';
 import { targetPrices } from './levels.ts';
-import { dayWord } from './fmt.ts';
+import { dayWord, inr } from './fmt.ts';
 import { DEFAULT_COST, GAP_SKIP_PCT, SLIPPAGE_PCT } from './tracker.ts';
 
 export type LadderTickId = 'stop' | 'entry' | 't1' | 't2';
@@ -51,6 +51,8 @@ export interface LadderModel {
 
 /** the smallest distance, in percent of the rule, at which two neighbouring labels still fit on one line (about 60 px on a 360 px phone) */
 export const MIN_LABEL_GAP = 24;
+/** About how wide one printed character of a level label is, in percent of the ladder (measured on a 390 px phone: "₹2,058.72" is 22.5 percent). */
+const CHAR_W = 2.5;
 const PAD = 0.09;
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const f = (x: number) => x.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -74,9 +76,12 @@ export function ladderModel(i: LadderInput): LadderModel {
     { id: 't1', label: i.reference ? 'T1 ref' : 'T1', px: i.t1, pos: pos(i.t1), hit: hit('t1'), day: hit('t1') ? i.t1Day ?? null : null, ref: i.reference, moved: false },
     { id: 't2', label: i.reference ? 'T2 ref' : 'T2', px: i.t2, pos: pos(i.t2), hit: hit('t2'), day: hit('t2') ? i.t2Day ?? null : null, ref: i.reference, moved: false },
   ];
-  // labels left to right; a label that would touch its neighbour drops to a second line instead of overprinting it
-  const ordered = [...base].sort((a, b) => a.pos - b.pos); const rowOf = new Map<LadderTickId, 0 | 1>(); let prev: { pos: number; row: 0 | 1 } | null = null;
-  for (const t of ordered) { const row: 0 | 1 = prev && t.pos - prev.pos < MIN_LABEL_GAP ? (prev.row === 0 ? 1 : 0) : 0; rowOf.set(t.id, row); prev = { pos: t.pos, row }; }
+  // Labels left to right. A label takes the first line where its printed extent does not touch the last label already on that line, so a label pushed to the right edge (it is right-aligned there, and
+  // reaches left) cannot overprint its neighbour: T1 at 62% and T2 at 93% used to print "₹2,058.₹2,342.92" on one line. Extents are in percent of the ladder; a label is about CHAR_W per character wide.
+  const wOf = (t: Omit<LadderTick, 'row'>) => Math.max(t.label.length, inr(t.px).length) * CHAR_W;
+  const ext = (t: Omit<LadderTick, 'row'>): [number, number] => { const w = wOf(t); return t.pos < 16 ? [t.pos, t.pos + w] : t.pos > 84 ? [t.pos - w, t.pos] : [t.pos - w / 2, t.pos + w / 2]; };
+  const ordered = [...base].sort((a, b) => a.pos - b.pos); const rowOf = new Map<LadderTickId, 0 | 1>(); const lastEnd: [number, number] = [-Infinity, -Infinity];
+  for (const t of ordered) { const [a, b] = ext(t); const row: 0 | 1 = a >= lastEnd[0] + 1 ? 0 : a >= lastEnd[1] + 1 ? 1 : lastEnd[0] <= lastEnd[1] ? 0 : 1; rowOf.set(t.id, row); lastEnd[row] = b; }
   const ticks: LadderTick[] = base.map((t) => ({ ...t, row: rowOf.get(t.id) ?? 0 }));
 
   const marker = shown != null ? { pos: pos(shown), px: shown, kind: closed ? ('exit' as const) : ('now' as const) } : null;

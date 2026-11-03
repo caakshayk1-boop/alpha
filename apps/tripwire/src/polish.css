@@ -19,7 +19,7 @@
   .brief-ix {gap:var(--sp-3)}
   .bix {padding:var(--sp-3);background:var(--surface-2);gap:var(--sp-1);overflow:hidden}
   .bix b {font-size:clamp(1rem,2.2vw,1.75rem);font-weight:600;letter-spacing:-.025em}
-  .brief-spark {display:block;height:30px;margin-top:var(--sp-2)}
+  .brief-spark {display:block;height:56px;margin-top:var(--sp-2)}
   .brief-spark svg {width:100%;height:30px}
   .brief-macro {border-top:1px solid var(--line);padding-top:var(--sp-3);margin-top:var(--sp-4)}
   .brief-fresh {font-size:var(--fs-label);line-height:1.6}
@@ -96,6 +96,20 @@
   .cf-state[aria-busy=true] {min-height:1080px!important}
   .cf-sk {height:280px}
   .c-tip {max-width:100%;white-space:normal}
+  /* the Signals gate: a market-regime pill with one dot per check, and the panel that lists the checks */
+  .gate-dots {display:inline-flex;gap:3px;margin-right:var(--sp-2);vertical-align:middle}
+  .gate-dots i {width:6px;height:6px;border-radius:50%;background:var(--line-2);display:block}
+  .gate-dots i.on {background:var(--up)}
+  .gatepanel {padding:var(--card-pad)}
+  .gatepanel .gp-plain {margin:var(--sp-3) 0 var(--sp-2);font-weight:550}
+  .gp-list {list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-2)}
+  .gp-list li {display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--sp-3);row-gap:2px;align-items:start;padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-input);background:var(--surface-2)}
+  .gp-mark {grid-row:1/3;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);color:var(--ink-2)}
+  .gp-mark .ic {width:14px;height:14px;stroke-width:2.4}
+  .gp-list li.ok .gp-mark {background:var(--up-tint,rgba(120,220,140,.18));color:var(--up)}
+  .gp-list li.no .gp-mark {background:var(--down-tint,rgba(240,110,110,.18));color:var(--down)}
+  .gp-rule {color:var(--ink);line-height:1.35}
+  .gp-val {color:var(--ink-3);font-size:var(--fs-data)}
   .signal-method {margin:var(--sp-3) 0 var(--sp-5)}
   @media(min-width:900px){
     .dfilterbar {display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--sp-4)}
@@ -109,7 +123,7 @@
   }
   @media(max-width:699px){
     .today {gap:var(--sp-4)}
-    .brief .t-take {margin-bottom:var(--sp-4)}
+    .brief .t-take {margin-bottom:var(--sp-4)}   /* its reserved height is set in pagesa.css: a shorter reservation left a gap shorter but let the sentence push the cards below it down when it arrived (CLS 0.015, limit 0.01) */
     .brief .brief-top {align-items:start;flex-wrap:wrap}
     /* the badges take their own line and the freshness line keeps room for its longest wording, so prices and the screen arriving move nothing below them */
     .brief .brief-top>.row {flex-basis:100%;min-height:24px}

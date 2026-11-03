@@ -49,14 +49,16 @@ export function Button({ variant = 'secondary', busy = false, children, classNam
   return <button type="button" {...rest} className={`btn ${v} ${className}`.trim()} aria-busy={busy || undefined} disabled={rest.disabled || busy}>{busy ? 'Working…' : children}</button>;
 }
 
-/** The Signals gate in one line, from the feed the app already holds: "Signals gate: OFF — 1/4 checks · holdout t −0.62 (needs +2.0)". Renders nothing without a gate: it never guesses.
- *  `<GateCard />` */
-export function GateCard() {
+/** The market checks behind the Signals gate, each with the figures it was judged on, from the feed the app already holds. Renders nothing without a gate: it never guesses.
+ *  The legacy feed's market filter is separate from the factor engines and their statistical validation. `<GatePanel />` */
+export function GatePanel() {
   const sig = useSignals(); const g = gateLine(sig.data);
   if (!g) return null;
-  return <a className="ds-card ds-hover ds-gatecard" href="#/signals">
-    <span className="sr">Signals gate: </span><span className={`ds-pill ds-status ${g.on ? 'up' : 'neutral'}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'ON' : 'OFF'}</span>
-    <span className="ds-gatetext">{g.on ? 'Validation checks passed.' : 'Signals have not passed validation.'} {g.passed}/{g.total} checks. <span className="small dim">{g.text.replace(/^Signals gate: (ON|OFF) — /, '')}</span></span>
-    <Icon n="chev" className="ds-go" />
-  </a>;
+  return <section className="card gatepanel" data-gate-panel aria-labelledby="gp-h">
+    <div className="row between"><h2 id="gp-h" className="sec" style={{ margin: 0 }}>Market checks</h2><span className={`ds-pill ds-status ${g.on ? 'up' : 'neutral'}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'Market supportive' : 'Market cautious'} · {g.passed}/{g.total}</span></div>
+    <p className="gp-plain">{g.plain}</p>
+    <ul className="gp-list">{g.checks.map((c) => <li key={c.rule} className={c.ok ? 'ok' : 'no'}><span className="gp-mark" aria-hidden="true"><Icon n={c.ok ? 'check' : 'x'} /></span><span className="gp-rule">{c.rule}<span className="sr">{c.ok ? ': holds' : ': does not hold'}</span></span>{c.value && <b className="gp-val num">{c.value}</b>}</li>)}</ul>
+    {g.holdout && <p className="small dim" style={{ margin: '8px 0 0' }}>Statistical validation is separate: the holdout month-clustered t is {g.holdout.t < 0 ? '−' : ''}{Math.abs(g.holdout.t).toFixed(2)} and needs +{g.holdout.needs.toFixed(1)}.</p>}
+    <p className="small mute" style={{ margin: '8px 0 0' }}>These checks describe the published market snapshot. The factor engines' paper picks and statistical validation are separate. Each rule's results are under Evidence.</p>
+  </section>;
 }

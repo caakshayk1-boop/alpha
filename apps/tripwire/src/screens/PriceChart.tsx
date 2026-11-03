@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Keyb
 import { setState, useAppState } from '../app.tsx';
 import { SLOW_DOWN, useChart } from '../data.ts';
 import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
-import { inr, pct } from '../fmt.ts';
+import { inr, pct, tone } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
 import { keyPoints } from '../reportview.ts';
 import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, chartStart, markerPath, priceTakeaway, signedPts, spreadLabels, styleOf, windowWords } from '../charts/index.ts';
@@ -16,7 +16,7 @@ const FRAME_WORD: Record<Frame, string> = { daily: 'day', weekly: 'week', monthl
 export interface ChartEvent { t: number; label: string; basis: string }
 export function PriceChart({ sym, fmt, name, levels = [], events = [], report }: { sym: string; fmt?: (v: number) => string; name?: string; levels?: Level[]; events?: ChartEvent[]; /** the printable report's copy: the same chart in the person's saved range, with no controls, and a compact first/last/high/low table in place of the long one */ report?: boolean }) {
   const f = fmt ?? ((v: number) => inr(v)); const instrument = !!fmt;      // an index, metal, currency or coin: no Nifty line, no adjustment note
-  const feed = useChart(sym); const gid = useId().replace(/:/g, ''); void gid;
+  const feed = useChart(sym); const gid = useId().replace(/:/g, '');
   const app = useAppState(); const savedPref = app.prefs.chart;
   const [rangeSel, setRange] = useState<RangeId | null>(null); const [vsSel, setVs] = useState<boolean | null>(null); const [view, setView] = useState<Frame>('daily'); const [log, setLog] = useState(false); const [ma, setMa] = useState(false); const [dd, setDd] = useState(false);
   const [lvOn, setLvOn] = useState(false); const [evOn, setEvOn] = useState(false); /* the clean line first: no overlay is drawn until it is asked for */ const [kind, setKind] = useState<'line' | 'candle'>('line'); const [vol, setVol] = useState(false); const [rsi, setRsi] = useState(false);
@@ -96,6 +96,12 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const tipLeft = (geo ?? pair) && i != null ? ((geo ?? pair)!.xs[i] / (geo ?? pair)!.W) * 100 : 0;
   const tip = p && i != null ? (cmp ? `${dateLabel(p.t, view === 'monthly')} · ${sym} ${pct(cmpA)} · Nifty ${pct(cmpB)} · gap ${signedPts((cmpA ?? 0) - (cmpB ?? 0))} pts` : `${dateLabel(p.t, view === 'monthly')} · ${f(p.c)}`) : null;
 
+  // The highest and lowest close inside the window, marked on the line (not at the last point, which the price tag already marks). Axis ticks that a marker's label would sit on are left out.
+  const hlMarks: { nm: 'High' | 'Low'; k: number; tn: 'up' | 'down' }[] = (() => {
+    if (!geo || candles || cmp || shown.length <= 12) return [];
+    let hi = 0, lo = 0; shown.forEach((q, k) => { if (q.c > shown[hi].c) hi = k; if (q.c < shown[lo].c) lo = k; }); const last = shown.length - 1;
+    return ([{ nm: 'High', k: hi, tn: 'up' }, { nm: 'Low', k: lo, tn: 'down' }] as const).filter((m) => m.k !== last && shown[m.k].c !== shown[last].c).map((m) => ({ ...m }));
+  })();
   const chart = <>
     <div ref={box} className="chart-plot" tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
       onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCur(null); }} onKeyDown={key} onBlur={() => setCur(null)} style={{ touchAction: 'pan-y' }}>
@@ -105,8 +111,10 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         const yOf = (c: number) => { const g = (v: number) => (logOn ? Math.log(v) : v); const l = g(lo), h = g(hi); return 12 + (1 - (g(c) - l) / ((h - l) || 1)) * (H - 24); };
         const ticks = yTicks(lo, hi, logOn, 4).map((v) => ({ v, y: yOf(v) }));
         return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id={`ar${gid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={pair ? S.color : color} stopOpacity=".32" /><stop offset="1" stopColor={pair ? S.color : color} stopOpacity="0" /></linearGradient></defs>
           {ticks.map((t) => <line key={t.v} x1="0" x2={W} y1={t.y} y2={t.y} stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
           {pair && cmp && <g>
+            <path className="c-area" d={`${pair.lineA}L${pair.xs[pair.xs.length - 1].toFixed(1)} ${H}L${pair.xs[0].toFixed(1)} ${H}Z`} fill={`url(#ar${gid})`} stroke="none" />
             <line x1="0" x2={W} y1={yOf(100)} y2={yOf(100)} stroke="var(--line-2)" strokeWidth="1" strokeDasharray="1 4" vectorEffect="non-scaling-stroke" />
             <path className={`c-line${revealed ? ' settled' : ''}`} d={pair.lineB} pathLength={1} fill="none" stroke={B.color} strokeWidth={B.width} vectorEffect="non-scaling-stroke" style={{ strokeDasharray: B.dash, animation: 'none', strokeDashoffset: 0 }} />
             <path className={`c-line${revealed ? ' settled' : ''}`} d={pair.lineA} pathLength={1} fill="none" stroke={S.color} strokeWidth={S.width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -116,7 +124,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
             return <g className="c-candles" shapeRendering="crispEdges">{shown.map((q, k) => { const x = geo.xs[k]; if (q.o == null || q.h == null || q.l == null) return <line key={k} x1={x - bw / 2} x2={x + bw / 2} y1={geo.ys[k]} y2={geo.ys[k]} stroke="var(--mute)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />;
               const upBar = q.c >= q.o; const col = upBar ? 'var(--up)' : 'var(--down)'; const yt = geo.yOf(Math.max(q.o, q.c)), yb = geo.yOf(Math.min(q.o, q.c));
               return <g key={k}><line x1={x} x2={x} y1={geo.yOf(q.h)} y2={geo.yOf(q.l)} stroke={col} strokeWidth="1" vectorEffect="non-scaling-stroke" /><rect x={x - bw / 2} y={yt} width={bw} height={Math.max(1, yb - yt)} fill={upBar ? 'var(--bg)' : col} stroke={col} strokeWidth="1" vectorEffect="non-scaling-stroke" /></g>; })}</g>; })()}
-          {geo && !candles && <g><path className={`c-line${revealed ? ' settled' : ''}`} d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth={S.width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></g>}
+          {geo && !candles && <g><path className="c-area" d={`${geo.line}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${H}L${geo.xs[0].toFixed(1)} ${H}Z`} fill={`url(#ar${gid})`} stroke="none" /><path className={`c-line${revealed ? ' settled' : ''}`} d={geo.line} pathLength={1} fill="none" stroke={color} strokeWidth={S.width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></g>}
           {geo && <line x1="0" x2={W} y1={geo.ys[geo.ys.length - 1]} y2={geo.ys[geo.ys.length - 1]} stroke={color} strokeOpacity=".55" strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
           {geo && smaMap && (['a', 'b'] as const).map((k) => <path key={k} className="c-ma" d={pathThrough(geo.xs, shown.map((q) => { const v = smaMap.get(q.t)?.[k]; return v == null ? null : geo.yOf(v); }))} fill="none" stroke={k === 'a' ? 'var(--a4)' : 'var(--a2)'} strokeWidth="1" strokeOpacity=".9" strokeDasharray={k === 'b' ? '3 3' : undefined} vectorEffect="non-scaling-stroke" />)}
           {geo && lvOn && levels.filter((lv) => lv.v >= geo.min && lv.v <= geo.max).map((lv) => <line key={lv.label} x1="0" x2={W} y1={geo.yOf(lv.v)} y2={geo.yOf(lv.v)} stroke={lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--mute)'} strokeWidth="1" strokeDasharray="5 3" vectorEffect="non-scaling-stroke" />)}
@@ -128,7 +136,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         const yPct = (c: number) => ((12 + (1 - (g(c) - g(mn)) / ((g(mx) - g(mn)) || 1)) * (H - 24)) / H) * 100;
         const ys = geo ? yTicks(mn, mx, logOn, 4) : []; const lastY = geo ? yPct(geo.max === geo.min ? geo.min : shown[shown.length - 1].c) : 0;
         return geo ? <>
-          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 11 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
+          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 11 || hlMarks.some((m) => Math.abs(y - (geo.ys[m.k] / geo.H) * 100) < 9) ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
           <span className="c-last" style={{ top: `${lastY}%`, background: color }}>{f(shown[shown.length - 1].c)}</span>
           {lvOn && levels.filter((lv) => lv.v >= mn && lv.v <= mx).map((lv) => <span key={lv.label} className="c-lvl" style={{ top: `${yPct(lv.v)}%`, color: lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--dim)' }}>{lv.label} {f(lv.v)}</span>)}
         </> : (pair ? (() => { const all2 = [...cmp!.a, ...cmp!.b].map((q) => q.c); const lo2 = Math.min(...all2), hi2 = Math.max(...all2); const g2 = (v: number) => (logOn ? Math.log(v) : v);
@@ -137,6 +145,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
       })()}
       {evOn && (geo || pair) && evIn.map((e) => { const g = (geo ?? pair)!; const x = geo ? geo.xOf(e.t) : ((e.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t)) * g.W; return <span key={e.t + e.label} className="c-ev" style={{ left: `${(x / g.W) * 100}%` }} title={`${dateLabel(e.t)}: ${e.label}. ${e.basis}`} aria-hidden="true" />; })}
       {pair && i != null && <><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysA[i] / pair.H) * 100}%`, background: S.color }} /><span className="c-dot" style={{ left: `${(pair.xs[i] / pair.W) * 100}%`, top: `${(pair.ysB[i] / pair.H) * 100}%`, background: B.color }} /></>}
+      {geo && hlMarks.map(({ nm, k, tn }) => { const x = (geo.xs[k] / geo.W) * 100;
+        return <span key={nm} className={`c-extreme ${tn}${x < 38 ? ' l' : x > 62 ? ' r' : ''}`} style={{ left: `${x}%`, top: `${(geo.ys[k] / geo.H) * 100}%` }} data-hl={nm.toLowerCase()}><i /><b className="num">{nm} {f(shown[k].c)}</b></span>; })}
       {geo && i != null && <span className="c-dot" style={{ left: `${(geo.xs[i] / geo.W) * 100}%`, top: `${(geo.ys[i] / geo.H) * 100}%`, background: color }} />}
       {tip && <span className="c-tip" aria-hidden="true" style={tipLeft > 55 ? { right: `${100 - tipLeft + 2}%` } : { left: `${tipLeft + 2}%` }}>{tip}</span>}
     </div>
@@ -145,8 +155,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     <div className={`chart-head cf-chips${cmp ? '' : ' tall'}`} aria-live="off" data-figures>
       {p && cmp ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')} · {sym}</span><b className="num">{arrowOf(cmpA)} {pct(cmpA)}</b></div><div className="cf-chip"><span className="cf-cl">Nifty 50 over the same days</span><b className="num">{arrowOf(cmpB)} {pct(cmpB)}</b></div></>
         : p ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')}</span><b className="num">{f(p.c)}</b></div><div className="cf-chip"><span className="cf-cl">since the start of this window</span><b className="num">{arrowOf(fromStart)} {pct(fromStart)}</b></div>{(p.o != null || p.v != null) && <div className="cf-ohlc small num dim">{[p.o != null && p.h != null && p.l != null ? `O ${f(p.o)} · H ${f(p.h)} · L ${f(p.l)}` : '', p.v != null ? `volume ${compact(p.v)}` : ''].filter(Boolean).join(' · ')}</div>}</>
-        : cmp ? <><div className="cf-chip"><span className="cf-cl">Absolute change</span><b className="num">{arrowOf(cmp.stock)} {pct(cmp.stock)}</b></div><div className="cf-chip"><span className="cf-cl">Relative to the Nifty 50</span><b className="num">{arrowOf(cmp.diff)} {signedPts(cmp.diff)} pts</b></div></>
-        : st ? <><div className="cf-chip"><span className="cf-cl">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`}</span><b className="num">{arrowOf(st.ret)} {pct(st.ret, 1)}</b></div>{st.cagr != null && <div className="cf-chip"><span className="cf-cl">{yrs}, compounded</span><b className="num">{pct(st.cagr, 1)} a year</b></div>}</> : null}
+        : cmp ? <><div className="cf-chip"><span className="cf-cl">Absolute change</span><b className={`num ${tone(cmp.stock)}`}>{arrowOf(cmp.stock)} {pct(cmp.stock)}</b></div><div className="cf-chip"><span className="cf-cl">Relative to the Nifty 50</span><b className={`num ${tone(cmp.diff)}`}>{arrowOf(cmp.diff)} {signedPts(cmp.diff)} pts</b></div></>
+        : st ? <><div className="cf-chip"><span className="cf-cl">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`}</span><b className={`num ${tone(st.ret)}`}>{arrowOf(st.ret)} {pct(st.ret, 1)}</b></div>{st.cagr != null && <div className="cf-chip"><span className="cf-cl">{yrs}, compounded</span><b className="num">{pct(st.cagr, 1)} a year</b></div>}</> : null}
     </div>
     {ma && geo && <div className="small num" style={{ display: 'flex', gap: 14, marginTop: 4 }}><span><span className="c-key" style={{ background: 'var(--a4)' }} />50-day (solid)</span><span><span className="c-key dashed" style={{ background: 'repeating-linear-gradient(90deg,var(--a2) 0 3px,transparent 3px 6px)' }} />200-day (dotted)</span></div>}
     {vol && hasVol && geo && !cmp && (() => { const H3 = 70; const vs2 = shown.map((q) => q.v ?? 0); const mx = Math.max(1, ...vs2); const bw = geo.barW;

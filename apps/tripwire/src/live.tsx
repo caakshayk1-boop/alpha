@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './ui.tsx';
 import { tvUrl } from './tv.ts';
 import { rollDiff, type RollChange } from './roll.ts';
 import { fmtIst, quoteAge } from './stamp.ts';
 
 /** A small price line. `refs` are horizontal guides (previous close, entry, stop) drawn only when they fall inside the range. */
-export function Spark({ c, refs = [], up, h = 34, label }: { c: number[]; refs?: { v: number; kind: 'prev' | 'entry' | 'stop' }[]; up: boolean; h?: number; label: string }) {
+export function Spark({ c, refs = [], up, h = 34, label, area = false }: { c: number[]; refs?: { v: number; kind: 'prev' | 'entry' | 'stop' }[]; up: boolean; h?: number; label: string; area?: boolean }) {
+  const gid = useId();
   if (c.length < 2) return null;
   // the scale follows the price line, the previous close and the entry; a stop far below is not allowed to flatten the line (it is drawn only when it is near)
   const near = [...c, ...refs.filter((r) => r.kind !== 'stop').map((r) => r.v)]; let lo = Math.min(...near), hi = Math.max(...near); if (hi === lo) { hi += 1; lo -= 1; }
@@ -15,6 +16,7 @@ export function Spark({ c, refs = [], up, h = 34, label }: { c: number[]; refs?:
   const W = 100, y = (v: number) => 3 + (1 - (v - lo) / (hi - lo)) * (h - 6); const pts = c.map((v, i) => `${i ? 'L' : 'M'}${((i / (c.length - 1)) * W).toFixed(1)} ${y(v).toFixed(1)}`).join('');
   const col = up ? 'var(--up)' : 'var(--down)';
   return <svg viewBox={`0 0 ${W} ${h}`} preserveAspectRatio="none" role="img" aria-label={label} style={{ width: '100%', height: h, display: 'block', overflow: 'visible' }}>
+    {area && <><defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop stopColor={col} stopOpacity=".25" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient></defs><path d={`${pts}L${W} ${h}L0 ${h}Z`} fill={`url(#${gid})`} /><line x1="0" x2={W} y1={y(c[0])} y2={y(c[0])} stroke="var(--dim)" strokeOpacity=".25" strokeDasharray="2 4" vectorEffect="non-scaling-stroke" /></>}
     {refs.map((r) => <line key={r.kind} x1="0" x2={W} y1={y(r.v)} y2={y(r.v)} stroke={r.kind === 'stop' ? 'var(--peach)' : 'var(--dim)'} strokeOpacity={r.kind === 'stop' ? .7 : .45} strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />)}
     <path d={pts} fill="none" stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
   </svg>;

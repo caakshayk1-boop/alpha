@@ -1,4 +1,4 @@
-import { EmptyState, GateCard, HitCard } from '../components/index.ts';
+import { EmptyState, HitCard } from '../components/index.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
@@ -10,7 +10,7 @@ import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
 import type { Row } from '../screen.ts';
-import { useBacktest, usePulse, useSignals } from '../data.ts';
+import { useBacktest, usePulse } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { isNewUser } from '../home.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
@@ -63,7 +63,6 @@ export function Today() {
   const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score); const shownPicks = allPicks.slice(0, TOP);
   const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
   const hasChanges = s.follows.length > 0 || needs;
-  const sig = useSignals();
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
@@ -75,7 +74,6 @@ export function Today() {
       {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
       <section className="t-hero" data-hero aria-label="Research data status">
         <FreshnessPill />
-        <details className="research-status"><summary>Signal validation and evidence</summary><div className="t-gate" data-loading={sig.loading || undefined}><GateCard /></div></details>
       </section>
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
@@ -85,7 +83,7 @@ export function Today() {
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
         <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
         <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 && <Spark c={q.c} up={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} h={30} label={`${nm}, latest session`} />}</span></a>; })}
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} h={56} area label={`${nm}, latest session`} /> : <span className="small mute">Chart unavailable</span>}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
         <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-scr">Screen data through {dayWord(day)} · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>

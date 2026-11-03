@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import worker, { dataAsset, SECURITY } from '../worker.js';
+import worker, { dataAsset, shellAsset, SECURITY } from '../worker.js';
 
 const ctx = { waitUntil: (p) => p };
 // an asset layer that behaves like Cloudflare's single-page-application mode: a known file is itself, anything else is the shell with HTTP 200 text/html
@@ -39,5 +39,35 @@ test('static pieces: _headers carries HSTS and COOP and keeps the strict CSP unc
   assert.match(h, /Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; worker-src 'self'/);
   const sm = readFileSync(new URL('../static/sitemap.xml', import.meta.url), 'utf8'); assert.match(sm, /<loc>https:\/\/tripwire\.askakshay\.com\/<\/loc>/); assert.match(sm, /sitemaps\.org\/schemas\/sitemap\/0\.9/);
   const b = readFileSync(new URL('../build.mjs', import.meta.url), 'utf8'); assert.match(b, /Sitemap: https:\/\/tripwire\.askakshay\.com\/sitemap\.xml/); assert.match(b, /'sitemap\.xml'/);
-  const cfg = readFileSync(new URL('../../../wrangler.tripwire.jsonc', import.meta.url), 'utf8'); assert.match(cfg, /"run_worker_first": \["\/api\/\*", "\/data\/\*"\]/);
+  const cfg = readFileSync(new URL('../../../wrangler.tripwire.jsonc', import.meta.url), 'utf8'); assert.match(cfg, /"run_worker_first": \["\/", "\/index.html", "\/api\/\*", "\/data\/\*"\]/);
 });
+
+test('the app shell: the Worker marks it gzip so the runtime compresses it once (no-transform stops Cloudflare doing it); everything else is left alone', async () => {
+  const html = '<!doctype html><html><body>' + 'tripwire '.repeat(2000) + '</body></html>';
+  const asset = (headers: Record<string, string> = {}, status = 200) => ({ ASSETS: { fetch: async () => new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform', etag: '"abc"', 'content-length': String(html.length), ...headers } }) } });
+  const r = await shellAsset(new Request('https://tripwire.test/', { headers: { 'accept-encoding': 'br, gzip' } }), asset());
+  assert.equal(r.headers.get('content-encoding'), 'gzip'); assert.match(r.headers.get('cache-control') ?? '', /no-transform/, 'still blocks Cloudflare\'s beacon injection'); assert.match(r.headers.get('vary') ?? '', /Accept-Encoding/);
+  assert.equal(r.headers.get('content-length'), null); assert.equal(r.headers.get('etag'), null, 'the validator described the plain bytes');
+  assert.equal(await r.text(), html, 'the body is handed to the runtime plain: compressing it here too would encode it twice (the first version of this did, and the page arrived as gzip inside gzip)');
+  const js = await shellAsset(new Request('https://tripwire.test/'), asset({ 'content-type': 'application/javascript' })); assert.equal(js.headers.get('content-encoding'), null, 'only HTML is touched');
+  const enc = await shellAsset(new Request('https://tripwire.test/'), asset({ 'content-encoding': 'br' })); assert.equal(enc.headers.get('content-encoding'), 'br', 'an already encoded response is not encoded again');
+  const missing = await shellAsset(new Request('https://tripwire.test/'), asset({}, 404)); assert.equal(missing.status, 404); assert.equal(missing.headers.get('content-encoding'), null);
+  for (const encoding of ['identity', 'gzip;q=0', 'br']) {
+    const plain = await shellAsset(new Request('https://tripwire.test/', { headers: { 'accept-encoding': encoding } }), asset());
+    assert.equal(plain.headers.get('content-encoding'), null); assert.equal(await plain.text(), html);
+  }
+});
+
+test('the app shell is encoded from the client\'s original Accept-Encoding when Cloudflare has rewritten it (request.cf.clientAcceptEncoding)', async () => {
+  const html = '<!doctype html><html><body>' + 'tripwire '.repeat(500) + '</body></html>';
+  const env = { ASSETS: { fetch: async () => new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' } }) } };
+  const req = (header: string | null, cf?: { clientAcceptEncoding?: string }) => { const r = new Request('https://tripwire.test/', header == null ? {} : { headers: { 'accept-encoding': header } }); if (cf) Object.defineProperty(r, 'cf', { value: cf }); return r; };
+  const enc = async (r: Request) => (await shellAsset(r, env)).headers.get('content-encoding');
+  assert.equal(await enc(req('br, gzip', { clientAcceptEncoding: 'identity' })), null, 'the edge rewrote the header to include gzip, but the client never asked for it');
+  assert.equal(await enc(req('br, gzip', { clientAcceptEncoding: '' })), null, 'an empty original value is "no encodings", not a reason to fall back to the rewritten header');
+  assert.equal(await enc(req('identity', { clientAcceptEncoding: 'gzip, deflate, br' })), 'gzip', 'the original value wins in the other direction too');
+  assert.equal(await enc(req('gzip, br')), 'gzip', 'without cf (a local runtime) the header is the client\'s own');
+  assert.equal(await enc(req('gzip;q=0')), null); assert.equal(await enc(req(null)), null);
+  assert.equal((await shellAsset(req('br, gzip', { clientAcceptEncoding: 'identity' }), env)).headers.get('vary'), 'Accept-Encoding', 'the response still varies on the header');
+});
+

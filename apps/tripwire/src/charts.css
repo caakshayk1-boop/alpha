@@ -92,3 +92,15 @@
 /* the sticky action bar must not hide the last controls: a focused or scrolled-to control stops above it */
 html:has(.fab-row){scroll-padding-bottom:calc(var(--tab) + 96px)}
 .cf{scroll-margin-bottom:calc(var(--tab) + 96px)}
+
+/* depth for the main price plot: a gradient area under the line, the window's high and low marked on it, tinted stat chips and readable axis labels */
+.c-area{pointer-events:none}
+.c-extreme{position:absolute;width:0;height:0;pointer-events:none;z-index:1}
+.c-extreme i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;box-sizing:border-box;background:var(--bg);border:2px solid var(--ink-2)}
+.c-extreme.up i{border-color:var(--up)}.c-extreme.down i{border-color:var(--down)}
+.c-extreme b{position:absolute;left:0;transform:translateX(-50%);white-space:nowrap;font:600 var(--fs-label)/1.2 var(--font);padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);border:1px solid var(--line-2)}
+.c-extreme.up b{top:9px}.c-extreme.down b{bottom:9px}
+.c-extreme.l b{transform:translateX(-14px)}.c-extreme.r b{transform:translateX(calc(-100% + 14px))}
+.c-ylab{background:color-mix(in srgb,var(--surface) 72%,transparent);padding:0 4px;border-radius:4px;z-index:2}
+.cf-chip{background:var(--surface-grad,var(--surface-2));box-shadow:inset 3px 0 0 var(--line-2)}
+.cf-chip:has(b.up){box-shadow:inset 3px 0 0 var(--up)}.cf-chip:has(b.down){box-shadow:inset 3px 0 0 var(--down)}

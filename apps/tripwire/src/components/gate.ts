@@ -12,6 +12,12 @@ export interface GateLine {
   short: string;
   /** holdout month-clustered t and the bar it must clear, when the feed's own sentence carries them */
   holdout: { t: number; needs: number } | null;
+  /** the four market checks as the feed publishes them: the rule, whether it holds, and the figures it was judged on */
+  checks: { rule: string; ok: boolean; value: string }[];
+  /** Market conditions, separate from statistical validation and the independent factor engines' paper picks. */
+  pill: 'Market supportive' | 'Market cautious';
+  /** one plain sentence: "Market filter does not pass: 2 of 4 market checks pass." */
+  plain: string;
 }
 
 /** The feed states the holdout figure in one sentence (alert_why): "Alerts off: the holdout month-clustered t is -0.62, needs +2.0." That sentence is the only place it is published. */
@@ -31,5 +37,6 @@ export function gateLine(feed: Pick<SignalsFeed, 'gate' | 'alert_why'> | null | 
   const holdout = holdoutOf(feed?.alert_why);
   const state = g.on ? 'ON' : 'OFF';
   const tail = holdout ? ` · holdout t ${signed(holdout.t)} (needs ${signed(holdout.needs, 1)})` : '';
-  return { on: g.on, passed, total, holdout, text: `Signals gate: ${state} — ${passed}/${total} checks${tail}`, short: `Gate ${state} · ${passed}/${total}` };
+  const checks = g.checks.map((c) => ({ rule: String(c.rule), ok: !!c.ok, value: String((c as { value?: unknown }).value ?? '') }));
+  return { on: g.on, passed, total, holdout, checks, pill: g.on ? 'Market supportive' : 'Market cautious', plain: g.on ? `Market filter passes: ${passed} of ${total} market checks pass.` : `New setups are paused: ${passed} of ${total} market checks pass.`, text: `Signals gate: ${state} — ${passed}/${total} checks${tail}`, short: `Gate ${state} · ${passed}/${total}` };
 }

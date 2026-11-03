@@ -1,3 +1,4 @@
+import { SectorHeat } from './SectorHeat.tsx';
 import { useEngines } from '../useEngines.ts';
 import { usePulse } from '../data.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
@@ -37,6 +38,7 @@ export function Markets() {
         <TrendMap rows={rows} day={day} map={t.map} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} repriced={t.liveMap ? t.liveMap.repriced : null} err={!!t.breadth.err} />
         </>}
       </section>
+      {scr.data && <SectorHeat rows={rows} day={day} />}
       {scr.data && <SectorBars sectors={t.map.sectors} rows={rows} day={day} />}
       <section className="market-macro"><Head>Commodities, currencies, Bitcoin</Head><p className="small mute">Latest session · scroll for more markets →</p><MacroStrip /></section>
     </div>

@@ -37,5 +37,6 @@ export function SessionPill({ asOf, showDay = false, className = '' }: { asOf?: 
 export function GatePill({ className = '' }: { className?: string }) {
   const sig = useSignals(); const g = gateLine(sig.data);
   if (!g) return null;
-  return <a href="#/signals" className={`ds-pill ds-status ds-gate ${g.on ? 'up' : 'neutral'} ${className}`} title={g.text} aria-label={`${g.on ? 'Signals validated' : 'Signals unvalidated'}. ${g.text}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'Signals validated' : 'Signals unvalidated'}</a>;
+  return <a href="#/signals" className={`ds-pill ds-status ds-gate ${g.on ? 'up' : 'neutral'} ${className}`} title={g.text} aria-label={`${g.pill}. ${g.plain} Open Signals for the checks.`}>
+    <span className="gate-dots" aria-hidden="true">{g.checks.map((c, i) => <i key={i} className={c.ok ? 'on' : ''} />)}</span>{g.pill}</a>;
 }
