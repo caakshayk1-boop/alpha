@@ -1,6 +1,7 @@
 // The target ladder's geometry and words (ladder.ts), driven from the real tracker so a level drawn is checked against the level booked.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { inr } from '../src/fmt.ts';
 import { ladderInputFor, ladderModel, shortDay, MIN_LABEL_GAP, type LadderInput } from '../src/ladder.ts';
 import { evaluatePaper, type Bar, type Paper } from '../src/tracker.ts';
 import { takenAtFor, type Outcome } from '../src/ledger.ts';
@@ -108,3 +109,11 @@ test('the accessible sentence names every level and what happened', () => {
   for (const w of ['Stop ₹95.00 raised to ₹100.00', 'entry ₹100.00', 'T1 ₹107.50 hit 30 Oct', 'T2 ₹115.00 not reached', 'price now ₹110.00']) assert.ok(m.summary.includes(w), `${w} in ${m.summary}`);
 });
 test('shortDay drops the weekday', () => { assert.equal(shortDay('2026-10-28'), '28 Oct'); assert.equal(shortDay(null), 'an unknown date'); });
+
+test('labels near the right edge do not overprint their neighbour (the 3 Nov Ather Energy pick: T1 and T2 printed on top of each other)', () => {
+  const m = ladderModel({ ...base, stop: 1585.16, entry: 1774.6, t1: 2058.72, t2: 2342.92, mark: 1774.6 });
+  const byId = Object.fromEntries(m.ticks.map((t) => [t.id, t])); assert.notEqual(byId.t1.row, byId.t2.row, m.ticks.map((t) => `${t.id}:${t.pos}:r${t.row}`).join(' '));
+  // no two labels on the same line may touch: a label is 2.5 percent per character wide, centred except at the edges (ladder.ts)
+  const ext = (tk: { pos: number; label: string; px: number }) => { const w = Math.max(tk.label.length, inr(tk.px).length) * 2.5; return tk.pos < 16 ? [tk.pos, tk.pos + w] : tk.pos > 84 ? [tk.pos - w, tk.pos] : [tk.pos - w / 2, tk.pos + w / 2]; };
+  for (const row of [0, 1]) { const on = m.ticks.filter((t) => t.row === row).sort((a, b) => a.pos - b.pos); for (let k = 1; k < on.length; k++) assert.ok(ext(on[k])[0] >= ext(on[k - 1])[1], `${on[k - 1].id} and ${on[k].id} touch on line ${row}`); }
+});

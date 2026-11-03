@@ -5,9 +5,10 @@ import { Seg, Empty, useUi } from '../ui.tsx';
 import { CompanyRow, Head, PageBar } from './common.tsx';
 import { useWatchQuotes } from '../quotes.ts';
 import { closePlan, current, editEntry, istDay, journalCsv, markPaperFill, reviewDue, setArchived, weeklyReview, type Entry, type State } from '../store.ts';
-import { lastChange } from '../sincevisit.ts';
+import { changeCopy, lastChange } from '../sincevisit.ts';
+import { followFacts } from '../followfacts.ts';
 import { deskHas } from '../home.ts';
-import { dayWord, inr } from '../fmt.ts';
+import { dayWord, inr, pct, tone } from '../fmt.ts';
 import { download } from '../backupfile.ts';
 import { Fold, Workflow } from './fold.tsx';
 import { planFigures } from '../planview.ts';
@@ -66,8 +67,15 @@ function Workspace() {
       </div>}
       {right && <div className="dsk">
         {s.follows.length > 0 && <section aria-labelledby="dsk-fol"><h2 id="dsk-fol" className="sec" style={{ marginBottom: 8 }}>Followed companies</h2>
-          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{s.follows.map((sym) => { const c = lastChange(s, sym); const r = scr.data?.rows.find((x) => x.sym === sym);
-            return <a key={sym} className="dsk-row" href={`#/c/${sym}`}><span className="sym">{sym}</span><span className="grow small dim">{r?.name ?? 'not in the current screen'}</span><span className="small" data-lastchange>{c ? <>{c.title} <span className="mute">· {dayWord(c.curDay)}</span></> : <span className="mute">No change recorded yet</span>}</span></a>; })}</div></div></section>}
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{s.follows.map((sym) => { const r = scr.data?.rows.find((x) => x.sym === sym); const c = lastChange(s, sym, today, r);
+            const facts = r ? followFacts(r, today) : [];
+            return <a key={sym} className="dsk-row dsk-follow" href={`#/c/${sym}`}>
+              <span className="dsk-fl1"><span className="sym">{sym}</span><span className="grow small dim trunc">{r?.name ?? 'not in the current screen'}</span>{r?.price != null && <span className="small num dsk-px">{inr(r.price)} <span className={tone(r.r1d)}>{pct(r.r1d)}</span></span>}</span>
+              <span className="dsk-fl2 small" data-lastchange>
+                {c && <span className="dsk-change">{changeCopy(c, today).title} <span className="mute">· {dayWord(c.curDay)}</span></span>}
+                {facts.map((f) => <span key={f.id} className={`dsk-fact ${f.tone}`}>{f.text}</span>)}
+                {!c && facts.length === 0 && <span className="mute">{r ? 'Nothing unusual. No change recorded yet.' : 'No figures for it in the current screen.'}</span>}
+              </span></a>; })}</div></div></section>}
         {active.length > 0 && <section aria-labelledby="dsk-th"><h2 id="dsk-th" className="sec" style={{ marginBottom: 8 }}>Saved theses</h2>
           <div className="card" style={{ padding: '2px 14px' }}><div className="list">{active.slice(0, 6).map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow small">{current(e).thesis || 'No thesis written'}{current(e).invalidation ? <span className="dim"> · wrong if: {current(e).invalidation}</span> : null}</span>{reviewTag(e)}</button>)}</div>
             {active.length > 6 && <a className="small" href="#/desk?v=journal" style={{ display: 'block', padding: '8px 0 12px', textDecoration: 'underline' }}>All {active.length} in the Journal</a>}</div></section>}
@@ -84,10 +92,10 @@ function Workspace() {
   </div>;
 }
 function Following() {
-  const s = useAppState(); const scr = useScreen(); useWatchQuotes(s.follows);
+  const today = istDay(); const s = useAppState(); const scr = useScreen(); useWatchQuotes(s.follows);
   const rows = s.follows.map((x) => scr.data?.rows.find((r) => r.sym === x));
   if (!s.follows.length) return <Empty title="Nothing followed" action={<button className="btn pri" onClick={() => go('/discover')}>Find a company</button>}>Follow a name from Discover or its research page. Today then reports what changed in it.</Empty>;
-  return <div className="card" style={{ padding: '2px 14px' }}><div className="list">{rows.map((r, i) => r ? <CompanyRow key={r.sym} r={r} meta={(() => { const c = lastChange(s, r.sym); return c ? <span className="small" style={{ color: 'var(--lime)' }}>{c.title}</span> : null; })()} /> : <div key={s.follows[i]} className="li"><span className="sym">{s.follows[i]}</span><span className="dim small">not in the current screen</span></div>)}</div></div>;
+  return <div className="card" style={{ padding: '2px 14px' }}><div className="list">{rows.map((r, i) => r ? <CompanyRow key={r.sym} r={r} meta={(() => { const c = lastChange(s, r.sym, istDay(), r); return c ? <span className="small" style={{ color: 'var(--lime)' }}>{c.title}</span> : null; })()} /> : <div key={s.follows[i]} className="li"><span className="sym">{s.follows[i]}</span><span className="dim small">not in the current screen</span></div>)}</div></div>;
 }
 function Journal() {
   const s = useAppState(); const { open } = useSheets(); const [q, setQ] = useState(''); const [arch, setArch] = useState(false); const { toast } = useUi();

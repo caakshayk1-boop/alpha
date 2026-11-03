@@ -1,3 +1,4 @@
+import { prefetchScreens } from '../prefetch.ts';
 import { useMemo, useState } from 'react';
 import { go, setState } from '../app.tsx';
 import { useScreen } from '../data.ts';
@@ -11,7 +12,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const hits = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 6)), [t, scr.data]);
   const leave = () => setState((x) => ({ ...x, onboarded: true }));
   const choose = (sym: string) => { go(`/c/${encodeURIComponent(sym)}?first=1`); leave(); };
-  return <main className="welcome" id="main">
+  return <main className="welcome" id="main" onPointerDownCapture={prefetchScreens} onFocusCapture={prefetchScreens}>
     {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore markets, then import a backup from Settings to restore your notes.</div>}
     <div className="k">Tripwire</div>
     <h1>Start with one company.</h1>

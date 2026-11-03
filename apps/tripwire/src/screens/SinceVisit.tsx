@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setState, useAppState, useSheets } from '../app.tsx';
 import type { Row } from '../screen.ts';
-import { dayWord } from '../fmt.ts';
-import { THRESHOLDS, dismissChange, lastSeen, recordSeen, restoreChange, surface, type SeenChange } from '../sincevisit.ts';
+import { dayWord, inr } from '../fmt.ts';
+import { THRESHOLDS, changeCopy, dismissChange, lastSeen, recordSeen, restoreChange, surface, type SeenChange } from '../sincevisit.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
 
 const SHOWN = 5;
@@ -31,22 +31,27 @@ export function SinceVisit({ rows, day, today }: { rows: Row[]; day: string | nu
   const dismiss = (c: SeenChange) => { setState((x) => dismissChange(x, c.id, new Date().toISOString())); setLast(c.id); setMsg(`Dismissed ${c.sym}: ${c.title}.`); };
   const undo = () => { if (last) setState((x) => restoreChange(x, last)); setMsg(last ? 'Restored.' : null); setLast(null); };
   const review = (c: SeenChange) => { if (c.entryId) open({ k: 'thesis', sym: c.sym, id: c.entryId }); else location.hash = `/c/${c.sym}`; };
-  const list = [...sv.fresh, ...sv.earlier]; const shown = all ? list : list.slice(0, SHOWN);
-  const item = (c: SeenChange, dis = false) => <li key={c.id} className="svi">
-    <div className="svi-h"><a className="sym" href={`#/c/${c.sym}`}>{c.sym}</a><span className="svi-t">{c.title}</span>{!dis && sv.fresh.includes(c) ? <span className="svi-new">New</span> : null}</div>
-    <div className="svi-ba num"><span>{c.before}</span><span aria-hidden="true"> → </span><span className="sr"> changed to </span><span>{c.after}</span></div>
-    <div className={`small ${c.kind === 'invalidation' ? 'svi-inv' : 'dim'}`}>{c.framing.charAt(0).toUpperCase() + c.framing.slice(1)}</div>
-    <details className="svi-basis"><summary>Basis</summary><p className="small dim">{c.basis}</p></details>
+  const list = [...sv.fresh, ...sv.earlier];
+  const companies = [...new Set(list.map((c) => c.sym))]; const shown = all ? companies : companies.slice(0, SHOWN);
+  const item = (c: SeenChange, dis = false) => { const copy = changeCopy(c, today); return <li key={c.id} className="svi">
+    <div className="svi-h">{dis && <a className="sym" href={`#/c/${c.sym}`}>{c.sym}</a>}<span className="svi-t">{copy.title}</span>{!dis && sv.fresh.includes(c) ? <span className="svi-new">New</span> : null}</div>
+    <div className="svi-ba num">{copy.detail}</div>
+    {c.kind === 'invalidation' && <div className="small svi-inv">{c.framing.charAt(0).toUpperCase() + c.framing.slice(1)}</div>}
+    <details className="svi-basis"><summary>Basis · {dayWord(c.curDay)}</summary><p className="small dim">{c.basis}</p></details>
     <div className="row svi-act">{dis ? <button className="btn sm" onClick={() => { setState((x) => restoreChange(x, c.id)); setMsg(`Restored ${c.sym}: ${c.title}.`); setLast(null); }}>Restore</button>
-      : <><button className="btn sm" onClick={() => review(c)}>{c.entryId ? 'Review thesis' : 'Review'}</button><button className="btn sm" onClick={() => dismiss(c)} aria-label={`Dismiss ${c.sym}: ${c.title}`}>Dismiss</button></>}</div></li>;
+      : <>{c.kind === 'invalidation' && c.entryId && <button className="btn sm" onClick={() => review(c)}>Review thesis</button>}<button className="btn sm" onClick={() => dismiss(c)} aria-label={`Dismiss ${c.sym}: ${copy.title}`}>Dismiss</button></>}</div></li>; };
   return <section ref={box} className="sv" aria-labelledby="sv-h">
     <h2 id="sv-h" className="sec">Since your last visit</h2>
     {sv.first ? <p className="small dim" role="status" data-sv="first"><b>Tracking starts today.</b> From your next visit, meaningful changes in the {s.follows.length === 1 ? 'company' : `${s.follows.length} companies`} you follow will show here, with the figures before and after.</p>
       : <>
         <p className="small dim" data-sv="basis">Against what you were last shown{sv.dayFrom ? <>: screen data {dayWord(sv.dayFrom)} to {dayWord(sv.dayTo)}.</> : <>, screen data {dayWord(day)} (no newer screen yet).</>}</p>
-        {list.length ? <ul className="svlist" aria-label="Changes in the companies you follow">{shown.map((c) => item(c))}</ul>
+        {list.length ? <ul className="svlist" aria-label="Changes in the companies you follow">{shown.map((sym) => { const r = rows.find((x) => x.sym === sym); return <li className="svcompany" key={sym}>
+          <div className="svcompany-head"><a href={`#/c/${sym}`}><b className="sym">{sym}</b><span className="small dim">{r?.name}</span></a>{r?.price != null && <span className="small num dim">{inr(r.price)}<small>Close · {dayWord(day)}</small></span>}</div>
+          <ul className="svevents">{list.filter((c) => c.sym === sym).map((c) => item(c))}</ul>
+          <a className="svcompany-open" href={`#/c/${sym}`}>View company <span aria-hidden="true">↗</span></a>
+        </li>; })}</ul>
           : <p className="small" data-sv="none">Nothing meaningful changed in the {sv.compared === 1 ? 'company' : `${sv.compared} companies`} you follow.</p>}
-        {list.length > SHOWN && <button className="btn sm" onClick={() => setAll(!all)} aria-expanded={all}>{all ? 'Show fewer' : `Show ${list.length - SHOWN} more`}</button>}</>}
+        {companies.length > SHOWN && <button className="btn sm" onClick={() => setAll(!all)} aria-expanded={all}>{all ? 'Show fewer' : `Show ${companies.length - SHOWN} more companies`}</button>}</>}
     {sv.starting.length > 0 && !sv.first && <p className="small dim" data-sv="starting">Tracking starts today for {sv.starting.join(', ')}.</p>}
     <div role="status" className="svmsg">{msg && <span className="small">{msg} {last && <button className="linkbtn" onClick={undo}>Undo</button>}</span>}</div>
     {sv.dismissed.length > 0 && <><button className="linkbtn" onClick={() => setShowDis(!showDis)} aria-expanded={showDis}>{showDis ? 'Hide dismissed' : `Show dismissed (${sv.dismissed.length})`}</button>

@@ -12,11 +12,18 @@ const mk = async (w, h = 800) => { const ctx = await b.newContext({ viewport: { 
 const go = async (pg, route, sel) => { await pg.goto(base + route); await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); await pg.waitForSelector(sel, { timeout: 15000 }); await pg.waitForTimeout(500); };
 const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+/* ---- Signals: the market checks behind the gate are listed with their figures ---- */
+{ const { ctx, pg } = await mk(390); await go(pg, '/#/signals', '[data-gate-panel]');
+  const rows = await pg.locator('[data-gate-panel] .gp-list li').count(); const txt = await pg.locator('[data-gate-panel]').innerText();
+  ok(rows >= 3 && /market checks pass/.test(txt) && /statistical validation are separate/.test(txt), `Signals: the gate panel lists ${rows} market checks and says statistical validation is separate from them`);
+  ok((await pg.locator('[data-gate-panel] .gp-list li .gp-val').count()) >= 1, 'each check shows the figures it was judged on'); await ctx.close(); }
+
 /* ---- Today: hero, gate, capture off ---- */
-{ const { ctx, pg, reqs } = await mk(390); await go(pg, '/#/today', '[data-sec="brief"]'); await pg.locator('.research-status summary').click(); await pg.waitForSelector('.ds-gatecard');
-  const t = await pg.locator('[data-hero]').innerText();
-  ok(/Signal validation and evidence/.test(t), 'Today: diagnostics are under a named disclosure');
-  ok(await pg.locator('[data-hero] .ds-gatecard').count() === 1 && /checks/.test(await pg.locator('[data-hero] .ds-gatecard').innerText()), 'Today: the gate card sits in the hero, read from the signals feed');
+{ const { ctx, pg, reqs } = await mk(390); await go(pg, '/#/today', '[data-sec="brief"]');
+  await pg.waitForSelector('.ds-gate'); const gt = await pg.locator('.ds-gate').first().innerText(); const ga = await pg.locator('.ds-gate').first().getAttribute('aria-label');
+  ok(await pg.locator('.research-status, .ds-gatecard').count() === 0 && (await pg.locator('.ds-gate').count()) === 1, 'Today: the gate is stated once, by the top-bar pill (no second row repeating it)');
+  ok(/^Market (supportive|cautious)$/.test(gt.trim()) && /\d of \d market checks pass/.test(ga) && !/validat/i.test(gt + ga), `the pill says what the gate is (a market filter for new setups), not "unvalidated": "${gt.trim()}" / "${ga.slice(0, 70)}"`);
+  ok(await pg.locator('.ds-gate .gate-dots i').count() === 4, 'one dot per market check');
   const hy = await pg.evaluate(() => { const h = document.querySelector('[data-hero]'); const b = document.querySelector('[data-sec="brief"]'); return h.getBoundingClientRect().top > b.getBoundingClientRect().top; });
   ok(hy, 'Today: the market brief leads, before research diagnostics');
   const cap = pg.locator('[data-capture]'); ok(await cap.count() === 1 && await cap.getAttribute('data-capture') === 'off' && !(await cap.isVisible()) && (await cap.innerText()) === '', 'Today: the capture slot is present but hidden and empty (flag off)');

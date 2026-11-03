@@ -481,6 +481,21 @@ export async function dataAsset(request, env) {
   if (!out.headers.has('x-content-type-options')) out.headers.set('x-content-type-options', 'nosniff'); return out;
 }
 
+/** The app shell (index.html). The static headers send `Cache-Control: no-transform` so Cloudflare does not inject its analytics beacon, which the CSP blocks; but no-transform also stops Cloudflare from
+ *  compressing the page (36 KB instead of about 11 KB, flagged by PageSpeed as "Document request latency, est. savings 24 KiB"). So the page is compressed inside the Worker: setting
+ *  `Content-Encoding: gzip` on a plain body makes the Workers runtime encode it for the client (its default `encodeBody: "automatic"`; compressing it here as well would encode it twice, which an earlier
+ *  version of this function did). The runtime sees a normalised Accept-Encoding, so clients that do not accept gzip are handled by the runtime, not here. The validator is dropped because it described the plain bytes. */
+export async function shellAsset(request, env) {
+  const res = await env.ASSETS.fetch(request);
+  if (!res.ok || !res.body || res.headers.get('content-encoding') || !/text\/html/i.test(res.headers.get('content-type') || '')) return res;
+  const out = new Response(res.body, res);
+  out.headers.append('vary', 'Accept-Encoding');
+  const gzip = (request.headers.get('accept-encoding') || '').split(',').some((v) => /^gzip\s*(?:;\s*q\s*=\s*(?:1(?:\.0*)?|0?\.\d+))?\s*$/i.test(v.trim()) && !/q\s*=\s*0(?:\.0*)?\s*$/i.test(v));
+  if (!gzip) return out;
+  out.headers.delete('content-length'); out.headers.delete('etag'); out.headers.set('content-encoding', 'gzip');
+  return out;
+}
+
 export default {
   /** Cloudflare cron trigger (wrangler.tripwire.jsonc): asks GitHub to start the news job. Does nothing at all until the secret GITHUB_DISPATCH_TOKEN is set (news/nudge.js). */
   async scheduled(_event, env, ctx) {
@@ -556,6 +571,7 @@ export default {
     }
     if (url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
     if (url.pathname.startsWith('/data/')) return dataAsset(request, env);
+    if (url.pathname === '/' || url.pathname === '/index.html') return shellAsset(request, env);
     return env.ASSETS.fetch(request);
   },
 };

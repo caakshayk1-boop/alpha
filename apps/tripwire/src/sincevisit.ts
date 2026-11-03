@@ -100,7 +100,7 @@ export function detect({ sym, prev, cur, entry, live, today }: DetectIn): SeenCh
     else if (prev.rsi <= L && cur.rsi > L) mk('rsi', 'up30', `RSI recovered above ${L}`, `RSI ${prev.rsi.toFixed(0)}`, `RSI ${cur.rsi.toFixed(0)}`);
   }
   if (cur.next_earnings) {
-    const d = daysTo(cur.next_earnings, today); const was = prev.next_earnings === cur.next_earnings && daysTo(prev.next_earnings, prev.day) <= THRESHOLDS.resultsDays && daysTo(prev.next_earnings, prev.day) >= 0;
+    const d = daysTo(cur.next_earnings, today); const was = prev.next_earnings === cur.next_earnings && daysTo(prev.next_earnings, prev.at.slice(0, 10)) <= THRESHOLDS.resultsDays && daysTo(prev.next_earnings, prev.at.slice(0, 10)) >= 0;
     if (d >= 0 && d <= THRESHOLDS.resultsDays && !was) mk('results', cur.next_earnings, d === 0 ? 'Results due today' : `Results in ${d} day${d === 1 ? '' : 's'}`, prev.next_earnings ? `date ${prev.next_earnings}` : 'no date published', `estimated date ${cur.next_earnings}`);
   }
   if (prev.risk && cur.risk && prev.risk !== cur.risk) mk('risk', `${prev.risk}-${cur.risk}`, 'Risk grade changed', prev.risk, cur.risk);
@@ -126,6 +126,27 @@ export interface Surface {
 const rank: Record<ChangeKind, number> = { invalidation: 0, elig: 1, risk: 2, trend: 3, sma200: 4, high52: 5, low52: 5, results: 6, rsi: 7, move: 8 };
 const order = (a: SeenChange, b: SeenChange) => rank[a.kind] - rank[b.kind] || a.sym.localeCompare(b.sym);
 
+/** One current event per topic and company. Opposite crossings supersede each other; separate thesis levels remain separate. */
+const topic = (c: SeenChange) => `${c.sym}|${c.kind}|${c.kind === 'invalidation' ? c.entryId ?? '' : ''}`;
+export function latestChanges(items: readonly SeenChange[]): SeenChange[] {
+  const latest = new Map<string, SeenChange>();
+  for (const c of items) {
+    const old = latest.get(topic(c));
+    if (!old || c.curDay > old.curDay || (c.curDay === old.curDay && c.curAt > old.curAt)) latest.set(topic(c), c);
+  }
+  return [...latest.values()];
+}
+const earningsDate = (c: SeenChange) => /\d{4}-\d{2}-\d{2}/.exec(c.after)?.[0] ?? null;
+/** Stored reminders keep their provenance, but their presentation always uses today's date. */
+export function changeCopy(c: SeenChange, today: string): { title: string; detail: string } {
+  if (c.kind === 'results') {
+    const date = earningsDate(c); const days = date ? daysTo(date, today) : NaN;
+    const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+    return { title: Number.isFinite(days) && days >= 0 ? `Results expected ${when}` : 'Results date', detail: date ? `${dayWord(date)} · estimated, not confirmed` : c.after };
+  }
+  return { title: c.title, detail: c.kind === 'sma200' ? `Close / 200-day average: ${c.after}` : `${c.before} → ${c.after}` };
+}
+
 /** `baseline` is each name's last snapshot as it stood when the module mounted (before this visit wrote anything). */
 export function surface(s: State, baseline: Record<string, SeenSnap | undefined>, rows: readonly Row[], day: string | null, today: string, nowIso: string, live: Record<string, number | null | undefined> = {}): Surface {
   const empty: Surface = { first: true, starting: [], fresh: [], earlier: [], dismissed: [], dayFrom: null, dayTo: null, compared: 0 };
@@ -134,13 +155,24 @@ export function surface(s: State, baseline: Record<string, SeenSnap | undefined>
   for (const sym of s.follows) {
     const r = rows.find((x) => x.sym === sym); if (!r) continue;
     const prev = baseline[sym]; if (!prev) { starting.push(sym); continue; }
-    compared++; if (prev.day < day) dayFrom = !dayFrom || prev.day < dayFrom ? prev.day : dayFrom;
+    compared++; if (prev.day > day) continue; // an older cached screen must not reverse a newer event
+    if (prev.day < day) dayFrom = !dayFrom || prev.day < dayFrom ? prev.day : dayFrom;
     const entry = s.entries.find((e) => e.sym === sym && !e.archived) ?? null;
-    found.push(...detect({ sym, prev, cur: snapOf(r, day, nowIso), entry, live: live[sym], today }));
+    found.push(...detect({ sym, prev, cur: snapOf(r, day, nowIso), entry, live: live[sym], today }).map((c) => {
+      if (c.kind !== 'results') return c;
+      // A reminder for the same results date retains its identity, including dismissals from older app versions.
+      const previous = (s.inbox ?? []).find((old) => old.sym === sym && old.kind === 'results' && earningsDate(old) === earningsDate(c));
+      return previous ? { ...c, id: previous.id } : c;
+    }));
   }
   const dis = s.dismissed ?? {}; const ids = new Set(found.map((c) => c.id));
   const kept = (s.inbox ?? []).filter((c) => !ids.has(c.id) && s.follows.includes(c.sym) && daysTo(today, c.curAt.slice(0, 10)) <= THRESHOLDS.inboxDays);
-  const all = [...found.map((c) => ({ c, fresh: true })), ...kept.map((c) => ({ c, fresh: false }))];
+  const current = latestChanges([...found, ...kept]).filter((c) => {
+    if (c.kind !== 'results') return true;
+    const date = earningsDate(c); const row = rows.find((r) => r.sym === c.sym);
+    return !!date && date === row?.next_earnings && daysTo(date, today) >= 0 && daysTo(date, today) <= THRESHOLDS.resultsDays;
+  });
+  const all = current.map((c) => ({ c, fresh: ids.has(c.id) }));
   return { first: compared === 0, starting, fresh: all.filter((x) => x.fresh && !dis[x.c.id]).map((x) => x.c).sort(order), earlier: all.filter((x) => !x.fresh && !dis[x.c.id]).map((x) => x.c).sort(order),
     dismissed: all.filter((x) => dis[x.c.id]).map((x) => x.c).sort(order), dayFrom, dayTo: compared ? day : null, compared };
 }
@@ -152,17 +184,17 @@ export function recordSeen(s: State, rows: readonly Row[], day: string | null, s
   for (const sym of s.follows) {
     const r = rows.find((x) => x.sym === sym); if (!r) continue;
     const list = seen[sym] ?? []; const snap = snapOf(r, day, nowIso); const last = list[list.length - 1];
-    if (last && same(last, snap)) continue;                      // nothing new was shown for this name
+    if (last && (last.day > day || same(last, snap))) continue;   // cached older data must never replace a newer baseline
     seen[sym] = [...list, snap].slice(-THRESHOLDS.history); touched = true;
   }
   const prevIn = s.inbox ?? []; const have = new Set(prevIn.map((c) => c.id));
-  let inbox = [...shown.filter((c) => !have.has(c.id)), ...prevIn].filter((c) => daysTo(today, c.curAt.slice(0, 10)) <= THRESHOLDS.inboxDays).slice(0, THRESHOLDS.inboxMax);
+  let inbox = latestChanges([...shown.filter((c) => !have.has(c.id)), ...prevIn]).filter((c) => daysTo(today, c.curAt.slice(0, 10)) <= THRESHOLDS.inboxDays).slice(0, THRESHOLDS.inboxMax);
   const keep = new Set(inbox.map((c) => c.id)); const dis = Object.fromEntries(Object.entries(s.dismissed ?? {}).filter(([id]) => keep.has(id)));   // a dismissal outlives its item by nothing
   if (!touched && inbox.length === prevIn.length && inbox.every((c, i) => c === prevIn[i]) && Object.keys(dis).length === Object.keys(s.dismissed ?? {}).length) return s;
   return { ...s, seen, inbox, dismissed: dis };
 }
 /** The most recent change surfaced for a name (acknowledged or not), or null. Read from what was recorded; nothing is recomputed. */
-export const lastChange = (s: State, sym: string): SeenChange | null => (s.inbox ?? []).filter((c) => c.sym === sym).sort((a, b) => b.curAt.localeCompare(a.curAt))[0] ?? null;
+export const lastChange = (s: State, sym: string, today?: string, row?: Row): SeenChange | null => latestChanges(s.inbox ?? []).filter((c) => c.sym === sym && (!today || daysTo(today, c.curAt.slice(0, 10)) <= THRESHOLDS.inboxDays) && (c.kind !== 'results' || !today || (earningsDate(c) === row?.next_earnings && daysTo(earningsDate(c)!, today) >= 0))).sort((a, b) => b.curAt.localeCompare(a.curAt))[0] ?? null;
 export const lastSeen =(s: State): Record<string, SeenSnap | undefined> => Object.fromEntries(Object.entries(s.seen ?? {}).map(([k, v]) => [k, v[v.length - 1]]));
 export const dismissChange = (s: State, id: string, nowIso: string): State => ((s.dismissed ?? {})[id] ? s : { ...s, dismissed: { ...(s.dismissed ?? {}), [id]: nowIso } });
 export const restoreChange = (s: State, id: string): State => { if (!(s.dismissed ?? {})[id]) return s; const d = { ...(s.dismissed ?? {}) }; delete d[id]; return { ...s, dismissed: d }; };

@@ -38,6 +38,28 @@ for (const w of [320, 360]) {
   ok(await noOverflow(pg), `${w}: Today (new user) does not scroll sideways`); ok(await pg.locator('[data-sec="setup"]').count() === 1, `${w}: the one setup action is still there`); await ctx.close();
 }
 
+/* ---- Markets: the sector heat map zooms into a sector, and lists its leaders and laggards ---- */
+for (const w of [320, 390, 1280]) {
+  const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 });
+  const cells = pg.locator('[data-sectorheat] .sh-cell'); const n = await cells.count(); const labels = await cells.evaluateAll((e) => e.map((x) => x.getAttribute('aria-label')));
+  ok(n >= 6 && labels.every((l) => /percent of traded value/.test(l ?? '') && /over 1 day/.test(l ?? '')), `${w}: the heat map has ${n} sector cells, each named with its change, window and share of traded value`);
+  ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: the heat map causes no sideways scroll`);
+  const before = await cells.first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  await pg.getByRole('button', { name: '1M', exact: true }).click(); await pg.waitForTimeout(300);
+  ok((await pg.getByRole('button', { name: '1M', exact: true }).getAttribute('aria-pressed')) === 'true' && /over 1 month/.test((await pg.locator('[data-sectorheat] .sh-cell').first().getAttribute('aria-label')) ?? ''), `${w}: the window switch changes what the cells say (1 month)`);
+  await pg.getByRole('button', { name: '1D', exact: true }).click(); await pg.waitForTimeout(200);
+  const first = pg.locator('[data-sectorheat] .sh-cell').first(); const sector = ((await first.getAttribute('aria-label')) ?? '').split(':')[0]; await first.click(); await pg.waitForSelector('.sh-list.up li', { timeout: 5000 });
+  ok((await pg.locator('#sh-h').innerText()) === sector, `${w}: tapping ${sector} zooms into it`);
+  const lead = await pg.locator('.sh-list.up li .num:not(.sh-px)').allInnerTexts(); const lag = await pg.locator('.sh-list.down li .num:not(.sh-px)').allInnerTexts(); const v = (s) => parseFloat(s.replace('−', '-').replace('%', '').replace('+', ''));
+  ok(lead.length === 5 && lag.length === 5 && Math.min(...lead.map(v)) >= Math.max(...lag.map(v)) && lead.map(v).every((x, i, a) => i === 0 || a[i - 1] >= x) && lag.map(v).every((x, i, a) => i === 0 || a[i - 1] <= x), `${w}: five leaders (strongest first) and five laggards (weakest first), none of them overlapping: ${lead.join(' ')} | ${lag.join(' ')}`);
+  ok((await pg.locator('.sh-list a[href^="#/c/"]').count()) === 10, `${w}: every leader and laggard opens its company page`);
+  ok(/\/discover\?sector=/.test((await pg.locator('[data-sectorheat] a[href*="discover?sector="]').first().getAttribute('href')) ?? ''), `${w}: a link opens the whole sector in Discover`);
+  await pg.locator('[data-sectorheat] .sh-table summary').click(); ok((await pg.locator('[data-sectorheat] .sh-table tbody tr').count()) >= 10, `${w}: the same figures are in a table`);
+  ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: no sideways scroll when zoomed`);
+  await pg.getByRole('button', { name: /All sectors/ }).click(); await pg.waitForSelector('[data-sectorheat] .sh-cell:not(.n)', { timeout: 5000 }); ok((await pg.locator('#sh-h').innerText()) === 'Sector heat map', `${w}: the back button returns to all sectors`); void before;
+  await ctx.close();
+}
+
 /* ---- Markets ---- */
 for (const w of [320, 390, 1280]) {
   const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectors] .sbar', { timeout: 15000 });
@@ -79,6 +101,13 @@ for (const w of [320, 390, 1280]) {
   ok(!/Take it myself/.test(body), `${w}: no "Take it myself"`);
   const card = pg.locator('.pickcard').first();
   ok(await card.locator('[data-ladder]').count() === 1 && /Signal/.test(await card.locator('[data-ladder]').innerText()) && /Stop/.test(await card.locator('[data-ladder]').innerText()) && /T2/.test(await card.locator('[data-ladder]').innerText()), `${w}: a pick shows stop, signal close and both targets on one compact ladder`);
+  if (w === 320) await pg.addStyleTag({ content: ':root{--font:Verdana,sans-serif!important}' });
+  await pg.waitForTimeout(100);
+  const overlap = await pg.evaluate(() => [...document.querySelectorAll('.tl-vis')].some((v) => {
+    const boxes = [...v.querySelectorAll('.lab')].map((x) => x.getBoundingClientRect());
+    return boxes.some((a, i) => boxes.slice(i + 1).some((b) => Math.min(a.right, b.right) > Math.max(a.left, b.left) + 1 && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top) + 1));
+  }));
+  ok(!overlap, `${w}: target prices never overlap, including the wider phone font`);
   ok(/Signal close ₹/.test(await card.innerText()), `${w}: the numbers are still stated in words`);
   await card.locator('details[data-assumptions] summary').click(); const as = await card.locator('details[data-assumptions]').innerText();
   ok(/Paper only/.test(as) && /next session's open/.test(as) && /slippage/.test(as) && /round trip/.test(as), `${w}: explicit paper assumptions sit one tap away`);

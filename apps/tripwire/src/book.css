@@ -31,7 +31,8 @@
 .tl-ratchet{position:absolute;top:41px;height:6px;background:repeating-linear-gradient(90deg,var(--ink-3) 0 4px,transparent 4px 8px);opacity:.85}
 .tl-tick{position:absolute;top:34px;width:0;height:0}
 .tl-tick::before{content:"";position:absolute;left:-.5px;top:10px;width:1px;height:12px;background:var(--line-2)}
-.tl-tick.row1::before{height:calc(12px + var(--rowh))}
+.tl-tick.row1{--label-row:1}
+.tl-tick::before{height:calc(12px + var(--label-row,0) * var(--rowh))}
 .tl-tick .pin{position:absolute;left:-6px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--ink-3);border:2px solid var(--surface);box-sizing:border-box;display:grid;place-items:center}
 .tl-tick.stop .pin{background:var(--down)}
 .tl-tick.stop.moved .pin{background:var(--surface);border-color:var(--down);border-style:dashed}
@@ -40,7 +41,7 @@
 .tl-tick.hit .pin{width:20px;height:20px;left:-10px;top:0;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .tl-tick.hit .pin .ic{width:14px;height:14px;stroke-width:2.25}
 .tl-tick .lab{position:absolute;top:22px;left:0;transform:translateX(-50%);display:grid;justify-items:center;text-align:center;white-space:nowrap;line-height:16px}
-.tl-tick.row1 .lab{top:calc(22px + var(--rowh))}
+.tl-tick .lab{top:calc(22px + var(--label-row,0) * var(--rowh))}
 .tl-tick .lab b{font-size:var(--fs-label);font-weight:600;color:var(--ink-2)}
 .tl-tick.stop .lab b{color:var(--down)}
 .tl-tick.hit .lab b{color:var(--accent)}

@@ -3,9 +3,10 @@ import { Suspense, lazy, createContext, useCallback, useContext, useDeferredValu
 import { DEFAULTS, type State } from './store.ts';
 import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type SaveFailure } from './persist.ts';
 import { downloadBackup } from './backupfile.ts';
+import { prefetchWhenIdle } from './prefetch.ts';
 import { useScreen } from './data.ts';
 import { Icon, UiProvider } from './ui.tsx';
-import { Today } from './screens/today.tsx';
+const Today = lazy(() => import('./screens/today.tsx').then((m) => ({ default: m.Today })));
 const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ default: m.Discover })));
 const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
 const Desk = lazy(() => import('./screens/desk.tsx').then((m) => ({ default: m.Desk })));
@@ -25,8 +26,8 @@ const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default:
 const Privacy = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Terms })));
 const NotFound = lazy(() => import('./screens/notfound.tsx').then((m) => ({ default: m.NotFound })));
-import { MacroPage } from './screens/Macro.tsx';
-const Welcome = lazy(() => import('./screens/welcome.tsx').then((m) => ({ default: m.Welcome })));
+const MacroPage = lazy(() => import('./screens/Macro.tsx').then((m) => ({ default: m.MacroPage })));
+import { Welcome } from './screens/welcome.tsx';
 const SearchSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.SearchSheet })));
 const PlannerSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.PlannerSheet })));
 const ThesisSheet = lazy(() => import('./sheets.tsx').then((m) => ({ default: m.ThesisSheet })));
@@ -141,8 +142,8 @@ export function App(): ReactNode {
   const [locked, setLocked] = useState(() => !!lockId());
   useEffect(() => { let hiddenAt = 0; const f = () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 60000 && lockId()) { setLocked(true); hiddenAt = 0; } }; document.addEventListener('visibilitychange', f); return () => document.removeEventListener('visibilitychange', f); }, []);
   useEffect(() => { const h = (e: Event) => { const f = (e as CustomEvent).detail; setSheet(f === 'plan' ? { k: 'plan' } : { k: 'explain' }); }; window.addEventListener('tw-sheet', h); return () => window.removeEventListener('tw-sheet', h); }, []);
-  // the other screens are separate files; fetch the common ones once the first screen is up, so a tap on a tab does not wait for the network
-  useEffect(() => { const run = () => { for (const m of [import('./screens/discover.tsx'), import('./screens/company.tsx'), import('./screens/signals.tsx'), import('./screens/desk.tsx'), import('./screens/settings.tsx'), import('./screens/More.tsx'), import('./screens/NewsPage.tsx'), import('./screens/markets.tsx')]) void m.catch(() => {}); }; const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }; if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 1500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); } const id = window.setTimeout(run, 300); return () => window.clearTimeout(id); }, []);
+  // Route chunks are fetched once the page has loaded and gone idle (a first-time visitor's welcome screen fetches them when touched): see prefetch.ts. Not at start-up, where they compete with the first screen.
+  useEffect(() => (s.onboarded ? prefetchWhenIdle() : undefined), [s.onboarded]);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
   if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
