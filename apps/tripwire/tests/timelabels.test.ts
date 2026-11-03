@@ -51,6 +51,7 @@ test('news health: an on-demand refresh turns "delayed" into a partial state tha
   const late = newsHealth({ doc, nowMs: NOW }); assert.equal(late.state, 'delayed'); assert.equal(late.onDemand, null);
   const od = newsHealth({ doc, nowMs: NOW, onDemandAt: iso(4) }); assert.equal(od.state, 'partial', 'market stories are current, company stories are not'); assert.equal(od.reason, 'refreshed on demand'); assert.equal(od.lastGood, late.lastGood); assert.equal(od.checked, late.checked);
   assert.equal(od.onDemand, '11:26 IST'); assert.match(od.line, /^Market news refreshed 11:26 IST\. Company stories are from the scheduled check at 10:30 IST, 60 minutes ago, which is running late\./);
+  const odPartial = newsHealth({ doc, nowMs: NOW, onDemandAt: iso(4), onDemandPartial: true }); assert.equal(odPartial.state, 'partial'); assert.match(odPartial.line, /^Market news refreshed 11:26 IST, but some market sources did not answer\. Company stories are from/, 'a refresh with a failed source says so');
   assert.equal(newsHealth({ doc, nowMs: NOW, onDemandAt: iso(200) }).state, 'delayed', 'an on-demand time from before the last good check does not count');
   assert.equal(newsHealth({ doc, nowMs: NOW, onDemandAt: iso(200) }).onDemand, null, 'and is not offered');
   const stale = newsHealth({ doc: { ...doc, checkedAt: iso(600), lastSuccessfulAt: iso(600) }, nowMs: NOW, onDemandAt: iso(300) }); assert.equal(stale.state, 'delayed', 'an on-demand refresh older than its own allowance no longer counts'); assert.match(stale.line, /refreshed on demand/);

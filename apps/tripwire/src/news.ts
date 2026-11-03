@@ -101,7 +101,7 @@ export function useNewsStore(): Core { return useSyncExternalStore(subscribe, ()
 export function useNewsHealth(): NewsHealth {
   const c = useNewsStore(); const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(i); }, []);
-  return useMemo(() => newsHealth({ doc: c.doc, unreachable: c.unreachable, remembered: c.remembered, nowMs: now, onDemandAt: c.onDemand?.refreshedAt ?? null, loaded: c.loaded }), [c.doc, c.unreachable, c.remembered, c.onDemand, c.loaded, now]);
+  return useMemo(() => newsHealth({ doc: c.doc, unreachable: c.unreachable, remembered: c.remembered, nowMs: now, onDemandAt: c.onDemand?.refreshedAt ?? null, onDemandPartial: c.onDemand?.status === 'partial', loaded: c.loaded }), [c.doc, c.unreachable, c.remembered, c.onDemand, c.loaded, now]);
 }
 
 /* ---------- live queries for names the snapshot does not cover ---------- */

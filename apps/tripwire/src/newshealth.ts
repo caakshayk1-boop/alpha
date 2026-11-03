@@ -30,7 +30,7 @@ export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n ==
 export const allowedAgeMin = (checkedMs: number) => DELAY_AFTER.cadences * cadenceMin(checkedMs) + DELAY_AFTER.graceMin;
 
 /** `doc`: the latest status document (null when none has been read). `unreachable`: reading it failed just now. `remembered`: the last document this browser held, for the unreachable case. */
-export function newsHealth({ doc, unreachable = false, remembered = null, nowMs, onDemandAt = null, loaded = true }: { doc: StatusDoc | null; unreachable?: boolean; remembered?: StatusDoc | null; nowMs: number; onDemandAt?: string | null; /** false until the first answer (or failure) has arrived: with nothing saved either, the state is `loading`, never `unavailable` */ loaded?: boolean }): NewsHealth {
+export function newsHealth({ doc, unreachable = false, remembered = null, nowMs, onDemandAt = null, onDemandPartial = false, loaded = true }: { doc: StatusDoc | null; unreachable?: boolean; remembered?: StatusDoc | null; nowMs: number; onDemandAt?: string | null; /** the on-demand refresh itself had a source that did not answer */ onDemandPartial?: boolean; /** false until the first answer (or failure) has arrived: with nothing saved either, the state is `loading`, never `unavailable` */ loaded?: boolean }): NewsHealth {
   const nowSec = nowMs / 1000; const d = doc ?? remembered;
   const out = (state: NewsState, line: string, extra: Partial<NewsHealth> = {}): NewsHealth => {
     const checkedSec = sec(d?.checkedAt), lastGoodSec = sec(d?.lastSuccessfulAt), nextSec = sec(d?.nextScheduledAt);
@@ -49,7 +49,7 @@ export function newsHealth({ doc, unreachable = false, remembered = null, nowMs,
     // A market-scope refresh made by the Worker inside its own allowance means the market stories are current and the company stories are not: that is a partial state, said in those words, not "delayed".
     // The scheduled check keeps its own time and the words "last successful check" (they are still late); only the badge stops claiming that nothing is current.
     if (od != null && odIst && (nowSec - od) / 60 <= allowedAgeMin(od * 1000))
-      return out('partial', `Market news refreshed ${odIst}. Company stories are from the scheduled check at ${lastGood}, ${agoWord(ageMin)} ago, which is running late.`, { reason: 'refreshed on demand', onDemand: odIst });
+      return out('partial', `Market news refreshed ${odIst}${onDemandPartial ? ', but some market sources did not answer' : ''}. Company stories are from the scheduled check at ${lastGood}, ${agoWord(ageMin)} ago, which is running late.`, { reason: 'refreshed on demand', onDemand: odIst });
     return out('delayed', `News delayed - last successful check ${lastGood}, ${Math.round(ageMin)} minutes ago; scheduled checks run every ${cadenceMin(good * 1000)} minutes at that time of day.${odIst ? ` Market stories were refreshed on demand ${odIst}.` : ''}`, { reason: 'older than the schedule allows', onDemand: odIst }); }
   if (d.status === 'partial') { const f = d.sourcesFailed ?? 0, t = d.sourcesTotal ?? 0; return out('partial', `Partial coverage${t ? `: ${plural(f, 'source')} of ${t} not answering` : ''}. Last successful check ${lastGood}.`, { reason: 'some sources failed' }); }
   const next = sec(d.nextScheduledAt);
