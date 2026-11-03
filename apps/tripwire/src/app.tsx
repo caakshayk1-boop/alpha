@@ -202,7 +202,8 @@ export function App(): ReactNode {
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {slot === 'show' && <div className="banner" role="status">The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>}
         {slot === 'reserve' && <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div>}
-        <div className="view" key={vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
+        {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
+        <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>
         <span className="pill" aria-hidden="true" />

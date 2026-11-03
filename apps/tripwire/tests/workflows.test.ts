@@ -17,6 +17,12 @@ test('the deploy retry skips when the live site already carries the data day, an
   const t = wf('tripwire.yml'); const retry = crons(t)[1];
   assert.ok(t.includes(`github.event.schedule == '${retry}'`), 'the skip is keyed to the retry slot only, so the first slot always builds and deploys');
   assert.match(t, /steps\.already\.outputs\.same != 'true'/); assert.match(t, /continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}/); assert.match(t, /Browser gate, second attempt/);
+  assert.match(t, /https:\/\/tripwire\.askakshay\.com\/data\/screen\.json/, 'the retry checks the site it deploys');
+});
+test('a failed research refresh is visible even when the ledger can publish other successful outputs', () => {
+  const t = wf('tripwire_ledger.yml');
+  assert.match(t, /id: factors/); assert.match(t, /id: rsi/);
+  assert.match(t, /steps\.rec\.outcome == 'failure' \|\| steps\.factors\.outcome == 'failure' \|\| steps\.rsi\.outcome == 'failure'/);
 });
 test('the news job has an offset second grid, and a crash or a failed publish makes the run red', () => {
   const t = wf('tripwire_news.yml'); const c = crons(t);

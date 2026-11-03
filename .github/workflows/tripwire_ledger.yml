@@ -41,10 +41,12 @@ jobs:
         run: python apps/tripwire/ledger/bars.py
         continue-on-error: true
       - name: Factor sheet (the less common indicators, with the study's verdicts)
+        id: factors
         working-directory: apps/tripwire/research
         run: python factors.py ../dist/data/screen.json ../ledger/factors.json results/factor_study.json
         continue-on-error: true
       - name: RSI on daily, weekly and monthly closes (read by Discover and the company page)
+        id: rsi
         working-directory: apps/tripwire/research
         run: python rsi_multi.py ../dist/data/screen.json ../ledger/rsi.json
         continue-on-error: true
@@ -62,6 +64,8 @@ jobs:
           git diff --cached --quiet && echo unchanged && exit 0
           git commit -m "paper: tripwire ledger $(date -u +%Y-%m-%d) [skip ci]"
           for i in 1 2 3; do git push origin HEAD:main && break; git pull --rebase origin main; [ "$i" = 3 ] && exit 1; done
-      - name: Fail the run if the prices could not be fetched
-        if: steps.rec.outcome == 'failure'
-        run: echo "::error::The ledger recorded its picks but could not fetch most prices. Outcomes were left as they were." && exit 1
+      - name: Report an incomplete price or research refresh
+        if: steps.rec.outcome == 'failure' || steps.factors.outcome == 'failure' || steps.rsi.outcome == 'failure'
+        run: |
+          echo "::error::The price replay or a research sheet could not refresh. Successful outputs were committed; rejected sheets kept their last good copy. Check the failed step above."
+          exit 1

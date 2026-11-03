@@ -61,7 +61,7 @@ jobs:
         if: ${{ github.event_name == 'schedule' && github.event.schedule == '45 3 * * 2-6' }}
         run: |
           built=$(node -e "console.log(JSON.parse(require('fs').readFileSync('apps/tripwire/dist/data/screen.json','utf8')).as_of)")
-          live=$(curl -fsS --max-time 30 https://alpha.askakshay.com/data/screen.json | node -e "let t='';process.stdin.on('data',d=>t+=d).on('end',()=>{try{console.log(JSON.parse(t).as_of)}catch{console.log('unknown')}})" || echo unknown)
+          live=$(curl -fsS --max-time 30 https://tripwire.askakshay.com/data/screen.json | node -e "let t='';process.stdin.on('data',d=>t+=d).on('end',()=>{try{console.log(JSON.parse(t).as_of)}catch{console.log('unknown')}})" || echo unknown)
           echo "built=$built live=$live"
           if [ "$built" = "$live" ]; then echo 'same=true' >> "$GITHUB_OUTPUT"; echo "The site already carries data through $built; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Deploy (manual, or the scheduled refresh on main)

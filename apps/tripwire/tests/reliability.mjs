@@ -44,7 +44,18 @@ let exportPath = join(tmp, 'tw-backup.json');
   ok(/^tripwire-backup-\d{4}-\d\d-\d\d\.json$/.test(dl.suggestedFilename()), `the export is a dated file: ${dl.suggestedFilename()}`);
   const ex = JSON.parse(readFileSync(exportPath, 'utf8')); ok(ex.app === 'tripwire' && ex.entries[0].versions.length === 3 && ex.plans.length === 1 && ex.paper.length === 1 && ex.follows.length === 2 && ex.prefs.equity === 2500000 && ex.seen.TCS.length === 1 && ex.inbox.length === 1, 'the export holds every journal version, the plan, the paper trade, follows, preferences and the since-you-last-looked state');
   await a.ctx.close();
-  const c = await mk(CLEAN); await settings(c.pg); await importFile(c.pg, 'tw-backup.json', readFileSync(exportPath));
+  // Hold the legacy URL rewrite until the screen has settled. An import can be the first state update that makes the router notice the quiet rewrite;
+  // it must not remount Settings and discard the confirmation. Without this, network timing makes the regression intermittent.
+  const c = await mk(CLEAN, { init: () => {
+    const replace = history.replaceState.bind(history);
+    history.replaceState = (...args) => {
+      if (args[2] === '#/settings') window.__finishSettingsRewrite = () => replace(...args);
+      else replace(...args);
+    };
+  } });
+  await settings(c.pg); await c.pg.waitForFunction(() => typeof window.__finishSettingsRewrite === 'function');
+  await c.pg.evaluate(() => window.__finishSettingsRewrite());
+  await importFile(c.pg, 'tw-backup.json', readFileSync(exportPath));
   const got = await saved(c.pg);
   ok(/Imported and merged: 1 journal entry, 1 plan, 1 paper trade, 2 followed names/.test(await text(c.pg)), 'the import says what it brought in');
   ok(JSON.stringify(got.entries) === JSON.stringify(RICH.entries) && JSON.stringify(got.plans) === JSON.stringify(RICH.plans) && JSON.stringify(got.paper) === JSON.stringify(RICH.paper) && JSON.stringify([...got.follows].sort()) === JSON.stringify(['GCSL', 'TCS']), 'a clean profile gets back the journal versions, the plan, the paper trade and the follows exactly');
