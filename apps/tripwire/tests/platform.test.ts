@@ -57,3 +57,17 @@ test('the app shell: the Worker marks it gzip so the runtime compresses it once 
     assert.equal(plain.headers.get('content-encoding'), null); assert.equal(await plain.text(), html);
   }
 });
+
+test('the app shell is encoded from the client\'s original Accept-Encoding when Cloudflare has rewritten it (request.cf.clientAcceptEncoding)', async () => {
+  const html = '<!doctype html><html><body>' + 'tripwire '.repeat(500) + '</body></html>';
+  const env = { ASSETS: { fetch: async () => new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' } }) } };
+  const req = (header: string | null, cf?: { clientAcceptEncoding?: string }) => { const r = new Request('https://tripwire.test/', header == null ? {} : { headers: { 'accept-encoding': header } }); if (cf) Object.defineProperty(r, 'cf', { value: cf }); return r; };
+  const enc = async (r: Request) => (await shellAsset(r, env)).headers.get('content-encoding');
+  assert.equal(await enc(req('br, gzip', { clientAcceptEncoding: 'identity' })), null, 'the edge rewrote the header to include gzip, but the client never asked for it');
+  assert.equal(await enc(req('br, gzip', { clientAcceptEncoding: '' })), null, 'an empty original value is "no encodings", not a reason to fall back to the rewritten header');
+  assert.equal(await enc(req('identity', { clientAcceptEncoding: 'gzip, deflate, br' })), 'gzip', 'the original value wins in the other direction too');
+  assert.equal(await enc(req('gzip, br')), 'gzip', 'without cf (a local runtime) the header is the client\'s own');
+  assert.equal(await enc(req('gzip;q=0')), null); assert.equal(await enc(req(null)), null);
+  assert.equal((await shellAsset(req('br, gzip', { clientAcceptEncoding: 'identity' }), env)).headers.get('vary'), 'Accept-Encoding', 'the response still varies on the header');
+});
+

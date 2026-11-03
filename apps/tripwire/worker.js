@@ -484,13 +484,14 @@ export async function dataAsset(request, env) {
 /** The app shell (index.html). The static headers send `Cache-Control: no-transform` so Cloudflare does not inject its analytics beacon, which the CSP blocks; but no-transform also stops Cloudflare from
  *  compressing the page (36 KB instead of about 11 KB, flagged by PageSpeed as "Document request latency, est. savings 24 KiB"). So the page is compressed inside the Worker: setting
  *  `Content-Encoding: gzip` on a plain body makes the Workers runtime encode it for the client (its default `encodeBody: "automatic"`; compressing it here as well would encode it twice, which an earlier
- *  version of this function did). The runtime sees a normalised Accept-Encoding, so clients that do not accept gzip are handled by the runtime, not here. The validator is dropped because it described the plain bytes. */
+ *  version of this function did). Cloudflare rewrites the Accept-Encoding the Worker sees to include gzip, and keeps the client's own value in `request.cf.clientAcceptEncoding`: whether to encode is decided from that original value when it is present (a local
+ *  workerd does not rewrite it, so there the header is the client's own). The validator is dropped because it described the plain bytes. */
 export async function shellAsset(request, env) {
   const res = await env.ASSETS.fetch(request);
   if (!res.ok || !res.body || res.headers.get('content-encoding') || !/text\/html/i.test(res.headers.get('content-type') || '')) return res;
   const out = new Response(res.body, res);
   out.headers.append('vary', 'Accept-Encoding');
-  const gzip = (request.headers.get('accept-encoding') || '').split(',').some((v) => /^gzip\s*(?:;\s*q\s*=\s*(?:1(?:\.0*)?|0?\.\d+))?\s*$/i.test(v.trim()) && !/q\s*=\s*0(?:\.0*)?\s*$/i.test(v));
+  const gzip = String(request.cf?.clientAcceptEncoding ?? request.headers.get('accept-encoding') ?? '').split(',').some((v) => /^gzip\s*(?:;\s*q\s*=\s*(?:1(?:\.0*)?|0?\.\d+))?\s*$/i.test(v.trim()) && !/q\s*=\s*0(?:\.0*)?\s*$/i.test(v));
   if (!gzip) return out;
   out.headers.delete('content-length'); out.headers.delete('etag'); out.headers.set('content-encoding', 'gzip');
   return out;
