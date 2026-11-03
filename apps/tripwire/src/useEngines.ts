@@ -13,7 +13,7 @@ export function useEngines() {
     // Positions from earlier nights only. The picks recorded for the data night on screen are the ones this run reproduces; they stay visible, labelled "In the auto book".
     ...(ledger.data?.ledger ? planAutoBook(ledger.data.ledger).taken.filter((p) => !ledger.data!.ledger.outcomes[p.pick.id]?.final && p.pick.asOf !== scr.data?.as_of).map((p) => p.pick.sym) : []),
   ]), [s.paper, ledger.data, scr.data]);
-  // A dataset one session behind (the nightly build is pending) is shown against its own session, so the list stays readable. It is labelled as previous-session data and entries stay off until the build lands.
+  // A dataset one session behind (the nightly build is pending) is shown against its own session, so the list stays readable. It is labelled as previous-session data (the Signals banner says so). A manual paper entry stays allowed, as before: the tracker fills at the next session's open and skips an open more than 2% above the signal close. Only the nightly recorder insists on the expected session.
   // Rows that are stale WITHIN the dataset still never vote, and the nightly recorder stays strict about the expected session.
   const behind = !!scr.data && scr.data.as_of < expected; const evalDay = scr.data ? (behind ? scr.data.as_of : expected) : expected;
   const key = JSON.stringify([evalDay, s.signalAgreement, [...held].sort()]);
