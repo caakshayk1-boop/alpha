@@ -97,7 +97,7 @@ let exportPath = join(tmp, 'tw-backup.json');
   const { ctx, pg } = await mk(null, { init: () => { try { if (!sessionStorage.getItem('twbad')) { sessionStorage.setItem('twbad', '1'); localStorage.setItem('tripwire:v1', '{"v":1,"follows":["TCS"],"entries":[{"id":'); } } catch { /* blocked */ } } });
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome', { timeout: 15000 }); await pg.waitForTimeout(500);
   ok((await pg.evaluate(() => localStorage.getItem('tripwire:v1:unreadable'))) === '{"v":1,"follows":["TCS"],"entries":[{"id":', 'the unreadable text is copied aside on first sight');
-  await pg.getByRole('button', { name: 'Explore as a guest' }).click(); await settings(pg);
+  await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today'); await settings(pg);
   ok(/A copy of unreadable saved data was kept/.test(await text(pg)), 'Settings says a copy was kept');
   const [dl] = await Promise.all([pg.waitForEvent('download'), pg.getByRole('button', { name: 'Download that copy' }).click()]); const p = join(tmp, 'unreadable.txt'); await dl.saveAs(p);
   ok(readFileSync(p, 'utf8') === '{"v":1,"follows":["TCS"],"entries":[{"id":', 'the downloaded copy is exactly what was there');

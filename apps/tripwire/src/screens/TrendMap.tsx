@@ -30,10 +30,10 @@ export function TrendMap({ rows, day, map, live, liveAt, open, repriced, err }: 
     <div className="tm-go" role="group" aria-label="Open Discover with these filters">
       {sc.map((x) => <a key={x.id} href={x.href} className="tm-btn"><span className="num tm-n">{x.n}</span><span className="tm-t">{x.title}</span><span className="small mute">{x.line}</span></a>)}
     </div>
-    <div className="row between" style={{ margin: '12px 0 6px' }}>
+    <details className="more sector-alternate"><summary>Explore sector and size tiles</summary><div className="row between" style={{ margin: '12px 0 6px' }}>
       <span className="k">{by === 'sector' ? (ranked.length > 8 ? 'Four strongest and four weakest sectors' : 'Sectors, strongest first') : 'By size class'}</span>
       <div className="mini-seg" role="group" aria-label="Group by">{(['sector', 'size'] as const).map((v) => <button key={v} aria-pressed={by === v} onClick={() => setBy(v)}>{v === 'sector' ? 'SECTOR' : 'SIZE'}</button>)}</div></div>
-    {cells.length > 0 ? <Heat cells={cells} href={href} /> : <p className="small dim" style={{ margin: 0 }}>No group has enough names to compare.</p>}
+    {cells.length > 0 ? <Heat cells={cells} href={href} /> : <p className="small dim" style={{ margin: 0 }}>No group has enough names to compare.</p>}</details>
     <div className="small mute" style={{ margin: '8px 0 0' }}>
       {live && open ? <>Trend split live · prices fetched <Ago at={liveAt} />. </> : live ? 'Trend split on the last prices. ' : `Trend split at the close of ${dayWord(day)}. `}Breadth figures and groups are always the close of {dayWord(day)}. {map.n} of {st.liquid} liquid names have the 200-day average the trend needs.
       {repriced != null ? ` Today's price was used for the ${repriced} names near a trend line.` : err ? ' Live update unavailable.' : ''}</div>

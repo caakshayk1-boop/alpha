@@ -126,22 +126,25 @@ export function Discover() {
         </select>
         <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
       </div>
-      <button className="chip dbtn" onClick={() => setSheet('columns')} aria-haspopup="dialog">Columns</button>
+
       <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
     </div>
 
+    <div className="dfilterbar">
     <div className="chips chosen dchips" role="group" aria-label="Active filters">
       {chips.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={c.off} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}
       {st.cond.map((c) => <button key={`${c.m}${c.op}${c.v}${c.unk ? 1 : 0}`} className="chip cc on-x" onClick={() => patch({ cond: st.cond.filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
-      <button className="chip" onClick={() => setFigureM({ m: 'rsi', back: false })}>+ Condition</button>
+
       {hasAnyFilter(st) && <button className="chip" onClick={clearAll}>Clear all</button>}
     </div>
 
+    <div className="quick-research" role="group" aria-label="Quick research screens">{PRESETS.slice(0, 3).map((p) => <button key={p.id} className="chip" aria-pressed={preset?.id === p.id} title={presetCriteria(p).join('; ')} onClick={() => { setSt((x) => preset?.id === p.id ? clearPreset(x) : applyPreset(x, p)); tick(); }}>{p.title}</button>)}</div>
+    </div>
     {preset && <p className="small preset-on" role="status" data-preset-active><b>Preset: {preset.title}.</b> Criteria: {presetCriteria(preset).join('; ')}. <button className="linkbtn" onClick={() => { setSt(clearPreset); tick(); }}>Clear preset</button></p>}
 
     <details className="adv" onToggle={(e) => setAdvOpen(e.currentTarget.open)}>
-      <summary>Advanced</summary>
-      <div className="advbody">
+      <summary>Research tools</summary>
+      <div className="advbody"><div className="chips wrap">      <button className="chip dbtn" onClick={() => setSheet('columns')} aria-haspopup="dialog">Columns</button>      <button className="chip" onClick={() => setFigureM({ m: 'rsi', back: false })}>+ Condition</button></div>
       <div className="presets" data-presets>
         <h3 className="presh">Research presets</h3>
         <div className="presbody">
@@ -250,16 +253,16 @@ function FigCell({ r, d, id, pm }: { r: Row; d: { row: Row; live: boolean }; id:
 function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d: { row: Row; live: boolean }; pm: Set<MetricKey>; sort: SortId; picked: boolean; full: boolean; onPick: () => void; selected: boolean }) {
   const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const sm = sort === 'name' || sort === 'sym' ? null : metricOf(sort);
   const closeVal = sm ? cellOf(r, { row: r, live: false }, sort as MetricKey) : null;
-  return <div className={`li ${selected ? 'sel' : ''}`} data-sym={r.sym}>
-    <a className="row grow" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }} aria-current={selected ? 'true' : undefined}>
+  return <div className={`li discover-row ${selected ? 'sel' : ''}`} data-sym={r.sym}>
+    <a className="row grow discover-main" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }} aria-current={selected ? 'true' : undefined}>
       <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
-      <span className="grow" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />
-        {sm && closeVal && closeVal.state === 'value' && <span className="metatag" style={{ '--mc': 'var(--a4)' } as React.CSSProperties} title="The figure the list is sorted by, at the close">{sm.short} {fmtMetric(sm, closeVal.v)}</span>}<span className="dim small trunc">{r.name}</span></span></span>
+      <span className="grow discover-identity" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />
+        {sm && closeVal && closeVal.state === 'value' && <span className="metatag" style={{ '--mc': 'var(--a4)' } as React.CSSProperties} title="The figure the list is sorted by, at the close">{sm.short} {fmtMetric(sm, closeVal.v)}</span>}<span className="dim small company-name">{r.name}</span></span></span>
       <span className="wide num">{(['pe', 'roce_med', 'rs3m', 'from_high'] as MetricKey[]).map((id) => <span key={id}><small>{id === 'pe' ? 'PE' : id === 'roce_med' ? 'ROCE' : id === 'rs3m' ? 'vs Nifty 3m' : 'From high'}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}</span>
       <span className="px num" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="price print" title="Latest price print: live while the market is open, otherwise the last traded price" />}</b><span className={tone(dc.v)}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>
     </a>
-    <button className="icon-btn" aria-pressed={picked} disabled={full && !picked} aria-label={`${picked ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={onPick}><Icon n="compare" /></button>
-    <FollowButton sym={r.sym} name={r.name} />
+    <div className="discover-actions"><button className="icon-btn" aria-pressed={picked} disabled={full && !picked} aria-label={`${picked ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={onPick}><Icon n="compare" /></button>
+    <FollowButton sym={r.sym} name={r.name} /></div>
   </div>;
 }
 /** A mutually exclusive choice: one tab stop, arrow keys move and choose, exposed as a radio group. */

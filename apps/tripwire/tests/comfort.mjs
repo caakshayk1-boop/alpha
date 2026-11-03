@@ -41,7 +41,7 @@ const ratio = (a, c) => { const [x, y] = [lum(a), lum(c)].sort((p, q) => q - p);
   await pg.goto(base + '/#/discover'); await pg.reload(); await pg.waitForSelector('.adv summary'); await pg.locator('.adv summary').click();
   await clear('Discover search', 'input[type=search], input[placeholder*="earch"]');
   await clear('Ask in words', '.askbox input');
-  await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await clear('condition value', '#c-v'); await pg.keyboard.press('Escape');
+  await pg.locator('.adv').evaluate(el => { el.open = true; }); await pg.getByRole('button', { name: /^\+ Condition$/ }).click(); await clear('condition value', '#c-v'); await pg.keyboard.press('Escape');
   await pg.goto(base + '/#/profile'); await pg.reload(); await pg.waitForSelector('input,textarea'); const f = await pg.locator('input:not([type=checkbox]):not([role=switch]):not([type=file]),textarea').count(); if (f) await clear('Profile field', 'input:not([type=checkbox]):not([role=switch]):not([type=file]),textarea');
   await ctx.close(); }
 

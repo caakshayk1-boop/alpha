@@ -97,7 +97,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   ok((await current(pg)) === 'More' && Math.abs(y2 - ym) < 40, `More: back inside Methodology at the same place (${ym} then ${y2})`);
   await tab(pg, 'More'); await pg.waitForTimeout(300); ok((await pg.evaluate(() => scrollY)) < 4 && (await pg.evaluate(() => location.hash)) === '#/methodology', 'a tap on the tab you are in scrolls to the top and stays on the page');
   await tab(pg, 'More'); await pg.waitForSelector('[data-more]'); ok(await pg.evaluate(() => location.hash) === '#/more', 'a second tap, already at the top, returns to the tab’s first screen (More)');
-  await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]'); await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.heat a'); await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]');
+  await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]'); await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a'); await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]');
   ok(await pg.evaluate(() => location.hash) === '#/today', 'the Today tab opens Today, not the Markets page that was opened from it');
   await ctx.close(); }
 

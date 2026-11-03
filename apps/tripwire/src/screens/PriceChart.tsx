@@ -93,7 +93,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const metaBits = [`${range === 'Max' ? 'All history held' : range}`, FRAME_WORD[bars ? eff : view] + ' closes', cmp ? 'indexed to 100' : instrument ? `${name ?? sym} units` : '₹ per share', `through ${dateLabel(all[all.length - 1].t)}`];
   const endLabs = (() => { if (!pair || !cmp) return []; const ws = spreadLabels([pair.ysA[pair.ysA.length - 1] / pair.H, pair.ysB[pair.ysB.length - 1] / pair.H]); return [{ s: S, y: ws[0], t: `${arrowOf(cmp.stock)} ${pct(cmp.stock)}` }, { s: B, y: ws[1], t: `${arrowOf(cmp.nifty)} ${pct(cmp.nifty)}` }]; })();
   const tipLeft = (geo ?? pair) && i != null ? ((geo ?? pair)!.xs[i] / (geo ?? pair)!.W) * 100 : 0;
-  const tip = p && i != null ? (cmp ? `${dateLabel(p.t, view === 'monthly')} · ${sym} ${pct(cmpA)} · Nifty ${pct(cmpB)}` : `${dateLabel(p.t, view === 'monthly')} · ${f(p.c)}`) : null;
+  const tip = p && i != null ? (cmp ? `${dateLabel(p.t, view === 'monthly')} · ${sym} ${pct(cmpA)} · Nifty ${pct(cmpB)} · gap ${signedPts((cmpA ?? 0) - (cmpB ?? 0))} pts` : `${dateLabel(p.t, view === 'monthly')} · ${f(p.c)}`) : null;
 
   const chart = <>
     <div ref={box} className="chart-plot" tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
@@ -163,7 +163,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         <svg viewBox={`0 0 ${geo.W} ${H2}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={geo.W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" vectorEffect="non-scaling-stroke" /><path d={`${d}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${y(0)}L${geo.xs[0].toFixed(1)} ${y(0)}Z`} fill="var(--down)" fillOpacity=".12" /><path d={d} fill="none" stroke="var(--down)" strokeWidth="1.25" strokeDasharray="6 2" vectorEffect="non-scaling-stroke" /></svg></div></div>; })()}
   </>;
 
-  return <ChartFrame label="Price history" printTableClosed={!!report}
+  return <ChartFrame leadAfter label="Price history" printTableClosed={!!report}
     title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={metaBits.join(' · ')} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
     basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
    
@@ -180,13 +180,6 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
       {evOn && evIn.length > 0 && <p className="small mute" style={{ margin: '6px 0 0' }}>{evIn.map((e) => `${dateLabel(e.t)}: ${e.label} (${e.basis})`).join(' · ')}. No other dated events (dividend, split, announcement) are held in this data, so none are marked.</p>}
       {!win.covers && range !== 'Max' && <p className="small mute" style={{ margin: '6px 0 0' }}>Data starts {dateLabel(all[0].t)}: {range} shows all of it.</p>}
       {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
-      {!report && <div className="c-prim" role="group" aria-label="Chart controls">
-        <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
-        <div className="c-prim2">
-          {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
-          <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" onClick={() => setOptsOpen(true)}>Chart options{optCount > 0 && <span className="c-badge" aria-label={`${optCount} changed`}>{optCount}</span>}</button>
-        </div>
-      </div>}
       {report && <KeyPoints pts={win.pts} f={f} stockOnly={!!cmp} />}
       {!report && optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
         <div className="c-sheet">
@@ -212,6 +205,13 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         <p style={{ margin: '0 0 6px' }}>{cmp ? `${BASIS.stock} ${BASIS.nifty} Both lines are indexed to 100 on ${dateLabel(cmp.from.t)} (units: index points).` : instrument ? BASIS.instrument(name ?? sym) : `${BASIS.stock}${candles ? " Candles show each bar's open, high, low and close." : ''} The live price is not drawn here and never moves this chart.`}</p>
         <p style={{ margin: 0 }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock. A price change is the stock on its own; the relative figure is the stock minus the Nifty in percentage points. Past prices say nothing certain about future ones.'}</p></div></details>
     </>}>
+      {!report && <div className="c-prim" role="group" aria-label="Chart controls">
+        <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />
+        <div className="c-prim2">
+          {!instrument && <Radios label="Compare" value={vs ? 'vs' : 'price'} onChange={(v) => chooseVs(v === 'vs')} items={[{ id: 'price', label: 'PRICE' }, { id: 'vs', label: 'VS NIFTY', disabled: !hasNifty, hint: !hasNifty ? 'The Nifty could not be read' : undefined }]} />}
+          <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" onClick={() => setOptsOpen(true)}>Chart options{optCount > 0 && <span className="c-badge" aria-label={`${optCount} changed`}>{optCount}</span>}</button>
+        </div>
+      </div>}
     {chart}
   </ChartFrame>;
 }

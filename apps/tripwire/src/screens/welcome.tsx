@@ -12,20 +12,21 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const leave = () => setState((x) => ({ ...x, onboarded: true }));
   const choose = (sym: string) => { go(`/c/${encodeURIComponent(sym)}?first=1`); leave(); };
   return <div className="welcome">
-    {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore as a guest, then import a backup from Profile to restore your notes.</div>}
+    {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore markets, then import a backup from Settings to restore your notes.</div>}
     <div className="k">Tripwire</div>
     <h1>Start with one company.</h1>
-    <p className="dim" style={{ fontSize: '0.9688rem', margin: 0 }}>Search a listed Indian company to read the case and the countercase side by side. A screen over listed companies and two experimental ranking engines. Nothing here is a recommendation, and nothing is followed for you.</p>
+    <p className="dim" style={{ fontSize: '0.9688rem', margin: 0 }}>Understand an Indian company. See the evidence for it, the risks against it, and build your own view.</p>
     <form className="wl-find" role="search" onSubmit={(e) => { e.preventDefault(); if (hits[0]) choose(hits[0].sym); }}>
       <label className="l" htmlFor="wl-q">Company name or symbol</label>
       <div className="search"><Icon n="search" /><input id="wl-q" className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="For example TCS or Infosys" autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
       {scr.loading && <p className="small dim" style={{ margin: '8px 0 0' }}>Reading the company list…</p>}
-      {scr.err && <p className="small down" role="alert" style={{ margin: '8px 0 0' }}>The company list could not be loaded ({scr.err}). You can still explore as a guest and search later.</p>}
+      {scr.err && <p className="small down" role="alert" style={{ margin: '8px 0 0' }}>The company list could not be loaded ({scr.err}). You can still explore markets and search later.</p>}
       <p className="sr" role="status" aria-live="polite">{t && scr.data ? `${hits.length} ${hits.length === 1 ? 'company matches' : 'companies match'}` : ''}</p>
       {hits.length > 0 && <div className="list wl-hits">{hits.map((r) => <button type="button" key={r.sym} className="li" style={{ textAlign: 'left' }} onClick={() => choose(r.sym)}><span className="avatar" aria-hidden="true">{r.sym.slice(0, 2)}</span><span className="grow"><b>{r.sym}</b><span className="dim small trunc" style={{ display: 'block' }}>{r.name}{r.sector ? ` · ${r.sector}` : ''}</span></span></button>)}</div>}
-      {t && scr.data && hits.length === 0 && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”. Search covers the Nifty 500 screen only.</p>}
+      {t && scr.data && hits.length === 0 && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”. Try a name or symbol from the published company screen.</p>}
     </form>
-    <div className="wl-out"><button className="btn" onClick={leave}>Skip</button><button className="btn" onClick={leave}>Explore as a guest</button></div>
+    {!t && <div className="wl-examples" aria-label="Example companies">{['TCS', 'INFY', 'RELIANCE'].filter((sym) => scr.data?.rows.some((r) => r.sym === sym)).map((sym) => <button key={sym} className="chip" onClick={() => choose(sym)}>{sym}<Icon n="chev" /></button>)}</div>}
+    <div className="wl-out"><button className="btn" onClick={() => { go('/markets'); leave(); }}>Explore markets</button></div>
     <p className="mute small" style={{ margin: 0 }}>No account needed. Notes stay on this device. Paper analysis only: not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>
   </div>;
 }

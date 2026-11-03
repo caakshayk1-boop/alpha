@@ -103,7 +103,7 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   const s1 = await symsOf(wild.pg), c1 = await count(wild.pg); ok(c0 === c1 && s0.length === s1.length && s0.every((s, i) => s === s1[i]), `wild live prices: the same ${c0} names in the same order as with none`);
   await wild.pg.getByRole('radio', { name: 'Table' }).click(); await wild.pg.waitForSelector('.stbl'); const t1 = await symsOf(wild.pg); ok(t0.join() === t1.join() && t1.join() === s1.join(), 'and the table agrees with the list');
   ok((await wild.pg.locator('.stbl .ldot').count()) > 3 && /marks a figure worked out at (today's live|the last traded) price/.test(await wild.pg.locator('body').innerText()) && /close of \w{3} \d+ \w{3}/.test(await wild.pg.locator('.basis').innerText()), 'live cells are marked, and the basis is stated above the results with the close date');
-  await wild.pg.getByRole('button', { name: /^Columns$/ }).click(); await wild.pg.getByRole('radio', { name: /Momentum/ }).check().catch(() => {}); await wild.pg.keyboard.press('Escape');
+  await wild.pg.locator('.adv').evaluate(el => { el.open = true; }); await wild.pg.getByRole('button', { name: /^Columns$/ }).click(); await wild.pg.getByRole('radio', { name: /Momentum/ }).check().catch(() => {}); await wild.pg.keyboard.press('Escape');
   ok((await wild.pg.locator('.stbl .atclose').count()) > 0 || (await wild.pg.locator('.atclose').count()) > 0, 'where a live figure differs from the close the filter used, the close is printed beside it');
   const lc = await wild.pg.locator('.stbl tbody tr').first().locator('td').nth(0).innerText(); void lc;
   await wild.pg.getByRole('radio', { name: 'List' }).click(); await wild.pg.waitForTimeout(300); ok((await wild.pg.locator('.li .ldot').count()) > 3, 'the list marks live cells the same way');
@@ -123,7 +123,7 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   await m.ctx.close(); }
 
 /* ---- 9. conditions: numbers read strictly, nonsense blocked inline, unknown figures a choice ---- */
-{ const { ctx, pg } = await mk(); await open(pg, ''); await pg.getByRole('button', { name: '+ Condition' }).click(); await pg.waitForSelector('[role=dialog]');
+{ const { ctx, pg } = await mk(); await open(pg, ''); await pg.locator('.adv').evaluate(el => { el.open = true; }); await pg.getByRole('button', { name: '+ Condition' }).click(); await pg.waitForSelector('[role=dialog]');
   const add = pg.getByRole('button', { name: 'Add', exact: true }); await pg.locator('#c-v').fill('abc'); ok(/not a number/.test(await pg.locator('#c-e1').innerText()) && (await add.isDisabled()), 'text in a number box is refused inline');
   await pg.locator('#c-v').fill('130'); ok(/0 to 100/.test(await pg.locator('#c-e1').innerText()) && (await add.isDisabled()), 'RSI 130 is refused inline'); await pg.locator('#c-v').fill(''); ok(/Enter a number/.test(await pg.locator('#c-e1').innerText()), 'an empty box is not zero');
   await pg.locator('#c-v').fill('60'); await pg.locator('#c-v2').fill('40'); ok(/above To/.test(await pg.locator('#c-e2').innerText()) && (await add.isDisabled()), 'From above To is refused inline');

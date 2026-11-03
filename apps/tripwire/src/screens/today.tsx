@@ -28,7 +28,6 @@ import { pickFacts, factLine } from '../pickfacts.ts';
 import { BASIS_NOTE, targetPrices } from '../levels.ts';
 import { pickId } from '../ledger.ts';
 import { alertLine, type HitAlert } from '../alerts.ts';
-import { briefLines } from '../brief.ts';
 import { useTrendSummary } from '../trendsummary.ts';
 import { WhatMattersNowSlot } from '../todaynews.tsx';
 import { SinceVisit } from './SinceVisit.tsx';
@@ -52,7 +51,6 @@ export function Today() {
   const t = useTrendSummary(rows, day, true);
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const niftyCh = chOf('NIFTY'), bankCh = chOf('BANKNIFTY'), vixCh = chOf('VIX'); const md = mood(niftyCh, bankCh, vixCh);
-  const lines = briefLines({ niftyCh, bankCh, vixCh, upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, day, behind: fr.behind, live });
   const take = marketTakeaway({ niftyCh, vixCh, upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: fr.behind });
   const events = s.follows.map((sym) => rows.find((r) => r.sym === sym)).filter((r): r is Row => !!r && !!r.next_earnings && r.next_earnings >= today && r.next_earnings <= addDays(today, 30)).sort((a, b) => a.next_earnings!.localeCompare(b.next_earnings!));
   const reviews = s.entries.filter((e) => ['overdue', 'today'].includes(reviewDue(e) ?? ''));
@@ -76,10 +74,9 @@ export function Today() {
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} right={<button className="icon-btn" aria-pressed={!!s.prefs.hideAmounts} aria-label={s.prefs.hideAmounts ? 'Show my amounts' : 'Hide my amounts'} onClick={() => { setState((x) => ({ ...x, prefs: { ...x.prefs, hideAmounts: !x.prefs.hideAmounts } })); }}><Icon n={s.prefs.hideAmounts ? 'eyeoff' : 'eye'} /></button>} />
     <div className="today">
       {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
-      <section className="t-hero" data-hero aria-label="What Tripwire is">
-        <p className="t-def">Tripwire fires published rules on NSE stocks, and shows you the evidence.</p>
+      <section className="t-hero" data-hero aria-label="Research data status">
         <FreshnessPill />
-        <div className="t-gate" data-loading={sig.loading || undefined}><GateCard /></div>
+        <details className="research-status"><summary>Signal validation and evidence</summary><div className="t-gate" data-loading={sig.loading || undefined}><GateCard /></div></details>
       </section>
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
@@ -88,19 +85,17 @@ export function Today() {
       {<section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} />{md && <span className="tag" title="A description of today's move from the Nifty, Bank Nifty and VIX. Not a forecast.">Mood {md.word}</span>}</span></div>
         <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
-        <p className="brief-text" data-brief>{lines.length ? lines.filter((l) => !(take?.parts.breadth && /liquid names are in an uptrend/.test(l))).join(' ') : scr.loading ? 'Reading the market…' : 'No market figures are available right now.'}</p>
         <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 && <Spark c={q.c} up={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} h={30} label={`${nm}, latest session`} />}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen: close of {dayWord(day)} <SessionPill asOf={day} /> · times in IST · <a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></p>
+        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-scr"><span>Screen data through {dayWord(day)} · times in IST</span><SessionPill asOf={day} /></span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
       </section>}
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
         <h2 id="t-setup" className="sec">Start with one company</h2>
-        <p className="dim" style={{ margin: '6px 0 12px' }}>Search a listed company, read the case and the countercase side by side, and save a thought if you want to. Nothing is followed for you.</p>
-        <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button>
+        <button className="btn pri" onClick={() => open({ k: 'search' })}><Icon n="search" />Find a company</button>
       </section>}
       {fresh && <SampleWalkthrough />}
 

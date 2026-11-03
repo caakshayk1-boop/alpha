@@ -17,7 +17,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const { ctx, pg } = await mk(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 140)));
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1');
   const w = await text(pg);
-  ok(!/Ten plain rules|Nifty 500 names/.test(w) && /two experimental ranking engines/.test(w), 'the welcome screen states what the product is, with no claim the data does not back');
+  ok(!/Ten plain rules|Nifty 500 names/.test(w) && /evidence for it, the risks against it/.test(w), 'the welcome screen states what the product is, with no claim the data does not back');
   await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('button', { name: /GCSL/ }).first().click(); await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
   ok(!(await saved(pg)).follows.length, 'choosing a company during first use does not follow it');
   await pg.getByRole('button', { name: 'Not now' }).click(); await pg.waitForSelector('.decision', { timeout: 15000 });
@@ -64,7 +64,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
 /* ---- 1b. a browser that will not keep data says so, before a person writes anything that vanishes ---- */
 {
   const { ctx, pg } = await mk(); await ctx.addInitScript((s) => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; void s; }, 0);
-  await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore as a guest/ }).click(); await pg.waitForTimeout(800);
+  await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1', { timeout: 15000 }); await pg.getByRole('button', { name: /Explore markets/ }).click(); await pg.goto(base + '/#/today'); await pg.waitForTimeout(800);
   const banner = await pg.locator('.banner[role=alert]').innerText().catch(() => '');
   ok(/could not save: this browser's storage is full/.test(banner) && /Download a backup now/.test(banner), 'when storage refuses to write, a banner says why and offers a backup: ' + banner.slice(0, 70)); await ctx.close();
 }
@@ -76,7 +76,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const [dl] = await Promise.all([pg.waitForEvent('download'), pg.getByRole('button', { name: 'Export all (JSON)' }).click()]); const path = '/tmp/tw-backup.json'; await dl.saveAs(path);
   const exported = JSON.parse(readFileSync(path, 'utf8')); ok(exported.entries[0].versions.length >= 1 && exported.follows.includes('GCSL') && exported.app === 'tripwire', 'the export holds the journal, follows and paper trades');
   await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForSelector('.welcome');
-  await pg.getByRole('button', { name: 'Explore as a guest' }).click(); await pg.goto(base + '/#/profile'); await pg.waitForSelector('text=Import backup');
+  await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today'); await pg.goto(base + '/#/profile'); await pg.waitForSelector('text=Import backup');
   await pg.locator('input[type=file]').setInputFiles(path); await pg.waitForTimeout(500);
   const back = await saved(pg); ok(JSON.stringify(back.entries) === JSON.stringify(STATE.entries) && JSON.stringify(back.paper) === JSON.stringify(STATE.paper) && back.follows.length === 2, 'import on a new device restores the journal, trades and follows exactly');
   await pg.setInputFiles('input[type=file]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":99}') }); await pg.waitForTimeout(400);

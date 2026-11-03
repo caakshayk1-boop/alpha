@@ -37,12 +37,12 @@ const text = async () => { await pg.waitForFunction(() => !document.querySelecto
 await pg.goto(base + '/', { waitUntil: 'load' });
 await pg.waitForSelector('.welcome h1', { timeout: 15000 }).catch(() => {}); ok(await pg.locator('.welcome h1').isVisible(), 'first run shows the welcome screen');
 await shot('00-welcome');
-await pg.getByRole('button', { name: 'Explore as a guest' }).click();
+await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today');
 await pg.waitForSelector('nav.tabs');
 ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Discover|My Desk|More', 'four destinations: Today, Discover, My Desk, More');
 await pg.waitForSelector('.brief-ix', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
 await pg.waitForTimeout(600); await shot('01-today');
-ok(/Screen: close of/.test(await text()), 'Today states the data date');
+ok(/Screen data through/.test(await text()), 'Today states the data date');
 await pg.waitForSelector('.brief-ix .bix b');
 ok((await pg.locator('.brief-ix a[href="#/markets"]').count()) === 3 && /24,120/.test(await text()) && /Nifty 50/i.test(await text()) && /Bank Nifty/.test(await text()) && /India VIX/.test(await text()), 'Today shows the Nifty, Bank Nifty and VIX in the brief, each opening the Markets page');
 await pg.locator('.brief-ix a').first().click(); await pg.waitForSelector('.moodhero a[href*="tradingview.com"]');
@@ -74,7 +74,7 @@ await pg.goBack(); await pg.waitForSelector('.brief-ix');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 ok(!/Your names|Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0, 'Today carries no empty-state cards, no per-name news block and no duplicate ticker');
 ok((await pg.locator('section.nw .nw-list > .nw-row').count()) <= 5, 'the news on Today is at most five lines until asked for more');
-await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.heat a', { timeout: 15000 }); await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
+await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }); await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.brief-ix');
 
@@ -125,7 +125,7 @@ ok(/Accounts and sign-in/i.test(await text()) && /Not set up/i.test(await text()
 ok(!/coming soon/i.test(await text()), 'no service is described as coming soon');
 pg = pgMain; await lctx.close();
 // the range builder: any figure, an exact value or a range, with the picture and a live count
-await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
+await pg.locator('.adv').evaluate(el => { el.open = true; }); await pg.getByRole('button', { name: /^\+ Condition$/ }).click();
 await pg.locator('#c-m').selectOption('rsi'); await pg.getByRole('radio', { name: 'Around' }).click();
 await pg.locator('#c-v').fill('47'); await pg.locator('#c-v2').fill('1.5');
 ok(/of \d+ companies match/.test(await pg.locator('p[role=status]').last().innerText()), 'the condition sheet counts the matches live');
@@ -347,7 +347,7 @@ ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,
 ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
-await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
+await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
 ok(await pg.locator('.heat a').count() >= 3, 'the Markets page has a sector heat map (the ticker tape that repeated the strip is gone)');
 ok(await pg.locator('canvas').count() === 0, 'the mood card is a plain data panel: no canvas, no moving water');
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');

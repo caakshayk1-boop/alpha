@@ -26,13 +26,12 @@ export function Desk({ seg }: { seg: string }) {
 /** A desk with nothing on it says so once and offers the ways to put something there. No panel of zeros. */
 function NewDesk() {
   const { open } = useSheets();
-  return <div className="dsk dsk-empty" data-desk="new"><section className="card" aria-labelledby="dsk-new"><h2 id="dsk-new" className="sec">Nothing on your desk yet</h2>
-    <p className="dim" style={{ margin: '6px 0 0' }}>This is where your research collects, on this device only: companies you follow, your theses, paper plans and saved comparisons. Nothing is added for you.</p></section>
-    <Workflow />
-    <div className="dsk-ways" role="group" aria-label="Ways to start">
-      <div className="dsk-way"><h3>Start with a company</h3><p className="small dim">Find one by name, read its page, then follow it or write a thesis.</p><button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></div>
-      <div className="dsk-way"><h3>Try the planner</h3><p className="small dim">Size a hypothetical position to see the cash used and the modelled loss at a stop you choose. Paper only.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
-    </div></div>;
+  return <div className="dsk dsk-empty" data-desk="new"><section className="card desk-start" aria-labelledby="dsk-new"><span className="k">Your research, in one place</span><h2 id="dsk-new" className="sec">Your next idea starts here.</h2>
+    <p className="dim">Follow a company to track what changes, then save your thesis when you are ready. Your notes stay on this device.</p>
+    <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></section>
+    <Fold id="workflow" title="A guide to researching a company" summary="From first look to your own thesis."><Workflow /></Fold>
+    <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
+    </div>;
 }
 const DAY = 86400000;
 const addD = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);

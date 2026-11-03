@@ -15,12 +15,12 @@ const open = async (route, state = STATE, w = 390) => {
 };
 const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
-/* ---- My Desk: an empty desk explains the workflow and offers two ways in ---- */
+/* ---- My Desk: an empty desk offers one primary action, a paper-plan option and an optional guide to the workflow ---- */
 { const { ctx, pg, errs } = await open('/#/desk', EMPTY);
-  await pg.waitForSelector('[data-desk="new"]'); const steps = await pg.locator('[data-workflow] .wf-step').allInnerTexts();
+  await pg.waitForSelector('[data-desk="new"]'); await pg.locator('details[data-fold="workflow"]').evaluate((el) => { el.open = true; }); const steps = await pg.locator('[data-workflow] .wf-step').allInnerTexts();
   ok(steps.length === 5 && ['Understand', 'Check evidence and risks', 'Compare', 'Write a thesis', 'Track'].every((t, i) => steps[i].includes(t)), `the five workflow steps are explained in order (${steps.length})`);
   ok(/Paper only/.test(await pg.locator('[data-workflow]').innerText()), 'the workflow says it is paper only');
-  ok(await pg.locator('.dsk-ways .btn').count() === 2, 'two ways to start, not a panel of controls');
+  ok(await pg.locator('[data-desk="new"] > .btn, [data-desk="new"] > section .btn.pri, [data-desk="new"] > .dsk-way .btn').count() === 2 && await pg.locator('[data-desk="new"] .btn.pri').count() === 1, 'one primary way to start and one secondary, not a panel of controls');
   await pg.getByRole('button', { name: 'Size a paper position' }).click(); await pg.waitForSelector('[role=dialog]');
   await pg.locator('#pl-s').fill('TCS'); await pg.locator('#pl-e').fill('2500'); await pg.locator('#pl-x').fill('2400'); await pg.waitForSelector('[data-plan-figures]');
   const f = (await pg.locator('[data-plan-figures]').innerText()).replace(/\s+/g, ' ');

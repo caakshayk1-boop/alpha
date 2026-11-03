@@ -22,7 +22,8 @@ const text = async (pg) => { await pg.waitForFunction(() => !document.querySelec
 {
   const { ctx, pg, errs } = await mk(null);
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1');
-  ok(/Start with one company/.test(await text(pg)) && await pg.getByRole('button', { name: 'Skip' }).count() === 1 && await pg.getByRole('button', { name: 'Explore as a guest' }).count() === 1, 'first use asks for one company and keeps Skip and Explore as a guest');
+  ok(/Start with one company/.test(await text(pg)) && await pg.getByRole('button', { name: 'Skip' }).count() === 0 && await pg.getByRole('button', { name: 'Explore markets' }).count() === 1, 'first use asks for one company and has one Explore markets action');
+  ok(await pg.evaluate(() => document.documentElement.classList.contains('fx')), 'new users get restrained motion by default');
   ok(!/dashboard|Your path|0 of 4/i.test(await pg.locator('.welcome').innerText()), 'it is not a dashboard-first onboarding');
   await pg.getByLabel('Company name or symbol').fill('zzzqq'); ok(/No company matches/.test(await text(pg)), 'a search with no match says so');
   await pg.getByLabel('Company name or symbol').fill('tata consultancy'); await pg.waitForSelector('.wl-hits .li');
@@ -57,8 +58,8 @@ const text = async (pg) => { await pg.waitForFunction(() => !document.querySelec
 }
 
 /* ---- 2. Skip and guest ---- */
-for (const label of ['Skip', 'Explore as a guest']) {
-  const { ctx, pg } = await mk(null); await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1'); await pg.getByRole('button', { name: label, exact: true }).click(); await pg.waitForSelector('nav.tabs');
+for (const label of ['Explore markets']) {
+  const { ctx, pg } = await mk(null); await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1'); await pg.getByRole('button', { name: label, exact: true }).click(); await pg.waitForSelector('nav.tabs'); ok(pg.url().endsWith('#/markets'), 'Explore markets opens Markets'); await pg.goto(base + '/#/today');
   await pg.waitForSelector('[data-sec="setup"]'); const st = await saved(pg);
   ok(st.onboarded === true && st.follows.length === 0 && st.entries.length === 0, `${label}: leaves first use with nothing followed or written`);
   ok(/Start with one company/.test(await text(pg)) && await pg.getByRole('button', { name: 'Find a company' }).count() === 1, `${label}: Today is the new-user state, one setup action`);

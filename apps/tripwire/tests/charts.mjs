@@ -30,7 +30,7 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
   ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
   await ctx.close(); }
 
-/* 1b. 2 Nov 2026, owner feedback "too congested": on a phone the plot must start inside the first screen even with the stale-data banner on, and the header is title + legend, one meta line, a two-line takeaway */
+/* On a phone the plot starts inside the first screen even with the stale-data banner, and the complete takeaway follows it. */
 for (const [w, h] of [[390, 844], [360, 800]]) {
   const ctx = await newCtx(b, w, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: w, height: h }); await open(pg, '/#/c/TCS', '.chart-plot svg');
   ok(await pg.locator('.banner[role=status]').filter({ hasText: 'Treat everything as old' }).count() === 1, `${w}: the stale-data banner is on screen for this check (the fixture is pinned stale, not left to the clock)`);
@@ -38,11 +38,10 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
     const sty = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const lg = sty('.cf-legend'), tt = sty('.cf-h');
     return { plot: top('.chart-plot'), card: top('.cf'), leadLines: Math.round(lead.clientHeight / lh), clamped: lead.scrollHeight > lead.clientHeight + 1, copy: document.querySelectorAll('[data-clamped-copy]').length, legendBelowTitle: lg && tt ? lg.top >= tt.bottom - 1 : null, chipsBelowPlot: top('.cf-chips') > top('.chart-plot'), ctrlRows: document.querySelectorAll('.c-prim > .mini-seg, .c-prim > .c-prim2, .c-prim > [role=radiogroup]').length }; });
   ok(m.plot != null && m.plot < 700, `${w}x${h}: with the stale-data banner the plot starts at ${m.plot}px, under 700 (the card starts at ${m.card})`);
-  ok(m.leadLines <= 2, `${w}: the takeaway is held to at most 2 lines (${m.leadLines})`);
-  ok(!m.clamped || m.copy === 1, `${w}: when the takeaway is cut, the whole sentence is printed once more under the plot (cut ${m.clamped}, copies ${m.copy})`);
+  ok(!m.clamped && await pg.locator('.cf-lead').evaluate((e) => e.getBoundingClientRect().top > document.querySelector('.chart-plot').getBoundingClientRect().bottom), `${w}: the full takeaway follows the plot without clipping`);
   ok(m.chipsBelowPlot, `${w}: the two figures sit below the plot`);
   ok(await pg.locator('.cf-legend').count() === 1 && await pg.locator('.cf-legend li').count() === 2, `${w}: the legend is still there, with both lines`);
-  ok(await pg.locator('.cf-lead').innerText().then((t) => /^TCS (rose|fell|was flat)/.test(t) && /percentage points|level with it|Nifty/.test(t)), `${w}: the takeaway text is whole in the page (clamping is only visual)`);
+  ok(await pg.locator('.cf-lead').innerText().then((t) => /^TCS (rose|fell|was flat)/.test(t) && /percentage points|level with it|Nifty/.test(t)), `${w}: the takeaway text is whole in the page`);
   ok(await pg.locator('.cf-tbl > summary').count() === 1, `${w}: the table alternative is still there`);
   await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home'); const before = await pg.locator('.chart-plot').boundingBox(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight'); await pg.waitForTimeout(80);
   const after = await pg.locator('.chart-plot').boundingBox(); const hd = await pg.locator('.chart-head').boundingBox();

@@ -33,16 +33,17 @@ export function Markets() {
       </div>
       <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast. VIX up shows red.</p>
     </section>
-    <div className="split"><div className="col">
-      <section className="moodhero card" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
+    <div className="market-grid">
+      <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
         <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
-      <Head>Commodities, currencies, Bitcoin</Head>
-      <MacroStrip />
-    </div><div className="col">
+      <section className="market-breadth">
       {scr.loading && <Loading what="the trend map" />}
       {scr.data && <><Head aside={<span className="small mute">{t.liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · fetched <Ago at={t.breadth.at} /></> : t.liveMap ? <>last prices · fetched <Ago at={t.breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
         <TrendMap rows={rows} day={day} map={t.map} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} repriced={t.liveMap ? t.liveMap.repriced : null} err={!!t.breadth.err} />
-        <SectorBars sectors={t.map.sectors} rows={rows} day={day} /></>}
-    </div></div>
+        </>}
+      </section>
+      {scr.data && <SectorBars sectors={t.map.sectors} rows={rows} day={day} />}
+      <section className="market-macro"><Head>Commodities, currencies, Bitcoin</Head><p className="small mute">Latest session · scroll for more markets →</p><MacroStrip /></section>
+    </div>
   </div>;
 }

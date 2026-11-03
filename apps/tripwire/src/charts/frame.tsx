@@ -13,9 +13,9 @@ export const BASIS = {
   statements: 'Source: annual statements from the data provider, in ₹ crore, by fiscal year ending 31 March. Figures are as reported, not adjusted; a year without a figure is left blank, not drawn as zero.',
 } as const;
 
-export function ChartFrame({ title, meta, takeaway, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, printTableClosed, className = '' }: {
+export function ChartFrame({ title, meta, takeaway, leadAfter = false, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, printTableClosed, className = '' }: {
   title: ReactNode; meta?: ReactNode; takeaway?: { headline: string; lines: string[]; dataThrough: string } | null;
-  legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
+  leadAfter?: boolean; legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
 }) {
   const id = useId().replace(/:/g, '');
   // On a phone the lead sentence is held to two lines so the plot starts on the first screen (charts.css). When the words do not fit, the whole sentence is printed again under the plot
@@ -31,9 +31,10 @@ export function ChartFrame({ title, meta, takeaway, legend, children, table, tab
       <div className="cf-top"><div className="cf-h">{title}</div>{legend}</div>
       {meta && <div className="cf-meta">{meta}</div>}
     </div>
-    {takeaway && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead" ref={lead}>{takeaway.headline}</p></div>}
+    {takeaway && !leadAfter && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead" ref={lead}>{takeaway.headline}</p></div>}
     {children}
-    {takeaway && cut && <p className="cf-full" aria-hidden="true" data-clamped-copy>{takeaway.headline}</p>}
+    {takeaway && !leadAfter && cut && <p className="cf-full" aria-hidden="true" data-clamped-copy>{takeaway.headline}</p>}
+    {takeaway && leadAfter && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead cf-lead-full">{takeaway.headline}</p></div>}
     {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
     {notes}
     {basis && <p className="cf-basis small mute">{basis}</p>}

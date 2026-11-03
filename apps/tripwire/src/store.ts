@@ -9,7 +9,7 @@ export interface Version { at: string; thesis: string; support: string; counter:
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
-export interface Prefs { motion: 'auto' | 'off'; /** 2 = the owner's 27 Oct decision: motion is OFF unless the person turns it on. A device saved before that is moved to off once. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
+export interface Prefs { motion: 'auto' | 'off'; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
@@ -25,7 +25,7 @@ export interface State {
   storageNote?: boolean;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
-  prefs: { motion: 'off', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
+  prefs: { motion: 'auto', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const iso = (d: Date) => d.toISOString();
@@ -197,7 +197,8 @@ export function mergeStates(a: State, b: State): State {
     dismissed: { ...(b.dismissed ?? {}), ...(a.dismissed ?? {}) },
     ...(a.storageNote || b.storageNote ? { storageNote: true } : {}),
     // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
-    prefs: JSON.stringify(a.prefs) === JSON.stringify(DEFAULTS.prefs) || JSON.stringify({ ...a.prefs, haptics: true }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
+    // The motion choice is ignored in that test: a device saved before the default changed holds the old default ('off'), and counting it as a customisation would stop a clean install from restoring the backup's preferences.
+    prefs: JSON.stringify({ ...a.prefs, haptics: true, motion: DEFAULTS.prefs.motion }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
 }
 /** What is on this device, read defensively. Nothing readable is "no data yet"; something there that cannot be read is NOT the same, and the caller keeps a copy of it
  *  before anything is written over it. */

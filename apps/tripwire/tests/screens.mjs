@@ -13,12 +13,12 @@ const go = async (pg, route, sel) => { await pg.goto(base + route); await pg.wai
 const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /* ---- Today: hero, gate, capture off ---- */
-{ const { ctx, pg, reqs } = await mk(390); await go(pg, '/#/today', '[data-sec="brief"]'); await pg.waitForSelector('.ds-gatecard', { timeout: 10000 }).catch(() => {});
+{ const { ctx, pg, reqs } = await mk(390); await go(pg, '/#/today', '[data-sec="brief"]'); await pg.locator('.research-status summary').click(); await pg.waitForSelector('.ds-gatecard');
   const t = await pg.locator('[data-hero]').innerText();
-  ok(/Tripwire fires published rules on NSE stocks, and shows you the evidence\./.test(t), 'Today: the one-line definition leads');
+  ok(/Signal validation and evidence/.test(t), 'Today: diagnostics are under a named disclosure');
   ok(await pg.locator('[data-hero] .ds-gatecard').count() === 1 && /checks/.test(await pg.locator('[data-hero] .ds-gatecard').innerText()), 'Today: the gate card sits in the hero, read from the signals feed');
-  const hy = await pg.evaluate(() => { const h = document.querySelector('[data-hero]'); const b = document.querySelector('[data-sec="brief"]'); return h.getBoundingClientRect().top < b.getBoundingClientRect().top; });
-  ok(hy, 'Today: the hero is above the brief');
+  const hy = await pg.evaluate(() => { const h = document.querySelector('[data-hero]'); const b = document.querySelector('[data-sec="brief"]'); return h.getBoundingClientRect().top > b.getBoundingClientRect().top; });
+  ok(hy, 'Today: the market brief leads, before research diagnostics');
   const cap = pg.locator('[data-capture]'); ok(await cap.count() === 1 && await cap.getAttribute('data-capture') === 'off' && !(await cap.isVisible()) && (await cap.innerText()) === '', 'Today: the capture slot is present but hidden and empty (flag off)');
   ok(await pg.locator('form input[type=email]').count() === 0, 'Today: no email field is drawn while the flag is off');
   ok(!reqs.some((u) => /beehiiv|subscribe/i.test(u)), 'Today: no subscribe network call');

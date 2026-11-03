@@ -56,7 +56,7 @@ export function GateCard() {
   if (!g) return null;
   return <a className="ds-card ds-hover ds-gatecard" href="#/signals">
     <span className="sr">Signals gate: </span><span className={`ds-pill ds-status ${g.on ? 'up' : 'neutral'}`}><Icon n={g.on ? 'check' : 'lock'} />{g.on ? 'ON' : 'OFF'}</span>
-    <span className="ds-gatetext">{g.text.replace(/^Signals gate: (ON|OFF) — /, '')}</span>
+    <span className="ds-gatetext">{g.on ? 'Validation checks passed.' : 'Signals have not passed validation.'} {g.passed}/{g.total} checks. <span className="small dim">{g.text.replace(/^Signals gate: (ON|OFF) — /, '')}</span></span>
     <Icon n="chev" className="ds-go" />
   </a>;
 }
