@@ -17,9 +17,11 @@ import { ladderPrices } from './exits.ts';
 export interface Bar { t: number; o: number; h: number; l: number; c: number; forming?: boolean }
 /** two profit targets in R: half is sold at T1 (stop to the fill), the rest at T2. Absent: the original stop-and-time rule. */
 export interface PaperTargets { t1R: number; t2R: number }
-export interface Paper { targets?: PaperTargets | null; id: string; sym: string; engine: string; asOf: string; ref: number; stop: number; horizon: number; qty: number; takenAt: number; note?: string; closedByUser?: boolean }
+export interface Paper { agreement?: import('./agreement.ts').Agreement; targets?: PaperTargets | null; id: string; sym: string; engine: string; asOf: string; ref: number; stop: number; horizon: number; qty: number; takenAt: number; note?: string; closedByUser?: boolean; lastView?: View; transitions?: { at: string; from: string; to: string; reason: string }[] }
 export type Status = 'waiting' | 'pending' | 'open' | 'closed' | 'skipped';
 export interface View {
+  /** A retained recorded position with unavailable/incomplete new prices. Never a fresh quote. */
+  dataNote?: string;
   id: string; status: Status; entry?: number; entryT?: number; exit?: number; exitT?: number; reason?: string; sessions: number; left: number | null;
   mark: number | null; markKind: 'live' | 'close' | null; pnl: number | null; r: number | null; pct: number | null; stopGap?: boolean; skipReason?: string;
   /** the signal close on the basis the bars are quoted in, and the share-count change applied when the bars were re-quoted after a split or bonus (1 = none) */

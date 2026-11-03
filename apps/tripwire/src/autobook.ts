@@ -1,24 +1,29 @@
 /** The automatic paper book. Every pick any engine writes down in the nightly record is taken on paper the same night, under two fixed limits:
- *  no more than 30 positions at a time, and no more than ₹1,00,000 in any one of them. Nothing here is chosen by hand and nothing is chosen
+ *  no more than 30 positions at a time (50 from the 3 Nov 2026 night), and no more than ₹1,00,000 in any one of them. Nothing here is chosen by hand and nothing is chosen
  *  with hindsight: it is a pure function of the append-only ledger, so every device shows the same book and it can be replayed.
  *
  *  A pick is taken on the night it is written, in order of score. It is refused, with the reason kept in the log, when
  *    - the symbol is already held by an earlier pick that has not closed;
  *    - one share costs more than the ticket;
- *    - 30 positions are already running (a position runs from its pick night until the day it closes; a pick skipped at the open frees its slot);
+ *    - the limit of positions is already running (30 before the 3 Nov 2026 night, 50 from it) (a position runs from its pick night until the day it closes; a pick skipped at the open frees its slot);
  *    - the pick was voided in the record.
  *  Size is the ticket divided by the signal close, rounded down. Entry, stop, time exit and costs are the tracker's, unchanged. */
 import type { Ledger, LedgerPick, Outcome } from './ledger.ts';
 import { takenAtFor } from './ledger.ts';
 import { ENGINES } from './quant.ts';
 
+/** The limit on positions running at once. Nights before MAX_OPEN_FROM are judged under 30, as they always were, so no earlier night is re-planned; the 3 Nov 2026 night and later are judged under 50.
+ *  Either way a name already held is never taken twice. */
 export const MAX_OPEN = 30;
+export const MAX_OPEN_FROM = '2026-11-03';
+export const MAX_OPEN_NOW = 50;
+export const maxOpenFor = (night: string, cfg: { maxOpen: number }): number => (night >= MAX_OPEN_FROM ? cfg.maxOpen : Math.min(cfg.maxOpen, MAX_OPEN));
 /** Book rules are versioned like the eligibility rules, and a pick is judged by the version in force on ITS night, so no earlier night is re-sized.
  *  book-1 (before 27 Oct 2026): every pick takes the full ticket. book-2: a pick's ticket is the full ticket times its engine's weight, and no more than SECTOR_CAP positions may run in one sector.
  *  The weights follow what the back-test said on the day book-2 began and change only by a new version: Momentum, which the back-test did not support, takes a quarter ticket; Quality, which cannot be back-tested
  *  and is therefore on forward test, takes half. Results are kept in R (a multiple of the risk taken), which does not depend on ticket size, so the forward record that will judge the engines is untouched; only the rupee headline is smaller. */
 export const BOOK_POLICY_FROM = '2026-10-27';
-export const TICKET_WEIGHT: Record<string, number> = { MOM: 0.25, QLT: 0.5 };
+export const TICKET_WEIGHT: Record<string, number> = { MOM: 0.25, QLT: 0.5, ST: 0.25 };
 export const SECTOR_CAP = 4;
 export type BookRules = 'book-1' | 'book-2';
 export const bookRulesOf = (asOf: string): BookRules => (asOf >= BOOK_POLICY_FROM ? 'book-2' : 'book-1');
@@ -26,14 +31,14 @@ export const bookRulesOf = (asOf: string): BookRules => (asOf >= BOOK_POLICY_FRO
 export const ticketFor = (p: { asOf: string; engine: string }, full: number): number => (bookRulesOf(p.asOf) === 'book-2' ? full * (TICKET_WEIGHT[p.engine] ?? 0.5) : full);
 export const TICKET = 100000;
 export interface AutoCfg { maxOpen: number; ticket: number }
-export const DEFAULT_CFG: AutoCfg = { maxOpen: MAX_OPEN, ticket: TICKET };
+export const DEFAULT_CFG: AutoCfg = { maxOpen: MAX_OPEN_NOW, ticket: TICKET };
 export interface AutoPos { pick: LedgerPick; qty: number; takenAt: number }
 export interface Refusal { pick: LedgerPick; why: string }
 export type EventKind = 'taken' | 'refused' | 'entered' | 'closed' | 'skipped';
 export interface LogEvent { day: string; kind: EventKind; sym: string; engine: string; text: string; id: string }
 export interface AutoPlan { taken: AutoPos[]; refused: Refusal[]; log: LogEvent[] }
 
-const ENGINE_ORDER: Record<string, number> = { MOM: 0, QLT: 1, LVT: 2 };
+const ENGINE_ORDER: Record<string, number> = { MOM: 0, QLT: 1, LVT: 2, ST: 3 };
 const inr0 = (v: number) => '₹' + Math.round(v).toLocaleString('en-IN');
 const money = (v: number) => `${v < 0 ? '−' : '+'}${inr0(Math.abs(v))}`;
 
@@ -60,7 +65,7 @@ export function planAutoBook(l: Ledger, cfg: AutoCfg = DEFAULT_CFG): AutoPlan {
       if (held.some((t) => t.pick.sym === p.sym)) { no('The same name is already held.'); continue; }
       const ticket = ticketFor(p, cfg.ticket); const qty = Math.floor(ticket / p.ref);
       if (!(p.ref > 0) || qty < 1) { no(`One share costs more than the ${inr0(ticket)} ticket.`); continue; }
-      if (held.length >= cfg.maxOpen) { no(`The book is full: ${cfg.maxOpen} positions are running.`); continue; }
+      const cap = maxOpenFor(night, cfg); if (held.length >= cap) { no(`The book is full: ${cap} positions are running.`); continue; }
       if (bookRulesOf(p.asOf) === 'book-2' && p.sector && held.filter((t) => t.pick.sector === p.sector).length >= SECTOR_CAP) { no(`${SECTOR_CAP} positions are already running in ${p.sector}; the book holds no more than that in one sector.`); continue; }
       taken.push({ pick: p, qty, takenAt: takenAtFor(night) });
       log.push({ day: night, kind: 'taken', sym: p.sym, engine: p.engine, id: p.id, text: `Taken: ${p.sym} (${p.engine}), ${qty} shares, about ${inr0(qty * p.ref)} at the signal close of ${inr0(p.ref)}, stop ${inr0(p.stop)}. Enters at the next open.` });

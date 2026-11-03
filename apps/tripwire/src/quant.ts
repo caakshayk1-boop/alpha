@@ -14,12 +14,13 @@ import type { Row } from './screen.ts';
 import { CURRENT_RULES, eligibleUnder, rulesFor, stepsFor, type RulesId } from './rules.ts';
 import { isFinancialSector, eligibilityOf, riskGradeOf, topicOf, RISK_NAME } from './eligibility.ts';
 
-export type EngineId = 'MOM' | 'QLT' | 'LVT';
+export type EngineId = 'MOM' | 'QLT' | 'LVT' | 'ST';
 export type Q = Row & { r6m?: number | null; r1y?: number | null; sd1y?: number | null; atr_pct?: number | null; piotroski?: number | null; mf?: { rank?: number; of?: number } | null };
 const n = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 export interface EngineDef { /** set when an engine has stopped making picks: its record stays, its rules stay, nothing new is written */ retired?: string; id: EngineId; name: string; line: string; theory: string; horizon: number; atrMult: number; maxStopPct: number; top: number; perSector: number; how: string[] }
 export const ENGINES: EngineDef[] = [
+  { id: 'ST', name: 'Short-Term', line: 'A confirmed turn near the 20-day support proxy', horizon: 10, atrMult: 1.5, maxStopPct: 8, top: 5, perSector: 2, theory: 'Rule-based forward test; no published back-test', how: ['Three outputs: short-term trend, support retest, and daily RSI confirmation.', 'Liquid universe and maximum 8% stop; minimum agreement is independently configurable.', 'Up to 10 sessions; stop 1.5 ATR below the signal close. Short-term means long-only, not short-selling.'] },
   { id: 'MOM', name: 'Momentum', line: 'Twelve-month winners, ignoring the last month', horizon: 20, atrMult: 2.5, maxStopPct: 12, top: 5, perSector: 2,
     theory: 'Jegadeesh and Titman (1993); George and Hwang (2004)',
     how: ['Score: 70% rank of the 12-month return skipping the latest month, 30% rank of nearness to the 52-week high.', 'Must close above its 200-day average, be ahead of the Nifty over 3 months and score in the top fifth.', 'Held up to 20 sessions. Stop 2.5 ATR below the signal close; skipped if that is more than 12% away.'] },
@@ -30,8 +31,9 @@ export const ENGINES: EngineDef[] = [
     theory: 'Ang, Hodrick, Xing and Zhang (2006); Frazzini and Pedersen (2014); Faber (2007)',
     how: ['Score: 60% calmness (lowest one-year volatility) and 40% rank of the 6-month return.', 'Must sit in the calmest quarter, close above its 200-day average, have a positive 6-month return and a risk grade below HIGH.', 'Held up to 40 sessions. Stop 2 ATR below the signal close; skipped if that is more than 10% away.'] },
 ];
-/** The engines still making picks. Steady uptrend was retired on 26 Oct 2026: negative in all three test periods, and its first night of picks was voided for a rule bug. */
-export const ACTIVE = ENGINES.filter((e) => !e.retired);
+/** Original factor baselines used by research replay. Live entries use SIGNAL_ENGINES and runSignalEngines, including their confirmation layer. */
+export const ACTIVE = ENGINES.filter((e) => !e.retired && e.id !== 'ST');
+export const SIGNAL_ENGINES = ENGINES.filter((e) => !e.retired);
 export const engineDef = (id: EngineId) => ENGINES.find((e) => e.id === id)!;
 
 /** Names the engines may consider at all. The rule is versioned in rules.ts; this is the version in force NOW. A night's run uses the version for ITS data day (rulesFor). */
@@ -66,6 +68,7 @@ const sgn = (v: number | null | undefined, dp = 1) => (n(v) ? `${v > 0 ? '+' : v
 const test = (label: string, v: number | null | undefined, ok: (x: number) => boolean, show: string): Criterion => ({ label, pass: n(v) ? ok(v) : null, value: show });
 
 export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
+  if (id === 'ST') throw new Error('Short-Term uses runSignalEngines; it has no legacy factor baseline');
   const el = eligible(r, ctx.rules); const g = (k: string) => ctx.pct[k].get(r.sym) ?? null;
   const above200 = n(r.price) && n(r.sma200) ? r.price > r.sma200 : null;
   const base: Criterion[] = [{ label: 'Liquid, priced, not a micro cap', pass: el, value: el ? 'yes' : 'no' }];
@@ -99,7 +102,7 @@ export function evaluate(id: EngineId, r: Q, ctx: Ctx): Evaluation {
   return { id, eligible: el, criteria: c, score, pass };
 }
 
-export interface Pick { engine: EngineId; sym: string; name: string; sector?: string | null; /** facts about the pick a reader should see beside it (size class unpublished, risk grade not applicable) */ flags?: string[]; asOf: string; ref: number; stop: number; stopPct: number; horizon: number; score: number; rank: number; risk?: string | null; why: string[] }
+export interface Pick { agreement?: import('./agreement.ts').Agreement; engine: EngineId; sym: string; name: string; sector?: string | null; /** facts about the pick a reader should see beside it (size class unpublished, risk grade not applicable) */ flags?: string[]; asOf: string; ref: number; stop: number; stopPct: number; horizon: number; score: number; rank: number; risk?: string | null; why: string[] }
 export interface Run { id: EngineId; /** the eligibility version this run was made under (always set by runEngine; optional so older fixtures still type) */ rules?: RulesId; picks: Pick[]; funnel: { universe: number; eligible: number; passed: number; skippedWideStop: number; picked: number } }
 
 /** The main risk shown beside a pick, from the same eligibility layer as the company page: a flag about a figure that is not meaningful is never shown. */

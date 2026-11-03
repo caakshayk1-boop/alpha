@@ -112,7 +112,7 @@ test('copy: no definition or engine reason promises returns', () => {
   const bad = /guarantee|sure[- ]?shot|risk[- ]free|will (rise|fall|go up)|win(ning)? probability/i;
   for (const m of METRICS) assert.ok(!bad.test(m.what + (m.caution ?? '')), m.id);
   for (const e of ENGINES) assert.ok(!bad.test(e.how.join(' ') + e.line), e.id);
-  assert.equal(ENGINES.length, 3);
+  assert.equal(ENGINES.length, 4);
   assert.ok(glossarySearch('roce').length >= 1 && glossarySearch('').length === 0);
 });
 

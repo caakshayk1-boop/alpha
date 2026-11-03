@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planAutoBook, realised, MAX_OPEN, TICKET } from '../src/autobook.ts';
+import { planAutoBook, realised, MAX_OPEN, MAX_OPEN_NOW, MAX_OPEN_FROM, TICKET } from '../src/autobook.ts';
 import type { Ledger, LedgerPick, Outcome } from '../src/ledger.ts';
 import { alignIndexed } from '../src/chart.ts';
 import { livePrice } from '../src/quotes.ts';
@@ -182,4 +182,17 @@ test('book-2 (nights from 27 Oct): a ticket follows the engine, a sector holds a
   const plan = planAutoBook(ledger(seven)); assert.equal(plan.taken.length, SECTOR_CAP); assert.equal(plan.refused.length, 2);
   assert.match(plan.refused[0].why, /Banks/);
   const oldSector = planAutoBook(ledger(seven.map((p) => ({ ...p, asOf: '2026-10-26' })))); assert.equal(oldSector.taken.length, 6, 'the sector cap does not reach back to earlier nights');
+});
+
+test('auto book: 50 positions from the 3 Nov night, 30 before it, and a name already held is never taken twice', () => {
+  const old = Array.from({ length: 35 }, (_, i) => pick('2026-11-02', `O${i}`, 100, { score: 90 - i, horizon: H[i % 3] }));
+  const a = planAutoBook(ledger(old)); assert.equal(a.taken.length, MAX_OPEN, 'a night before the change is still judged under 30');
+  const next = Array.from({ length: 40 }, (_, i) => pick(MAX_OPEN_FROM, `N${i}`, 100, { score: 90 - i, horizon: H[i % 3] }));
+  const b = planAutoBook(ledger([...old, ...next]));
+  assert.equal(b.taken.filter((t) => t.pick.asOf === '2026-11-02').length, MAX_OPEN, 'the earlier night is planned exactly as before');
+  assert.equal(b.taken.length, MAX_OPEN_NOW, 'the new night fills the book to 50 and no further');
+  assert.equal(new Set(b.taken.map((t) => t.pick.sym)).size, b.taken.length, 'no symbol is held twice');
+  const again = planAutoBook(ledger([...old, ...next, pick('2026-11-04', 'N0', 100, { score: 99 }), pick('2026-11-04', 'O0', 100, { score: 98 })]));
+  assert.equal(again.taken.filter((t) => t.pick.sym === 'N0' || t.pick.sym === 'O0').length, 2, 'only the two original holdings, never a second copy');
+  assert.ok(again.refused.filter((r) => r.pick.asOf === '2026-11-04').every((r) => /already held|full/.test(r.why)));
 });

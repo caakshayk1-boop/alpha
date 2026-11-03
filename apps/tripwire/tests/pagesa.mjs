@@ -128,7 +128,7 @@ for (const w of [320, 390, 1280]) {
   const sumTotal = await pg.locator('[data-engine-total] td').last().innerText();
   ok(Math.abs(engRows.reduce((a, s) => a + num(s), 0) - total) < 0.015 && num(sumTotal) === total, `${w}: engine rows add up to the total (${engRows.join(' + ')} = ${total})`);
   const parts = await pg.locator('[data-attribution] [data-contrib] .contrib .num').allInnerTexts();
-  ok(parts.length >= 2 && Math.abs(parts.slice(0, -1).reduce((a, s) => a + num(s), 0) - num(parts.at(-1))) < 0.015 && Math.abs(num(parts.at(-1)) - total) < 0.015, `${w}: position rows (with Other) add up to the same total`);
+  ok(parts.length >= 2 && Math.abs(parts.slice(0, -1).reduce((a, s) => a + num(s), 0) - num(parts.at(-1))) <= 0.5 * (parts.length - 1) + 0.015 /* shown in whole rupees; contribution.ts reconciles to the paisa and is unit-tested */ && Math.abs(num(parts.at(-1)) - total) < 0.015, `${w}: position rows (with Other) add up to the same total (${parts.slice(0, -1).join(' + ')} vs ${parts.at(-1)}; total ${total})`);
   ok(/Paper money/.test(await pg.locator('[data-attr-note]').innerText()), `${w}: it says paper money`);
   ok(await noOverflow(pg) && await pg.locator('h1').count() === 1, `${w}: Auto: no sideways scroll, one h1`); await ctx.close();
 }

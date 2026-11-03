@@ -22,7 +22,7 @@ test('the ledger is append-only across the version change: earlier nights and pi
   const before = JSON.stringify(l); assert.equal(l.days[0].rules, 'elig-1');
   const legacy: Ledger = JSON.parse(before); delete legacy.days[0].rules;                                   // a night written before versions existed
   const r2 = runAll(screen(), '2026-10-27'); const out = record(legacy, r2.runs, '2026-10-27', '2026-10-28T01:00:00Z');
-  assert.equal(JSON.stringify({ ...out.ledger, days: out.ledger.days.slice(0, 1), picks: out.ledger.picks.slice(0, legacy.picks.length), updated: legacy.updated }), JSON.stringify(legacy), 'the earlier night and its picks were not touched');
+  assert.equal(JSON.stringify({ ...out.ledger, days: out.ledger.days.slice(0, 1), picks: out.ledger.picks.slice(0, legacy.picks.length), updated: legacy.updated, transitions: out.ledger.transitions?.slice(0, legacy.transitions?.length ?? 0) }), JSON.stringify(legacy), 'the earlier night, picks and transitions were not touched');
   assert.equal(out.ledger.days[1].rules, 'elig-2'); assert.equal(rulesOfRecord(out.ledger.days[0].rules), 'elig-1', 'a night with no version reads as elig-1');
   assert.equal(record(out.ledger, r2.runs, '2026-10-27', 'x').skipped, 'already recorded', 'a night is still recorded once');
 });

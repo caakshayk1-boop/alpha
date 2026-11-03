@@ -38,5 +38,5 @@ export function gateLine(feed: Pick<SignalsFeed, 'gate' | 'alert_why'> | null | 
   const state = g.on ? 'ON' : 'OFF';
   const tail = holdout ? ` · holdout t ${signed(holdout.t)} (needs ${signed(holdout.needs, 1)})` : '';
   const checks = g.checks.map((c) => ({ rule: String(c.rule), ok: !!c.ok, value: String((c as { value?: unknown }).value ?? '') }));
-  return { on: g.on, passed, total, holdout, checks, pill: g.on ? 'Market supportive' : 'Market cautious', plain: g.on ? `Market filter passes: ${passed} of ${total} market checks pass.` : `New setups are paused: ${passed} of ${total} market checks pass.`, text: `Signals gate: ${state} — ${passed}/${total} checks${tail}`, short: `Gate ${state} · ${passed}/${total}` };
+  return { on: g.on, passed, total, holdout, checks, pill: g.on ? 'Market supportive' : 'Market cautious', plain: `${passed} of ${total} legacy market checks pass. This is context, not a model-vote count or an exit rule.`, text: `Signals gate: ${state} — ${passed}/${total} checks${tail}`, short: `Gate ${state} · ${passed}/${total}` };
 }

@@ -1,8 +1,9 @@
 /** Local-first state for Tripwire. Everything is stored on this device until an identity provider is configured (docs/tripwire/BUILD_STATUS.md).
  *  All transitions are pure functions so the journal's history rules, review dates and snapshots can be tested without a browser. */
 import type { Filters } from './screen.ts';
-import type { Paper } from './tracker.ts';
+import type { Paper, View } from './tracker.ts';
 import type { SeenSnap, SeenChange } from './sincevisit.ts';
+import { agreementSettings, type AgreementSettings } from './agreement.ts';
 export const VERSION = 1;
 /** `question` is optional and absent from every version written before 27 Oct 2026: an open question the thesis has not answered yet. */
 export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null; question?: string }
@@ -11,6 +12,8 @@ export interface Plan { id: string; sym: string; at: string; status: 'saved' | '
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
 export interface Prefs { motion: 'auto' | 'off'; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
+  /** Entry-candidate settings on this device. Never change existing positions or the shared auto book's published settings. */
+  signalAgreement?: AgreementSettings;
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
   snaps: Record<string, Snap[]>; prefs: Prefs; onboarded: boolean; reviews: { week: string; note: string }[];
   /** paper trades taken from engine picks; the tracker replays real bars against them */
@@ -74,12 +77,23 @@ export function saveScreen(s: State, name: string, f: Filters): State {
 
 /** Take a paper trade from an engine pick. One live paper trade per symbol: a second take of the same name is refused, not duplicated. */
 export function takePaper(s: State, p: Omit<Paper, 'id' | 'takenAt'>, nowSec = Math.floor(Date.now() / 1000)): { s: State; ok: boolean } {
-  if (s.paper.some((x) => x.sym === p.sym && !x.closedByUser)) return { s, ok: false };
-  return { s: { ...s, paper: [{ ...p, id: uid(), takenAt: nowSec }, ...s.paper] }, ok: true };
+  if (s.paper.some((x) => x.sym === p.sym && !x.closedByUser && !['closed', 'skipped'].includes(x.lastView?.status ?? ''))) return { s, ok: false };
+  return { s: { ...s, paper: [{ ...p, id: uid(), takenAt: nowSec, transitions: [{ at: new Date(nowSec * 1000).toISOString(), from: 'candidate', to: 'pending', reason: 'Paper entry requested; stop, horizon and targets stored' }] }, ...s.paper] }, ok: true };
 }
 export const removePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.filter((x) => x.id !== id) });
 /** Closing by hand stops the one-per-symbol lock but keeps the record; the tracker still shows what the rules did. */
-export const archivePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.map((x) => (x.id === id ? { ...x, closedByUser: true } : x)) });
+export const archivePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.map((x) => (x.id === id && !x.closedByUser ? { ...x, closedByUser: true, transitions: [...(x.transitions ?? []), { at: new Date().toISOString(), from: x.lastView?.status ?? 'pending', to: 'archived', reason: 'Archived by the user; this does not execute a market exit' }] } : x)) });
+
+/** Record confirmed manual-paper state without changing its entry plan or removing its history. */
+export function recordPaperView(s: State, id: string, view: View, at: string): State {
+  const p = s.paper.find((x) => x.id === id); if (!p || view.dataNote || !['open', 'closed', 'skipped'].includes(view.status) || p.lastView?.status === 'closed' || p.lastView?.status === 'skipped') return s;
+  if (JSON.stringify(p.lastView) === JSON.stringify(view)) return s;
+  const from = p.lastView?.status ?? 'pending'; const events = [...(p.transitions ?? [])];
+  if (from === 'pending' && ['open', 'closed'].includes(view.status)) events.push({ at, from, to: 'open', reason: 'Confirmed next-session entry from daily prices' });
+  if (view.ladder?.t1Hit && !p.lastView?.ladder?.t1Hit) events.push({ at, from: 'open', to: 'partial', reason: 'Target 1 filled; stop moved to the entry price' });
+  if (from !== view.status && view.status !== 'open') events.push({ at, from: view.status === 'closed' ? 'open' : from, to: view.status, reason: view.reason ?? view.skipReason ?? 'Explicit entry rule' });
+  return { ...s, paper: s.paper.map((x) => x.id === id ? { ...x, lastView: view, transitions: events } : x) };
+}
 
 /** Snapshots make "since you last looked" honest: a change is reported only against a stored earlier day, never invented. */
 export function recordSnap(s: State, sym: string, snap: Omit<Snap, 'at'>, now = new Date()): State {
@@ -177,18 +191,22 @@ export function checkBackup(text: string): BackupCheck {
   const inbox = Array.isArray(d.inbox) ? (d.inbox as unknown[]).filter((c): c is SeenChange => isObj(c) && isStr(c.id) && isStr(c.sym) && isStr(c.curAt)) : [];
   const dismissed: Record<string, string> = {}; if (isObj(d.dismissed)) for (const [k, v] of Object.entries(d.dismissed)) if (isStr(v)) dismissed[k] = v;
   // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
-  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs), ...(d.storageNote ? { storageNote: true } : {}) } };
+  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs), ...(d.signalAgreement ? { signalAgreement: agreementSettings(d.signalAgreement) } : {}), ...(d.storageNote ? { storageNote: true } : {}) } };
 }
 export function parseState(text: string): State | null { const c = checkBackup(text); return c.ok ? c.state : null; }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
 export function mergeStates(a: State, b: State): State {
   const byId = <T extends { id: string }>(x: T[], y: T[], pick: (p: T, q: T) => T) => { const m = new Map(x.map((i) => [i.id, i])); for (const i of y) m.set(i.id, m.has(i.id) ? pick(m.get(i.id)!, i) : i); return [...m.values()]; };
-  return { ...a, follows: [...new Set([...a.follows, ...b.follows])],
+  return { ...a, ...((a.signalAgreement ?? b.signalAgreement) ? { signalAgreement: a.signalAgreement ?? b.signalAgreement } : {}), follows: [...new Set([...a.follows, ...b.follows])],
     entries: byId(a.entries, b.entries, (p, q) => (q.versions.length > p.versions.length ? q : p)),
     plans: byId(a.plans, b.plans, (p, q) => (q.rev > p.rev ? q : p)),
     compares: [...a.compares, ...b.compares.filter((c) => !a.compares.some((d) => d.join() === c.join()))],
     screens: [...a.screens, ...b.screens.filter((c) => !a.screens.some((d) => d.name === c.name))],
-    paper: byId(a.paper ?? [], b.paper ?? [], (p) => p),
+    paper: byId(a.paper ?? [], b.paper ?? [], (p, q) => {
+      if (['closed', 'skipped'].includes(p.lastView?.status ?? '')) return p;
+      if (['closed', 'skipped'].includes(q.lastView?.status ?? '') || (q.lastView?.sessions ?? -1) > (p.lastView?.sessions ?? -1)) return { ...p, lastView: q.lastView, transitions: q.transitions };
+      return p;
+    }),
     // weekly reviews: one per week, the longer note wins. Since-you-last-looked baselines: the union by day, so a restored device does not lose its history.
     reviews: (() => { const m = new Map((a.reviews ?? []).map((r) => [r.week, r])); for (const r of b.reviews ?? []) { const o = m.get(r.week); if (!o || r.note.length > o.note.length) m.set(r.week, r); } return [...m.values()]; })(),
     snaps: (() => { const out: State['snaps'] = { ...a.snaps }; for (const [sym, list] of Object.entries(b.snaps ?? {})) { const m = new Map((out[sym] ?? []).map((x) => [x.day, x])); for (const x of list) if (!m.has(x.day)) m.set(x.day, x); out[sym] = [...m.values()].sort((p, q) => p.day.localeCompare(q.day)); } return out; })(),

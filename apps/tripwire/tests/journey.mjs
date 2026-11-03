@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
 import { mockLab } from './labmock.mjs';
 import { mockNews } from './newsmock.mjs';
+import { nextSession, lastFinishedSession } from '../src/calendar.ts';
 const base = process.argv[2] ?? 'http://localhost:8801';
 const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
@@ -280,12 +281,12 @@ await shot('07-journal');
 
 // signals: three engines, picks, paper tracker with mocked bars
 await pg.goto(base + '/#/signals'); await pg.waitForSelector('section[aria-label]'); await shot('08-signals');
-ok((await pg.locator('section[aria-label]').count()) === 2, 'signals shows the two active engines (Steady uptrend is retired)');
+ok((await pg.locator('section[aria-label]').count()) === 3, 'signals shows the three engines: Momentum, Quality and Short-Term (Steady uptrend is retired)');
 ok(!/E[1-6]\b|Blocked: data|Alerts are off|lifecycle/i.test(await text()), 'no engine-selection or lifecycle chooser remains');
-ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && !/Steady uptrend/i.test(await pg.locator('section[aria-label]').first().innerText()) && !(await pg.locator('section[aria-label]').allInnerTexts()).some((x) => /Steady uptrend/i.test(x)), 'the two active engines are named and the retired one makes no picks');
+ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && !/Steady uptrend/i.test(await pg.locator('section[aria-label]').first().innerText()) && !(await pg.locator('section[aria-label]').allInnerTexts()).some((x) => /Steady uptrend/i.test(x)), 'the engines are named and the retired one makes no picks');
 const firstPick = await pg.locator('section[aria-label] a .sym').first().innerText().then((s) => s.replace(/^\d+\.\s*/, ''));
 await pg.locator('section[aria-label]').first().getByText('How it picks').click();
-ok(/Funnel tonight/.test(await text()), 'each engine explains its funnel');
+ok(/Universe: \d+ · eligible: \d+/.test(await text()), 'each engine explains its funnel and its minimum agreement');
 await pg.locator('section[aria-label]').first().getByText('Why it qualified').first().click();
 ok(/Close above the 200-day/.test(await text()), 'each pick lists the criteria it passed');
 const sym = firstPick;
@@ -297,7 +298,10 @@ ok(ref > 0, `a pick states its signal close (${ref})`);
 const mock = (route) => {
   const u = new URL(route.request().url()); const syms = (u.searchParams.get('s') || '').split(',').filter(Boolean);
   const now = Math.floor(Date.now() / 1000); const bars = {};
-  for (const s of syms) { const t = [], o = [], h = [], l = [], c = []; for (let i = 0; i < 4; i++) { t.push(now + (i + 1) * 60); o.push(ref * (1.002 + i * 0.002)); h.push(ref * (1.02 + i * 0.002)); l.push(ref * 0.995); c.push(ref * (1.01 + i * 0.002)); } bars[s] = { t, o, h, l, c, forming: true, live: { px: ref * 1.03, t: now + 5 * 60 } }; }
+  for (const s of syms) { const t = [], o = [], h = [], l = [], c = [];
+    // the daily history the real feed carries: one bar for the signal day and every session since, before the paper trade was taken
+    for (let d = SCREEN_DAY; d <= lastFinishedSession(now * 1000); d = nextSession(d)) { t.push(Date.parse(`${d}T04:30:00Z`) / 1000); o.push(ref); h.push(ref * 1.01); l.push(ref * 0.99); c.push(ref); }
+    for (let i = 0; i < 4; i++) { t.push(now + (i + 1) * 60); o.push(ref * (1.002 + i * 0.002)); h.push(ref * (1.02 + i * 0.002)); l.push(ref * 0.995); c.push(ref * (1.01 + i * 0.002)); } bars[s] = { t, o, h, l, c, forming: true, live: { px: ref * 1.03, t: now + 5 * 60 } }; }
   route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: new Date().toISOString(), bars, missing: [] }) });
 };
 await pg.route('**/api/bars*', mock);
@@ -333,7 +337,7 @@ await pg.goto(base + '/#/signals?v=record'); await pg.reload(); await pg.waitFor
 ok(/Nothing before that night counts/.test(await text()), 'before the first night the record says it has not started');
 await pg.unroute('**/api/ledger*');
 const led = (() => { const picks = [], outcomes = {}; for (let i = 0; i < 12; i++) { const id = `2026-10-2${i % 8}|MOM|S${i}`; picks.push({ id, engine: 'MOM', sym: 'S' + i, asOf: '2026-10-23', ref: 100, stop: 95, horizon: 20, score: 90, rank: 1 }); outcomes[id] = i < 9 ? { status: 'closed', final: true, r: i % 3 ? 1.2 : -1, pct: 3, niftyPct: 1, reason: 'Time exit after 20 sessions', sessions: 20, exitDay: '2026-11-20' } : { status: 'open', final: false }; }
-  return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: 'x', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
+  return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-27T01:00:00Z', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
 await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
 await pg.reload(); await pg.waitForSelector('text=of 30 trades closed', { timeout: 15000 }); await shot('09b-record');
 ok(/9 of 30 trades closed/.test(await text()), 'the record counts closed trades against the 30 needed');
@@ -343,8 +347,8 @@ ok(/forward record/i.test(await text()) && /nothing before the first night count
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
 await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('.slots', { timeout: 15000 });
 ok(await pg.locator('canvas.confetti').count() === 0 && await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen is noted once, in words, with no reward effect');
-ok(/of 30/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
-ok(/at most 30 positions at a time and at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 30, 'the automatic book states and draws its 30-position limit');
+ok(/of 50/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
+ok(/at most 50 positions at a time/.test(await text()) && /at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 50, 'the automatic book states and draws its 50-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
 await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026

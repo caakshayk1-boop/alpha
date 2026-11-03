@@ -7,12 +7,15 @@
 // Usage: node apps/tripwire/build.mjs && node --experimental-strip-types apps/tripwire/ledger/record.ts record
 //        python apps/tripwire/ledger/bars.py && node --experimental-strip-types apps/tripwire/ledger/record.ts evaluate
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { runAll, type Q } from '../src/quant.ts';
+import type { Q } from '../src/quant.ts';
 import { applyCorrections, emptyLedger, evaluateLedger, record, summarizeLedger, type Correction, type Ledger } from '../src/ledger.ts';
 import type { Bar } from '../src/tracker.ts';
 import { formatViolations, runChecks } from '../src/ledgerchecks.ts';
 import { lastFinishedSession } from '../src/calendar.ts';
 import { alertLine, alertsNow, inputFromOutcome } from '../src/alerts.ts';
+import { runSignalEngines } from '../src/signalengine.ts';
+import { DEFAULT_AGREEMENT } from '../src/agreement.ts';
+import { planAutoBook } from '../src/autobook.ts';
 
 const here = (f: string) => new URL(f, import.meta.url);
 const mode = process.argv[2];
@@ -25,7 +28,10 @@ const unfinished = () => [...new Set(ledger.picks.filter((p) => !ledger.outcomes
 
 if (mode === 'record') {
   const screen = JSON.parse(readFileSync(here('../dist/data/screen.json'), 'utf8')) as { as_of: string; rows: Q[] };
-  const { runs } = runAll(screen.rows, screen.as_of);
+  const expected = lastFinishedSession(Date.parse(now));
+  if (screen.as_of !== expected || !screen.rows.length) throw new Error(`Refusing to record an incomplete night: need ${expected}, got ${screen.as_of} (${screen.rows.length} rows)`);
+  const held = new Set(planAutoBook(ledger).taken.filter((p) => !ledger.outcomes[p.pick.id]?.final).map((p) => p.pick.sym));
+  const { runs } = runSignalEngines(screen.rows, screen.as_of, lastFinishedSession(Date.parse(now)), DEFAULT_AGREEMENT, held);
   const rec = record(ledger, runs, screen.as_of, now); ledger = rec.ledger;
   console.log(rec.skipped ? `not recorded: ${rec.skipped} (data through ${screen.as_of})` : `recorded ${rec.added} picks for ${screen.as_of}`);
   writeFileSync(here('./ledger.json'), JSON.stringify(ledger));
