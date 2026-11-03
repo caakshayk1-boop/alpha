@@ -52,6 +52,6 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
 { const { ctx, pg } = await mk(1280, 900); await go(pg, '/#/data', '[data-fresh-table] tr[data-file]');
   const n = await pg.locator('[data-fresh-table] tr[data-file] .ds-status').count(); const rows = await pg.locator('[data-fresh-table] tr[data-file]').count();
   ok(n === rows && n >= 5 && (await pg.locator('[data-fresh-table] .ds-status').first().innerText()).trim().length > 2, `Data: every file's status is a pill with words (${n} of ${rows})`);
-  await go(pg, '/#/c/GCSL', '.c-head'); ok(await pg.locator('.c-head .ds-pill').count() >= 1, 'Company: sector and size are pills in the header');
+  await go(pg, '/#/c/TCS', '.c-head'); ok(await pg.locator('.c-head .ds-pill').count() >= 1, 'Company: the size class is a pill in the header (the sector is in the subtitle, once)');
   ok(await pg.locator('.sr', { hasText: /^(Passes|Fails|Not measured): /i }).count() >= 1, 'Company: rule checks say pass or fail in words'); await ctx.close(); }
 await b.close(); console.log(fails ? `${fails} FAILED` : 'screens: all passed'); process.exit(fails ? 1 : 0);

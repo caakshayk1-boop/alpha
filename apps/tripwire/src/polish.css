@@ -115,8 +115,7 @@
     .brief .brief-top>.row {flex-basis:100%;min-height:24px}
     .brief .brief-fresh .bf-row {display:block}
     .brief .brief-fresh .bf-px {min-height:2lh}
-    .brief .brief-fresh .bf-scr {min-height:2lh;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-2)}
-    .brief .brief-fresh .bf-scr .ds-pill {flex:none}
+    .brief .brief-fresh .bf-scr {min-height:2lh}
     .brief-ix {gap:var(--sp-2)}
     .bix {padding:var(--sp-2)}
     .bix .small {font-size:var(--fs-label)}

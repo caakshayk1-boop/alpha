@@ -15,7 +15,8 @@ const price = (x: number) => inr(x);
 /** Entry, stop, T1, T2 and the price now on one horizontal rule. The levels are the booked ones (entry-based R); a hit target is filled and carries its date; after T1 the stop's move to the fill is drawn;
  *  a reference-only target says so in words. Pass `input` (see `ladderInputFor`) or a ready `model`. `isNew` names the bookings to sweep once when motion is on.
  *  `<TargetLadder sym="TCS" input={ladderInputFor(p, v, outcome)} />` */
-export function TargetLadder({ sym, input, model: given, isNew }: { sym: string; input?: LadderInput; model?: LadderModel; isNew?: ReadonlySet<'t1' | 't2'> }) {
+/** `quiet`: leave out the generic "levels are worked from the signal close" note, for a list that states it once above all of its cards. The basis stays on every card in the figures' own label. */
+export function TargetLadder({ sym, input, model: given, isNew, quiet }: { sym: string; input?: LadderInput; model?: LadderModel; isNew?: ReadonlySet<'t1' | 't2'>; quiet?: boolean }) {
   const m = useMemo(() => given ?? (input ? ladderModel(input) : null), [given, input]);
   if (!m) return null;
   const rows = m.ticks.some((t) => t.row === 1) ? 2 : 1; const dated = m.ticks.some((t) => t.hit && t.day);
@@ -34,7 +35,7 @@ export function TargetLadder({ sym, input, model: given, isNew }: { sym: string;
         <div className={`tl-marker ${mk.kind} ${m.fill?.tone ?? ''}`} style={{ left: `${mk.pos}%` }}><span className="tip"><small>{mk.kind === 'exit' ? 'Exit' : 'Now'}</small><b className="num">{price(mk.px)}</b></span><i className="dot" /></div>
       </div>}
     </div>
-    {m.notes.length > 0 && <ul className="tl-notes">{m.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+    {(() => { const ns = quiet ? m.notes.filter((n) => !/^Levels are worked from the signal close/.test(n)) : m.notes; return ns.length > 0 && <ul className="tl-notes">{ns.map((n) => <li key={n}>{n}</li>)}</ul>; })()}
   </div>;
 }
 

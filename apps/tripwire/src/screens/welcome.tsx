@@ -11,7 +11,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const hits = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 6)), [t, scr.data]);
   const leave = () => setState((x) => ({ ...x, onboarded: true }));
   const choose = (sym: string) => { go(`/c/${encodeURIComponent(sym)}?first=1`); leave(); };
-  return <div className="welcome">
+  return <main className="welcome" id="main">
     {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore markets, then import a backup from Settings to restore your notes.</div>}
     <div className="k">Tripwire</div>
     <h1>Start with one company.</h1>
@@ -28,5 +28,5 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
     {!t && <div className="wl-examples" aria-label="Example companies">{['TCS', 'INFY', 'RELIANCE'].filter((sym) => scr.data?.rows.some((r) => r.sym === sym)).map((sym) => <button key={sym} className="chip" onClick={() => choose(sym)}>{sym}<Icon n="chev" /></button>)}</div>}
     <div className="wl-out"><button className="btn" onClick={() => { go('/markets'); leave(); }}>Explore markets</button></div>
     <p className="mute small" style={{ margin: 0 }}>No account needed. Notes stay on this device. Paper analysis only: not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>
-  </div>;
+  </main>;
 }

@@ -46,11 +46,13 @@ test('the story row\'s own time (newshealth.storyTime) says the same thing as th
   for (const m of [3, 78, 1500, 4000]) assert.equal(storyTime(iso(m), NOW).ist.toLowerCase(), publishedLabel(iso(m), NOW).toLowerCase(), `${m} min ago`);
   assert.equal(storyTime(null, NOW).ist.toLowerCase(), publishedLabel(null, NOW).toLowerCase());
 });
-test('news health: an on-demand refresh is reported beside a delayed state and never changes it, the check times or the words "last successful check"', () => {
+test('news health: an on-demand refresh turns "delayed" into a partial state that names what is current, and never touches the check times or the words "last successful check"', () => {
   const doc = { snapshotVersion: 4, status: 'ok' as const, checkedAt: iso(60), lastSuccessfulAt: iso(60), nextScheduledAt: iso(45) };
   const late = newsHealth({ doc, nowMs: NOW }); assert.equal(late.state, 'delayed'); assert.equal(late.onDemand, null);
-  const od = newsHealth({ doc, nowMs: NOW, onDemandAt: iso(4) }); assert.equal(od.state, 'delayed', 'still delayed: the scheduled check is late'); assert.equal(od.lastGood, late.lastGood); assert.equal(od.checked, late.checked);
-  assert.equal(od.onDemand, '11:26 IST'); assert.match(od.line, /^News delayed - last successful check 10:30 IST, 60 minutes ago; scheduled checks run every 15 minutes/); assert.match(od.line, /refreshed on demand 11:26 IST/);
-  assert.equal(newsHealth({ doc, nowMs: NOW, onDemandAt: iso(200) }).onDemand, null, 'an on-demand time from before the last good check is not offered');
+  const od = newsHealth({ doc, nowMs: NOW, onDemandAt: iso(4) }); assert.equal(od.state, 'partial', 'market stories are current, company stories are not'); assert.equal(od.reason, 'refreshed on demand'); assert.equal(od.lastGood, late.lastGood); assert.equal(od.checked, late.checked);
+  assert.equal(od.onDemand, '11:26 IST'); assert.match(od.line, /^Market news refreshed 11:26 IST\. Company stories are from the scheduled check at 10:30 IST, 60 minutes ago, which is running late\./);
+  assert.equal(newsHealth({ doc, nowMs: NOW, onDemandAt: iso(200) }).state, 'delayed', 'an on-demand time from before the last good check does not count');
+  assert.equal(newsHealth({ doc, nowMs: NOW, onDemandAt: iso(200) }).onDemand, null, 'and is not offered');
+  const stale = newsHealth({ doc: { ...doc, checkedAt: iso(600), lastSuccessfulAt: iso(600) }, nowMs: NOW, onDemandAt: iso(300) }); assert.equal(stale.state, 'delayed', 'an on-demand refresh older than its own allowance no longer counts'); assert.match(stale.line, /refreshed on demand/);
   const fresh = newsHealth({ doc: { ...doc, checkedAt: iso(5), lastSuccessfulAt: iso(5) }, nowMs: NOW, onDemandAt: iso(1) }); assert.equal(fresh.state, 'fresh'); assert.equal(fresh.onDemand, null, 'no on-demand note while the schedule is on time');
 });

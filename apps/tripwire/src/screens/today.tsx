@@ -1,4 +1,3 @@
-import { SessionPill } from '../components/pills.tsx';
 import { EmptyState, GateCard, HitCard } from '../components/index.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
@@ -89,7 +88,7 @@ export function Today() {
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 && <Spark c={q.c} up={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} h={30} label={`${nm}, latest session`} />}</span></a>; })}
         </div>
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-scr"><span>Screen data through {dayWord(day)} · times in IST</span><SessionPill asOf={day} /></span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
+        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-scr">Screen data through {dayWord(day)} · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
       </section>}
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
@@ -129,7 +128,7 @@ export function Today() {
 
       {/* (e) the last close's picks, compact */}
       {!fresh && scr.data && allPicks.length > 0 && <section className="tsec tpicks" aria-labelledby="t-picks" data-sec="picks">
-        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="row small" style={{ gap: 6 }}><SessionPill asOf={day} /><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></span></div>
+        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></div>
         <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
             <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
@@ -138,7 +137,7 @@ export function Today() {
               <span className="small mute trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)}</> : ''} · stop {inr0(p.stop)}{(() => { const o = auto.ledger.data?.ledger.outcomes[pickId(p.asOf, p.engine, p.sym)]; const x = targetPrices(p, false, o && (o.status === 'open' || o.status === 'closed') ? o.entry : null); return x ? ` · T1 ${inr0(x.t1)} · T2 ${inr0(x.t2)} (${x.ref ? 'ref' : BASIS_NOTE[x.basis]})` : ''; })()}</span></span>
             <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
             <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}Chosen on the close of {dayWord(day)}{fr.behind ? `, ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago` : ''}. A rank, not a chance of winning.</p>
+          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}{fr.behind ? `That close is ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago. ` : ''}A rank, not a chance of winning.</p>
           <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices: "at signal close" for a pick that has not entered yet (the fill sets the booked levels), "from the fill" once it has; "(ref)" means reference only, not traded. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
           <a className="btn sm picks-all" href="#/signals">{allPicks.length > TOP ? `All ${allPicks.length} picks in Signals` : 'Open Signals'}</a></div>
       </section>}

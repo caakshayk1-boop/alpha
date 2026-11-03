@@ -41,7 +41,7 @@ for (const w of [320, 360]) {
 /* ---- Markets ---- */
 for (const w of [320, 390, 1280]) {
   const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectors] .sbar', { timeout: 15000 });
-  ok(/Nifty/.test(await pg.locator('[data-glance]').innerText()) && /In an uptrend/.test(await pg.locator('[data-glance] .mk-chips').innerText()), `${w}: index moves sit beside market breadth`);
+  { const g = await pg.locator('[data-glance]').innerText(); ok(/Nifty/.test(g) && /uptrend/.test(g) && (await pg.locator('[data-glance] .mk-chips').count()) === 0, `${w}: one sentence gives the index move and the breadth; the figures are not printed a second time above the cards that hold them`); }
   const ns = await pg.$$eval('[data-sectors] [data-n]', (e) => e.map((x) => Number(x.getAttribute('data-n'))));
   ok(ns.length >= 3 && ns.every((n) => n >= 8), `${w}: ${ns.length} sectors ranked, each with its sample size, none under 8 names`);
   const nets = await pg.$$eval('[data-sectors] .sb-v', (e) => e.map((x) => parseInt(x.textContent.replace('−', '-'), 10)));

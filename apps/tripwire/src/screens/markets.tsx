@@ -24,14 +24,9 @@ export function Markets() {
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null });
   return <div>
     <PageBar title="Markets" onBack sub={<>{sess.label} · {sess.detail}</>} />
-    <section className="card mk-glance" aria-label="Indices and breadth together" data-glance>
+    <section className="card mk-glance" aria-label="Market summary" data-glance>
       <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
-      <div className="mk-chips num" role="list" aria-label="Index moves and breadth">
-        {([['Nifty 50', chOf('NIFTY'), false], ['Bank Nifty', chOf('BANKNIFTY'), false], ['India VIX', chOf('VIX'), true]] as const).map(([nm, ch, vix]) => <span key={nm} role="listitem"><small>{nm}</small><b className={ch == null ? '' : vix ? (ch > 0 ? 'down' : 'up') : ch > 0 ? 'up' : ch < 0 ? 'down' : ''}>{ch == null ? '—' : pct(ch, 2)}</b></span>)}
-        <span role="listitem"><small>In an uptrend</small><b>{t.upPct == null ? '—' : `${Math.round(t.upPct)}%`}</b></span>
-        <span role="listitem"><small>In a downtrend</small><b>{t.downPct == null ? '—' : `${Math.round(t.downPct)}%`}</b></span>
-      </div>
-      <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast. VIX up shows red.</p>
+      <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast.</p>
     </section>
     <div className="market-grid">
       <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>

@@ -4,6 +4,7 @@
  *   fresh        the last check succeeded, within what its schedule allows, and every source answered
  *   partial      the last check succeeded but some sources did not answer: what is shown is real, coverage is not complete
  *   delayed      the last good snapshot is older than its schedule allows, or the latest check failed, or the service could not be reached just now: cached stories stay readable, labelled
+ *                (when the Worker has refreshed the MARKET stories on demand inside its own allowance, the state is `partial` instead, and says which part is current)
  *   unavailable  there is no snapshot at all
  *  Three different times are never mixed: when a story was PUBLISHED (its own), when the news was last CHECKED successfully, and when the next check is due. All are shown in Indian time, with the zone. */
 import { DELAY_AFTER } from '../news/config.js';
@@ -23,6 +24,7 @@ export interface NewsHealth {
   onDemand: string | null;
 }
 const sec = (iso: string | null | undefined) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.floor(t / 1000) : null; };
+const agoWord = (min: number) => min < 90 ? `${Math.round(min)} minutes` : min < 2880 ? `${Math.round(min / 60)} hours` : `${Math.round(min / 1440)} days`;
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 /** How long the page lets the last successful check age before it says "delayed": two cadences (of the session the check ran in) plus ten minutes of grace for GitHub's cron to be late. */
 export const allowedAgeMin = (checkedMs: number) => DELAY_AFTER.cadences * cadenceMin(checkedMs) + DELAY_AFTER.graceMin;
@@ -44,6 +46,10 @@ export function newsHealth({ doc, unreachable = false, remembered = null, nowMs,
   if (unreachable && !doc) return out('delayed', `News delayed - last successful check ${lastGood}. The news service did not answer just now; the saved copy is shown.`, { reason: 'unreachable' });
   if (d.status === 'failed') return out('delayed', `News delayed - last successful check ${lastGood}. The latest check failed${d.lastError ? ` (${d.lastError})` : ''}; the last good stories are shown.`, { reason: 'latest check failed' });
   if (ageMin > allowed) { const od = sec(onDemandAt); const odIst = od != null && od >= good && od <= nowSec + 600 ? fmtIst(od, nowMs) : null;
+    // A market-scope refresh made by the Worker inside its own allowance means the market stories are current and the company stories are not: that is a partial state, said in those words, not "delayed".
+    // The scheduled check keeps its own time and the words "last successful check" (they are still late); only the badge stops claiming that nothing is current.
+    if (od != null && odIst && (nowSec - od) / 60 <= allowedAgeMin(od * 1000))
+      return out('partial', `Market news refreshed ${odIst}. Company stories are from the scheduled check at ${lastGood}, ${agoWord(ageMin)} ago, which is running late.`, { reason: 'refreshed on demand', onDemand: odIst });
     return out('delayed', `News delayed - last successful check ${lastGood}, ${Math.round(ageMin)} minutes ago; scheduled checks run every ${cadenceMin(good * 1000)} minutes at that time of day.${odIst ? ` Market stories were refreshed on demand ${odIst}.` : ''}`, { reason: 'older than the schedule allows', onDemand: odIst }); }
   if (d.status === 'partial') { const f = d.sourcesFailed ?? 0, t = d.sourcesTotal ?? 0; return out('partial', `Partial coverage${t ? `: ${plural(f, 'source')} of ${t} not answering` : ''}. Last successful check ${lastGood}.`, { reason: 'some sources failed' }); }
   const next = sec(d.nextScheduledAt);
