@@ -76,7 +76,7 @@ test('thesis rule: only a stated price level in the invalidation text links a ch
   assert.deepEqual(parseLevel('Close below 2,400'), { dir: 'below', level: 2400, shown: '2,400' });
   assert.equal(parseLevel('Falls under ₹ 675.5')!.level, 675.5); assert.equal(parseLevel('Weak results again'), null); assert.equal(parseLevel('Close below the 200-day'), null);
   assert.equal(parseLevel('Above 3100')!.dir, 'above');
-  let s = st(); const a = addEntry(s, 'TCS', { thesis: 't', support: '', counter: '', decision: '', invalidation: 'Close below 2,400', trigger: '', reviewOn: null }); s = a.s;
+  let s = st(); const a = addEntry(s, 'TCS', { thesis: 'private thesis body', support: '', counter: '', decision: '', invalidation: 'Close below 2,400', trigger: '', reviewOn: null }); s = a.s;
   const e = s.entries[0];
   const ch = detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2390 }), entry: e, today: '2026-10-27' });
   const inv = ch.find((c) => c.kind === 'invalidation')!;
@@ -88,7 +88,7 @@ test('thesis rule: only a stated price level in the invalidation text links a ch
   const lv = detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2450 }), entry: e, live: 2395, today: '2026-10-27' }).find((c) => c.kind === 'invalidation')!;
   assert.match(lv.after, /live price/, 'a live print is used for this one rule and labelled live');
   assert.equal(detect({ sym: 'TCS', prev: snap({ px: 2450 }), cur: snap({ at: T1, day: '2026-10-23', px: 2450 }), entry: e, live: 212, today: '2026-10-27' }).some((c) => c.kind === 'invalidation'), false, 'a print 90% off the close is a bad tick, not a crossing');
-  assert.ok(!JSON.stringify(ch).includes(current(e).thesis + 'x'));
+  assert.ok(!JSON.stringify(ch).includes(current(e).thesis), 'the thesis body is never copied into a change');   // a distinctive body: the old one-letter thesis plus "x" matched random entry ids about 0.6% of runs
 });
 
 test('first visit: nothing is compared, nothing is invented, and the names are listed as starting', () => {
