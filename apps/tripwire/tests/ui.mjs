@@ -126,4 +126,46 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
   const c2 = await newCtx(b, 390, ohlcSeries(300, 'PETRONET')); const p2 = await c2.newPage(); await open(p2, '/#/c/PETRONET', '.decision'); await p2.getByRole('tab', { name: 'Ownership', exact: true }).click();   // ownership has its own section since 1 Nov 2026
   const own = await p2.locator('details', { hasText: 'Who owns it' }).first().innerText(); ok(/Institutions/.test(own) && /Other public holders/.test(own) && /worked out/.test(own) && /Nested because/.test(own), 'PETRONET ownership is drawn nested, with the derived line marked and the basis stated'); await c2.close(); }
 
+/* N. A sheet is fixed to the SCREEN, never to the page: opening the chart options on a long company page must not move the person (it threw them ~4,000px to the foot of the page while motion was on). */
+{ const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  ok(await pg.evaluate(() => document.documentElement.classList.contains('fx')), 'sheet scroll check runs with motion on (the case that broke)');
+  await pg.evaluate(() => document.querySelector('.chart-plot').scrollIntoView({ block: 'center' })); await pg.waitForTimeout(400); const y0 = await pg.evaluate(() => Math.round(scrollY));
+  await openOptions(pg); await pg.waitForTimeout(450); const o = await pg.evaluate(() => { const r = document.querySelector('.sheet').getBoundingClientRect(); return { y: Math.round(scrollY), top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight, parent: document.querySelector('.sheet').parentElement === document.body }; });
+  ok(Math.abs(o.y - y0) <= 2, `opening the chart options leaves the page where it was (${y0} → ${o.y})`);
+  ok(o.top >= 0 && o.bottom <= o.vh + 1, `the sheet sits inside the screen (top ${o.top}, bottom ${o.bottom}, screen ${o.vh})`); ok(o.parent, 'the sheet is rendered on the body, outside the animated page column');
+  await radio(pg, 'Detail', 'WEEKLY').click(); await pg.waitForTimeout(300); await closeOptions(pg); await pg.waitForTimeout(400); const y2 = await pg.evaluate(() => Math.round(scrollY));
+  ok(Math.abs(y2 - y0) <= 2, `after choosing weekly and closing, the person is back where they were (${y0} → ${y2})`); await ctx.close(); }
+
+/* N+1. Back to top: hidden near the top, a ring that follows the scroll once the page is long and scrolled, one tap to the top, and clear of the tab bar. */
+{ const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true }), { reducedMotion: 'reduce' }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const st = () => pg.evaluate(() => { const e = document.querySelector('.scrolltop'); const bar = e.querySelector('.bar'); const t = document.querySelector('.tabs').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { hidden: e.getAttribute('data-hidden'), label: e.getAttribute('aria-label'), off: parseFloat(getComputedStyle(bar).strokeDashoffset), dash: parseFloat(getComputedStyle(bar).strokeDasharray), bottom: Math.round(r.bottom), tabTop: Math.round(t.top), w: Math.round(r.width), h: Math.round(r.height), y: Math.round(scrollY), vis: getComputedStyle(e).visibility }; });
+  const a = await st(); ok(a.hidden === 'true' && a.vis === 'hidden', 'at the top of the page the back-to-top button is not offered');
+  await pg.evaluate(() => scrollTo(0, 1600)); await pg.waitForTimeout(350); const b1 = await st();
+  ok(b1.hidden === 'false' && b1.vis === 'visible', 'once the page is long and scrolled, the button appears'); ok(/^Back to top\. \d+% of this page scrolled, \d+% below\.$/.test(b1.label), `its name says how far down and how much is left (${b1.label})`);
+  ok(b1.off < b1.dash && b1.off > 0, 'the ring is part-filled while the page is part-read'); ok(b1.w >= 44 && b1.h >= 44 && b1.bottom <= b1.tabTop, `it is a 44px+ target and sits above the tab bar (${b1.w}x${b1.h}, bottom ${b1.bottom}, tabs ${b1.tabTop})`);
+  await pg.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); await pg.waitForTimeout(350); const c1 = await st(); ok(c1.off < b1.off && /^Back to top\. 100%/.test(c1.label), `at the foot the ring is full and the label says 100% (${c1.label})`);
+  await pg.locator('.scrolltop').click(); await pg.waitForTimeout(400); const d = await st(); ok(d.y <= 2 && d.hidden === 'true', `one tap returns to the top and the button steps away (y ${d.y})`);
+  ok(await pg.evaluate(() => document.activeElement?.id === 'main'), 'focus moves to the main content, not to a hidden button'); await ctx.close(); }
+
+/* N+2. The company action bar steps aside while it would sit on the chart, and is back when the chart is clear. */
+{ const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const bar = () => pg.evaluate(() => { const e = document.querySelector('.fab-row'); const p = document.querySelector('.chart-plot').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { away: e.classList.contains('fab-away'), vis: getComputedStyle(e).visibility, overlap: p.bottom > r.top && p.top < r.bottom }; });
+  await pg.waitForTimeout(700);   // the page has settled: a scroll from here on is the person's own
+  await pg.evaluate(() => { const p = document.querySelector('.chart-plot').getBoundingClientRect(); scrollTo(0, scrollY + p.bottom - innerHeight + 60); }); await pg.waitForTimeout(500); const on = await bar();
+  ok(on.overlap && on.away && on.vis === 'hidden', `where the bar would cover the chart it steps aside (overlap ${on.overlap}, away ${on.away}, ${on.vis})`);
+  await pg.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); await pg.waitForTimeout(500); const off = await bar(); ok(!off.overlap && !off.away && off.vis === 'visible', 'with the chart clear of it (the foot of the page), the action bar is back'); await ctx.close(); }
+
+{ const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
+  const arrive = await pg.evaluate(() => { const e = document.querySelector('.fab-row'); const p = document.querySelector('.chart-plot').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { away: e.classList.contains('fab-away'), vis: getComputedStyle(e).visibility, overlap: p.bottom > r.top && p.top < r.bottom }; });
+  ok(arrive.overlap && !arrive.away && arrive.vis === 'visible', `on arrival the actions are offered, even where the chart reaches under the bar (overlap ${arrive.overlap})`);
+  await pg.evaluate(() => scrollTo(0, 120)); await pg.waitForTimeout(300); await pg.goto(base + '/#/c/INFY'); await pg.waitForTimeout(800);
+  ok(await pg.locator('.fab-row').isVisible(), 'opening another company while the page is already scrolled still shows the actions (a scroll offset is not the person scrolling)'); await ctx.close(); }
+
+/* N+3. Five destinations in the bottom bar, Signals among them, none clipped at 320. */
+{ const ctx = await newCtx(b, 320, ohlcSeries(300, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/signals', 'nav.tabs');
+  ok((await pg.locator('nav.tabs a').allTextContents()).map((x) => x.trim()).join('|') === 'Today|Signals|Discover|My Desk|More', 'the bar reads Today, Signals, Discover, My Desk, More');
+  ok((await pg.locator('nav.tabs a[aria-current=page]').innerText()).trim() === 'Signals', 'Signals is the current tab on the Signals page');
+  const m = await pg.evaluate(() => [...document.querySelectorAll('nav.tabs a')].map((a) => ({ t: a.textContent.trim(), w: Math.round(a.getBoundingClientRect().width), h: Math.round(a.getBoundingClientRect().height), clip: a.scrollWidth - a.clientWidth > 1 || a.scrollHeight - a.clientHeight > 1 })));
+  ok(m.every((x) => x.w >= 44 && x.h >= 44 && !x.clip), `each tab is a 44px target with its label whole at 320 (${m.map((x) => `${x.t} ${x.w}x${x.h}`).join(', ')})`); await ctx.close(); }
+
 await b.close(); console.log(fails ? `\nui: ${fails} failed` : '\nui: all passed'); process.exit(fails ? 1 : 0);

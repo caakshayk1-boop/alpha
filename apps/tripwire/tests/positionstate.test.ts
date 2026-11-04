@@ -52,9 +52,14 @@ test('last-good ledger survives reload, corruption and older responses', () => {
   writeLedgerCache(storage, { ...ledger(), updated: '2026-10-01T12:00:00Z' }); assert.equal(readLedgerCache(storage)!.updated, ledger().updated);
   m.set(LEDGER_CACHE_KEY, '{broken'); assert.equal(readLedgerCache(storage), null);
 });
-test('published ledger retains every pick, history and open position when all prices disappear', () => {
+test('published ledger retains every pick, history and open position when all prices disappear, whether they are missing or empty', () => {
   const l = JSON.parse(readFileSync(new URL('../ledger/ledger.json', import.meta.url), 'utf8')) as Ledger;
   const before = JSON.stringify(l); const out = evaluateLedger(l, Object.fromEntries(l.picks.map((p) => [p.sym, []])), null, l.updated);
   assert.equal(JSON.stringify(l), before); assert.deepEqual(out.picks, l.picks); assert.deepEqual(out.outcomes, l.outcomes); assert.deepEqual(planAutoBook(out).taken, planAutoBook(l).taken);
   assert.equal(record(l, [], l.days.at(-1)!.asOf, l.updated).ledger, l, 'same day cannot be overwritten with an empty shortlist');
+  const none = evaluateLedger(l, Object.fromEntries(l.picks.map((p) => [p.sym, null])), null, l.updated); assert.deepEqual(none.outcomes, l.outcomes, 'missing prices change nothing either');
+});
+test('a pick recorded tonight that has only been marked to a day keeps that mark when its prices come back empty', () => {
+  const l: Ledger = { ...emptyLedger('2026-11-02T00:00:00Z'), picks: [{ ...paper, score: 90, rank: 1 }], outcomes: { p: { status: 'pending', final: false, markDay: '2026-11-02' } } };
+  assert.deepEqual(evaluateLedger(l, { X: [] }, null, '2026-11-03T01:00:00Z').outcomes.p, { status: 'pending', final: false, markDay: '2026-11-02' });
 });

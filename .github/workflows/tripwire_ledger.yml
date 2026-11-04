@@ -50,6 +50,10 @@ jobs:
         working-directory: apps/tripwire/research
         run: python rsi_multi.py ../dist/data/screen.json ../ledger/rsi.json
         continue-on-error: true
+      - name: FII and DII flows (NSE, provisional)
+        id: fiidii
+        run: node --experimental-strip-types apps/tripwire/tools/fiidii.mjs
+        continue-on-error: true      # a blocked or changed NSE endpoint must not redden the picks job; the Markets card hides itself when its newest day is old
       - name: Replay unfinished picks
         id: rec
         run: node --experimental-strip-types apps/tripwire/ledger/record.ts evaluate
@@ -61,6 +65,7 @@ jobs:
           git add apps/tripwire/ledger/ledger.json
           [ -f apps/tripwire/ledger/factors.json ] && git add apps/tripwire/ledger/factors.json
           [ -f apps/tripwire/ledger/rsi.json ] && git add apps/tripwire/ledger/rsi.json
+          [ -f apps/tripwire/ledger/fiidii.json ] && git add apps/tripwire/ledger/fiidii.json
           git diff --cached --quiet && echo unchanged && exit 0
           git commit -m "paper: tripwire ledger $(date -u +%Y-%m-%d) [skip ci]"
           for i in 1 2 3; do git push origin HEAD:main && break; git pull --rebase origin main; [ "$i" = 3 ] && exit 1; done

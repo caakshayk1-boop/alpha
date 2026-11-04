@@ -4,7 +4,7 @@
 // Usage: node apps/tripwire/tests/pagesa.mjs [baseUrl]
 import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
-import { openCtx } from './bookfixture.mjs';
+import { openCtx, last as lastSession } from './bookfixture.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
 const b = await chromium.launch();
@@ -55,6 +55,10 @@ for (const w of [320, 390, 1280]) {
   ok((await pg.locator('.sh-list a[href^="#/c/"]').count()) === 10, `${w}: every leader and laggard opens its company page`);
   ok(/\/discover\?sector=/.test((await pg.locator('[data-sectorheat] a[href*="discover?sector="]').first().getAttribute('href')) ?? ''), `${w}: a link opens the whole sector in Discover`);
   await pg.locator('[data-sectorheat] .sh-table summary').click(); ok((await pg.locator('[data-sectorheat] .sh-table tbody tr').count()) >= 10, `${w}: the same figures are in a table`);
+  { const N = Number(((await pg.locator('.sh-crumb').innerText()).match(/(\d+) names/) || [])[1]); const tiles = await pg.locator('[data-sectorheat] .sh-cell.n').count(); const tiny = await pg.locator('[data-sectorheat] .sh-cell.n.s').count(); const listed = await pg.locator('[data-unlabelled] li').count();
+    ok(N > 0 && (await pg.locator('[data-sectorheat] .sh-table tbody tr').count()) === N, `${w}: the table holds every one of the sector's ${N} names`);
+    ok(tiles - tiny + listed === N, `${w}: every name is on the map with a label or in the too-small list (${tiles - tiny} labelled + ${listed} listed = ${N})`);
+    const shownChips = await pg.locator('[data-unlabelled] > ul > li').count(); ok(shownChips <= 24, `${w}: at most 24 chips show at once, the rest sit behind a toggle (${shownChips} of ${listed} shown)`); }
   ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: no sideways scroll when zoomed`);
   await pg.getByRole('button', { name: /All sectors/ }).click(); await pg.waitForSelector('[data-sectorheat] .sh-cell:not(.n)', { timeout: 5000 }); ok((await pg.locator('#sh-h').innerText()) === 'Sector heat map', `${w}: the back button returns to all sectors`); void before;
   await ctx.close();
@@ -118,6 +122,26 @@ for (const w of [320, 390, 1280]) {
   const ctx = await openCtx(b, 390); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=evidence`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(1200);
   ok(/Evidence/.test(await pg.locator('body').innerText()), 'the Evidence view opens from its renamed tab'); await ctx.close();
 }
+
+/* ---- Markets: the FII and DII flows card (present with a fresh file; hidden with none, or with an old one) ---- */
+{ const iso = (back) => new Date(Date.parse(`${lastSession}T00:00:00Z`) - back * 86400000).toISOString().slice(0, 10);
+  const mk = (back, f, d) => ({ date: iso(back), fii: { buy: Math.max(f, 0) + 1000, sell: Math.max(-f, 0) + 1000, net: f }, dii: { buy: Math.max(d, 0) + 1000, sell: Math.max(-d, 0) + 1000, net: d } });
+  const file = (rows) => JSON.stringify({ ok: true, schema: 'tripwire-fiidii/1', updated: `${lastSession}T20:00:00Z`, source: 'NSE fiidiiTradeReact (provisional)', rows });
+  const fresh = [mk(4, -900, 500), mk(3, 300, -200), mk(2, -1200, 1500), mk(1, 400, 100), mk(0, 6836.81, -3678.85)];
+  for (const w of [320, 390]) {
+    const ctx = await openCtx(b, w); await ctx.route('**/api/fiidii*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: file(fresh) })); const pg = await ctx.newPage();
+    await pg.goto(`${base}/#/markets`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-fiidii]', { timeout: 15000 }); const card = pg.locator('[data-fiidii]'); const t = await card.innerText();
+    ok(/FIIs · net/.test(t) && /▲ \+₹6,837 cr/.test(t) && /DIIs · net/.test(t) && /▼ −₹3,679 cr/.test(t), `${w}: the card states both nets with an arrow and a sign (${t.split('\n').filter((x) => /cr/.test(x)).slice(0, 2).join(' | ')})`);
+    ok(/FIIs bought ₹6,837 cr while DIIs sold ₹3,679 cr\./.test(await card.locator('[data-fiidii-line]').innerText()), `${w}: one plain sentence says what was reported`);
+    ok(/Last 5 sessions: FIIs \+₹5,437 cr, DIIs −₹1,779 cr\./.test(t), `${w}: the five-session window is summed (-900+300-1200+400+6836.81 = 5436.81; 500-200+1500+100-3678.85 = -1778.85, shown rounded to 1,779)`);
+    ok((await card.locator('svg.fl-bars rect').count()) === 10 && /Table below/.test((await card.locator('svg.fl-bars').getAttribute('aria-label')) ?? ''), `${w}: five sessions of two bars, named, with a table alternative`);
+    ok(/Provisional figures as published by NSE/.test(t) && !/will |forecast|expect|likely|signal/i.test((await card.locator('[data-fiidii-line]').innerText()) + ' ' + (t.match(/Last \d sessions[^\n]*/) ?? [''])[0]), `${w}: it says the figures are provisional, and the reading itself predicts nothing`);
+    await card.locator('summary').click(); ok((await card.locator('tbody tr').count()) === 5, `${w}: the table lists the five sessions`);
+    ok(await noOverflow(pg), `${w}: Markets with the card does not scroll sideways`); await ctx.close(); }
+  for (const [label, body, status] of [['no file yet', '{"ok":false,"error":"the first nightly FII/DII run has not happened yet"}', 404], ['an old file', file([mk(30, 100, -100), mk(29, 50, 20)]), 200], ['a damaged file', '{"ok":true,"schema":"tripwire-fiidii/1","rows":[{"date":"x"}]}', 200]]) {
+    const ctx = await openCtx(b, 390); await ctx.route('**/api/fiidii*', (r) => r.fulfill({ status, contentType: 'application/json', body })); const pg = await ctx.newPage();
+    await pg.goto(`${base}/#/markets`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-sectorheat], [data-glance]', { timeout: 15000 }); await pg.waitForTimeout(600);
+    ok((await pg.locator('[data-fiidii]').count()) === 0, `${label}: the card is simply not shown (no error box, no stale figure)`); await ctx.close(); } }
 
 /* ---- Auto: attribution ---- */
 for (const w of [320, 390, 1280]) {

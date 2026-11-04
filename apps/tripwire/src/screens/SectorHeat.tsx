@@ -9,7 +9,7 @@ import type { Row } from '../screen.ts';
  *  leaders and laggards listed beside it; a table says the same in text. The map is drawn in a fixed-aspect box in percent, so it needs no measuring and moves nothing as it loads.
  *  What it is not: size is traded value, not market capitalisation (the screen does not carry that), and small groups are drawn at a minimum size so they can be read and tapped. */
 const BOX_H = 80;                 // the virtual box is 100 wide and BOX_H high; CSS gives the element the same 100:80 aspect
-const MIN_SECTOR_SHARE = 0.06; const MIN_NAME_SHARE = 0.012; const MAX_NAMES = 36;
+const MIN_SECTOR_SHARE = 0.06; const MIN_NAME_SHARE = 0.012; const MAX_NAMES = 36; const SMALL_SHOWN = 24;
 const style = (r: { x: number; y: number; w: number; h: number }, chg: number, win: HeatWindow, extra: CSSProperties = {}): CSSProperties => ({
   left: `${r.x}%`, top: `${(r.y / BOX_H) * 100}%`, width: `${r.w}%`, height: `${(r.h / BOX_H) * 100}%`,
   ['--heat' as string]: String(chg === 0 ? 0 : Math.max(0.1, heatStrength(chg, win))), ['--tone' as string]: chg >= 0 ? 'var(--up)' : 'var(--down)', ...extra,
@@ -26,6 +26,9 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
   const ll = useMemo(() => leadersLaggards(names, 5), [names]);
   const rects = useMemo(() => (cur ? squarify(withFloor(shown.map((n) => ({ id: n.sym, value: n.weight })), MIN_NAME_SHARE), 100, BOX_H) : squarify(withFloor(sectors.map((s) => ({ id: s.sector, value: s.weight })), MIN_SECTOR_SHARE), 100, BOX_H)), [cur, shown, sectors]);
   const total = sectors.reduce((a, s) => a + s.weight, 0);
+  // A tile too small to hold its symbol is still a name the person is owed: those, and every name beyond the 36 drawn, are listed under the map and in the table.
+  const unlabelled = useMemo(() => { if (!cur) return [] as HeatName[]; const small = new Set(rects.filter((r) => { const n = shown.find((x) => x.sym === r.id); return n ? !cellLabel(r.w, r.h, n.sym, null, signed(n.chg), true).text : false; }).map((r) => r.id));
+    return names.filter((n) => small.has(n.sym) || !shown.includes(n)); }, [cur, rects, shown, names]);
   if (!sectors.length) return <section className="card sh" data-sectorheat><h2 className="sec">Sector heat map</h2><p className="small dim" style={{ margin: 0 }}>Not enough liquid names with a price change and a traded value to draw it.</p></section>;
   const open = (s: string, r: { x: number; y: number; w: number; h: number }) => { setOrigin(`${r.x + r.w / 2}% ${((r.y + r.h / 2) / BOX_H) * 100}%`); setSector(s); };
   const byId = new Map(sectors.map((s) => [s.sector, s])); const nById = new Map(shown.map((n) => [n.sym, n]));
@@ -47,13 +50,18 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
     {cur && <div className="sh-ll">
       <List title="Leaders" names={ll.leaders} win={win} tone="up" /><List title="Laggards" names={ll.laggards} win={win} tone="down" />
     </div>}
-    {cur && hidden > 0 && <p className="small mute" style={{ margin: '8px 0 0' }}>The {shown.length} names with the most traded value are drawn; {hidden} smaller ones are in Discover.</p>}
+    {cur && unlabelled.length > 0 && (() => { const chip = (n: HeatName) => <li key={n.sym}><a href={`#/c/${encodeURIComponent(n.sym)}`}><span className="sym">{n.sym}</span> <span className={`num ${n.chg < 0 ? 'down' : n.chg > 0 ? 'up' : ''}`}>{signed(n.chg)}</span><span className="sr"> {n.name}, over {WINDOW_LABEL[win]}</span></a></li>;
+      const head = unlabelled.slice(0, SMALL_SHOWN), rest = unlabelled.slice(SMALL_SHOWN);   // the largest by traded value first; a sector of 200 names does not become a wall of chips
+      return <div className="sh-small" data-unlabelled><h3 className="k">Too small to label · {unlabelled.length} of {cur.n}</h3>
+        <ul>{head.map(chip)}</ul>
+        {rest.length > 0 && <details className="more sh-rest"><summary>Show the other {rest.length}</summary><ul>{rest.map(chip)}</ul></details>}</div>; })()}
+    {cur && hidden > 0 && <p className="small mute" style={{ margin: '8px 0 0' }}>The {shown.length} names with the most traded value are drawn; the other {hidden} are in the list above and the table.</p>}
     {cur && <p className="small" style={{ margin: '10px 0 0' }}><a href={`#/discover?sector=${encodeURIComponent(cur.sector)}`}>Open all {cur.n} {cur.sector} names in Discover</a></p>}
     {!cur && <p className="small mute" style={{ margin: '8px 0 0' }}>Size is traded value on the last session, not market capitalisation; the smallest sectors are drawn at a minimum size so they can be read and tapped.</p>}
     <details className="more sh-table"><summary>{cur ? `${cur.sector} as a table` : 'Heat map as a table'}</summary>
       <table className="num"><thead><tr><th scope="col">{cur ? 'Name' : 'Sector'}</th><th scope="col">{cur ? 'Symbol' : 'Names'}</th><th scope="col">Share of traded value</th><th scope="col">Change, {WINDOW_LABEL[win]}</th></tr></thead>
         <tbody>{cur
-          ? shown.map((n) => <tr key={n.sym}><th scope="row"><a href={`#/c/${encodeURIComponent(n.sym)}`}>{n.name}</a></th><td>{n.sym}</td><td>{((n.weight / cur.weight) * 100).toFixed(1)}%</td><td className={n.chg >= 0 ? 'up' : 'down'}>{signed(n.chg)}</td></tr>)
+          ? names.map((n) => <tr key={n.sym}><th scope="row"><a href={`#/c/${encodeURIComponent(n.sym)}`}>{n.name}</a></th><td>{n.sym}</td><td>{((n.weight / cur.weight) * 100).toFixed(1)}%</td><td className={n.chg >= 0 ? 'up' : 'down'}>{signed(n.chg)}</td></tr>)
           : sectors.map((s) => <tr key={s.sector}><th scope="row"><button type="button" className="linkbtn" onClick={() => setSector(s.sector)}>{s.sector}</button></th><td>{s.n}</td><td>{((s.weight / total) * 100).toFixed(1)}%</td><td className={s.chg >= 0 ? 'up' : 'down'}>{signed(s.chg)}</td></tr>)}</tbody></table>
     </details>
   </section>;

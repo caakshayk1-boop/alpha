@@ -38,6 +38,7 @@ import { applyTheme } from './theme.ts';
 import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
 import { lastDiscoverQuery } from './discoverstate.ts';
+import { ScrollTop } from './components/ScrollTop.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
 import { resolveRoute } from './route.ts';
@@ -100,9 +101,9 @@ type Sheet = { k: 'search' } | { k: 'plan'; sym?: string; entry?: number; stop?:
 const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} });
 export const useSheets = () => useContext(SheetCtx);
 
-/** Four destinations. Today and Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
-export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
-const MORE_HEADS = ['more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
+/** Five destinations. Today, Signals, Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
+export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
+const MORE_HEADS = ['more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
 const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
@@ -210,6 +211,7 @@ export function App(): ReactNode {
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}
       </nav>
+      <ScrollTop />
     </div>
     <Suspense fallback={null}>
     {sheet?.k === 'search' && <SearchSheet onClose={close} />}

@@ -27,11 +27,12 @@ await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 
 
 const nowS = Math.floor(Date.now() / 1000);
 const newsCtl = await mockNews(ctx);   // version, snapshot and live-query endpoints (newsmock.mjs)
+await ctx.route('**/api/fiidii*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly FII/DII run has not happened yet"}' }));
 await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
 
 let pg = await ctx.newPage();
 const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 160)); });
-const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/tick') && !r.url().includes('/api/breadth') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger')) bad.push(r.status() + ' ' + r.url()); });
+const bad = []; pg.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('/api/bars') && !r.url().includes('/api/tick') && !r.url().includes('/api/breadth') && !r.url().includes('/api/chart') && !r.url().includes('/api/ledger') && !r.url().includes('/api/fiidii')) bad.push(r.status() + ' ' + r.url()); });
 const shot = async (n) => { if (shots) await pg.screenshot({ path: `${shots}/${n}.png`, fullPage: false }); };
 const text = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };   // screens load as separate files: wait out the placeholder
 
@@ -40,7 +41,7 @@ await pg.waitForSelector('.welcome h1', { timeout: 15000 }).catch(() => {}); ok(
 await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today');
 await pg.waitForSelector('nav.tabs');
-ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Discover|My Desk|More', 'four destinations: Today, Discover, My Desk, More');
+ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Signals|Discover|My Desk|More', 'five destinations: Today, Signals, Discover, My Desk, More');
 await pg.waitForSelector('.brief-ix', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
 await pg.waitForTimeout(600); await shot('01-today');
 ok(/Screen data through/.test(await text()), 'Today states the data date');

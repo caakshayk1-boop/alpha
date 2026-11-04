@@ -40,3 +40,10 @@
   html.fx .sh-box {transform-origin:var(--ox,50% 50%);animation:sh-zoom 340ms var(--ease) both}
   @keyframes sh-zoom {from {opacity:0;transform:scale(.88)} to {opacity:1;transform:none}}
 }
+
+/* names too small to carry a label on the map: a wrapped list, one tap to the company */
+.sh-small{margin:12px 0 0}
+.sh-small ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.sh-small a{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--radius-input);font-size:var(--fs-label);color:var(--ink)}
+.sh-small .sym{font-weight:600}
+.sh-rest{margin:8px 0 0}.sh-rest summary{min-height:44px;display:flex;align-items:center}

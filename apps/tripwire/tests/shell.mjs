@@ -25,11 +25,11 @@ const tab = (pg, name) => pg.locator(`nav.tabs a:has-text("${name}")`).click();
 const settle = (pg) => pg.waitForTimeout(700);
 const ready = async (pg) => { await pg.waitForFunction(() => !document.querySelector('.routewait') && /of [\d,]+ compan/.test(document.querySelector('[data-testid=count]')?.textContent ?? ''), null, { timeout: 20000 }); await pg.waitForTimeout(400); };
 
-/* ---- 1. four destinations, on a phone and on a desktop ---- */
+/* ---- 1. five destinations, on a phone and on a desktop ---- */
 for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   const { ctx, pg } = await mk(w, h); await go(pg, '#/today');
   const t = await tabs(pg);
-  ok(t.map((x) => x.t).join('|') === 'Today|Discover|My Desk|More', `${label}: four destinations, Today | Discover | My Desk | More`);
+  ok(t.map((x) => x.t).join('|') === 'Today|Signals|Discover|My Desk|More', `${label}: five destinations, Today | Signals | Discover | My Desk | More`);
   ok(await pg.locator('nav.tabs').getAttribute('aria-label') === 'Primary' && t.filter((x) => x.cur === 'page').length === 1, `${label}: one named navigation landmark and exactly one aria-current`);
   const r = await pg.locator('nav.tabs a').evaluateAll((a) => a.map((x) => { const q = x.getBoundingClientRect(); return [Math.round(q.width), Math.round(q.height)]; }));
   ok(r.every(([ww, hh]) => ww >= 44 && hh >= 44), `${label}: every destination is at least 44 by 44 px (${r.map((x) => x.join('x')).join(' ')})`);
@@ -48,7 +48,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   ok(await pg.locator('h1').first().innerText() === 'More' && (await current(pg)) === 'More', 'More is its own tab, titled More');
   for (const [k, hash] of Object.entries(want)) {
     await go(pg, '#/more'); await pg.locator(`[data-more-row=${k}]`).click(); await pg.waitForFunction((h) => location.hash === h, hash); await settle(pg);
-    ok((await current(pg)) === (k === 'markets' || k === 'news' ? 'Today' : 'More') && (await pg.locator('main h1, main h2').count()) > 0, `More > ${k} opens ${hash} under ${k === 'markets' || k === 'news' ? 'Today' : 'More'}`);
+    ok((await current(pg)) === (k === 'markets' || k === 'news' ? 'Today' : k === 'signals' ? 'Signals' : 'More') && (await pg.locator('main h1, main h2').count()) > 0, `More > ${k} opens ${hash} under ${k === 'markets' || k === 'news' ? 'Today' : k === 'signals' ? 'Signals' : 'More'}`);
   }
   await ctx.close(); }
 
@@ -56,7 +56,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 { const { ctx, pg, errs } = await mk();
   const R = [['#/today', 'Today'], ['#/news', 'Today'], ['#/markets', 'Today'], ['#/m/GOLD', 'Today'], ['#/live', 'Today'], ['#/discover', 'Discover'], ['#/discover?q=tata', 'Discover'], ['#/c/TCS', 'Discover'], ['#/compare?s=TCS', 'Discover'], ['#/lab', 'Discover'],
     ['#/desk', 'My Desk'], ['#/desk?v=journal', 'My Desk'], ['#/desk?v=plans', 'My Desk'], ['#/report/TCS', 'My Desk'],
-    ['#/signals', 'More'], ['#/signals?v=tracker', 'More'], ['#/signals?v=auto', 'More'], ['#/signals?v=record', 'More'], ['#/signals?v=evidence', 'More'], ['#/profile', 'More'], ['#/data', 'More'], ['#/methodology', 'More'], ['#/help', 'More'], ['#/ops', 'More'], ['#/more', 'More']];
+    ['#/signals', 'Signals'], ['#/signals?v=tracker', 'Signals'], ['#/signals?v=auto', 'Signals'], ['#/signals?v=record', 'Signals'], ['#/signals?v=evidence', 'Signals'], ['#/profile', 'More'], ['#/data', 'More'], ['#/methodology', 'More'], ['#/help', 'More'], ['#/ops', 'More'], ['#/more', 'More']];
   const bad = [];
   for (const [h, want] of R) { await go(pg, h); const got = await current(pg); if (got !== want) bad.push(`${h}: ${got} not ${want}`); if (await pg.locator('.boundary, .welcome').count()) bad.push(`${h}: error or welcome screen`); }
   ok(bad.length === 0, `${R.length} deep links each open under the right tab${bad.length ? ': ' + bad.join('; ') : ''}`);
@@ -68,11 +68,11 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 /* ---- 4. Back and Forward ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/today');
   await tab(pg, 'More'); await pg.waitForSelector('[data-more]'); await pg.locator('[data-more-row=signals]').click(); await pg.waitForSelector('section[aria-label]'); await pg.getByRole('tab', { name: 'Record' }).click(); await pg.waitForFunction(() => /v=record/.test(location.hash)); await settle(pg);
-  await pg.goBack(); await pg.waitForFunction(() => location.hash === '#/signals'); ok((await current(pg)) === 'More', 'Back from Record: Signals, still under More');
+  await pg.goBack(); await pg.waitForFunction(() => location.hash === '#/signals'); ok((await current(pg)) === 'Signals', 'Back from Record: Signals, under its own tab');
   await pg.goBack(); await pg.waitForSelector('[data-more]'); ok(await pg.evaluate(() => location.hash) === '#/more' && (await current(pg)) === 'More', 'Back again: the More list');
   await pg.goBack(); await pg.waitForFunction(() => location.hash === '#/today'); ok((await current(pg)) === 'Today', 'Back again: Today');
   await pg.goForward(); await pg.waitForSelector('[data-more]'); await pg.goForward(); await pg.waitForFunction(() => location.hash === '#/signals'); await pg.goForward(); await pg.waitForFunction(() => /v=record/.test(location.hash));
-  ok((await current(pg)) === 'More' && /v=record/.test(await pg.evaluate(() => location.hash)), 'Forward three times: back at Signals > Record');
+  ok((await current(pg)) === 'Signals' && /v=record/.test(await pg.evaluate(() => location.hash)), 'Forward three times: back at Signals > Record');
   await ctx.close(); }
 
 /* ---- 5. a tab remembers where it was left: Discover's filters and scroll, My Desk's segment, the scroll of a long page ---- */
