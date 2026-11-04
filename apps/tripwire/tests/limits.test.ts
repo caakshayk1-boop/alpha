@@ -23,7 +23,7 @@ const HSTS = 'max-age=31536000; includeSubDomains';
 test.after(() => { (globalThis as any).fetch = realFetch; });
 
 test('every route that calls an upstream has an allowance class, and the allowances are above any normal use', () => {
-  for (const r of ['/api/tick', '/api/intraday', '/api/pulse', '/api/macro', '/api/breadth', '/api/news/catchup', '/api/chart', '/api/bars', '/api/news', '/api/news/version', '/api/ledger', '/api/factors', '/api/rsi', '/api/health']) assert.ok(ROUTE_CLASS[r] && LIMITS[ROUTE_CLASS[r]], r);
+  for (const r of ['/api/tick', '/api/intraday', '/api/pulse', '/api/macro', '/api/breadth', '/api/news/catchup', '/api/chart', '/api/bars', '/api/news', '/api/news/version', '/api/ledger', '/api/factors', '/api/rsi', '/api/fiidii', '/api/health']) assert.ok(ROUTE_CLASS[r] && LIMITS[ROUTE_CLASS[r]], r);
   assert.ok(LIMITS.quote[0] / LIMITS.quote[1] * 60 >= 60, 'the Today poll (one tick every 8 s, about 8 a minute) with several tabs open');
   assert.ok(LIMITS.history[0] >= 10 * 3, 'compare of three names, repeated');
 });

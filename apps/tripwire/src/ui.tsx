@@ -1,4 +1,5 @@
 import { haptic, kindOf, setHaptics } from './haptic.ts';
+import { createPortal } from 'react-dom';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyEvent, type ReactNode } from 'react';
 
 const P: Record<string, string> = {
@@ -39,9 +40,9 @@ export function UiProvider({ children, haptics }: { children: ReactNode; haptics
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
+    const prev = document.activeElement as HTMLElement | null; const y = window.scrollY;
     const o = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    ref.current?.focus();
+    ref.current?.focus({ preventScroll: true });   // the sheet is fixed to the screen; focusing it must never scroll the page
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'Tab' && ref.current) {
@@ -51,16 +52,18 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       }
     };
     document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = o; prev?.focus?.(); };
+    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = o; prev?.focus?.({ preventScroll: true }); if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); };   // the person is back where they were
   }, [onClose]);
-  return <>
+  // Rendered on the body, not where it is declared: the page column carries a transform while motion is on, and inside a transformed ancestor "fixed" means "fixed to that ancestor",
+  // which parked the sheet at the foot of a long page and scrolled the person there (a company page: 4,100px of jump).
+  return createPortal(<>
     <div className="scrim" onClick={onClose} />
     <div className="sheet" role="dialog" aria-modal="true" aria-label={title} ref={ref} tabIndex={-1}>
       <div className="grab" aria-hidden="true" />
       <div className="row between"><h3>{title}</h3><button className="icon-btn" onClick={onClose} aria-label="Close"><Icon n="x" /></button></div>
       {children}
     </div>
-  </>;
+  </>, document.body);
 }
 
 /** Segmented control with a sliding thumb. */

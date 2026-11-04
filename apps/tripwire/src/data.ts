@@ -105,6 +105,9 @@ export interface Quote { t: number[]; c: number[]; px: number; pt: number; prev:
 export interface QuotesFeed { ok: boolean; fetched_at: string; quotes: Record<string, Quote>; missing: string[] }
 export interface FactorSheet { ok: boolean; schema: string; as_of: string; universe: number; rows: Record<string, Record<string, number>>; study?: Record<string, { adopt: boolean; kind: string }> }
 export const useFactors = () => useJson<FactorSheet>('/api/factors');
+/** The nightly FII/DII figures (NSE, provisional). Absent until the first nightly run; the card that shows it hides itself then. */
+export interface FlowFeed { ok: boolean; schema: string; updated: string; source: string; rows: import('./fiidii.ts').FlowDay[] }
+export const useFiiDii = () => useJson<FlowFeed>('/api/fiidii');
 
 /** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
 export function usePoll<T extends { ok: boolean }>(url: string | null, every: number, nseOnly = false): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {

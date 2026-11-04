@@ -8,7 +8,7 @@
   *,*::before,*::after{box-shadow:none!important;text-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important}
 
   /* the app's own chrome: navigation, the status bar, the sticky action bar, banners, sheets, toasts, the skip link and anything marked noprint */
-  .tabs,.statusbar,.skip,.fab-row,.banner,.scrim,.sheet,.toast,.noprint,.routewait,.co-tabs,.c-prim,.c-adv,.cf-view,.c-optbtn,.chev,.sr.skip,[data-noprint]{display:none!important}
+  .tabs,.statusbar,.skip,.fab-row,.scrolltop,.banner,.scrim,.sheet,.toast,.noprint,.routewait,.co-tabs,.c-prim,.c-adv,.cf-view,.c-optbtn,.chev,.sr.skip,[data-noprint]{display:none!important}
   .bar .icon-btn{display:none!important}
   .bar{position:static!important;background:none!important;border:0!important;margin:0 0 var(--sp-3)!important;padding:0!important;min-height:0!important}
   .bar h1{font-size:14pt!important;line-height:1.2;display:block;-webkit-line-clamp:unset;overflow:visible;white-space:normal;color:var(--print-ink)!important}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { go, useAppState, useLoc, useSheets, setState } from '../app.tsx';
 import { useCompany, useScreen } from '../data.ts';
 import { Icon, Seg, useUi } from '../ui.tsx';
@@ -41,6 +41,18 @@ export function Company({ sym }: { sym: string }) {
   const evals = useMemo(() => (row && eng ? ACTIVE.map((e) => ({ e, ev: evaluate(e.id, row as Q, eng.ctx) })) : []), [row, eng]);
   const yrs = [...(c.data?.years ?? [])].slice(0, 4).reverse();
   const maxRev = Math.max(0, ...yrs.map((y) => (isNum(y.rev_cr) ? y.rev_cr : 0)));
+  // The action bar floats above the tab bar. Once the person has actually scrolled on this page, and the bar would sit on top of the price chart, it steps aside; it returns as soon as the chart is clear of it.
+  // On arrival it is always there (a page can open already scrolled), so the first scroll event after the page has settled is what arms it.
+  const [barOverChart, setBarOverChart] = useState(false);
+  useEffect(() => {
+    const t0 = Date.now(); let armed = false; let raf = 0;
+    const check = () => { raf = 0; const plot = document.querySelector('.chart-plot'); const bar = document.querySelector('.fab-row');
+      if (!armed || !plot || !bar) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
+    const queue = () => { if (!raf) raf = requestAnimationFrame(check); };
+    const onScroll = () => { if (Date.now() - t0 > 500) armed = true; queue(); };
+    window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', queue);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', queue); if (raf) cancelAnimationFrame(raf); setBarOverChart(false); };
+  }, [sym]);
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
   if (c.err === 'not published') return <NotFound asked={sym} company total={scr.data?.count ?? null} />;
   if (c.err || !c.data || !row) return <div><PageBar title={sym} onBack /><Failed what={sym} err={c.err ?? 'no data'} retry={c.retry} /></div>;
@@ -164,7 +176,7 @@ export function Company({ sym }: { sym: string }) {
     <div role="tabpanel" aria-label={TABS.find((x) => x.id === tab)!.label}>
       {tab === 'overview' && overview}{tab === 'financials' && financials}{tab === 'ownership' && ownership}{tab === 'risks' && risks}{tab === 'thesis' && thesis}
     </div>
-    <div className="fab-row" role="group" aria-label="Actions">
+    <div className={`fab-row${barOverChart ? ' fab-away' : ''}`} role="group" aria-label="Actions">
       <FollowText sym={sym} />
       <button className="btn" onClick={() => { const cur = s.follows.includes(sym) ? s.follows.filter((x) => x !== sym).slice(0, 1) : []; go(`/compare?s=${[sym, ...cur].join(',')}`); }}><Icon n="compare" />Compare</button>
       <button className="btn" onClick={() => open({ k: 'thesis', sym })}><Icon n="note" />Thesis</button>

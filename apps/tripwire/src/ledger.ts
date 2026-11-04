@@ -48,7 +48,7 @@ export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, ni
   for (const p of l.picks) {
     if (l.voided?.[p.id]) continue;                       // struck from the record: never replayed, and voidOutcomes() below leaves it with no live outcome
     if (outcomes[p.id]?.final) continue;
-    const b = bars[p.sym]; if (!b) { outcomes[p.id] = outcomes[p.id] ?? { status: 'pending', final: false }; continue; }
+    const b = bars[p.sym]; if (!b || !b.length) { outcomes[p.id] = outcomes[p.id] ?? { status: 'pending', final: false }; continue; }   // no bars (missing OR empty) leaves the pick exactly as recorded, markDay included
     const paper: Paper = { id: p.id, sym: p.sym, engine: p.engine, asOf: p.asOf, ref: p.ref, stop: p.stop, horizon: p.horizon, qty: 100, takenAt: takenAtFor(p.asOf), targets: targetsFor(p) };
     const previous = outcomes[p.id];
     const v = preservePosition(paper, b, null, l.cost, outcomeView(paper, previous));

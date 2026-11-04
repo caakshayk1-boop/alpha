@@ -1,5 +1,6 @@
 import { SectorHeat } from './SectorHeat.tsx';
 import { useEngines } from '../useEngines.ts';
+import { FlowCard } from './FlowCard.tsx';
 import { usePulse } from '../data.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { sessionNow } from '../market.ts';
@@ -29,6 +30,7 @@ export function Markets() {
       <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
       <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast.</p>
     </section>
+    <FlowCard />
     <div className="market-grid">
       <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
         <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
