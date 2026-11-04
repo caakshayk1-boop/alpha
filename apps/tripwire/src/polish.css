@@ -128,8 +128,7 @@
     /* the badges take their own line and the freshness line keeps room for its longest wording, so prices and the screen arriving move nothing below them */
     .brief .brief-top>.row {flex-basis:100%;min-height:24px}
     .brief .brief-fresh .bf-row {display:block}
-    .brief .brief-fresh .bf-px {min-height:2lh}
-    .brief .brief-fresh .bf-scr {min-height:2lh}
+    .brief .brief-fresh .bf-px {min-height:3lh}   /* the merged row (screen day, times in IST, price status) is three lines in a wide fallback font; two lines let it grow when the status arrived and move the links below it (CLS 0.014 in CI, limit 0.01) */
     .brief-ix {gap:var(--sp-2)}
     .bix {padding:var(--sp-2)}
     .bix .small {font-size:var(--fs-label)}
