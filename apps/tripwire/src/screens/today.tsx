@@ -92,7 +92,7 @@ export function Today() {
         </div>
         <FlowLine />
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · Screen data through {dayWord(day)} · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
+        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Screen data through {dayWord(day)} · times in IST · Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
       </section>}
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
