@@ -184,7 +184,9 @@ export function parseIntraday(res, nowMs = Date.now()) {
   const px = Number(m?.regularMarketPrice) > 0 ? r2(Number(m.regularMarketPrice)) : c[c.length - 1];
   const pt = Number(m?.regularMarketTime) || t[t.length - 1];
   const prev = Number(m?.chartPreviousClose ?? m?.previousClose);
-  if (!(px > 0) || !(prev > 0) || t.length < 2) return null;
+  // no valid bar yet but the exchange's own last trade is from today: that print is the quote (a stock whose first trade has not landed in a five-minute bucket)
+  if (!t.length && px > 0 && pt && new Date((pt + 19800) * 1000).toISOString().slice(0, 10) === new Date(nowMs + 19800000).toISOString().slice(0, 10)) { t.push(pt); c.push(px); }
+  if (!(px > 0) || !(prev > 0) || t.length < 1) return null;
   return { t, c, px, pt, prev: r2(prev), live: nowMs / 1000 - pt < 25 * 60 };
 }
 const fetchIntraday = (yahooSymbol, cache, ctx) => coalesce('intra:' + yahooSymbol, () => fetchIntradayOne(yahooSymbol, cache, ctx));
@@ -202,13 +204,18 @@ export function parseSpark(e, nowMs = Date.now()) {
   const ts = e?.timestamp, cl = e?.close; if (!Array.isArray(ts) || !Array.isArray(cl)) return null;
   const t = [], c = []; ts.forEach((x, i) => { if (cl[i] > 0) { t.push(x); c.push(r2(cl[i])); } });
   const prev = Number(e.chartPreviousClose ?? e.previousClose); const px = c[c.length - 1]; const pt = t[t.length - 1];
-  if (!(px > 0) || !(prev > 0) || t.length < 2) return null;
+  if (!(px > 0) || !(prev > 0) || t.length < 1) return null;   // ONE valid bar is a real quote: a thin stock has empty five-minute buckets, and in the first minutes it may have traded once (it was dropped as 'missing' before, and shown at yesterday's close)
   return { t, c, px, pt, prev: r2(prev), live: nowMs / 1000 - pt < 25 * 60 };
 }
 const SPARK = 20;
+const RETRY_MAX = 8;
+/** Monday to Friday, 09:15 to 15:30 on the Indian clock. Exchange holidays are not modelled here (the app's calendar is); on one, every name is missing and the bounded retry finds nothing, which is harmless. */
+export function marketOpenNow(nowMs = Date.now()) { const d = new Date(nowMs + 19800000); const wd = d.getUTCDay(); const m = d.getUTCHours() * 60 + d.getUTCMinutes(); return wd >= 1 && wd <= 5 && m >= 9 * 60 + 15 && m <= 15 * 60 + 30; }
+/** The probe that says whether the FEED is current: the Nifty's newest print. Added to every quote request (unless the caller already asked for the Nifty) and reported as feed_t. */
+const FEED_PROBE = ['__feed', '^NSEI'];
 /** Live quotes for many symbols with few requests: Yahoo's spark endpoint takes twenty at a time, and each batch is cached for six seconds so
  *  every open copy of the app shares it. A batch that fails falls back to one request per symbol. `pairs` is [[ourKey, yahooSymbol], ...]. */
-async function sparkMany(pairs, ctx) {
+export async function sparkMany(pairs, ctx, nowMs = Date.now()) {
   const cache = typeof caches !== 'undefined' ? caches.default : null; const out = {}; const missing = [];
   const sorted = [...pairs].sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));          // one order for every caller, so the same set is the same cache entry
   const chunks = []; for (let i = 0; i < sorted.length; i += SPARK) chunks.push(sorted.slice(i, i + SPARK));
@@ -227,6 +234,13 @@ async function sparkMany(pairs, ctx) {
       await Promise.all(ch.map(async ([k, y]) => { try { const p = await fetchIntraday(y, cache, ctx); if (p) out[k] = p; else missing.push(k); } catch { missing.push(k); } }));
     }
   }));
+  // A name the batch feed left out while the market is open (a thin stock in the opening minutes, a batch that skipped it) is asked for on its own, through the single-symbol endpoint, before it is given up.
+  // Bounded: at most RETRY_MAX names per request. A name that still has no bars today has not traded yet, and stays missing (the app says so).
+  if (missing.length && marketOpenNow(nowMs)) {
+    const yOf = new Map(pairs); const again = missing.splice(0, missing.length); const left = [];
+    await Promise.all(again.slice(0, RETRY_MAX).map(async (k) => { try { const p = await fetchIntraday(yOf.get(k), cache, ctx); if (p && p.t.length) out[k] = p; else left.push(k); } catch { left.push(k); } }));
+    missing.push(...left, ...again.slice(RETRY_MAX));
+  }
   return { out, missing };
 }
 // GET /api/intraday?s=TCS,INFY -> { ok, quotes: { TCS: { t, c, px, pt, prev, live } }, missing }   (up to 30 symbols, one session of 5-minute closes)
@@ -236,8 +250,9 @@ async function sparkMany(pairs, ctx) {
 const INDICES = { NIFTY: '^NSEI', BANKNIFTY: '^NSEBANK', VIX: '^INDIAVIX' };
 const LIVE_H = { 'cache-control': 'public, max-age=4, s-maxage=6' };
 async function quotes(list, map, ctx) {
-  const { out, missing } = await sparkMany(list.map((s) => [s, map(s)]), ctx);
-  return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), quotes: out, missing }, 200, LIVE_H);
+  const { out, missing } = await sparkMany([...list.map((s) => [s, map(s)]), FEED_PROBE], ctx);
+  const feed_t = out.__feed?.pt ?? null; delete out.__feed;
+  return json({ ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), feed_t, quotes: out, missing: missing.filter((k) => k !== '__feed') }, 200, LIVE_H);
 }
 const TICK_MAX = 60;
 async function tick(url, ctx) {
@@ -245,8 +260,9 @@ async function tick(url, ctx) {
   if (!list) return json({ ok: false, error: `give up to ${TICK_MAX} valid symbols` }, 400);
   const wantI = url.searchParams.get('i') === '1', wantM = url.searchParams.get('m') === '1';
   const pairs = [...list.map((s) => ['s:' + s, `${s}.NS`]), ...(wantI ? Object.entries(INDICES).map(([k, y]) => ['i:' + k, y]) : []), ...(wantM ? Object.entries(MACRO).map(([k, y]) => ['m:' + k, y]) : [])];
-  const { out, missing } = await sparkMany(pairs, ctx); const pick = (pre) => Object.fromEntries(Object.entries(out).filter(([k]) => k.startsWith(pre)).map(([k, v]) => [k.slice(2), v]));
-  const body = { ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), quotes: pick('s:'), missing: missing.map((k) => k.slice(2)) }; if (wantI) body.pulse = pick('i:'); if (wantM) body.macro = pick('m:');
+  if (!wantI) pairs.push(FEED_PROBE);
+  const { out, missing } = await sparkMany(pairs, ctx); const feed_t = (out.__feed ?? out['i:NIFTY'])?.pt ?? null; delete out.__feed; const pick = (pre) => Object.fromEntries(Object.entries(out).filter(([k]) => k.startsWith(pre)).map(([k, v]) => [k.slice(2), v]));
+  const body = { ok: Object.keys(out).length > 0, fetched_at: new Date().toISOString(), feed_t, quotes: pick('s:'), missing: missing.filter((k) => k !== '__feed').map((k) => k.slice(2)) }; if (wantI) body.pulse = pick('i:'); if (wantM) body.macro = pick('m:');
   return json(body, 200, LIVE_H);
 }
 

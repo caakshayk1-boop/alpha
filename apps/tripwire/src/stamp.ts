@@ -3,15 +3,24 @@
  *  Exchange holidays ARE modelled (calendar.ts, the NSE circular): on a listed holiday the market is shut, no print is expected, and the last one is "Last traded". A weekday
  *  the calendar lists as a trading day with no recent print is a quiet price source or an unscheduled halt, and is said to be exactly that rather than blamed on a holiday.
  *
- *  ONE WORD for a quote: Live, Delayed, Last traded or Unavailable. Derived from two facts only: the exchange's own print time, and whether the session is on.
+ *  ONE WORD for a quote: Live, Delayed, Last traded, Not traded yet or Unavailable. Derived from the exchange's own print time, whether the session is on, and (new) whether the price FEED itself is current.
  *    Live          printed within five minutes AND the session is on (or it is a listed special session). A shut market is never Live, however fresh the print.
- *    Delayed       the session is on and the print is older than five minutes.
+ *    Delayed       the session is on and the print is older than five minutes, and nothing shows the feed itself is current.
+ *    Live (quiet)  the session is on, the feed is current (the Nifty printed within three minutes) and THIS stock last traded more than five minutes ago today: its last trade is its live price. Said with the time it traded.
+ *    Not traded yet  the session is on, the feed is current, and this stock has not traded today: the figure shown is yesterday's close, and it says so. Never called Live, never called Delayed.
  *    Last traded   the session is shut (weekend, holiday, before 09:15, after 15:30), or the market trades round the clock but nothing printed for a while: the last print is the last price.
  *    Unavailable   there is no print time to judge and nothing is loading.
  *  The moment the app fetched a price decides nothing here. */
 export type QState = 'live' | 'lagging' | 'stale' | 'last';
-export type QWord = 'Live' | 'Delayed' | 'Last traded' | 'Unavailable';
+export type QWord = 'Live' | 'Delayed' | 'Last traded' | 'Not traded yet' | 'Unavailable';
 export const LIVE_SEC = 5 * 60, LAG_SEC = 20 * 60;
+/** The newest print the price service has just shown for a liquid probe (the Nifty): evidence that the FEED is current, whatever one thin stock last did. The data layer records it from every
+ *  quote response; until it has, nothing here changes (a name judged on its own print alone, as before). */
+export const FEED_FRESH_SEC = 3 * 60;
+let feedSec: number | null = null;
+export function noteFeedPrint(sec: number | null | undefined): void { if (typeof sec === 'number' && Number.isFinite(sec) && (feedSec == null || sec > feedSec)) feedSec = sec; }
+export function resetFeedPrint(): void { feedSec = null; }
+export const feedIsFresh = (nowMs: number): boolean => feedSec != null && nowMs / 1000 - feedSec <= FEED_FRESH_SEC && nowMs / 1000 - feedSec >= -60;
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 import { marketOpenNow, istClock, isSpecialDay } from './calendar.ts';
 const ist = (ms: number) => new Date(ms + 330 * 60000);
@@ -33,6 +42,10 @@ export function quoteAge(ptSec: number | null | undefined, nowMs: number, nse = 
   const last: QuoteAge = { state: 'last', word: 'Last traded', lagSec: lag, text: `Last traded ${at}`, tone: 'quiet' };
   if (nse && !nseSessionOn(nowMs)) return last;                 // a shut market never says Live, and never "delayed": nothing is expected to print
   if (lag <= LIVE_SEC) return { state: 'live', word: 'Live', lagSec: lag, text: `Live · ${at} · ${ageWord(lag)} old`, tone: 'live' };
+  if (nse && feedIsFresh(nowMs)) {
+    if (ist(ptSec * 1000).toISOString().slice(0, 10) === ist(nowMs).toISOString().slice(0, 10)) return { state: 'live', word: 'Live', lagSec: lag, text: `Live · last trade ${at} · ${ageWord(lag)} ago (the feed is current; this stock has not traded since)`, tone: 'live' };
+    return { state: 'last', word: 'Not traded yet', lagSec: lag, text: `No trade yet today · last close ${at}`, tone: 'quiet' };
+  }
   if (lag <= LAG_SEC) return { state: 'lagging', word: 'Delayed', lagSec: lag, text: `Delayed · ${at} · ${ageWord(lag)} old`, tone: 'warn' };
   if (nse) return { state: 'stale', word: 'Delayed', lagSec: lag, text: `Delayed · no print since ${at} (${ageWord(lag)}). The calendar lists today as a trading day, so this is not a listed holiday: the price source is quiet, or trading is halted.`, tone: 'bad' };
   return last;
@@ -51,6 +64,7 @@ export function freshestPrint(secs: readonly (number | null | undefined)[]): num
  *  (the close is then yesterday's, not today's). No mark at all is "Unavailable". `detail` says which price it is, in plain words. */
 export function markWord(kind: 'live' | 'close' | null | undefined, printSec: number | null | undefined, nowMs: number): { word: QWord; detail: string } {
   if (!kind) return { word: 'Unavailable', detail: 'no price' };
-  if (kind === 'live') { const a = quoteAge(printSec, nowMs); return a ? { word: a.word, detail: a.word === 'Live' ? `printed ${fmtIst(printSec as number, nowMs)}` : `last print ${fmtIst(printSec as number, nowMs)}` } : { word: 'Last traded', detail: 'print time unknown' }; }
-  return nseSessionOn(nowMs) ? { word: 'Delayed', detail: 'the last daily close, not today\'s price' } : { word: 'Last traded', detail: 'the last daily close' };
+  if (kind === 'live') { const a = quoteAge(printSec, nowMs); return a ? { word: a.word, detail: a.word === 'Live' ? (a.lagSec > LIVE_SEC ? `last trade ${fmtIst(printSec as number, nowMs)}; the feed is current` : `printed ${fmtIst(printSec as number, nowMs)}`) : a.word === 'Not traded yet' ? 'no trade yet today; this is the last close' : `last print ${fmtIst(printSec as number, nowMs)}` } : { word: 'Last traded', detail: 'print time unknown' }; }
+  if (nseSessionOn(nowMs)) return feedIsFresh(nowMs) ? { word: 'Not traded yet', detail: 'no trade yet today; this is the last close' } : { word: 'Delayed', detail: 'the last daily close, not today\'s price' };
+  return { word: 'Last traded', detail: 'the last daily close' };
 }

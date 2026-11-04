@@ -1,6 +1,7 @@
 import { bankLead, indexFacts, type IndexFacts } from '../indexfacts.ts';
 import { pct, tone } from '../fmt.ts';
-import { Spark, Tick } from '../live.tsx';
+import { Tick } from '../live.tsx';
+import { DayChart } from '../components/DayChart.tsx';
 import { tvIndexUrl } from '../tv.ts';
 import type { Quote } from '../data.ts';
 
@@ -16,7 +17,7 @@ function Row({ k, name, q, d, vix }: { k: string; name: string; q: Quote | undef
     <span className="ix-mid">
       <span className="rg" role="img" aria-label={f ? `${name} day range ${num(f.lo, d)} to ${num(f.hi, d)}; now ${f.pos == null ? 'level' : `${Math.round(f.pos * 100)} percent of the way up`}` : `${name} range not available`}>
         <i className="trk" />{f?.prevPos != null && <i className="pv" style={{ left: `${f.prevPos * 100}%` }} title={`Previous close ${num(f.prev, d)}`} />}{f?.pos != null && <i className={`nw ${col}`} style={{ left: `${f.pos * 100}%` }} />}</span>
-      <span className="sp" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={(f?.ch ?? 0) >= 0 !== !!vix} refs={[{ v: q.prev, kind: 'prev' }]} h={22} label={`${name} today`} /> : null}</span></span>
+      <span className="sp" aria-hidden="true">{q && q.c.length > 2 ? <DayChart q={q} size="compact" nse good={(f?.ch ?? 0) >= 0 !== !!vix} label={`${name} today`} /> : null}</span></span>
     <span className="ix-bot small mute num"><span>low {f ? num(f.lo, d) : '—'}</span><span>prev {f ? num(f.prev, d) : '—'}{f?.gap != null ? ` · opened ${pct(f.gap)}` : ''}</span><span>high {f ? num(f.hi, d) : '—'}</span></span>
     <span className="sr"> on TradingView, opens in a new tab</span></a>;
 }

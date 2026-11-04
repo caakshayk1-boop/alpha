@@ -247,7 +247,11 @@ test('worker: an intraday print is live only when it is under 25 minutes old; th
   const live = parseIntraday(res, (ts[9] + 600) * 1000)!; assert.equal(live.live, true); assert.equal(live.px, 109.46); assert.equal(live.prev, 99.5); assert.equal(live.t.length, 9);
   assert.equal(parseIntraday(res, (ts[9] + 3600) * 1000)!.live, false);          // an hour old: the market is not trading
   assert.equal(parseIntraday({ ...res, meta: { regularMarketPrice: 5 } }, 0), null);   // no previous close: no day change can be stated
-  assert.equal(parseIntraday({ timestamp: [1], indicators: { quote: [{ close: [1] }] }, meta: res.meta }, 0), null); assert.equal(parseIntraday(undefined), null);
+  assert.equal(parseIntraday(undefined), null);
+  // one valid bar is a quote (a thin stock early in the day); no bar and a stale print is not
+  const one = parseIntraday({ timestamp: [ts[0], ts[1]], indicators: { quote: [{ close: [null, 101.5] }] }, meta: { chartPreviousClose: 99.5 } }, (ts[1] + 60) * 1000)!; assert.equal(one.t.length, 1); assert.equal(one.px, 101.5); assert.equal(one.live, true);
+  assert.equal(parseIntraday({ timestamp: [ts[0]], indicators: { quote: [{ close: [null] }] }, meta: { chartPreviousClose: 99.5, regularMarketPrice: 99.5, regularMarketTime: ts[0] - 86400 } }, ts[0] * 1000), null, 'no bar and yesterday\'s print: nothing to show for today');
+  const today = parseIntraday({ timestamp: [ts[0]], indicators: { quote: [{ close: [null] }] }, meta: { chartPreviousClose: 99.5, regularMarketPrice: 100.2, regularMarketTime: ts[0] + 120 } }, (ts[0] + 300) * 1000)!; assert.equal(today.px, 100.2); assert.deepEqual(today.t, [ts[0] + 120]);
 });
 
 import { tvUrl, tvSymbol, tvIndexUrl } from '../src/tv.ts';

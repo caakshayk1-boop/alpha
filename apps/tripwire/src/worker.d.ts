@@ -7,6 +7,8 @@ declare module "*/worker.js" {
   export function parseChart(res: unknown, niftyRes?: unknown): { t: number[]; c: number[]; n: (number | null)[] | null; o: (number | null)[] | null; h: (number | null)[] | null; l: (number | null)[] | null; v: (number | null)[] | null } | null;
   export const MACRO: Record<string, string>;
   export function parseSpark(e: unknown, nowMs?: number): { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean } | null;
+  export function marketOpenNow(nowMs?: number): boolean;
+  export function sparkMany(pairs: [string, string][], ctx?: unknown, nowMs?: number): Promise<{ out: Record<string, { t: number[]; c: number[]; px: number; pt: number; prev: number; live: boolean }>; missing: string[] }>;
   export function trendOfRow(price: number | null | undefined, sma20: number | null | undefined, sma50: number | null | undefined, sma200: number | null | undefined, r3m: number | null | undefined): 'up' | 'mixed' | 'down' | null;
   export function aggregateBreadth(rows: { sym: string; sector?: string | null; liquid?: boolean | null; price?: number | null; sma20?: number | null; sma50?: number | null; sma200?: number | null; r3m?: number | null }[], live?: Record<string, number>): { n: number; up: number; mixed: number; down: number; sectors: { k: string; n: number; up: number; down: number }[] };
 }

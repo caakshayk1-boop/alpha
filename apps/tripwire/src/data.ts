@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Row } from './screen.ts';
 import { useLiveMacro, useLivePulse, useLiveSymbols } from './quotes.ts';
-import { nseClockOpen } from './stamp.ts';
+import { noteFeedPrint, nseClockOpen } from './stamp.ts';
 import { voidOutcomes } from './ledger.ts';
 import { readLedgerCache, writeLedgerCache, validLedger } from './ledgercache.ts';
 export { useLiveMacro };
@@ -124,7 +124,7 @@ export function usePoll<T extends { ok: boolean }>(url: string | null, every: nu
       try {
         const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); const d = (await r.json().catch(() => null)) as T | null; if (r.status === 429) wait = retryAfterOf(r, d as never);
         if (!live) return; if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : r.status === 429 ? SLOW_DOWN : 'no prices returned');
-        got = true; set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
+        got = true; noteFeedPrint((d as { feed_t?: number } | null)?.feed_t); set((s) => ({ data: d, err: null, at: Date.now(), loading: false, tick: s.tick + 1 }));
       } catch (e) { if (live) set((s) => ({ ...s, err: (e as Error).message || 'unreachable', loading: false })); }
       next();
     };

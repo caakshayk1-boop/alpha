@@ -9,7 +9,8 @@ import { markWord } from '../stamp.ts';
 import { resultBasis } from '../provenance.ts';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { summarize } from '../tracker.ts';
-import { LiveBadge, Observed, Spark, Tick, TvButton } from '../live.tsx';
+import { LiveBadge, Observed, Tick, TvButton } from '../live.tsx';
+import { DayChart, type DayRef } from '../components/DayChart.tsx';
 import { useScreen } from '../data.ts';
 import { TrendTag } from './common.tsx';
 import { ContributionBars } from './contribution.tsx';
@@ -85,7 +86,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }
     pnl={v.pnl} r={v.r} pct={v.pct}
     line={isOpen || done ? undefined : v.status === 'skipped' ? <span className="down">{v.skipReason}. No trade was opened, and none is counted.</span> : <>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</>}>
     {(isOpen || done) && <div>
-      {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today, five-minute' : 'Last session, five-minute'}</div><Spark c={q!.c} up={q!.px >= q!.prev} refs={[{ v: q!.prev, kind: 'prev' }, ...(v.entry ? [{ v: v.entry, kind: 'entry' as const }] : []), { v: p.stop, kind: 'stop' }]} label={`${p.sym} today, with the previous close, your entry and your stop`} h={48} /><div className="small mute">dashed: previous close, your entry, your stop</div></div>}
+      {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today' : 'Last session'}</div><DayChart q={q!} nse label={`${p.sym} ${live ? 'today' : 'last session'}`} fmt={(x) => inr(x)} refs={[...(v.entry ? [{ v: v.entry, kind: 'entry', text: `Entry ${inr(v.entry)}` } as DayRef] : []), { v: v.ladder?.stop ?? p.stop, kind: 'stop', text: `Stop ${inr(v.ladder?.stop ?? p.stop)}` }, ...(v.ladder ? [{ v: v.ladder.t1, kind: 'target', text: `T1 ${inr(v.ladder.t1)}` } as DayRef, { v: v.ladder.t2, kind: 'target', text: `T2 ${inr(v.ladder.t2)}` } as DayRef] : [])]} /></div>}
       {v.ladder && <div className="small num" style={{ marginTop: 10 }}>
         <div className="k">Profit booking · {styleDef(styleOf(p.horizon)).label}</div>
         <div>Target 1 {inr(v.ladder.t1)} · {v.ladder.t1Hit ? 'filled, half sold, stop moved to the fill' : 'not reached'}</div>

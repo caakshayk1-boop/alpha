@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { preservePosition, outcomeView } from '../src/positionstate.ts';
+import { preservePosition, outcomeView, markOpen } from '../src/positionstate.ts';
 import { evaluatePaper, type Paper, type Bar } from '../src/tracker.ts';
 import { emptyLedger, evaluateLedger, record, takenAtFor, type Ledger } from '../src/ledger.ts';
 import { DEFAULTS, takePaper, recordPaperView, parseState, mergeStates } from '../src/store.ts';
@@ -62,4 +62,24 @@ test('published ledger retains every pick, history and open position when all pr
 test('a pick recorded tonight that has only been marked to a day keeps that mark when its prices come back empty', () => {
   const l: Ledger = { ...emptyLedger('2026-11-02T00:00:00Z'), picks: [{ ...paper, score: 90, rank: 1 }], outcomes: { p: { status: 'pending', final: false, markDay: '2026-11-02' } } };
   assert.deepEqual(evaluateLedger(l, { X: [] }, null, '2026-11-03T01:00:00Z').outcomes.p, { status: 'pending', final: false, markDay: '2026-11-02' });
+});
+
+test('a retained position follows the live price: the history is incomplete but the quote is in hand (the frozen-at-yesterday\'s-close fault)', () => {
+  const live = { px: 108, t: bars[2].t + 3600 }; const v = preservePosition(paper, bars.slice(1), live, .25, prior);
+  assert.equal(v.status, 'open'); assert.equal(v.markKind, 'live'); assert.equal(v.mark, 108); assert.ok(v.dataNote, 'it still says the history is incomplete');
+  const entry = prior.entry!; const pnl = (108 - entry) * 100 - .0025 * entry * 100 - .001 * 108 * 100;   // the tracker's own open formula, recomputed here from the recorded entry
+  assert.ok(Math.abs(v.pnl! - Math.round(pnl * 100) / 100) < 0.011, `P&L ${v.pnl} follows the live price (${pnl.toFixed(2)})`); assert.equal(v.entry, prior.entry); assert.equal(v.entryT, prior.entryT); assert.equal(v.sessions, prior.sessions);
+  assert.notEqual(v.pnl, prior.pnl, 'the recorded P&L was at the old mark; this one is at the live price');
+});
+test('a live print is never an exit: far below the stop, a retained position stays open', () => {
+  const v = preservePosition(paper, null, { px: 80, t: bars[2].t + 3600 }, .25, prior); assert.equal(v.status, 'open'); assert.equal(v.mark, 80); assert.ok(v.pnl! < 0); assert.ok(v.dataNote);
+  assert.equal(markOpen({ ...prior, status: 'closed' }, paper, { px: 80, t: 1 }, .25).mark, prior.mark, 'a closed position is never re-marked');
+});
+test('a bad tick or no quote leaves the recorded price alone', () => {
+  for (const live of [null, { px: 0, t: 1 }, { px: NaN, t: 1 }, { px: prior.entry! * 0.2, t: 1 }, { px: prior.entry! * 3, t: 1 }]) { const v = preservePosition(paper, null, live as never, .25, prior); assert.equal(v.mark, prior.mark); assert.equal(v.pnl, prior.pnl); assert.equal(v.markKind, prior.markKind); }
+});
+test('a position that has sold half at target 1 is marked on the half it still holds, plus what it banked', () => {
+  const half = { ...prior, ladder: { t1: 107.5, t2: 115, t1Hit: true, t2Hit: false, booked: 375, qtyLeft: 50, stop: prior.entry! } } as typeof prior;
+  const v = markOpen(half, paper, { px: 112, t: 1 }, .25); const e = prior.entry!;
+  const expected = 375 + (112 - e) * 50 - .0025 * e * 100 - .001 * 112 * 50; assert.ok(Math.abs(v.pnl! - Math.round(expected * 100) / 100) < 0.011, `${v.pnl} vs ${expected.toFixed(2)}`); assert.equal(v.ladder?.qtyLeft, 50); assert.equal(v.ladder?.booked, 375);
 });

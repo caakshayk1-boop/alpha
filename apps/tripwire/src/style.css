@@ -812,3 +812,25 @@ html.fx .scrolltop:active{transform:scale(.94)}
 .fl-bars .fl-dii{opacity:.62}
 .fl-key{margin:2px 0 0}
 .flows table{width:100%;border-collapse:collapse;margin-top:8px}.flows th,.flows td{padding:8px 6px;text-align:right;border-top:1px solid var(--line)}.flows th[scope=row],.flows thead th:first-child{text-align:left;font-weight:500}
+
+/* the day chart: one session, scaled to today's own range */
+.dc{display:block;width:100%;overflow:visible}
+.dc-full{height:auto;max-width:640px;margin:0 auto;touch-action:pan-y;cursor:crosshair;border-radius:var(--radius-input)}
+.dc-full:focus-visible{outline:2px solid var(--accent,var(--lime));outline-offset:2px}
+.dc-compact{height:100%;min-height:22px}
+.dc .dc-t{font:500 9px/1 var(--font);fill:var(--ink-2)}.dc .dc-faint{fill:var(--ink-3)}
+.dc-prev{stroke:var(--ink-3);stroke-opacity:.55;stroke-width:1;stroke-dasharray:3 3}
+.dc-line{fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.dc-fill.up{fill:var(--up);fill-opacity:.2}.dc-fill.down{fill:var(--down);fill-opacity:.2}
+.dc-rest{fill:var(--ink-3);fill-opacity:.05}
+.dc-mark{fill:var(--ink)}.dc-dot{stroke:var(--s1);stroke-width:1.5}
+.dc-tag{fill:var(--surface-2,var(--s1));stroke:var(--line2)}.dc .dc-tag-t{font-weight:650}
+.dc-cursor{stroke:var(--ink-2);stroke-width:1;stroke-dasharray:2 2}
+.dc-ref{stroke-width:1;stroke-dasharray:4 3;stroke-opacity:.8}.dc-ref.entry{stroke:var(--ink)}.dc-ref.stop{stroke:var(--down)}.dc-ref.target{stroke:var(--up)}
+.dc .dc-ref-t.entry{fill:var(--ink)}.dc .dc-ref-t.stop{fill:var(--down)}.dc .dc-ref-t.target{fill:var(--up)}
+.dc-edge{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:2px}.dc-edge .stop{color:var(--down)}.dc-edge .target{color:var(--up)}.dc-edge .entry{color:var(--ink)}
+.dc-note{margin:6px 0 0}.dc-card{margin:12px 0}.dc-table{margin-top:6px}
+.dc-table table{width:100%;border-collapse:collapse;margin-top:8px}.dc-table th,.dc-table td{padding:6px;text-align:right;border-top:1px solid var(--line)}.dc-table th[scope=row],.dc-table thead th:first-child{text-align:left;font-weight:500}
+.brief-spark .dc-compact{height:56px}.ix .sp .dc-compact,.sp .dc-compact{height:28px}
+html.fx .dc-full .dc-line{stroke-dasharray:1;stroke-dashoffset:1;animation:dc-draw 700ms var(--ease,ease) forwards}
+@keyframes dc-draw{to{stroke-dashoffset:0}}
