@@ -38,3 +38,11 @@ export function FlowCard() {
     </details>
   </section>;
 }
+
+/** The same figures as ONE line for Today's brief, linking to the full card on Markets. Hidden under the same rules as the card (none, damaged, or too old). */
+export function FlowLine() {
+  const feed = useFiiDii(); const rows = useMemo<FlowDay[]>(() => (feed.data && validFile(feed.data) ? feed.data.rows : []), [feed.data]);
+  const last = rows[rows.length - 1]; const behind = last ? sessionsBehind(last.date) : null; if (!last || behind == null || behind > FLOW_MAX_BEHIND) return null;
+  const r = readFlows(rows)!;
+  return <p className="small dim brief-flow" data-flow-line><a href="#/markets" className="tx">{r.line.replace(/\.$/, '')} <span className="mute">({dayWord(r.date)}, NSE provisional)</span></a></p>;
+}

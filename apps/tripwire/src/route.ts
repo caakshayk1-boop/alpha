@@ -1,7 +1,7 @@
 /** Which hash addresses the app answers. Anything else is a "Not found" page, never a silent fall-through to Today. Pure, so it is unit-tested. */
 
 /** The first path segment of every address the app routes. `#/` and `#/today` are Today. */
-export const KNOWN_HEADS: readonly string[] = ['', 'today', 'discover', 'desk', 'more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'live', 'news', 'markets', 'lab', 'c', 'm', 'compare', 'report', 'privacy', 'terms'];
+export const KNOWN_HEADS: readonly string[] = ['', 'today', 'discover', 'desk', 'more', 'signals', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'live', 'paper', 'book', 'news', 'markets', 'lab', 'c', 'm', 'compare', 'report', 'privacy', 'terms'];
 
 export type Resolved = { kind: 'ok'; head: string } | { kind: 'notfound'; asked: string };
 const TOO_LONG = 80;

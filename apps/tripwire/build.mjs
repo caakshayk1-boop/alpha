@@ -56,7 +56,12 @@ for (const f of files) {
 rows.sort((a, b) => a.sym.localeCompare(b.sym));
 const uni = uni0;
 writeFileSync(join(DIST, 'data', 'screen.json'), JSON.stringify({ built_on: built, built_at: uni.built_at ?? null, as_of: uni.as_of, count: rows.length, rows }));
-for (const f of ['signals.json', 'engines_v3.json']) if (existsSync(join(PUB, f))) cpSync(join(PUB, f), join(DIST, 'data', f));
+for (const f of ['signals.json', 'engines_v3.json']) if (existsSync(join(PUB, f))) {
+  if (f !== 'signals.json') { cpSync(join(PUB, f), join(DIST, 'data', f)); continue; }
+  // One record on this site: the nightly ledger. The upstream feed carries a second, zeroed `record` object that nothing here reads and that contradicted the ledger (0 closed while the ledger holds closed positions); the served copy drops it.
+  const j = JSON.parse(readFileSync(join(PUB, f), 'utf8')); delete j.record; j.record_note = 'The forward record of the engines is the nightly ledger (/api/ledger). A second record is not published here.';
+  writeFileSync(join(DIST, 'data', f), JSON.stringify(j));
+}
 // The static half of the freshness table (the Data screen and the pill add the API files). One fact per file, read from the file's own date; the status is NEVER stored here,
 // it is computed from the clock by src/freshness.ts in the browser and in tools/check-data.mjs, so a file cannot keep saying "current" after the day has moved on.
 const lastDates = rows.map((r) => r.last_date).filter(Boolean).sort();
