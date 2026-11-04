@@ -30,3 +30,13 @@ test('no price, no entry, or a position that is not open: nothing is said', () =
 test('it describes and never advises: no buy, sell, hold, should, likely or will in any line', () => {
   for (const v of [view({ ladder: ladder() }), view({ mark: 56.4, r: -0.85, ladder: ladder() }), view({ left: 1 }), view({ r: null })]) assert.ok(!/\b(buy|sell|hold|should|likely|will|expect)\b/i.test(positionInsight(v, p)!.line));
 });
+test('a live mark through the stop is said to be below it, with no exit claimed; at the stop is "At"', () => {
+  const through = positionInsight(view({ mark: 54.0, r: -1.3, ladder: ladder() }), p)!;   // (54 - 55.52) / 54 = -2.81%
+  assert.ok(through.stopPct! < 0); assert.ok(through.badges.includes('Through the stop')); assert.ok(!through.badges.includes('Near the stop'));
+  assert.match(through.line, /^2\.8% below the stop \(₹55\.52\)\. No exit is recorded yet/); assert.ok(!/above the stop|Close to the stop/.test(through.line));
+  const at = positionInsight(view({ mark: 55.52, r: -1, ladder: ladder() }), p)!; assert.match(at.line, /^At the stop \(₹55\.52\)\./);
+});
+test('a target below the live mark is not promised a fill', () => {
+  const i = positionInsight(view({ mark: 71, r: 1.7, ladder: ladder() }), p)!;   // T1 69.49 is under the mark but the bars have not confirmed it
+  assert.match(i.line, /T1 \(₹69\.49\) is below the price; its fill is not confirmed until the daily bars record it\./); assert.ok(!/fills on|will fill/.test(i.line));
+});

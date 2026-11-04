@@ -27,3 +27,7 @@ test('the feed is capped and never advises', () => {
   const many = Array.from({ length: 12 }, (_, i) => row(`N${i}`, { mark: 97 + i * 0.01, r: -.5 })); const f = buildFeed({ hits: [], rows: many, ledger, nowSec: NOW, max: 5 }); assert.equal(f.length, 5);
   assert.ok(f.every((x) => !/\b(buy|sell|hold|should|will|expect)\b/i.test(x.text)));
 });
+test('a live mark through the stop is still a near-stop alert, worded as below the stop with no exit claimed', () => {
+  const f = buildFeed({ hits: [], rows: [row('THRU', { mark: 92, r: -1.6 }), row('AT', { mark: 95, r: -1 })], ledger: null, nowSec: NOW });
+  assert.ok(f.every((x) => x.kind === 'near-stop')); assert.deepEqual(f.map((x) => x.text).sort(), ['AT is at its stop; no exit is recorded yet.', 'THRU is 3.3% below its stop; no exit is recorded yet.']);   // (95 - 92) / 92 = 3.26%
+});
