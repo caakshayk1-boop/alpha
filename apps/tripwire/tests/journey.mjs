@@ -393,7 +393,8 @@ ok(!/Services and integrations|Accounts and sign-in|Sync between devices|Broker 
 await pg.getByRole('button', { name: /Delete all my data/ }).click();
 await pg.getByRole('button', { name: 'Erase now' }).click();
 await pg.goto(base + '/#/desk?v=journal');
-ok(/No theses yet/.test(await text()), 'deleting data erases the notes');
+const erased = await pg.waitForFunction(() => /No theses yet/.test(document.body.innerText), null, { timeout: 8000 }).then(() => true, () => false);   // a bounded wait: the page may still be rendering the empty desk
+ok(erased, `deleting data erases the notes${erased ? '' : ` (page at ${pg.url()} said: ${(await text()).replace(/\s+/g, ' ').slice(0, 300)})`}`);
 
 // offline
 await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief-ix');
