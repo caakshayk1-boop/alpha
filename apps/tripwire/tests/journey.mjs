@@ -315,7 +315,7 @@ ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 // 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
 ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('.card.glass .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
-ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[aria-label*="today"]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
+ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[data-daychart]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));
 ok(/Back to live/.test(await text()) && await pg.locator('.ladder .wi').count() === 1, 'the what-if slider moves a marker and states the P&L at that price');
 const tvl = pg.locator('a[href*="tradingview.com/chart"]').first(); ok((await tvl.getAttribute('href')).includes('NSE%3A') && (await tvl.getAttribute('target')) === '_blank' && /noopener/.test(await tvl.getAttribute('rel')), 'the trade links to its TradingView chart in a new tab');

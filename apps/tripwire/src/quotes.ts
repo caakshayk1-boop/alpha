@@ -6,7 +6,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import type { Quote, QuotesFeed } from './data.ts';
 import type { Row } from './screen.ts';
 import { SLOW_DOWN, retryAfterOf } from './slowdown.ts';
-import { isLiveQuote, nseClockOpen, quoteWord, type QWord } from './stamp.ts';
+import { isLiveQuote, noteFeedPrint, nseClockOpen, quoteWord, type QWord } from './stamp.ts';
 
 const store = new Map<string, Quote>(); let pulse: Record<string, Quote> = {}; let macro: Record<string, Quote> = {};
 const want = new Map<string, number>(); let wantI = 0, wantM = 0; const subs = new Set<() => void>();
@@ -35,7 +35,7 @@ async function tick() {
     }));
     let any = false;
     if (closed) got.forEach((d, k) => { if (d) calls[k].s.forEach((x) => asked.add(x)); });   // only an answer counts as asking: a failed request is tried again
-    for (const d of got) if (d) { any = true; for (const [k, v] of Object.entries(d.quotes ?? {})) store.set(k, v as Quote); if (d.pulse) pulse = { ...pulse, ...d.pulse }; if (d.macro) macro = { ...macro, ...d.macro }; }
+    for (const d of got) if (d) { any = true; noteFeedPrint((d as { feed_t?: number }).feed_t); for (const [k, v] of Object.entries(d.quotes ?? {})) store.set(k, v as Quote); if (d.pulse) pulse = { ...pulse, ...d.pulse }; if (d.macro) macro = { ...macro, ...d.macro }; }
     if (any) { lastAt = Date.now(); errMsg = null; okN++; } else errMsg = limited ? SLOW_DOWN : 'the price service did not answer';
     emit();
   } finally { busy = false; schedule(); }

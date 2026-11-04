@@ -123,6 +123,24 @@ for (const w of [320, 390, 1280]) {
   ok(/Evidence/.test(await pg.locator('body').innerText()), 'the Evidence view opens from its renamed tab'); await ctx.close();
 }
 
+/* ---- Markets: the day chart (one session, scaled to today's range, scrubbable, with a table) and the compact charts that replaced the old sparklines ---- */
+for (const w of [320, 390]) {
+  const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-day-chart] svg[data-daychart]', { timeout: 15000 });
+  const card = pg.locator('[data-day-chart]'); const svg = card.locator('svg[data-daychart]');
+  const label = (await svg.getAttribute('aria-label')) ?? ''; ok(/open [\d,.]+, high [\d,.]+, low [\d,.]+, last [\d,.]+, [+−]?[\d.]+% against the previous close/.test(label) && /percent of the session shown/.test(label), `${w}: the day chart is named with its open, high, low, last and change`);
+  const geo = await svg.evaluate((e) => ({ line: e.querySelector('.dc-line').getAttribute('d').length, prev: !!e.querySelector('.dc-prev'), tag: !!e.querySelector('.dc-tag-t'), hl: [...e.querySelectorAll('text')].some((t) => /^H /.test(t.textContent)) && [...e.querySelectorAll('text')].some((t) => /^L /.test(t.textContent)) }));
+  ok(geo.line > 40 && geo.prev && geo.tag && geo.hl, `${w}: line, previous-close baseline, last-price tag, and high and low are drawn`);
+  const before = await card.locator('.dc-note').innerText(); await svg.focus(); await svg.press('ArrowLeft'); await svg.press('ArrowLeft'); const scrub = await card.locator('.dc-note').innerText();
+  ok(/^\d\d:\d\d · [\d,.]+ · [+−]?[\d.]+%$/.test(scrub) && scrub !== before, `${w}: arrow keys scrub the day and say the time, price and change (${scrub})`);
+  await svg.press('Escape'); ok(/% of the session shown/.test(await card.locator('.dc-note').innerText()), `${w}: Escape returns to the summary`);
+  await card.getByRole('button', { name: 'India VIX', exact: true }).click(); await pg.waitForTimeout(200); ok((await card.getByRole('button', { name: 'India VIX', exact: true }).getAttribute('aria-pressed')) === 'true' && /India VIX/.test((await svg.getAttribute('aria-label')) ?? ''), `${w}: the index picker switches the chart`);
+  await card.locator('.dc-table summary').click(); const rows = await card.locator('.dc-table tbody tr').count(); const pts = await svg.evaluate((e) => e.querySelectorAll('.dc-line').length); ok(rows >= 10 && pts === 1, `${w}: the same figures are in a table (${rows} rows)`);
+  ok(await noOverflow(pg), `${w}: Markets with the day chart does not scroll sideways`); await ctx.close();
+}
+{ const { ctx, pg } = await plain(STATE, 390, '/#/markets'); await pg.waitForSelector('.ix .sp svg.dc-compact', { timeout: 15000 });
+  const n = await pg.locator('.ix .sp svg.dc-compact').count(); const h = await pg.locator('.ix .sp svg.dc-compact').first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  ok(n >= 3 && h >= 24, `Markets index rows carry a compact day chart each (${n}, ${h}px tall, was 22px)`); await ctx.close(); }
+
 /* ---- Markets: the FII and DII flows card (present with a fresh file; hidden with none, or with an old one) ---- */
 { const iso = (back) => new Date(Date.parse(`${lastSession}T00:00:00Z`) - back * 86400000).toISOString().slice(0, 10);
   const mk = (back, f, d) => ({ date: iso(back), fii: { buy: Math.max(f, 0) + 1000, sell: Math.max(-f, 0) + 1000, net: f }, dii: { buy: Math.max(d, 0) + 1000, sell: Math.max(-d, 0) + 1000, net: d } });

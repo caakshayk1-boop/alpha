@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { SectorHeat } from './SectorHeat.tsx';
 import { useEngines } from '../useEngines.ts';
 import { FlowCard } from './FlowCard.tsx';
+import { DayChart } from '../components/DayChart.tsx';
 import { usePulse } from '../data.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { sessionNow } from '../market.ts';
@@ -21,6 +23,7 @@ import { pct } from '../fmt.ts';
 export function Markets() {
   const { scr } = useEngines(); const rows = scr.data?.rows ?? []; const day = scr.data?.as_of ?? null;
   const pulse = usePulse(true); const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null; const sess = sessionNow(Date.now(), anyLive); const pw = quoteWord(pulse.obs, Date.now(), { loading: pulse.loading && !pulse.err });
+  const [dayIx, setDayIx] = useState<'NIFTY' | 'BANKNIFTY' | 'VIX'>('NIFTY');
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null });
@@ -30,6 +33,11 @@ export function Markets() {
       <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
       <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast.</p>
     </section>
+    {pulse.data?.quotes[dayIx] && pulse.data.quotes[dayIx].c.length > 2 && <section className="card dc-card" aria-labelledby="dc-h" data-day-chart>
+      <div className="row between"><h2 id="dc-h" className="sec" style={{ margin: 0 }}>Today's session</h2>
+        <div className="mini-seg" role="group" aria-label="Index">{([['NIFTY', 'Nifty 50'], ['BANKNIFTY', 'Bank Nifty'], ['VIX', 'India VIX']] as const).map(([k, nm]) => <button key={k} type="button" aria-pressed={dayIx === k} onClick={() => setDayIx(k)}>{nm}</button>)}</div></div>
+      <DayChart key={dayIx} q={pulse.data.quotes[dayIx]} nse good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX'} />
+    </section>}
     <FlowCard />
     <div className="market-grid">
       <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
