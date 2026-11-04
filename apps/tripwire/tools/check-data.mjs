@@ -26,6 +26,10 @@ export function checkDist(dist, nowMs = Date.now(), env = process.env) {
     const g = by.signals;
     if (g) { const s = statusOf(g.asOf, nowMs); if (s.status !== 'current' && s.status !== 'pending') (env.STRICT_SIGNALS === '1' ? errors : warnings).push(`signals.json carries ${g.asOf ?? 'no date'}, ${s.behind ?? '?'} sessions behind ${throughWord(expectedSession(nowMs))} (its own workflow, engines.yml, publishes it)`); }
   }
+  // Data quality that is reported, never fatal: a row whose last price is older than the screen's day (the app flags it stale and gives it no model vote), and rows with no size class (the app says "Size class not published").
+  const rowsOld = screen.rows.filter((r) => r.last_date && r.last_date < screen.as_of); const noTier = screen.rows.filter((r) => !r.tier);
+  if (rowsOld.length) warnings.push(`${rowsOld.length} row${rowsOld.length === 1 ? '' : 's'} carry a last price older than the screen's day ${screen.as_of} (${rowsOld.slice(0, 6).map((r) => `${r.sym} ${r.last_date}`).join(', ')}${rowsOld.length > 6 ? ', ...' : ''}); the app treats them as stale`);
+  if (noTier.length) warnings.push(`${noTier.length} of ${screen.rows.length} rows (${(100 * noTier.length / screen.rows.length).toFixed(1)}%) have no size class from the upstream screen; the app says so and does not guess one`);
   // the committed nightly sheets (served by /api/rsi and /api/factors) against the screen they were built from: WARN, fatal with STRICT_SHEETS=1
   const ledgerDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger'); const expected = screen.rows.filter((r) => r.liquid && r.tier !== 'micro').length;
   for (const [f, count, floor] of [['rsi.json', (j) => Object.keys(j.rows ?? {}).length, 0.75], ['factors.json', (j) => j.universe ?? 0, 0.6]]) {

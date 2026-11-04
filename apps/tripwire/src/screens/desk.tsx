@@ -1,3 +1,4 @@
+import { recentDecisions } from '../decisions.ts';
 import { useState } from 'react';
 import { go, setState, useAppState, useLoc, useSheets } from '../app.tsx';
 import { useScreen } from '../data.ts';
@@ -36,15 +37,6 @@ function NewDesk() {
 }
 const DAY = 86400000;
 const addD = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
-interface Decision { at: string; sym: string; what: string; href: string }
-/** Everything the person has decided, newest first: a thesis version with a decision, a saved plan, a paper trade taken from a pick. Recorded facts only. */
-export function recentDecisions(s: State, n = 8): Decision[] {
-  const out: Decision[] = [];
-  for (const e of s.entries) for (const v of e.versions) if (v.decision.trim()) out.push({ at: v.at, sym: e.sym, what: `Thesis decision: ${v.decision.trim()}`, href: `#/desk?v=journal` });
-  for (const p of s.plans) out.push({ at: p.filledAt ?? p.at, sym: p.sym, what: p.status === 'paper-filled' ? `Paper fill recorded, ${p.qty} shares` : p.status === 'closed' ? 'Plan closed' : `Plan saved, ${p.qty} shares, stop ${inr(p.stop)}`, href: '#/desk?v=plans' });
-  for (const t of s.paper) out.push({ at: new Date(t.takenAt * 1000).toISOString(), sym: t.sym, what: `Paper trade taken from a ${t.engine} pick${t.closedByUser ? ' (closed by hand)' : ''}`, href: '#/signals?v=tracker' });
-  return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, n);
-}
 function Workspace() {
   const s = useAppState(); const { open } = useSheets(); const scr = useScreen(); const { toast } = useUi(); const today = istDay();
   const active = s.entries.filter((e) => !e.archived);

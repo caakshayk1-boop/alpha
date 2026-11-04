@@ -357,9 +357,10 @@ ok(await pg.locator('.heat a').count() >= 3, 'the Markets page has a sector heat
 ok(await pg.locator('canvas').count() === 0, 'the mood card is a plain data panel: no canvas, no moving water');
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
 await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.brief'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the note does not repeat on the next visit');
-await pg.getByRole('button', { name: 'Hide my amounts' }).click();
-await pg.waitForSelector('html.priv'); const blur = await pg.locator('.amt').first().evaluate((el) => getComputedStyle(el).filter);
-ok(/blur/.test(blur), 'one tap on the eye blurs every amount of yours'); await pg.getByRole('button', { name: 'Show my amounts' }).click(); ok(await pg.locator('html.priv').count() === 0, 'and one tap shows them again');
+ok(await pg.getByRole('button', { name: /Hide my amounts|Show my amounts/ }).count() === 0, 'Today carries no top-bar eye button: the control lives in Settings until there are amounts worth hiding');
+await pg.goto(base + '/#/settings'); await pg.waitForSelector('input[role=switch]'); await pg.getByRole('switch', { name: /Hide my amounts/ }).check();
+await pg.goto(base + '/#/today'); await pg.waitForSelector('html.priv'); await pg.waitForSelector('.amt'); const blur = await pg.locator('.amt').first().evaluate((el) => getComputedStyle(el).filter);
+ok(/blur/.test(blur), 'the Settings switch blurs every amount of yours'); await pg.goto(base + '/#/settings'); await pg.waitForSelector('input[role=switch]'); await pg.getByRole('switch', { name: /Hide my amounts/ }).uncheck(); ok(await pg.locator('html.priv').count() === 0, 'and switching it off shows them again');
 await pg.goto(base + '/#/profile'); await pg.waitForSelector('input[role=switch]');
 ok((await pg.locator('.swatches').count()) === 0 && !/Pick a colour/.test(await text()), 'there is one look and no theme options');
 const sw = await pg.locator('input[role=switch]').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(), c = e.closest('.card').getBoundingClientRect(); return r.width >= 50 && r.right <= c.right; }));

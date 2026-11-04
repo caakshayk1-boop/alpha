@@ -151,7 +151,9 @@ export function useNewsBoard(lists: Lists) {
   const named = useMemo(() => wanted.filter((s) => nameOf.has(s)).map((s) => ({ sym: s, name: nameOf.get(s) as string })), [wanted, nameOf]);
   const live = useLiveNames(named);
   const candidate = useMemo(() => mergePools(c.snapshot?.events ?? [], [...live.events, ...(c.onDemand?.events ?? [])]), [c.snapshot, live.events, c.onDemand]);
-  const ready = settled && !live.loading && (wanted.length === 0 || !scr.loading);
+  // The snapshot (or the copy this device kept) is shown the moment it is known. Company stories fetched live for the paper book and follows used to hold EVERY story back until that catch-up finished (about ten seconds on a phone, leaving 'Loading…' and zero counts);
+  // they now arrive afterwards through the same candidate pool, without moving what the person is reading.
+  const ready = settled;
   const [applied, setApplied] = useState<{ pool: NewsEvent[]; at: number } | null>(null); const candRef = useRef(candidate); candRef.current = candidate;
   useEffect(() => { if (!applied && ready) setApplied({ pool: candidate, at: Date.now() }); }, [ready, applied, candidate]);   // first sight, or the next visit: a new instance starts from the newest data
   useEffect(() => { if (applied && applied.pool.length === 0 && candidate.length > 0) setApplied({ pool: candidate, at: Date.now() }); }, [applied, candidate]);   // nothing on screen to disturb: show it

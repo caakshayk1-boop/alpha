@@ -24,9 +24,11 @@ export function TrendMap({ rows, day, map, live, liveAt, open, repriced, err }: 
     <div className="row between"><span className="small"><b className="num up">{pct(map.up) ?? '—'}%</b> in an uptrend</span><span className="small dim num">{pct(map.down) ?? '—'}% in a downtrend</span></div>
     <div className="rangebar" role="img" aria-label={`Of ${map.n} liquid stocks, ${map.up} are in an uptrend, ${map.mixed} sideways and ${map.down} in a downtrend`}><i style={{ flexGrow: map.up || .01, background: 'var(--up)' }} /><i style={{ flexGrow: map.mixed || .01, background: 'var(--s3)' }} /><i style={{ flexGrow: map.down || .01, background: 'var(--down)' }} /></div>
     <div className="row between" style={{ margin: '8px 0 2px', alignItems: 'baseline' }}><span className="tm-word">{w.word}</span><span className="small mute">{map.mixed ? `${pct(map.mixed)}% sideways` : ''}</span></div>
+    <details className="more tm-figures"><summary>Breadth figures</summary>
     <div className="tm-stats num" role="list" aria-label="Breadth at the last close">
       {([['Above 50-day', st.above50], ['Above 200-day', st.above200], ['Within 5% of high', st.nearHigh], ['RSI 70 or more', st.stretched], ['RSI 30 or less', st.washed]] as [string, Share][]).map(([k, s]) => <span key={k} role="listitem" title={`${s.n} of ${s.of} names that have the figure`}><b>{pc(s)}</b><small>{k}</small></span>)}
     </div>
+    </details>
     <div className="tm-go" role="group" aria-label="Open Discover with these filters">
       {sc.map((x) => <a key={x.id} href={x.href} className="tm-btn"><span className="num tm-n">{x.n}</span><span className="tm-t">{x.title}</span><span className="small mute">{x.line}</span></a>)}
     </div>

@@ -90,4 +90,26 @@ for (const [w, tag] of [[390, 'phone'], [1280, 'desktop']]) {
     ok(await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1, `${tag} ${name}: no sideways scroll at 200% text`); await ctx.close();
   }
 }
+/* ---- 5. the landing page: a real example from the screen, a clear structure, nothing off the edge, every section there with motion off ---- */
+for (const w of [320, 390, 1280]) {
+  const { ctx, pg } = await mk(null, { viewport: { width: w, height: 900 } }); await pg.goto(base + '/'); await pg.waitForSelector('.lp-hero h1'); await pg.waitForSelector('.lp-card', { timeout: 15000 }); await pg.waitForTimeout(900);
+  const t = await pg.locator('.welcome').innerText();
+  ok((await pg.locator('.welcome h1').count()) === 1 && (await pg.locator('.welcome h2').count()) === 3, `${w}: one h1 and three section headings`);
+  const card = await pg.locator('.lp-card').evaluate((e) => ({ sym: e.querySelector('.sym')?.textContent, px: e.querySelector('.lp-price')?.textContent, facts: e.querySelectorAll('.lp-facts > div').length, right: Math.round(e.getBoundingClientRect().right), vw: innerWidth }));
+  ok(/^[A-Z]+$/.test(card.sym ?? '') && /₹[\d,]+\.\d\d/.test(card.px ?? '') && /close of/.test(card.px ?? '') && card.facts >= 3, `${w}: the example is a real company with its close and at least three figures from the screen (${card.sym} ${card.px?.slice(0, 24)}, ${card.facts} figures)`);
+  ok(card.right <= card.vw, `${w}: the example card sits inside the screen (right edge ${card.right} of ${card.vw})`);
+  ok(await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 1, `${w}: the landing does not scroll sideways`);
+  ok(!/dashboard|Your path|0 of 4|guarantee|sure[- ]?shot|risk[- ]free|will (rise|fall)/i.test(t) && /not investment advice, and no order is ever placed/.test(t), `${w}: no promised returns, and the not-advice line is there`);
+  ok((await pg.getByRole('button', { name: 'Explore markets' }).count()) === 1, `${w}: still exactly one Explore markets action`);
+  await pg.getByRole('button', { name: 'Start with a search' }).scrollIntoViewIfNeeded(); await pg.getByRole('button', { name: 'Start with a search' }).click(); await pg.waitForTimeout(500);
+  ok(await pg.evaluate(() => document.activeElement?.id === 'wl-q'), `${w}: Start with a search puts the cursor in the search box`);
+  await pg.evaluate(async () => { for (const y of [600, 1200, 1800, 2400, 3000]) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 200)); } });
+  ok((await pg.locator('.lp-rv').evaluateAll((e) => e.every((x) => x.classList.contains('in')))) === true, `${w}: sections reveal as they are scrolled to`); await ctx.close();
+}
+{ const { ctx, pg } = await mk(null, { viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' }); await pg.goto(base + '/'); await pg.waitForSelector('.lp-hero h1'); await pg.waitForTimeout(600);
+  ok(!(await pg.evaluate(() => document.documentElement.classList.contains('fx'))), 'reduced motion: the app does not switch its motion layer on');
+  ok((await pg.locator('.lp-sec').evaluateAll((e) => e.every((x) => Number(getComputedStyle(x).opacity) === 1 && getComputedStyle(x).transform === 'none'))) === true, 'reduced motion: every landing section is simply there, nothing hidden waiting to animate'); await ctx.close(); }
+{ const { ctx, pg } = await mk(null); await pg.goto(base + '/'); await pg.waitForSelector('.lp-card'); await pg.locator('.lp-card-go').click(); await pg.waitForSelector('nav.tabs');
+  ok(/#\/c\/[A-Z]+\?first=1$/.test(pg.url()), `the example opens that company's full evidence as a first look (${pg.url().split('#')[1]})`); ok((await saved(pg))?.onboarded === true, 'and the visitor is no longer a first-time visitor'); await ctx.close(); }
+
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nall passed'); process.exit(fails ? 1 : 0);

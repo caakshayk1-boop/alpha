@@ -3,8 +3,9 @@
 import type { BookRow } from './book.ts';
 import { styleDef, styleOf } from './exits.ts';
 import { markWord, type QWord } from './stamp.ts';
+import { positionInsight } from './positioninsight.ts';
 
-export interface Line { id: string; sym: string; engine: string; style: 'short' | 'swing' | 'long'; qty: number; entry: number; last: number; live: boolean; /** Live / Delayed / Last traded, from the print time and the session */ word: QWord; wordDetail: string; value: number; pnl: number; pct: number | null; r: number | null; dayPnl: number | null;
+export interface Line { /** One plain line about what the position is doing (distance to the stop and the next target, R, sessions left); absent when it cannot be worked out */ insight?: string; id: string; sym: string; engine: string; style: 'short' | 'swing' | 'long'; qty: number; entry: number; last: number; live: boolean; /** Live / Delayed / Last traded, from the print time and the session */ word: QWord; wordDetail: string; value: number; pnl: number; pct: number | null; r: number | null; dayPnl: number | null;
   /** distance from the last price to the stop and to the open targets, in percent of the last price (stop is negative) */
   toStop: number | null; toT1: number | null; toT2: number | null; t1Hit: boolean; stop: number; t1: number | null; t2: number | null;
   /** true when t1 and t2 are REFERENCE levels: the pick was filed before profit booking began, so it exits on its stop and time limit only and the two prices are shown for orientation, never traded */
@@ -18,7 +19,7 @@ export function lines(rows: readonly BookRow[], nowMs = Date.now()): Line[] {
     if (v.status !== 'open' || v.entry == null || v.mark == null || v.pnl == null) continue;
     const qty = v.ladder ? v.ladder.qtyLeft : p.qty; const stop = v.ladder?.stop ?? p.stop;
     const mw = markWord(v.markKind, markT, nowMs); const sd = styleDef(styleOf(p.horizon)); const risk = v.entry - stop; const refOk = !v.ladder && risk > 0;
-    out.push({ id: p.id, sym: p.sym, engine: p.engine, style: styleOf(p.horizon), qty, entry: v.entry, last: v.mark, live: mw.word === 'Live', word: mw.word, wordDetail: mw.detail, value: r2(v.mark * qty), pnl: v.pnl, pct: v.pct, r: v.r, dayPnl,
+    out.push({ insight: positionInsight(v, p)?.line, id: p.id, sym: p.sym, engine: p.engine, style: styleOf(p.horizon), qty, entry: v.entry, last: v.mark, live: mw.word === 'Live', word: mw.word, wordDetail: mw.detail, value: r2(v.mark * qty), pnl: v.pnl, pct: v.pct, r: v.r, dayPnl,
       toStop: pc(stop, v.mark), toT1: v.ladder && !v.ladder.t1Hit ? pc(v.ladder.t1, v.mark) : null, toT2: v.ladder && !v.ladder.t2Hit ? pc(v.ladder.t2, v.mark) : null, t1Hit: !!v.ladder?.t1Hit, stop, t1: v.ladder?.t1 ?? (refOk ? r2(v.entry + sd.t1 * risk) : null), t2: v.ladder?.t2 ?? (refOk ? r2(v.entry + sd.t2 * risk) : null), ref: refOk });
   }
   return out;

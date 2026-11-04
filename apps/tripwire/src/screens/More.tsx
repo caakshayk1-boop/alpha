@@ -20,7 +20,6 @@ const GROUPS: { head: string; rows: Row[] }[] = [
   ] },
   { head: 'This device', rows: [
     { id: 'settings', href: '#/settings', title: 'Settings', note: 'Stored on this device only: backup and restore, defaults, privacy, app lock' },
-    { id: 'ops', href: '#/ops', title: 'Operations and status', note: 'Which services are connected, and whether they answered' },
   ] },
 ];
 

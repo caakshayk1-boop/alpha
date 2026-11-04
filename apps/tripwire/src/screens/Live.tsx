@@ -58,9 +58,9 @@ export function Live() {
   const sorted = useMemo(() => [...ls].sort((a, b) => { if (key === 'sym') return (dir === 'asc' ? 1 : -1) * a.sym.localeCompare(b.sym); const x = a[key], y = b[key]; if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (dir === 'asc' ? 1 : -1) * (x - y); }), [ls, key, dir]);
   const live = auto.session.phase === 'open'; const word = quoteWord(freshestPrint([auto.intra.obs, own.intra.obs]), Date.now(), { loading: (auto.intra.loading || own.intra.loading) && !auto.intra.err }); const waiting = rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').length;
   const sort = (k: Key) => { if (k === key) setDir(dir === 'asc' ? 'desc' : 'asc'); else { setKey(k); setDir(k === 'toStop' || k === 'sym' ? 'asc' : 'desc'); } };
-  if (!rows.length && !auto.ledger.loading) return <div><PageBar title="Live P&L" onBack /><Empty title="No paper position yet">When the first pick enters at its next open, it appears here with its own live P&L.</Empty></div>;
+  if (!rows.length && !auto.ledger.loading) return <div><PageBar title="Paper P&L" onBack /><Empty title="No paper position yet">When the first pick enters at its next open, it appears here with its own live P&L.</Empty></div>;
   return <div>
-    <PageBar title="Live P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
+    <PageBar title="Paper P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
     <section className={`card hero${live ? ' livecard' : ''}`}>
       <div className="row between"><LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} /><span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 10 }}>
@@ -78,6 +78,7 @@ export function Live() {
         <div className="row between"><b>{l.sym}</b><span className="tag">{styleDef(l.style).label}</span></div>
         <div className={`num amt big ${tone(l.pnl)}`}>{money(l.pnl)} <span className="small">{pct(l.pct)}</span></div>
         <Road l={l} />
+        {l.insight && <p className="small mute" style={{ margin: '4px 0 2px' }} data-insight>{l.insight}</p>}
         <div className="row between small mute num"><span>{inr(l.entry)} in</span><span title={l.wordDetail}>{l.word} {inr(l.last)}</span></div>
         <div className="row between small num" style={{ marginTop: 2 }}><span className="down">stop {inr0(l.stop)}</span>{l.t1 != null ? <span className={l.ref ? 'dim' : 'up'} title={l.ref ? 'Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit.' : 'Profit-booking targets'}>{l.t1Hit ? 'T1 ✓ · ' : ''}T1 {inr0(l.t1)}{l.t2 != null ? ` · T2 ${inr0(l.t2)}` : ''}{l.ref ? ' (ref)' : ''}</span> : <span className="dim">no targets</span>}</div>
       </a>)}</div></>}

@@ -19,7 +19,18 @@ export async function renderedClasses(base, view = '/#/today', sizes = VIEWS) {
   }
   await b.close(); return [...found].sort();
 }
+/** The classes the FIRST-VISIT screen (the landing) renders in its first viewport, with no saved state: the page a new visitor sees must paint styled before the full stylesheet arrives. */
+export async function firstVisitClasses(base, sizes = VIEWS) {
+  const b = await chromium.launch(); const found = new Set();
+  for (const [w, h] of sizes) {
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' }); await mockApi(ctx);
+    const pg = await ctx.newPage(); await pg.goto(base + '/'); await pg.waitForSelector('.lp-hero h1', { timeout: 20000 }); await pg.waitForSelector('.lp-card', { timeout: 15000 }).catch(() => {}); await pg.waitForTimeout(1200);
+    for (const c of await pg.evaluate((vh) => { const out = []; document.querySelectorAll('body *').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top < vh + 60 && r.bottom > -10 && r.width > 0) out.push(...e.classList); }); return out; }, h)) found.add(c);
+    await ctx.close();
+  }
+  await b.close(); return [...found].sort();
+}
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const base = process.argv[2] ?? 'http://localhost:8801'; const cls = await renderedClasses(base); cls.push('boot', 'view', 'routewait');
+  const base = process.argv[2] ?? 'http://localhost:8801'; const cls = [...await renderedClasses(base), ...await firstVisitClasses(base)]; cls.push('boot', 'view', 'routewait');
   writeFileSync(new URL('../static/critical-classes.json', import.meta.url), JSON.stringify([...new Set(cls)].sort(), null, 0) + '\n'); console.log(`critical-classes: ${new Set(cls).size} classes`);
 }

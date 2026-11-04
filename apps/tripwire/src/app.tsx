@@ -105,9 +105,11 @@ export const useSheets = () => useContext(SheetCtx);
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
 const MORE_HEADS = ['more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
-const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Live paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
+const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
+/** Replaces the address (no extra Back step) and draws nothing. */
+function Redirect({ to }: { to: string }) { useEffect(() => { location.replace(to); }, [to]); return null; }
 
 export function App(): ReactNode {
   const s = useAppState();
@@ -187,6 +189,7 @@ export function App(): ReactNode {
   else if (head === 'privacy') view = <Privacy />;
   else if (head === 'terms') view = <Terms />;
   else if (head === 'live') view = <Live />;
+  else if (head === 'paper' || head === 'book') view = <Redirect to="#/signals?v=tracker" />;   // the obvious addresses for the paper book land on it (Signals > Mine), not on a dead end
   else if (head === 'news') view = <NewsPage />;
   else if (head === 'markets') view = <Markets />;
   else if (head === 'lab') view = <Lab />;

@@ -834,3 +834,11 @@ html.fx .scrolltop:active{transform:scale(.94)}
 .brief-spark .dc-compact{height:56px}.ix .sp .dc-compact,.sp .dc-compact{height:28px}
 html.fx .dc-full .dc-line{stroke-dasharray:1;stroke-dashoffset:1;animation:dc-draw 700ms var(--ease,ease) forwards}
 @keyframes dc-draw{to{stroke-dashoffset:0}}
+
+/* what changed: one short list on Today */
+.alertlist{list-style:none;margin:0;padding:0}.alertlist li+li{border-top:1px solid var(--line)}
+.alertlist .li{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 0;color:var(--ink)}
+.alertlist .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ink-3)}.alertlist .dot.up{background:var(--up)}.alertlist .dot.down{background:var(--down)}
+
+/* data tables never go below 13px: 12px is for labels and meta, not for figures people read and compare (the 4 Nov audit) */
+.stbl td,.stbl th,.tbl td,.tbl th,.flows td,.flows th,.dc-table td,.dc-table th,.sh-table td,.sh-table th{font-size:max(13px,var(--fs-data,13px))}

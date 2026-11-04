@@ -1,0 +1,57 @@
+/* The first-visit landing. Tokens only (the lint forbids raw colours). Motion lives under html.fx, like every other animation in the app: with it off, everything is simply there. */
+.welcome.lp{max-width:min(1120px,100%);width:100%;margin:0 auto;padding:var(--sp-5) clamp(16px,4vw,40px) 56px;display:flex;flex-direction:column;gap:clamp(44px,8vw,96px);overflow-x:clip}
+.lp-hero{position:relative;display:grid;gap:clamp(24px,5vw,48px);grid-template-columns:minmax(0,1fr);align-items:center;padding-top:clamp(4px,3vw,32px)}
+.lp-hero::before{content:"";position:absolute;inset:-48px -24px -24px;z-index:-1;pointer-events:none;background:radial-gradient(55% 48% at 14% 8%,color-mix(in srgb,var(--lime) 17%,transparent),transparent 70%),radial-gradient(46% 42% at 92% 38%,color-mix(in srgb,var(--ink) 9%,transparent),transparent 72%)}
+.lp-copy{display:grid;gap:var(--sp-4);align-content:start;min-width:0}
+.lp-eyebrow{display:inline-flex;align-items:center;gap:8px;width:fit-content;max-width:100%;padding:6px 12px;border:1px solid var(--line2);border-radius:999px;background:color-mix(in srgb,var(--surface-2) 80%,transparent);letter-spacing:.02em;text-transform:none;font-size:var(--fs-label)}
+.lp-mark{flex:none;width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 12px color-mix(in srgb,var(--lime) 70%,transparent)}
+.welcome.lp h1{font-size:clamp(2.5rem,8.5vw,4.5rem);line-height:1.02;letter-spacing:-.055em;margin:0}
+.lp-sub{margin:0;max-width:34rem;font-size:clamp(1rem,2.4vw,1.2rem);line-height:1.5;color:var(--ink-2)}
+.lp-pills{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.lp-pills li{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:var(--fs-label);color:var(--ink-2)}
+.welcome.lp .wl-find{max-width:34rem}
+.lp-card{position:relative;display:grid;gap:14px;padding:22px;border:1px solid var(--line2);border-radius:24px;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 94%,transparent),var(--s1));box-shadow:0 36px 70px -34px rgba(0,0,0,.75)}
+.lp-card-top{display:flex;align-items:center;gap:12px}
+.lp-live{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.lp-live i{width:7px;height:7px;border-radius:50%;background:var(--up)}
+.lp-price{font-size:clamp(1.9rem,6vw,2.6rem);font-weight:650;letter-spacing:-.03em;line-height:1.1}
+.lp-facts{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lp-facts>div{padding:10px 12px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.lp-facts dt{font-size:var(--fs-label);color:var(--ink-3)}.lp-facts dd{margin:2px 0 0;font-size:1.05rem;font-weight:650}
+.lp-card-note{margin:0}
+.lp-card-go{justify-content:center;gap:8px}
+.lp-sec{display:grid;gap:clamp(16px,3vw,28px)}
+.lp-h2{margin:0;font-size:clamp(1.5rem,4.4vw,2.4rem);line-height:1.1;letter-spacing:-.035em}
+.lp-grid3{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.lp-tile{display:grid;gap:8px;align-content:start;padding:22px;border:1px solid var(--line);border-radius:20px;background:var(--s1)}
+.lp-tile h3{margin:0;font-size:1.08rem;letter-spacing:-.015em}.lp-tile p{margin:0;color:var(--ink-2);line-height:1.5}
+.lp-ic{font:700 .8rem/1 var(--mono,ui-monospace,monospace);letter-spacing:.08em;color:var(--lime)}
+.lp-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:lp}
+.lp-steps li{counter-increment:lp;display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:2px;align-items:start;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:var(--s1)}
+.lp-steps li::before{content:counter(lp);grid-row:1 / span 2;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:750}
+.lp-steps b{font-size:1.02rem}.lp-steps span{color:var(--ink-2);line-height:1.5}
+.lp-band{padding:clamp(22px,4vw,36px);border:1px solid var(--line2);border-radius:26px;background:radial-gradient(70% 90% at 100% 0%,color-mix(in srgb,var(--lime) 11%,transparent),transparent 70%),var(--s1);justify-items:start}
+.lp-trust-copy{margin:0;max-width:44rem;color:var(--ink-2);line-height:1.6}
+.lp-links{display:flex;flex-wrap:wrap;gap:10px 22px}.lp-links a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;min-height:44px;display:inline-flex;align-items:center}
+.lp-cta{gap:8px}
+.lp-foot{margin:0;text-align:center}
+@media (min-width:900px){
+  .lp-hero{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
+  .lp-grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lp-steps li{grid-template-columns:1fr;row-gap:10px}.lp-steps li::before{grid-row:auto}
+}
+html.fx .lp-copy{animation:lp-in .7s var(--ease,ease) both}
+html.fx .lp-card{animation:lp-in .85s .14s var(--ease,ease) both;transition:transform .35s var(--ease,ease),box-shadow .35s var(--ease,ease)}
+html.fx .lp-live i{animation:lp-pulse 2.2s ease-in-out infinite}
+html.fx .lp-rv{transition:opacity .6s var(--ease,ease),transform .6s var(--ease,ease)}
+html.fx .lp-rv:not(.in){opacity:0;transform:translateY(18px)}
+@media (hover:hover){html.fx .lp-card:hover{transform:translateY(-4px)}html.fx .lp-tile{transition:border-color .25s,transform .25s var(--ease,ease)}html.fx .lp-tile:hover{border-color:var(--line2);transform:translateY(-3px)}}
+@keyframes lp-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes lp-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--up) 55%,transparent)}50%{box-shadow:0 0 0 6px transparent}}
+/* grid items default to min-width:auto and would grow to their no-wrap text; let every part of the hero shrink to its column */
+.lp-hero>*,.lp-card,.lp-card>*,.lp-card-top>.grow{min-width:0}
+.lp-card{max-width:100%}
+.lp-card-top .lp-live{flex:none}
+.lp-steps li{align-content:start}
+.lp-foot{width:100%;align-self:stretch}

@@ -1,3 +1,4 @@
+import { positionInsight } from '../positioninsight.ts';
 import { useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Empty, useUi } from '../ui.tsx';
@@ -86,6 +87,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }
     pnl={v.pnl} r={v.r} pct={v.pct}
     line={isOpen || done ? undefined : v.status === 'skipped' ? <span className="down">{v.skipReason}. No trade was opened, and none is counted.</span> : <>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</>}>
     {(isOpen || done) && <div>
+      {isOpen && (() => { const i = positionInsight(v, p); return i ? <p className="small" style={{ margin: '4px 0 0' }} data-insight>{i.line}{i.badges.length > 0 && <span className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>{i.badges.map((b) => <span key={b} className="tag">{b}</span>)}</span>}</p> : null; })()}
       {spark && <div style={{ marginTop: 4 }}><div className="k">{live ? 'Today' : 'Last session'}</div><DayChart q={q!} nse label={`${p.sym} ${live ? 'today' : 'last session'}`} fmt={(x) => inr(x)} refs={[...(v.entry ? [{ v: v.entry, kind: 'entry', text: `Entry ${inr(v.entry)}` } as DayRef] : []), { v: v.ladder?.stop ?? p.stop, kind: 'stop', text: `Stop ${inr(v.ladder?.stop ?? p.stop)}` }, ...(v.ladder ? [{ v: v.ladder.t1, kind: 'target', text: `T1 ${inr(v.ladder.t1)}` } as DayRef, { v: v.ladder.t2, kind: 'target', text: `T2 ${inr(v.ladder.t2)}` } as DayRef] : [])]} /></div>}
       {v.ladder && <div className="small num" style={{ marginTop: 10 }}>
         <div className="k">Profit booking · {styleDef(styleOf(p.horizon)).label}</div>
