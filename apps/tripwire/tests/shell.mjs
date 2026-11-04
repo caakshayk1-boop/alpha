@@ -65,6 +65,14 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   ok(errs.length === 0, `no page errors across the links${errs.length ? ': ' + errs[0] : ''}`);
   await ctx.close(); }
 
+/* ---- 3b. Signals is a tab of its own and remembers the view it was left on (it used to ride on More's memory) ---- */
+{ const { ctx, pg } = await mk(); await go(pg, '#/signals?v=record');
+  await tab(pg, 'Today'); await pg.waitForFunction(() => /#\/today/.test(location.hash)); await tab(pg, 'Signals'); await pg.waitForFunction(() => /#\/signals/.test(location.hash)); await settle(pg);
+  ok(/v=record/.test(await pg.evaluate(() => location.hash)) && (await current(pg)) === 'Signals', 'leaving Signals on its Record view and coming back returns to Record, not to Picks');
+  await go(pg, '#/signals?v=auto'); await tab(pg, 'Discover'); await pg.waitForFunction(() => /#\/discover/.test(location.hash)); await tab(pg, 'Signals'); await settle(pg);
+  ok(/v=auto/.test(await pg.evaluate(() => location.hash)), 'the same for the Auto view');
+  await ctx.close(); }
+
 /* ---- 4. Back and Forward ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/today');
   await tab(pg, 'More'); await pg.waitForSelector('[data-more]'); await pg.locator('[data-more-row=signals]').click(); await pg.waitForSelector('section[aria-label]'); await pg.getByRole('tab', { name: 'Record' }).click(); await pg.waitForFunction(() => /v=record/.test(location.hash)); await settle(pg);

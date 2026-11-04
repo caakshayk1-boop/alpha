@@ -147,7 +147,7 @@ export function App(): ReactNode {
   useEffect(() => (s.onboarded ? prefetchWhenIdle() : undefined), [s.onboarded]);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
   const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
-  if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'desk' || tab === 'more' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
+  if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'desk' || tab === 'more' || tab === 'signals' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
   const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
   useEffect(() => {
