@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { preservePosition, outcomeView, markOpen } from '../src/positionstate.ts';
+import { preservePosition, outcomeView, markOpen, livePlausible, LIVE_BAND } from '../src/positionstate.ts';
 import { evaluatePaper, type Paper, type Bar } from '../src/tracker.ts';
 import { emptyLedger, evaluateLedger, record, takenAtFor, type Ledger } from '../src/ledger.ts';
 import { DEFAULTS, takePaper, recordPaperView, parseState, mergeStates } from '../src/store.ts';
@@ -82,4 +82,12 @@ test('a position that has sold half at target 1 is marked on the half it still h
   const half = { ...prior, ladder: { t1: 107.5, t2: 115, t1Hit: true, t2Hit: false, booked: 375, qtyLeft: 50, stop: prior.entry! } } as typeof prior;
   const v = markOpen(half, paper, { px: 112, t: 1 }, .25); const e = prior.entry!;
   const expected = 375 + (112 - e) * 50 - .0025 * e * 100 - .001 * 112 * 50; assert.ok(Math.abs(v.pnl! - Math.round(expected * 100) / 100) < 0.011, `${v.pnl} vs ${expected.toFixed(2)}`); assert.equal(v.ladder?.qtyLeft, 50); assert.equal(v.ladder?.booked, 375);
+});
+
+test('a split or bonus while the history is incomplete does not become a false loss: the recorded price is kept, and the note says why', () => {
+  for (const px of [prior.mark! * 0.5, prior.mark! * 0.6, prior.mark! * 1.5]) {                  // 2-for-1, 3-for-2 and a one-day jump past the band
+    const v = preservePosition(paper, null, { px, t: bars[2].t + 3600 }, .25, prior); assert.equal(v.mark, prior.mark); assert.equal(v.pnl, prior.pnl); assert.equal(v.r, prior.r); assert.equal(v.status, 'open'); assert.match(v.dataNote!, /split or bonus/);
+  }
+  const ok = preservePosition(paper, null, { px: prior.mark! * 1.1, t: bars[2].t + 3600 }, .25, prior); assert.equal(ok.mark, Math.round(prior.mark! * 1.1 * 100) / 100); assert.equal(livePlausible(prior, { px: prior.mark! * (1 + LIVE_BAND) }), true); assert.equal(livePlausible(prior, { px: prior.mark! * (1 + LIVE_BAND) * 1.01 }), false);
+  assert.doesNotMatch(ok.dataNote!, /split or bonus/, 'an ordinary move is priced and carries the ordinary note');
 });
