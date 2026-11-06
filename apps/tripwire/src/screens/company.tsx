@@ -28,6 +28,7 @@ import { changeLine } from '../overview.ts';
 import { Pill } from '../components/index.ts';
 import { FirstThought } from './firstthought.tsx';
 import { NotFound } from './notfound.tsx';
+import { ResearchRead } from './ResearchRead.tsx';
 
 type Tab = 'overview' | 'financials' | 'ownership' | 'risks' | 'thesis';
 export function Company({ sym }: { sym: string }) {
@@ -47,11 +48,13 @@ export function Company({ sym }: { sym: string }) {
   useEffect(() => {
     const t0 = Date.now(); let armed = false; let raf = 0;
     const check = () => { raf = 0; const plot = document.querySelector('.chart-plot'); const bar = document.querySelector('.fab-row');
-      if (!armed || !plot || !bar) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
+      // Keep the opener focusable while a sheet owns focus, including its closing frame.
+      if (!armed || !plot || !bar || bar.contains(document.activeElement) || document.querySelector('[role="dialog"]')) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
     const queue = () => { if (!raf) raf = requestAnimationFrame(check); };
     const onScroll = () => { if (Date.now() - t0 > 500) armed = true; queue(); };
     window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', queue);
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', queue); if (raf) cancelAnimationFrame(raf); setBarOverChart(false); };
+    document.addEventListener('focusin', queue); document.addEventListener('focusout', queue);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', queue); document.removeEventListener('focusin', queue); document.removeEventListener('focusout', queue); if (raf) cancelAnimationFrame(raf); setBarOverChart(false); };
   }, [sym]);
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
   if (c.err === 'not published') return <NotFound asked={sym} company total={scr.data?.count ?? null} />;
@@ -75,7 +78,7 @@ export function Company({ sym }: { sym: string }) {
   </>;
   const mainRisk = counters[0] ? { line: counters[0].t, note: counters[0].k } : { line: 'The screen raised no flag or weakness for this company.', note: NO_FLAGS_SENTENCE };
   const riskNote = [grade.level ? riskSentence(grade.level, flags.length) : null, mainRisk.note].filter(Boolean).join(' ') || null;
-  const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
+  const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id, sym })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   const overview = <>
     <section className="card" aria-label="What changed and the trend">
       <p className="small" style={{ margin: '12px 0 0' }}><span className="k">What changed</span><br />{changeLine(row, lp.ch ?? null, lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day')}</p>
@@ -161,6 +164,7 @@ export function Company({ sym }: { sym: string }) {
       <div className="c-times small">{lp.fromQuote ? <span className={lp.live ? 'up' : 'mute'} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.word} · {fmtIst(lp.t!)}</span> : <span className={fr.tone === 'peach' ? '' : 'mute'} style={fr.tone === 'peach' ? { color: 'var(--a4)' } : undefined}>Close of {dayWord(row.last_date)}</span>}{lp.fromQuote ? <span className="mute">Screen figures: close of {dayWord(row.last_date)}</span> : <span className="mute">Live price not available</span>}</div>
     </section>
 
+    <ResearchRead company={c.data} />
     {first && <>
       <div className="note info ft-strip" data-first="strip">First look at {row.name}. Read the case and the countercase, then save a thought if you want one. Nothing here is a recommendation.</div>
       {caseBlock}

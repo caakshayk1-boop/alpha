@@ -9,7 +9,7 @@ import type { Row } from '../screen.ts';
  *  leaders and laggards listed beside it; a table says the same in text. The map is drawn in a fixed-aspect box in percent, so it needs no measuring and moves nothing as it loads.
  *  What it is not: size is traded value, not market capitalisation (the screen does not carry that), and small groups are drawn at a minimum size so they can be read and tapped. */
 const BOX_H = 80;                 // the virtual box is 100 wide and BOX_H high; CSS gives the element the same 100:80 aspect
-const MIN_SECTOR_SHARE = 0.06; const MIN_NAME_SHARE = 0.012; const MAX_NAMES = 36; const SMALL_SHOWN = 24;
+const MIN_SECTOR_SHARE = 0.06; const MAX_NAMES = 36; const SMALL_SHOWN = 24;
 const style = (r: { x: number; y: number; w: number; h: number }, chg: number, win: HeatWindow, extra: CSSProperties = {}): CSSProperties => ({
   left: `${r.x}%`, top: `${(r.y / BOX_H) * 100}%`, width: `${r.w}%`, height: `${(r.h / BOX_H) * 100}%`,
   ['--heat' as string]: String(chg === 0 ? 0 : Math.max(0.1, heatStrength(chg, win))), ['--tone' as string]: chg >= 0 ? 'var(--up)' : 'var(--down)', ...extra,
@@ -24,14 +24,13 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
   const names = useMemo(() => (cur ? heatNames(rows, win, cur.sector).sort((a, b) => b.weight - a.weight) : []), [rows, win, cur]);
   const shown = useMemo(() => names.slice(0, MAX_NAMES), [names]); const hidden = names.length - shown.length;
   const ll = useMemo(() => leadersLaggards(names, 5), [names]);
-  const rects = useMemo(() => (cur ? squarify(withFloor(shown.map((n) => ({ id: n.sym, value: n.weight })), MIN_NAME_SHARE), 100, BOX_H) : squarify(withFloor(sectors.map((s) => ({ id: s.sector, value: s.weight })), MIN_SECTOR_SHARE), 100, BOX_H)), [cur, shown, sectors]);
+  const rects = useMemo(() => squarify(withFloor(sectors.map((s) => ({ id: s.sector, value: s.weight })), MIN_SECTOR_SHARE), 100, BOX_H), [sectors]);
   const total = sectors.reduce((a, s) => a + s.weight, 0);
-  // A tile too small to hold its symbol is still a name the person is owed: those, and every name beyond the 36 drawn, are listed under the map and in the table.
-  const unlabelled = useMemo(() => { if (!cur) return [] as HeatName[]; const small = new Set(rects.filter((r) => { const n = shown.find((x) => x.sym === r.id); return n ? !cellLabel(r.w, r.h, n.sym, null, signed(n.chg), true).text : false; }).map((r) => r.id));
-    return names.filter((n) => small.has(n.sym) || !shown.includes(n)); }, [cur, rects, shown, names]);
+  // Every name beyond the 36 drawn is also available in the list and table.
+  const unlabelled = useMemo(() => names.slice(MAX_NAMES), [names]);
   if (!sectors.length) return <section className="card sh" data-sectorheat><h2 className="sec">Sector heat map</h2><p className="small dim" style={{ margin: 0 }}>Not enough liquid names with a price change and a traded value to draw it.</p></section>;
   const open = (s: string, r: { x: number; y: number; w: number; h: number }) => { setOrigin(`${r.x + r.w / 2}% ${((r.y + r.h / 2) / BOX_H) * 100}%`); setSector(s); };
-  const byId = new Map(sectors.map((s) => [s.sector, s])); const nById = new Map(shown.map((n) => [n.sym, n]));
+  const byId = new Map(sectors.map((s) => [s.sector, s]));
   return <section className="card sh" data-sectorheat aria-labelledby="sh-h">
     <div className="row between sh-top"><h2 ref={heading} tabIndex={-1} id="sh-h" className="sec" style={{ margin: 0 }}>{cur ? cur.sector : 'Sector heat map'}</h2>
       <div className="mini-seg" role="group" aria-label="Change over">{(['r1d', 'r1w', 'r1m'] as HeatWindow[]).map((w) => <button key={w} type="button" aria-pressed={win === w} onClick={() => setWin(w)}>{w === 'r1d' ? '1D' : w === 'r1w' ? '1W' : '1M'}</button>)}</div></div>
@@ -39,10 +38,10 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
       ? <div className="row sh-crumb"><button type="button" className="btn sm" onClick={() => setSector(null)}><Icon n="back" /> All sectors</button>
           <span className="small dim num">{cur.n} names · {signed(cur.chg)} over {WINDOW_LABEL[win]} · {cur.up} up, {cur.down} down</span></div>
       : <p className="small dim sh-sub">Tap a sector to zoom into its names. Size is traded value; colour is the change over {WINDOW_LABEL[win]} at the close of {dayWord(day)}.</p>}
-    <div className={`sh-box ${cur ? 'zoomed' : ''}`} key={`${win}-${cur ? cur.sector : 'all'}`} style={{ ['--ox' as string]: origin } as CSSProperties}>
+    {cur && <p className="small mute">Company tiles have equal size for readability, ordered by traded value. Colour shows the dated change; it is not a live quote.</p>}
+    <div className={`sh-box ${cur ? 'zoomed sh-names' : ''}`} key={`${win}-${cur ? cur.sector : 'all'}`} style={{ ['--ox' as string]: origin } as CSSProperties}>
       {cur
-        ? rects.map((r) => { const n = nById.get(r.id)!; const L = cellLabel(r.w, r.h, n.sym, null, signed(n.chg), true); return <a key={r.id} href={`#/c/${encodeURIComponent(n.sym)}`} className={`sh-cell n ${L.fp ? 'l' : L.text ? 'm' : 's'}`} style={style(r, n.chg, win, { ['--fn' as string]: `${L.fn}cqw`, ['--fp' as string]: `${L.fp ?? 0}cqw` })} aria-label={`${n.name}: ${signed(n.chg)} over ${WINDOW_LABEL[win]}. Opens the company page.`} title={`${n.name} · ${signed(n.chg)}`}>
-            {L.text && <b>{L.text}</b>}{L.fp && <span className="num">{signed(n.chg)}</span>}</a>; })
+        ? shown.map((n) => <a key={n.sym} href={`#/c/${encodeURIComponent(n.sym)}`} className="sh-cell n" style={{ ['--heat' as string]: Math.max(.1, heatStrength(n.chg, win)), ['--tone' as string]: n.chg >= 0 ? 'var(--up)' : 'var(--down)' }} aria-label={`${n.sym}, ${n.name}: ${signed(n.chg)} over ${WINDOW_LABEL[win]}. Opens the company page.`}><b>{n.sym}</b><span className="num">{signed(n.chg)}</span></a>)
         : rects.map((r) => { const s = byId.get(r.id)!; const L = cellLabel(r.w, r.h, shortSector(s.sector), abbrSector(s.sector), signed(s.chg)); return <button key={r.id} type="button" className={`sh-cell ${L.fp ? 'l' : L.text ? 'm' : 's'}`} style={style(r, s.chg, win, { ['--fn' as string]: `${L.fn}cqw`, ['--fp' as string]: `${L.fp ?? 0}cqw` })} onClick={() => open(s.sector, r)} aria-label={`${s.sector}: ${signed(s.chg)} over ${WINDOW_LABEL[win]}, ${Math.round((s.weight / total) * 100)} percent of traded value, ${s.n} names. Opens its leaders and laggards.`} title={`${s.sector} · ${signed(s.chg)}`}>
             {L.text && <b>{L.text}</b>}{L.fp && <span className="num">{signed(s.chg)}</span>}</button>; })}
     </div>
@@ -52,7 +51,7 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
     </div>}
     {cur && unlabelled.length > 0 && (() => { const chip = (n: HeatName) => <li key={n.sym}><a href={`#/c/${encodeURIComponent(n.sym)}`}><span className="sym">{n.sym}</span> <span className={`num ${n.chg < 0 ? 'down' : n.chg > 0 ? 'up' : ''}`}>{signed(n.chg)}</span><span className="sr"> {n.name}, over {WINDOW_LABEL[win]}</span></a></li>;
       const head = unlabelled.slice(0, SMALL_SHOWN), rest = unlabelled.slice(SMALL_SHOWN);   // the largest by traded value first; a sector of 200 names does not become a wall of chips
-      return <div className="sh-small" data-unlabelled><h3 className="k">Too small to label · {unlabelled.length} of {cur.n}</h3>
+      return <div className="sh-small" data-unlabelled><h3 className="k">More companies · {unlabelled.length} of {cur.n}</h3>
         <ul>{head.map(chip)}</ul>
         {rest.length > 0 && <details className="more sh-rest"><summary>Show the other {rest.length}</summary><ul>{rest.map(chip)}</ul></details>}</div>; })()}
     {cur && hidden > 0 && <p className="small mute" style={{ margin: '8px 0 0' }}>The {shown.length} names with the most traded value are drawn; the other {hidden} are in the list above and the table.</p>}

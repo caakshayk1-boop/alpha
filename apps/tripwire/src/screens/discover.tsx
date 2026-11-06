@@ -7,6 +7,7 @@ import { FilterSheet } from '../components/index.ts';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
 import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
+import { ScreenFeedback } from './ScreenFeedback.tsx';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
 import { isLiveQuote } from '../stamp.ts';
 import { dayWord, initials, inr, pct, tone } from '../fmt.ts';
@@ -210,6 +211,7 @@ export function Discover() {
       </div></>}
     {scr.data && run.ordered.length > 0 && <div className="more"><p className="small mute num" role="status">Showing {Math.min(st.show, run.ordered.length).toLocaleString('en-IN')} of {run.ordered.length.toLocaleString('en-IN')}</p>
       {run.ordered.length > st.show && <button className="btn" style={{ width: '100%' }} onClick={() => patch({ show: st.show + PAGE }, true)}>Show {Math.min(PAGE, run.ordered.length - st.show)} more</button>}</div>}
+    {scr.data && <ScreenFeedback rows={rows} filters={filtersOf(st)} />}
     {st.pick.length >= 1 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => patch({ pick: [] }, true)}>Clear {st.pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} disabled={st.pick.length < 2} onClick={() => { flush(); remember(); go(`/compare?s=${st.pick.join(',')}`); }}><Icon n="compare" />{st.pick.length < 2 ? 'Pick one more' : `Compare ${st.pick.length}`}</button></div>}
 
     {figure && <CondSheet rows={rows} initial={figure.m} existing={st.cond} allowUnknown blocked={blocked} count={countWith} onClose={() => { setFigureM(null); if (figure.back) setSheet('filters'); }}

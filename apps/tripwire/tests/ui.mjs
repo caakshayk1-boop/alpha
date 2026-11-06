@@ -104,10 +104,20 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
   await ctx.close(); }
 
 /* 9. a sheet restores focus when it closes (Escape, the close button) and closes on Escape */
-{ const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision');
-  const trig = pg.locator('.fab-row').getByRole('button', { name: 'Thesis' }); await trig.focus(); await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]'); const inside = await pg.evaluate(() => !!document.activeElement.closest('[role=dialog]'));
+for (const reducedMotion of ['no-preference', 'reduce']) { const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS'), { reducedMotion }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision');
+  const trig = pg.locator('.fab-row').getByRole('button', { name: 'Thesis' }); await trig.focus();
+  // Force the overlap that previously hid the opener during the sheet transition.
+  await pg.evaluate(() => { const plot = document.querySelector('.chart-plot').getBoundingClientRect(); const bar = document.querySelector('.fab-row').getBoundingClientRect(); window.scrollBy(0, plot.top - bar.top + 40); });
+  await pg.waitForTimeout(250);
+  ok(await trig.evaluate((e) => document.activeElement === e && getComputedStyle(e.parentElement).visibility === 'visible'), `${reducedMotion}: the focused action stays available over the chart`);
+  await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]');
+  await pg.waitForTimeout(250); const inside = await pg.evaluate(() => !!document.activeElement.closest('[role=dialog]'));
   await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
-  ok(inside && (await pg.locator('[role=dialog]').count()) === 0 && (await pg.evaluate(() => document.activeElement.textContent.includes('Thesis') && !!document.activeElement.closest('.fab-row'))), 'Thesis sheet: focus moves in, Escape closes it, focus returns to the button that opened it');
+  const restored = await trig.evaluate((e) => document.activeElement === e && getComputedStyle(e.parentElement).visibility === 'visible');
+  ok(inside && (await pg.locator('[role=dialog]').count()) === 0 && restored, `${reducedMotion}: Thesis sheet moves focus in (${inside}), Escape closes it, and focus returns to its visible opener (${restored})`);
+  await pg.locator('.chart-plot').evaluate((e) => e.focus({ preventScroll: true }));
+  await pg.waitForFunction(() => getComputedStyle(document.querySelector('.fab-row')).visibility === 'hidden', null, { timeout: 2000 });
+  ok(await pg.locator('.fab-row').evaluate((e) => getComputedStyle(e).visibility === 'hidden'), `${reducedMotion}: the action bar clears the chart once focus leaves it`);
   const s = pg.getByRole('button', { name: 'Search' }).first(); await s.focus(); await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]'); await pg.getByRole('button', { name: 'Close' }).click(); await pg.waitForTimeout(250);
   ok(await pg.evaluate(() => document.activeElement.getAttribute('aria-label') === 'Search'), 'Search sheet: the close button returns focus to the search button');
   const sheet = await (async () => { await s.click(); await pg.waitForSelector('[role=dialog]'); await pg.waitForTimeout(600); return pg.evaluate(() => { const r = document.querySelector('.sheet').getBoundingClientRect(); return { bottom: r.bottom, ih: innerHeight, pb: parseFloat(getComputedStyle(document.querySelector('.sheet')).paddingBottom) }; }); })();
@@ -115,9 +125,9 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
 
 /* 10. the 30-second company read, the counterargument first-class, ownership and same-sector wording */
 { const ctx = await newCtx(b, 390, ohlcSeries(300, 'GCSL')); const pg = await ctx.newPage(); await open(pg, '/#/c/GCSL', '.decision');
-  const top = await pg.evaluate(() => { const d = document.querySelector('.decision'); const lab = (t) => [...d.querySelectorAll('.dk')].find((e) => e.textContent === t); const y = (e) => (e ? e.getBoundingClientRect().top + scrollY : 9e9); return { counter: y(lab('Strongest counterargument')), inval: y(lab('Invalidation')), evid: y(lab('Evidence status')), btn: y(d.querySelector('.nextstep .btn')), price: y(document.querySelector('.roll')) }; });
+  const top = await pg.evaluate(() => { const d = document.querySelector('.decision'); const lab = (t) => [...d.querySelectorAll('.dk')].find((e) => e.textContent === t); const y = (e) => (e ? e.getBoundingClientRect().top + scrollY : 9e9); return { read: document.querySelector('[data-research-read]').getBoundingClientRect().height + 16, counter: y(lab('Strongest counterargument')), inval: y(lab('Invalidation')), evid: y(lab('Evidence status')), btn: y(d.querySelector('.nextstep .btn')), price: y(document.querySelector('.roll')) }; });
   // 1 Nov 2026: the principal chart (about 1,000px on a phone, with its takeaway and controls) now sits ABOVE the decision summary, so these depths moved down by about that much; the order is chart, then summary
-  ok(top.counter < 2200 && top.inval < 2400 && top.evid < 2400 && top.btn < 2500 && top.price < 300, `price, counterargument, evidence, invalidation and one primary action sit in the first screens (${Math.round(top.counter)}, ${Math.round(top.inval)}, ${Math.round(top.btn)})`);
+  ok(top.read < 650 && top.counter < 2200 + top.read && top.inval < 2400 + top.read && top.evid < 2400 + top.read && top.btn < 2500 + top.read && top.price < 300, `the compact one-minute read adds at most 650px; price and decision details retain their layout budget (${Math.round(top.counter)}, ${Math.round(top.inval)}, ${Math.round(top.btn)})`);
   ok((await pg.locator('.decision .nextstep .btn.pri').count()) === 1, 'one primary action'); ok(!/Why it surfaced/.test(await pg.locator('.decision').evaluate((e) => [...e.querySelectorAll('.dk')].filter((x) => x.checkVisibility({ contentVisibilityAuto: true })).map((x) => x.textContent).join())), 'why it surfaced, next review and data quality sit behind a control');
   ok(/Experimental|Old data/.test(await pg.locator('.decision > .row').first().innerText()) || true, 'warnings sit in the summary header');
   const t = await pg.locator('body').innerText(); ok(/Same sector/.test(t) && /Similar measured patterns/.test(t) && !/Stocks like this/.test(t), 'peers are split into "Same sector" and "Similar measured patterns"; the cross-sector list is no longer "Stocks like this"');
@@ -138,11 +148,11 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
 
 /* N+1. Back to top: hidden near the top, a ring that follows the scroll once the page is long and scrolled, one tap to the top, and clear of the tab bar. */
 { const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true }), { reducedMotion: 'reduce' }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  const st = () => pg.evaluate(() => { const e = document.querySelector('.scrolltop'); const bar = e.querySelector('.bar'); const t = document.querySelector('.tabs').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { hidden: e.getAttribute('data-hidden'), label: e.getAttribute('aria-label'), off: parseFloat(getComputedStyle(bar).strokeDashoffset), dash: parseFloat(getComputedStyle(bar).strokeDasharray), bottom: Math.round(r.bottom), tabTop: Math.round(t.top), w: Math.round(r.width), h: Math.round(r.height), y: Math.round(scrollY), vis: getComputedStyle(e).visibility }; });
+  const st = () => pg.evaluate(() => { const e = document.querySelector('.scrolltop'); const bar = e.querySelector('.bar'); const t = document.querySelector('.tabs').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { hidden: e.getAttribute('data-hidden'), label: e.getAttribute('aria-label'), off: parseFloat(getComputedStyle(bar).strokeDashoffset), dash: parseFloat(getComputedStyle(bar).strokeDasharray), pos: getComputedStyle(e).position, after: r.top + scrollY >= document.querySelector('.view').getBoundingClientRect().bottom + scrollY, bottom: Math.round(r.bottom), tabTop: Math.round(t.top), w: Math.round(r.width), h: Math.round(r.height), y: Math.round(scrollY), vis: getComputedStyle(e).visibility }; });
   const a = await st(); ok(a.hidden === 'true' && a.vis === 'hidden', 'at the top of the page the back-to-top button is not offered');
   await pg.evaluate(() => scrollTo(0, 1600)); await pg.waitForTimeout(350); const b1 = await st();
   ok(b1.hidden === 'false' && b1.vis === 'visible', 'once the page is long and scrolled, the button appears'); ok(/^Back to top\. \d+% of this page scrolled, \d+% below\.$/.test(b1.label), `its name says how far down and how much is left (${b1.label})`);
-  ok(b1.off < b1.dash && b1.off > 0, 'the ring is part-filled while the page is part-read'); ok(b1.w >= 44 && b1.h >= 44 && b1.bottom <= b1.tabTop, `it is a 44px+ target and sits above the tab bar (${b1.w}x${b1.h}, bottom ${b1.bottom}, tabs ${b1.tabTop})`);
+  ok(b1.off < b1.dash && b1.off > 0, 'the ring is part-filled while the page is part-read'); ok(b1.w >= 44 && b1.h >= 44 && b1.pos === 'relative' && b1.after, `it is a 44px+ target after the content, never floating over a chart (${b1.w}x${b1.h}, bottom ${b1.bottom}, tabs ${b1.tabTop})`);
   await pg.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); await pg.waitForTimeout(350); const c1 = await st(); ok(c1.off < b1.off && /^Back to top\. 100%/.test(c1.label), `at the foot the ring is full and the label says 100% (${c1.label})`);
   await pg.locator('.scrolltop').click(); await pg.waitForTimeout(400); const d = await st(); ok(d.y <= 2 && d.hidden === 'true', `one tap returns to the top and the button steps away (y ${d.y})`);
   ok(await pg.evaluate(() => document.activeElement?.id === 'main'), 'focus moves to the main content, not to a hidden button'); await ctx.close(); }
@@ -157,7 +167,7 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
 
 { const ctx = await newCtx(b, 390, ohlcSeries(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
   const arrive = await pg.evaluate(() => { const e = document.querySelector('.fab-row'); const p = document.querySelector('.chart-plot').getBoundingClientRect(); const r = e.getBoundingClientRect(); return { away: e.classList.contains('fab-away'), vis: getComputedStyle(e).visibility, overlap: p.bottom > r.top && p.top < r.bottom }; });
-  ok(arrive.overlap && !arrive.away && arrive.vis === 'visible', `on arrival the actions are offered, even where the chart reaches under the bar (overlap ${arrive.overlap})`);
+  ok(!arrive.away && arrive.vis === 'visible', `on arrival the actions are offered below the new company read (overlap ${arrive.overlap})`);
   await pg.evaluate(() => scrollTo(0, 120)); await pg.waitForTimeout(300); await pg.goto(base + '/#/c/INFY'); await pg.waitForTimeout(800);
   ok(await pg.locator('.fab-row').isVisible(), 'opening another company while the page is already scrolled still shows the actions (a scroll offset is not the person scrolling)'); await ctx.close(); }
 

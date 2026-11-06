@@ -10,10 +10,13 @@ const open = async (pg, route, sel) => { await pg.goto(base + '/'); await pg.got
 const overflow = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 const radio = (pg, group, name) => pg.locator(`[role=radiogroup][aria-label="${group}"]`).getByRole('radio', { name, exact: true });
 const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
+// The requested one-minute company read now precedes the chart. Bound its height separately;
+// retain the original chart/header budget rather than allowing unrelated vertical growth.
+const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Math.ceil(e.getBoundingClientRect().height) + 16);
 
 /* 1. the first screen on a phone: the chart is in it, with its takeaway, and it opens on one year against the Nifty */
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  const top = await pg.evaluate(() => document.querySelector('.chart-plot').getBoundingClientRect().top); ok(top > 0 && top < 844, `the principal chart starts inside the first 844px (top ${Math.round(top)})`);
+  const top = await pg.evaluate(() => document.querySelector('.chart-plot').getBoundingClientRect().top); const read = await readHeight(pg); ok(read < 560 && top > 0 && top < 844 + read, `the bounded company read precedes the chart; existing header budget retained (read ${read}, plot ${Math.round(top)})`);
   const take = (await pg.locator('[data-takeaway]').allInnerTexts()).join('\n');
   ok(/^TCS (rose|fell|was flat) [\d.]+% over the last year, against [+−]?[\d.]+% for the Nifty 50/.test(take) && /percentage points|level with it/.test(take) && /Closes through \d+ \w{3} \d{4}/.test(take), `the takeaway is a factual sentence with the benchmark and the data-through date (${take.split('\n')[0].slice(0, 90)})`);
   ok(!/because|will |likely|expect|forecast|confidence/i.test(take), 'the takeaway makes no causal claim, forecast or confidence statement');
@@ -37,7 +40,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   const m = await pg.evaluate(() => { const top = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; }; const lead = document.querySelector('.cf-lead'); const lh = parseFloat(getComputedStyle(lead).lineHeight);
     const sty = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const lg = sty('.cf-legend'), tt = sty('.cf-h');
     return { plot: top('.chart-plot'), card: top('.cf'), leadLines: Math.round(lead.clientHeight / lh), clamped: lead.scrollHeight > lead.clientHeight + 1, copy: document.querySelectorAll('[data-clamped-copy]').length, legendBelowTitle: lg && tt ? lg.top >= tt.bottom - 1 : null, chipsBelowPlot: top('.cf-chips') > top('.chart-plot'), ctrlRows: document.querySelectorAll('.c-prim > .mini-seg, .c-prim > .c-prim2, .c-prim > [role=radiogroup]').length }; });
-  ok(m.plot != null && m.plot < 700, `${w}x${h}: with the stale-data banner the plot starts at ${m.plot}px, under 700 (the card starts at ${m.card})`);
+  const read = await readHeight(pg); ok(read < 560 && m.plot != null && m.plot < 700 + read, `${w}x${h}: plot ${m.plot}px stays within its 700px budget plus the bounded ${read}px company read`);
   ok(!m.clamped && await pg.locator('.cf-lead').evaluate((e) => e.getBoundingClientRect().top > document.querySelector('.chart-plot').getBoundingClientRect().bottom), `${w}: the full takeaway follows the plot without clipping`);
   ok(m.chipsBelowPlot, `${w}: the two figures sit below the plot`);
   ok(await pg.locator('.cf-legend').count() === 1 && await pg.locator('.cf-legend li').count() === 2, `${w}: the legend is still there, with both lines`);
@@ -50,7 +53,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow`);
   await ctx.close(); }
 { const ctx = await newCtx(b, 320, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: 320, height: 640 }); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  ok((await overflow(pg)) <= 0, '320: the compact header does not overflow'); const t320 = await pg.evaluate(() => Math.round(document.querySelector('.chart-plot').getBoundingClientRect().top + scrollY)); ok(t320 < 700, `320: the plot starts at ${t320}px, under 700`); await ctx.close(); }
+  ok((await overflow(pg)) <= 0, '320: the compact header does not overflow'); const t320 = await pg.evaluate(() => Math.round(document.querySelector('.chart-plot').getBoundingClientRect().top + scrollY)); const read = await readHeight(pg); ok(read < 560 && t320 < 700 + read, `320: plot ${t320}px stays within its 700px budget plus the bounded ${read}px company read`); await ctx.close(); }
 
 /* 2. chart and table agree; the last price on the chart is the last row of the table */
 { const ctx = await newCtx(b, 1280, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');

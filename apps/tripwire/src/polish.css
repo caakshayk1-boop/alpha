@@ -123,7 +123,9 @@
   }
   @media(max-width:699px){
     .today {gap:var(--sp-4)}
-    .brief .t-take {margin-bottom:var(--sp-4)}   /* its reserved height is set in pagesa.css: a shorter reservation left a gap shorter but let the sentence push the cards below it down when it arrived (CLS 0.015, limit 0.01) */
+    /* The completed read uses six lines in wider system fonts. Reserve actual lines:
+       pagesa.css's 7.6em is only 5.4 lines at this surface's 1.4 line-height. */
+    .brief .t-take {margin-bottom:var(--sp-4);min-height:6lh}
     .brief .brief-top {align-items:start;flex-wrap:wrap}
     /* the badges take their own line and the freshness line keeps room for its longest wording, so prices and the screen arriving move nothing below them */
     .brief .brief-top>.row {flex-basis:100%;min-height:24px}

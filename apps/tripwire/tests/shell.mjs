@@ -199,18 +199,24 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   } }
 
 /* ---- the stale-data banner holds its slot: it arrives with the screen feed and moves nothing, and it is never hidden ---- */
-for (const hint of [null, 'stale']) {
+for (const hint of [null, 'stale']) for (const font of [null, 'monospace']) {
   const { ctx, pg } = await mk(390, 844);
+  // Widen only the market read to exercise the six lines seen with Linux system fonts.
+  if (font) await pg.addInitScript((f) => document.addEventListener('DOMContentLoaded', () => { const style = document.createElement('style'); style.textContent = `.brief .t-take { font-family: ${f}; }`; document.head.append(style); }), font);
   await ctx.route('**/data/screen.json', async (r) => { await new Promise((x) => setTimeout(x, 1500)); const res = await r.fetch(); const j = JSON.parse(await res.text()); j.as_of = '2026-10-26'; /* 2 Nov 2026: pin the day to an old one so the banner test is about the banner, not about how fresh the screen the server happens to hold is (CI serves the real build, which was current on a Monday morning) */ await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
-  await pg.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); });
+  await pg.addInitScript(() => { window.__cls = 0; window.__shifts = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__cls += e.value; window.__shifts.push({ value: e.value, sources: e.sources.map((s) => s.node?.className ?? s.node?.nodeName ?? 'removed') }); } }).observe({ type: 'layout-shift', buffered: true }); });
   if (hint) await pg.addInitScript(() => { try { localStorage.setItem('tripwire:banner-hint', '2026-10-26'); } catch { /* none */ } });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 });
   const y1 = await pg.evaluate(() => document.querySelector('.view').offsetTop); const ghost = await pg.locator('[data-banner-slot]').count();
+  const indicesBefore = await pg.locator('.brief-ix').evaluate((e) => e.offsetTop);
   await pg.waitForSelector('.banner[role=status]', { timeout: 15000 }); await pg.waitForTimeout(400);
   const y2 = await pg.evaluate(() => document.querySelector('.view').offsetTop);
+  const indicesAfter = await pg.locator('.brief-ix').evaluate((e) => e.offsetTop);
+  ok(Math.abs(indicesBefore - indicesAfter) < 1, `market read (${font ?? 'system font'}): arriving breadth keeps the index cards in place (${indicesBefore} to ${indicesAfter})`);
   ok(ghost === 1 && Math.abs(y1 - y2) < 1, `banner slot (${hint ? 'remembered stale' : 'nothing remembered'}): reserved while the answer is pending, the view did not move (${y1} to ${y2})`);
   ok(/The data stops \d+ sessions before the last finished one/.test(await pg.locator('.banner[role=status]').innerText()) && (await pg.locator('[data-banner-slot]').count()) === 0, 'banner slot: the real banner is shown to the person, and the placeholder is gone');
-  ok((await pg.evaluate(() => window.__cls)) < 0.01, `banner slot: layout shift from the banner is 0 (CLS ${(await pg.evaluate(() => window.__cls)).toFixed(4)})`); await ctx.close();
+  const shifts = await pg.evaluate(() => ({ cls: window.__cls, sources: window.__shifts }));
+  ok(shifts.cls < 0.01, `delayed screen (${font ?? 'system font'}): page CLS stays below 0.01 (${shifts.cls.toFixed(4)})${shifts.cls >= 0.01 ? ' ' + JSON.stringify(shifts.sources) : ''}`); await ctx.close();
 }
 { const { ctx, pg } = await mk(390, 844);   // current data: nothing is reserved once the device has seen a current answer, and no banner appears
   const day = (() => { const d = new Date(Date.now() + 330 * 60000); while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })();
