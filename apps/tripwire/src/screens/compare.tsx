@@ -11,6 +11,7 @@ import { cr, dash, inr, initials, isNum, pct, x1 } from '../fmt.ts';
 import { saveCompare } from '../store.ts';
 import type { Company } from '../data.ts';
 import { tradeoffs, type TradeoffLine } from '../charts/index.ts';
+import { materialDifferences } from '../research.ts';
 
 type View = 'overview' | 'growth' | 'profit' | 'value' | 'balance' | 'risk';
 type Line = { live?: 'px' | 'ch'; label: string; get: (c: Company) => number | null | undefined | string; fmt: (v: never) => string; best?: 'high' | 'low'; metric?: MetricId };
@@ -82,6 +83,7 @@ export function Compare({ syms }: { syms: string[] }) {
     {syms.length < 2 && <Picker syms={syms} />}
     {syms.length < 2 ? <Empty title={syms.length ? `Add one more to compare with ${syms[0]}` : 'Pick two companies'}>Search above, or take a peer from the same sector. Up to three. You can also tick the compare button on rows in Discover.</Empty> : <>
       {Object.entries(errs).filter(([, e]) => e).map(([k, e]) => <Failed key={k} what={k} err={e} retry={() => location.reload()} />)}
+      {ready && <section className="card" data-differences><span className="k">Start with the differences</span><h2 className="sec">What deserves a closer look</h2>{materialDifferences(cs as Company[]).map((d) => <details className="ev" key={d.label}><summary><span><b>{d.label}</b><span className="small dim" style={{ display: 'block' }}>{d.text}</span></span></summary><div className="body"><p>{d.why}</p>{d.sources.map((x) => <p className="small dim" key={x.sym}><a href={`#/c/${x.sym}`}>{x.sym} evidence</a> · {x.date}</p>)}</div></details>)}{!materialDifferences(cs as Company[]).length && <p className="small dim">No measured difference crosses the displayed review thresholds, or comparable figures are missing.</p>}<p className="small mute">Review thresholds: ROCE or revenue growth ≥5 pp; debt/equity ≥0.5×; PE ≥5×. Up to three spreads are shown. Different sectors, fiscal periods and missing data limit comparisons; highest is not automatically best.</p></section>}
       <CompareChart syms={syms} />
       <div style={{ marginTop: 12 }}><Picker syms={syms} /></div>
       <div className="chips" role="group" aria-label="Comparison view" style={{ margin: '12px 0 10px' }}>{(Object.keys(VIEWS) as View[]).map((id) => <button key={id} className="chip" aria-pressed={view === id} onClick={() => setView(id)}>{VIEWS[id].label}</button>)}</div>
@@ -93,8 +95,7 @@ export function Compare({ syms }: { syms: string[] }) {
           const top = ln.best && meas.length > 1 ? (ln.best === 'high' ? Math.max(...meas) : Math.min(...meas)) : null;
           return <tr key={ln.label}><td>{ln.label}</td>{vals.map((x, i) => <td key={i} className="num" style={isNum(top) && nums[i] === top ? { color: 'var(--lime)', fontWeight: 700 } : undefined}>{isNum(top) && nums[i] === top ? <span aria-label={ln.best === 'high' ? 'highest: ' : 'lowest: '}>{ln.best === 'high' ? '▲ ' : '▼ '}</span> : null}{x.v === null ? <span className="mute small">{x.why}</span> : (ln.fmt as (v: unknown) => string)(x.v)}</td>)}</tr>;
         })}</tbody></table></div>}
-      {ready && <p className="small dim" style={{ marginTop: 10 }}>{diffs(cs as Company[])} Figures marked ▲ are the highest and ▼ the lowest among those measured. They are not a verdict: they carry different risks.</p>}
-      {ready && <p className="small cmp-trade" data-tradeoffs><b>Trade-offs on the measured figures.</b> {tradeoffsOf(cs as Company[], syms).sentence}</p>}
+      {ready && <details className="more" data-tradeoffs><summary>How to read these comparisons</summary><p className="small dim">Figures marked ▲ are the highest and ▼ the lowest among those measured. They are not a verdict: they carry different risks. {tradeoffsOf(cs as Company[], syms).sentence}</p></details>}
       <div className="row" style={{ marginTop: 14 }}>
         <button className="btn grow" disabled={saved} onClick={() => { setState((x) => saveCompare(x, syms)); toast('Comparison saved to My Desk'); }}>{saved ? 'Saved' : 'Save comparison'}</button>
       </div></>}
@@ -108,10 +109,5 @@ function tradeoffsOf(cs: Company[], syms: string[]) {
     lines.push({ group: g.label, label: ln.label.replace(/ \(pts\)$/, '').replace(/^Against the Nifty, 3m$/, 'strength against the Nifty (3m)').toLowerCase(), best: ln.best, vals: cs.map((c) => { if (ln.metric && !meaningful(eligibilityOf(c.row, c.years), ln.metric)) return { id: c.sym, v: null }; const v = ln.get(c); return { id: c.sym, v: isNum(v) ? v : null }; }) });
   }
   return tradeoffs(lines, syms);
-}
-function diffs(cs: Company[]): string {
-  const best = (f: (c: Company) => number | null | undefined, hi = true) => { const m = cs.map((c) => ({ s: c.sym, v: f(c) })).filter((x) => isNum(x.v)) as { s: string; v: number }[]; if (m.length < 2) return null; return m.sort((a, b) => (hi ? b.v - a.v : a.v - b.v))[0]; };
-  const roce = best((c) => (isFinancialSector(c.row) ? null : c.row.roce_med)), pe = best((c) => (isNum(c.row.pe) && c.row.pe > 0 ? c.row.pe : null), false), g = best((c) => c.row.rev_cagr);
-  return [roce && `${roce.s} has the highest median ROCE (${roce.v.toFixed(1)}%).`, pe && `${pe.s} has the lowest PE (${pe.v.toFixed(1)}).`, g && `${g.s} has the fastest 3-year revenue growth (${g.v.toFixed(1)}%).`].filter(Boolean).join(' ') || 'Not enough measured figures to say how they differ.';
 }
 void cr; void dash;

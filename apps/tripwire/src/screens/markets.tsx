@@ -7,7 +7,7 @@ import { usePulse } from '../data.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { sessionNow } from '../market.ts';
 import { dayWord } from '../fmt.ts';
-import { Ago, LiveBadge, Observed } from '../live.tsx';
+import { Ago, Observed } from '../live.tsx';
 import { useTrendSummary } from '../trendsummary.ts';
 import { MacroStrip } from './Macro.tsx';
 import { IndexRows } from './IndexRows.tsx';
@@ -40,7 +40,7 @@ export function Markets() {
     </section>}
     <FlowCard />
     <div className="market-grid">
-      <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /><span className="mute"><Observed sec={pulse.obs} err={pulse.err} /></span></span></div>
+      <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}<span className="mute"><Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></span></div>
         <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
       <section className="market-breadth">
       {scr.loading && <Loading what="the trend map" />}

@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { go, setState, useAppState, useLoc, useSheets } from '../app.tsx';
 import { useScreen } from '../data.ts';
 import { Seg, Empty, useUi } from '../ui.tsx';
-import { CompanyRow, Head, PageBar } from './common.tsx';
-import { useWatchQuotes } from '../quotes.ts';
+import { Head, PageBar } from './common.tsx';
 import { closePlan, current, editEntry, istDay, journalCsv, markPaperFill, reviewDue, setArchived, weeklyReview, type Entry, type State } from '../store.ts';
 import { changeCopy, lastChange } from '../sincevisit.ts';
 import { followFacts } from '../followfacts.ts';
@@ -13,6 +12,9 @@ import { dayWord, inr, pct, tone } from '../fmt.ts';
 import { download } from '../backupfile.ts';
 import { Fold, Workflow } from './fold.tsx';
 import { planFigures } from '../planview.ts';
+import { FollowReview } from './FollowReview.tsx';
+import { PaperSnapshot } from './PaperSnapshot.tsx';
+import { DEFAULT_STATE, discoverPath, withFilters } from '../discoverstate.ts';
 
 export function Desk({ seg }: { seg: string }) {
   const loc = useLoc(); const explicit = loc.q.get('v'); const st = useAppState(); const has = deskHas(st);
@@ -32,7 +34,7 @@ function NewDesk() {
     <p className="dim">Follow a company to track what changes, then save your thesis when you are ready. Your notes stay on this device.</p>
     <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></section>
     <Fold id="workflow" title="A guide to researching a company" summary="From first look to your own thesis."><Workflow /></Fold>
-    <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button></div>
+    <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button><a className="btn" href="#/desk?v=plans">Paper snapshot and CSV import</a></div>
     </div>;
 }
 const DAY = 86400000;
@@ -48,6 +50,8 @@ function Workspace() {
   const reviewTag = (e: Entry) => { const d = reviewDue(e, today); const r = current(e).reviewOn; return d === 'overdue' ? <span className="tag peach">Overdue · {dayWord(r)}</span> : d === 'today' ? <span className="tag peach">Today</span> : r ? <span className="tag">{dayWord(r)}</span> : <span className="tag">No date</span>; };
   const left = upcoming.length > 0 || withQ.length > 0 || decisions.length > 0, right = s.follows.length > 0 || active.length > 0;
   return <div className="dsk" data-desk="workspace">
+    {s.plans.some((p) => p.status === 'paper-filled') && <PaperSnapshot />}
+    {s.follows.length > 0 && <a className="btn" href="#/desk?v=follow">Review changes in followed companies →</a>}
     {(left || right) && <div className={`dsk-grid${left && right ? '' : ' one'}`}>
       {left && <div className="dsk">
         {upcoming.length > 0 && <section aria-labelledby="dsk-rev"><h2 id="dsk-rev" className="sec" style={{ marginBottom: 8 }}>Upcoming reviews</h2>
@@ -84,10 +88,9 @@ function Workspace() {
   </div>;
 }
 function Following() {
-  const today = istDay(); const s = useAppState(); const scr = useScreen(); useWatchQuotes(s.follows);
-  const rows = s.follows.map((x) => scr.data?.rows.find((r) => r.sym === x));
+  const s = useAppState(); const scr = useScreen();
   if (!s.follows.length) return <Empty title="Nothing followed" action={<button className="btn pri" onClick={() => go('/discover')}>Find a company</button>}>Follow a name from Discover or its research page. Today then reports what changed in it.</Empty>;
-  return <div className="card" style={{ padding: '2px 14px' }}><div className="list">{rows.map((r, i) => r ? <CompanyRow key={r.sym} r={r} meta={(() => { const c = lastChange(s, r.sym, istDay(), r); return c ? <span className="small" style={{ color: 'var(--lime)' }}>{c.title}</span> : null; })()} /> : <div key={s.follows[i]} className="li"><span className="sym">{s.follows[i]}</span><span className="dim small">not in the current screen</span></div>)}</div></div>;
+  return <FollowReview rows={scr.data?.rows ?? []} />;
 }
 function Journal() {
   const s = useAppState(); const { open } = useSheets(); const [q, setQ] = useState(''); const [arch, setArch] = useState(false); const { toast } = useUi();
@@ -113,9 +116,9 @@ function Journal() {
 }
 function Plans() {
   const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
-  if (!s.plans.length) return <Empty title="No paper plans" action={<button className="btn pri" onClick={() => open({ k: 'plan' })}>Size a position</button>}>A plan is a saved calculation on hypothetical money: how many shares, how much cash, and the modelled loss at a stop you assume. It is not a fill and not a holding.</Empty>;
+
   const W = { saved: 'Saved plan', 'paper-filled': 'Paper fill (you recorded it)', closed: 'Closed' } as const;
-  return <>{s.plans.map((p) => <div key={p.id} className="card"><div className="row between"><a href={`#/c/${p.sym}`}><b>{p.sym}</b></a><span className={`tag ${p.status === 'paper-filled' ? 'lime' : ''}`}>{W[p.status]}</span></div>
+  return <><PaperSnapshot /><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button>{s.plans.map((p) => <div key={p.id} className="card"><div className="row between"><a href={`#/c/${p.sym}`}><b>{p.sym}</b></a><span className={`tag ${p.status === 'paper-filled' ? 'lime' : ''}`}>{W[p.status]}</span></div>
     <p className="num small" style={{ margin: '8px 0' }}>{p.qty} shares · entry {inr(p.entry)} · stop {inr(p.stop)} · risk {p.riskPct}% · revision {p.rev}{p.expiry ? ` · expires ${dayWord(p.expiry)}` : ''}</p>
     {(() => { const f = planFigures(p, s.prefs.equity, s.prefs.cash, null); return <p className="small dim" style={{ margin: '0 0 8px' }} data-plan-saved>Hypothetical allocation {inr(f.capital)}{f.allocationPct != null ? ` (${f.allocationPct < 10 ? f.allocationPct.toFixed(1) : Math.round(f.allocationPct)}% of equity)` : ''} · modelled loss at your assumed stop {inr(f.lossAtStop)}. A gap can lose more.</p>; })()}
     {p.note && <p className="dim small" style={{ margin: '0 0 8px' }}>{p.note}</p>}
@@ -128,6 +131,6 @@ function Saved() {
   const s = useAppState();
   return <>
     <Head>Comparisons</Head>{s.compares.length ? <div className="card"><div className="list">{s.compares.map((c) => <a key={c.join()} className="li" href={`#/compare?s=${c.join(',')}`}><span className="grow sym">{c.join(' · ')}</span></a>)}</div></div> : <div className="card dim">None saved. Compare two or three names and save the result. <a href="#/compare" style={{ textDecoration: 'underline' }}>Open Compare</a></div>}
-    <Head>Screens</Head>{s.screens.length ? <div className="card"><div className="list">{s.screens.map((x) => <a key={x.name} className="li" href="#/discover"><span className="grow">{x.name}</span></a>)}</div></div> : <div className="card dim">None saved. Set filters in Discover, then save them.</div>}
+    <Head>Screens</Head>{s.screens.length ? <div className="card"><div className="list">{s.screens.map((x) => <a key={x.name} className="li" href={`#${discoverPath(withFilters(DEFAULT_STATE, x.f))}`}><span className="grow">{x.name}</span></a>)}</div></div> : <div className="card dim">None saved. Set filters in Discover, then save them.</div>}
   </>;
 }

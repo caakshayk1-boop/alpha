@@ -23,7 +23,8 @@ test('version and snapshot: served from the data branch, 200 ok:false when absen
   reset(); route({ 'news-browser.json': () => new Response('{"schema":"tripwire-news/1","events":[],"snapshotVersion":9}') }); const s = await (await get('/api/news')).json(); assert.deepEqual([s.ok, s.snapshotVersion], [true, 9]);
   assert.equal((await worker.fetch(new Request('https://tripwire.test/api/news/version', { method: 'POST' }), env, ctx)).status, 405);
 });
-test('live query: one company, through the same pipeline and gates; only stories that name it', async () => {
+test('live query: one company, through the same pipeline and gates; only stories that name it', async (t) => {
+  t.mock.method(Date, 'now', () => Date.parse('2026-10-27T08:00:00Z'));
   reset(); route({ 'rss/search?q="Tata Consultancy Services"': () => new Response(fx('google-tcs.xml')) });
   const r = await get('/api/news?q=' + encodeURIComponent('"Tata Consultancy Services" when:7d') + '&sym=TCS'); assert.equal(r.status, 200); const j = await r.json();
   assert.equal(j.ok, true); assert.equal(j.schema, 'tripwire-news-q/1'); assert.equal(j.via, 'google-news'); assert.ok(j.events.length >= 3); assert.ok(j.events.every((e: any) => e.entities[0].sym === 'TCS' && !('items' in e)));

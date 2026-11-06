@@ -97,7 +97,7 @@ export const isQuiet = (raw: string) => raw === quietRaw;
 export const back = () => { if (history.length > 1) history.back(); else go('/today'); };
 
 /* ---- sheets ---- */
-type Sheet = { k: 'search' } | { k: 'plan'; sym?: string; entry?: number; stop?: number } | { k: 'thesis'; sym: string; id?: string } | { k: 'explain'; id?: string };
+type Sheet = { k: 'search' } | { k: 'plan'; sym?: string; entry?: number; stop?: number } | { k: 'thesis'; sym: string; id?: string; seed?: { question: string; evidence: string } } | { k: 'explain'; id?: string; sym?: string };
 const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} });
 export const useSheets = () => useContext(SheetCtx);
 
@@ -209,18 +209,18 @@ export function App(): ReactNode {
         {slot === 'reserve' && <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div>}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
+        <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}
       </nav>
-      <ScrollTop />
     </div>
     <Suspense fallback={null}>
     {sheet?.k === 'search' && <SearchSheet onClose={close} />}
     {sheet?.k === 'plan' && <PlannerSheet onClose={close} sym={sheet.sym} entry={sheet.entry} stop={sheet.stop} />}
-    {sheet?.k === 'thesis' && <ThesisSheet onClose={close} sym={sheet.sym} id={sheet.id} />}
-    {sheet?.k === 'explain' && <ExplainSheet onClose={close} id={sheet.id} />}
+    {sheet?.k === 'thesis' && <ThesisSheet key={`${sheet.sym}-${sheet.id ?? "new"}-${sheet.seed?.evidence ?? ""}`} onClose={close} sym={sheet.sym} id={sheet.id} seed={sheet.seed} />}
+    {sheet?.k === 'explain' && <ExplainSheet onClose={close} id={sheet.id} sym={sheet.sym} />}
     </Suspense>
   </SheetCtx.Provider></UiProvider>;
 }

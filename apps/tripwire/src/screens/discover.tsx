@@ -7,6 +7,7 @@ import { FilterSheet } from '../components/index.ts';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
 import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
+import { ScreenFeedback } from './ScreenFeedback.tsx';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
 import { isLiveQuote } from '../stamp.ts';
 import { dayWord, initials, inr, pct, tone } from '../fmt.ts';
@@ -186,6 +187,7 @@ export function Discover() {
       {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at {anyPrintLive ? "today's live price" : 'the last traded price'}. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
     </div>
 
+    {scr.data && <ScreenFeedback rows={rows} filters={filtersOf(st)} />}
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
     {scr.data && !run.ordered.length && <Empty title="No company matches" action={<button className="btn" onClick={clearAll}>Clear all filters</button>}>{noFig > 0 ? `${plural(noFig, 'name')} had no usable figure for a filter. ` : ''}A name with no figure is left out unless a condition says to include it, and is never counted as zero.</Empty>}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 /** Back to top, with a ring that fills as the page is read: how far down you are, and (in the label) how much is still below.
- *  It appears only on a long page, once the top is well behind, and sits clear of the tab bar and the company action bar. The ring is updated straight on the DOM from one
+ *  It appears only on a long page, once the top is well behind, and sits in normal flow after the content so it never covers a chart. The ring is updated straight on the DOM from one
  *  rAF-throttled scroll listener, so a scroll never re-renders the app. With motion off (or reduced) the ring still shows the position, it just does not animate, and the jump is instant. */
 const R = 22; const C = 2 * Math.PI * R;
 export function ScrollTop() {

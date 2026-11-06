@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { go, setState, useAppState } from './app.tsx';
+import { go, setState, useAppState, useSheets } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
-import { useScreen, useSignals } from './data.ts';
+import { useScreen, useSignals, useJson, type Company } from './data.ts';
 import { sizePlan } from './planner.ts';
 import { planCaveats, planFigures } from './planview.ts';
 import { useEngines } from './useEngines.ts';
 import { DEFAULT_COST, SLIPPAGE_PCT } from './tracker.ts';
 import { addEntry, current, editEntry, savePlan, istDay } from './store.ts';
-import { METRICS, glossarySearch, metric } from './metrics.ts';
+import { METRICS, FORMULAS, glossarySearch, metric } from './metrics.ts';
+import { companyRead, evidenceDate, sourceLink } from './research.ts';
+import { figureOf, fmtMetric, metricOf, type MetricKey } from './screener.ts';
+import type { ReviewState, Version } from './store.ts';
 import { inr, inr0, isNum, dayWord } from './fmt.ts';
 
 const addDays = (d: string, n: number) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
@@ -63,31 +66,49 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
   </Sheet>;
 }
 
-export function ThesisSheet({ onClose, sym, id }: { onClose: () => void; sym: string; id?: string }) {
-  const st = useAppState(); const { toast, tick } = useUi();
+export function ThesisSheet({ onClose, sym, id, seed }: { onClose: () => void; sym: string; id?: string; seed?: { question: string; evidence: string } }) {
+  const st = useAppState(); const { toast, tick } = useUi(); const scr = useScreen(); const row = scr.data?.rows.find((r) => r.sym === sym);
   const e = id ? st.entries.find((x) => x.id === id) : undefined; const c = e ? current(e) : undefined;
-  const [f, setF] = useState({ thesis: c?.thesis ?? '', support: c?.support ?? '', counter: c?.counter ?? '', decision: c?.decision ?? '', invalidation: c?.invalidation ?? '', trigger: c?.trigger ?? '', reviewOn: c?.reviewOn ?? addDays(istDay(), 30) });
+  const [f, setF] = useState({ thesis: c?.thesis ?? '', support: [c?.support, seed?.evidence].filter(Boolean).join('\n\n'), counter: c?.counter ?? '', decision: c?.decision ?? '', invalidation: c?.invalidation ?? '', trigger: c?.trigger ?? '', reviewOn: c?.reviewOn ?? addDays(istDay(), 30), question: [c?.question, seed?.question].filter(Boolean).join('\n'), decisionReason: c?.decisionReason ?? '' });
+  const [reviewState, setReviewState] = useState<ReviewState>(c?.reviewState ?? 'new'); const [evidenceChange, setEvidenceChange] = useState<NonNullable<Version['evidenceChange']>>(c?.evidenceChange ?? 'unassessed');
   const [hist, setHist] = useState(false);
-  const F = (k: keyof typeof f, label: string, rows = 2) => <><label className="l" htmlFor={`t-${k}`}>{label}</label><textarea id={`t-${k}`} className="field" rows={rows} maxLength={600} value={f[k] as string} onChange={(ev) => setF({ ...f, [k]: ev.target.value })} /></>;
-  const save = () => { const v = { ...f, reviewOn: f.reviewOn || null }; setState((x) => (e ? editEntry(x, e.id, v) : addEntry(x, sym, v).s)); tick(); toast(e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose(); };
+  const F = (k: keyof typeof f, label: string, rows = 2) => <><label className="l" htmlFor={`t-${k}`}>{label}</label><textarea id={`t-${k}`} className="field" rows={rows} maxLength={k === 'support' ? 12000 : 2400} value={f[k] as string} onChange={(ev) => setF({ ...f, [k]: ev.target.value })} /></>;
+  const save = () => { const v = { ...f, reviewOn: f.reviewOn || null, reviewState, evidenceChange }; setState((x) => (e ? editEntry(x, e.id, v) : addEntry(x, sym, v).s)); tick(); toast(e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose(); };
   return <Sheet title={`${sym}: thesis`} onClose={onClose}>
+    {F('question', 'Research question')}
+    <label className="l" htmlFor="t-review-state">Review state</label><select className="field" id="t-review-state" value={reviewState} onChange={(ev) => setReviewState(ev.target.value as ReviewState)}><option value="new">New</option><option value="waiting">Waiting for evidence</option><option value="results">After results</option><option value="reviewed">Reviewed</option></select>
+    <label className="l" htmlFor="t-evidence-change">Your assessment of the evidence</label><select className="field" id="t-evidence-change" value={evidenceChange} onChange={(ev) => setEvidenceChange(ev.target.value as typeof evidenceChange)}>{['unassessed', 'strengthened', 'weakened', 'mixed'].map((x) => <option key={x}>{x}</option>)}</select>
+    <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{['Watching', 'Skipped', 'Took it (paper)'].map((d) => <button key={d} className="chip" aria-pressed={f.decision === d} onClick={() => setF({ ...f, decision: d })}>{d}</button>)}</div>
+    {F('decisionReason', 'Reason for the decision')}
     {F('thesis', 'Thesis: why this, in one or two lines')}{F('support', 'Evidence that supports it')}{F('counter', 'Strongest argument against it')}{F('decision', 'Decision (watch, plan, pass…)', 1)}{F('invalidation', 'Wrong if… (a price or an event)', 1)}{!f.invalidation.trim() && <p className="small" style={{ margin: '4px 0 0', color: 'var(--a4)' }}>Without this you cannot tell a bad day from being wrong. It is the line that protects you.</p>}{F('trigger', 'Review trigger', 1)}
     <label className="l" htmlFor="t-date">Review date</label><input id="t-date" className="field" type="date" value={f.reviewOn} onChange={(ev) => setF({ ...f, reviewOn: ev.target.value })} />
+    {row?.next_earnings && <button className="btn sm" onClick={() => { setReviewState('results'); setF({ ...f, reviewOn: row.next_earnings!, trigger: `After results expected ${row.next_earnings}; verify the company announcement` }); }}>After next results · {row.next_earnings}</button>}
+    <p className="small mute">Review states are your assessment. A price move does not automatically strengthen or weaken a business thesis. “Took it” records a paper decision, not an executed trade or real P&L.</p>
     <div className="row" style={{ marginTop: 14 }}><button className="btn pri grow" disabled={!f.thesis.trim()} onClick={save}>{e ? 'Save as new version' : 'Save thesis'}</button>{e && e.versions.length > 1 && <button className="btn" onClick={() => setHist(!hist)}>History</button>}</div>
-    {hist && e && <div style={{ marginTop: 12 }}>{[...e.versions].reverse().map((v, i) => <div key={v.at} className="card"><div className="k">{i === 0 ? 'Current' : 'Earlier'} · {dayWord(v.at)}</div><p style={{ margin: '6px 0 0' }}>{v.thesis}</p><p className="small dim" style={{ margin: '4px 0 0' }}>Wrong if: {v.invalidation || 'not written'}</p></div>)}</div>}
+    {hist && e && <div style={{ marginTop: 12 }}>{[...e.versions].reverse().map((v, i) => <div key={`${v.at}-${i}`} className="card"><div className="k">{i === 0 ? 'Current' : 'Earlier'} · version {e.versions.length - i} · {dayWord(v.at)}</div><p>{v.thesis}</p>{[['Question', v.question], ['Evidence', v.support], ['Counterview', v.counter], ['Decision', v.decision], ['Reason', v.decisionReason], ['Wrong if', v.invalidation], ['Review', `${v.reviewState ?? 'not set'} · ${v.reviewOn ?? 'no date'} · ${v.trigger}`], ['Evidence assessment', v.evidenceChange]].map(([label, value]) => value ? <p key={label} className="small dim" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><b>{label}:</b> {value}</p> : null)}</div>)}</div>}
     <p className="mute small">Saved on this device only. Edits add a version; they never overwrite the earlier one.</p>
   </Sheet>;
 }
 
-export function ExplainSheet({ onClose, id }: { onClose: () => void; id?: string }) {
+export function ExplainSheet({ onClose, id, sym }: { onClose: () => void; id?: string; sym?: string }) {
   const [sel, setSel] = useState(id ?? '');
-  const m = metric(sel);
+  const m = metric(sel); const scr = useScreen(); const st = useAppState(); const { open } = useSheets(); const row = scr.data?.rows.find((r) => r.sym === sym);
+  const company = useJson<Company>(sym && sel === 'ownership' ? `/data/c/${encodeURIComponent(sym)}.json` : null);
+  const ownership = company.data ? companyRead(company.data).find((f) => f.id === 'ownership') : null;
+  const key = (sel === 'roce' ? 'roce_med' : sel) as MetricKey; const def = metricOf(key); const fig = row && def ? figureOf(row, key) : null;
+  const value = ownership?.fact ?? (fig?.k === 'value' ? fmtMetric(def!, fig.v) : fig?.k === 'na' ? 'Not applicable' : 'Not supplied in this screen');
+  const dated = ownership?.period ?? (row ? evidenceDate(row, sel) : 'Company date unavailable');
+  const reference = sel === 'ownership' && sym ? `https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(sym)}` : sym ? sourceLink(sym, ['roce', 'de', 'net_margin', 'rev_cagr', 'eps_cagr', 'cfo_pat'].includes(sel)) : '';
   return <Sheet title={m ? m.label : 'Explain a figure'} onClose={onClose}>
     {m ? <>
       <p style={{ fontSize: '0.9375rem' }}>{m.what}</p>
+      <p className="small"><b>Formula:</b> {FORMULAS[m.id] ?? 'Not published in this feed; verify with the source.'}</p>
       <p className="small dim">Period: {m.period}<br />Source: {m.source}</p>
+      {row && <p className="small dim">{row.sym} · {value} · {dated}</p>}
+      {sym && <a className="btn sm" href={reference} target="_blank" rel="noopener noreferrer">Open source reference ↗</a>}
+      {sym && <button className="btn sm" onClick={() => open({ k: 'thesis', sym, id: st.entries.find((e) => e.sym === sym && !e.archived)?.id, seed: { question: `What does ${m.label} tell me about ${sym}, and what could contradict it?`, evidence: `${sym} · ${m.label}: ${value}. ${dated}. ${FORMULAS[m.id] ?? ''}\nSource: ${m.source} · ${reference}\nLimits: ${m.caution ?? 'Verify the underlying statement and calculation.'}` } })}>Link to my thesis</button>}
       {m.caution && <div className="note">{m.caution}</div>}
-      <p className="mute small">A written definition from fixed text. Not generated by an AI model, and not specific to this company.</p>
+      <p className="mute small">A fixed definition, with the dated screen value where supplied. The source reference is a provider page, not a permalink to the original filing. Nothing is generated by an AI model.</p>
       <button className="btn" style={{ marginTop: 10 }} onClick={() => setSel('')}>All figures</button>
     </> : <div className="list">{METRICS.map((x) => <button key={x.id} className="li" style={{ textAlign: 'left' }} onClick={() => setSel(x.id)}><span className="grow">{x.label}</span><Icon n="chev" /></button>)}</div>}
   </Sheet>;

@@ -6,7 +6,8 @@ import type { SeenSnap, SeenChange } from './sincevisit.ts';
 import { agreementSettings, type AgreementSettings } from './agreement.ts';
 export const VERSION = 1;
 /** `question` is optional and absent from every version written before 27 Oct 2026: an open question the thesis has not answered yet. */
-export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null; question?: string }
+export type ReviewState = 'new' | 'waiting' | 'results' | 'reviewed';
+export interface Version { at: string; thesis: string; support: string; counter: string; decision: string; invalidation: string; trigger: string; reviewOn: string | null; question?: string; reviewState?: ReviewState; evidenceChange?: 'unassessed' | 'strengthened' | 'weakened' | 'mixed'; decisionReason?: string }
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
@@ -131,8 +132,8 @@ export function weeklyReview(s: State, today = istDay()) {
 /** Export. CSV cells that start with a formula character are prefixed so a spreadsheet does not run them. */
 const cell = (v: unknown) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
 export function journalCsv(s: State): string {
-  const head = ['symbol', 'version', 'recorded', 'thesis', 'support', 'counter', 'decision', 'invalidation', 'review_trigger', 'review_on', 'archived'];
-  const rows = s.entries.flatMap((e) => e.versions.map((v, i) => [e.sym, i + 1, v.at, v.thesis, v.support, v.counter, v.decision, v.invalidation, v.trigger, v.reviewOn ?? '', e.archived]));
+  const head = ['symbol', 'version', 'recorded', 'thesis', 'support', 'counter', 'decision', 'invalidation', 'review_trigger', 'review_on', 'archived', 'question', 'review_state', 'evidence_change', 'decision_reason'];
+  const rows = s.entries.flatMap((e) => e.versions.map((v, i) => [e.sym, i + 1, v.at, v.thesis, v.support, v.counter, v.decision, v.invalidation, v.trigger, v.reviewOn ?? '', e.archived, v.question ?? '', v.reviewState ?? '', v.evidenceChange ?? '', v.decisionReason ?? '']));
   return [head, ...rows].map((r) => r.map(cell).join(',')).join('\n');
 }
 export const exportJson = (s: State) => JSON.stringify({ app: 'tripwire', exported: new Date().toISOString(), ...s }, null, 1);
@@ -151,6 +152,9 @@ function checkEntry(e: unknown): Entry | null {
     if (!isObj(v) || !isStr(v.at)) return null;
     const f = Object.fromEntries(['thesis', 'support', 'counter', 'decision', 'invalidation', 'trigger'].map((k) => [k, strField(v, k)]));
     if (Object.values(f).some((x) => x === null) || !(v.reviewOn == null || isStr(v.reviewOn)) || !(v.question === undefined || isStr(v.question))) return null;
+    if (v.reviewState !== undefined && (!isStr(v.reviewState) || !['new', 'waiting', 'results', 'reviewed'].includes(v.reviewState))) return null;
+    if (v.evidenceChange !== undefined && (!isStr(v.evidenceChange) || !['unassessed', 'strengthened', 'weakened', 'mixed'].includes(v.evidenceChange))) return null;
+    if (v.decisionReason !== undefined && !isStr(v.decisionReason)) return null;
     versions.push({ ...(v as unknown as Version), ...(f as Record<string, string>), reviewOn: (v.reviewOn as string | null | undefined) ?? null });
   }
   return { ...(e as unknown as Entry), archived: !!e.archived, created: isStr(e.created) ? e.created : versions[0].at, versions };
