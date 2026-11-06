@@ -104,10 +104,20 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
   await ctx.close(); }
 
 /* 9. a sheet restores focus when it closes (Escape, the close button) and closes on Escape */
-{ const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision');
-  const trig = pg.locator('.fab-row').getByRole('button', { name: 'Thesis' }); await trig.focus(); await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]'); const inside = await pg.evaluate(() => !!document.activeElement.closest('[role=dialog]'));
+for (const reducedMotion of ['no-preference', 'reduce']) { const ctx = await newCtx(b, 390, ohlcSeries(300, 'TCS'), { reducedMotion }); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.decision');
+  const trig = pg.locator('.fab-row').getByRole('button', { name: 'Thesis' }); await trig.focus();
+  // Force the overlap that previously hid the opener during the sheet transition.
+  await pg.evaluate(() => { const plot = document.querySelector('.chart-plot').getBoundingClientRect(); const bar = document.querySelector('.fab-row').getBoundingClientRect(); window.scrollBy(0, plot.top - bar.top + 40); });
+  await pg.waitForTimeout(250);
+  ok(await trig.evaluate((e) => document.activeElement === e && getComputedStyle(e.parentElement).visibility === 'visible'), `${reducedMotion}: the focused action stays available over the chart`);
+  await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]');
+  await pg.waitForTimeout(250); const inside = await pg.evaluate(() => !!document.activeElement.closest('[role=dialog]'));
   await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
-  ok(inside && (await pg.locator('[role=dialog]').count()) === 0 && (await pg.evaluate(() => document.activeElement.textContent.includes('Thesis') && !!document.activeElement.closest('.fab-row'))), 'Thesis sheet: focus moves in, Escape closes it, focus returns to the button that opened it');
+  const restored = await trig.evaluate((e) => document.activeElement === e && getComputedStyle(e.parentElement).visibility === 'visible');
+  ok(inside && (await pg.locator('[role=dialog]').count()) === 0 && restored, `${reducedMotion}: Thesis sheet moves focus in (${inside}), Escape closes it, and focus returns to its visible opener (${restored})`);
+  await pg.locator('.chart-plot').evaluate((e) => e.focus({ preventScroll: true }));
+  await pg.waitForFunction(() => getComputedStyle(document.querySelector('.fab-row')).visibility === 'hidden', null, { timeout: 2000 });
+  ok(await pg.locator('.fab-row').evaluate((e) => getComputedStyle(e).visibility === 'hidden'), `${reducedMotion}: the action bar clears the chart once focus leaves it`);
   const s = pg.getByRole('button', { name: 'Search' }).first(); await s.focus(); await pg.keyboard.press('Enter'); await pg.waitForSelector('[role=dialog]'); await pg.getByRole('button', { name: 'Close' }).click(); await pg.waitForTimeout(250);
   ok(await pg.evaluate(() => document.activeElement.getAttribute('aria-label') === 'Search'), 'Search sheet: the close button returns focus to the search button');
   const sheet = await (async () => { await s.click(); await pg.waitForSelector('[role=dialog]'); await pg.waitForTimeout(600); return pg.evaluate(() => { const r = document.querySelector('.sheet').getBoundingClientRect(); return { bottom: r.bottom, ih: innerHeight, pb: parseFloat(getComputedStyle(document.querySelector('.sheet')).paddingBottom) }; }); })();

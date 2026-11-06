@@ -48,11 +48,13 @@ export function Company({ sym }: { sym: string }) {
   useEffect(() => {
     const t0 = Date.now(); let armed = false; let raf = 0;
     const check = () => { raf = 0; const plot = document.querySelector('.chart-plot'); const bar = document.querySelector('.fab-row');
-      if (!armed || !plot || !bar) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
+      // Keep the opener focusable while a sheet owns focus, including its closing frame.
+      if (!armed || !plot || !bar || bar.contains(document.activeElement) || document.querySelector('[role="dialog"]')) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
     const queue = () => { if (!raf) raf = requestAnimationFrame(check); };
     const onScroll = () => { if (Date.now() - t0 > 500) armed = true; queue(); };
     window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', queue);
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', queue); if (raf) cancelAnimationFrame(raf); setBarOverChart(false); };
+    document.addEventListener('focusin', queue); document.addEventListener('focusout', queue);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', queue); document.removeEventListener('focusin', queue); document.removeEventListener('focusout', queue); if (raf) cancelAnimationFrame(raf); setBarOverChart(false); };
   }, [sym]);
   if (c.loading) return <div><PageBar title={sym} onBack /><Loading what={sym} /></div>;
   if (c.err === 'not published') return <NotFound asked={sym} company total={scr.data?.count ?? null} />;

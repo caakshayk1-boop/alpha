@@ -3,6 +3,26 @@ import { chromium, newCtx, STATE, ohlcSeries } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 const browser = await chromium.launch();
 try {
+  // Exercise the long, valid labels and fallback fonts that the live company feed can produce.
+  for (const width of [320, 360, 390]) {
+    const ctx = await newCtx(browser, width, ohlcSeries(300, 'TCS'), { reducedMotion: 'reduce' });
+    await ctx.route('**/data/c/TCS.json', async (route) => {
+      const company = await (await route.fetch()).json();
+      company.row.pe_pctile = null; company.row.stale = true;
+      company.inst = { ...company.inst, fii_pp: -1.2, dii_pp: 1.3, prev_period: '2026-06', period: '2026-09' };
+      await route.fulfill({ json: company });
+    });
+    const pg = await ctx.newPage(); await pg.goto(base + '/#/c/TCS');
+    const read = pg.locator('[data-research-read]'); await read.waitFor();
+    await pg.addStyleTag({ content: ':root { --sans: Arial, sans-serif; }' });
+    assert.ok(await read.getByText('Historical comparison unavailable', { exact: true }).isVisible());
+    assert.ok(await read.getByText('Reported stakes changed', { exact: true }).isVisible());
+    const box = await read.evaluate((e) => ({ height: e.getBoundingClientRect().height + 16, fits: [...e.querySelectorAll('summary .grow, summary .grow > *')].every((n) => n.scrollWidth <= n.clientWidth + 1) }));
+    assert.ok(box.height < 560 && box.fits, `${width}: complete summary remains bounded (${JSON.stringify(box)})`);
+    await read.locator('summary').first().click();
+    assert.ok(await read.getByRole('button', { name: 'Formula and limits' }).first().isVisible());
+    await ctx.close(); console.log(`PASS long research labels and fallback font at ${width}px`);
+  }
   for (const width of [320, 390, 1280]) {
     const legacy = structuredClone(STATE); legacy.entries[0].versions[0].reviewOn = null;
     const ctx = await newCtx(browser, width, ohlcSeries(300, 'TCS'), { reducedMotion: 'reduce', state: legacy });
