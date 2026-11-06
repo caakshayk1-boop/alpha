@@ -29,9 +29,9 @@ const open = async (route, at, o = {}) => {
   ok(!/\bLIVE\b/.test(await pg.locator('.brief').innerText()), 'the brief never says LIVE on a weekend'); ok(/Last traded/.test(t), 'the price line says Last traded with its time'); await ctx.close();
 }
 { // Tuesday 20 Oct 2026 (Dussehra, a listed exchange holiday) at 11:00 IST
-  const { ctx, pg } = await open('/#/markets', '2026-10-20T05:30:00Z'); await pg.waitForSelector('.moodhero .livebadge'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
-  const badge = (await pg.locator('.moodhero .livebadge').first().innerText()).trim();
-  ok(/^Last traded$/i.test(badge), `exchange holiday inside trading hours: Last traded, not Live (got "${badge}")`); ok(/NSE holiday/.test(await pg.locator('header.bar, body').first().innerText()), 'the header names the NSE holiday'); await ctx.close();
+  const { ctx, pg } = await open('/#/markets', '2026-10-20T05:30:00Z'); await pg.waitForSelector('.moodhero [data-market-status]'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
+  const badge = (await pg.locator('.moodhero [data-market-status]').first().innerText()).trim();
+  ok(/^Last traded\b/i.test(badge) && !/\blive\b/i.test(badge), `exchange holiday inside trading hours: Last traded, not Live (got "${badge}")`); ok(/NSE holiday/.test(await pg.locator('header.bar, body').first().innerText()), 'the header names the NSE holiday'); await ctx.close();
 }
 { // the paper book on a weekend: positions and the Live P&L page never say Live
   const { ctx, pg } = await open('/#/live', '2026-11-01T07:00:00Z'); await pg.waitForTimeout(2500); await pg.clock.runFor(10000); await pg.waitForTimeout(500);

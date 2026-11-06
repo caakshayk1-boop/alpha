@@ -6,7 +6,7 @@ import { sizePlan } from './planner.ts';
 import { planCaveats, planFigures } from './planview.ts';
 import { useEngines } from './useEngines.ts';
 import { DEFAULT_COST, SLIPPAGE_PCT } from './tracker.ts';
-import { addEntry, current, editEntry, savePlan, istDay } from './store.ts';
+import { addEntry, current, editEntry, savePlan, istDay, preserveReviewDefaults } from './store.ts';
 import { METRICS, FORMULAS, glossarySearch, metric } from './metrics.ts';
 import { companyRead, evidenceDate, sourceLink } from './research.ts';
 import { figureOf, fmtMetric, metricOf, type MetricKey } from './screener.ts';
@@ -69,11 +69,15 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
 export function ThesisSheet({ onClose, sym, id, seed }: { onClose: () => void; sym: string; id?: string; seed?: { question: string; evidence: string } }) {
   const st = useAppState(); const { toast, tick } = useUi(); const scr = useScreen(); const row = scr.data?.rows.find((r) => r.sym === sym);
   const e = id ? st.entries.find((x) => x.id === id) : undefined; const c = e ? current(e) : undefined;
-  const [f, setF] = useState({ thesis: c?.thesis ?? '', support: [c?.support, seed?.evidence].filter(Boolean).join('\n\n'), counter: c?.counter ?? '', decision: c?.decision ?? '', invalidation: c?.invalidation ?? '', trigger: c?.trigger ?? '', reviewOn: c?.reviewOn ?? addDays(istDay(), 30), question: [c?.question, seed?.question].filter(Boolean).join('\n'), decisionReason: c?.decisionReason ?? '' });
+  const [f, setF] = useState({ thesis: c?.thesis ?? '', support: [c?.support, seed?.evidence].filter(Boolean).join('\n\n'), counter: c?.counter ?? '', decision: c?.decision ?? '', invalidation: c?.invalidation ?? '', trigger: c?.trigger ?? '', reviewOn: c ? c.reviewOn ?? '' : addDays(istDay(), 30), question: [c?.question, seed?.question].filter(Boolean).join('\n'), decisionReason: c?.decisionReason ?? '' });
   const [reviewState, setReviewState] = useState<ReviewState>(c?.reviewState ?? 'new'); const [evidenceChange, setEvidenceChange] = useState<NonNullable<Version['evidenceChange']>>(c?.evidenceChange ?? 'unassessed');
   const [hist, setHist] = useState(false);
   const F = (k: keyof typeof f, label: string, rows = 2) => <><label className="l" htmlFor={`t-${k}`}>{label}</label><textarea id={`t-${k}`} className="field" rows={rows} maxLength={k === 'support' ? 12000 : 2400} value={f[k] as string} onChange={(ev) => setF({ ...f, [k]: ev.target.value })} /></>;
-  const save = () => { const v = { ...f, reviewOn: f.reviewOn || null, reviewState, evidenceChange }; setState((x) => (e ? editEntry(x, e.id, v) : addEntry(x, sym, v).s)); tick(); toast(e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose(); };
+  const save = () => {
+    const v = preserveReviewDefaults({ ...f, reviewOn: f.reviewOn || null, reviewState, evidenceChange }, c); let changed = true;
+    setState((x) => { if (!e) return addEntry(x, sym, v).s; const next = editEntry(x, e.id, v); changed = next.entries.find((entry) => entry.id === e.id)?.versions.length !== x.entries.find((entry) => entry.id === e.id)?.versions.length; return next; });
+    tick(); toast(!changed ? 'No changes to save. History is unchanged.' : e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose();
+  };
   return <Sheet title={`${sym}: thesis`} onClose={onClose}>
     {F('question', 'Research question')}
     <label className="l" htmlFor="t-review-state">Review state</label><select className="field" id="t-review-state" value={reviewState} onChange={(ev) => setReviewState(ev.target.value as ReviewState)}><option value="new">New</option><option value="waiting">Waiting for evidence</option><option value="results">After results</option><option value="reviewed">Reviewed</option></select>

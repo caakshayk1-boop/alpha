@@ -4,8 +4,13 @@ const base = process.argv[2] ?? 'http://localhost:8801';
 const browser = await chromium.launch();
 try {
   for (const width of [320, 390, 1280]) {
-    const ctx = await newCtx(browser, width, ohlcSeries(300, 'TCS'), { reducedMotion: 'reduce' });
+    const legacy = structuredClone(STATE); legacy.entries[0].versions[0].reviewOn = null;
+    const ctx = await newCtx(browser, width, ohlcSeries(300, 'TCS'), { reducedMotion: 'reduce', state: legacy });
     const pg = await ctx.newPage();
+    await pg.goto(base + '/#/desk?v=journal'); await pg.getByText('Seed thesis', { exact: true }).click();
+    assert.equal(await pg.locator('#t-date').inputValue(), '');
+    await pg.getByRole('button', { name: 'Save as new version' }).click();
+    assert.deepEqual(await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1')).entries), legacy.entries, 'unchanged legacy thesis retains its exact history and absent review date');
     await pg.goto(base + '/#/c/TCS'); await pg.locator('[data-research-read]').waitFor();
     assert.ok(await pg.locator('[data-research-read]').getByText('One-minute read', { exact: true }).isVisible());
     if (width === 390 && process.env.TW_RESEARCH_SHOT) await pg.screenshot({ path: process.env.TW_RESEARCH_SHOT });

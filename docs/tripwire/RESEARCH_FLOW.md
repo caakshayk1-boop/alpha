@@ -13,7 +13,7 @@ Tripwire reuses its company page, thesis versions, Follow, screens and paper pla
 
 Follow uses existing between-visit changes, showing both values and dates. The app only links a change to a thesis where the existing change detector supplies that entry ID. Strengthened/weakened/mixed is the user's assessment, never inferred from a price move. New, waiting for evidence, after results and reviewed are recorded review states. Results dates remain provider estimates to verify.
 
-Watching, skipped and took it are paper research decisions. They do not execute an order, change engine positions or create real realised P&L. Every previous thesis version is retained; additive fields are optional when importing older backups.
+Watching, skipped and took it are paper research decisions. They do not execute an order, change engine positions or create real realised P&L. Every previous thesis version is retained; additive fields are optional when importing older backups. Saving an unchanged legacy thesis preserves absent review fields and a blank review date, so it adds no revision and does not inflate weekly review counts.
 
 ## Comparison and screening
 

@@ -3,12 +3,23 @@ import assert from 'node:assert/strict';
 import { companyRead, materialDifferences, researchEvidence } from '../src/research.ts';
 import { paperSnapshot, parsePaperCsv, importPaperPlans } from '../src/papersnapshot.ts';
 import { explainScreen } from '../src/screenfeedback.ts';
-import { DEFAULTS, addEntry, editEntry, exportJson, parseState, journalCsv, type Plan } from '../src/store.ts';
+import { DEFAULTS, addEntry, editEntry, exportJson, parseState, journalCsv, preserveReviewDefaults, weeklyReview, type Plan } from '../src/store.ts';
 import { filterRows, NO_FILTER, type Row, type Filters } from '../src/screen.ts';
 import type { Company } from '../src/data.ts';
 const row: Row = { sym: 'TCS', name: 'Tata Consultancy Services', sector: 'Technology', price: 110, r1d: 10, pe: 20, pe_pctile: 20, rev_cagr: 8, roce_med: 20, de: .2, last_date: '2026-11-04', fy: '2026-03-31' };
 const company = (r: Partial<Row> = {}): Company => ({ sym: r.sym ?? 'TCS', row: { ...row, ...r, risk_top: r.risk_top ?? undefined }, years: [], built_on: '2026-11-05', swot: null, risk: null });
 const plan = (extra: Partial<Plan> = {}): Plan => ({ id: 'p1', sym: 'TCS', at: '2026-11-01T06:00:00Z', filledAt: '2026-11-02T06:00:00Z', status: 'paper-filled', qty: 10, entry: 100, stop: 90, riskPct: 1, rev: 1, expiry: null, note: '', ...extra });
+test('unchanged legacy review placeholders add no revision or weekly review; meaningful edits still append', () => {
+  const old = { thesis: 'Original', support: '', counter: '', decision: 'watch', invalidation: '', trigger: '', reviewOn: null };
+  const a = addEntry(DEFAULTS, 'TCS', old, new Date('2026-10-01T00:00:00Z')); const original = a.s.entries[0].versions[0];
+  const draft = { ...old, question: '', decisionReason: '', reviewState: 'new' as const, evidenceChange: 'unassessed' as const };
+  const same = editEntry(a.s, a.id, preserveReviewDefaults(draft, original), new Date('2026-11-06T00:00:00Z'));
+  assert.deepEqual(same.entries, a.s.entries); assert.deepEqual(weeklyReview(same, '2026-11-06'), weeklyReview(a.s, '2026-11-06'));
+  for (const change of [{ question: 'What changed?' }, { reviewState: 'reviewed' as const }, { evidenceChange: 'weakened' as const }, { decisionReason: 'Wait for results' }]) {
+    const next = editEntry(a.s, a.id, preserveReviewDefaults({ ...draft, ...change }, original));
+    assert.equal(next.entries[0].versions.length, 2); assert.deepEqual(next.entries[0].versions[0], original);
+  }
+});
 test('company reads carry facts, dates, rule and limits; missing and ineligible evidence is never a rating', () => {
   const facts = companyRead(company()); assert.equal(facts.length, 3);
   assert.match(facts.find((x) => x.id === 'pe')!.read, /Low/);

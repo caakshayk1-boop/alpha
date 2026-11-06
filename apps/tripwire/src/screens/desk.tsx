@@ -34,7 +34,7 @@ function NewDesk() {
     <p className="dim">Follow a company to track what changes, then save your thesis when you are ready. Your notes stay on this device.</p>
     <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></section>
     <Fold id="workflow" title="A guide to researching a company" summary="From first look to your own thesis."><Workflow /></Fold>
-    <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button><a className="btn" href="#/desk?v=plans">Paper snapshot and CSV import</a></div>
+    <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button><a className="small" href="#/desk?v=plans" style={{ display: 'block', marginTop: 12 }}>Paper snapshot and CSV import →</a></div>
     </div>;
 }
 const DAY = 86400000;

@@ -187,7 +187,6 @@ export function Discover() {
       {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at {anyPrintLive ? "today's live price" : 'the last traded price'}. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
     </div>
 
-    {scr.data && <ScreenFeedback rows={rows} filters={filtersOf(st)} />}
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
     {scr.data && !run.ordered.length && <Empty title="No company matches" action={<button className="btn" onClick={clearAll}>Clear all filters</button>}>{noFig > 0 ? `${plural(noFig, 'name')} had no usable figure for a filter. ` : ''}A name with no figure is left out unless a condition says to include it, and is never counted as zero.</Empty>}
@@ -212,6 +211,7 @@ export function Discover() {
       </div></>}
     {scr.data && run.ordered.length > 0 && <div className="more"><p className="small mute num" role="status">Showing {Math.min(st.show, run.ordered.length).toLocaleString('en-IN')} of {run.ordered.length.toLocaleString('en-IN')}</p>
       {run.ordered.length > st.show && <button className="btn" style={{ width: '100%' }} onClick={() => patch({ show: st.show + PAGE }, true)}>Show {Math.min(PAGE, run.ordered.length - st.show)} more</button>}</div>}
+    {scr.data && <ScreenFeedback rows={rows} filters={filtersOf(st)} />}
     {st.pick.length >= 1 && <div className="fab-row" style={{ gridTemplateColumns: '1fr 1fr' }}><button className="btn" onClick={() => patch({ pick: [] }, true)}>Clear {st.pick.length}</button><button className="btn pri" style={{ flexDirection: 'row', fontSize: '0.875rem' }} disabled={st.pick.length < 2} onClick={() => { flush(); remember(); go(`/compare?s=${st.pick.join(',')}`); }}><Icon n="compare" />{st.pick.length < 2 ? 'Pick one more' : `Compare ${st.pick.length}`}</button></div>}
 
     {figure && <CondSheet rows={rows} initial={figure.m} existing={st.cond} allowUnknown blocked={blocked} count={countWith} onClose={() => { setFigureM(null); if (figure.back) setSheet('filters'); }}

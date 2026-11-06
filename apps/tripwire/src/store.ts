@@ -52,6 +52,16 @@ export function editEntry(s: State, id: string, v: Omit<Version, 'at'>, now = ne
 }
 export const setArchived = (s: State, id: string, archived: boolean): State => ({ ...s, entries: s.entries.map((e) => (e.id === id ? { ...e, archived } : e)) });
 export const current = (e: Entry): Version => e.versions[e.versions.length - 1];
+/** UI placeholders must not turn an unchanged legacy thesis into a new decision. */
+export function preserveReviewDefaults(draft: Omit<Version, 'at'>, previous?: Version): Omit<Version, 'at'> {
+  if (!previous) return draft;
+  const next = { ...draft };
+  if (previous.question === undefined && next.question === '') delete next.question;
+  if (previous.decisionReason === undefined && next.decisionReason === '') delete next.decisionReason;
+  if (previous.reviewState === undefined && next.reviewState === 'new') delete next.reviewState;
+  if (previous.evidenceChange === undefined && next.evidenceChange === 'unassessed') delete next.evidenceChange;
+  return next;
+}
 /** Calendar day in Asia/Kolkata, so a review "today" is today in India wherever the phone is. */
 export const istDay = (d = new Date()) => new Date(d.getTime() + 330 * 60000).toISOString().slice(0, 10);
 export const reviewDue = (e: Entry, today = istDay()): 'overdue' | 'today' | 'later' | null => {

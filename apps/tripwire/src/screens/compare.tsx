@@ -95,7 +95,7 @@ export function Compare({ syms }: { syms: string[] }) {
           const top = ln.best && meas.length > 1 ? (ln.best === 'high' ? Math.max(...meas) : Math.min(...meas)) : null;
           return <tr key={ln.label}><td>{ln.label}</td>{vals.map((x, i) => <td key={i} className="num" style={isNum(top) && nums[i] === top ? { color: 'var(--lime)', fontWeight: 700 } : undefined}>{isNum(top) && nums[i] === top ? <span aria-label={ln.best === 'high' ? 'highest: ' : 'lowest: '}>{ln.best === 'high' ? '▲ ' : '▼ '}</span> : null}{x.v === null ? <span className="mute small">{x.why}</span> : (ln.fmt as (v: unknown) => string)(x.v)}</td>)}</tr>;
         })}</tbody></table></div>}
-      {ready && <details className="more" data-tradeoffs><summary>How to read these comparisons</summary><p className="small dim">Figures marked ▲ are the highest and ▼ the lowest among those measured. They are not a verdict: they carry different risks. {tradeoffsOf(cs as Company[], syms).sentence}</p></details>}
+      {ready && <details className="more" data-tradeoffs><summary>Trade-offs on the measured figures · no overall ranking</summary><p className="small dim">Figures marked ▲ are the highest and ▼ the lowest among those measured. They are not a verdict: they carry different risks. {tradeoffsOf(cs as Company[], syms).sentence}</p></details>}
       <div className="row" style={{ marginTop: 14 }}>
         <button className="btn grow" disabled={saved} onClick={() => { setState((x) => saveCompare(x, syms)); toast('Comparison saved to My Desk'); }}>{saved ? 'Saved' : 'Save comparison'}</button>
       </div></>}
