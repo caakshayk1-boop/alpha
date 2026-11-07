@@ -38,3 +38,41 @@ left = refresh_stale(lambda ts: {t: short for t in ts}, out, idx[7].date().isofo
 assert left == ["A.NS"] and waits == [5, 5] and out["A.NS"] is short, "a ticker that never catches up is reported, and its bars are left as they were"
 assert refresh_stale(fetch, {"A.NS": short}, None, ["A.NS"], sleep=waits.append) == [], "no expected session, nothing to compare"
 print("bars.py: 15 checks passed")
+
+# Yahoo can publish a complete daily O/H/L but leave Close NaN for a day.
+# Only the completed final hourly bar may supply that one missing observation.
+from bars import recover_session_close, recover_stale_closes
+D = idx[-1].date().isoformat(); NOW = datetime(2026, 10, 22, 12, tzinfo=timezone.utc)
+daily = frame(drop=7)
+for field, value in [('Open',100),('High',110),('Low',90)]: daily.loc[idx[-1],(field,'TCS.NS')] = value
+hx = pd.date_range(f'{D} 09:15', periods=7, freq='h', tz='Asia/Kolkata')
+hourly = pd.DataFrame({('Close','TCS.NS'): [100,101,102,103,104,105,106]}, index=hx)
+fixed = recover_session_close(daily,hourly,'TCS.NS',D,NOW)
+assert fixed is not None and fixed.iloc[-1]['Close'] == 106
+assert pd.isna(daily.iloc[-1][('Close','TCS.NS')]), 'the original frame is never mutated'
+assert fixed.iloc[-1]['Open'] == 100 and fixed.iloc[-1]['High'] == 110 and fixed.iloc[-1]['Low'] == 90
+assert last_day(frame_to_bars(fixed,'TCS.NS',NOW)) == D
+assert recover_session_close(daily,hourly.iloc[:-1],'TCS.NS',D,NOW) is None, 'missing final 15:15 bar cannot supply a close'
+assert recover_session_close(daily,hourly,'TCS.NS',D,datetime(2026,10,21,9,tzinfo=timezone.utc)) is None, 'do not close a forming session'
+assert recover_session_close(daily,hourly,'TCS.NS','2026-10-20',NOW) is None, 'wrong session'
+bad = hourly.copy(); bad.iloc[-1,0] = 111
+assert recover_session_close(daily,bad,'TCS.NS',D,NOW) is None, 'hourly price outside daily range is rejected'
+bad.iloc[-1,0] = np.nan
+assert recover_session_close(daily,bad,'TCS.NS',D,NOW) is None, 'missing final close stays missing'
+nozone = hourly.copy(); nozone.index = nozone.index.tz_localize(None)
+assert recover_session_close(daily,nozone,'TCS.NS',D,NOW) is None, 'unknown timezone cannot identify a session'
+assert recover_session_close(frame(),hourly,'TCS.NS',D,NOW) is None, 'never overwrite an existing daily close'
+bad_daily = daily.copy(); bad_daily.loc[idx[-1],('Open','TCS.NS')] = np.nan
+assert recover_session_close(bad_daily,hourly,'TCS.NS',D,NOW) is None, 'missing daily open is not guessed'
+flat = daily.xs('TCS.NS',level=1,axis=1); hf = hourly.xs('TCS.NS',level=1,axis=1)
+assert recover_session_close(flat,hf,'TCS.NS',D,NOW).iloc[-1]['Close'] == 106, 'single-ticker frames work too'
+short = frame_to_bars(daily,'TCS.NS',NOW); out={'TCS.NS':short}; calls=[]
+def hourly_fetch(ts): calls.append(ts); return hourly
+assert recover_stale_closes(hourly_fetch,{'TCS.NS':daily},out,D,['TCS.NS'],NOW) == ['TCS.NS']
+assert calls == [['TCS.NS']] and last_day(out['TCS.NS']) == D
+assert out['TCS.NS']['t'][:-1] == short['t'] and out['TCS.NS']['c'][:-1] == short['c'], 'prior bars remain identical'
+assert recover_stale_closes(hourly_fetch,{'TCS.NS':daily},out,D,['TCS.NS'],NOW) == [], 'replaying a recovered session does not append duplicates'
+def failed_fetch(ts): raise RuntimeError('test provider outage')
+out={'TCS.NS':short}
+assert recover_stale_closes(failed_fetch,{'TCS.NS':daily},out,D,['TCS.NS'],NOW) == [] and out['TCS.NS'] is short, 'outage preserves prior prices'
+print('bars.py: missing-close recovery checks passed')

@@ -119,3 +119,11 @@ This removes the newspaper-export and next-morning wait. It cannot guarantee an
 exchange-time update when Yahoo or GitHub is late. Freshness checks still stop an
 outdated release; original dates remain visible. Positions and trade history are
 never reset to make a refresh succeed.
+
+The ledger has a separate daily-bar feed. On the first direct-publication refresh,
+Yahoo supplied the 6 November open/high/low but no close for 42 position symbols.
+The ledger now recovers only that missing close from the same session's final
+15:15 IST hourly bar, after 15:45 IST, provided it lies inside the observed daily
+range. Recovery provenance is written into bars.json. Missing daily O/H/L,
+unfinished sessions and incomplete intraday feeds remain unavailable. Existing
+position replay, exit rules and history preservation are unchanged.
