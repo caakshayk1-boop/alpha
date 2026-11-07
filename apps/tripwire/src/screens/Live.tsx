@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { QuestionOrb } from '../components/QuestionOrb.tsx';
+import { PositionTime } from '../components/PositionTime.tsx';
+import { useId, useMemo, useState } from 'react';
 import { useAppState } from '../app.tsx';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { SLOW_DOWN, useScreen } from '../data.ts';
@@ -14,22 +16,24 @@ import { Head, PageBar } from './common.tsx';
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const tone = (v: number | null | undefined) => (v == null || v === 0 ? '' : v > 0 ? 'up' : 'down');
 const R = (v: number | null) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`);
+const sessionDay = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
 type Key = 'pnl' | 'pct' | 'dayPnl' | 'value' | 'toStop' | 'sym';
 const COLS: { k: Key; h: string }[] = [{ k: 'pnl', h: 'P&L' }, { k: 'pct', h: '%' }, { k: 'dayPnl', h: 'TODAY' }, { k: 'value', h: 'VALUE' }, { k: 'toStop', h: 'TO STOP' }];
 
 /** The day's P&L as a line against a zero rule. Drawn at the phone's width, with the last value tagged. */
 function DayChart({ pts }: { pts: { t: number; v: number }[] }) {
-  if (pts.length < 3) return null;
-  const W = 1000, H = 160; const lo = Math.min(0, ...pts.map((p) => p.v)), hi = Math.max(0, ...pts.map((p) => p.v)); const span = hi - lo || 1; const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const gradient = useId();
+  if (pts.length < 3) return <div className="live-chart-empty"><strong>A chart needs a complete price series.</strong><span>Intraday history is unavailable. The dated position values remain below; no line is estimated.</span></div>;
+  const W = 1000, H = 260; const lo = Math.min(0, ...pts.map((p) => p.v)), hi = Math.max(0, ...pts.map((p) => p.v)); const span = hi - lo || 1; const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
   const x = (t: number) => ((t - t0) / Math.max(1, t1 - t0)) * W, y = (v: number) => 10 + (1 - (v - lo) / span) * (H - 20);
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)} ${y(p.v).toFixed(1)}`).join(''); const last = pts[pts.length - 1].v; const col = last >= 0 ? 'var(--up)' : 'var(--down)';
   const tm = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(11, 16);
   return <div style={{ marginTop: 10 }}>
-    <div className="chart-plot" style={{ height: 130, cursor: 'default' }} role="img" aria-label={`Today's profit and loss from ${tm(t0)} to ${tm(t1)}: ${money(last)} now`}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" /><path d={line} fill="none" stroke={col} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></svg>
+    <div className="chart-plot" style={{ cursor: 'default' }} role="img" aria-label={`Remaining-position price movement on ${sessionDay(t1)} from ${tm(t0)} to ${tm(t1)}: ${money(last)}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={col} stopOpacity=".18" /><stop offset="100%" stopColor={col} stopOpacity="0" /></linearGradient></defs><path d={`${line} L${W} ${H} L0 ${H} Z`} fill={`url(#${gradient})`} /><line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" /><path d={line} fill="none" stroke={col} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" /></svg>
       <span className="c-last" style={{ top: `${(y(last) / H) * 100}%`, background: col }}>{money(last)}</span>
     </div>
-    <div className="row between small mute num" style={{ marginTop: 4 }}><span>{tm(t0)}</span><span>today, 5-minute</span><span>{tm(t1)}</span></div></div>;
+    <div className="row between small mute num" style={{ marginTop: 4 }}><span>{tm(t0)}</span><span>{sessionDay(t1)} · 5-minute · IST</span><span>{tm(t1)}</span></div></div>;
 }
 
 /** One position's road: the stop on the left, the entry, the two targets to the right, and where the price is now. Scaled to those five numbers only. */
@@ -48,10 +52,18 @@ function Road({ l }: { l: Line }) {
 
 export function Live() {
   const s = useAppState(); const scr = useScreen(); const auto = useAutoBook(true); const own = useLiveBook(true);
+  const [asking, setAsking] = useState(false); const [question, setQuestion] = useState('What changed?');
   const [key, setKey] = useState<Key>('pnl'); const [dir, setDir] = useState<'asc' | 'desc'>('desc');
   const dupOf = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
   const rows: BookRow[] = useMemo(() => [...auto.rows, ...own.rows.filter((r) => !dupOf(r.p) && !ENGINES.some((e) => e.id === r.p.engine && e.retired))], [auto.rows, own.rows, auto.plan]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const ls = useMemo(() => lines(rows), [rows]); const tot = useMemo(() => totals(ls), [ls]); const curve = useMemo(() => dayCurve(rows), [rows]);
+  const ls = useMemo(() => lines(rows), [rows]); const tot = useMemo(() => totals(ls), [ls]); const curve = useMemo(() => {
+    const open = rows.filter((r) => r.v.status === 'open');
+    // A subset or mixed sessions cannot stand in for a portfolio curve.
+    if (!open.length || open.some((r) => r.v.dataNote || !r.q || r.q.t.length < 3 || r.v.entry == null)) return [];
+    const dates = new Set(open.flatMap((r) => r.q!.t.map(sessionDay)));
+    return dates.size === 1 ? dayCurve(open) : [];
+  }, [rows]);
+  const curveLast = curve.length ? curve[curve.length - 1].v : null;
   const sectorOf = (sym: string) => scr.data?.rows.find((r) => r.sym === sym)?.sector ?? null;
   const closes = { ...(own.bars.data?.bars ?? {}), ...(auto.bars.data?.bars ?? {}) };
   const risk = useMemo(() => riskLens(ls, sectorOf, closes), [ls, closes, scr.data]);     // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,22 +73,36 @@ export function Live() {
   if (!rows.length && !auto.ledger.loading) return <div><PageBar title="Paper P&L" onBack /><Empty title="No paper position yet">When the first pick enters at its next open, it appears here with its own live P&L.</Empty></div>;
   return <div>
     <PageBar title="Paper P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
-    <section className={`card hero${live ? ' livecard' : ''}`}>
-      <div className="row between"><LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} /><span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></div>
-      <div className="row between" style={{ alignItems: 'flex-end', marginTop: 10 }}>
-        <div><div className="k">Open P&L (paper)</div><div className={`num amt ${tone(tot.pnl)}`} style={{ font: '700 1.75rem/1.1 var(--mono)' }}><Tick v={ls.length ? tot.pnl : null}>{ls.length ? money(tot.pnl) : '—'}</Tick></div>
-          <div className={`small num ${tone(tot.pct)}`}>{tot.pct == null ? '' : `${pct(tot.pct)} on ${inr0(tot.cost)} invested`}</div></div>
-        <div style={{ textAlign: 'right' }}><div className="k">{live ? 'Today' : 'Last session'}</div><div className={`num amt ${tone(tot.dayPnl)}`} style={{ font: '600 1.125rem/1.2 var(--mono)' }}><Tick v={tot.dayPnl}>{money(tot.dayPnl)}</Tick></div></div></div>
-      <DayChart pts={curve} />
-      <div className="row between small dim num" style={{ marginTop: 10 }}><span>{tot.open} open · {waiting} waiting for an open</span><span className="amt">value {inr0(tot.value)}</span></div>
-      {tot.best && tot.worst && ls.length > 1 && <div className="row between small num" style={{ marginTop: 6 }}><span>Best <b>{tot.best.sym}</b> <span className={tone(tot.best.pnl)}>{money(tot.best.pnl)}</span></span><span>Worst <b>{tot.worst.sym}</b> <span className={tone(tot.worst.pnl)}>{money(tot.worst.pnl)}</span></span></div>}
-      {auto.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>{auto.intra.err === SLOW_DOWN ? `${SLOW_DOWN}: live prices will refresh on their own.` : `Live prices are unavailable: ${auto.intra.err}.`} {own.bars.data || auto.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
+    <div className="live-overview">
+      <section className="live-value" aria-label="Paper portfolio snapshot">
+        <LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} />
+        <h2>Your paper portfolio.</h2><span className="k">Open position value</span>
+        <div className="hero-value num amt">{ls.length ? inr0(tot.value) : '—'}</div>
+        <span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span>
+        <dl><div><dt>Open P&L</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
+          <div><dt>{live ? 'Today' : 'Last session'}</dt><dd className={`amt ${tone(tot.dayPnl)}`}>{money(tot.dayPnl)}</dd></div>
+          <div><dt>Positions</dt><dd>{tot.open} open · {waiting} waiting</dd></div></dl>
+      </section>
+      <section className="live-performance" aria-label="Session performance">
+        <div className="row between"><h2>Session performance</h2><span className="small mute">Remaining positions · ₹</span></div>
+        <div className={`num amt ${tone(curveLast)}`} style={{ fontSize: '1.75rem' }}>{money(curveLast)}</div>
+        <DayChart pts={curve} />
+        <p className="small mute">Price movement × remaining quantity, from the previous close (entry price for fills that session). Excludes fees and booked exits; it differs from the book’s full-session P&L.</p>
+      </section>
+    </div>
+    {auto.intra.err && <p className="small down">{auto.intra.err === SLOW_DOWN ? `${SLOW_DOWN}: prices will refresh on their own.` : `Intraday prices unavailable: ${auto.intra.err}.`} Showing available dated daily bars.</p>}
+    <section className="live-question" aria-label="Questions about your paper portfolio">
+      <QuestionOrb label="Ask about the paper portfolio" expanded={asking} onClick={() => setAsking(!asking)} />
+      {asking && <><div className="chips">{['What changed?', 'Where is the concentration?', 'How is P&L calculated?'].map((q) => <button key={q} className="chip" aria-pressed={question === q} onClick={() => setQuestion(q)}>{q}</button>)}</div>
+        <p aria-live="polite" className="small amt">{question === 'What changed?' ? tot.best ? <><a href={`#/c/${tot.best.sym}`}>{tot.best.sym}</a> contributes {money(tot.best.pnl)} to the current open P&L of {money(tot.pnl)}. {tot.worst && tot.worst.id !== tot.best.id ? `${tot.worst.sym} contributes ${money(tot.worst.pnl)}. ` : ''}These figures measure change since entry; they do not explain what caused the price move.</> : 'No measured open position is available.' : question === 'Where is the concentration?' ? risk.topPosition ? <><a href={`#/c/${risk.topPosition.sym}`}>{risk.topPosition.sym}</a> is {risk.topPosition.pct.toFixed(1)}% of the measured open value. {risk.topSector ? `${risk.topSector.name} is the largest sector at ${risk.topSector.pct.toFixed(1)}%.` : ''} Weights use the displayed prices and remaining paper quantities.</> : 'Complete position values are needed to measure concentration.' : 'P&L combines booked partial exits and the remaining quantity marked at its observed price, less the recorded cost and slippage assumptions. Entry dates and observed sessions are shown on every position below. This is paper analysis, not executed returns.'}</p>
+        <p className="small mute">Calculated locally from this book. Open a company to inspect the evidence.</p></>}
     </section>
 
     {ls.length > 0 && <><Head aside={<span className="small mute">stop · entry · targets{ls.some((l) => l.ref) ? ' (ref = shown for orientation, not traded)' : ''}</span>}>Positions</Head>
       <div className="poscards">{sorted.map((l: Line) => <a key={l.id} href={`#/c/${l.sym}`} className={`poscard ${l.pnl >= 0 ? 'win' : 'lose'}`}>
         <div className="row between"><b>{l.sym}</b><span className="tag">{styleDef(l.style).label}</span></div>
         <div className={`num amt big ${tone(l.pnl)}`}>{money(l.pnl)} <span className="small">{pct(l.pct)}</span></div>
+        {(() => { const r = rows.find((r) => r.p.id === l.id); return r ? <PositionTime signal={r.p.asOf} view={r.v} /> : null; })()}
         <Road l={l} />
         {l.insight && <p className="small mute" style={{ margin: '4px 0 2px' }} data-insight>{l.insight}</p>}
         <div className="row between small mute num"><span>{inr(l.entry)} in</span><span title={l.wordDetail}>{l.word} {inr(l.last)}</span></div>
@@ -84,7 +110,7 @@ export function Live() {
       </a>)}</div></>}
     {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Waiting ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
 
-    <Head aside={<span className="small mute">tap a heading to sort</span>}>Blotter</Head>
+    <details className="more"><summary>Full position table · sort and compare</summary>
     {ls.length ? <div className="stbl-wrap"><table className="stbl"><caption className="sr">Open paper positions with live profit and loss. Tap a column heading to sort.</caption>
       <thead><tr><th scope="col" className="sticky"><button onClick={() => sort('sym')} aria-label="Sort by symbol">SYMBOL{key === 'sym' ? (dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th><th scope="col">QTY</th><th scope="col">ENTRY</th><th scope="col">LAST</th>
         {COLS.map((c) => <th scope="col" key={c.k} aria-sort={key === c.k ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}><button onClick={() => sort(c.k)}>{c.h}{key === c.k ? (dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>)}<th scope="col">R</th><th scope="col">TARGETS</th></tr></thead>
@@ -96,6 +122,7 @@ export function Live() {
         <td className="num">{l.t1Hit ? <span className="up">T1 ✓</span> : l.t1 != null ? <span className={l.ref ? 'dim' : ''} title={l.ref ? 'Reference level, not traded' : undefined}>T1 {inr0(l.t1)}{l.toT1 != null ? ` (${pct(l.toT1)})` : ''}</span> : '—'}{l.t2 != null && <span className="sub2">T2 {inr0(l.t2)}{l.toT2 != null ? ` (${pct(l.toT2)})` : ''}{l.ref ? ' ref' : ''}</span>}</td></tr>)}</tbody></table></div>
       : <div className="card dim">Nothing is open yet. {waiting} {waiting === 1 ? 'position is' : 'positions are'} waiting for the next open.</div>}
 
+    </details>
     {ls.length > 0 && <><Head>Risk lens</Head>
       <section className="card" aria-label="Risk lens">
         <div className="grid2">

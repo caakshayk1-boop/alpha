@@ -22,6 +22,8 @@ for (const width of [360, 390, 1280]) {
   ok(hb.height >= 44, `${width}: the card header is a 44 px target (${Math.round(hb.height)})`);
   const a = pg.locator('.pcard[data-pos="' + A.id + '"]');
   const atext = await a.innerText();
+  const timeline = await a.locator('[data-position-time]').innerText();
+  ok(/Entry date/.test(timeline) && /29 Oct/.test(timeline) && /Exit date/.test(timeline) && /Sessions held · final\s+4/.test(timeline), `${width}: collapsed closed card shows entry, exit and final observed holding count`);
   ok(/Closed/.test(atext) && /AAA/.test(atext), `${width}: card names the symbol and its state`);
   ok(await a.locator('.tl-tick').count() === 4, `${width}: the ladder draws stop, entry, T1 and T2`);
   ok(await a.locator('.tl-tick.hit').count() === 2, `${width}: both hit targets are filled`);
@@ -67,6 +69,17 @@ for (const width of [360, 390, 1280]) {
   await ctx.close();
 }
 
+// An open recorded state keeps its observed count when fresh history is missing.
+{
+  const led = { ...ledger, picks: [D], outcomes: { [D.id]: { ...outcomes[D.id], sessions: 4 } } };
+  const ctx = await open(390, led); const pg = await ctx.newPage();
+  await ctx.route('**/api/bars*', (r) => r.fulfill({ status: 503, body: 'unavailable' }));
+  await pg.goto(`${base}/#/signals?v=auto`); await pg.waitForSelector('[data-position-time]');
+  const t = await pg.locator('[data-position-time]').first().innerText();
+  ok(/29 Oct/.test(t) && /Sessions held · recorded\s+4/.test(t), 'open card retains four observed sessions and entry date when prices are unavailable');
+  ok(!/Exit date/.test(t), 'an open position is never presented with an exit date');
+  await ctx.close();
+}
 // an empty record is honest
 {
   const empty = { ...ledger, picks: [D], outcomes: { [D.id]: outcomes[D.id] } }; const ctx = await open(390, empty); const pg = await ctx.newPage();
