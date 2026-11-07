@@ -72,11 +72,70 @@ def refresh_stale(fetch, out: dict, expect: str | None, tickers: list[str], trie
     return behind()
 
 
+def recover_session_close(daily, hourly, ticker: str, expect: str, now: datetime | None = None):
+    """Recover ONLY a missing Close from the completed session's final hourly
+    bar. Daily O/H/L must exist and contain that close. Uses traded prices on
+    both feeds (auto_adjust=False), as the screen publisher already does.
+    Returns a copy in single-ticker format, or None; never modifies its inputs.
+    """
+    import math
+    import pandas as pd
+    if daily is None or hourly is None or not len(daily) or not len(hourly): return None
+    n = (now or datetime.now(timezone.utc)).astimezone(IST)
+    if not expect or expect > n.date().isoformat() or (expect == n.date().isoformat() and (n.hour, n.minute) < (15, 45)): return None
+    if isinstance(daily.columns, pd.MultiIndex):
+        if not all((f, ticker) in daily.columns for f in FIELDS): return None
+        sub = pd.DataFrame({f: daily[(f, ticker)] for f in FIELDS})
+    else:
+        if not all(f in daily.columns for f in FIELDS): return None
+        sub = daily[list(FIELDS)].copy()
+    ts = sub.index[-1]
+    if str(ts.date()) != expect or not pd.isna(sub.iloc[-1]['Close']): return None
+    o, h, l = (float(sub.iloc[-1][f]) for f in ('Open', 'High', 'Low'))
+    if not all(math.isfinite(x) and x > 0 for x in (o, h, l)) or not l <= o <= h: return None
+    if isinstance(hourly.columns, pd.MultiIndex):
+        if ('Close', ticker) not in hourly.columns: return None
+        close = hourly[('Close', ticker)]
+    else:
+        if 'Close' not in hourly.columns: return None
+        close = hourly['Close']
+    # A timezone-less intraday timestamp cannot establish the NSE session.
+    if not isinstance(close.index, pd.DatetimeIndex) or close.index.tz is None: return None
+    ix = close.index.tz_convert(IST)
+    final = close[(ix.strftime('%Y-%m-%d') == expect) & (ix.hour == 15) & (ix.minute == 15)]
+    if len(final) != 1: return None
+    value = float(final.iloc[0])
+    if not math.isfinite(value) or not l <= value <= h: return None
+    sub.loc[ts, 'Close'] = value
+    return sub
+
+
+def recover_stale_closes(fetch_hourly, frames: dict, out: dict, expect: str | None, tickers: list[str], now: datetime | None = None) -> list[str]:
+    """Bounded secondary fetch, only for stale tickers with an incomplete last
+    daily row. Preserve every prior bar set if retrieval or validation fails.
+    """
+    if not expect: return []
+    pending = [t for t in tickers if (last_day(out.get(t)) or '') < expect and t in frames and partial_last_row(frames[t], t) == expect]
+    recovered = []
+    for i in range(0, len(pending), 40):
+        chunk = pending[i:i + 40]
+        try:
+            hourly = fetch_hourly(chunk)
+        except Exception as e:
+            print(f'hourly close recovery failed: {e}', file=sys.stderr); continue
+        for ticker in chunk:
+            fixed = recover_session_close(frames[ticker], hourly, ticker, expect, now)
+            bars = frame_to_bars(fixed, ticker, now) if fixed is not None else None
+            if bars and last_day(bars) == expect:
+                out[ticker] = bars; recovered.append(ticker)
+    return recovered
+
+
 def main() -> int:
     import yfinance as yf
     spec = json.loads((HERE / "need.json").read_text())
     need = spec["symbols"]; expect = spec.get("expect")      # expect: the newest completed NSE session (written by record.ts from the exchange calendar)
-    out: dict[str, dict | None] = {}; partial: dict[str, str] = {}
+    out: dict[str, dict | None] = {}; partial: dict[str, str] = {}; frames = {}
     tickers = [f"{s}.NS" for s in need] + ["^NSEI"]
     for i in range(0, len(tickers), 40):                     # batched, group_by column: one request per chunk, not per symbol
         chunk = tickers[i:i + 40]
@@ -86,6 +145,7 @@ def main() -> int:
             print(f"chunk {i // 40} failed: {e}", file=sys.stderr)
             df = None
         for tk in chunk:
+            if df is not None and len(df): frames[tk] = df
             out[tk] = frame_to_bars(df, tk) if df is not None and len(df) else None
             d = partial_last_row(df, tk) if df is not None and len(df) else None
             if d: partial[tk] = d
@@ -96,16 +156,22 @@ def main() -> int:
         except Exception as e:
             print(f"retry failed: {e}", file=sys.stderr); return {}
         for t in ts:
+            if f is not None and len(f): frames[t] = f
             d = partial_last_row(f, t) if f is not None and len(f) else None
             if d: partial[t] = d
         return {t: frame_to_bars(f, t) if f is not None and len(f) else None for t in ts}
 
     stale = refresh_stale(fetch, out, expect, [t for t in tickers if out.get(t)], wait=float(os.environ.get("BARS_RETRY_WAIT", "90")))
-    (HERE / "bars.json").write_text(json.dumps({"bars": {k.removesuffix(".NS"): v for k, v in out.items()}, "meta": {"expect": expect, "stale": [t.removesuffix(".NS") for t in stale], "partial_last_row": {k.removesuffix(".NS"): v for k, v in partial.items()}}}))
+    recovered = recover_stale_closes(
+        lambda ts: yf.download(ts, period="5d", interval="1h", auto_adjust=False, group_by="column", progress=False, threads=False),
+        frames, out, expect, tickers)
+    stale = [t for t in tickers if expect and (last_day(out.get(t)) or "") < expect]
+    print(f"yfinance: recovered {len(recovered)} missing daily closes from the completed final hourly bar")
+    (HERE / "bars.json").write_text(json.dumps({"bars": {k.removesuffix(".NS"): v for k, v in out.items()}, "meta": {"expect": expect, "recovered_close": {t.removesuffix(".NS"): {"day": expect, "source": "Yahoo final hourly close; daily O/H/L"} for t in recovered}, "stale": [t.removesuffix(".NS") for t in stale], "partial_last_row": {k.removesuffix(".NS"): v for k, v in partial.items()}}}))
     got = sum(1 for k, v in out.items() if v and k != "^NSEI")
     print(f"yfinance: bars for {got} of {len(need)} symbols; nifty {'ok' if out.get('^NSEI') else 'MISSING'}")
     if expect and (stale or partial):
-        print(f"yfinance: {len(stale)} symbols still end before the last completed session {expect}: {', '.join(t.removesuffix('.NS') for t in stale[:20])}; {len(partial)} had a newest row missing a price, which is dropped, never filled", file=sys.stderr)
+        print(f"yfinance: {len(stale)} symbols still end before the last completed session {expect}: {', '.join(t.removesuffix('.NS') for t in stale[:20])}; {len(partial)} had a newest row missing a price, ({len(recovered)} recovered from a validated final hourly bar; unresolved rows remain dropped)", file=sys.stderr)
     return 0
 
 
