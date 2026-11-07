@@ -1,3 +1,4 @@
+import { QuestionOrb } from '../components/QuestionOrb.tsx';
 import { prefetchScreens } from '../prefetch.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { go, setState } from '../app.tsx';
@@ -66,6 +67,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
         <div className="lp-card-top"><span className="avatar" aria-hidden="true">{sample.sym.slice(0, 2)}</span><span className="grow"><b className="sym">{sample.sym}</b><span className="small dim trunc" style={{ display: 'block' }}>{sample.name}{sample.sector ? ` · ${sample.sector}` : ''}</span></span><span className="lp-live small"><i aria-hidden="true" />From the screen</span></div>
         <div className="lp-price num">{inr(sample.price)}<span className="small dim"> close of {dayWord(scr.data?.as_of)}</span></div>
         <dl className="lp-facts">{sampleFacts(sample).map((f) => <div key={f.k}><dt>{f.k}</dt><dd className={`num ${f.tone ?? ''}`}>{f.v}</dd></div>)}</dl>
+        <div className="lp-ask"><QuestionOrb label={`Explore questions about ${sample.sym}`} expanded={false} onClick={() => choose(sample.sym)} /><span className="small dim">Start with a fact.<br />Find your next question.</span></div>
         <p className="small mute lp-card-note">Every claim on a company page is a figure like these, with the rule that judged it and the date it is from. Missing data is shown as missing.</p>
         <button type="button" className="btn pri lp-card-go" onClick={() => choose(sample.sym)}>Read the full evidence<Icon n="chev" /></button>
       </aside>}

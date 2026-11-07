@@ -15,6 +15,8 @@
   --down-tint:rgba(248,113,113,.1);--up-tint:rgba(74,222,128,.1);--amber-tint:rgba(251,191,36,.1);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --editorial:Georgia,"Times New Roman",serif;
+  --orb-light:#F1F3F5;--orb-mid:#929AA5;--orb-dark:#303640;
   --code:"JetBrains Mono","JetBrains Mono Fallback",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --fs-display:2.5rem;--lh-display:3rem;--fs-h1:2rem;--lh-h1:2.5rem;--fs-h2:1.5rem;--lh-h2:2rem;--fs-h3:1.1875rem;--lh-h3:1.625rem;
   --fs-body:.9375rem;--lh-body:1.5rem;--fs-data:.84375rem;--fs-label:.75rem;   /* body 15/24, data minimum 13.5px, 12px only for timestamps and labels in --ink-3 */

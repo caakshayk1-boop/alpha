@@ -34,3 +34,8 @@ test('the Worker\'s cron trigger exists and is a no-op without its secret (the o
   const cfg = readFileSync(new URL('../../../wrangler.tripwire.jsonc', import.meta.url), 'utf8'); assert.match(cfg, /"crons": \["\*\/15 \* \* \* \*"\]/);
   const doc = readFileSync(new URL('../../../docs/tripwire/launch/RELIABILITY.md', import.meta.url), 'utf8'); assert.match(doc, /GITHUB_DISPATCH_TOKEN/);
 });
+
+test('validated screen publication triggers both consumers without waiting for the newspaper', () => {
+  for (const f of ['tripwire.yml', 'tripwire_ledger.yml']) assert.match(wf(f), /repository_dispatch:\n    types: \[screen-published\]/);
+  assert.match(wf('tripwire.yml'), /github.event_name == 'repository_dispatch'\) && github.ref == 'refs\/heads\/main'/);
+});

@@ -1,3 +1,4 @@
+import { PositionTime } from '../components/PositionTime.tsx';
 import { positionInsight } from '../positioninsight.ts';
 import { useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
@@ -85,6 +86,7 @@ export function TradeCard({ r, cost, expanded, onToggle, onHide, live, outcome }
     status={{ label: `${W[v.status]}${v.dataNote ? ' · recorded state' : ''}`, tone }} entry={v.entry ?? null}
     price={isOpen || done ? { label: isOpen ? markWord(v.markKind, r.markT, Date.now()).word : 'Exit', value: isOpen ? v.mark : v.exit ?? null, sub: isOpen && q ? <span className={`small num ${q.px >= q.prev ? 'up' : 'down'}`}>{pct(((q.px / q.prev) - 1) * 100)} {live ? 'today' : 'last session'}</span> : undefined } : null}
     pnl={v.pnl} r={v.r} pct={v.pct}
+    timeline={<PositionTime signal={p.asOf} view={v} outcome={outcome} />}
     line={isOpen || done ? undefined : v.status === 'skipped' ? <span className="down">{v.skipReason}. No trade was opened, and none is counted.</span> : <>{p.qty} shares · signal {inr(p.ref)} · stop {inr(p.stop)} · {p.horizon}-session limit</>}>
     {(isOpen || done) && <div>
       {isOpen && (() => { const i = positionInsight(v, p); return i ? <p className="small" style={{ margin: '4px 0 0' }} data-insight>{i.line}{i.badges.length > 0 && <span className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>{i.badges.map((b) => <span key={b} className="tag">{b}</span>)}</span>}</p> : null; })()}

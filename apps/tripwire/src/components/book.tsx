@@ -71,6 +71,7 @@ export interface PositionCardProps {
   ladder: LadderInput | null;
   /** one line under the header: shares, signal, stop, limit, or why it was skipped */
   line?: ReactNode;
+  timeline?: ReactNode;
   expanded: boolean; onToggle: () => void;
   /** the details that open under the card */
   children?: ReactNode;
@@ -109,6 +110,7 @@ export function PositionCard(p: PositionCardProps) {
           <b className={`num amt pc-big ${up}`}>{p.pnl == null ? '—' : <TweenNumber value={p.pnl} format={(n) => sgn(Math.round(n), money)} />}</b>
           <span className={`pc-r num ${up}`}>{p.r == null ? '—' : <TweenNumber value={p.r} format={(n) => `${sgn(Math.round(n * 100) / 100, rFmt)}R`} />}<span className="dim"> · {p.pct == null ? '—' : `${sgn(p.pct, (n) => n.toFixed(2))}%`}</span></span></span>}
       </span> : null}
+      {p.timeline}
       {p.line && <span className="pc-line num">{p.line}</span>}
       <Icon n="chev" className="pc-chev" />
     </button>

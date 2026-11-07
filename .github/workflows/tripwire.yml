@@ -1,5 +1,7 @@
 name: tripwire
 on:
+  repository_dispatch:
+    types: [screen-published]
   pull_request:
     paths: ['apps/tripwire/**', 'wrangler.tripwire.jsonc', '.github/workflows/tripwire.yml']
   workflow_dispatch:
@@ -8,10 +10,8 @@ on:
         description: 'Deploy the Tripwire Worker (owner decision; choose the address first, see docs/tripwire/README.md)'
         type: boolean
         default: false
-  # The app's data is a snapshot taken at build time, so it goes a day stale unless it is rebuilt. The screen it reads is committed by the newspaper job at 23:45 to 01:05 UTC (05:15 to 06:35 IST),
-  # after the 21:00 IST screen build has reached the database. The earlier slots (18:15 and 22:45 UTC) were BEFORE that commit, so on time they rebuilt the previous day's data, and the new day reached
-  # the site only when GitHub started the run about 3 hours late (docs/tripwire/launch/RELIABILITY.md). These slots sit after the commit. They run every check first, and a failing check stops the deploy.
-  # The second slot is a retry: it builds, and deploys only if the live site does not already carry that data day. A schedule only runs on the default branch. Remove these two lines to make deploys manual again.
+  # The screen publisher dispatches immediately after its validated commit.
+  # These morning slots remain recovery paths if that event/token fails.
   schedule:
     - cron: '15 2 * * 2-6'       # 07:45 IST, Tuesday to Saturday
     - cron: '45 3 * * 2-6'       # 09:15 IST, a retry
@@ -65,7 +65,7 @@ jobs:
           echo "built=$built live=$live"
           if [ "$built" = "$live" ]; then echo 'same=true' >> "$GITHUB_OUTPUT"; echo "The site already carries data through $built; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Deploy (manual, or the scheduled refresh on main)
-        if: ${{ steps.already.outputs.same != 'true' && ((github.event_name == 'workflow_dispatch' && inputs.deploy) || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')) }}
+        if: ${{ steps.already.outputs.same != 'true' && ((github.event_name == 'workflow_dispatch' && inputs.deploy) || ((github.event_name == 'schedule' || github.event_name == 'repository_dispatch') && github.ref == 'refs/heads/main')) }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

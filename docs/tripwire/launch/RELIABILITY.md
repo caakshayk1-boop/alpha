@@ -99,3 +99,23 @@ Measured from `gh run list --workflow tripwire_news.yml` on 3 Nov 2026: on 2 Nov
 What changed in the code: the Worker catch-up now runs at any hour, not only in session, and when it has refreshed the market stories inside its own allowance the badge reads **Partial**, with the line "Market news refreshed HH:MM IST. Company stories are from the scheduled check at HH:MM IST, N hours ago, which is running late." The scheduled check keeps its own time and is still described as late. Company-scope stories are not refreshed by the catch-up, so the badge cannot say **Fresh** until the scheduled job runs.
 
 What does not change by itself: the real cure is the scheduler nudge in section 4, which needs the Worker secret `GITHUB_DISPATCH_TOKEN`. As of 3 Nov 2026 `wrangler secret list --name tripwire` returns an empty list, so the nudge is still inert and the badge will read Partial or Delayed whenever GitHub's cron is late.
+
+
+## Direct screen publication — 7 November 2026
+
+The stock-screen workflow in trading-dashboard now publishes the validated screen,
+its detail, lite and SWOT projections in the same git commit after its Turso write
+is verified. It runs at 16:47, 19:07 and 23:00 IST on weekdays. Existing hourly
+bar reconstruction supplies a missing daily close only after the complete final
+intraday bar is present; no price or date is synthesized.
+
+A `screen-published` repository event starts both Tripwire consumers immediately:
+the checked website deployment and the idempotent position ledger refresh. The
+website reads the ledger live, so these do not need to wait for each other. The
+publisher uses the upstream repository's existing GH_PAT for this event. A failed
+dispatch fails visibly; the existing morning schedules remain recovery paths.
+
+This removes the newspaper-export and next-morning wait. It cannot guarantee an
+exchange-time update when Yahoo or GitHub is late. Freshness checks still stop an
+outdated release; original dates remain visible. Positions and trade history are
+never reset to make a refresh succeed.

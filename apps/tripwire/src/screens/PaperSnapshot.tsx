@@ -1,3 +1,4 @@
+import { QuestionOrb } from '../components/QuestionOrb.tsx';
 import { useState } from 'react';
 import { setState, useAppState } from '../app.tsx';
 import { useScreen } from '../data.ts';
@@ -8,7 +9,7 @@ export function PaperSnapshot() {
   const s = useAppState(); const scr = useScreen(); const rows = scr.data?.rows ?? []; const snap = paperSnapshot(s.plans, rows);
   const [draft, setDraft] = useState<ImportPlan[]>([]); const [message, setMessage] = useState(''); const [ask, setAsk] = useState(false); const [answer, setAnswer] = useState('');
   const top = snap.allocation[0];
-  return <section className="card paper-snapshot" data-paper-snapshot><div className="row between"><div><span className="k">Your recorded paper fills</span><h2 className="sec">A dated snapshot</h2></div><button className="ask-orbit" aria-label="Ask about the paper snapshot" aria-expanded={ask} onClick={() => setAsk(!ask)}><span aria-hidden="true">?</span></button></div>
+  return <section className="card paper-snapshot" data-paper-snapshot><div className="row between"><div><span className="k">Your recorded paper fills</span><h2 className="sec">A dated snapshot</h2></div><QuestionOrb label="Ask about the paper snapshot" expanded={ask} onClick={() => setAsk(!ask)} /></div>
     {snap.positions.length ? <><div className="snapshot-value amt num">{snap.value == null ? 'Incomplete prices' : inr0(snap.value)}</div><p className="small dim">{snap.date ? `At the ${snap.date} close · Yahoo Finance via the Alpha screen` : 'A common dated close is required for totals. Missing or stale marks are not zero.'}</p>
       <div className="snapshot-stats">{[['Paper entry value', snap.invested], ['Change since entry', snap.gain], ['Latest session move', snap.day]].map(([label, v]) => <div key={label as string}><span className="k">{label}</span><b className="amt num">{typeof v === 'number' ? inr0(v) : 'Unavailable'}</b></div>)}</div>
       {top && <p className="snapshot-insight amt"><a href={`#/c/${top.sym}`}>{top.sym}</a> accounts for {top.pct.toFixed(1)}% of this paper snapshot ({inr0(top.amount)} of {inr0(snap.value!)}). This describes concentration, not a recommendation.</p>}

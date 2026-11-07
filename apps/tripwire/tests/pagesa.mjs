@@ -163,7 +163,7 @@ for (const w of [320, 390]) {
 
 /* ---- Auto: attribution ---- */
 for (const w of [320, 390, 1280]) {
-  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=auto`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-attribution]', { timeout: 20000 });
+  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=auto`, { waitUntil: 'networkidle' }); await pg.getByText('Experimental paper book · evidence and attribution', { exact: true }).click(); await pg.waitForSelector('[data-attribution]', { timeout: 20000 });
   const num = (s) => Number(s.replace(/[₹,\s]/g, '').replace('−', '-').replace('+', ''));
   const total = num(await pg.locator('[data-attribution] .attr-total b').innerText());
   const engRows = await pg.locator('[data-attribution] tr[data-engine]').evaluateAll((r) => r.map((x) => x.lastElementChild.textContent));

@@ -36,11 +36,11 @@ export function AutoBook() {
   const outcomeOf = (id: string) => b.ledger.data?.ledger.outcomes[id] ?? null;
   const ledgerNow = b.ledger.data?.ledger ?? null;
   return <>
-    <HitCard hits={b.hits} />
     {b.ledger.err && <p className="note" role="status">{b.ledger.err} <button className="btn sm" onClick={b.ledger.retry}>Refresh record</button></p>}
     {b.rows.some((r) => r.v.dataNote) && <p className="note" role="status">Recorded positions are preserved while daily prices are unavailable or incomplete. Marks shown are last recorded values; only a confirmed stop, target or time exit closes a position.</p>}
     <ThroughPills through={ledgerNow ? throughOf(ledgerNow, Date.now()) : null} />
-    <div className="note" style={{ margin: '0 0 10px' }}><b>Experimental.</b> This book takes every pick of engines that have not passed their tests. {evHead ? `${evHead} ` : ''}Its P&L is a record of an experiment, not a track record.</div>
+    <div className="signal-intro"><div><span className="k">The engine paper book</span><h2>Every position. A visible timeline.</h2></div><a className="btn" href="#/live">Portfolio & session chart →</a></div>
+    <div className="auto-overview">
     <div className="card glass">
       <div className="row between"><LiveBadge live={b.priceWord === 'Live'} label={b.priceWord ?? 'Checking prices'} /><span className="small mute">{b.session.detail}</span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
@@ -56,19 +56,25 @@ export function AutoBook() {
       <div className="row between small dim" style={{ marginTop: 10 }}>
         <span>{open.length} open · {wait.length} waiting for an open · <span className="amt">{inr0(b.deployed)}</span> invested</span>
         <span><Observed sec={b.intra.obs} err={b.intra.err} /></span></div>
-      <ContributionBars label="Contribution to open P&L by position" items={open.filter((r) => r.v.pnl != null).map((r) => ({ key: r.p.id, label: r.p.sym, value: r.v.pnl as number }))} />
+
       {b.intra.err && <p className="small down" style={{ margin: '8px 0 0' }}>Live prices are unavailable: {b.intra.err}. {b.bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </div>
-
-    <PnlAttribution rows={b.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r }))} nameOf={engineName} />
+    <section className="card auto-contribution"><h2 className="sec">What is moving the book</h2><p className="small dim">Contribution to open P&L, in rupees. Measured from each entry, including partial exits and costs.</p>
+      {open.filter((r) => r.v.pnl != null).length < 2 && <p className="small dim">At least two measured open positions are needed for a contribution comparison.</p>}
+      <ContributionBars label="Contribution to open P&L by position" items={open.filter((r) => r.v.pnl != null).map((r) => ({ key: r.p.id, label: r.p.sym, value: r.v.pnl as number }))} />
+    </section></div>
+    <HitCard hits={b.hits} />
+    <details className="more"><summary>Experimental paper book · evidence and attribution</summary>
+    <div className="note" style={{ margin: '0 0 10px' }}><b>Experimental.</b> This book takes every pick of engines that have not passed their tests. {evHead ? `${evHead} ` : ''}Its P&L is a record of an experiment, not a track record.</div>
+<PnlAttribution rows={b.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r }))} nameOf={engineName} /></details>
 
     {!b.rows.length ? <Empty title="No position yet">Picks are written into the record each night after the market closes and taken here at once. The first one enters at the next open.</Empty> : <>
       {open.length > 0 && <Head aside={<span className="tag num">{open.length}</span>}>Open</Head>}
-      <div className="ds-stagger">{open.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
+      <div className="ds-stagger position-grid">{open.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {wait.length > 0 && <Head aside={<span className="tag num">{wait.length}</span>}>Enters at the next open</Head>}
-      <div className="ds-stagger">{wait.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
+      <div className="ds-stagger position-grid">{wait.map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {closed.length > 0 && <Head aside={<span className="tag num">{closed.length}</span>}>Closed</Head>}
-      <div className="ds-stagger">{(allClosed ? closed : closed.slice(0, 6)).map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
+      <div className="ds-stagger position-grid">{(allClosed ? closed : closed.slice(0, 6)).map((r) => <TradeCard key={r.p.id} r={r} outcome={outcomeOf(r.p.id)} cost={b.cost} expanded={openId === r.p.id} onToggle={() => toggle(r.p.id)} live={live} />)}</div>
       {closed.length > 6 && !allClosed && <button className="btn" style={{ width: '100%' }} onClick={() => setAllClosed(true)}>Show all {closed.length} closed</button>}
       {skipped.length > 0 && <p className="mute small">{skipped.length} pick{skipped.length === 1 ? ' was' : 's were'} skipped at the open by the entry rule and never counted; they are in the log.</p>}
     </>}
