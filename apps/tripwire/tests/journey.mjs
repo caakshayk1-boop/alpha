@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { mockTick } from './tickmock.mjs';
 import { mockLab } from './labmock.mjs';
 import { mockNews } from './newsmock.mjs';
-import { nextSession, lastFinishedSession } from '../src/calendar.ts';
+import { nextSession, isTradingDay } from '../src/calendar.ts';
 const base = process.argv[2] ?? 'http://localhost:8801';
 const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
@@ -15,7 +15,7 @@ const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fail
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env.JOURNEY_AT) });
-const now0 = Math.floor(Date.now() / 1000);
+let now0 = Math.floor(Date.now() / 1000);
 const quote = (prev, px) => ({ t: Array.from({ length: 30 }, (_, i) => now0 - (30 - i) * 300), c: Array.from({ length: 30 }, (_, i) => prev + (px - prev) * (i / 29) + Math.sin(i) * 0.1 * prev * 0.01), px, pt: now0 + 900, prev, live: true });
 const mq = (prev, px) => quote(prev, px);
 // the suites run on a FROZEN copy of the published screen (see fixtures.mjs); the breadth mock must name the day the served screen is for, or the page rightly treats it as another day's
@@ -295,20 +295,28 @@ const day = 86400;
 const refTxt = await pg.locator('section[aria-label]').first().locator('.card').nth(1).innerText();
 const ref = Number((refTxt.match(/Signal close\s*₹([\d,]+\.?\d*)/) || [])[1]?.replace(/,/g, ''));
 ok(ref > 0, `a pick states its signal close (${ref})`);
-// bars that begin AFTER the paper trade was taken, near the signal close, never touching the stop: the trade must open and be marked live
+// Move the browser through four real exchange sessions after taking the paper trade.
+// Four minute-spaced Sunday prints are not four daily sessions.
+const takenMs = await pg.evaluate(() => Date.now());
+const takenDay = new Date(takenMs + 19800e3).toISOString().slice(0, 10);
+const firstHeldDay = isTradingDay(takenDay) && takenMs < Date.parse(`${takenDay}T03:45:00Z`) ? takenDay : nextSession(takenDay);
+const heldDays = []; for (let d = firstHeldDay; heldDays.length < 4; d = nextSession(d)) heldDays.push(d);
+const replayNow = Date.parse(`${heldDays[3]}T05:00:00Z`) / 1000;
+// Bars stay near the signal close and never touch the stop.
 const mock = (route) => {
   const u = new URL(route.request().url()); const syms = (u.searchParams.get('s') || '').split(',').filter(Boolean);
-  const now = Math.floor(Date.now() / 1000); const bars = {};
+  const bars = {};
   for (const s of syms) { const t = [], o = [], h = [], l = [], c = [];
     // the daily history the real feed carries: one bar for the signal day and every session since, before the paper trade was taken
-    for (let d = SCREEN_DAY; d <= lastFinishedSession(now * 1000); d = nextSession(d)) { t.push(Date.parse(`${d}T04:30:00Z`) / 1000); o.push(ref); h.push(ref * 1.01); l.push(ref * 0.99); c.push(ref); }
-    for (let i = 0; i < 4; i++) { t.push(now + (i + 1) * 60); o.push(ref * (1.002 + i * 0.002)); h.push(ref * (1.02 + i * 0.002)); l.push(ref * 0.995); c.push(ref * (1.01 + i * 0.002)); } bars[s] = { t, o, h, l, c, forming: true, live: { px: ref * 1.03, t: now + 5 * 60 } }; }
+    for (let d = SCREEN_DAY; d < firstHeldDay; d = nextSession(d)) { t.push(Date.parse(`${d}T03:45:00Z`) / 1000); o.push(ref); h.push(ref * 1.01); l.push(ref * 0.99); c.push(ref); }
+    for (let i = 0; i < 4; i++) { t.push(Date.parse(`${heldDays[i]}T03:45:00Z`) / 1000); o.push(ref * (1.002 + i * 0.002)); h.push(ref * (1.02 + i * 0.002)); l.push(ref * 0.995); c.push(ref * (1.01 + i * 0.002)); } bars[s] = { t, o, h, l, c, forming: true, live: { px: ref * 1.03, t: replayNow - 20 } }; }
   route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, fetched_at: new Date().toISOString(), bars, missing: [] }) });
 };
 await pg.route('**/api/bars*', mock);
 T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Add paper trade' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
+await ctx.clock.setFixedTime(new Date(replayNow * 1000)); now0 = replayNow;
 await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
 await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
@@ -322,7 +330,8 @@ const tvl = pg.locator('a[href*="tradingview.com/chart"]').first(); ok((await tv
 ok(!/delayed/i.test(await text()), 'the tracker does not call its prices delayed');
 await shot('09-tracker');
 ok(await pg.locator('.pcard[data-status="Open"]').count() > 0, 'the trade opens at the first open after it was taken');
-ok(/\blive\b/i.test(await text()) && /session 4 of/i.test(await text()), 'an open trade is marked to the delayed live price and counts its sessions');
+const heldText = await text();
+ok(/\blive\b/i.test(heldText) && /session 4 of/i.test(heldText), `an open trade is marked live and counts four exchange sessions (${heldText.match(/session \d+ of \d+/i)?.[0] ?? 'session count missing'})`);
 ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
 // a failed price service shows an honest error, not a guess
@@ -330,6 +339,7 @@ await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfil
 await pg.reload(); await pg.waitForSelector('text=Live prices are unavailable', { timeout: 15000 });
 ok(/Nothing is estimated in their place/.test(await text()), 'price outage is stated and nothing is estimated');
 await pg.unroute('**/api/bars*'); await pg.unroute('**/api/tick*'); T.stock = null;
+await ctx.clock.setFixedTime(new Date(process.env.JOURNEY_AT ?? Date.now())); now0 = Math.floor(Date.now() / 1000);
 await pg.goto(base + '/#/signals');
 
 // the forward record: empty, then populated
