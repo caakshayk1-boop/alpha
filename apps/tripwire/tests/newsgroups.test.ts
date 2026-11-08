@@ -114,3 +114,24 @@ test('overflow outlets are not lost: moreSources survives a merge and the articl
   assert.ok(m[0].moreSources >= 9, 'the snapshot event already knew of ten outlets; the merged total is never below that');
   assert.equal(newsCounts([big]).articles, 10, 'ten outlets are ten articles, not six');
 });
+
+
+test('duplicate ids and shared URLs keep newly discovered sources, entities and dates', () => {
+  const a = ev('s1', 'TCS Q2 net profit rises 5%');
+  const b = ev('s1', a.headline, { sources: [...a.sources, src('b', 'B')], moreSources: 1, entities: [...E('TCS'), ...E('INFY')], updatedAt: new Date((T0 + 900) * 1000).toISOString() });
+  for (const next of [b, { ...b, eventClusterId: 'other-id' }]) {
+    const out = mergePools([a], [next]);
+    assert.equal(out.length, 1);
+    assert.deepEqual(out[0].sources.map(s => s.sourceId), ['a', 'b']);
+    assert.equal(out[0].entities.length, 2);
+    assert.equal(out[0].updatedAt, b.updatedAt);
+    assert.equal(out[0].eventClusterId, a.eventClusterId);
+    assert.deepEqual(mergePools(out, [next]), out, 'a repeated refresh is idempotent');
+  }
+  assert.equal(a.sources.length, 1, 'input snapshot untouched');
+});
+test('absent URLs are never a duplicate identity', () => {
+  const a = ev('a', 'TCS Q2 profit rises 5%', { canonicalUrl: '', sources: [] });
+  const b = ev('b', 'TCS declares interim dividend', { canonicalUrl: '', sources: [] });
+  assert.equal(mergePools([a], [b]).length, 2);
+});

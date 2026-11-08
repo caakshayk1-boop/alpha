@@ -82,13 +82,17 @@ export function mergeCoverage(a: NewsEvent, b: NewsEvent): NewsEvent {
 /** Two pools into one: the published snapshot's events plus live per-name events, one row per event (by id, by any shared link, or by the pipeline's own same-event rule, in which case the coverage is combined
  *  and no outlet's link is lost). */
 export function mergePools(a: NewsEvent[], b: NewsEvent[]): NewsEvent[] {
-  const out: NewsEvent[] = []; const ids = new Set<string>(), urls = new Set<string>();
-  const fromB = new Set(b);   // the snapshot's own events were already grouped by the job; only an event arriving by the other route is tested against what is on the page
+  const out: NewsEvent[] = []; const ids = new Map<string, number>(), urls = new Map<string, number>();
+  const fromB = new Set(b); // Semantic grouping only crosses feeds; the snapshot was already clustered.
   for (const e of [...a, ...b]) {
-    const links = [e.canonicalUrl, ...e.sources.map((s) => s.canonicalUrl)]; if (ids.has(e.eventClusterId) || links.some((u) => urls.has(u))) continue;
-    const at = fromB.has(e) ? out.findIndex((o) => sameCoverage(o, e)) : -1; ids.add(e.eventClusterId); links.forEach((u) => urls.add(u));
-    if (at >= 0) { out[at] = mergeCoverage(out[at], e); continue; }
-    out.push(e);
+    const links = [e.canonicalUrl, ...e.sources.map((s) => s.canonicalUrl)].filter(Boolean);
+    const shared = links.map((u) => urls.get(u)).find((i) => i != null);
+    const known = ids.get(e.eventClusterId) ?? shared;
+    const at = known ?? (fromB.has(e) ? out.findIndex((o) => sameCoverage(o, e)) : -1);
+    const index = at >= 0 ? at : out.length;
+    ids.set(e.eventClusterId, index); links.forEach((u) => urls.set(u, index));
+    if (at >= 0) out[at] = mergeCoverage(out[at], e);
+    else out.push(e);
   }
   return out;
 }
