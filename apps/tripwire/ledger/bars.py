@@ -131,6 +131,14 @@ def recover_stale_closes(fetch_hourly, frames: dict, out: dict, expect: str | No
     return recovered
 
 
+def through_session(df, expect: str | None):
+    """Ignore later provider rows before checking/recovering the expected close.
+    The TypeScript consumer also enforces calendar days and completed bars.
+    """
+    if df is None or not expect: return df
+    return df.loc[df.index.strftime('%Y-%m-%d') <= expect].copy()
+
+
 def main() -> int:
     import yfinance as yf
     spec = json.loads((HERE / "need.json").read_text())
@@ -144,6 +152,7 @@ def main() -> int:
         except Exception as e:                               # a failed chunk is logged and counted, never silent
             print(f"chunk {i // 40} failed: {e}", file=sys.stderr)
             df = None
+        df = through_session(df, expect)
         for tk in chunk:
             if df is not None and len(df): frames[tk] = df
             out[tk] = frame_to_bars(df, tk) if df is not None and len(df) else None
@@ -155,6 +164,7 @@ def main() -> int:
             f = yf.download(ts, period="1y", interval="1d", auto_adjust=False, group_by="column", progress=False, threads=True)
         except Exception as e:
             print(f"retry failed: {e}", file=sys.stderr); return {}
+        f = through_session(f, expect)
         for t in ts:
             if f is not None and len(f): frames[t] = f
             d = partial_last_row(f, t) if f is not None and len(f) else None

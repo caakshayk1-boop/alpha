@@ -76,3 +76,12 @@ def failed_fetch(ts): raise RuntimeError('test provider outage')
 out={'TCS.NS':short}
 assert recover_stale_closes(failed_fetch,{'TCS.NS':daily},out,D,['TCS.NS'],NOW) == [] and out['TCS.NS'] is short, 'outage preserves prior prices'
 print('bars.py: missing-close recovery checks passed')
+
+
+from bars import through_session
+later = pd.concat([daily, daily.iloc[-1:].set_axis(pd.DatetimeIndex(['2026-10-24'], tz='Asia/Kolkata'))])
+trimmed = through_session(later, D)
+assert len(trimmed) == len(daily) and len(later) == len(daily) + 1
+assert partial_last_row(trimmed, 'TCS.NS') == D
+assert recover_session_close(trimmed, hourly, 'TCS.NS', D, NOW) is not None
+print('bars.py: expected-session scope checks passed')

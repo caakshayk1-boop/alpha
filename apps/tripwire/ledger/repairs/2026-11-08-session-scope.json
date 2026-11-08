@@ -1,0 +1,2577 @@
+{
+  "reason": "Correction: the 2026-11-08 special-session bar was wrongly treated as an ordinary session. Restore the prior recorded outcome, then replay completed calendar sessions. No user trade or pick was removed.",
+  "sourceRun": 42475263480,
+  "priorCommit": "ca85188",
+  "affectedCommit": "b292f83",
+  "at": "2026-11-08T11:26:28.360044+00:00",
+  "outcomes": [
+    {
+      "id": "2026-10-23|MOM|SHREEJISPG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-02",
+        "t1Px": 874.66,
+        "entry": 777.38,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 1.56,
+        "pct": 13.04,
+        "mark": 887.55,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-02",
+        "t1Px": 874.66,
+        "entry": 777.38,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": 1.54,
+        "pct": 12.84,
+        "mark": 884.55,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-23|MOM|SBC",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-08",
+        "t1Px": 69.49,
+        "entry": 61.11,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 1.46,
+        "pct": 13.35,
+        "mark": 69.42,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 61.11,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": 1.32,
+        "pct": 12.06,
+        "mark": 68.7,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-23|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 190.74,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 0.02,
+        "pct": 0.08,
+        "mark": 191.56,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 190.74,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": -0.02,
+        "pct": -0.06,
+        "mark": 191.3,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-23|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 759.31,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 0.41,
+        "pct": 5.17,
+        "mark": 801.3,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 759.31,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": 0.81,
+        "pct": 10.17,
+        "mark": 839.25,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-23|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-05",
+        "t1Px": 319.95,
+        "entry": 283.08,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 2.09,
+        "pct": 11.76,
+        "mark": 314.5,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-05",
+        "t1Px": 319.95,
+        "entry": 283.08,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": 2.17,
+        "pct": 12.2,
+        "mark": 317,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-23|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1393.39,
+        "entryDay": "2026-10-26",
+        "sessions": 11,
+        "r": 0.48,
+        "pct": 3.14,
+        "mark": 1442,
+        "niftyPct": 10.93
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1393.39,
+        "entryDay": "2026-10-26",
+        "sessions": 10,
+        "r": 0.45,
+        "pct": 2.99,
+        "mark": 1440,
+        "niftyPct": 11.13
+      }
+    },
+    {
+      "id": "2026-10-26|MOM|SHREEJISPG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 812.36,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 1.07,
+        "pct": 8.9,
+        "mark": 887.55,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 812.36,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 1.02,
+        "pct": 8.53,
+        "mark": 884.55,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-10-30",
+        "t1Px": 2322.83,
+        "entry": 2077.07,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 1.61,
+        "pct": 12.66,
+        "mark": 2370,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-10-30",
+        "t1Px": 2322.83,
+        "entry": 2077.07,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 1.51,
+        "pct": 11.94,
+        "mark": 2340,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|MOM|SANSERA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4129.13,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 0.6,
+        "pct": 6.55,
+        "mark": 4414.3,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4129.13,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 0.4,
+        "pct": 4.33,
+        "mark": 4322.7,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|MOM|SBC",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 64.36,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 0.76,
+        "pct": 7.5,
+        "mark": 69.42,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 64.36,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 0.65,
+        "pct": 6.39,
+        "mark": 68.7,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 190.19,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 0.06,
+        "pct": 0.37,
+        "mark": 191.56,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 190.19,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 0.04,
+        "pct": 0.23,
+        "mark": 191.3,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 765.76,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 0.3,
+        "pct": 4.29,
+        "mark": 801.3,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 765.76,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 0.64,
+        "pct": 9.24,
+        "mark": 839.25,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 291.39,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 1.12,
+        "pct": 7.57,
+        "mark": 314.5,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 291.39,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 1.25,
+        "pct": 8.43,
+        "mark": 317,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-26|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1411.41,
+        "entryDay": "2026-10-27",
+        "sessions": 10,
+        "r": 0.22,
+        "pct": 1.82,
+        "mark": 1442,
+        "niftyPct": 10.03
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1411.41,
+        "entryDay": "2026-10-27",
+        "sessions": 9,
+        "r": 0.21,
+        "pct": 1.67,
+        "mark": 1440,
+        "niftyPct": 10.22
+      }
+    },
+    {
+      "id": "2026-10-27|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-10-30",
+        "t1Px": 2373.07,
+        "entry": 2144.14,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 1.45,
+        "pct": 10.3,
+        "mark": 2370,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-10-30",
+        "t1Px": 2373.07,
+        "entry": 2144.14,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 1.35,
+        "pct": 9.6,
+        "mark": 2340,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|MOM|ATHERENERG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1681.58,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.66,
+        "pct": 8.05,
+        "mark": 1822.9,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1681.58,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 0.66,
+        "pct": 7.97,
+        "mark": 1821.7,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|MOM|SANSERA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4299.7,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.2,
+        "pct": 2.31,
+        "mark": 4414.3,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4299.7,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 0.02,
+        "pct": 0.18,
+        "mark": 4322.7,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|MOM|ACUTAAS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3853.85,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.13,
+        "pct": 1.54,
+        "mark": 3926.9,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3853.85,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": -0.18,
+        "pct": -2.09,
+        "mark": 3786.6,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|MOM|MCX",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-06",
+        "t1Px": 3542.38,
+        "entry": 3163.16,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 1.49,
+        "pct": 11.91,
+        "mark": 3557,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-06",
+        "t1Px": 3542.38,
+        "entry": 3163.16,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 1.43,
+        "pct": 11.46,
+        "mark": 3528,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.39,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.21,
+        "pct": 1.33,
+        "mark": 191.56,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.39,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 0.19,
+        "pct": 1.19,
+        "mark": 191.3,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 785.79,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.12,
+        "pct": 1.62,
+        "mark": 801.3,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 785.79,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 0.49,
+        "pct": 6.45,
+        "mark": 839.25,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 292.79,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 1.21,
+        "pct": 7.06,
+        "mark": 314.5,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 292.79,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 1.35,
+        "pct": 7.91,
+        "mark": 317,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-27|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1386.38,
+        "entryDay": "2026-10-28",
+        "sessions": 9,
+        "r": 0.6,
+        "pct": 3.66,
+        "mark": 1442,
+        "niftyPct": 10.18
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1386.38,
+        "entryDay": "2026-10-28",
+        "sessions": 8,
+        "r": 0.58,
+        "pct": 3.51,
+        "mark": 1440,
+        "niftyPct": 10.37
+      }
+    },
+    {
+      "id": "2026-10-28|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-02",
+        "t1Px": 2435.09,
+        "entry": 2192.19,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 1.26,
+        "pct": 9.29,
+        "mark": 2370,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-02",
+        "t1Px": 2435.09,
+        "entry": 2192.19,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 1.17,
+        "pct": 8.61,
+        "mark": 2340,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|MOM|ATHERENERG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1656.55,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.81,
+        "pct": 9.68,
+        "mark": 1822.9,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1656.55,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.81,
+        "pct": 9.61,
+        "mark": 1821.7,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|MOM|SANSERA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4339.44,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.12,
+        "pct": 1.37,
+        "mark": 4414.3,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4339.44,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": -0.06,
+        "pct": -0.74,
+        "mark": 4322.7,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|MOM|ACUTAAS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3703.7,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.5,
+        "pct": 5.67,
+        "mark": 3926.9,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3703.7,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.17,
+        "pct": 1.89,
+        "mark": 3786.6,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|MOM|NAVINFLUOR",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 8568.56,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.63,
+        "pct": 5.44,
+        "mark": 9065,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 8568.56,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.56,
+        "pct": 4.8,
+        "mark": 9010,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.2,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.23,
+        "pct": 1.43,
+        "mark": 191.56,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.2,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.21,
+        "pct": 1.3,
+        "mark": 191.3,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 814.01,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": -0.14,
+        "pct": -1.91,
+        "mark": 801.3,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 814.01,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.2,
+        "pct": 2.75,
+        "mark": 839.25,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 283.73,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 1.47,
+        "pct": 10.48,
+        "mark": 314.5,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 283.73,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 1.59,
+        "pct": 11.36,
+        "mark": 317,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-28|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1406.4,
+        "entryDay": "2026-10-29",
+        "sessions": 8,
+        "r": 0.24,
+        "pct": 2.18,
+        "mark": 1442,
+        "niftyPct": 10.12
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1406.4,
+        "entryDay": "2026-10-29",
+        "sessions": 7,
+        "r": 0.22,
+        "pct": 2.04,
+        "mark": 1440,
+        "niftyPct": 10.31
+      }
+    },
+    {
+      "id": "2026-10-29|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2248.85,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.71,
+        "pct": 5.03,
+        "mark": 2370,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2248.85,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.52,
+        "pct": 3.7,
+        "mark": 2340,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|MOM|ACUTAAS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3966.96,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": -0.12,
+        "pct": -1.36,
+        "mark": 3926.9,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3966.96,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": -0.43,
+        "pct": -4.89,
+        "mark": 3786.6,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|MOM|ATHERENERG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1666.66,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.79,
+        "pct": 9.02,
+        "mark": 1822.9,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1666.66,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.79,
+        "pct": 8.94,
+        "mark": 1821.7,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|MOM|SANSERA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4230.23,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.4,
+        "pct": 4,
+        "mark": 4414.3,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4230.23,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.18,
+        "pct": 1.83,
+        "mark": 4322.7,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|MOM|MCX",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3232.23,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 1.16,
+        "pct": 9.69,
+        "mark": 3557,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3232.23,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 1.05,
+        "pct": 8.79,
+        "mark": 3528,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 187.81,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.26,
+        "pct": 1.64,
+        "mark": 191.56,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 187.81,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.23,
+        "pct": 1.51,
+        "mark": 191.3,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 817.32,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": -0.18,
+        "pct": -2.31,
+        "mark": 801.3,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 817.32,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.18,
+        "pct": 2.33,
+        "mark": 839.25,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 287.29,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 1.36,
+        "pct": 9.11,
+        "mark": 314.5,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 287.29,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 1.48,
+        "pct": 9.98,
+        "mark": 317,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1411.41,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.2,
+        "pct": 1.82,
+        "mark": 1442,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1411.41,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.19,
+        "pct": 1.67,
+        "mark": 1440,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-29|QLT|ENGINERSIN",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 262.76,
+        "entryDay": "2026-10-30",
+        "sessions": 7,
+        "r": 0.82,
+        "pct": 11.79,
+        "mark": 294.7,
+        "niftyPct": 8.8
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 262.76,
+        "entryDay": "2026-10-30",
+        "sessions": 6,
+        "r": 0.77,
+        "pct": 11.03,
+        "mark": 292.7,
+        "niftyPct": 9
+      }
+    },
+    {
+      "id": "2026-10-30|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2408.41,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": -0.26,
+        "pct": -1.94,
+        "mark": 2370,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2408.41,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": -0.42,
+        "pct": -3.19,
+        "mark": 2340,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|MOM|ACUTAAS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4034.03,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": -0.25,
+        "pct": -3,
+        "mark": 3926.9,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 4034.03,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": -0.55,
+        "pct": -6.48,
+        "mark": 3786.6,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|MOM|ATHERENERG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1769.57,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": 0.23,
+        "pct": 2.66,
+        "mark": 1822.9,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1769.57,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": 0.22,
+        "pct": 2.59,
+        "mark": 1821.7,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|MOM|SAILIFE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-06",
+        "t1Px": 1767.21,
+        "entry": 1566.77,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": 1.38,
+        "pct": 11.75,
+        "mark": 1744,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": true,
+        "t2Hit": false,
+        "t1Day": "2026-11-06",
+        "t1Px": 1767.21,
+        "entry": 1566.77,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": 1.53,
+        "pct": 13.06,
+        "mark": 1785.1,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.19,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": 0.23,
+        "pct": 1.44,
+        "mark": 191.56,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 188.19,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": 0.21,
+        "pct": 1.3,
+        "mark": 191.3,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 800.85,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": -0.02,
+        "pct": -0.29,
+        "mark": 801.3,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 800.85,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": 0.33,
+        "pct": 4.44,
+        "mark": 839.25,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 290.09,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": 1.09,
+        "pct": 8.06,
+        "mark": 314.5,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 290.09,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": 1.21,
+        "pct": 8.92,
+        "mark": 317,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-10-30|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1441.44,
+        "entryDay": "2026-11-02",
+        "sessions": 6,
+        "r": -0.03,
+        "pct": -0.31,
+        "mark": 1442,
+        "niftyPct": 7.6
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1441.44,
+        "entryDay": "2026-11-02",
+        "sessions": 5,
+        "r": -0.05,
+        "pct": -0.45,
+        "mark": 1440,
+        "niftyPct": 7.79
+      }
+    },
+    {
+      "id": "2026-11-02|MOM|ATHERENERG",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1776.37,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": 0.21,
+        "pct": 2.27,
+        "mark": 1822.9,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1776.37,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": 0.2,
+        "pct": 2.2,
+        "mark": 1821.7,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|MOM|CUPID",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 345.24,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": -0.08,
+        "pct": -1.08,
+        "mark": 342.7,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 345.24,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.17,
+        "pct": -2.18,
+        "mark": 338.9,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|MOM|LAURUSLABS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2352.45,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": 0.05,
+        "pct": 0.4,
+        "mark": 2370,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2352.45,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.11,
+        "pct": -0.88,
+        "mark": 2340,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|MOM|ACUTAAS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3895.89,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": 0.04,
+        "pct": 0.45,
+        "mark": 3926.9,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3895.89,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.27,
+        "pct": -3.15,
+        "mark": 3786.6,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|MOM|SONACOMS",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 910.61,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": -0.07,
+        "pct": -0.58,
+        "mark": 908.5,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 910.61,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.18,
+        "pct": -1.51,
+        "mark": 900,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|QLT|CASTROLIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 197.2,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": -0.47,
+        "pct": -3.21,
+        "mark": 191.56,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 197.2,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.49,
+        "pct": -3.34,
+        "mark": 191.3,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|QLT|HBLENGINE",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 827.83,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": -0.27,
+        "pct": -3.55,
+        "mark": 801.3,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 827.83,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": 0.08,
+        "pct": 1.03,
+        "mark": 839.25,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|QLT|PETRONET",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 304.2,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": 0.37,
+        "pct": 3.03,
+        "mark": 314.5,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 304.2,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": 0.47,
+        "pct": 3.85,
+        "mark": 317,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|QLT|HCLTECH",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1451.25,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": -0.1,
+        "pct": -0.99,
+        "mark": 1442,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1451.25,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": -0.12,
+        "pct": -1.12,
+        "mark": 1440,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-02|QLT|ENGINERSIN",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 286.89,
+        "entryDay": "2026-11-03",
+        "sessions": 5,
+        "r": 0.17,
+        "pct": 2.37,
+        "mark": 294.7,
+        "niftyPct": 5.95
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 286.89,
+        "entryDay": "2026-11-03",
+        "sessions": 4,
+        "r": 0.12,
+        "pct": 1.67,
+        "mark": 292.7,
+        "niftyPct": 6.14
+      }
+    },
+    {
+      "id": "2026-11-03|MOM|RUBICON",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1719.72,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.03,
+        "pct": 0.29,
+        "mark": 1730.8,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1719.72,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.39,
+        "pct": -3.86,
+        "mark": 1659.3,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|MOM|GLAND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3164.76,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.16,
+        "pct": -1.36,
+        "mark": 3132.8,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3164.76,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.02,
+        "pct": -0.21,
+        "mark": 3169.3,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|MOM|ANANDRATHI",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2298.3,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.55,
+        "pct": 2.85,
+        "mark": 2372,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 2298.3,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": 0.56,
+        "pct": 2.92,
+        "mark": 2373.5,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|MOM|NYKAA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 355.35,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.21,
+        "pct": -1.57,
+        "mark": 351,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 355.35,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.14,
+        "pct": -1.01,
+        "mark": 353,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|MOM|GESHIP",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1538.04,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.57,
+        "pct": -4.83,
+        "mark": 1469,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1538.04,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.88,
+        "pct": -7.45,
+        "mark": 1428.7,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|QLT|IGIL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 408.26,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.39,
+        "pct": 4.79,
+        "mark": 429.25,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 408.26,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.05,
+        "pct": -0.56,
+        "mark": 407.4,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|QLT|CEMPRO",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1266.37,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.33,
+        "pct": 4.26,
+        "mark": 1324.8,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1266.37,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": 0.32,
+        "pct": 4.14,
+        "mark": 1323.3,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|QLT|BHARTIHEXA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1708.71,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.03,
+        "pct": -0.33,
+        "mark": 1709.1,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1708.71,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.31,
+        "pct": -2.94,
+        "mark": 1664.4,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|QLT|PIDILITIND",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1514.31,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.48,
+        "pct": 3.86,
+        "mark": 1578.2,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1514.31,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": 0.49,
+        "pct": 3.92,
+        "mark": 1579,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|QLT|TECHM",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1793.79,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": 0.19,
+        "pct": 1.66,
+        "mark": 1829.9,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1793.79,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": 0.2,
+        "pct": 1.72,
+        "mark": 1831,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|ST|INDUSTOWER",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 390.39,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.62,
+        "pct": -2.52,
+        "mark": 381.9,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 390.39,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.54,
+        "pct": -2.22,
+        "mark": 383.1,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-03|ST|MRPL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 180.08,
+        "entryDay": "2026-11-04",
+        "sessions": 4,
+        "r": -0.29,
+        "pct": -2.25,
+        "mark": 176.65,
+        "niftyPct": 5.24
+      },
+      "restored": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-06",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 180.08,
+        "entryDay": "2026-11-04",
+        "sessions": 3,
+        "r": -0.36,
+        "pct": -2.8,
+        "mark": 175.67,
+        "niftyPct": 5.43
+      }
+    },
+    {
+      "id": "2026-11-06|MOM|AUROPHARMA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1807.31,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.08,
+        "pct": -0.53,
+        "mark": 1804,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|MOM|DIVISLAB",
+      "before": {
+        "status": "skipped",
+        "final": true,
+        "markDay": "2026-11-08",
+        "skipReason": "Opened 5.1% above the signal close (limit 2%)"
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|MOM|NYKAA",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 353.35,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.13,
+        "pct": -1.01,
+        "mark": 351,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|MOM|PTCIL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 24369.34,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.02,
+        "pct": -0.16,
+        "mark": 24415,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|MOM|PAYTM",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1796.19,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.01,
+        "pct": -0.08,
+        "mark": 1801,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|QLT|BPCL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 320.32,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.14,
+        "pct": -1.2,
+        "mark": 317.6,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|QLT|HINDPETRO",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 385.38,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.09,
+        "pct": -0.81,
+        "mark": 383.6,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|QLT|CEMPRO",
+      "before": {
+        "status": "skipped",
+        "final": true,
+        "markDay": "2026-11-08",
+        "skipReason": "Opened 3.5% above the signal close (limit 2%)"
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|QLT|CEATLTD",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 3549.55,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.18,
+        "pct": -1.58,
+        "mark": 3506,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|QLT|KAJARIACER",
+      "before": {
+        "status": "skipped",
+        "final": true,
+        "markDay": "2026-11-08",
+        "skipReason": "Opened 3.8% above the signal close (limit 2%)"
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|ST|ICICIGI",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 1656.65,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.4,
+        "pct": -1.74,
+        "mark": 1633.6,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|ST|WHIRLPOOL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 834.83,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.05,
+        "pct": -0.31,
+        "mark": 835.2,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|ST|ABDL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 715.11,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.17,
+        "pct": -1.2,
+        "mark": 709.05,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|ST|FSL",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 295.29,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.16,
+        "pct": -1.11,
+        "mark": 293.05,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    },
+    {
+      "id": "2026-11-06|ST|FEDERALBNK",
+      "before": {
+        "status": "open",
+        "final": false,
+        "markDay": "2026-11-08",
+        "t1Hit": false,
+        "t2Hit": false,
+        "entry": 340.44,
+        "entryDay": "2026-11-08",
+        "sessions": 1,
+        "r": -0.37,
+        "pct": -1.45,
+        "mark": 336.7,
+        "niftyPct": -0.34
+      },
+      "restored": {
+        "status": "pending",
+        "final": false,
+        "markDay": "2026-11-06"
+      }
+    }
+  ]
+}
