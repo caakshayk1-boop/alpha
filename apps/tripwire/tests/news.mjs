@@ -130,7 +130,10 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const { ctx, pg, errs } = await open(STATE);
   await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   ok(await pg.locator('h1').innerText() === 'News', 'the News page exists at #/news');
+  ok(!await pg.locator('dl.nw-times').isVisible(), 'check timestamps are available on demand, not repeated above the news');
+  await pg.locator('details.nw-method > summary').click();
   const dl = await pg.locator('dl.nw-times').innerText(); ok(/Last successful check\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl) && /Latest check/.test(dl) && /Next check due\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl), `three separate times: ${dl.replace(/\n/g, ' ')}`);
+  await pg.locator('details.nw-method > summary').click();
   const n0 = await pg.locator('.nw-row').count(); await pg.locator('[data-more-filters] > summary').click(); await pg.getByLabel('Include other updates').check(); await pg.waitForTimeout(200);
   const pune = pg.locator('.nw-row', { hasText: 'Pune' }); ok(await pg.locator('.nw-row').count() > n0 && /time unknown/.test(await pune.innerText()) && !/just now/.test(await pune.innerText()), 'an undated story shows "time unknown", never "just now"');
   await pg.getByLabel('Period').selectOption('14'); await pg.getByLabel('Category').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');
@@ -139,11 +142,38 @@ const nowS = () => Math.floor(Date.now() / 1000);
   /* Phase 4: one event, several outlets: every outlet is a visible link; two clocks on every row; grouped categories */
   await pg.getByLabel('Category').selectOption(''); await pg.waitForTimeout(200);
   const tcs = pg.locator('.nw-row', { hasText: 'TCS Q2 net profit' }).first(); const cov = tcs.locator('[data-cover]');
-  ok(await cov.count() === 1 && /3 outlets on this event/.test(await cov.innerText()) && await cov.locator('a[href^="http"]').count() === 3, 'an event told by three outlets shows all three as links, in the row');
-  const clocks = await tcs.locator('[data-clocks]').innerText(); const head = await tcs.locator('[data-clock="published"]').innerText(); ok(/ ago$/.test(head.trim()) && /^Collected .+ ago$/.test(clocks.replace(/\s+/g, ' ').trim()) && !/Published/.test(clocks), `publication is in the row's header and collection in its footer, each once: "${head.trim()}" / "${clocks.trim()}"`);
-  await tcs.locator('summary').click(); const dates = await tcs.locator('[data-dates]').innerText(); ok(/Published \(the outlet's own time\)/.test(dates) && /Collected \(first seen by Tripwire's check\)/.test(dates) && /Results and earnings/.test(dates), 'the drawer names both clocks and the category');
+  ok(!await cov.isVisible() && await tcs.locator('[data-clock="published"]').isVisible(), 'headline retains publication age; secondary outlets are behind evidence');
+  ok(await tcs.locator('a.nw-entity[href="#/c/TCS"]').count() === 1, 'the verified company links directly to its evidence');
+  await tcs.locator('summary').click();
+  ok(await cov.isVisible() && await cov.locator('a[href^="http"]').count() === 3, 'opening evidence reveals all three source links once');
+  const clocks = await tcs.locator('[data-clocks]').innerText(); const head = await tcs.locator('[data-clock="published"]').innerText(); ok(/ ago$/.test(head.trim()) && /^Collected .+ ago/.test(clocks.trim()), 'collection stays separate from publication, inside the evidence disclosure');
+  const dates = await tcs.locator('[data-dates]').innerText(); ok(/Published \(the outlet's own time\)/.test(dates) && /Collected \(first seen by Tripwire's check\)/.test(dates) && /Results and earnings/.test(dates), 'the drawer names both clocks and the category');
   ok(await pg.locator('select[aria-label],label:has-text("Category") select').first().locator('optgroup').count() >= 2, 'categories group the event types');
   await pg.getByLabel('Category').selectOption('cat:rules'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() >= 1 && (await pg.locator('.nw-row .nw-tag').allInnerTexts()).every((t) => !/^(Results|Deal)$/.test(t.trim()) || t.trim() === 'Regulator' || true), 'a category narrows the archive to its types');
   ok(await pg.locator('a[href="#/news"]').count() >= 0, 'ok'); ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
+}
+/* Reading preferences survive a reload without changing research/position state or marking hidden news seen. */
+{
+  const { ctx, pg } = await open(STATE, { clock: true });
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row');
+  const stored = await pg.evaluate(() => localStorage.getItem('tripwire:v1'));
+  await pg.getByRole('button', { name: 'Minimise', exact: true }).click();
+  ok(!await rows(pg).first().isVisible() && await pg.locator('section.nw .nw-health').isVisible(), 'minimise hides stories and controls but keeps freshness visible');
+  await pg.clock.fastForward(5000);
+  ok(await pg.evaluate(() => localStorage.getItem('tripwire:newsSeen')) === null, 'hidden headlines are not marked read');
+  await pg.reload(); await pg.waitForSelector('section.nw .nw-health');
+  ok(await pg.getByRole('button', { name: 'Expand news' }).getAttribute('aria-expanded') === 'false', 'minimise is remembered after reload');
+  await pg.getByRole('button', { name: 'Expand news' }).click();
+  ok(await rows(pg).first().isVisible(), 'expanding restores the same stories');
+  await pg.getByRole('button', { name: 'Show summaries', exact: true }).click();
+  ok(await pg.locator('section.nw .nw-row > .nw-summary').count() > 0, 'reader can reveal permitted publisher summaries');
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row');
+  ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).getAttribute('aria-pressed') === 'true', 'reading preference carries from Today into News');
+  ok(await pg.evaluate(() => localStorage.getItem('tripwire:v1')) === stored, 'news preferences leave research and paper state unchanged');
+  for (const width of [320, 390, 1280]) {
+    await pg.setViewportSize({ width, height: 844 });
+    ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `news controls fit at ${width}px`);
+  }
+  await ctx.close();
 }
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nall news checks passed'); process.exit(fails ? 1 : 0);

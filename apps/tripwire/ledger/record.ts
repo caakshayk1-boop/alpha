@@ -8,7 +8,7 @@
 //        python apps/tripwire/ledger/bars.py && node --experimental-strip-types apps/tripwire/ledger/record.ts evaluate
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Q } from '../src/quant.ts';
-import { applyCorrections, emptyLedger, evaluateLedger, record, summarizeLedger, type Correction, type Ledger } from '../src/ledger.ts';
+import { applyCorrections, completedLedgerBars, emptyLedger, evaluateLedger, record, summarizeLedger, type Correction, type Ledger } from '../src/ledger.ts';
 import type { Bar } from '../src/tracker.ts';
 import { formatViolations, runChecks } from '../src/ledgerchecks.ts';
 import { lastFinishedSession } from '../src/calendar.ts';
@@ -40,7 +40,7 @@ if (mode === 'record') {
 } else if (mode === 'evaluate') {
   const need = unfinished();
   const raw = existsSync(here('./bars.json')) ? (JSON.parse(readFileSync(here('./bars.json'), 'utf8')).bars as Record<string, { t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; forming: boolean } | null>) : {};
-  const toBars = (b: NonNullable<(typeof raw)[string]>): Bar[] => b.t.map((t, i) => ({ t, o: b.o[i], h: b.h[i], l: b.l[i], c: b.c[i], forming: b.forming && i === b.t.length - 1 }));
+  const toBars = (b: NonNullable<(typeof raw)[string]>): Bar[] => completedLedgerBars(b.t.map((t, i) => ({ t, o: b.o[i], h: b.h[i], l: b.l[i], c: b.c[i], forming: b.forming && i === b.t.length - 1 })), Date.parse(now));
   const got: Record<string, Bar[] | null> = {}; for (const s of need) got[s] = raw[s] ? toBars(raw[s]!) : null;
   const nifty = raw['^NSEI'] ? toBars(raw['^NSEI']!) : null;
   ledger = evaluateLedger(ledger, got, nifty, now);

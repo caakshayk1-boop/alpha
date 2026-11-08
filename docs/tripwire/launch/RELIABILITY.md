@@ -127,3 +127,30 @@ The ledger now recovers only that missing close from the same session's final
 range. Recovery provenance is written into bars.json. Missing daily O/H/L,
 unfinished sessions and incomplete intraday feeds remain unavailable. Existing
 position replay, exit rules and history preservation are unchanged.
+
+### 8 November: completed-session scope and unrelated historical prices
+
+The first refresh after close recovery (Actions run 42475263480) fetched a
+Yahoo bar for the 8 November Muhurat session. The pick calendar explicitly does
+not model that special session, but the outcome consumer previously admitted it.
+It prematurely opened/skipped 15 Friday picks and marked older positions to Sunday.
+The browser replay excludes non-trading days too, while a special-session quote
+may still mark an existing position without triggering an exit. The nightly
+consumer now uses `completedLedgerBars`: only completed, non-forming
+ordinary sessions from the same calendar used by the pick stage are replayed.
+The Python fetch also trims later rows before checking the expected daily close,
+so a later provider row cannot conceal a missing close on the required date.
+
+Two GCSL positions had a separate cause: invalid February/March OHLC observations
+blocked validation of positions signalled in October. `preservePosition` now
+validates from the signal-day anchor onward (which remains required for rebasing),
+including every session during the position. Bad or missing in-position prices
+still retain the recorded state and cannot cause an exit.
+
+`ledger/repairs/2026-11-08-session-scope.json` records the 87 affected outcomes,
+the failed run and both source commits. Only those outcomes were restored to
+the pre-run snapshot before replaying completed sessions through 6 November.
+Every original pick and transition remains; each restoration has a reasoned
+correction transition. Verification: 102 picks identical, all 74 prior opens
+preserved, five closed outcomes identical, 15 Friday candidates still pending.
+The replay passed all ledger assertions; no agreement, entry or exit rule changed.

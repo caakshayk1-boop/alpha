@@ -6,6 +6,7 @@ import type { Bar, Paper } from './tracker.ts';
 import { ENGINES, type Run } from './quant.ts';
 import { targetsFor } from './exits.ts';
 import { rulesFor } from './rules.ts';
+import { isTradingDay, lastFinishedSession } from './calendar.ts';
 import { outcomeView, preservePosition } from './positionstate.ts';
 
 export interface LedgerPick { id: string; engine: string; sym: string; asOf: string; ref: number; stop: number; horizon: number; score: number; rank: number; sector?: string | null; targets?: import('./tracker.ts').PaperTargets | null; agreement?: import('./agreement.ts').Agreement }
@@ -40,6 +41,13 @@ export function applyCorrections(l: Ledger, fixes: readonly Correction[]): Ledge
 export const takenAtFor = (asOf: string): number => { const [y, m, d] = asOf.split('-').map(Number); return Date.UTC(y, m - 1, d, 10, 0) / 1000; };
 const dayKey = (t: number) => Math.floor((t + 19800) / 86400);
 const isoOf = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
+
+/** The nightly ledger follows the same completed ordinary sessions as its pick calendar.
+ * Special sessions have no configured hours/entry policy and cannot silently open or close a position. */
+export function completedLedgerBars(bars: readonly Bar[], nowMs: number): Bar[] {
+  const through = lastFinishedSession(nowMs);
+  return bars.filter((b) => Number.isFinite(b.t) && !b.forming && isoOf(b.t) <= through && isTradingDay(isoOf(b.t)));
+}
 
 /** Replay every pick that is not final. `bars` has a key per symbol it could fetch; a missing symbol leaves its pick untouched, never zero. */
 export function evaluateLedger(l: Ledger, bars: Record<string, Bar[] | null>, nifty: Bar[] | null, now: string): Ledger {

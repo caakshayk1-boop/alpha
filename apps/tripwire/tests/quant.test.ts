@@ -166,7 +166,7 @@ test('ledger: a night is recorded once, in order, with its empty engines too', (
 test('ledger: picks are filled after the close of their day, and a final outcome is never recomputed', () => {
   const l0 = record(emptyLedger('x'), [run('MOM', ['A', 'B', 'C'])], '2026-10-23', 'n').ledger; const t0 = takenAtFor('2026-10-23');
   assert.equal(new Date(t0 * 1000).toISOString(), '2026-10-23T10:00:00.000Z');
-  const D = 86400; const bar = (i: number, o: number, h: number, lo: number, c: number): Bar => ({ t: t0 + i * D - 6 * 3600, o, h, l: lo, c });   // 09:15 IST each following day
+  const D = 86400; const bar = (i: number, o: number, h: number, lo: number, c: number): Bar => ({ t: Date.parse('2026-10-26T03:45:00Z') / 1000 + (i - 1) * D, o, h, l: lo, c });   // actual Mon/Tue/Wed sessions after Friday's signal
   const bars = { A: [bar(1, 100, 104, 99, 103), bar(2, 103, 105, 101, 104), bar(3, 104, 108, 103, 107)], B: [bar(1, 100, 101, 90, 92)], C: null };
   const nifty = [bar(1, 1000, 1010, 995, 1005), bar(2, 1005, 1012, 1000, 1010), bar(3, 1010, 1020, 1008, 1015)];
   const l1 = evaluateLedger(l0, bars, nifty, 'n1');

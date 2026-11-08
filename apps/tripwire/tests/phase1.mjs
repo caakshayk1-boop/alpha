@@ -72,6 +72,8 @@ const open = async (route, at, o = {}) => {
   await pg.waitForSelector('.nw-health'); const first = await pg.locator('.nw-health .nw-state').first().innerText(); const st = await pg.locator('.nw-health').first().getAttribute('data-news-state');
   ok(!/unavailable/i.test(first) && st !== 'unavailable', `first load: the health line says "${first.trim()}" (state ${st}), never Unavailable`);
   await pg.waitForSelector('.nw-row', { timeout: 20000 }); const after = await pg.locator('.nw-health').first().getAttribute('data-news-state'); ok(after === 'fresh' || after === 'delayed' || after === 'partial', `after the answer the state is ${after}`);
+  ok(!await pg.locator('[data-news-definition]').isVisible(), 'count definitions stay behind the methodology disclosure');
+  await pg.locator('details.nw-method > summary').click();
   const defn = await pg.locator('[data-news-definition]').innerText(); ok(/event is one story/.test(defn) && /Articles/.test(defn) && /Companies/.test(defn), 'the page defines events, articles and companies');
   const line = (await pg.locator('.nwp-count').innerText()).trim(); ok(/^\d+ events? · \d+ articles? · \d+ companies?/.test(line), `the count line uses the three units ("${line}")`);
   const total = Number(line.match(/^(\d+)/)[1]); const allChip = await pg.locator('.nw-tabs .chip').first().getAttribute('aria-label'); ok(new RegExp(`^All: ${total} events?$`).test(allChip), `the All tab number equals the displayed total (${allChip})`);

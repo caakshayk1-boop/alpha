@@ -135,7 +135,7 @@ let exportPath = join(tmp, 'tw-backup.json');
   const row = late.pg.locator('.nw-row', { hasText: 'Sensex rises 300 points' }).first(); const rt = (await row.innerText()).replace(/\s+/g, ' ');
   ok(/11:10 IST|20 min ago/.test(rt) && !/Checked|Refreshed on demand/.test(rt), `the story carries its own publication time, not the check or the refresh time: "${rt.slice(0, 120)}"`);
   ok(!/\bFresh\b|\bLIVE\b/.test(await late.pg.locator('section.nw').first().innerText()), 'a state with a late scheduled check is never called fresh or live, even with on-demand stories');
-  await late.pg.goto(base + '/#/news'); await late.pg.waitForSelector('dl.nw-times', { timeout: 15000 }); const dl = (await late.pg.locator('dl.nw-times').innerText()).replace(/\s+/g, ' ');
+  await late.pg.goto(base + '/#/news'); await late.pg.locator('details.nw-method > summary').click(); await late.pg.waitForSelector('dl.nw-times', { timeout: 15000 }); const dl = (await late.pg.locator('dl.nw-times').innerText()).replace(/\s+/g, ' ');
   ok(/Last successful check 10:35 IST/.test(dl) && /Refreshed on demand 11:28 IST/.test(dl), `the News page lists the three apart: ${dl.slice(0, 160)}`); await late.ctx.close();
   const ontime = await mkLate(5); await ontime.pg.goto(base + '/#/today'); await ontime.pg.waitForSelector('section.nw .nw-row', { timeout: 20000 }); await ontime.pg.waitForTimeout(1200);
   ok(ontime.calls === 0 && /Fresh/.test(await ontime.pg.locator('.nw-state').first().innerText()), 'when the scheduled check is on time the page makes no on-demand request and says Fresh'); await ontime.ctx.close();

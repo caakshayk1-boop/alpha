@@ -1,7 +1,7 @@
 /** Position state is independent of today's candidate list and model settings. A failed or truncated price fetch is not an exit. */
 import { evaluatePaper, SLIPPAGE_PCT, type Bar, type Paper, type View } from './tracker.ts';
 import type { Outcome } from './ledger.ts';
-import { covered, nextSession } from './calendar.ts';
+import { covered, isTradingDay, nextSession } from './calendar.ts';
 import { ladderPrices } from './exits.ts';
 
 const day = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
@@ -35,6 +35,9 @@ export function markOpen(prior: View, p: Paper, live: { px: number; t: number } 
 export function preservePosition(p: Paper, bars: readonly Bar[] | null, live: { px: number; t: number } | null, cost: number, previous?: View): View {
   const prior = previous?.id === p.id && ['open', 'closed', 'skipped'].includes(previous.status) && (previous.status === 'skipped' || Number.isFinite(previous.entryT) && Number.isFinite(previous.entry) && previous.entry! > 0) ? previous : undefined;
   if (prior?.status === 'closed' || prior?.status === 'skipped') return prior;
+  // Rebase needs the signal-day anchor and replay needs every subsequent session.
+  // A malformed observation months before the signal is irrelevant to this position.
+  bars = bars?.filter((b) => !Number.isFinite(b.t) || (day(b.t) >= p.asOf && isTradingDay(day(b.t)))) ?? null;
   const valid = !!bars?.length && bars.every((b, i) => [b.t, b.o, b.h, b.l, b.c].every(Number.isFinite) && b.o > 0 && b.l > 0 && b.h >= Math.max(b.o, b.c, b.l) && b.l <= Math.min(b.o, b.c) && (!i || b.t > bars[i - 1].t));
   const keep = (why: string): View => {
     const marked = markOpen(prior!, p, live, cost); const held = prior!.status === 'open' && !!live && live.px > 0 && marked === prior;

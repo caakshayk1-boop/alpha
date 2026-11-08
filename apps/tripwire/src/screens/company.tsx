@@ -108,7 +108,7 @@ export function Company({ sym }: { sym: string }) {
     <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p>
 
     <Head>News</Head>
-    <CompanyNews name={row.name} />
+    <CompanyNews name={row.name} sym={row.sym} />
     <Head>Calendar</Head>
     <div className="card"><div className="list">
       <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data{row.stale ? <b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b> : null}</span></div>

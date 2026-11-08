@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { preservePosition, outcomeView, markOpen, livePlausible, LIVE_BAND } from '../src/positionstate.ts';
 import { evaluatePaper, type Paper, type Bar } from '../src/tracker.ts';
-import { emptyLedger, evaluateLedger, record, takenAtFor, type Ledger } from '../src/ledger.ts';
+import { emptyLedger, completedLedgerBars, evaluateLedger, record, takenAtFor, type Ledger } from '../src/ledger.ts';
 import { DEFAULTS, takePaper, recordPaperView, parseState, mergeStates } from '../src/store.ts';
 import { readLedgerCache, writeLedgerCache, LEDGER_CACHE_KEY } from '../src/ledgercache.ts';
 import { planAutoBook } from '../src/autobook.ts';
@@ -90,4 +90,37 @@ test('a split or bonus while the history is incomplete does not become a false l
   }
   const ok = preservePosition(paper, null, { px: prior.mark! * 1.1, t: bars[2].t + 3600 }, .25, prior); assert.equal(ok.mark, Math.round(prior.mark! * 1.1 * 100) / 100); assert.equal(livePlausible(prior, { px: prior.mark! * (1 + LIVE_BAND) }), true); assert.equal(livePlausible(prior, { px: prior.mark! * (1 + LIVE_BAND) * 1.01 }), false);
   assert.doesNotMatch(ok.dataNote!, /split or bonus/, 'an ordinary move is priced and carries the ordinary note');
+});
+
+
+test('invalid prices before a position signal do not freeze it; errors inside its history still preserve it', () => {
+  const old = bar('2026-02-27', { o: 98, l: 99 });
+  const next = [...bars, bar('2026-11-03', { c: 102 })];
+  const v = preservePosition(paper, [old, ...next], null, .25, prior);
+  assert.equal(v.status, 'open'); assert.equal(v.mark, 102); assert.equal(v.sessions, 3); assert.equal(v.dataNote, undefined);
+  assert.deepEqual(v, preservePosition(paper, next, null, .25, prior));
+  const bad = preservePosition(paper, [...bars, bar('2026-11-03', { o: 98, l: 99 })], null, .25, prior);
+  assert.equal(bad.mark, prior.mark); assert.match(bad.dataNote!, /incomplete/);
+});
+test('nightly prices exclude special, future and forming sessions for both entries and exits', () => {
+  const friday = bar('2026-11-06'); const sunday = bar('2026-11-08', { l: 80 }); const monday = bar('2026-11-09');
+  const now = Date.parse('2026-11-08T11:00:00Z');
+  assert.deepEqual(completedLedgerBars([friday, sunday, monday], now), [friday]);
+  assert.deepEqual(completedLedgerBars([{ ...friday, forming: true }], now), []);
+  const p = { ...paper, asOf: '2026-11-06', takenAt: takenAtFor('2026-11-06') };
+  const pending = { ...emptyLedger(new Date(now).toISOString()), picks: [{ ...p, score: 90, rank: 1 }] };
+  const out = evaluateLedger(pending, { X: completedLedgerBars([friday, sunday], now) }, null, new Date(now).toISOString());
+  assert.equal(out.outcomes.p.status, 'pending'); assert.equal(out.outcomes.p.markDay, '2026-11-06');
+  assert.equal(completedLedgerBars([friday, sunday, monday], Date.parse('2026-11-09T12:00:00Z')).length, 2, 'ordinary Monday is admitted after completion; Sunday stays excluded');
+});
+
+
+test('browser position replay shares the ordinary-session calendar; a special-session quote is only a mark', () => {
+  const p = { ...paper, asOf: '2026-11-06', takenAt: takenAtFor('2026-11-06') };
+  const friday = bar('2026-11-06'); const sunday = bar('2026-11-08', { l: 80 });
+  const pending = preservePosition(p, [friday, sunday], null, .25);
+  assert.equal(pending.status, 'pending');
+  const thursday = bar('2026-11-05'); const held = { ...paper, asOf: '2026-11-05', takenAt: takenAtFor('2026-11-05') };
+  const v = preservePosition(held, [thursday, friday, sunday], { px: 103, t: sunday.t }, .25);
+  assert.equal(v.status, 'open'); assert.equal(v.sessions, 1); assert.equal(v.mark, 103);
 });

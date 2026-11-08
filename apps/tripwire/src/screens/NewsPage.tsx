@@ -3,9 +3,9 @@ import { useAppState } from '../app.tsx';
 import { useAutoBook } from '../book.ts';
 import { lastVisitSec, markVisited, useNewsBoard } from '../news.ts';
 import { newsViewState, plural } from '../newshealth.ts';
-import { archiveList, archiveTabCounts, countsLine, newsCounts, COUNT_DEFINITION, NEWS_CATEGORIES, typeFilterValue, typesFromValue, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
+import { archiveList, archiveTabCounts, countsLine, newsCounts, NEWS_CATEGORIES, typeFilterValue, typesFromValue, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
 import { PageBar } from './common.tsx';
-import { NewsHealthLine, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab } from './News.tsx';
+import { NewsHealthLine, NewsCheckTimes, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab, useNewsPreference, NewsReadingControl } from './News.tsx';
 import { REJECT } from '../../news/rules.js';
 import { EVENT_TYPES } from '../../news/events.js';
 
@@ -26,37 +26,38 @@ export function NewsPage() {
   const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const counts = useMemo(() => archiveTabCounts(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const nc = useMemo(() => newsCounts(rows), [rows]);
   const types = useMemo(() => EVENT_TYPES.filter((t: string) => t !== 'Update' && b.pool.some((e) => e.eventType === t)), [b.pool]);
   const set = (p: Partial<ArchiveFilter>) => { setF({ ...f, ...p }); setShown(PAGE); };
+  const [summaries, setSummaries] = useNewsPreference('summaries');
   const snap = b.snapshot;
   return <div className="nw">
-    <PageBar title="News" onBack sub={`${b.health.word}${b.health.lastGood ? ` · last good check ${b.health.lastGood}` : ''}`} />
-    <NewsHealthLine h={b.health} full />
+    <PageBar title="News" onBack sub="Company events. Evidence on demand." />
+    <NewsHealthLine h={b.health} />
     <p className="sr" data-news-view>{view}</p>
     <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={f.tab === t.id} aria-label={`${t.label}: ${counts[t.id as Tab]} ${counts[t.id as Tab] === 1 ? 'event' : 'events'}`} onClick={() => set({ tab: t.id as Tab })}>{t.label} <span className="num mute">{counts[t.id as Tab]}</span></button>)}</div>
     <div className="nwp-filters">
-      <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
-        return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
       <label><input type="search" placeholder="Search headline or symbol" aria-label="Search headline or symbol" value={f.text} onChange={(e) => set({ text: e.target.value })} /></label>
     </div>
-    <details className="nwp-more" data-more-filters open={f.days !== 7 || f.includeOther || f.covered}><summary>More filters{f.days !== 7 || f.includeOther || f.covered ? ` (${[f.days !== 7, f.includeOther, f.covered].filter(Boolean).length} changed)` : ''}</summary>
+    <details className="nwp-more" data-more-filters open={f.types.length > 0 || f.days !== 7 || f.includeOther || f.covered}><summary>More filters{f.types.length > 0 || f.days !== 7 || f.includeOther || f.covered ? ` (${[f.types.length > 0, f.days !== 7, f.includeOther, f.covered].filter(Boolean).length} changed)` : ''}</summary>
     <div className="nwp-filters">
+      <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
+        return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
       <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
       <label><input type="checkbox" checked={f.includeOther} onChange={(e) => set({ includeOther: e.target.checked })} /> Include other updates</label>
       <label><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
     </div></details>
     <UpdateOffer n={b.pending} apply={b.apply} />
-    <p className="small mute" style={{ margin: '0 0 4px' }} data-news-definition>{COUNT_DEFINITION}</p>
-    <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : `${countsLine(nc)}${f.includeOther ? '' : ' (events only)'}`}</p><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
+    <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : countsLine(nc)}</p></div>
+    <div className="nw-foot nw-toolbar"><NewsReadingControl summaries={summaries} setSummaries={setSummaries} /><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
     <div className="card" style={{ padding: '2px 14px 8px' }}>
       {b.loading ? <div className="nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '90%' }} /><div className="sk" style={{ height: 14, width: '65%' }} /></div>
-        : rows.length ? <ul className="nw-list">{rows.slice(0, shown).map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} label />)}</ul>
+        : rows.length ? <ul className="nw-list">{rows.slice(0, shown).map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} label summaries={summaries} />)}</ul>
         : <EmptyTab tab={f.tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} view={view} />}
       {rows.length > shown && <div className="nw-foot"><button className="btn sm" onClick={() => setShown(shown + PAGE)}>{`Show ${Math.min(PAGE, rows.length - shown)} more`}</button><span className="small mute">{shown} of {rows.length}</span></div>}
     </div>
-    <NewsMethod extra={snap ? <>
+    <NewsMethod extra={<><NewsCheckTimes h={b.health} />{snap ? <>
       <p><b>The last check, by source.</b></p>
       <table className="nwp-table"><thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Answered</th><th scope="col">Failed</th></tr></thead><tbody>{snap.sources.map((x) => <tr key={x.id}><th scope="row">{x.label}</th><td>{x.status}{x.error ? ` (${x.error})` : ''}</td><td className="num">{(x.ok ?? 0) + 0}</td><td className="num">{(x.failed ?? 0) + (x.skipped ?? 0)}</td></tr>)}</tbody></table>
       <p style={{ marginTop: 10 }}><b>What was refused, by reason.</b></p>
       <table className="nwp-table"><tbody>{Object.entries(snap.rejections).sort((a, c) => c[1] - a[1]).map(([k, n]) => <tr key={k}><th scope="row">{k.replace(/_/g, ' ')}</th><td className="num">{n}</td><td>{(REJECT as Record<string, string>)[k] ?? ''}</td></tr>)}</tbody></table>
-      <p className="mute" style={{ marginTop: 8 }}>Snapshot {snap.snapshotVersion} · pipeline {snap.pipelineVersion} · ranking {snap.rankingVersion} · scheduled {snap.scheduledAt ?? 'unknown'} · started {snap.startedAt ?? 'unknown'} · completed {snap.completedAt ?? 'unknown'} (UTC). {snap.coverage.unresolvedNames.length ? `Paper-book names with no known company name, not searched: ${snap.coverage.unresolvedNames.join(', ')}.` : ''}</p></> : null} />
+      <p className="mute" style={{ marginTop: 8 }}>Snapshot {snap.snapshotVersion} · pipeline {snap.pipelineVersion} · ranking {snap.rankingVersion} · scheduled {snap.scheduledAt ?? 'unknown'} · started {snap.startedAt ?? 'unknown'} · completed {snap.completedAt ?? 'unknown'} (UTC). {snap.coverage.unresolvedNames.length ? `Paper-book names with no known company name, not searched: ${snap.coverage.unresolvedNames.join(', ')}.` : ''}</p></> : null}</>} />
   </div>;
 }
