@@ -1,0 +1,122 @@
+/* Shared workspace redesign: distinct page, summary, chart and detail surfaces.
+   Existing routes, storage, source labels and financial calculations are unchanged. */
+.workspace-kicker{display:block;font:500 .6875rem/1.5 var(--font);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.rail-brand,.rail-note{display:none}
+.bar{position:relative;top:auto;padding-block:26px 24px;margin-bottom:8px;gap:14px;align-items:center;border-bottom:0;background:transparent}
+.bar h1{font:500 clamp(2rem,4vw,3.25rem)/1.12 var(--font);letter-spacing:-.05em;margin:7px 0 0}
+.bar .sub{font-size:var(--fs-label);line-height:1.5;margin-top:10px;color:var(--ink-2)}
+.bar>.icon-btn{background:var(--surface);border-color:var(--line-2);border-radius:50%;width:44px;height:44px;flex:none}
+.statusbar{height:56px;margin-bottom:0;border-bottom-color:var(--line);background:transparent}
+.statusbar .brand{font-weight:600;letter-spacing:-.045em;font-size:1.1rem}
+.statusbar .brand i{width:10px;height:16px;border-radius:3px;transform:skew(-12deg)}
+.card,.ds-card,.pcard{box-shadow:0 1px 0 color-mix(in srgb,var(--ink) 3%,transparent) inset}
+.card{background:linear-gradient(145deg,var(--surface-2),var(--surface) 70%)}
+.card .card{background:var(--bg-2);box-shadow:none}
+.btn{font-weight:500;box-shadow:none;border-radius:12px;gap:8px}
+.btn.pri{box-shadow:none}
+.mini-seg{padding:4px;background:var(--bg-2);border:1px solid var(--line);gap:3px;border-radius:12px}
+.mini-seg button{border-radius:8px;min-height:36px;font-size:var(--fs-label);padding-inline:12px}
+.mini-seg button[aria-pressed=true]{background:var(--surface-3);border-color:var(--line-2);color:var(--ink);box-shadow:0 1px 4px color-mix(in srgb,var(--bg) 35%,transparent)}
+.seg{padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:24px}
+.seg button{font-weight:500}
+h2.sec,.ds-sh h2{font-weight:500;letter-spacing:-.03em}
+.tsec>.sec,.tsec>.sechead,.dsk-grid>section>.sec{margin-bottom:16px}
+.today{gap:28px}
+.today .brief{padding:28px;background:radial-gradient(ellipse at 0 0,color-mix(in srgb,var(--accent) 4%,transparent),transparent 65%),var(--surface-grad);border-color:var(--line-2)}
+.today .brief>.brief-top{margin-bottom:18px;flex-wrap:wrap;align-items:center;gap:12px}
+.today .brief>.brief-top .sec{font:500 1.15rem/1.3 var(--font);letter-spacing:-.025em}
+.today .brief .t-take{font-size:clamp(1.2rem,2.2vw,1.8rem);font-weight:450;line-height:1.4;letter-spacing:-.025em;min-height:4.2em;margin-bottom:24px;max-width:58ch}
+.today .brief-ix{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg-2)}
+.today .bix{padding:22px 20px;gap:8px;background:transparent;border:0;border-right:1px solid var(--line);border-radius:0;min-width:0}
+.today .bix:last-child{border-right:0}.today .bix b{font-size:clamp(1.3rem,2.3vw,1.9rem);font-weight:500;letter-spacing:-.045em}
+.today .bix:first-child b{font-size:clamp(1.6rem,3vw,2.6rem)}
+.today .bix>.small:first-child{font-size:var(--fs-data)}
+.today .brief-spark,.today .brief-spark .dc-compact{height:104px}.today .brief-spark svg{height:100%}
+.today .brief-macro{padding:18px 0;margin-top:4px;border-bottom:1px solid var(--line);gap:16px}
+.today .brief-macro>span{gap:5px}.today .brief-macro b{font-weight:500}
+.today .brief-fresh{font-size:var(--fs-label);margin-top:18px}
+.today .brief-fresh a{display:inline-block;min-height:30px;align-content:center;text-decoration:none;border-bottom:1px solid var(--line-2)}
+.today .bookcard{padding:24px;background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--series-1) 8%,transparent),transparent 75%),var(--surface)}
+.bookcard .bigpnl{font-size:2.6rem;font-weight:450;letter-spacing:-.05em;min-width:0;max-width:100%;overflow-wrap:anywhere}
+.bookcard>.row>div{min-width:0}
+.svcompany{border-radius:18px}.svcompany-head{padding:20px;background:var(--surface-grad)}
+.svevents .svi{padding:18px 20px}.svcompany-open{padding:10px 20px;min-height:48px}
+.dsk-sum{padding:22px 24px;border:1px solid var(--line);border-radius:18px;background:var(--surface-grad);gap:32px}
+.dsk-sum b{font-weight:450;font-size:2rem;margin-bottom:8px}
+.dsk-row{padding:18px 4px}.dsk-fl1 .sym{font-size:1rem}
+.dsk-fact,.dsk-change{border:0;border-radius:6px;padding:4px 8px}
+.disc .list>.li{padding-block:18px}.disc .li .sym{font-size:1rem}
+.disc>.bar{padding-block:6px;margin-bottom:0}.disc>.bar h1{font-size:1.75rem;margin-top:0}.disc>.bar .workspace-kicker{display:none}
+.disc .stbl-wrap{border-radius:16px}.disc .stbl thead th{font-weight:500}
+.c-head{border-color:var(--line-2);background:var(--surface-grad)}
+.c-head .c-title{letter-spacing:-.045em}
+.drow>*{min-width:0;overflow-wrap:anywhere}.drow .dv .tag{white-space:normal;overflow-wrap:anywhere;max-width:100%}
+@media(min-width:421px){.drow{grid-template-columns:minmax(0,min(7.5rem,40%)) minmax(0,1fr)}}
+.research-read{background:var(--surface-grad)}
+.research-lines details.ev>summary{padding-block:20px}
+.research-read .sec,.paper-snapshot .sec,.live-value h2,.live-performance h2,.auto-contribution .sec{font-family:var(--font);font-weight:500;letter-spacing:-.035em}
+.engine-overview>a{padding:24px;position:relative;overflow:hidden;background:linear-gradient(150deg,color-mix(in srgb,var(--series-1) 6%,var(--surface)),var(--surface));border-top:2px solid var(--series-1)}
+.engine-overview>a:nth-child(2){border-top-color:var(--series-2);background:linear-gradient(150deg,color-mix(in srgb,var(--series-2) 6%,var(--surface)),var(--surface))}
+.engine-overview>a:nth-child(3){border-top-color:var(--amber);background:linear-gradient(150deg,color-mix(in srgb,var(--amber) 6%,var(--surface)),var(--surface))}
+.engine-overview b{font-size:2.8rem;font-weight:450}.engine-overview a>span:first-child{font-weight:550}
+.pcard{border-color:var(--line-2);background:linear-gradient(130deg,var(--surface-2),var(--surface) 70%)}
+.position-time{padding-top:20px;margin-top:20px}.position-time b{font-size:var(--fs-data)}
+.nw-event{border-radius:16px}.nw-h a{font-weight:500}
+.nw-more>summary{min-height:36px}
+.chart-plot{height:260px;background:linear-gradient(var(--bg-2),var(--surface));border-color:var(--line);border-radius:12px}
+.cf .chart-plot{margin-top:20px}.cf-h{font-size:1rem;font-weight:550}.cf-top{gap:12px 24px}
+.cf-chip{border:0;border-left:2px solid var(--line-2);border-radius:0;background:none;padding-left:14px}
+.cf-chip b{font-size:1.5rem;font-weight:500}.cf-lead{font-weight:500}
+.dc-card{margin-block:24px}.dc-card>.row{gap:16px;flex-wrap:wrap;align-items:center}
+.dc-full{display:block;width:100%;max-width:none;height:280px;overflow:visible}
+.dc-line{stroke-width:2;vector-effect:non-scaling-stroke}.dc-grid{stroke:var(--line);stroke-width:.6;vector-effect:non-scaling-stroke}
+.dc-readout{display:flex;justify-content:space-between;align-items:end;gap:16px;padding-block:24px 16px}
+.dc-readout>div{display:grid;gap:6px}.dc-readout strong{font:500 clamp(1.8rem,3vw,2.6rem)/1.1 var(--font);letter-spacing:-.045em}.dc-readout>span{padding-bottom:3px;font-size:var(--fs-data)}
+.dc-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;border-block:1px solid var(--line);padding:16px 0;margin-top:12px}
+.dc-facts>span{display:grid;gap:6px;min-width:0}.dc-facts small{font-size:var(--fs-label);color:var(--ink-3)}.dc-facts b{font-size:var(--fs-data);font-weight:500;overflow-wrap:anywhere}
+.dc-note{font-size:var(--fs-label);margin:16px 0 4px}.dc-table>summary{min-height:44px;align-content:center}
+.market-grid{gap:24px}.market-grid>.sh{margin-top:0}.market-breadth>.h{margin-top:0}
+.mk-glance{background:none;border:0;box-shadow:none;padding:0 0 12px}.mk-glance .t-take{font-weight:450;font-size:clamp(1.2rem,2.4vw,1.9rem);min-height:3.2em;letter-spacing:-.025em}
+.market-depth{grid-column:1/-1;border:1px solid var(--line);border-radius:16px;padding:4px 20px;background:var(--surface)}
+.market-depth>summary{font-size:var(--fs-data);min-height:52px;align-content:center;cursor:pointer}.market-depth>.card{margin:8px 0 16px;border:0;padding:8px 0;background:none;box-shadow:none}
+.lp-copy h1{font-family:var(--font);font-weight:450;letter-spacing:-.065em;max-width:12ch}.lp-h2{font-family:var(--font);letter-spacing:-.04em}
+.lp-card{background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--series-1) 10%,transparent),transparent 70%),var(--surface-grad);border-color:var(--line-2)}
+.lp-tile{padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--surface-grad)}
+@media(min-width:1100px){
+ .app{padding-left:192px}.main{--pad:var(--gutter);max-width:1320px}
+ .tabs{width:192px;padding:28px 16px;grid-template-rows:100px repeat(5,50px);gap:6px;background:var(--bg-2);border-right:1px solid var(--line)}
+ .tabs .pill{display:none}.tabs a{flex-direction:row;justify-content:flex-start;gap:12px;padding:0 16px;font-size:var(--fs-data);border-radius:10px;min-width:0}
+ .tabs a[aria-current=page]{color:var(--ink);background:var(--surface-3);box-shadow:inset 2px 0 0 var(--accent)}
+ .tabs a[aria-current=page] .ic{color:var(--accent)}
+ .rail-brand{display:block;padding:4px 12px;font-size:1.4rem;font-weight:600;letter-spacing:-.06em;color:var(--ink)}
+ .rail-brand i{display:inline-block;width:9px;height:17px;margin-right:8px;background:var(--accent);transform:skew(-12deg);border-radius:3px}
+ .rail-brand small{display:block;margin-top:10px;font-size:.6875rem;letter-spacing:.02em;font-weight:400;color:var(--ink-3)}
+ .rail-note{display:block;position:absolute;bottom:32px;left:28px;color:var(--ink-2);font-size:.8125rem;line-height:1.7}.rail-note small{display:block;margin-top:16px;color:var(--ink-3);font-size:.625rem}
+ .statusbar .brand{display:none}
+}
+@media(max-width:699px){
+ :root{--gutter:18px;--card-pad:18px}
+ .bar{padding-block:20px;margin-bottom:2px;gap:10px}.bar h1{font-size:2rem}.bar .sub{font-size:.6875rem;margin-top:8px}.bar .workspace-kicker{font-size:.625rem;letter-spacing:.1em}
+ .bar.has-actions{flex-wrap:wrap;gap:8px;padding-block:10px}.bar.has-actions>.grow{order:-1;flex:1 1 100%}.bar.has-actions h1{display:block;white-space:normal;overflow:visible;font-size:1.6rem;overflow-wrap:anywhere;margin-top:0}.bar.has-actions>.icon-btn:last-child{margin-left:auto}
+ .today .brief{padding:20px 16px}.today .brief>.brief-top .sec{font-size:1rem}
+ .today .brief .t-take{font-size:1.2rem;min-height:6lh;margin-bottom:20px}
+ .today .brief-ix{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .today .bix{padding:16px;gap:6px}.today .bix:first-child{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--line);grid-template-columns:1fr auto}
+ .today .bix:first-child>.small:first-child{grid-column:1/-1}.today .bix:first-child b{font-size:2rem;grid-column:1}.today .bix:first-child>.small:not(:first-child){align-self:center;justify-self:end}
+ .today .bix:first-child .brief-spark{grid-column:1/-1;height:112px}.today .bix:first-child .dc-compact{height:112px}
+ .today .bix:not(:first-child) b{font-size:1.3rem}.today .brief-spark,.today .brief-spark .dc-compact{height:58px}
+ .today .brief-macro{gap:8px;font-size:.75rem}.today .brief-fresh{font-size:.6875rem}
+ .engine-overview{gap:8px}.engine-overview>a{padding:16px 10px;gap:16px}.engine-overview b{font-size:2rem}
+ .engine-overview a>span:first-child{font-size:.75rem}.engine-overview a>span:last-child{font-size:.6875rem}
+ .signal-intro h2{font-family:var(--font);font-size:1.5rem;font-weight:450;letter-spacing:-.035em}
+ .cf .chart-plot{height:230px;margin-top:8px}.dc-full{height:auto;min-height:170px}.dc-facts{gap:8px}.dc-facts b{font-size:.75rem}.dc-facts small{font-size:.6875rem}.dc-readout{padding-top:20px}
+ .research-lines details.ev>summary{padding-block:8px}.c-head{padding:14px 18px}.dsk-sum{gap:24px;padding:20px}
+ .market-grid{gap:20px}.mk-glance .t-take{min-height:4.7em}.market-depth{padding-inline:16px}
+ .tabs{padding-top:6px;background:var(--bg-2);border-top-color:var(--line-2)}
+ .lp-copy h1{font-size:clamp(2.8rem,11vw,4rem)}.lp-hero{gap:28px}.lp-card{padding:24px}
+}
+/* The narrowest phones: a long company name at 1.6rem wraps to three lines and pushes the chart past its budget (charts.mjs, 320px: 719px above the chart, limit 700). The header and the chart controls give back their extra padding there; tap targets stay 44px. */
+@media(max-width:359px){.bar.has-actions{padding-block:4px;gap:4px}.bar.has-actions h1{font-size:1.35rem}.c-prim{gap:4px}.c-prim .mini-seg{padding:2px}}
+@media(prefers-reduced-motion:no-preference){html.fx .sh-box{animation:workspace-enter var(--dur-3) var(--ease) both}html.fx .sh-cell{transition:transform var(--dur-1) var(--ease)}html.fx .sh-cell:active{transform:scale(.98)}}
+@keyframes workspace-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media print{.rail-brand,.rail-note{display:none}.bar{padding-block:12px}.card{box-shadow:none;background:var(--surface)}.dc-full{height:220px}.dc-readout strong{font-size:1.6rem}.sh-cell{box-shadow:none}}

@@ -17,9 +17,10 @@ export function TrendTag({ r, compact = false }: { r: Pick<Row, 'price' | 'sma50
 }
 export function PageBar({ title, sub, onBack, right }: { title: string; sub?: ReactNode; onBack?: boolean; right?: ReactNode }) {
   const { open } = useSheets();
-  return <header className="bar">
+  const kicker = ({ Today: 'Your daily perspective', Markets: 'The wider picture', Discover: 'Find your next research question', 'My Desk': 'Your research workspace', Signals: 'Rules. Evidence. Discipline.' } as Record<string, string>)[title];
+  return <header className={`bar${right ? ' has-actions' : ''}`}>
     {onBack && <button className="icon-btn" onClick={back} aria-label="Back"><Icon n="back" /></button>}
-    <div className="grow"><h1 className="trunc">{title}</h1>{sub && <div className="sub">{sub}</div>}</div>
+    <div className="grow">{kicker && <span className="workspace-kicker">{kicker}</span>}<h1 className="trunc">{title}</h1>{sub && <div className="sub">{sub}</div>}</div>
     {right}
     <button className="icon-btn" onClick={() => open({ k: 'search' })} aria-label="Search"><Icon n="search" /></button>
   </header>;

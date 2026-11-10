@@ -34,7 +34,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   const r = await pg.locator('nav.tabs a').evaluateAll((a) => a.map((x) => { const q = x.getBoundingClientRect(); return [Math.round(q.width), Math.round(q.height)]; }));
   ok(r.every(([ww, hh]) => ww >= 44 && hh >= 44), `${label}: every destination is at least 44 by 44 px (${r.map((x) => x.join('x')).join(' ')})`);
   const nav = await pg.locator('nav.tabs').boundingBox();
-  ok(label === 'phone' ? nav.y + nav.height > h - 30 && nav.y > h / 2 : nav.x < 120 && nav.width < 140, `${label}: ${label === 'phone' ? 'a bottom bar' : 'a compact sidebar at the left'} (${Math.round(nav.x)},${Math.round(nav.y)} ${Math.round(nav.width)}x${Math.round(nav.height)})`);
+  ok(label === 'phone' ? nav.y + nav.height > h - 30 && nav.y > h / 2 : nav.x === 0 && nav.width >= 160 && nav.width <= 220, `${label}: ${label === 'phone' ? 'a bottom bar' : 'a labelled navigation rail at the left'} (${Math.round(nav.x)},${Math.round(nav.y)} ${Math.round(nav.width)}x${Math.round(nav.height)})`);
   await ctx.close();
 }
 
