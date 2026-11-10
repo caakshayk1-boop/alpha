@@ -43,7 +43,7 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
       <div className="sh-ll"><List title="Leaders" names={ll.leaders} win={win} tone="up" /><List title="Laggards" names={ll.laggards} win={win} tone="down" /></div>
       <p className="small mute sh-rank-note">Relative ranks within this sector; a leader can still be down, and a laggard can still be up.</p>
       <details className="sh-all more" key={cur.sector}><summary>Explore all {names.length} companies</summary><p className="small dim">Ordered by traded value. Open a company for its research and chart.</p>
-        <div className="sh-box sh-names">{names.map((n) => <a key={n.sym} href={`#/c/${encodeURIComponent(n.sym)}`} className="sh-cell n" style={heatStyle(n.chg, win)} aria-label={`${n.sym} ${n.name} ${signed(n.chg, 2)} over ${WINDOW_LABEL[win]}. Opens the company page.`}><b>{n.sym}</b><span className="sh-company-name">{n.name}</span><strong className="num">{signed(n.chg, 2)}</strong></a>)}</div>
+        <div className="sh-box sh-names">{names.map((n) => <a key={n.sym} href={`#/c/${encodeURIComponent(n.sym)}`} className="sh-cell n" style={heatStyle(n.chg, win)}><b>{n.sym}</b><span className="sh-company-name">{n.name}</span><strong className="num">{signed(n.chg, 2)}</strong><span className="sr"> Change over {WINDOW_LABEL[win]}. Opens the company page.</span></a>)}</div>
       </details>
       <a className="btn sh-discover" href={`#/discover?sector=${encodeURIComponent(cur.sector)}`}>Research {cur.sector}<Icon n="search" /></a>
     </> : <>
@@ -51,9 +51,10 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
         {([{ label: 'Strongest', s: strongest }, { label: 'Weakest', s: weakest }]).map(({ label, s }) => <button key={label} type="button" onClick={() => setSector(s.sector)}><span className="small dim">{label}</span><b>{s.sector}</b><span className={`num ${direction(s.chg)}`}>{signed(s.chg, 2)}</span></button>)}
       </div>
       <div className="sh-controls"><span className="small dim">Select a sector to explore</span><label className="small">Order <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sector order"><option value="activity">Most traded</option><option value="strongest">Strongest first</option><option value="weakest">Weakest first</option></select></label></div>
-      <div className="sh-box" key={win}>{ordered.map((s) => <button key={s.sector} type="button" className="sh-cell" style={heatStyle(s.chg, win)} onClick={() => setSector(s.sector)} aria-label={`${s.sector}: ${signed(s.chg, 2)}. ${s.up} up · ${s.down} down. ${((s.weight / total) * 100).toFixed(1)}% activity · ${s.n} names. Change over ${WINDOW_LABEL[win]}; ${((s.weight / total) * 100).toFixed(1)} percent of traded value. Opens its leaders and laggards.`}>
+      <div className="sh-box" key={win}>{ordered.map((s) => <button key={s.sector} type="button" className="sh-cell" style={heatStyle(s.chg, win)} onClick={() => setSector(s.sector)}>
         <span className="sh-cell-top"><b>{s.sector}</b><span className="sh-open" aria-hidden="true">↗</span></span><strong className="sh-change num">{signed(s.chg, 2)}</strong>
         <span className="sh-cell-bottom"><Breadth up={s.up} down={s.down} n={s.n} /><span className="sh-counts num">{s.up} up · {s.down} down</span><span className="sh-share num">{((s.weight / total) * 100).toFixed(1)}% activity · {s.n} names</span></span>
+        <span className="sr"> Change over {WINDOW_LABEL[win]}; {((s.weight / total) * 100).toFixed(1)} percent of traded value. Opens its leaders and laggards.</span>
       </button>)}</div>
       <div className="sh-legend"><span>−{HEAT_SCALE[win]}%</span><i aria-hidden="true" /><span>+{HEAT_SCALE[win]}%</span><span>Colour scale</span></div>
     </>}

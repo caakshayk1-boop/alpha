@@ -41,7 +41,7 @@ for (const w of [320, 360]) {
 /* ---- Markets: the sector heat map zooms into a sector, and lists its leaders and laggards ---- */
 for (const w of [320, 390, 1280]) {
   const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 });
-  const cells = pg.locator('[data-sectorheat] .sh-cell'); const n = await cells.count(); const labels = await cells.evaluateAll((e) => e.map((x) => x.getAttribute('aria-label')));
+  const cells = pg.locator('[data-sectorheat] .sh-cell'); const n = await cells.count(); const labels = await cells.evaluateAll((e) => e.map((x) => x.textContent));
   ok(n >= 6 && labels.every((l) => /percent of traded value/.test(l ?? '') && /over 1 day/.test(l ?? '')), `${w}: the heat map has ${n} sector cells, each named with its change, window and share of traded value`);
   ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: the heat map causes no sideways scroll`);
   ok(await cells.evaluateAll((xs) => xs.every((e) => { const b = e.querySelector('b'); const n = e.querySelector('.sh-change'); return b && n && b.scrollWidth <= b.clientWidth + 1 && n.scrollWidth <= n.clientWidth + 1 && b.innerText.trim() && n.innerText.includes('%'); })), `${w}: every sector prints a full label and change without clipping`);
@@ -51,9 +51,9 @@ for (const w of [320, 390, 1280]) {
   await pg.getByLabel('Sector order').selectOption('activity');
   const before = await cells.first().evaluate((e) => getComputedStyle(e).backgroundColor);
   await pg.getByRole('button', { name: '1M', exact: true }).click(); await pg.waitForTimeout(300);
-  ok((await pg.getByRole('button', { name: '1M', exact: true }).getAttribute('aria-pressed')) === 'true' && /over 1 month/.test((await pg.locator('[data-sectorheat] .sh-cell').first().getAttribute('aria-label')) ?? ''), `${w}: the window switch changes what the cells say (1 month)`);
+  ok((await pg.getByRole('button', { name: '1M', exact: true }).getAttribute('aria-pressed')) === 'true' && /over 1 month/.test((await pg.locator('[data-sectorheat] .sh-cell').first().textContent()) ?? ''), `${w}: the window switch changes what the cells say (1 month)`);
   await pg.getByRole('button', { name: '1D', exact: true }).click(); await pg.waitForTimeout(200);
-  const first = pg.locator('[data-sectorheat] .sh-cell').first(); const sector = ((await first.getAttribute('aria-label')) ?? '').split(':')[0]; await first.click(); await pg.waitForSelector('.sh-list.up li', { timeout: 5000 });
+  const first = pg.locator('[data-sectorheat] .sh-cell').first(); const sector = await first.locator('b').innerText(); await first.click(); await pg.waitForSelector('.sh-list.up li', { timeout: 5000 });
   ok((await pg.locator('#sh-h').innerText()) === sector, `${w}: tapping ${sector} zooms into it`);
   const lead = await pg.locator('.sh-list.up li > .num:not(.sh-px)').allInnerTexts(); const lag = await pg.locator('.sh-list.down li > .num:not(.sh-px)').allInnerTexts(); const v = (s) => parseFloat(s.replace('−', '-').replace('%', '').replace('+', ''));
   ok(lead.length === 5 && lag.length === 5 && Math.min(...lead.map(v)) >= Math.max(...lag.map(v)) && lead.map(v).every((x, i, a) => i === 0 || a[i - 1] >= x) && lag.map(v).every((x, i, a) => i === 0 || a[i - 1] <= x), `${w}: five leaders (strongest first) and five laggards (weakest first), none of them overlapping: ${lead.join(' ')} | ${lag.join(' ')}`);
