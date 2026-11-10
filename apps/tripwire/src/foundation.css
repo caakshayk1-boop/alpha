@@ -22,7 +22,7 @@ h2.h::before{display:none}
 .read{max-width:var(--max-read);margin-inline:auto}
 
 /* ---- surfaces ---- */
-.card,.card.glass{padding:var(--card-pad);background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--radius-card)}
+.card,.card.glass{padding:var(--card-pad);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card)}
 .card + .card{margin-top:var(--sp-4)}
 .today,.todaydesk,.dsk,.dsk-grid{gap:var(--section-gap)}
 .note,.banner,.tile,.lens,.heat a,.sheet{border-radius:var(--rad-md)}

@@ -38,6 +38,7 @@ export function Markets() {
         <div className="mini-seg" role="group" aria-label="Index">{([['NIFTY', 'Nifty 50'], ['BANKNIFTY', 'Bank Nifty'], ['VIX', 'India VIX']] as const).map(([k, nm]) => <button key={k} type="button" aria-pressed={dayIx === k} onClick={() => setDayIx(k)}>{nm}</button>)}</div></div>
       <DayChart key={dayIx} q={pulse.data.quotes[dayIx]} nse good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX'} />
     </section>}
+    {scr.data && <SectorHeat rows={rows} day={day} />}
     <FlowCard />
     <div className="market-grid">
       <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}<span className="mute" data-market-status><Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></span></div>
@@ -48,8 +49,7 @@ export function Markets() {
         <TrendMap rows={rows} day={day} map={t.map} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} repriced={t.liveMap ? t.liveMap.repriced : null} err={!!t.breadth.err} />
         </>}
       </section>
-      {scr.data && <SectorHeat rows={rows} day={day} />}
-      {scr.data && <SectorBars sectors={t.map.sectors} rows={rows} day={day} />}
+      {scr.data && <details className="market-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
       <section className="market-macro"><Head>Commodities, currencies, Bitcoin</Head><p className="small mute">Latest session · scroll for more markets →</p><MacroStrip /></section>
     </div>
   </div>;

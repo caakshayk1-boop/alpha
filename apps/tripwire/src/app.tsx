@@ -212,8 +212,10 @@ export function App(): ReactNode {
         <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>
+        <span className="rail-brand" aria-hidden="true"><i />Tripwire<small>Research workspace</small></span>
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}
+        <span className="rail-note">Your research.<br />Your perspective.<small>Local-first · Paper-only</small></span>
       </nav>
     </div>
     <Suspense fallback={null}>

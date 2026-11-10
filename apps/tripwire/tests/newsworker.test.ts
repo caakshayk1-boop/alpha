@@ -31,7 +31,8 @@ test('live query: one company, through the same pipeline and gates; only stories
   assert.ok(j.rejections.quote_page >= 0 && j.rejections.landing_page === 1 && j.rejections.future_timestamp === 1, JSON.stringify(j.rejections)); assert.ok(!j.events.some((e: any) => /Wall Street|Nasdaq|Share Price Today|support at/.test(e.headline)));
   assert.equal(j.rankingVersion, 'news-rank-1');
 });
-test('live query: a market query admits only India-wide events; a bad query is a 400; both feeds down is 200 ok:false with Retry-After carried', async () => {
+test('live query: a market query admits only India-wide events; a bad query is a 400; both feeds down is 200 ok:false with Retry-After carried', async (t) => {
+  t.mock.method(Date, 'now', () => Date.parse('2026-10-27T08:00:00Z'));
   reset(); route({ 'rss/search?q=Sensex Nifty': () => new Response(fx('google-market.xml')) }); const j = await (await get('/api/news?q=' + encodeURIComponent('Sensex Nifty when:2d'))).json();
   assert.ok(j.ok && j.events.length === 2 && j.events.every((e: any) => e.entities.length === 0), j.events?.map((e: any) => e.headline).join(' | '));
   assert.equal((await get('/api/news?q=' + encodeURIComponent('<script>'))).status, 400); assert.equal((await get('/api/news?q=' + encodeURIComponent('"A B" when:7d') + '&sym=bad%20sym')).status, 400);
