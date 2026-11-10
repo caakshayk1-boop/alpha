@@ -46,7 +46,7 @@ h2.sec,.ds-sh h2{font-weight:500;letter-spacing:-.03em}
 .dsk-row{padding:18px 4px}.dsk-fl1 .sym{font-size:1rem}
 .dsk-fact,.dsk-change{border:0;border-radius:6px;padding:4px 8px}
 .disc .list>.li{padding-block:18px}.disc .li .sym{font-size:1rem}
-.disc>.bar{padding-block:10px;margin-bottom:0}.disc>.bar h1{font-size:2rem;margin-top:0}.disc>.bar .workspace-kicker{display:none}
+.disc>.bar{padding-block:6px;margin-bottom:0}.disc>.bar h1{font-size:1.75rem;margin-top:0}.disc>.bar .workspace-kicker{display:none}
 .disc .stbl-wrap{border-radius:16px}.disc .stbl thead th{font-weight:500}
 .c-head{border-color:var(--line-2);background:var(--surface-grad)}
 .c-head .c-title{letter-spacing:-.045em}
@@ -115,6 +115,8 @@ h2.sec,.ds-sh h2{font-weight:500;letter-spacing:-.03em}
  .tabs{padding-top:6px;background:var(--bg-2);border-top-color:var(--line-2)}
  .lp-copy h1{font-size:clamp(2.8rem,11vw,4rem)}.lp-hero{gap:28px}.lp-card{padding:24px}
 }
+/* The narrowest phones: a long company name at 1.6rem wraps to three lines and pushes the chart past its budget (charts.mjs, 320px: 719px above the chart, limit 700). The header and the chart controls give back their extra padding there; tap targets stay 44px. */
+@media(max-width:359px){.bar.has-actions{padding-block:4px;gap:4px}.bar.has-actions h1{font-size:1.35rem}.c-prim{gap:4px}.c-prim .mini-seg{padding:2px}}
 @media(prefers-reduced-motion:no-preference){html.fx .sh-box{animation:workspace-enter var(--dur-3) var(--ease) both}html.fx .sh-cell{transition:transform var(--dur-1) var(--ease)}html.fx .sh-cell:active{transform:scale(.98)}}
 @keyframes workspace-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media print{.rail-brand,.rail-note{display:none}.bar{padding-block:12px}.card{box-shadow:none;background:var(--surface)}.dc-full{height:220px}.dc-readout strong{font-size:1.6rem}.sh-cell{box-shadow:none}}
