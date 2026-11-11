@@ -21,7 +21,8 @@ const plain = async (state, width, route) => {
 {
   const { ctx, pg, errs } = await plain(STATE, 390, '/#/today'); await pg.waitForSelector('[data-takeaway]');
   const t = (await pg.locator('[data-takeaway]').innerText()).trim();
-  ok(/Nifty [+−]?\d/.test(t) && /(Broad strength|Broad weakness|Mixed): \d+% of [\d,]+ liquid names/.test(t), `Today leads with a takeaway built from displayed figures: "${t.slice(0, 110)}"`);
+  // 11 Nov 2026 (revamp v2): the sentence says the index move and whether breadth agrees; the gauge beside it carries the shares, so they are not repeated
+  ok(/Nifty [+−]?\d/.test(t) && /(, and breadth agrees|, but breadth is (weak|strong)|; breadth is (weak|strong|mixed))\./.test(t) && !/\d+% of [\d,]+ liquid names/.test(t), `Today leads with a takeaway built from displayed figures: "${t.slice(0, 110)}"`);
   const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
   ok(secs[0] === 'brief' && secs.indexOf('changes') > 0, `the market takeaway comes before the changes in followed companies (${secs.join(', ')})`);
   ok(!/\b(will|likely|because|expected|bullish|bearish)\b/i.test(t), 'the takeaway predicts and explains nothing');

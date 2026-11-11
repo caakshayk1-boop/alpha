@@ -31,8 +31,10 @@ await pg.goto(base + '/#/today'); await pg.waitForSelector('.pickrow');
 ok(/T1 ₹[\d,]+ · T2 ₹[\d,]+/.test(await pg.locator('.pickrow').first().innerText()), 'Today: every pick shows its two targets (marked ref when filed before profit booking began)');
 const picks = await pg.locator('.pickrow').evaluateAll((e) => e.slice(0, 6).map((x) => x.querySelectorAll('.small')[0]?.textContent ?? ''));
 ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'Today: the line under each pick is its own engine figures, not one repeated line');
-await pg.waitForSelector('.nw .nw-tabs', { timeout: 15000 });
-ok(/All\s*\d+/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Following/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Paper book/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Market/.test(await pg.locator('.nw .nw-tabs').innerText()), 'Today: news can be read as All, Market, Following or Paper book');
+// 11 Nov 2026 (revamp v2): Today shows the market's own news and puts each followed company's on its board row; the four ways of reading the news are the News page's tabs
+await pg.waitForSelector('section.nw', { timeout: 15000 }); ok(/Market news/.test(await pg.locator('section.nw').innerText()) && await pg.locator('section.nw a[href="#/news"]').count() >= 1, 'Today: market news, with All news one tap away');
+await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw .nw-tabs', { timeout: 15000 });
+ok(/All\s*\d+/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Following/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Paper book/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Market/.test(await pg.locator('.nw .nw-tabs').innerText()), 'News: news can be read as All, Market, Following or Paper book');
 
 await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [data-ladder]');
 ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');
