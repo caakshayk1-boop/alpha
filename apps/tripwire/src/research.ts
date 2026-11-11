@@ -25,7 +25,7 @@ export function companyRead(c: Company): ResearchFact[] {
   return out;
 }
 export function researchEvidence(c: Company, fact: ResearchFact): string {
-  return `${c.sym}: ${fact.fact}\n${fact.period}${fact.snapshotBuilt ? `\nSnapshot built: ${fact.snapshotBuilt}` : ''}\nRule: ${fact.rule}\nSource: ${fact.source}\n${fact.href}\nLimits: ${fact.limit}`;
+  return `${c.sym}: ${fact.fact}\n${fact.period}${fact.snapshotBuilt ? `\nSnapshot built: ${fact.snapshotBuilt}` : ''}\nPublished: ${fact.published ?? 'Publication date unavailable'}\nRule: ${fact.rule}\nSource: ${fact.source}\n${fact.href}\nLimits: ${fact.limit}`;
 }
 export function materialDifferences(cs: Company[]): { label: string; text: string; why: string; sources: { sym: string; date: string }[] }[] {
   const specs = [

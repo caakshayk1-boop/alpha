@@ -171,7 +171,7 @@ export function Company({ sym }: { sym: string }) {
         const why = <details className="more asof-why"><summary>Why these dates differ</summary><div>{asOfWhy(ai)}</div></details>;
         // On a phone the five clocks fold into one line (the quote and the screen close, the two that differ most often), so the chart stays near the top; wider screens show the grid open.
         return wideAsOf ? <div className="asof" data-asof aria-labelledby="asof-h"><h2 id="asof-h" className="asof-h">Data as of</h2>{grid}{why}</div>
-          : <details className="asof asof-fold" data-asof><summary><span className="sr">Data as of: </span><span className="asof-line">{ai.quote ? `${ai.quote.word} · ${fmtIst(ai.quote.t)}` : 'Live price not available'} · {row.last_date ? `Close of ${dayWord(row.last_date)}` : 'close unknown'}</span></summary>{grid}{why}</details>; })()}
+          : <details className="asof asof-fold" data-asof><summary><span className="sr">Data as of: </span><span className="asof-line">{ai.quote ? `${ai.quote.word} · ${fmtIst(ai.quote.t)}` : 'Live price not available'} · {rows.find((r) => r.id === 'screen')!.v}</span></summary>{grid}{why}</details>; })()}
     </section>
 
     <StickyHead name={row.name} sym={sym} px={inr(px)} ch={lp.ch ?? null} word={lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'} />

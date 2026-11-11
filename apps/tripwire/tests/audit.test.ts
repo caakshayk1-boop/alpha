@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { COVERAGE_LIMIT, counterCoverage } from '../src/eligibility.ts';
 import { asOfRows, asOfWhy, dayWordY } from '../src/asof.ts';
-import { companyRead, evidenceDate } from '../src/research.ts';
+import { companyRead, evidenceDate, researchEvidence } from '../src/research.ts';
 import type { Company } from '../src/data.ts';
 
 const noNotes = { notes: [] as string[] };
@@ -52,4 +52,17 @@ test('no link to askakshay.com: the footer and the legal page link nowhere outsi
   for (const f of ['../src/capture.ts', '../src/screens/capture.tsx', '../src/screens/legal.tsx', '../static/index.html']) {
     const t = readFileSync(new URL(f, import.meta.url), 'utf8'); assert.ok(!/https?:\/\/(www\.)?askakshay\.com/.test(t), `${f} links askakshay.com`);
   }
+});
+
+
+test('saved ownership evidence preserves publication status independently of its quarter labels', () => {
+  const company = { sym: 'TCS', built_on: '2026-11-07', row: { sym: 'TCS' }, years: [], inst: { fii_pp: -1.2, dii_pp: 1.3, prev_period: '2026-06', period: '2026-09' } } as unknown as Company;
+  const fact = companyRead(company).find((f) => f.id === 'ownership')!;
+  const evidence = researchEvidence(company, fact);
+  assert.match(evidence, /2026-06 → 2026-09/);
+  assert.match(evidence, /Published: Publication date unavailable/);
+  assert.match(evidence, /Snapshot built: 2026-11-07/);
+  const published = researchEvidence(company, { ...fact, published: '2026-10-15' });
+  assert.match(published, /Published: 2026-10-15/);
+  assert.doesNotMatch(published, /Publication date unavailable/);
 });
