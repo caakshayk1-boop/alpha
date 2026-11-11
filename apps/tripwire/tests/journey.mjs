@@ -41,7 +41,7 @@ await pg.waitForSelector('.welcome h1', { timeout: 15000 }).catch(() => {}); ok(
 await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today');
 await pg.waitForSelector('nav.tabs');
-ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Signals|Discover|My Desk|More', 'five destinations: Today, Signals, Discover, My Desk, More');
+ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Research|Book|Menu', 'four destinations: Today, Research, Book, Menu (11 Nov 2026 redesign)');
 await pg.waitForSelector('.brief-ix', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
 await pg.waitForTimeout(600); await shot('01-today');
 ok(/Screen data through/.test(await text()), 'Today states the data date');

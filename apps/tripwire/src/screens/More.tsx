@@ -41,7 +41,7 @@ export function InstallHint() {
 
 export function More() {
   return <div data-more>
-    <PageBar title="More" sub="Everything else, in one list" />
+    <PageBar title="Menu" sub="Your desk, settings, data, method and help" />
     {GROUPS.map((g) => <section key={g.head} aria-label={g.head}><Head>{g.head}</Head>
       <div className="card" style={{ padding: '2px 14px' }}><div className="list">{g.rows.map((r) => <a key={r.id} className="li more-row" href={r.href} data-more-row={r.id}>
         <span className="grow"><span className="more-t">{r.title}</span><span className="small dim more-n">{r.note}</span></span><Icon n="chev" className="more-go" /></a>)}</div></div></section>)}
