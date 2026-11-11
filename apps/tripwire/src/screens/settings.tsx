@@ -38,8 +38,8 @@ export function Settings() {
     if (!c.ok) { setResult({ ok: false, text: `${c.reason} Nothing was changed.` }); toast('Not imported. Nothing was changed.'); return; }
     setState((x) => mergeStates(x, c.state)); setResult({ ok: true, text: `Imported and merged: ${contents(c.state)}. Nothing was overwritten.` }); toast('Imported and merged. Nothing was overwritten.');
   };
-  return <div>
-    <PageBar title="Settings" />
+  return <div className="mp mp-settings">
+    <PageBar title="Settings" onBack />
     <section className="card glass" aria-labelledby="set-dev" data-settings="device">
       <div className="row"><span className="avatar" aria-hidden="true"><Icon n="lock" /></span><div className="grow"><h2 id="set-dev" className="sec" style={{ margin: 0 }}>Stored on this device only</h2>
         <div className="small dim" style={{ marginTop: 4 }}>There is no sign-in: Tripwire has no accounts and no sync. What you write is saved in this browser only. Clearing site data erases it, and another device starts empty, so a backup file is how you keep a copy or move. Currently held: {contents(s)}. Notifications are not built.</div></div></div>
@@ -53,15 +53,15 @@ export function Settings() {
 
     <Head>Display and feel</Head>
     <div className="card">
-      <label className="row between" style={{ minHeight: 44 }}><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} /></label>
-      <label className="row between" style={{ minHeight: 44 }}><span>Haptics<span className="dim small" style={{ display: 'block' }}>{hapticsNote(support())}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
-      <div style={{ minHeight: 44, padding: '8px 0' }}><span>Text size</span><span className="dim small" style={{ display: 'block' }}>Follows your device’s text-size setting where the browser supports it (Safari on iPhone does; most others follow the browser’s own font-size setting). There is no separate control here.</span></div>
-      <label className="row between" style={{ minHeight: 44 }}><span>Hide my amounts<span className="dim small" style={{ display: 'block' }}>Blurs profit and loss and the money in your paper books.</span></span><input type="checkbox" role="switch" checked={!!p.hideAmounts} onChange={(e) => set({ hideAmounts: e.target.checked })} /></label>
+      <label className="row between set-row"><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} /></label>
+      <label className="row between set-row"><span>Haptics<span className="dim small" style={{ display: 'block' }}>{hapticsNote(support())}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
+      <div className="set-row" style={{ display: "block" }}><span>Text size</span><span className="dim small" style={{ display: 'block' }}>Follows your device’s text-size setting where the browser supports it (Safari on iPhone does; most others follow the browser’s own font-size setting). There is no separate control here.</span></div>
+      <label className="row between set-row"><span>Hide my amounts<span className="dim small" style={{ display: 'block' }}>Blurs profit and loss and the money in your paper books.</span></span><input type="checkbox" role="switch" checked={!!p.hideAmounts} onChange={(e) => set({ hideAmounts: e.target.checked })} /></label>
     </div>
 
     <Head>Screen lock</Head>
     <div className="card">
-      <label className="row between" style={{ minHeight: 44, opacity: canLock !== false || lockOn ? 1 : 0.55 }}><span>Lock with Face ID or fingerprint<span className="dim small" style={{ display: 'block' }}>{canLock === null && !lockOn ? 'Checking what this device supports…' : canLock || lockOn ? 'Asks for your phone\'s unlock when you open the app and after a minute in the background.' : 'Not supported in this browser: it has no device unlock Tripwire can use, so the switch is off.'}</span>{lockOn && canLock === false ? <span className="warnc small" style={{ display: 'block' }}>The lock is on, but this browser can no longer check it. Turn it off here to get back in.</span> : null}</span>
+      <label className="row between set-row" style={{ opacity: canLock !== false || lockOn ? 1 : 0.55 }}><span>Lock with Face ID or fingerprint<span className="dim small" style={{ display: 'block' }}>{canLock === null && !lockOn ? 'Checking what this device supports…' : canLock || lockOn ? 'Asks for your phone\'s unlock when you open the app and after a minute in the background.' : 'Not supported in this browser: it has no device unlock Tripwire can use, so the switch is off.'}</span>{lockOn && canLock === false ? <span className="warnc small" style={{ display: 'block' }}>The lock is on, but this browser can no longer check it. Turn it off here to get back in.</span> : null}</span>
         <input type="checkbox" role="switch" checked={lockOn} disabled={canLock !== true && !lockOn} aria-label="Lock with Face ID or fingerprint" onChange={async (e) => { if (e.target.checked) { const ok = await enableLock(); setLockOn(ok); toast(ok ? 'Lock is on' : 'The lock could not be set up'); } else { disableLock(); setLockOn(false); toast('Lock is off'); } }} /></label>
       <p className="small dim" style={{ margin: '8px 0 0' }}>This is a screen lock: it stops someone casually opening the app on your phone. It does not encrypt what is stored in the browser, and anyone who can inspect the browser could still read it. Whether it works depends on your device and browser. If you cannot unlock, the only way in is to erase this device's data.</p>
     </div>
@@ -95,11 +95,9 @@ export function Settings() {
         : <div className="note"><b>This erases every note, plan and follow on this device{kept ? ', and the kept copy of unreadable data' : ''}.</b> Export first if you want a copy.<div className="row" style={{ marginTop: 10 }}><button className="btn warn grow" onClick={() => { try { ls()?.removeItem(`${KEY}:unreadable`); ls()?.removeItem(`${KEY}:unreadable:earlier`); } catch { /* nothing to remove */ } setState(() => ({ ...DEFAULTS, onboarded: true })); setSure(false); setResult(null); toast('All data deleted from this device'); }}>Erase now</button><button className="btn grow" onClick={() => setSure(false)}>Keep</button></div></div>}
     </div>
 
-    <Head>Help and method</Head>
-    <div className="card" style={{ padding: '2px 14px' }}><div className="list"><a className="li" href="#/help"><span className="grow">Help<span className="small dim" style={{ display: 'block' }}>How to use Tripwire</span></span></a><a className="li" href="#/methodology"><span className="grow">Methodology and evidence<span className="small dim" style={{ display: 'block' }}>How picks, trends and charts are worked out, and what the tests found</span></span></a><a className="li" href="#/data"><span className="grow">Data and coverage<span className="small dim" style={{ display: 'block' }}>What is in the screen and how old each figure is</span></span></a><a className="li" href="#/ops"><span className="grow">Operations and status<span className="small dim" style={{ display: 'block' }}>Service health, what was checked and when</span></span></a><a className="li" href="#/privacy"><span className="grow">Privacy<span className="small dim" style={{ display: 'block' }}>What stays on this device and what the server is asked</span></span></a><a className="li" href="#/terms"><span className="grow">Terms of use<span className="small dim" style={{ display: 'block' }}>Paper only, not advice, no order placed</span></span></a></div></div>
-
-    <Head>About</Head>
-    <div className="card small dim"><p style={{ marginTop: 0 }}>Tripwire shows which public rules fired at the last close and the evidence on each side. It is educational research, not investment advice, and no order is ever placed. Prices are from public sources and may contain errors. Paper results are not real results.</p>
-      <p style={{ marginBottom: 0 }}>Privacy: no account, no tracking, no analytics. Your notes never leave this device.</p></div>
+    {/* 11 Nov 2026 (revamp v2): Help, Methodology and Data are Menu rows now, and the About card repeated the Menu's About and this page's own device card
+        (no account, notes stay here); both are gone from Settings. Operations stays here: this is its one door. Privacy and Terms are also linked here. */}
+    <Head>Status and legal</Head>
+    <nav className="mp-links" aria-label="Status and legal"><a href="#/ops">Operations and status<small>Service health, what was checked and when</small></a><a href="#/privacy">Privacy<small>What stays on this device and what the server is asked</small></a><a href="#/terms">Terms of use<small>Paper only, not advice, no order placed; prices are from public sources and may contain errors</small></a></nav>
   </div>;
 }

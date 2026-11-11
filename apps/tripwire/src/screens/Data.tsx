@@ -16,6 +16,7 @@ import { StatusPill, type Tone } from '../components/index.ts';
 import { BreadthGapText, BreadthGapTable } from './gapnote.tsx';
 import { ObservationNote } from './obsnote.tsx';
 import { Fold } from './fold.tsx';
+import { missingNights, missingNightsNote } from '../ledgergaps.ts';
 
 const N = (v: number) => v.toLocaleString('en-IN');
 const STATUS_WORD: Record<Status, string> = { current: 'Current', pending: 'Build due', stale: 'Behind', unknown: 'Date unreadable', missing: 'Not published' };
@@ -28,27 +29,28 @@ export function DataPage() {
   const nh = useNewsHealth(); const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
   const u = useMemo(() => (scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on) : null), [scr.data]);
   const fx = useFreshness();
-  if (scr.loading) return <div><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
-  if (scr.err || !u || !scr.data) return <div><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
+  if (scr.loading) return <div className="mp mp-data"><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
+  if (scr.err || !u || !scr.data) return <div className="mp mp-data"><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
   const fr = freshness(u.asOf); const built = u.builtOn;
   const L = led.data?.ledger; const od = L ? overduePending(L) : null; const q = liveStatus(); const last = L?.days[L.days.length - 1];
   const ph = pipelineHealth({ screenAsOf: u.asOf, screenBuiltOn: u.builtOn, ledgerLastNight: last?.asOf ?? null, ledgerUpdated: L?.updated ?? null, ledgerRules: last ? rulesOfRecord(last.rules) : null, pendingOld: od?.old ?? 0, pendingTotal: od?.total ?? 0, quoteLastAt: q.lastAt || null, quoteErr: q.err ?? null, panelLastDay: panel.data?.dates?.[panel.data.dates.length - 1] ?? null, panelBuilt: panel.data?.built ?? null });
-  return <div>
+  const gaps = missingNights(L, Date.now()); const gapNote = missingNightsNote(gaps);
+  // 11 Nov 2026 (revamp v2): the screen's size and date were stated twice (a card and the first line of At a glance); they are stated once, here.
+  return <div className="mp mp-data">
     <PageBar title="Data and coverage" onBack sub="What is in the screen, and how old each figure is" />
-    <section className="card glass">
-      <div className="k">The screen</div>
-      <p className="lead" style={{ margin: '6px 0 0' }}><em className="ed num">{N(u.total)}</em> companies, with prices through the close of <b>{dayWord(u.asOf)}</b>.</p>
-      <p className="small dim" style={{ margin: '6px 0 0' }} data-counts>One definition, used everywhere: <b className="num">{N(u.total)}</b> companies are screened; <b className="num">{N(u.liquid)}</b> pass the liquidity filter; the trend map counts the <b className="num">{N(u.liquidWithAverages)}</b> of those that have both moving averages.</p>
-      <p className="small dim" style={{ margin: '8px 0 0' }}>{fr.word === 'Current' ? 'That is the last finished session.' : `That is ${fr.word.toLowerCase()} the last finished session.`} The screen was built {built ? dayWord(built) : 'on an unknown date'}. {holidayStatement()}</p>
-      <div className="note" style={{ marginTop: 10 }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}, {((u.tiers.unknown / u.total) * 100).toFixed(1)}% of the screen). A missing class is stated, not filled in: the feed's classes follow index membership rather than a market-cap cut-off (their market-cap ranges overlap), so none can be worked out from a company's value, and the engines require a published class that is not micro (rule elig-2, D1).</div>
+    <section className="card" aria-label="The screen">
+      <p className="lead mp-lead"><b className="num">{N(u.total)}</b> companies, prices through the close of <b>{dayWord(u.asOf)}</b>; {fr.word === 'Current' ? 'that is the last finished session.' : `${fr.word.toLowerCase()} the last finished session.`}</p>
+      <p className="mp-meta" data-counts>One definition, used everywhere: <b className="num">{N(u.total)}</b> companies are screened; <b className="num">{N(u.liquid)}</b> pass the liquidity filter; the trend map counts the <b className="num">{N(u.liquidWithAverages)}</b> of those that have both moving averages.</p>
+      <p className="mp-meta">The screen was built {built ? dayWord(built) : 'on an unknown date'}. {holidayStatement()}</p>
+      <div className="note" style={{ marginTop: 'var(--sp-4)' }}><b>This is not the Nifty 500 index.</b> The feed does not publish an index membership list or the date of one. Its size classes follow the same pattern as the NSE index families ({u.tiers.large} large, {u.tiers.mid} mid, {u.tiers.small} small, against 100, 150 and 250), so about {N(u.indexSized)} names look index-sized. That is an inference from the counts, not a published fact. The other {N(u.total - u.indexSized)} are micro caps ({u.tiers.micro}) or have no size class ({u.tiers.unknown}, {((u.tiers.unknown / u.total) * 100).toFixed(1)}% of the screen). A missing class is stated, not filled in: the feed's classes follow index membership rather than a market-cap cut-off (their market-cap ranges overlap), so none can be worked out from a company's value, and the engines require a published class that is not micro (rule elig-2, D1).</div>
     </section>
 
     <section className="card sumcard" aria-labelledby="dt-glance" data-summary="data">
       <h2 id="dt-glance">At a glance</h2>
       <ul className="sumlist">
-        <li><span className="sk-k">The screen</span><span className="sk-v">{N(u.total)} companies, prices through the close of {dayWord(u.asOf)}; {fr.word === 'Current' ? 'that is the last finished session' : `${fr.word.toLowerCase()} the last finished session`}.</span></li>
         <li><span className="sk-k">Data files</span><span className={`sk-v${fx.worst === 'current' || fx.worst === 'pending' || fx.loading ? '' : ' bad'}`}>{fx.loading ? 'Checking each file.' : fx.worst === 'current' ? 'Every file is current.' : fx.worst === 'pending' ? 'Every file is current; the newest build is due.' : 'At least one file is behind; the table below names it.'}</span></li>
         <li><span className="sk-k">Pipeline</span><span className={`sk-v${ph.overall === 'ok' ? '' : ' bad'}`}>{HEALTH_WORD[ph.overall]}: {ph.overall === 'ok' ? 'each stage matches the exchange calendar.' : 'a stage is behind or waiting; see Pipeline health.'}</span></li>
+        <li><span className="sk-k">Forward record</span><span className={`sk-v${gapNote ? ' bad' : ''}`} data-ledger-gaps={gaps.length}>{!L ? (led.loading ? 'Checking.' : 'Not available.') : `Last night recorded: ${last ? dayWord(last.asOf) : 'none yet'}.`}{gapNote ? ` ${gapNote}.` : L ? ' No session missing since the first night.' : ''}</span></li>
         <li><span className="sk-k">Open to the engines</span><span className="sk-v">{N(u.engineEligible)} of {N(u.total)} under rule {u.rules}.</span></li>
       </ul>
       <p className="small mute" style={{ margin: 0 }}>The sections below keep every table, source and limitation. Open any heading for its detail; nothing has been removed.</p>
@@ -57,14 +59,14 @@ export function DataPage() {
     <Head aside={<span className={`tag ${fx.worst === 'current' ? 'lime' : fx.worst === 'pending' ? '' : 'amber'}`}>{fx.loading ? 'Checking' : fx.worst === 'current' ? 'All current' : fx.worst === 'pending' ? 'Build due' : 'Something is behind'}</span>}>Every data file, and how current it is</Head>
     <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Every data file, scrolls sideways"><table className="tbl fresh-tbl" data-fresh-table style={{ width: '100%' }}><caption className="sr">Each published data file: the session it carries, when it was built, its rows and its status against the last finished session</caption>
       <thead><tr><th scope="col">File</th><th scope="col">As of</th><th scope="col">Built</th><th scope="col" style={{ textAlign: 'right' }}>Rows</th><th scope="col">Status</th></tr></thead><tbody>
-      {fx.files.map((f) => <tr key={f.id} data-file={f.id}><th scope="row" style={{ textAlign: 'left' }}>{f.label}{f.note ? <span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{f.note}</span> : null}</th><td className="num" data-label="As of">{f.asOf ? `${throughWord(f.asOf)} close` : 'none'}</td><td className="num" data-label="Built">{f.built ? (builtWord(f.built) ? `${f.built.slice(0, 10)} ${builtWord(f.built)}` : f.built.slice(0, 10)) : 'not stated'}</td><td className="num" data-label="Rows" style={{ textAlign: 'right' }}>{f.rows != null ? N(f.rows) : '—'}</td>
+      {fx.files.map((f) => <tr key={f.id} data-file={f.id}><th scope="row" style={{ textAlign: 'left' }}>{f.label}{f.note ? <span className="small mute" style={{ display: 'block', fontWeight: 400 }}>{f.note}</span> : null}{f.id === 'ledger' && gapNote ? <span className="gaps" data-ledger-gaps-row>{gapNote}</span> : null}</th><td className="num" data-label="As of">{f.asOf ? `${throughWord(f.asOf)} close` : 'none'}</td><td className="num" data-label="Built">{f.built ? (builtWord(f.built) ? `${f.built.slice(0, 10)} ${builtWord(f.built)}` : f.built.slice(0, 10)) : 'not stated'}</td><td className="num" data-label="Rows" style={{ textAlign: 'right' }}>{f.rows != null ? N(f.rows) : '—'}</td>
         <td data-label="Status"><StatusPill tone={STATUS_PILL[f.status]} icon={f.status === 'current' ? 'check' : f.status === 'pending' ? 'clock' : 'alert'}>{STATUS_WORD[f.status]}</StatusPill>{f.status === 'stale' && f.behind ? <span className="small dim" style={{ display: 'block' }}>{f.behind} session{f.behind === 1 ? '' : 's'} behind {throughWord(fx.expected)}</span> : null}</td></tr>)}
       {fx.waiting.map((id) => <tr key={id}><th scope="row" style={{ textAlign: 'left' }}>{id}</th><td colSpan={4} className="dim">Loading…</td></tr>)}</tbody></table></div>
       <p className="small mute" style={{ margin: '6px 0 10px' }}>The last finished session is {throughWord(fx.expected)} ({CALENDAR.version}). Dates are closes, not live prices; "built" is when the file was written, in Indian time. A file one session behind is "build due" only between the close and 23:30 IST on that day; after that it is behind. Weekends and NSE holidays are not lateness.</p></div>
 
     <Fold id="pipeline" title="Pipeline health" summary={ph.overall === 'ok' ? 'Every stage matches what the exchange calendar says it should be.' : 'At least one stage is behind or waiting; the stage table says which.'} aside={<span className={`tag ${ph.overall === 'ok' ? 'lime' : 'peach'}`}>{HEALTH_WORD[ph.overall]}</span>}>
       <div className="card" style={{ padding: '2px 14px' }}><table className="tbl" style={{ width: '100%' }}><caption className="sr">Each stage of the data pipeline against what the exchange calendar says it should be</caption><tbody>
-          {ph.stages.map((s) => <tr key={s.id}><th scope="row" style={{ textAlign: 'left', verticalAlign: 'top', width: '34%' }}>{s.label}</th><td><span className={`tag ${s.health === 'ok' ? 'lime' : s.health === 'waiting' ? '' : 'peach'}`}>{HEALTH_WORD[s.health]}</span><div className="small dim" style={{ marginTop: 4 }}>{s.detail}</div></td></tr>)}</tbody></table>
+          {ph.stages.map((s) => <tr key={s.id}><th scope="row" style={{ textAlign: 'left', verticalAlign: 'top', width: '34%' }}>{s.label}</th><td><span className={`tag ${s.health === 'ok' ? 'lime' : s.health === 'waiting' ? '' : 'peach'}`}>{HEALTH_WORD[s.health]}</span><div className="small dim" style={{ marginTop: 4 }}>{s.detail}</div>{s.id === 'ledger-night' && gapNote ? <span className="gaps">{gapNote}. A night that was not written down is not filled in later.</span> : null}</td></tr>)}</tbody></table>
           <p className="small mute" style={{ margin: '6px 0 10px' }}>Expected: the close of {dayWord(ph.expectedSession)}, from the NSE holiday calendar ({CALENDAR.version}, covers {CALENDAR.year}). {calendarNote() ?? ''}</p></div>
     </Fold>
 

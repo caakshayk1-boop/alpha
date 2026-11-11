@@ -41,9 +41,13 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 /* ---- 2. More lists every destination, and each row opens its page ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/more');
   const rows = await pg.locator('[data-more-row]').evaluateAll((r) => r.map((x) => [x.getAttribute('data-more-row'), x.getAttribute('href'), x.getBoundingClientRect().height]));
-  const want = { signals: '#/signals', markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/settings' };   // Operations is builder plumbing: its page stays at #/ops, the visitor menu no longer lists it
-  ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 10 && rows.some((r) => r[0] === 'desk') && !rows.some((r) => r[0] === 'ops') && rows.some((r) => r[0] === "privacy") && rows.some((r) => r[0] === "terms"), `Menu lists My Desk, Signals, Markets, News, Data and coverage, Methodology, Help, Privacy, Terms, Settings, Operations (10 since the legal pages) (${rows.map((r) => r[0]).join(', ')})`);
-  ok(rows.every((r) => r[2] >= 44), 'every More row is a 44 px target');
+  const want = { markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/settings' };   // Operations is builder plumbing: its page stays at #/ops, the visitor menu no longer lists it
+  // 11 Nov 2026 (revamp v2): Signals left the Menu (it is the Book tab), so 9 rows in five groups: Yours, Research, About the data, Settings, Legal.
+  ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 9 && rows.some((r) => r[0] === 'desk') && !rows.some((r) => r[0] === 'ops') && !rows.some((r) => r[0] === 'signals') && rows.some((r) => r[0] === "privacy") && rows.some((r) => r[0] === "terms"), `Menu lists My Desk, Markets, News, Data and coverage, Methodology, Help, Settings, Privacy, Terms (9; Signals is the Book tab) (${rows.map((r) => r[0]).join(', ')})`);
+  ok(JSON.stringify(await pg.locator('.mn-h').allInnerTexts()).toLowerCase() === JSON.stringify(['Yours', 'Research', 'About the data', 'Settings', 'Legal']).toLowerCase(), 'the rows are grouped: Yours, Research, About the data, Settings, Legal');
+  ok(await pg.locator('[data-more-row] .mn-ic svg').count() === rows.length && (await pg.locator('[data-more-row] .mn-n').allInnerTexts()).every((t) => t.trim().length > 0), 'every row has an icon, a title and a one-line note');
+  { const st = (await pg.locator('[data-menu-state]').innerText()).replace(/\s+/g, ' '); ok(/Data through \w{3} \d{1,2} \w{3}/.test(st) && /Prices (live|delayed|last traded|not traded yet|unavailable|checking)/.test(st), `the app's state is one line at the top: ${st}`); }
+  ok(rows.every((r) => r[2] >= 56), 'every Menu row is a big target (56 px or more)');
   ok(/Experimental/.test(await pg.locator('[data-about]').innerText()) && /paper trade/i.test(await pg.locator('[data-about]').innerText()), 'More states the experimental, paper-only status');
   ok(await pg.locator('h1').first().innerText() === 'Menu' && (await current(pg)) === 'Menu', 'Menu is its own tab, titled Menu');
   for (const [k, hash] of Object.entries(want)) {
@@ -75,7 +79,8 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 
 /* ---- 4. Back and Forward ---- */
 { const { ctx, pg } = await mk(); await go(pg, '#/today');
-  await tab(pg, 'Menu'); await pg.waitForSelector('[data-more]'); await pg.locator('[data-more-row=signals]').click(); await pg.waitForSelector('section[aria-label]'); await pg.getByRole('tab', { name: 'Record' }).click(); await pg.waitForFunction(() => /v=record/.test(location.hash)); await settle(pg);
+  // 11 Nov 2026: Signals is no longer a Menu row; the same history (Today, Menu, Signals, Record) is built with an in-page link to #/signals from the Menu.
+  await tab(pg, 'Menu'); await pg.waitForSelector('[data-more]'); await pg.evaluate(() => { location.hash = '#/signals'; }); await pg.waitForSelector('section[aria-label]'); await pg.getByRole('tab', { name: 'Record' }).click(); await pg.waitForFunction(() => /v=record/.test(location.hash)); await settle(pg);
   await pg.goBack(); await pg.waitForFunction(() => location.hash === '#/signals'); ok((await current(pg)) === 'Book', 'Back from Record: Signals, under its own tab');
   await pg.goBack(); await pg.waitForSelector('[data-more]'); ok(await pg.evaluate(() => location.hash) === '#/more' && (await current(pg)) === 'Menu', 'Back again: the More list');
   await pg.goBack(); await pg.waitForFunction(() => location.hash === '#/today'); ok((await current(pg)) === 'Today', 'Back again: Today');
