@@ -140,3 +140,10 @@ html.fx .today.t2 .br.open .br-panel{transition:grid-template-rows var(--dur-2) 
 html.fx .today.t2 .br-inner{opacity:0;transform:translateY(-4px);transition:opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--ease)}
 html.fx .today.t2 .br.open .br-inner{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){html .today.t2 :is(.br-hit,.pickrow,.bix,.br-panel,.br-inner,.svi){transition:none;transform:none}html .today.t2 .br-chev svg{transition:none}}
+/* 11 Nov 2026: reserve the two lines that change when prices arrive (shell.mjs "delayed screen" CLS < 0.01).
+   The price word grows from "Checking prices" to its final word, and "Prices: …" grows when the observation lands;
+   either one re-wrapping moved the whole card below. Each now holds its slot. */
+html .today.t2 .brief-fresh{flex-direction:column;align-items:flex-start}
+html .today.t2 .brief-fresh .bf-px{min-height:2lh}
+html .today.t2 .t-sess-row .livebadge{min-width:15ch;justify-content:flex-start}
+html .today.t2 .brief-top{min-height:2lh;align-items:flex-start}
