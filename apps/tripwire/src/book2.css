@@ -1,0 +1,141 @@
+/* The Book, revamp v2 (11 Nov 2026): three views (Positions, Picks, Record), the Positions departure board, the slot gauge, the per-trade R bars. Imported last in app.css, so it wins.
+   Tokens only (no hex, no rgb, no font family). Nothing here moves unless it sits under html.fx, and then only transform and opacity; prefers-reduced-motion switches html.fx off at the source
+   and is checked again here. Heights that load late are reserved so the page does not jump. */
+
+/* ---- the three views ---- */
+.bk-page .bk-tabs{margin-bottom:var(--sp-4)}
+.bk-page .bk-tabs button{min-height:var(--hit);font-size:var(--fs-data)}
+.bk-page .bk-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#bk-panel{min-height:60vh}
+
+/* ---- the top strip: the gauge and three big numbers ---- */
+.bk{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
+.bk>*{margin:0}
+.bk-strip{display:grid;grid-template-columns:minmax(0,124px) minmax(0,1fr);grid-template-areas:"g p" "o c" "l l" "e e";gap:var(--sp-4);align-items:center;padding:var(--card-pad);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-grad);box-shadow:var(--shadow-raised);min-height:248px}
+.bk-gauge{grid-area:g;margin:0;display:grid;justify-items:center}
+.bk-gauge svg{width:100%;height:auto;display:block;aspect-ratio:200/112}
+.bk-gauge circle.on{fill:var(--accent)}
+.bk-gauge circle.off{fill:var(--surface-3)}
+.bk-gauge .g-num{fill:var(--ink);font:800 50px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.bk-gauge .g-cap{fill:var(--ink-3);font:600 13px/1 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.bk-pnl{grid-area:p}.bk-open{grid-area:o}.bk-closed{grid-area:c}
+.bk-fig{display:grid;gap:2px;min-width:0;align-content:start}
+.bk-fig .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.bk-fig b{font:800 clamp(1.5rem,7vw,2.25rem)/1.05 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums lining-nums;color:var(--ink);overflow-wrap:anywhere}
+.bk-fig b.up{color:var(--up)}.bk-fig b.down{color:var(--down)}
+.bk-fig b small{font-size:.5em;font-weight:600;color:var(--ink-3);letter-spacing:0}
+.bk-note{font-size:var(--fs-data);color:var(--ink-2)}
+.bk-note.up{color:var(--up)}.bk-note.down{color:var(--down)}
+.bk-live{grid-area:l;display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--line);min-height:var(--hit)}
+.bk-live b.up{color:var(--up)}.bk-live b.down{color:var(--down)}
+.bk-err{grid-area:e;margin:0}
+@media(min-width:700px){
+  .bk-strip{grid-template-columns:200px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);grid-template-areas:"g p o c" "l l l l" "e e e e";min-height:200px}
+  .bk-fig b{font-size:2.5rem}
+}
+
+/* ---- filters: one line that scrolls sideways on a phone, so the board starts high ---- */
+.bk-filters{display:flex;gap:var(--sp-2);overflow-x:auto;scrollbar-width:none;max-width:100%}
+.bk-filters::-webkit-scrollbar{display:none}
+.bk-chip{flex:0 0 auto;white-space:nowrap}
+@media(min-width:700px){.bk-filters{flex-wrap:wrap;overflow:visible}}
+
+/* ---- filters ---- */
+.bk-chip{display:inline-flex;align-items:center;gap:6px;min-height:var(--hit);padding:0 var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-pill);background:var(--surface);color:var(--ink-2);font-size:var(--fs-data);font-weight:600}
+.bk-chip .num{color:var(--ink-3);font-weight:600}
+.bk-chip[aria-pressed=true] .num{color:var(--accent)}
+.bk-chip:disabled{opacity:.45}
+.bk-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bk-order{margin:calc(var(--sp-2) * -1) 0 0}
+
+/* ---- the board: one row per position ---- */
+.bk-board{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3)}
+.bk-board .pcard{margin:0}
+.pc-row .pc-head{display:grid;grid-template-columns:minmax(0,1fr) auto var(--icon);align-items:center;gap:var(--sp-3);padding:var(--sp-4) var(--sp-4) var(--sp-2) var(--sp-4);min-height:calc(var(--hit) + var(--sp-4))}
+.pc-row .pc-head .pc-chev{position:static;align-self:center}
+.pc-row .pc-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--radius-card)}
+.pr-id{display:grid;gap:var(--sp-1);min-width:0}
+.pr-symline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);min-width:0}
+.pc-row .pc-sym{font:800 1.25rem/1.2 var(--font);letter-spacing:var(--track-tight)}
+.pr-chips{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1)}
+.pr-chips .ds-pill,.pr-chips .pill{font-size:var(--fs-label)}
+.own-chip{display:inline-flex;align-items:center;height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--ink-2)}
+.own-chip.you{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
+.pr-sub{font-size:var(--fs-data);color:var(--ink-3);overflow-wrap:anywhere}
+.pr-state{color:var(--ink-2);font-weight:600}
+.pr-state.up{color:var(--up)}.pr-state.down{color:var(--down)}
+.pr-near.down{color:var(--down)}.pr-near.up{color:var(--up)}
+.pr-pnl{display:grid;justify-items:end;text-align:right;gap:2px;min-width:0}
+.pc-row .pc-big{font:800 1.375rem/1.1 var(--font);letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
+.pc-row .pc-r{font-size:var(--fs-data);white-space:nowrap}
+.pc-row.near-stop{box-shadow:inset 3px 0 0 var(--down),var(--shadow-raised)}
+.pc-row.near-target{box-shadow:inset 3px 0 0 var(--up),var(--shadow-raised)}
+.pc-row .tl{padding:0 var(--sp-4) var(--sp-3)}
+.pc-row .tl-notes li{font-size:var(--fs-label);color:var(--ink-3)}
+.pc-row .pc-more{display:grid;gap:var(--sp-3);padding:var(--sp-4)}
+.pc-row .pc-more>*{margin:0}
+.pc-row .pc-name{color:var(--ink-2);font-size:var(--fs-data)}
+.pc-row .pc-mid{font:700 var(--fs-num-s)/1.15 var(--font);font-variant-numeric:tabular-nums}
+.pc-row .pc-nums{grid-template-columns:minmax(0,1fr)}
+@media(min-width:520px){.pc-row .pc-big{font-size:var(--fs-num-l)}.pc-row .pc-sym{font-size:1.375rem}}
+@media(max-width:359px){.pc-row .pc-head{gap:var(--sp-2);padding-inline:var(--sp-3)}.pc-row .pc-big{font-size:1.125rem}}
+.bk-fold>summary{min-height:var(--hit)}
+.bk-fold .bk-board{margin-top:var(--sp-3)}
+
+/* ---- Picks ---- */
+.pk{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-5)}
+.pk>*{margin:0}
+.pk-intro{margin:0}
+.pk-eng{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3)}
+.pk-eng>.card,.pk-eng>details{margin:0}
+.pk-head{display:grid;gap:var(--sp-2);padding-bottom:var(--sp-2);border-bottom:1px solid var(--line)}
+.pk-title{display:flex;align-items:center;gap:var(--sp-2)}
+.pk-title h2{margin:0;font:800 var(--fs-h2)/var(--lh-h2) var(--font);letter-spacing:var(--track-tight)}
+.pk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.pk-exp{border:1px solid var(--amber);color:var(--amber);background:var(--amber-tint)}
+.pk-line{margin:0}
+.pk-top{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3)}
+.pk-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);min-width:0;min-height:var(--hit);color:inherit;text-decoration:none}
+.pk-id .sym{font:800 1.25rem/1.2 var(--font);letter-spacing:var(--track-tight)}
+.pk-why{margin:0;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk-lv{margin:var(--sp-2) 0 0;color:var(--ink-2)}
+.pk-flag{margin:0 0 6px;color:var(--amber)}
+.pickcard .pickfoot .btn{min-height:var(--hit)}
+
+/* ---- Record ---- */
+.rec-big{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2) var(--sp-4);color:var(--ink-2);font-size:var(--fs-h3)}
+.rec-big>b:first-child{font:800 clamp(3rem,14vw,4.5rem)/1 var(--font);letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rec-big-r{font:800 clamp(1.75rem,8vw,2.5rem)/1 var(--font);letter-spacing:-.03em;margin-left:auto}
+.rec-big-r.up{color:var(--up)}.rec-big-r.down{color:var(--down)}
+.rec-verdict{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.rec-hero .rec-prog{gap:3px}
+.rec-gaps{padding:var(--sp-3);border:1px solid var(--amber);border-radius:var(--radius-input);background:var(--amber-tint)}
+.rec-bars{display:grid;gap:var(--sp-3)}
+.rb-plot{position:relative;display:flex;align-items:stretch;gap:3px;height:140px;padding:0 var(--sp-1)}
+.rb-plot::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line-2)}
+.rb{position:relative;flex:1 1 0;max-width:32px;min-width:4px}
+.rb i{position:absolute;left:0;right:0;height:50%;border-radius:3px}
+.rb.up i{bottom:50%;background:var(--up);transform-origin:bottom center}
+.rb.down i{top:50%;background:var(--down);transform-origin:top center}
+.rb.flat i{top:calc(50% - 1px);height:2px;background:var(--ink-3)}
+.rb-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-3)}
+.rb-total b{font:800 var(--fs-num-l)/1.1 var(--font)}
+.rb-total b.up{color:var(--up)}.rb-total b.down{color:var(--down)}
+.rec-ev details{margin:0}
+
+/* ---- motion: only under html.fx, only transform and opacity ---- */
+html.fx .bk-page .bk-chip,html.fx .bk-page .pickfoot .btn,html.fx .bk-page .bk-strip .btn{transition:transform var(--dur-1) var(--ease)}
+html.fx .bk-page .bk-chip:active,html.fx .bk-page .pickfoot .btn:active,html.fx .bk-page .bk-tabs button:active{transform:scale(.97)}
+html.fx .bk-page .pc-row .pc-head:active{transform:scale(.99)}
+html.fx .bk-gauge circle.on{animation:bk-dot 420ms var(--ease) both;animation-delay:calc(var(--i,0) * 8ms)}
+@keyframes bk-dot{from{opacity:0}to{opacity:1}}
+html.fx .rb i{animation:bk-grow 480ms var(--ease) both}
+@keyframes bk-grow{from{transform:scaleY(0)}}
+html.fx .pc-row .pc-more{animation:bk-open var(--dur-2) var(--ease) both}
+@keyframes bk-open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){html.fx .bk-page *{animation:none!important;transition-duration:0s!important}}
+.rec{grid-template-columns:minmax(0,1fr)}
+@media(min-width:700px){.bk-strip{min-height:0;align-content:start}}
+.tl-vis:not(:has(.tl-mk-track)){margin-top:-24px}
+.rec-verdict .ds-pill,.rec-verdict [class*=pill]{white-space:normal;height:auto;line-height:1.4}
+.rec-big,.rec-verdict,.pk-intro{max-width:none}

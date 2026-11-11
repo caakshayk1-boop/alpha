@@ -111,7 +111,7 @@ test('the renames are everywhere in the app: "Add paper trade" and "Evidence", a
   const dir = new URL('../src/', import.meta.url); const files: string[] = [];
   const walk = (d: URL) => { for (const e of readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(new URL(`${e.name}/`, d)); else if (/\.(tsx?|css)$/.test(e.name)) files.push(new URL(e.name, d).pathname); } }; walk(dir);
   const src = files.map((f) => readFileSync(f, 'utf8')).join('\n');
-  assert.ok(!/Take it myself/.test(src)); assert.ok(!/label: 'Proof'/.test(src)); assert.ok(/Add paper trade/.test(src)); assert.ok(/label: 'Evidence'/.test(src));
+  assert.ok(!/Take it myself/.test(src)); assert.ok(!/label: 'Proof'/.test(src)); assert.ok(/Add paper trade/.test(src)); assert.ok(/title="Evidence and method"/.test(src));   // 11 Nov 2026: Evidence is a section of the Record, not a tab
 });
 
 /* ---------------- attribution ---------------- */
