@@ -6,6 +6,9 @@ import { promptInstall, usePwa } from '../pwa.ts';
 /** More: every destination that is not one of the three daily ones, as a plain list. Nothing here is a feature of its own; each row is a link to a page that already exists. */
 interface Row { href: string; title: string; note: string; id: string }
 const GROUPS: { head: string; rows: Row[] }[] = [
+  { head: 'Yours', rows: [
+    { id: 'desk', href: '#/desk', title: 'My Desk', note: 'The companies you follow, your theses, journal and plans' },
+  ] },
   { head: 'Research', rows: [
     { id: 'signals', href: '#/signals', title: 'Signals', note: 'The rules that fired at the last close, your paper trades and the record' },
     { id: 'markets', href: '#/markets', title: 'Markets', note: 'Indices, commodities and the trend map' },

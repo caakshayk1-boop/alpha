@@ -5,6 +5,7 @@ import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { Loading, Failed, PageBar } from './common.tsx';
 import { freshness } from '../fresh.ts';
 import { FreshnessPill } from './FreshnessPill.tsx';
+import { BreadthGauge } from './pulse.tsx';
 import { istDay, reviewDue, current } from '../store.ts';
 import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
@@ -76,17 +77,13 @@ export function Today() {
   return <div>
     <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} />
     <div className="today">
-      {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
-      <section className="t-hero" data-hero aria-label="Research data status">
-        <FreshnessPill />
-      </section>
       {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
       {/* (a) the market takeaway FIRST, then the paragraph of measured facts, with its freshness stated */}
       {<section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} />{rg && <span className="tag" title={rg.note}>Mood {rg.word}</span>}</span></div>
-        <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
+        <div className="pulse"><BreadthGauge upPct={t.upPct} downPct={t.downPct} n={t.map.n} /><p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p></div>
         <div className="brief-ix num" role="list" aria-label="Indices">
           {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 ? <DayChart q={q} size="compact" nse good={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} label={`${nm}, latest session`} /> : <span className="small mute">Chart unavailable</span>}</span></a>; })}
         </div>
@@ -158,6 +155,8 @@ export function Today() {
       </section>}
 
       <div className="t-capture"><CaptureModule source="tripwire-today" /></div>
+      {/* how current each file is, in detail, once and at the foot: the header pill and the banner already carry the headline */}
+      <section className="t-hero t-fresh-foot" data-hero aria-label="Research data status"><FreshnessPill /></section>
       {scr.data && <p className="mute small tfoot">{scr.data.count} companies in the screen · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>{fresh ? '' : '. Picks are starting points, not recommendations.'}</p>}
       <IdentityFooter />
     </div>

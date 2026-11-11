@@ -19,5 +19,6 @@ export function StatusBar({ asOf }: { asOf?: string | null }) {
     <span className="sp" />
     <span className="data" title={holiday ?? undefined}>NSE <b className={phase === 'open' ? 'on' : phase === 'pre' ? 'pre' : 'off'}>{phase === 'open' ? 'open' : phase === 'pre' ? 'pre-open' : phase === 'holiday' ? 'holiday' : 'closed'}</b> · {hm} IST</span>
     <GatePill />
+    <a className="sb-menu" href="#/more" aria-label="Menu: My Desk, settings, data, method and help"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" /></svg></a>
   </div>;
 }
