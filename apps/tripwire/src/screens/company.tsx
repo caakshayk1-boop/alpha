@@ -158,13 +158,14 @@ export function Company({ sym }: { sym: string }) {
       : <div className="card dim">You have written nothing on {sym}. A thesis with its invalidation is the part that protects you.</div>}
 
   </>;
+  const verdict = <Verdict chips={verdictChips(c.data, grade.level, c.data.risk ? flags.length : null)} />;
   const TABS: { id: Tab; label: string }[] = [{ id: 'overview', label: 'Overview' }, { id: 'financials', label: 'Financials' }, { id: 'ownership', label: 'Ownership' }, { id: 'risks', label: 'Risks' }, { id: 'thesis', label: 'Thesis' }];
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
       <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
         {row.tier && <div className="c-pills" role="group" aria-label="Size class"><Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill></div>}</div>
-      <Verdict chips={verdictChips(c.data, grade.level, c.data.risk ? flags.length : null)} />
+      {wideAsOf && verdict}
       {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
         const rows = asOfRows(ai); const grid = <dl className="asof-grid">{rows.map((r) => <div key={r.id} className={`asof-row${r.missing ? ' miss' : ''}${r.id === 'quote' && lp.live ? ' live' : ''}`} data-asof-row={r.id}><dt>{r.k}</dt><dd className="num">{r.v}</dd></div>)}</dl>;
         const why = <details className="more asof-why"><summary>Why these dates differ</summary><div>{asOfWhy(ai)}</div></details>;
@@ -183,6 +184,7 @@ export function Company({ sym }: { sym: string }) {
         <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
       </div>}
       <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
+      {!wideAsOf && verdict}   {/* 12 Nov 2026: on a phone the verdict follows the chart, so the plot keeps its first-screen place (charts.mjs budget; CI fonts are wider) */}
       <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 
@@ -214,5 +216,5 @@ function StickyHead({ name, sym, px, ch, word }: { name: string; sym: string; px
 /** Verdict at a glance (revamp v2, 11 Nov 2026): three or four chips read off words this page already derives (verdict.ts); no new score. The basis of each is its tooltip and is spoken. */
 function Verdict({ chips }: { chips: VerdictChip[] }) {
   if (!chips.length) return null;
-  return <ul className="verdict" aria-label="Verdict at a glance" data-verdict tabIndex={0}>{chips.map((c) => <li key={c.id} className={`vchip ${c.tone}`} data-vchip={c.id} title={c.basis}><span className="vk">{c.k}</span><span className="vv">{c.glyph && <span aria-hidden="true">{c.glyph} </span>}{c.v}</span></li>)}</ul>;
+  return <ul className="verdict co-verdict" aria-label="Verdict at a glance" data-verdict tabIndex={0}>{chips.map((c) => <li key={c.id} className={`vchip ${c.tone}`} data-vchip={c.id} title={c.basis}><span className="vk">{c.k}</span><span className="vv">{c.glyph && <span aria-hidden="true">{c.glyph} </span>}{c.v}</span></li>)}</ul>;
 }

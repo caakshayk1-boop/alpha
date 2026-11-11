@@ -85,7 +85,7 @@
 .c-head .co-price{font:750 clamp(2rem,8vw,2.75rem)/1 var(--font);letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--ink)}
 .c-head .co-ch{margin-top:6px;font-size:var(--fs-body);font-weight:650}
 .c-head .co-chw{color:var(--ink-3);font-weight:500}
-.verdict{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:0;min-height:48px}
+.co-verdict{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:0;min-height:48px}
 .vchip{display:grid;gap:0;padding:5px 12px 6px;border:1px solid var(--line-2);border-radius:var(--radius-input);background:var(--bg-2);min-width:0;max-width:100%}
 .vchip .vk{font-size:.6875rem;line-height:1.2;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .vchip .vv{font-size:var(--fs-data);line-height:1.35;font-weight:650;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -94,8 +94,8 @@
 .vchip.warn{border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:var(--amber-tint)}.vchip.warn .vv{color:var(--amber)}
 /* phone: the verdict is one sideways row and the change sits beside the price, so the chart keeps its place on the first screens (charts.mjs budget) */
 @media (max-width:699px){
-  .verdict{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:var(--sp-1) calc(var(--card-pad) * -1) 0;padding:0 var(--card-pad);min-height:34px}
-  .verdict::-webkit-scrollbar{display:none}
+  .co-verdict{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:var(--sp-3) 0;padding:2px 0;min-height:34px}   /* below the chart on a phone (company.tsx), outside the head card */
+  .co-verdict::-webkit-scrollbar{display:none}
   .vchip{flex:0 0 auto;display:flex;align-items:baseline;gap:6px;padding:6px 10px}   /* label and word on one line: the chips are read, not tapped */
   .c-head .co-px{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:var(--sp-3)}
   .c-head .co-ch{margin-top:0}
@@ -108,7 +108,7 @@
 @media (min-width:900px){
   .c-head{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--sp-6);align-items:center}
   .c-head>.co-hero{gap:var(--sp-4);justify-content:flex-start}
-  .c-head>.verdict{margin:0;justify-content:flex-end;min-height:0}
+  .c-head>.co-verdict{margin:0;justify-content:flex-end;min-height:0}
   .c-head>.asof{grid-column:1/-1}
 }
 
@@ -142,13 +142,13 @@
 .disc .rs-preset,.disc .rs-name,.vchip,.nwp .nwp-filter,.nwp .nw-refresh-icon .icon-btn,.disc .dl-card .discover-actions .icon-btn{transition:transform var(--dur-1) var(--ease),opacity var(--dur-1) var(--ease)}
 .disc .rs-preset:active,.disc .rs-name:active,.nwp .nwp-filter:active,.nwp .nw-refresh-icon .icon-btn:active,.disc .dl-card .discover-actions .icon-btn:active{transform:scale(.97)}
 @keyframes rs-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-html.fx .verdict .vchip{animation:rs-rise var(--dur-3) var(--ease) both}
-html.fx .verdict .vchip:nth-child(2){animation-delay:40ms}html.fx .verdict .vchip:nth-child(3){animation-delay:80ms}html.fx .verdict .vchip:nth-child(4){animation-delay:120ms}
+html.fx .co-verdict .vchip{animation:rs-rise var(--dur-3) var(--ease) both}
+html.fx .co-verdict .vchip:nth-child(2){animation-delay:40ms}html.fx .co-verdict .vchip:nth-child(3){animation-delay:80ms}html.fx .co-verdict .vchip:nth-child(4){animation-delay:120ms}
 html.fx .nwp .nwp-group{animation:rs-rise var(--dur-3) var(--ease) both}
 @keyframes rs-spin{to{transform:rotate(360deg)}}
 html.fx .nwp .nw-refresh-icon.is-checking .ic{animation:rs-spin 900ms linear infinite}
 @media (prefers-reduced-motion:reduce){
   .disc .rs-preset,.disc .rs-name,.vchip,.nwp .nwp-filter,.nwp .nw-refresh-icon .icon-btn,.disc .dl-card .discover-actions .icon-btn{transition:none}
   .disc .rs-preset:active,.disc .rs-name:active,.nwp .nwp-filter:active,.nwp .nw-refresh-icon .icon-btn:active,.disc .dl-card .discover-actions .icon-btn:active{transform:none}
-  html.fx .verdict .vchip,html.fx .nwp .nwp-group,html.fx .nwp .nw-refresh-icon.is-checking .ic{animation:none}
+  html.fx .co-verdict .vchip,html.fx .nwp .nwp-group,html.fx .nwp .nw-refresh-icon.is-checking .ic{animation:none}
 }
