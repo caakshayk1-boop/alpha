@@ -25,8 +25,8 @@ import { DecisionCard } from './DecisionCard.tsx';
 import { CompanyNews } from './News.tsx';
 import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 import { fmtIst } from '../stamp.ts';
-import { changeLine } from '../overview.ts';
 import { Pill } from '../components/index.ts';
+import { verdictChips, type VerdictChip } from '../verdict.ts';
 import { FirstThought } from './firstthought.tsx';
 import { NotFound } from './notfound.tsx';
 import { ResearchRead } from './ResearchRead.tsx';
@@ -85,11 +85,11 @@ export function Company({ sym }: { sym: string }) {
   const riskNote = [grade.level ? riskSentence(grade.level, flags.length) : null, mainRisk.note].filter(Boolean).join(' ') || null;
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id, sym })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   const overview = <>
-    <section className="card" aria-label="What changed and the trend">
-      <p className="small" style={{ margin: '12px 0 0' }}><span className="k">What changed</span><br />{changeLine(row, lp.ch ?? null, lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day')}</p>
+    {/* revamp v2 (11 Nov 2026): the day's change and the trend tag are in the hero, the distance from the high is in the range row below; this card says each of them nowhere else */}
+    <section className="card co-range" aria-label="Range and trend">
+      <p className="small" style={{ margin: '12px 0 0' }}><span className="k">Range and trend</span>{isNum(row.r1m) ? <><br /><span className={`num ${tone(row.r1m)}`}>{pct(row.r1m)}</span> <span className="dim">over a month</span></> : null}</p>
       {(() => { const tr = trendOf(row); const short = { up: 'All four trend rules hold.', down: 'All four mirrored rules hold.', mixed: 'It meets neither the uptrend nor the downtrend rule.' };
-        return tr.trend ? <div style={{ margin: '12px 0 0' }}><p className="small" style={{ margin: 0 }}><span className={`tag ${tr.trend === 'up' ? 'lime' : tr.trend === 'down' ? 'peach' : ''}`}>{tr.trend === 'up' ? '↑' : tr.trend === 'down' ? '↓' : '→'} {TREND_WORD[tr.trend]}</span> <span className="dim">{short[tr.trend]}{lp.fromQuote ? ' Measured at the last close.' : ''}</span></p>
-          <details className="more"><summary>Why this trend</summary><div><p style={{ margin: '0 0 6px' }}>{tr.detail}</p><p style={{ margin: 0 }}>The rule for an uptrend: {TREND_RULE_TEXT.up}. A downtrend is {TREND_RULE_TEXT.down}. Anything else is sideways. It describes the past and forecasts nothing.</p></div></details></div>
+        return tr.trend ? <details className="more"><summary>Why this trend</summary><div><p style={{ margin: '0 0 6px' }}>{short[tr.trend]}{lp.fromQuote ? ' Measured at the last close.' : ''} {tr.detail}</p><p style={{ margin: 0 }}>The rule for an uptrend: {TREND_RULE_TEXT.up}. A downtrend is {TREND_RULE_TEXT.down}. Anything else is sideways. It describes the past and forecasts nothing.</p></div></details>
           : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
       {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
@@ -116,9 +116,8 @@ export function Company({ sym }: { sym: string }) {
     <CompanyNews name={row.name} sym={row.sym} />
     <Head>Calendar</Head>
     <div className="card"><div className="list">
-      <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data{row.stale ? <b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b> : null}</span></div>
+      {row.stale && <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data<b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b></span></div>}
       <div className="li"><span className="tag">{row.next_earnings ? dayWord(row.next_earnings) : 'Unknown'}</span><span className="grow dim">{row.next_earnings ? 'Next results, estimated date' : 'No results date is published'}</span></div>
-      <div className="li"><span className="tag">{row.fy ?? 'Unknown'}</span><span className="grow dim">Latest fiscal year held</span></div>
     </div><p className="mute small" style={{ margin: '8px 0 0' }}>Announcements and corporate actions are not in this data yet. Read the exchange filings for those.</p></div>
 
     <Intel c={c.data} rows={scr.data?.rows ?? []} only={['season']} />
@@ -128,11 +127,10 @@ export function Company({ sym }: { sym: string }) {
     <FinancialCharts years={c.data.years ?? []} margins={meaningful(el!, 'margin')} />
     {el!.notes.length > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Margin, ROCE and debt-to-equity are withheld for this company (reason in the Risks section), not shown as zero.</p>}
     <div className="card" style={{ padding: '2px 14px', marginTop: 10 }}><div className="list">
-      <Metric id="pe" label={rp.basis === 'live' ? `PE (trailing), at the ${pxWord} price` : 'PE (trailing), at the close'} v={x1(rp.pe)} />
-      {meaningful(el!, 'roce') && <Metric id="roce" label="ROCE (median)" v={pct(row.roce_med, 1, false)} />}
+      {/* revamp v2: PE at the close, the median ROCE and revenue growth are printed once, in the one-minute read above; PE is listed here only when the live price has moved it */}
+      {rp.basis === 'live' && <Metric id="pe" label={`PE (trailing), at the ${pxWord} price`} v={x1(rp.pe)} />}
       {meaningful(el!, 'leverage') && <Metric id="de" label="Debt to equity" v={x1(row.de, 2)} />}
       {meaningful(el!, 'margin') && <Metric id="net_margin" label="Net margin" v={pct(row.net_margin, 1, false)} />}
-      <Metric id="rev_cagr" label="Revenue growth, 3y" v={pct(row.rev_cagr, 1)} />
       <Metric id="rsi" label="RSI (14)" v={x1(row.rsi, 0)} />
       <Metric id="rs3m" label="Against the Nifty, 3m" v={isNum(row.rs3m) ? `${row.rs3m > 0 ? '+' : '−'}${Math.abs(row.rs3m).toFixed(1)} pts` : dash} />
       <Metric id="turnover_cr" label="Traded value a day" v={cr(row.turnover_cr)} />
@@ -164,8 +162,9 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
-      <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
+      <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
         {row.tier && <div className="c-pills" role="group" aria-label="Size class"><Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill></div>}</div>
+      <Verdict chips={verdictChips(c.data, grade.level, c.data.risk ? flags.length : null)} />
       {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
         const rows = asOfRows(ai); const grid = <dl className="asof-grid">{rows.map((r) => <div key={r.id} className={`asof-row${r.missing ? ' miss' : ''}${r.id === 'quote' && lp.live ? ' live' : ''}`} data-asof-row={r.id}><dt>{r.k}</dt><dd className="num">{r.v}</dd></div>)}</dl>;
         const why = <details className="more asof-why"><summary>Why these dates differ</summary><div>{asOfWhy(ai)}</div></details>;
@@ -210,4 +209,10 @@ function StickyHead({ name, sym, px, ch, word }: { name: string; sym: string; px
   const [shown, setShown] = useState(false);
   useEffect(() => { const el = document.querySelector('.c-head'); if (!el || typeof IntersectionObserver === 'undefined') return; const io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting && e.boundingClientRect.top < 0), { threshold: 0 }); io.observe(el); return () => io.disconnect(); }, []);
   return <div className="co-sticky" data-shown={shown || undefined} aria-hidden={!shown}><div className="co-sticky-in"><b className="trunc">{name}</b><span className="mute small">{sym}</span><span className="grow" /><span className="num">{px}</span><span className={`num small ${tone(ch)}`}>{pct(ch)} <span className="mute">{word}</span></span></div></div>;
+}
+
+/** Verdict at a glance (revamp v2, 11 Nov 2026): three or four chips read off words this page already derives (verdict.ts); no new score. The basis of each is its tooltip and is spoken. */
+function Verdict({ chips }: { chips: VerdictChip[] }) {
+  if (!chips.length) return null;
+  return <ul className="verdict" aria-label="Verdict at a glance" data-verdict>{chips.map((c) => <li key={c.id} className={`vchip ${c.tone}`} data-vchip={c.id} title={c.basis}><span className="vk">{c.k}</span><span className="vv">{c.glyph && <span aria-hidden="true">{c.glyph} </span>}{c.v}</span></li>)}</ul>;
 }

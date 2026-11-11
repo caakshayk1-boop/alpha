@@ -161,3 +161,21 @@ export function todayTabCounts(pool: NewsEvent[], l: Lists, nowMs: number): Reco
   const n = (tab: Tab) => todayList(pool, tab, l, nowMs).length;
   return { all: n('all'), market: n('market'), following: n('following'), paper: n('paper') };
 }
+
+/* ---------- the News page: grouped by what an event is about (revamp v2, 11 Nov 2026) ---------- */
+/** The sections of the News page, in reading order. Each event lands in exactly ONE section, the first that claims it:
+ *    yours   a name the reader FOLLOWS (an event that also names a paper-book holding stays here, with `inPaper` set, so its headline is not printed twice)
+ *    paper   a paper-book name the reader does not follow
+ *    market  an India-wide event (no single company)
+ *    other   a covered company in none of the reader's lists (only reached when the "every covered name" filter is on)
+ *  The order inside a section is the order of the list passed in (the archive's newest-first). No event is dropped and none is repeated. */
+export type NewsGroupId = 'yours' | 'paper' | 'market' | 'other';
+export const NEWS_GROUPS: { id: NewsGroupId; label: string }[] = [{ id: 'yours', label: 'Your names' }, { id: 'paper', label: 'Paper book' }, { id: 'market', label: 'Market' }, { id: 'other', label: 'Other covered names' }];
+export interface NewsGroupItem { ev: NewsEvent; inPaper: boolean }
+export interface NewsGroup { id: NewsGroupId; label: string; items: NewsGroupItem[] }
+export const groupOf = (ev: NewsEvent, l: Lists): NewsGroupId => (inFollowing(ev, l) ? 'yours' : inPaper(ev, l) ? 'paper' : isMarket(ev) ? 'market' : 'other');
+export function groupNews(events: readonly NewsEvent[], l: Lists): NewsGroup[] {
+  const seen = new Set<string>(); const by: Record<NewsGroupId, NewsGroupItem[]> = { yours: [], paper: [], market: [], other: [] };
+  for (const ev of events) { if (seen.has(ev.eventClusterId)) continue; seen.add(ev.eventClusterId); const g = groupOf(ev, l); by[g].push({ ev, inPaper: g === 'yours' && inPaper(ev, l) }); }
+  return NEWS_GROUPS.map((g) => ({ ...g, items: by[g.id] }));
+}

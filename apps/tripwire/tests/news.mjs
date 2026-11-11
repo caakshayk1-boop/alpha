@@ -19,6 +19,9 @@ const rows = (pg) => pg.locator('section.nw .nw-list > .nw-row');
 const heads = (pg) => rows(pg).locator('.nw-head').allInnerTexts();
 const tab = async (pg, name) => { await pg.locator('.nw-tabs .chip', { hasText: name }).first().click(); await pg.waitForTimeout(150); };
 const nowS = () => Math.floor(Date.now() / 1000);
+/* 11 Nov 2026 (revamp v2): the News page's filters sit behind one Filter button that opens the shared sheet; it replaced the "More filters" drawer and the "Show summaries" button. */
+const filters = async (pg) => { if (!(await pg.locator('[role=dialog]').count())) { await pg.locator('[data-news-filter]').click(); await pg.waitForSelector('[role=dialog]'); } };
+const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count()) { await pg.keyboard.press('Escape'); await pg.waitForTimeout(200); } };
 
 /* 1. default reader: follows TCS and GCSL, paper book TCS */
 {
@@ -68,7 +71,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();
   const o = await open(STATE, { seen: nowS() - 3 * 24 * 3600 }); await o.pg.goto(base + '/#/news'); await o.pg.waitForSelector('.nw-row', { timeout: 20000 });
-  await o.pg.locator('[data-more-filters] > summary').click(); await o.pg.getByLabel('Period').selectOption('14'); await o.pg.waitForTimeout(200);
+  await filters(o.pg); await o.pg.getByLabel('Period').selectOption('14'); await o.pg.waitForTimeout(200); await closeFilters(o.pg);
   const buy = o.pg.locator('.nw-row', { hasText: 'buyback of ₹15,000' }); ok(await buy.count() === 1 && await buy.locator('.nw-tag', { hasText: /^New$/ }).count() === 0, 'an old event first seen an hour ago is not New, however recently it was fetched');
   await o.ctx.close();
   const z = await open(STATE, { seen: 0 }); await z.pg.goto(base + '/#/today'); await z.pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
@@ -134,13 +137,23 @@ const nowS = () => Math.floor(Date.now() / 1000);
   await pg.locator('details.nw-method > summary').click();
   const dl = await pg.locator('dl.nw-times').innerText(); ok(/Last successful check\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl) && /Latest check/.test(dl) && /Next check due\s*\n?\s*(?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(dl), `three separate times: ${dl.replace(/\n/g, ' ')}`);
   await pg.locator('details.nw-method > summary').click();
-  const n0 = await pg.locator('.nw-row').count(); await pg.locator('[data-more-filters] > summary').click(); await pg.getByLabel('Include other updates').check(); await pg.waitForTimeout(200);
+  /* revamp v2: the page is grouped by what each event is about, each event once */
+  const groups = await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')));
+  ok(groups.join() === 'yours,paper,market', `the News page is three sections in order: Your names, Paper book, Market (${groups.join()})`);
+  const allHeads = await pg.locator('.nw-row .nw-head').allInnerTexts(); ok(allHeads.length === new Set(allHeads).size, 'no headline is printed twice across the sections');
+  const tq = pg.locator('[data-news-group="yours"] .nw-row', { hasText: 'TCS Q2 net profit' }); ok(await tq.count() === 1 && await tq.locator('.nw-inpaper').count() === 1 && await pg.locator('[data-news-group="paper"] .nw-row', { hasText: 'TCS Q2 net profit' }).count() === 0, 'a followed name also in the paper book is listed once, under Your names, with an In paper book chip');
+  ok(/3 sources/.test(await tq.locator('.nw-meta').innerText()) && await tq.locator('.nw-meta .nw-tag').count() >= 1 && await tq.locator('[data-clock="published"]').isVisible(), 'a row carries its source count, its category and its published time');
+  ok(/^Your names\s*3/.test((await pg.locator('#nwg-yours').innerText()).trim()) && /^Market\s*2/.test((await pg.locator('#nwg-market').innerText()).trim()), 'each section says how many events it holds');
+  ok(await pg.locator('.bar .nw-health .nw-state').isVisible() && /Fresh/.test(await pg.locator('.bar .nw-health .nw-state').innerText()) && await pg.locator('.bar').getByRole('button', { name: 'Check for updates' }).count() === 1, 'the freshness word and a check-for-updates icon button sit in the header');
+  ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).count() === 0 && await pg.locator('[data-more-filters]').count() === 0, 'no separate summaries button or filter drawer: one Filter button');
+  const n0 = await pg.locator('.nw-row').count(); await filters(pg); await pg.getByLabel('Include other updates').check(); await pg.waitForTimeout(200);
   const pune = pg.locator('.nw-row', { hasText: 'Pune' }); ok(await pg.locator('.nw-row').count() > n0 && /time unknown/.test(await pune.innerText()) && !/just now/.test(await pune.innerText()), 'an undated story shows "time unknown", never "just now"');
   await pg.getByLabel('Period').selectOption('14'); await pg.getByLabel('Category').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');
+  ok(/Filter · 3/.test(await pg.locator('[data-news-filter]').innerText().catch(() => '')) || /Filter · 3/.test(await pg.locator('[data-news-filter]').textContent()), 'the Filter button counts the filters in force'); await closeFilters(pg);
   ok(await pg.locator('details.nw-method').count() === 1 && /Pipeline news-pipe-1/.test(await pg.locator('details.nw-method').innerText().catch(() => '')) || true, 'the methodology drawer is on the page');
-  await pg.locator('details.nw-method > summary').click(); const m = await pg.locator('details.nw-method').innerText(); ok(/news-rank-1/.test(m) && /Nothing is ever admitted by a "wider match"/.test(m) && /refused/i.test(m) && /quote_page|quote page/i.test(m), 'matching rules, weights, dedup method and refusal counts are behind Details');
+  await closeFilters(pg); await pg.locator('details.nw-method > summary').click(); const m = await pg.locator('details.nw-method').innerText(); ok(/news-rank-1/.test(m) && /Nothing is ever admitted by a "wider match"/.test(m) && /refused/i.test(m) && /quote_page|quote page/i.test(m), 'matching rules, weights, dedup method and refusal counts are behind Details');
   /* Phase 4: one event, several outlets: every outlet is a visible link; two clocks on every row; grouped categories */
-  await pg.getByLabel('Category').selectOption(''); await pg.waitForTimeout(200);
+  await filters(pg); await pg.getByLabel('Category').selectOption(''); await pg.waitForTimeout(200); await closeFilters(pg);
   const tcs = pg.locator('.nw-row', { hasText: 'TCS Q2 net profit' }).first(); const cov = tcs.locator('[data-cover]');
   ok(!await cov.isVisible() && await tcs.locator('[data-clock="published"]').isVisible(), 'headline retains publication age; secondary outlets are behind evidence');
   ok(await tcs.locator('a.nw-entity[href="#/c/TCS"]').count() === 1, 'the verified company links directly to its evidence');
@@ -148,7 +161,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   ok(await cov.isVisible() && await cov.locator('a[href^="http"]').count() === 3, 'opening evidence reveals all three source links once');
   const clocks = await tcs.locator('[data-clocks]').innerText(); const head = await tcs.locator('[data-clock="published"]').innerText(); ok(/ ago$/.test(head.trim()) && /^Collected .+ ago/.test(clocks.trim()), 'collection stays separate from publication, inside the evidence disclosure');
   const dates = await tcs.locator('[data-dates]').innerText(); ok(/Published \(the outlet's own time\)/.test(dates) && /Collected \(first seen by Tripwire's check\)/.test(dates) && /Results and earnings/.test(dates), 'the drawer names both clocks and the category');
-  ok(await pg.locator('select[aria-label],label:has-text("Category") select').first().locator('optgroup').count() >= 2, 'categories group the event types');
+  await filters(pg); ok(await pg.locator('select[aria-label],label:has-text("Category") select').first().locator('optgroup').count() >= 2, 'categories group the event types');
   await pg.getByLabel('Category').selectOption('cat:rules'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() >= 1 && (await pg.locator('.nw-row .nw-tag').allInnerTexts()).every((t) => !/^(Results|Deal)$/.test(t.trim()) || t.trim() === 'Regulator' || true), 'a category narrows the archive to its types');
   ok(await pg.locator('a[href="#/news"]').count() >= 0, 'ok'); ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
 }
@@ -168,7 +181,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   await pg.getByRole('button', { name: 'Show summaries', exact: true }).click();
   ok(await pg.locator('section.nw .nw-row > .nw-summary').count() > 0, 'reader can reveal permitted publisher summaries');
   await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row');
-  ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).getAttribute('aria-pressed') === 'true', 'reading preference carries from Today into News');
+  await filters(pg); ok(await pg.getByLabel('Show publisher summaries').isChecked(), 'reading preference carries from Today into News (11 Nov 2026: a checkbox in the News filter sheet)'); await closeFilters(pg);
   ok(await pg.evaluate(() => localStorage.getItem('tripwire:v1')) === stored, 'news preferences leave research and paper state unchanged');
   for (const width of [320, 390, 1280]) {
     await pg.setViewportSize({ width, height: 844 });

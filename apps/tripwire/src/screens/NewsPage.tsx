@@ -3,9 +3,11 @@ import { useAppState } from '../app.tsx';
 import { useAutoBook } from '../book.ts';
 import { lastVisitSec, markVisited, useNewsBoard } from '../news.ts';
 import { newsViewState, plural } from '../newshealth.ts';
-import { archiveList, archiveTabCounts, countsLine, newsCounts, NEWS_CATEGORIES, typeFilterValue, typesFromValue, TABS, type ArchiveFilter, type Lists, type Tab } from '../newsview.ts';
+import { archiveList, countsLine, groupNews, newsCounts, NEWS_CATEGORIES, typeFilterValue, typesFromValue, type ArchiveFilter, type Lists, type NewsGroupId } from '../newsview.ts';
+import { Icon } from '../ui.tsx';
+import { FilterSheet } from '../components/index.ts';
 import { PageBar } from './common.tsx';
-import { NewsHealthLine, NewsCheckTimes, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab, useNewsPreference, NewsReadingControl } from './News.tsx';
+import { NewsHealthLine, NewsCheckTimes, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab, useNewsPreference } from './News.tsx';
 import { REJECT } from '../../news/rules.js';
 import { EVENT_TYPES } from '../../news/events.js';
 
@@ -16,43 +18,53 @@ export function usePaperSyms(): string[] {
 }
 const DAYS = [{ d: 2, l: 'Last 2 days' }, { d: 7, l: 'Last 7 days' }, { d: 14, l: 'Last 14 days' }];
 const PAGE = 40;
+const NO_FILTER: ArchiveFilter = { tab: 'all', types: [], days: 7, includeOther: false, covered: false, text: '' };
+const GROUP_EMPTY: Record<NewsGroupId, string> = { yours: 'Nothing for the names you follow under these filters.', paper: 'Nothing for the paper book under these filters.', market: 'No India-wide event under these filters.', other: '' };
 
-/** The News page: the whole archive of what the checks kept, with the health of the checks, filters and the methodology in a Details drawer. #/news */
+/** The News page (revamp v2, 11 Nov 2026): one list grouped by what each event is about (Your names, Paper book, Market), every event once (newsview.ts#groupNews); the freshness word and the
+ *  check-for-updates button in the header; every filter behind one Filter button. The archive rules, the counts and the methodology are unchanged. #/news */
 export function NewsPage() {
   const s = useAppState(); const paper = usePaperSyms(); const lists = useMemo<Lists>(() => ({ follows: s.follows, paper }), [s.follows, paper]);
   const b = useNewsBoard(lists); const [seen] = useState(() => lastVisitSec());
-  const [f, setF] = useState<ArchiveFilter>({ tab: 'all', types: [], days: 7, includeOther: false, covered: false, text: '' }); const [shown, setShown] = useState(PAGE);
+  const [f, setF] = useState<ArchiveFilter>(NO_FILTER); const [shown, setShown] = useState(PAGE); const [sheet, setSheet] = useState(false);
   useEffect(() => { document.title = 'News · Tripwire'; const t = window.setTimeout(() => markVisited(), 4000); return () => window.clearTimeout(t); }, []);
-  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const counts = useMemo(() => archiveTabCounts(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const nc = useMemo(() => newsCounts(rows), [rows]);
+  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const nc = useMemo(() => newsCounts(rows), [rows]);
+  const groups = useMemo(() => groupNews(rows, lists), [rows, lists]);
   const types = useMemo(() => EVENT_TYPES.filter((t: string) => t !== 'Update' && b.pool.some((e) => e.eventType === t)), [b.pool]);
   const set = (p: Partial<ArchiveFilter>) => { setF({ ...f, ...p }); setShown(PAGE); };
   const [summaries, setSummaries] = useNewsPreference('summaries');
+  const changed = [f.types.length > 0, f.days !== 7, f.includeOther, f.covered, f.text.trim() !== ''].filter(Boolean).length;
   const snap = b.snapshot;
-  return <div className="nw">
-    <PageBar title="News" onBack sub="Company events. Evidence on demand." />
-    <NewsHealthLine h={b.health} />
+  let budget = shown;   // "Show more" reveals the grouped list in reading order: the first PAGE rows across the sections, then the next
+  return <div className="nw nwp">
+    <PageBar title="News" onBack sub={<span className="nwp-line" aria-hidden="true">{b.health.line}</span>} right={<span className="nwp-fresh"><NewsHealthLine h={b.health} compact /><RefreshControl icon state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></span>} />
     <p className="sr" data-news-view>{view}</p>
-    <div className="nw-tabs" role="group" aria-label="Which updates">{TABS.map((t) => <button key={t.id} className="chip" aria-pressed={f.tab === t.id} aria-label={`${t.label}: ${counts[t.id as Tab]} ${counts[t.id as Tab] === 1 ? 'event' : 'events'}`} onClick={() => set({ tab: t.id as Tab })}>{t.label} <span className="num mute">{counts[t.id as Tab]}</span></button>)}</div>
-    <div className="nwp-filters">
-      <label><input type="search" placeholder="Search headline or symbol" aria-label="Search headline or symbol" value={f.text} onChange={(e) => set({ text: e.target.value })} /></label>
+    <div className="nwp-bar">
+      <p className="nwp-count num" role="status">{b.loading ? 'Loading…' : countsLine(nc)}</p>
+      <button className="chip dbtn nwp-filter" onClick={() => setSheet(true)} aria-haspopup="dialog" data-news-filter><Icon n="filter" />Filter{changed ? ` · ${changed}` : ''}</button>
     </div>
-    <details className="nwp-more" data-more-filters open={f.types.length > 0 || f.days !== 7 || f.includeOther || f.covered}><summary>More filters{f.types.length > 0 || f.days !== 7 || f.includeOther || f.covered ? ` (${[f.types.length > 0, f.days !== 7, f.includeOther, f.covered].filter(Boolean).length} changed)` : ''}</summary>
-    <div className="nwp-filters">
-      <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
-        return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
-      <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
-      <label><input type="checkbox" checked={f.includeOther} onChange={(e) => set({ includeOther: e.target.checked })} /> Include other updates</label>
-      <label><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
-    </div></details>
     <UpdateOffer n={b.pending} apply={b.apply} />
-    <div className="nw-foot" style={{ marginTop: 0, marginBottom: 6 }}><p className="nwp-count" role="status">{b.loading ? 'Loading…' : countsLine(nc)}</p></div>
-    <div className="nw-foot nw-toolbar"><NewsReadingControl summaries={summaries} setSummaries={setSummaries} /><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
-    <div className="card" style={{ padding: '2px 14px 8px' }}>
-      {b.loading ? <div className="nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '90%' }} /><div className="sk" style={{ height: 14, width: '65%' }} /></div>
-        : rows.length ? <ul className="nw-list">{rows.slice(0, shown).map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} label summaries={summaries} />)}</ul>
-        : <EmptyTab tab={f.tab} lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} view={view} />}
-      {rows.length > shown && <div className="nw-foot"><button className="btn sm" onClick={() => setShown(shown + PAGE)}>{`Show ${Math.min(PAGE, rows.length - shown)} more`}</button><span className="small mute">{shown} of {rows.length}</span></div>}
-    </div>
+    {b.loading ? <div className="card nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '90%' }} /><div className="sk" style={{ height: 14, width: '65%' }} /></div>
+      : !rows.length ? <div className="card nwp-empty"><EmptyTab tab="all" lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} view={view} /></div>
+      : groups.filter((g) => g.id !== 'other' || g.items.length).map((g) => { const items = g.items.slice(0, Math.max(0, budget)); budget -= items.length;
+        return <section key={g.id} className="nwp-group" data-news-group={g.id} aria-labelledby={`nwg-${g.id}`}>
+          <h2 className="nwp-gh" id={`nwg-${g.id}`}>{g.label}<span className="nwp-n num" aria-label={`, ${plural(g.items.length, 'event')}`}>{g.items.length}</span></h2>
+          {g.items.length === 0 ? (g.id === 'yours' && lists.follows.length === 0 ? <p className="nwp-none">You follow no companies yet. <a href="#/discover">Find companies in Research</a>; their verified updates are listed here, never filled from the paper book.</p> : <p className="nwp-none">{g.id === 'paper' && groups[0].items.some((x) => x.inPaper) ? 'Its names with news are ones you follow: they are listed once, under Your names, marked In paper book.' : GROUP_EMPTY[g.id]}</p>)
+            : items.length ? <ul className="nw-list card">{items.map(({ ev, inPaper }) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} summaries={summaries} board inPaper={inPaper} />)}</ul> : null}
+        </section>; })}
+    {rows.length > shown && <div className="nw-foot"><button className="btn sm" onClick={() => setShown(shown + PAGE)}>{`Show ${Math.min(PAGE, rows.length - shown)} more`}</button><span className="small mute">{shown} of {rows.length}</span></div>}
+    {sheet && <FilterSheet title="Filter news" onClose={() => setSheet(false)}>
+      <div className="nwp-filters">
+        <label>Search <input type="search" placeholder="Headline or symbol" aria-label="Search headline or symbol" value={f.text} onChange={(e) => set({ text: e.target.value })} /></label>
+        <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
+          return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
+        <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
+        <label className="nwp-check"><input type="checkbox" checked={f.includeOther} onChange={(e) => set({ includeOther: e.target.checked })} /> Include other updates</label>
+        <label className="nwp-check"><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
+        <label className="nwp-check"><input type="checkbox" checked={summaries} onChange={(e) => setSummaries(e.target.checked)} /> Show publisher summaries</label>
+      </div>
+      <div className="row" style={{ marginTop: 12 }}><button className="btn grow" onClick={() => { setF(NO_FILTER); setShown(PAGE); }}>Clear</button><button className="btn pri grow" onClick={() => setSheet(false)}>Show {plural(rows.length, 'event')}</button></div>
+    </FilterSheet>}
     <NewsMethod extra={<><NewsCheckTimes h={b.health} />{snap ? <>
       <p><b>The last check, by source.</b></p>
       <table className="nwp-table"><thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Answered</th><th scope="col">Failed</th></tr></thead><tbody>{snap.sources.map((x) => <tr key={x.id}><th scope="row">{x.label}</th><td>{x.status}{x.error ? ` (${x.error})` : ''}</td><td className="num">{(x.ok ?? 0) + 0}</td><td className="num">{(x.failed ?? 0) + (x.skipped ?? 0)}</td></tr>)}</tbody></table>

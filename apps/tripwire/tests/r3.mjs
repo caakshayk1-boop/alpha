@@ -24,7 +24,7 @@ ok(Math.abs(h0 - h2) < 2, `Today: the mood card does not change height when the 
 await pg.waitForSelector('.trendmap .tm-word', { timeout: 15000 });
 ok(/^(broad strength|broad weakness|mixed|no read)$/i.test((await pg.locator('.tm-word').innerText()).trim()), 'trend map: a one-word read from its printed rule');
 ok((await pg.locator('.tm-stats [role=listitem]').count()) === 5 && (await pg.locator('.tm-go a').count()) === 3, 'trend map: five breadth figures and three one-tap questions');
-await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('text=Discover'); await pg.waitForTimeout(500);
+await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('h1:text-is("Research")');   /* 11 Nov 2026: the Discover page is titled Research (revamp v2) */ await pg.waitForTimeout(500);
 ok(/Uptrend/.test(await text()), 'trend map: a question opens Discover already filtered');
 /* Today */
 await pg.goto(base + '/#/today'); await pg.waitForSelector('.pickrow');
