@@ -47,7 +47,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
   const fig = useMemo(() => (l ? figuresOf(l) : null), [l]); const sum = useMemo(() => (l ? summarizeLedger(l) : null), [l]);
   const items = useMemo(() => (l ? closedItems(l) : []), [l]);
   const gaps = useMemo(() => (l ? missingNights(l.days.map((d) => d.asOf)) : []), [l]);
-  useEffect(() => { if (anchor === 'evidence') { setEv(true); requestAnimationFrame(() => evRef.current?.scrollIntoView({ block: 'start' })); } }, [anchor, !!l]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (anchor === 'evidence') { setEv(true); requestAnimationFrame(() => { const el = evRef.current; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72 }); });   /* 11 Nov 2026: a window scroll, not scrollIntoView, so the first Tab stop is still the skip link (ui.mjs) */ } }, [anchor, !!l]);   // eslint-disable-line react-hooks/exhaustive-deps
   const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
   const evidence = <section ref={evRef} id="evidence" className="rec-sec rec-ev" aria-labelledby="rec-ev" data-sec="evidence">
     <SectionHeader id="rec-ev" title="Evidence and method" description="What the back-tests say about each engine, separate from this forward record." />
