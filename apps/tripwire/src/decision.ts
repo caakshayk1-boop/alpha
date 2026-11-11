@@ -2,7 +2,7 @@
  *  It summarises; it never replaces the detail (the case and countercase, the engine criteria, the statements stay as they were).
  *  Nothing here predicts. A rank is a percentile inside the eligible set and is labelled as a rank, never as a chance of winning. */
 import type { Row } from './screen.ts';
-import type { Eligibility, Curated } from './eligibility.ts';
+import { counterCoverage, type Eligibility, type Curated } from './eligibility.ts';
 import type { Pick, EngineId } from './quant.ts';
 import type { EngineEvidence } from './evidence.ts';
 import type { Version } from './store.ts';
@@ -11,7 +11,7 @@ import { dayWord } from './fmt.ts';
 export const RANK_NOTE = 'A rank among the eligible names, not a chance of winning.';
 export interface EngineView { id: EngineId; name: string; pass: boolean; score: number | null; eligible: boolean }
 export interface DecisionInput {
-  row: Row; elig: Eligibility; curated: Curated; pick: Pick | null; engines: EngineView[]; evidence: Record<string, EngineEvidence>; eligibleCount: number | null;
+  row: Row; hasRisk?: boolean; elig: Eligibility; curated: Curated; pick: Pick | null; engines: EngineView[]; evidence: Record<string, EngineEvidence>; eligibleCount: number | null;
   thesis: Version | null; today: string; livePriceLabel: string | null;
 }
 export interface QualityItem { k: string; v: string; warn: boolean }
@@ -35,7 +35,8 @@ export function decisionOf(i: DecisionInput): Decision {
     : { text: engines.length ? 'No engine surfaced it tonight: it fails at least one rule of each. You are looking at it by choice, which is fine; the engines are not the only reason to study a company.' : 'Engine results load with the screen.', short: engines.length ? 'No engine surfaced it tonight. You are looking at it by choice.' : 'Engine results load with the screen.', rank: null };
   // 2. the strongest counterargument
   const c0 = cur.counters[0];
-  const counter = c0 ? { text: c0.t, detail: c0.k, found: true } : { text: 'The screen raised no flag.', detail: 'It only sees prices and annual ratios. Read the filings, the results call and the auditor\'s notes anyway.', found: false };
+  const coverage = counterCoverage(row, elig, cur.counters.length, i.hasRisk ?? !!row.risk_lvl);
+  const counter = c0 ? { text: c0.t, detail: c0.k, found: true } : { text: coverage.title, detail: coverage.line, found: false };
   // 3. evidence status
   const ids = pick ? [pick.engine] : passing.length ? passing.map((e) => e.id) : engines.map((e) => e.id);
   const chips = ids.map((id) => ({ id, name: engines.find((e) => e.id === id)?.name ?? id, word: i.evidence[id]?.word ?? '', state: i.evidence[id]?.state ?? 'untested' }));

@@ -46,9 +46,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const barsMode = !cmp && (candles || (vol && hasVol));
   const [wpx, setWpx] = useState(340); const ready = !feed.loading && !!feed.data && all.length >= 30;
   useLayoutEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx((x) => (Math.abs(x - w) < 1 ? x : w)); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready]);
-  const lastLen = shown.length ? f(shown[shown.length - 1].c).length : 8;
-  const gutU = candles ? Math.round((Math.min(wpx * 0.3, Math.max(54, lastLen * 6.4 + 18)) / wpx) * 1000) : 0;
-  const pairGut = Math.round((64 / wpx) * 1000);          // room at the right of a two-line chart for the end labels
+  // 10 Nov 2026: the price axis, the last-price tag and the end labels sit in a gutter OUTSIDE the plot (.pc-plot), so the line runs to the right edge instead of stopping short of an empty band.
+  const gutU = 0; const pairGut = 0;
   const geo = useMemo(() => (cmp ? null : geometry(shown, logOn, 1000, 300, 12, candles, { bars: barsMode, gutter: gutU })), [cmp, shown, logOn, candles, barsMode, gutU]);
   const [revealed, setRevealed] = useState(false); useEffect(() => { if (!ready || revealed) return; const t = window.setTimeout(() => setRevealed(true), 1400); return () => window.clearTimeout(t); }, [ready, revealed]);
   const pair = useMemo(() => (cmp ? geometryPair(cmp.a, cmp.b, logOn, 1000, 300, 12, pairGut) : null), [cmp, logOn, pairGut]);
@@ -103,13 +102,13 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     return ([{ nm: 'High', k: hi, tn: 'up' }, { nm: 'Low', k: lo, tn: 'down' }] as const).filter((m) => m.k !== last && shown[m.k].c !== shown[last].c).map((m) => ({ ...m }));
   })();
   const chart = <>
-    <div ref={box} className="chart-plot" tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
+    <div ref={box} className={`chart-plot pc-plot${cmp ? ' pair' : ''}`} tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
       onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCur(null); }} onKeyDown={key} onBlur={() => setCur(null)} style={{ touchAction: 'pan-y' }}>
       {(geo || pair) && (() => {
         const W = (geo ?? pair)!.W, H = (geo ?? pair)!.H;
         const lo = geo ? geo.min : Math.min(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c)), hi = geo ? geo.max : Math.max(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c));
         const yOf = (c: number) => { const g = (v: number) => (logOn ? Math.log(v) : v); const l = g(lo), h = g(hi); return 12 + (1 - (g(c) - l) / ((h - l) || 1)) * (H - 24); };
-        const ticks = yTicks(lo, hi, logOn, 4).map((v) => ({ v, y: yOf(v) }));
+        const ticks = yTicks(lo, hi, logOn, 5).map((v) => ({ v, y: yOf(v) }));
         return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
           <defs><linearGradient id={`ar${gid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={pair ? S.color : color} stopOpacity=".32" /><stop offset="1" stopColor={pair ? S.color : color} stopOpacity="0" /></linearGradient></defs>
           {ticks.map((t) => <line key={t.v} x1="0" x2={W} y1={t.y} y2={t.y} stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
@@ -129,18 +128,23 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
           {geo && smaMap && (['a', 'b'] as const).map((k) => <path key={k} className="c-ma" d={pathThrough(geo.xs, shown.map((q) => { const v = smaMap.get(q.t)?.[k]; return v == null ? null : geo.yOf(v); }))} fill="none" stroke={k === 'a' ? 'var(--a4)' : 'var(--a2)'} strokeWidth="1" strokeOpacity=".9" strokeDasharray={k === 'b' ? '3 3' : undefined} vectorEffect="non-scaling-stroke" />)}
           {geo && lvOn && levels.filter((lv) => lv.v >= geo.min && lv.v <= geo.max).map((lv) => <line key={lv.label} x1="0" x2={W} y1={geo.yOf(lv.v)} y2={geo.yOf(lv.v)} stroke={lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--mute)'} strokeWidth="1" strokeDasharray="5 3" vectorEffect="non-scaling-stroke" />)}
           {i != null && <line x1={(geo ?? pair)!.xs[i]} x2={(geo ?? pair)!.xs[i]} y1="0" y2={H} stroke="var(--tx)" strokeOpacity=".4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+          {i != null && geo && <line className="c-hair" x1="0" x2={W} y1={geo.ys[i]} y2={geo.ys[i]} stroke="var(--tx)" strokeOpacity=".28" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
         </svg>;
       })()}
       {(geo || pair) && (() => {
         const H = (geo ?? pair)!.H; const g = (v: number) => (logOn ? Math.log(v) : v); const mn = geo ? geo.min : 0, mx = geo ? geo.max : 0;
         const yPct = (c: number) => ((12 + (1 - (g(c) - g(mn)) / ((g(mx) - g(mn)) || 1)) * (H - 24)) / H) * 100;
-        const ys = geo ? yTicks(mn, mx, logOn, 4) : []; const lastY = geo ? yPct(geo.max === geo.min ? geo.min : shown[shown.length - 1].c) : 0;
+        const ys = geo ? yTicks(mn, mx, logOn, 5) : []; const lastY = geo ? yPct(geo.max === geo.min ? geo.min : shown[shown.length - 1].c) : 0;
         return geo ? <>
-          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 11 || hlMarks.some((m) => Math.abs(y - (geo.ys[m.k] / geo.H) * 100) < 9) ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
+          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 7 || y < 2 || y > 98 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
           <span className="c-last" style={{ top: `${lastY}%`, background: color }}>{f(shown[shown.length - 1].c)}</span>
           {lvOn && levels.filter((lv) => lv.v >= mn && lv.v <= mx).map((lv) => <span key={lv.label} className="c-lvl" style={{ top: `${yPct(lv.v)}%`, color: lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--dim)' }}>{lv.label} {f(lv.v)}</span>)}
         </> : (pair ? (() => { const all2 = [...cmp!.a, ...cmp!.b].map((q) => q.c); const lo2 = Math.min(...all2), hi2 = Math.max(...all2); const g2 = (v: number) => (logOn ? Math.log(v) : v);
-          return <>{yTicks(lo2, hi2, logOn, 4).map((v) => <span key={v} className="c-ylab" style={{ top: `${((12 + (1 - (g2(v) - g2(lo2)) / ((g2(hi2) - g2(lo2)) || 1)) * (H - 24)) / H) * 100}%`, right: 'auto', left: 6 }}>{v.toFixed(0)}</span>)}
+          return <>{yTicks(lo2, hi2, logOn, 5).map((v) => {
+            const y = (12 + (1 - (g2(v) - g2(lo2)) / ((g2(hi2) - g2(lo2)) || 1)) * (H - 24)) / H;
+            // Endpoint returns share the external axis gutter. Leave room around them, as for the last-price tag in price mode.
+            return endLabs.some((l) => Math.abs(l.y - y) < .08) ? null : <span key={v} className="c-ylab" style={{ top: `${y * 100}%` }}>{v.toFixed(0)}</span>;
+          })}
             {endLabs.map((l) => <span key={l.s.label} className="c-end" style={{ top: `${l.y * 100}%` }}><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d={markerPath(l.s.marker, 6, 6, 3.6)} fill={l.s.color} /></svg>{l.t}</span>)}</>; })() : null);
       })()}
       {evOn && (geo || pair) && evIn.map((e) => { const g = (geo ?? pair)!; const x = geo ? geo.xOf(e.t) : ((e.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t)) * g.W; return <span key={e.t + e.label} className="c-ev" style={{ left: `${(x / g.W) * 100}%` }} title={`${dateLabel(e.t)}: ${e.label}. ${e.basis}`} aria-hidden="true" />; })}
@@ -148,6 +152,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
       {geo && hlMarks.map(({ nm, k, tn }) => { const x = (geo.xs[k] / geo.W) * 100;
         return <span key={nm} className={`c-extreme ${tn}${x < 38 ? ' l' : x > 62 ? ' r' : ''}`} style={{ left: `${x}%`, top: `${(geo.ys[k] / geo.H) * 100}%` }} data-hl={nm.toLowerCase()}><i /><b className="num">{nm} {f(shown[k].c)}</b></span>; })}
       {geo && i != null && <span className="c-dot" style={{ left: `${(geo.xs[i] / geo.W) * 100}%`, top: `${(geo.ys[i] / geo.H) * 100}%`, background: color }} />}
+      {geo && i != null && p && <span className="c-ycur num" aria-hidden="true" style={{ top: `${(geo.ys[i] / geo.H) * 100}%` }}>{f(p.c)}</span>}
+      {(geo || pair) && i != null && p && <span className="c-xcur num" aria-hidden="true" style={{ left: `${tipLeft}%` }}>{dateLabel(p.t, view === 'monthly')}</span>}
       {tip && <span className="c-tip" aria-hidden="true" style={tipLeft > 55 ? { right: `${100 - tipLeft + 2}%` } : { left: `${tipLeft + 2}%` }}>{tip}</span>}
     </div>
     {st && <div className="c-xaxis" aria-hidden="true">{xTicks(plot[0].t, plot[plot.length - 1].t, 5).map((x) => { const g = geo ?? pair; const fr = g ? (geo ? geo.xOf(x.t) : ((x.t - plot[0].t) / Math.max(1, plot[plot.length - 1].t - plot[0].t)) * (pair ? pair.xs[pair.xs.length - 1] : g.W)) / g.W : 0; return <span key={x.t} style={{ left: `${fr * 100}%` }}>{x.label}</span>; })}</div>}

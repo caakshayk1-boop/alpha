@@ -28,4 +28,3 @@ export async function subscribe(email: string, source: string, cfg: CaptureConfi
   } catch { return { ok: false, why: 'failed' }; }
 }
 export const CAPTURE_LINE = 'One email a week. The rules that fired, the evidence, the record.';
-export const IDENTITY_LINKS = [{ label: 'askakshay.com', href: 'https://askakshay.com' }] as const;

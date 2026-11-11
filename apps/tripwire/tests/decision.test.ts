@@ -47,3 +47,11 @@ test('journey: each step is done from saved state, so it is right after a restor
   const s4 = { ...s3, entries: [{ ...e, versions: [{ ...e.versions[0], reviewOn: '2026-10-20' }] }] }; const j4 = journeyOf(s4, '2026-10-26'); assert.equal(j4.done, 4); assert.equal(j4.next, null); assert.equal(j4.due?.overdue, true);
   assert.equal(journeyOf({ ...s4, entries: [{ ...s4.entries[0], archived: true }] }, '2026-10-26').steps[1].done, false, 'an archived thesis does not count');
 });
+
+
+test('decision: missing and stale risk evidence is not presented as a clean countercase', () => {
+  const input = base();
+  const empty = { ...input.curated, counters: [] };
+  assert.match(decisionOf({ ...input, curated: empty, hasRisk: false }).counter.text, /unavailable/);
+  assert.match(decisionOf({ ...input, curated: empty, hasRisk: true, row: { ...input.row, has_stmts: true, stale: true } }).counter.text, /stale/);
+});

@@ -29,7 +29,7 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
   const cap = pg.locator('[data-capture]'); ok(await cap.count() === 1 && await cap.getAttribute('data-capture') === 'off' && !(await cap.isVisible()) && (await cap.innerText()) === '', 'Today: the capture slot is present but hidden and empty (flag off)');
   ok(await pg.locator('form input[type=email]').count() === 0, 'Today: no email field is drawn while the flag is off');
   ok(!reqs.some((u) => /beehiiv|subscribe/i.test(u)), 'Today: no subscribe network call');
-  ok(await pg.locator('.ident a[href="https://askakshay.com"]').count() === 1, 'Today: the footer links askakshay.com');
+  ok(await pg.locator('.ident').count() === 1 && await pg.locator('a[href*="//askakshay.com"]').count() === 0, 'Today: the footer is there and links nowhere outside Tripwire (no askakshay.com link)');
   ok(await pg.locator('h1').count() === 1, 'Today: one h1');
   ok((await over(pg)) <= 1, 'Today: no horizontal overflow at 390'); await ctx.close(); }
 /* ---- from 360 px, every screen in this lane ---- */

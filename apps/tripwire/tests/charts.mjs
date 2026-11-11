@@ -11,12 +11,14 @@ const overflow = (pg) => pg.evaluate(() => document.documentElement.scrollWidth 
 const radio = (pg, group, name) => pg.locator(`[role=radiogroup][aria-label="${group}"]`).getByRole('radio', { name, exact: true });
 const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
 // The requested one-minute company read now precedes the chart. Bound its height separately;
-// retain the original chart/header budget rather than allowing unrelated vertical growth.
+// bound the chart/header separately so added research detail cannot permit unrelated vertical growth.
+// 10 Nov 2026: +40px on both budgets, taken on purpose. The audit asked for one "Data as of" line on the price card and a publication-date marker beside each statement-based claim in the read; on a 320px phone those cost about 40px. The chart is still the first thing after the read.
+const READ_MAX = 600, PLOT_MAX = 740;
 const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Math.ceil(e.getBoundingClientRect().height) + 16);
 
 /* 1. the first screen on a phone: the chart is in it, with its takeaway, and it opens on one year against the Nifty */
 { const ctx = await newCtx(b, 390, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  const top = await pg.evaluate(() => document.querySelector('.chart-plot').getBoundingClientRect().top); const read = await readHeight(pg); ok(read < 560 && top > 0 && top < 844 + read, `the bounded company read precedes the chart; existing header budget retained (read ${read}, plot ${Math.round(top)})`);
+  const top = await pg.evaluate(() => document.querySelector('.chart-plot').getBoundingClientRect().top); const read = await readHeight(pg); ok(read < READ_MAX && top > 0 && top < 844 + read, `the bounded company read precedes the chart; existing header budget retained (read ${read}, plot ${Math.round(top)})`);
   const take = (await pg.locator('[data-takeaway]').allInnerTexts()).join('\n');
   ok(/^TCS (rose|fell|was flat) [\d.]+% over the last year, against [+−]?[\d.]+% for the Nifty 50/.test(take) && /percentage points|level with it/.test(take) && /Closes through \d+ \w{3} \d{4}/.test(take), `the takeaway is a factual sentence with the benchmark and the data-through date (${take.split('\n')[0].slice(0, 90)})`);
   ok(!/because|will |likely|expect|forecast|confidence/i.test(take), 'the takeaway makes no causal claim, forecast or confidence statement');
@@ -26,6 +28,12 @@ const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Ma
   ok(await pg.locator('.cf-chips .cf-chip').count() === 2, 'the two figures are one compact row of two chips');
   const leg = await pg.locator('.cf-legend li').count(); const shapes = await pg.locator('.cf-legend li svg path').count(); ok(leg === 2 && shapes === 2 && (await pg.locator('.cf-legend li svg line[stroke-dasharray]').count()) === 1, 'the legend gives each line its own marker, and the benchmark a dash');
   ok(/[▲▼■]/.test(await pg.locator('.chart-head').innerText()) && /[▲▼■]/.test(await pg.locator('.c-end').first().innerText()), 'direction is carried by an arrow and a sign, not by colour alone');
+  const axisClear = await pg.locator('.pc-plot').evaluate((plot) => {
+    const ticks = [...plot.querySelectorAll('.c-ylab')].map((e) => e.getBoundingClientRect());
+    const ends = [...plot.querySelectorAll('.c-end')].map((e) => e.getBoundingClientRect());
+    return ticks.every((t) => ends.every((e) => t.bottom <= e.top || t.top >= e.bottom));
+  });
+  ok(axisClear, 'comparison axis ticks do not overlap endpoint return labels');
   const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
   const basis = await pg.locator('.cf-basis').innerText(); ok(basis.length < 110 && /split-adjusted/i.test(basis) && /dividends not included/i.test(basis), `one short basis line sits under the chart (${basis})`);
   await pg.locator('summary', { hasText: 'About this chart' }).click(); ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in About this chart');
@@ -40,7 +48,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   const m = await pg.evaluate(() => { const top = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; }; const lead = document.querySelector('.cf-lead'); const lh = parseFloat(getComputedStyle(lead).lineHeight);
     const sty = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const lg = sty('.cf-legend'), tt = sty('.cf-h');
     return { plot: top('.chart-plot'), card: top('.cf'), leadLines: Math.round(lead.clientHeight / lh), clamped: lead.scrollHeight > lead.clientHeight + 1, copy: document.querySelectorAll('[data-clamped-copy]').length, legendBelowTitle: lg && tt ? lg.top >= tt.bottom - 1 : null, chipsBelowPlot: top('.cf-chips') > top('.chart-plot'), ctrlRows: document.querySelectorAll('.c-prim > .mini-seg, .c-prim > .c-prim2, .c-prim > [role=radiogroup]').length }; });
-  const read = await readHeight(pg); ok(read < 560 && m.plot != null && m.plot < 700 + read, `${w}x${h}: plot ${m.plot}px stays within its 700px budget plus the bounded ${read}px company read`);
+  const read = await readHeight(pg); ok(read < READ_MAX && m.plot != null && m.plot < PLOT_MAX + read, `${w}x${h}: plot ${m.plot}px stays within its ${PLOT_MAX}px budget plus the bounded ${read}px company read`);
   ok(!m.clamped && await pg.locator('.cf-lead').evaluate((e) => e.getBoundingClientRect().top > document.querySelector('.chart-plot').getBoundingClientRect().bottom), `${w}: the full takeaway follows the plot without clipping`);
   ok(m.chipsBelowPlot, `${w}: the two figures sit below the plot`);
   ok(await pg.locator('.cf-legend').count() === 1 && await pg.locator('.cf-legend li').count() === 2, `${w}: the legend is still there, with both lines`);
@@ -53,7 +61,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow`);
   await ctx.close(); }
 { const ctx = await newCtx(b, 320, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: 320, height: 640 }); await open(pg, '/#/c/TCS', '.chart-plot svg');
-  ok((await overflow(pg)) <= 0, '320: the compact header does not overflow'); const t320 = await pg.evaluate(() => Math.round(document.querySelector('.chart-plot').getBoundingClientRect().top + scrollY)); const read = await readHeight(pg); ok(read < 560 && t320 < 700 + read, `320: plot ${t320}px stays within its 700px budget plus the bounded ${read}px company read`); await ctx.close(); }
+  ok((await overflow(pg)) <= 0, '320: the compact header does not overflow'); const t320 = await pg.evaluate(() => Math.round(document.querySelector('.chart-plot').getBoundingClientRect().top + scrollY)); const read = await readHeight(pg); ok(read < READ_MAX && t320 < PLOT_MAX + read, `320: plot ${t320}px stays within its ${PLOT_MAX}px budget plus the bounded ${read}px company read`); await ctx.close(); }
 
 /* 2. chart and table agree; the last price on the chart is the last row of the table */
 { const ctx = await newCtx(b, 1280, series(900, 'TCS', { nifty: true })); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');
