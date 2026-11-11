@@ -39,3 +39,23 @@ test('validated screen publication triggers both consumers without waiting for t
   for (const f of ['tripwire.yml', 'tripwire_ledger.yml']) assert.match(wf(f), /repository_dispatch:\n    types: \[screen-published\]/);
   assert.match(wf('tripwire.yml'), /github.event_name == 'repository_dispatch'\) && github.ref == 'refs\/heads\/main'/);
 });
+
+// 11 Nov 2026 (audit fix A): the full app suite inside the nightly job once stopped the record for two nights (4 and 5 Nov 2026).
+test('the ledger job records without depending on the full app suite, which runs on every pull request instead', () => {
+  const t = wf('tripwire_ledger.yml');
+  assert.doesNotMatch(t, /run: npm run tripwire:test\s*$/m, 'the full suite is not a step of the nightly record');
+  const pkg = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
+  const ledger = pkg.scripts['tripwire:test:ledger']; assert.ok(ledger, 'a ledger-only test script exists');
+  for (const f of ['calendar', 'ledgerchecks', 'ledgerversion', 'ledgergaps', 'backfill']) assert.ok(ledger.includes(`tests/${f}.test.ts`), `${f} guards what the job records`);
+  assert.ok(ledger.split(' ').length < pkg.scripts['tripwire:test'].split(' ').length / 4, 'it is a short list, not the whole suite again');
+  const steps = t.indexOf('npm run tripwire:test:ledger'), rec = t.indexOf("Write down tonight's picks"); assert.ok(steps > 0 && steps < rec, 'the ledger tests run before recording');
+  const pr = wf('tripwire.yml'); assert.match(pr, /pull_request:\n    paths: \['apps\/tripwire\/\*\*'/); assert.match(pr, /run: npm run tripwire:test\n/, 'the full suite still gates every Tripwire pull request');
+});
+test('the post-record assertions stay, and any failure writes an ::error:: summary (an optional alert reuses existing secrets)', () => {
+  const t = wf('tripwire_ledger.yml');
+  assert.match(t, /record\.ts evaluate/); assert.match(t, /Report an incomplete price or research refresh/);
+  const i = t.indexOf('if: failure()'); assert.ok(i > 0, 'a step runs on any failure'); const tail = t.slice(i);
+  assert.match(tail, /::error::/); assert.match(tail, /GITHUB_STEP_SUMMARY/); assert.match(tail, /NOT recorded/);
+  for (const m of t.matchAll(/secrets\.([A-Z_]+)/g)) assert.match(wf('brief.yml'), new RegExp(`secrets\\.${m[1]}`), `${m[1]} is an existing secret, not a new one`);
+  assert.match(readFileSync(new URL('../../../docs/tripwire/launch/RELIABILITY.md', import.meta.url), 'utf8'), /LEDGER_ALERT/, 'the owner step is in the document');
+});

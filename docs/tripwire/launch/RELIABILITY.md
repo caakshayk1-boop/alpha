@@ -80,6 +80,11 @@ So even when the job is punctual a reader can be up to roughly 10 minutes behind
 3. Deploy the Worker. The first cron tick after that sends a `workflow_dispatch` with `force=false` (the job's own cadence guard still decides whether to do work) and logs "news nudge: sent". The Operations page lists "Scheduler nudge" as Not set up until then; it cannot detect the secret from the browser, so after setting it, change the service's kind in `services.ts` and `INTEGRATIONS.md` in the same commit.
 4. Cost of doing it: a token to rotate, and this becomes the first secret the Worker holds (the Operations page and `/api/health` state that there are none today).
 
+**Ledger failure alert (optional, added 11 Nov 2026).** The nightly ledger job no longer runs the full app unit suite before recording (section 6). When any step fails, the run writes an `::error::` line and a summary to the run page saying whether tonight's picks may not have been recorded, and GitHub's own failed-run mail reaches whoever owns the schedule. To also get a Telegram line, reusing the secrets the brief already uses (no new secret):
+1. Make sure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set as repository secrets (they are the brief's; see `brief.yml`).
+2. Settings, Secrets and variables, Actions, Variables: add `LEDGER_ALERT` with the value `1`. Without it the step prints "Telegram alert is off" and sends nothing.
+3. On an alert: open the run link, fix the cause, and run `tripwire-ledger` by hand (Actions, Run workflow). A repeated data day is a no-op. `record()` refuses a data day older than the newest recorded one, so once a later night is written the missed night stays missing, and the app lists it as not recorded rather than filling it in.
+
 **Everything else** (the research repository, items 6 and 7) needs a decision, not a secret.
 
 ## 5. What this change did not do, and could not verify
@@ -154,3 +159,9 @@ Every original pick and transition remains; each restoration has a reasoned
 correction transition. Verification: 102 picks identical, all 74 prior opens
 preserved, five closed outcomes identical, 15 Friday candidates still pending.
 The replay passed all ledger assertions; no agreement, entry or exit rule changed.
+
+## 6. 11 November 2026: the record no longer waits on the whole test suite
+
+`tripwire_ledger.yml` ran `npm run tripwire:test` (the full app suite, about 80 files, mostly about screens) before it wrote anything. One unrelated failing test therefore stopped the record, and the sessions of **4 and 5 Nov 2026 were never recorded**. The job now runs `npm run tripwire:test:ledger` (calendar, ledger, ledger assertions, ledger gaps, backfill, voided picks, paper replay and exits) and then records. The post-record assertions (`record.ts evaluate`, which runs `runChecks` and fails red on a fault, and the incomplete-refresh report) are unchanged.
+
+Where the full suite still runs: `tripwire.yml` on every pull request touching `apps/tripwire/**` (and before every deploy). `ci.yml` runs the website's `npm test`, which is not this app's suite. Any failure in the ledger job now writes an `::error::` summary (owner step for an optional alert in section 4). Pinned by `tests/workflows.test.ts`. The missing nights are disclosed in the app (Data page, ledger row; Book, Record view), computed from the exchange calendar by `src/ledgergaps.ts`.

@@ -20,22 +20,29 @@ import type { Row } from '../src/screen.ts';
 
 /* ---------------- the takeaway ---------------- */
 const base = { niftyCh: 0.9, vixCh: -1, upPct: 54, downPct: 12, nTrend: 812, live: false, behind: 0 };
-test('takeaway: the index move, the breadth word and the shares, all from the inputs', () => {
+// 11 Nov 2026 (revamp v2): the sentence says the index move and whether breadth agrees; it no longer restates the breadth shares (the gauge beside it shows them) nor the screen's lag (the banner says it).
+test('takeaway: the index move and whether breadth agrees, all from the inputs; the shares are not restated', () => {
   const t = marketTakeaway(base)!;
-  assert.match(t.text, /^Nifty \+0\.9% at the last close\. Broad strength: 54% of 812 liquid names are in an uptrend and 12% in a downtrend\.$/); assert.equal(t.word, 'Broad strength'); assert.equal(t.disagree, false);
-  assert.ok(!/at the last close/.test(marketTakeaway({ ...base, live: true })!.text), 'a live print is not called a close');
+  assert.equal(t.text, 'Nifty +0.9% at the last close, and breadth agrees.'); assert.equal(t.word, 'Broad strength'); assert.equal(t.disagree, false);
+  assert.ok(!/\d+% of|uptrend|downtrend/.test(t.text), 'the breadth shares are left to the gauge');
+  assert.equal(marketTakeaway({ ...base, live: true })!.text, 'Nifty +0.9%, and breadth agrees.', 'a live print is not called a close');
+  assert.equal(marketTakeaway({ ...base, live: true, niftyCh: 1.4, upPct: 4, downPct: 45 })!.text, 'Nifty +1.4%, but breadth is weak.');
+  assert.equal(marketTakeaway({ ...base, live: true, niftyCh: 1.4, upPct: 40, downPct: 30 })!.text, 'Nifty +1.4%; breadth is mixed.');
+  assert.equal(marketTakeaway({ ...base, live: true, niftyCh: 0.2, upPct: 60, downPct: 10 })!.text, 'Nifty +0.2%; breadth is strong.', 'a flat index neither agrees nor disagrees');
 });
 test('takeaway: the index and the breadth are said to disagree only past the printed threshold', () => {
-  const up = marketTakeaway({ ...base, niftyCh: 1.2, upPct: 20, downPct: 50 })!; assert.equal(up.disagree, true); assert.match(up.text, /point different ways/);
+  const up = marketTakeaway({ ...base, niftyCh: 1.2, upPct: 20, downPct: 50 })!; assert.equal(up.disagree, true); assert.match(up.text, /, but breadth is weak\.$/);
   assert.equal(marketTakeaway({ ...base, niftyCh: DISAGREE_MOVE_PCT - 0.1, upPct: 20, downPct: 50 })!.disagree, false, 'a flat index agrees with anything');
   const dn = marketTakeaway({ ...base, niftyCh: -1.1, upPct: 60, downPct: 10 })!; assert.equal(dn.disagree, true);
   assert.equal(marketTakeaway({ ...base, niftyCh: 1.1, upPct: 40, downPct: 30 })!.disagree, false, 'mixed breadth neither agrees nor disagrees');
 });
-test('takeaway: the VIX is mentioned only when it moved enough; a stale screen is named; missing parts are left out', () => {
+test('takeaway: the VIX is mentioned only when it moved enough; a stale screen is NOT restated (the banner says it once); missing parts are left out', () => {
   assert.ok(!/VIX/.test(marketTakeaway({ ...base, vixCh: VIX_MENTION_PCT - 0.1 })!.text)); assert.match(marketTakeaway({ ...base, vixCh: -VIX_MENTION_PCT })!.text, /India VIX −5\.0%/);
-  assert.match(marketTakeaway({ ...base, behind: 2 })!.text, /2 sessions behind/); assert.match(marketTakeaway({ ...base, behind: 1 })!.text, /one session behind/);
-  const noBreadth = marketTakeaway({ ...base, upPct: null, downPct: null, nTrend: 0 })!; assert.equal(noBreadth.parts.breadth, false); assert.ok(!/uptrend/.test(noBreadth.text));
-  const noIndex = marketTakeaway({ ...base, niftyCh: null })!; assert.equal(noIndex.parts.index, false); assert.ok(!/Nifty/.test(noIndex.text));
+  assert.ok(!/behind|session/.test(marketTakeaway({ ...base, behind: 2 })!.text + marketTakeaway({ ...base, behind: 1 })!.text), 'the lag is said by the banner, not again in the sentence');
+  const noBreadth = marketTakeaway({ ...base, upPct: null, downPct: null, nTrend: 0 })!; assert.equal(noBreadth.parts.breadth, false); assert.equal(noBreadth.text, 'Nifty +0.9% at the last close.');
+  const noIndex = marketTakeaway({ ...base, niftyCh: null })!; assert.equal(noIndex.parts.index, false); assert.equal(noIndex.text, 'Breadth is strong.');
+  assert.equal(marketTakeaway(base)!.text, marketTakeaway({ ...base })!.text, 'deterministic: the same inputs give the same sentence');
+  assert.equal(marketTakeaway({ ...base, shares: true })!.text, 'Nifty +0.9% at the last close, and breadth agrees. 54% of 812 liquid names are in an uptrend and 12% in a downtrend.', 'a page with no gauge (Markets) asks for the shares');
   assert.equal(marketTakeaway({ ...base, niftyCh: null, upPct: null, downPct: null, nTrend: 0 }), null, 'nothing measured, nothing said');
 });
 test('takeaway: never predicts, advises or explains a cause, across a sweep of inputs', () => {
@@ -111,7 +118,7 @@ test('the renames are everywhere in the app: "Add paper trade" and "Evidence", a
   const dir = new URL('../src/', import.meta.url); const files: string[] = [];
   const walk = (d: URL) => { for (const e of readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(new URL(`${e.name}/`, d)); else if (/\.(tsx?|css)$/.test(e.name)) files.push(new URL(e.name, d).pathname); } }; walk(dir);
   const src = files.map((f) => readFileSync(f, 'utf8')).join('\n');
-  assert.ok(!/Take it myself/.test(src)); assert.ok(!/label: 'Proof'/.test(src)); assert.ok(/Add paper trade/.test(src)); assert.ok(/label: 'Evidence'/.test(src));
+  assert.ok(!/Take it myself/.test(src)); assert.ok(!/label: 'Proof'/.test(src)); assert.ok(/Add paper trade/.test(src)); assert.ok(/title="Evidence and method"/.test(src));   // 11 Nov 2026: Evidence is a section of the Record, not a tab
 });
 
 /* ---------------- attribution ---------------- */

@@ -20,6 +20,8 @@ const open = async (state, route = '/#/today', o = {}) => {
 };
 const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1') ?? 'null'));
 const text = (pg) => pg.locator('body').innerText();
+// 11 Nov 2026 (revamp v2): the since-visit changes now live inside each company's row on the "Your names" board, and a row opens on a tap; open it before reading or pressing its changes.
+const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-row="${sym}"]`); await r.waitFor(); if (!/\bopen\b/.test(await r.getAttribute('class'))) await r.locator('.br-hit').click(); await pg.waitForTimeout(350); };
 
 /* ---- 1. a new user: one setup action and the brief; nothing counted that does not exist ---- */
 {
@@ -27,7 +29,9 @@ const text = (pg) => pg.locator('body').innerText();
   const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
   ok(secs.join() === 'brief,setup,sample', `a new user sees the market brief, then the setup card, then the labelled sample walkthrough, nothing else (got ${secs.join(', ')})`);
   ok(await pg.getByRole('button', { name: 'Find a company' }).count() === 1, 'exactly one setup action: Find a company');
-  ok(/Your market brief/.test(t) && /Screen data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('[data-brief]').innerText()) && /IST/.test(t), 'the brief states its data day and times in IST');
+  // 11 Nov 2026 (revamp v2): the data day is said once, in the collapsed "Data status" line at the foot (the header pill and the banner carry the headline); the brief keeps the price time in IST
+  await pg.waitForSelector('.t-status:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
+  ok(/Your market brief/i.test(t) && /Data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('.t-status .fresh-pill').innerText()) && /IST/.test(await pg.locator('[data-brief]').innerText()), 'Today states its data day (Data status) and its times in IST');
   ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(t.replace(/\n/g, ' ')), 'no zero-count panel, no path card, no empty section');
   ok(!(await pg.locator('.guest, .journey').count()), 'the old guest card and path card are gone');
   await pg.getByRole('button', { name: 'Find a company' }).click(); await pg.waitForSelector('[role=dialog] input'); ok(true, 'Find a company opens the search sheet'); await pg.keyboard.press('Escape');
@@ -40,7 +44,8 @@ const text = (pg) => pg.locator('body').innerText();
 {
   const { ctx, pg } = await open(WITH); await pg.waitForSelector('.nw-row'); const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
   ok(secs.indexOf('brief') === 0 && secs.indexOf('changes') === 1 && secs.indexOf('news') === 2, `returning order: market takeaway (brief), changes, news (got ${secs.join(', ')})`);
-  ok((await pg.getByRole('heading', { name: 'What matters now' }).count()) === 1, 'the news block has one "What matters now" heading, not two');
+  // 11 Nov 2026 (revamp v2): Today's news block is "Market news" (company stories sit on their own board rows)
+  ok((await pg.getByRole('heading', { name: 'Market news' }).count()) === 1, 'the news block has one "Market news" heading, not two');
   ok(!(await pg.locator('.journey, [data-sec="setup"]').count()), 'no path card and no setup card for a returning user'); await ctx.close();
 }
 
@@ -62,7 +67,7 @@ const text = (pg) => pg.locator('body').innerText();
 
 /* ---- 3. with a prior snapshot: changes, before and after, basis, review, dismiss, undo, persistence ---- */
 {
-  const { ctx, pg } = await open(WITH); await pg.waitForSelector('.svi'); await pg.locator('.sv').scrollIntoViewIfNeeded(); const t = await pg.locator('.sv').innerText();
+  const { ctx, pg } = await open(WITH); await pg.waitForSelector('.svi', { state: 'attached' }); await expand(pg); await pg.locator('.sv').scrollIntoViewIfNeeded(); const t = await pg.locator('.sv').innerText();
   const items = await pg.locator('.svi').count();
   ok(items >= 3, `meaningful changes are listed (${items})`);
   ok(/Moved above its 200-day average/.test(t) && /RSI crossed 70/.test(t), 'crossing the 200-day and RSI 70 are reported');
@@ -70,7 +75,7 @@ const text = (pg) => pg.locator('body').innerText();
   ok(new RegExp(`Screen data, 2026-10-20 to ${SCREEN_DAY}`).test(await pg.locator('.svi-basis').first().evaluate((n) => (n.open = true, n.textContent))), 'the basis names both screen days');
   ok(new RegExp(`screen data Tue 20 Oct to ${DAYWORD}`, 'i').test(t), 'the module states the period it compares');
   ok(!/New information to review|stated invalidation/.test(t), 'ordinary changes omit repetitive generic framing');
-  ok(await pg.locator('.svcompany').count() === 1, 'all changes for TCS share one company card');
+  ok(await pg.locator('[data-board-row="TCS"] .svevents').count() === 1 && await pg.locator('[data-board-row]').count() === 1, 'all changes for TCS share one company row (11 Nov 2026: a board row, was a company card)');
   ok(!/\b(will|expected|likely|bullish|bearish|buy|sell)\b/i.test(t), 'no prediction or advice wording');
   const n0 = items; const first = pg.locator('.svi').first(); const title = await first.locator('.svi-t').innerText();
   await first.getByRole('button', { name: /^Dismiss/ }).click(); await pg.waitForTimeout(250);
@@ -84,7 +89,7 @@ const text = (pg) => pg.locator('body').innerText();
   await pg.locator('.svi').first().getByRole('button', { name: /^Dismiss/ }).click(); await pg.waitForTimeout(3600);
   const sv = await saved(pg); ok(Object.keys(sv.dismissed ?? {}).length === 1 && sv.inbox.length === n0 && sv.seen.TCS.length === 2, `dismissal, the unacknowledged changes and the new snapshot are saved (dismissed ${Object.keys(sv.dismissed ?? {}).length}, inbox ${sv.inbox?.length} of ${n0}, snapshots ${sv.seen?.TCS?.length})`);
   ok(!/https?:\/\/[^ ]*(thesis|Seed thesis)/i.test(pg.url()) && !pg.url().includes('invalidation'), 'no thesis text in the URL');
-  await pg.reload(); await pg.waitForSelector('[data-sec="changes"]'); await pg.waitForTimeout(1200);
+  await pg.reload(); await pg.waitForSelector('[data-sec="changes"]'); await pg.waitForTimeout(1200); await expand(pg);
   const t2 = await pg.locator('.sv').innerText();
   ok(!(await pg.locator('.svi-new').count()) && (await pg.locator('.svi').count()) === n0 - 1 && /Show dismissed \(1\)/.test(t2), `on the next visit the seen changes are kept (not "New"), the dismissed one stays dismissed (new ${await pg.locator('.svi-new').count()}, items ${await pg.locator('.svi').count()} of ${n0}, ${t2.slice(-120).replace(/\n/g, ' ')})`);
   await ctx.close();
@@ -93,7 +98,7 @@ const text = (pg) => pg.locator('body').innerText();
 /* ---- 4. the thesis link is an explicit rule: a stated level crossed ---- */
 {
   const st = { ...WITH, entries: [{ ...STATE.entries[0], versions: [{ ...STATE.entries[0].versions[0], invalidation: 'Close below 2,550', reviewOn: '2027-01-01' }] }], seen: { TCS: [snap({ px: 2600 })] } };
-  const { ctx, pg } = await open(st); await pg.waitForSelector('.svi'); const t = await pg.locator('.sv').innerText();
+  const { ctx, pg } = await open(st); await pg.waitForSelector('.svi', { state: 'attached' }); await expand(pg); const t = await pg.locator('.sv').innerText();
   ok(/Crossed your stated invalidation level 2,550/.test(t), 'a price below the level written in the thesis says "crossed your stated invalidation level 2,550"');
   ok((await pg.locator('.svi').first().innerText()).includes('invalidation'), 'it is listed first');
   await pg.locator('.svi').first().getByRole('button', { name: 'Review thesis' }).click(); await pg.waitForSelector('textarea#t-thesis'); ok(true, 'Review opens the thesis sheet'); await ctx.close();
@@ -101,7 +106,7 @@ const text = (pg) => pg.locator('body').innerText();
 
 /* ---- 5. keyboard: dismiss and undo without a pointer ---- */
 {
-  const { ctx, pg } = await open(WITH); await pg.waitForSelector('.svi'); const n0 = await pg.locator('.svi').count();
+  const { ctx, pg } = await open(WITH); await pg.waitForSelector('.svi', { state: 'attached' }); await expand(pg); const n0 = await pg.locator('.svi').count();
   const btn = pg.locator('.svi').first().getByRole('button', { name: /^Dismiss/ }); await btn.focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(250);
   ok((await pg.locator('.svi').count()) === n0 - 1, 'Enter on Dismiss works');
   const und = pg.locator('.svmsg').getByRole('button', { name: 'Undo' }); await und.focus(); const box = await und.boundingBox(); ok(box.height >= 44 - 1, `Undo is a 44px target (${Math.round(box.height)})`); await pg.keyboard.press('Enter'); await pg.waitForTimeout(250);
@@ -138,8 +143,33 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
 
 /* ---- 8. reduced motion keeps everything working ---- */
 {
-  const { ctx, pg } = await open(WITH, '/#/today', { reducedMotion: 'reduce' }); await pg.waitForSelector('.svi'); const tr = await pg.locator('.svi').first().evaluate((n) => getComputedStyle(n).transitionDuration);
+  const { ctx, pg } = await open(WITH, '/#/today', { reducedMotion: 'reduce' }); await pg.waitForSelector('.svi', { state: 'attached' }); const tr = await pg.locator('.svi').first().evaluate((n) => getComputedStyle(n).transitionDuration);
   ok(/^0s/.test(tr), `reduced motion: no transition on change items (${tr})`); await ctx.close();
+}
+
+/* ---- 10. (11 Nov 2026, revamp v2) the "Your names" board: one row per followed name, chips, tap to open, company news on its row and never again in Market news ---- */
+{
+  const { ctx, pg, errs } = await open({ ...WITH, follows: ['TCS', 'GCSL'] }); await pg.waitForSelector('[data-board-row]'); await pg.waitForSelector('.nw-row, .nw-empty', { timeout: 20000 }); await pg.waitForTimeout(1500);
+  ok(await pg.locator('[data-board-row]').count() === 2, 'one board row per followed company');
+  const tcs = pg.locator('[data-board-row="TCS"]'); const hit = tcs.locator('.br-hit');
+  ok(/TCS/.test(await tcs.locator('.br-sym').innerText()) && /Tata Consultancy/i.test(await tcs.locator('.br-name').innerText()) && /₹[\d,.]+/.test(await tcs.locator('.br-px b').innerText()), 'a row carries the symbol, the company name and the price');
+  ok(/(Crossed above 200-day|RSI above 70)/.test(await tcs.locator('.br-chips').innerText()), `the row's chips name what changed (${(await tcs.locator('.br-chips').innerText()).replace(/\n/g, ' | ')})`);
+  ok(await hit.getAttribute('aria-expanded') === 'false' && !(await tcs.locator('.br-act').isVisible()), 'a row starts closed, its panel out of view and out of the tab order');
+  const hb = await hit.boundingBox(); ok(hb.height >= 44, `the row is at least a 44px target (${Math.round(hb.height)})`);
+  await hit.focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(400);
+  ok(await hit.getAttribute('aria-expanded') === 'true' && await tcs.getByRole('link', { name: 'Open company' }).isVisible() && await tcs.getByRole('button', { name: 'Review thesis' }).isVisible(), 'Enter opens the row: Open company and Review thesis');
+  const boardNews = await tcs.locator('.br-news a').allInnerTexts(); const marketNews = await pg.locator('section.nw .nw-head').allInnerTexts();
+  ok(boardNews.some((h) => /TCS Q2 net profit/.test(h)) && !marketNews.some((h) => /TCS Q2 net profit/.test(h)), `the company's headline is on its row and not repeated in Market news (row: ${boardNews.length}, market: ${marketNews.join(' | ').slice(0, 120)})`);
+  ok(marketNews.length <= 3 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `Market news shows at most three stories, then All news (${marketNews.length})`);
+  const href = await tcs.locator('.br-news a').first().getAttribute('href'); ok(/^https?:\/\//.test(href ?? '') && await tcs.locator('.br-news a').first().getAttribute('target') === '_blank', 'a row headline links out, in a new tab');
+  await hit.click(); await pg.waitForTimeout(400); ok(await hit.getAttribute('aria-expanded') === 'false', 'a second tap closes it');
+  const t = await text(pg); ok(!/Since your last visit\n|Due for review|What matters now|What changed/.test(t.replace(/SINCE YOUR LAST VISIT/g, '')), 'the separate since-visit, due-for-review, what-matters-now and what-changed blocks are gone');
+  ok((t.match(/sessions? (behind|before)/g) ?? []).length <= 1, 'the screen\'s lag is said at most once in the page body (the banner)');
+  ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
+}
+{
+  const { ctx, pg } = await open({ ...STATE, follows: [], onboarded: true }); await pg.waitForSelector('[data-sec="changes"]');
+  ok(/Follow a company/.test(await pg.locator('[data-sec="changes"]').innerText()) && await pg.locator('[data-sec="changes"]').getByRole('button', { name: 'Find a company' }).count() === 1, 'nothing followed: one line and a Find a company button'); await ctx.close();
 }
 
 /* ---- 9. layout shift on a throttled first load ---- */

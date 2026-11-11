@@ -1,18 +1,18 @@
 /* Tripwire design tokens. The ONE place a colour, size, space, radius, shadow or duration is defined (tools/lint-tokens.mjs fails the build on a hex colour anywhere else).
-   Direction: a calm, dark evidence terminal. Fewer things, bigger, room to breathe. Spec: docs/tripwire/design/DESIGN_SYSTEM.md.
+   Direction (11 Nov 2026): a departure board for research. Deep blue-black, one periwinkle accent for actions, bold tabular numerals, colour used for meaning only. Spec: docs/tripwire/design/DESIGN_SYSTEM.md.
    The old variable names (--bg, --s1, --tx, --dim, --mute, --lime, ...) are ALIASES of these, kept so every existing rule still resolves; new work reads the new names. */
 :root{
   /* colour: surfaces */
-  --bg:#0A0A0B;--bg-2:#0F0F11;--surface:#131315;--surface-2:#1B1B1E;--surface-3:#202023;
-  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.16);
+  --bg:#07090D;--bg-2:#0B0F15;--surface:#10151D;--surface-2:#161D27;--surface-3:#1C2531;
+  --line:rgba(190,205,255,.1);--line-2:rgba(190,205,255,.2);
   /* colour: ink. Contrast on --surface-3 (the lightest surface): ink 14.5, ink-2 8.1, ink-3 4.6 (labels and timestamps only, never body copy) */
-  --ink:#F5F4EE;--ink-2:#B9B9B4;--ink-3:#8A8A85;
+  --ink:#F4F6FA;--ink-2:#B7C0CF;--ink-3:#8793A6;
   /* colour: meaning. Accent is for actions and highlights only; up/down are data semantics; amber is staleness and warnings */
-  --accent:#CCFF43;--accent-press:#B3E03A;--accent-tint:rgba(204,255,67,.1);--on-accent:#0A0A0B;
-  --up:#4ADE80;--down:#F87171;--amber:#FBBF24;
+  --accent:#A5B4FF;--accent-press:#8E9FF5;--accent-tint:rgba(165,180,255,.14);--on-accent:#07090D;
+  --up:#3DDC97;--down:#FF7A7A;--amber:#FFC24B;
   /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
-  --series-1:#7DD3FC;--series-2:#C4B5FD;--series-3:#F9A8D4;
-  --down-tint:rgba(248,113,113,.1);--up-tint:rgba(74,222,128,.1);--amber-tint:rgba(251,191,36,.1);
+  --series-1:#5CD6F5;--series-2:#FFD43B;--series-3:#FF8FC7;
+  --down-tint:rgba(255,122,122,.12);--up-tint:rgba(61,220,151,.12);--amber-tint:rgba(255,194,75,.12);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --editorial:Georgia,"Times New Roman",serif;
@@ -28,8 +28,8 @@
   --max:1120px;--max-read:720px;
   /* radius and elevation */
   --radius-card:20px;--radius-input:14px;--radius-pill:999px;
-  --surface-grad:linear-gradient(180deg,#17171A,#101012);   /* raised surfaces only */
-  --glow-cta:0 8px 24px -10px rgba(204,255,67,.45);          /* the one restrained glow, on the primary button */
+  --surface-grad:linear-gradient(180deg,#18202C,#10151D);   /* raised surfaces only */
+  --glow-cta:0 10px 28px -10px rgba(165,180,255,.55);          /* the one restrained glow, on the primary button */
   --shimmer:rgba(255,255,255,.08);
   --shadow-raised:0 1px 0 rgba(255,255,255,.04) inset,0 12px 32px rgba(0,0,0,.35);
   /* icons: 1.5px stroke, 20px */

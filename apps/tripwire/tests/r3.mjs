@@ -24,15 +24,18 @@ ok(Math.abs(h0 - h2) < 2, `Today: the mood card does not change height when the 
 await pg.waitForSelector('.trendmap .tm-word', { timeout: 15000 });
 ok(/^(broad strength|broad weakness|mixed|no read)$/i.test((await pg.locator('.tm-word').innerText()).trim()), 'trend map: a one-word read from its printed rule');
 ok((await pg.locator('.tm-stats [role=listitem]').count()) === 5 && (await pg.locator('.tm-go a').count()) === 3, 'trend map: five breadth figures and three one-tap questions');
-await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('text=Discover'); await pg.waitForTimeout(500);
+await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('h1:text-is("Research")');   /* 11 Nov 2026: the Discover page is titled Research (revamp v2) */ await pg.waitForTimeout(500);
 ok(/Uptrend/.test(await text()), 'trend map: a question opens Discover already filtered');
 /* Today */
 await pg.goto(base + '/#/today'); await pg.waitForSelector('.pickrow');
 ok(/T1 ₹[\d,]+ · T2 ₹[\d,]+/.test(await pg.locator('.pickrow').first().innerText()), 'Today: every pick shows its two targets (marked ref when filed before profit booking began)');
 const picks = await pg.locator('.pickrow').evaluateAll((e) => e.slice(0, 6).map((x) => x.querySelectorAll('.small')[0]?.textContent ?? ''));
 ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'Today: the line under each pick is its own engine figures, not one repeated line');
-await pg.waitForSelector('.nw .nw-tabs', { timeout: 15000 });
-ok(/All\s*\d+/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Following/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Paper book/.test(await pg.locator('.nw .nw-tabs').innerText()) && /Market/.test(await pg.locator('.nw .nw-tabs').innerText()), 'Today: news can be read as All, Market, Following or Paper book');
+// 11 Nov 2026 (revamp v2): Today shows the market's own news and puts each followed company's on its board row; the four ways of reading the news are the News page's tabs
+await pg.waitForSelector('section.nw', { timeout: 15000 }); ok(/Market news/.test(await pg.locator('section.nw').innerText()) && await pg.locator('section.nw a[href="#/news"]').count() >= 1, 'Today: market news, with All news one tap away');
+// 11 Nov 2026 (merge of Today and Research lanes): the News page reads the news as sections (Your names, Paper book, Market), not tabs
+await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 15000 });
+ok((await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')))).slice(0, 3).join() === 'yours,paper,market', 'News: news is read as Your names, Paper book and Market');
 
 await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [data-ladder]');
 ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');

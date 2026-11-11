@@ -16,10 +16,11 @@ export function ContactLine({ email }: { email?: string }) {
 }
 
 function LegalPage({ id, title, lead, children }: { id: 'privacy' | 'terms'; title: string; lead: string; children: ReactNode }) {
-  return <div className="read legal" data-legal={id}>
-    <PageBar title={title} onBack sub={<span data-legal-updated>Last updated {legalDate(LEGAL_UPDATED)}</span>}
-      right={<button className="icon-btn noprint" onClick={() => window.print()} aria-label="Print or save as PDF"><Icon n="print" /></button>} />
-    <div className="card small"><p style={{ margin: 0 }}>{lead}</p></div>
+  return <div className="mp read legal" data-legal={id}>
+    {/* 11 Nov 2026 (revamp v2): the Print button left the header (with back, print and search the title wrapped under its own buttons on a phone); it sits under the lead */}
+    <PageBar title={title} onBack sub={<span data-legal-updated>Last updated {legalDate(LEGAL_UPDATED)}</span>} />
+    <p className="mp-meta legal-lead">{lead}</p>
+    <button className="btn sm noprint legal-print" onClick={() => window.print()} aria-label="Print or save as PDF"><Icon n="print" />Print or save as PDF</button>
     {children}
     <section className="legal-end" aria-label="Contact and the other page">
       <ContactLine />
@@ -31,7 +32,7 @@ function LegalPage({ id, title, lead, children }: { id: 'privacy' | 'terms'; tit
 const Body = ({ children }: { children: ReactNode }) => <div className="card small legal-body">{children}</div>;
 
 export function Privacy() {
-  return <LegalPage id="privacy" title="Privacy" lead="The short version: what you write stays on your device, and Tripwire has no accounts, no sign-in and no analytics. This page says what that means in detail, and says where something could not be checked.">
+  return <LegalPage id="privacy" title="Privacy" lead="A plain-language account of what Tripwire does with your information, written from what the app does. The short version comes first; where something could not be checked, the page says so. Not legal advice.">
     <Fold id="short" title="In short" summary="Four facts, then the detail." open>
       <Body><ul>
         <li>Your notes, journal, plans, paper trades, follows and settings are saved in this browser, on this device. They are not sent to Tripwire or to anyone else.</li>
@@ -107,7 +108,7 @@ export function Privacy() {
 }
 
 export function Terms() {
-  return <LegalPage id="terms" title="Terms of use" lead="The short version: Tripwire is a paper-only research and education tool. It is not investment advice, it places no orders, its data can be late or wrong, and every decision you make is yours.">
+  return <LegalPage id="terms" title="Terms of use" lead="The rules for using Tripwire, in plain language. The short version comes first; each heading below opens its detail.">
     <Fold id="short" title="In short" summary="Six facts, then the detail." open>
       <Body><ul>
         <li>Research and education only. Every trade in Tripwire is a paper trade.</li>

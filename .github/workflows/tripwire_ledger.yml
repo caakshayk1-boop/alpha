@@ -26,7 +26,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run tripwire:test
+      # Only the tests of what this job runs (the exchange calendar, the ledger, its assertions, the replay and its exits).
+      # The full app suite is NOT a precondition of recording: one unrelated failing test once stopped the record for two
+      # nights (4 and 5 Nov 2026 were never written). The full suite runs on every pull request in tripwire.yml
+      # (`npm run tripwire:test`, paths apps/tripwire/**); ci.yml runs the website's `npm test`, not this app's suite.
+      - name: Ledger tests (calendar, ledger, ledger assertions, replay, exits)
+        run: npm run tripwire:test:ledger
       - name: Fetch the published screen
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
@@ -73,3 +78,22 @@ jobs:
         run: |
           echo "::error::The price replay or a research sheet could not refresh. Successful outputs were committed; rejected sheets kept their last good copy. Check the failed step above."
           exit 1
+      # A red run must say what was lost, in the run summary, not only in a step log. The owner gets GitHub's own
+      # failed-run mail for a scheduled run; an optional Telegram line reuses the brief's existing secrets and is off
+      # unless the repository variable LEDGER_ALERT is 1 (owner step: docs/tripwire/launch/RELIABILITY.md, section 4).
+      - name: Say what failed (any failure)
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LEDGER_ALERT: ${{ vars.LEDGER_ALERT }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          msg="Tripwire ledger run failed on $(date -u +%Y-%m-%d) UTC. If the failure is before 'Write down tonight's picks', tonight's picks were NOT recorded; rerun the workflow once the cause is fixed (a repeated data day is a no-op). $RUN_URL"
+          echo "::error::$msg"
+          { echo '## Tripwire ledger: run failed'; echo; echo "$msg"; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$LEDGER_ALERT" = "1" ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -fsS --max-time 20 -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${msg}" || echo 'Telegram alert could not be sent'
+          else
+            echo 'Telegram alert is off (needs LEDGER_ALERT=1 and the brief secrets).'
+          fi

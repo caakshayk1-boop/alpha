@@ -76,7 +76,8 @@ const open = async (route, at, o = {}) => {
   await pg.locator('details.nw-method > summary').click();
   const defn = await pg.locator('[data-news-definition]').innerText(); ok(/event is one story/.test(defn) && /Articles/.test(defn) && /Companies/.test(defn), 'the page defines events, articles and companies');
   const line = (await pg.locator('.nwp-count').innerText()).trim(); ok(/^\d+ events? · \d+ articles? · \d+ companies?/.test(line), `the count line uses the three units ("${line}")`);
-  const total = Number(line.match(/^(\d+)/)[1]); const allChip = await pg.locator('.nw-tabs .chip').first().getAttribute('aria-label'); ok(new RegExp(`^All: ${total} events?$`).test(allChip), `the All tab number equals the displayed total (${allChip})`);
+  /* 11 Nov 2026 (revamp v2): the News page is sections, not tabs; the section counts must add up to the displayed total, as the All tab number once had to equal it. */
+  const total = Number(line.match(/^(\d+)/)[1]); const secN = (await pg.locator('.nwp-gh .nwp-n').allInnerTexts()).map(Number); ok(secN.length >= 3 && secN.reduce((a, x) => a + x, 0) === total, `the section counts add up to the displayed total (${secN.join(' + ')} = ${total})`);
   await ctx.close();
 }
 { // service down, nothing saved: an error, not "Unavailable"

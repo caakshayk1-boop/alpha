@@ -21,7 +21,8 @@ const plain = async (state, width, route) => {
 {
   const { ctx, pg, errs } = await plain(STATE, 390, '/#/today'); await pg.waitForSelector('[data-takeaway]');
   const t = (await pg.locator('[data-takeaway]').innerText()).trim();
-  ok(/Nifty [+−]?\d/.test(t) && /(Broad strength|Broad weakness|Mixed): \d+% of [\d,]+ liquid names/.test(t), `Today leads with a takeaway built from displayed figures: "${t.slice(0, 110)}"`);
+  // 11 Nov 2026 (revamp v2): the sentence says the index move and whether breadth agrees; the gauge beside it carries the shares, so they are not repeated
+  ok(/Nifty [+−]?\d/.test(t) && /(, and breadth agrees|, but breadth is (weak|strong)|; breadth is (weak|strong|mixed))\./.test(t) && !/\d+% of [\d,]+ liquid names/.test(t), `Today leads with a takeaway built from displayed figures: "${t.slice(0, 110)}"`);
   const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
   ok(secs[0] === 'brief' && secs.indexOf('changes') > 0, `the market takeaway comes before the changes in followed companies (${secs.join(', ')})`);
   ok(!/\b(will|likely|because|expected|bullish|bearish)\b/i.test(t), 'the takeaway predicts and explains nothing');
@@ -106,10 +107,11 @@ for (const w of [320, 390, 1280]) {
 
 /* ---- Signals ---- */
 for (const w of [320, 390, 1280]) {
-  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals`, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pickcard [data-ladder]', { timeout: 20000 });
+  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=picks`, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pickcard [data-ladder]', { timeout: 20000 });   // 11 Nov 2026: the Book opens on Positions; picks are ?v=picks
   const tabs = await pg.locator('[role=tablist] [role=tab], .seg button').allInnerTexts().catch(() => []);
   const body = await pg.locator('body').innerText();
-  ok(/Evidence/.test(tabs.join(' ')) && !/Proof/.test(body), `${w}: the tab is Evidence, and Proof appears nowhere`);
+  /* 11 Nov 2026 (revamp v2): Evidence is no longer a tab of its own; it is a section of Record, linked from Picks. The intent kept: the evidence is one tap away and "Proof" appears nowhere */
+  ok(/Record/.test(tabs.join(' ')) && await pg.locator('a[href="#/signals?v=evidence"]').count() >= 1 && !/Proof/.test(body), `${w}: the evidence is linked (inside Record), and Proof appears nowhere`);
   ok(!/Take it myself/.test(body), `${w}: no "Take it myself"`);
   const card = pg.locator('.pickcard').first();
   ok(await card.locator('[data-ladder]').count() === 1 && /Signal/.test(await card.locator('[data-ladder]').innerText()) && /Stop/.test(await card.locator('[data-ladder]').innerText()) && /T2/.test(await card.locator('[data-ladder]').innerText()), `${w}: a pick shows stop, signal close and both targets on one compact ladder`);
@@ -128,7 +130,7 @@ for (const w of [320, 390, 1280]) {
 }
 {
   const ctx = await openCtx(b, 390); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=evidence`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(1200);
-  ok(/Evidence/.test(await pg.locator('body').innerText()), 'the Evidence view opens from its renamed tab'); await ctx.close();
+  ok(/Evidence/.test(await pg.locator('body').innerText()) && await pg.locator('#evidence').count() === 1, 'the old Evidence address opens the evidence section of Record'); await ctx.close();
 }
 
 /* ---- Markets: the day chart (one session, scaled to today's range, scrubbable, with a table) and the compact charts that replaced the old sparklines ---- */
@@ -174,7 +176,7 @@ for (const w of [320, 390]) {
 
 /* ---- Auto: attribution ---- */
 for (const w of [320, 390, 1280]) {
-  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=auto`, { waitUntil: 'networkidle' }); await pg.getByText('Experimental paper book · evidence and attribution', { exact: true }).click(); await pg.waitForSelector('[data-attribution]', { timeout: 20000 });
+  const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=auto`, { waitUntil: 'networkidle' }); await pg.getByText('Where the P&L came from · by engine and position', { exact: true }).click(); /* 11 Nov 2026: the attribution fold on Positions */ await pg.waitForSelector('[data-attribution]', { timeout: 20000 });
   const num = (s) => Number(s.replace(/[₹,\s]/g, '').replace('−', '-').replace('+', ''));
   const total = num(await pg.locator('[data-attribution] .attr-total b').innerText());
   const engRows = await pg.locator('[data-attribution] tr[data-engine]').evaluateAll((r) => r.map((x) => x.lastElementChild.textContent));

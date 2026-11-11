@@ -36,7 +36,7 @@ for (const [route, id, title] of [['/#/privacy', 'privacy', 'Privacy'], ['/#/ter
       ok(await pg.locator('details.fold[data-fold="short"][open]').count() === 1, `${id}: the short version is open, the detail is one tap away`);
       ok(await pg.title() === `${title} · Tripwire`, `${id}: document title "${await pg.title()}"`);
       const c = await pg.locator('[data-contact]').innerText(); ok(c === 'Contact: not set up yet' && await pg.locator('[data-contact] a').count() === 0, `${id}: contact reads "${c}" with no link while SUPPORT_EMAIL is unset`);
-      ok(await pg.locator('.tabs [aria-current="page"]').innerText().then((t) => /More/.test(t)), `${id}: the More tab is the current one`);
+      ok(await pg.locator('.tabs [aria-current="page"]').innerText().then((t) => /Menu/.test(t)), `${id}: the Menu tab is the current one`); // 11 Nov 2026: More was renamed Menu
       ok(await pg.locator('a[href="#/terms"], a[href="#/privacy"]').count() >= 1, `${id}: links to its sibling page`);
       const text = (await pg.locator('main').innerText()).replace(/\s+/g, ' ');
       if (id === 'privacy') {
@@ -93,8 +93,8 @@ for (const w of [320, 390, 1280]) {
     ok(await pg.locator('.tabs [aria-current="page"]').innerText().then((t) => !/Today/.test(t)), '404: the Today tab is not marked current');
     await pg.getByRole('button', { name: 'Search companies' }).click(); await pg.waitForSelector('[role=dialog]'); ok(true, '404: "Search companies" opens the search'); await pg.keyboard.press('Escape');
     await pg.locator('[data-notfound] a[href="#/today"]').click(); await pg.waitForSelector('[data-hero], .today'); ok(/#\/today$/.test(pg.url()) && (await pg.title()).startsWith('Today'), `404: Today link works and the title follows ("${await pg.title()}")`);
-    await pg.goto(base + '/#/nope'); await pg.waitForSelector('[data-notfound]'); await pg.locator('.tabs a', { hasText: 'More' }).click(); await pg.waitForSelector('[data-more]');
-    await pg.goto(base + '/#/discover'); await pg.locator('.tabs a', { hasText: 'More' }).click(); await pg.waitForSelector('[data-more]'); ok(!/nope/.test(pg.url()), '404: the More tab never returns to the unknown address');
+    await pg.goto(base + '/#/nope'); await pg.waitForSelector('[data-notfound]'); await pg.locator('.tabs a', { hasText: 'Menu' }).click(); await pg.waitForSelector('[data-more]');
+    await pg.goto(base + '/#/discover'); await pg.locator('.tabs a', { hasText: 'Menu' }).click(); await pg.waitForSelector('[data-more]'); ok(!/nope/.test(pg.url()), '404: the Menu tab (was More until 11 Nov 2026) never returns to the unknown address');
   }
   ok(errs.length === 0, `404 @${w}: no page errors ${errs.join(' ')}`); await ctx.close();
 }

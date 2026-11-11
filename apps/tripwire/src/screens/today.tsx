@@ -1,99 +1,102 @@
-import { EmptyState, HitCard } from '../components/index.ts';
+import { HitCard, TargetLadder } from '../components/index.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
-import { go, setState, useAppState, useSheets } from '../app.tsx';
-import { Loading, Failed, PageBar } from './common.tsx';
-import { freshness } from '../fresh.ts';
-import { FreshnessPill } from './FreshnessPill.tsx';
-import { istDay, reviewDue, current } from '../store.ts';
-import { dayWord, initials, inr, inr0, pct, tone } from '../fmt.ts';
+import { useAppState, useSheets } from '../app.tsx';
+import { Failed, Loading, PageBar } from './common.tsx';
+import { DataStatus } from './FreshnessPill.tsx';
+import { BreadthGauge } from './pulse.tsx';
+import { istDay } from '../store.ts';
+import { dayWord, inr0, pct, tone } from '../fmt.ts';
 import { useEngines } from '../useEngines.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
-import type { Row } from '../screen.ts';
 import { useBacktest, usePulse } from '../data.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { isNewUser } from '../home.ts';
 import { livePrice, useLiveSymbols } from '../quotes.ts';
-import { useAutoBook, useLiveBook } from '../book.ts';
+import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { buildFeed } from '../alertsfeed.ts';
 import { useMacro, MACRO, fmtMacro } from '../macro.ts';
 import { LiveBadge, Observed, Spark, Tick } from '../live.tsx';
-import { DayChart } from '../components/DayChart.tsx';
 import { FlowLine } from './FlowCard.tsx';
-import { Ring, avatarStyle } from '../widgets.tsx';
-import { mood, regime } from '../mood.ts';
+import { avatarStyle } from '../widgets.tsx';
+import { initials } from '../fmt.ts';
 import { Icon } from '../ui.tsx';
 import { sessionNow } from '../market.ts';
 import { rulesFor } from '../rules.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { pickFacts, factLine } from '../pickfacts.ts';
 import { BASIS_NOTE, targetPrices } from '../levels.ts';
-import { pickId } from '../ledger.ts';
-import { alertLine, type HitAlert } from '../alerts.ts';
+import { pickId, MIN_TRADES } from '../ledger.ts';
+import { ladderInputFor } from '../ladder.ts';
 import { useTrendSummary } from '../trendsummary.ts';
-import { WhatMattersNowSlot } from '../todaynews.tsx';
-import { SinceVisit } from './SinceVisit.tsx';
+import { MarketNews } from '../todaynews.tsx';
+import { NamesBoard, NamesEmpty } from './todayboard.tsx';
+import { nearestLevels, splitNews } from '../todayboard.ts';
 import { marketTakeaway } from '../takeaway.ts';
 import { SampleWalkthrough } from './samplewalk.tsx';
+import { useNewsBoard } from '../news.ts';
+import { todayList } from '../newsview.ts';
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
-const TOP = 5;
-const addDays = (d: string, n: number) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
+const TOP = 3;
 
-/** Today, in the order of what a person needs: the market in a paragraph, what matters now, what changed in the companies they follow and what is due,
- *  the paper book in one card, and the last close's picks. Detail lives behind links: Markets (indices, commodities, trend map), Signals, Paper P&L. */
+/** Today (revamp v2, 11 Nov 2026), each fact said once, in the order a person needs it: the market (a breadth gauge and one sentence, the index tape), your names (a departure
+ *  board: price, change and chips per followed company, each row opening to its changes, headlines and actions), the market's own news (three stories), the paper book in one card,
+ *  the last close's top picks, and one collapsed "Data status" line at the foot. How current the screen is lives in the header pill and the app banner, not again here. */
 export function Today() {
   const s = useAppState(); const { open } = useSheets();
   const { scr, out } = useEngines();
-  const rows = useMemo(() => scr.data?.rows ?? [], [scr.data]); const day = scr.data?.as_of ?? null; const fr = freshness(day); const today = istDay();
+  const rows = useMemo(() => scr.data?.rows ?? [], [scr.data]); const day = scr.data?.as_of ?? null; const today = istDay();
   const fresh = isNewUser(s);   // a new user gets the setup card and the brief; the book, picks, news and changes need something of theirs to be about
   const pulse = usePulse(true); const book = useLiveBook(!fresh); const auto = useAutoBook(!fresh); const macro = useMacro();
   const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null;
   const sess = sessionNow(Date.now(), anyLive); const pw = quoteWord(pulse.obs, Date.now(), { loading: pulse.loading && !pulse.err }); const live = sess.phase === 'open' && !!anyLive;
   const t = useTrendSummary(rows, day, true);
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
-  const niftyCh = chOf('NIFTY'), bankCh = chOf('BANKNIFTY'), vixCh = chOf('VIX'); const md = mood(niftyCh, bankCh, vixCh);
-  const rg = regime(md, t.upPct, t.downPct);
-  const take = marketTakeaway({ niftyCh, vixCh, upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: fr.behind });
-  const events = s.follows.map((sym) => rows.find((r) => r.sym === sym)).filter((r): r is Row => !!r && !!r.next_earnings && r.next_earnings >= today && r.next_earnings <= addDays(today, 30)).sort((a, b) => a.next_earnings!.localeCompare(b.next_earnings!));
-  const reviews = s.entries.filter((e) => ['overdue', 'today'].includes(reviewDue(e) ?? ''));
-  const needs = reviews.length > 0 || events.length > 0;
+  const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live });
   // the paper book, once: what the auto book holds and what was taken by hand. Never presented as the user's watchlist.
   const dupOf = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf);
   const ownRows = book.rows.filter((r) => !dupOf(r.p) && !ENGINES.some((e) => e.id === r.p.engine && e.retired)); const ownOpen = ownRows.filter((r) => r.v.status === 'open');
   const ownPnl = ownOpen.reduce((a, r) => a + (r.v.pnl ?? 0), 0); const showAuto = auto.rows.length > 0;
-  const feed = useMemo(() => buildFeed({ hits: auto.hits, rows: auto.rows, ledger: auto.ledger.data?.ledger ?? null, nowSec: Math.floor(Date.now() / 1000) }), [auto.hits, auto.rows, auto.ledger.data]);
   const openN = (showAuto ? auto.sum.open : 0) + ownOpen.length; const pnl = (showAuto ? auto.sum.openPnl : 0) + ownPnl;
+  const outcomes = auto.ledger.data?.ledger.outcomes;
+  const inBook = useMemo(() => new Set([...auto.rows.filter((r) => ['open', 'pending', 'waiting'].includes(r.v.status)).map((r) => r.p.sym), ...s.paper.filter((p) => !p.closedByUser).map((p) => p.sym)]), [auto.rows, s.paper]);
+  // the two open positions nearest a level, drawn with the book's own ladder
+  const near = useMemo(() => nearestLevels([...(showAuto ? auto.rows : []), ...ownOpen].filter((r) => r.v.status === 'open').map((r: BookRow) => {
+    const input = ladderInputFor(r.p, r.v, outcomes?.[r.p.id]); if (!input || input.mark == null) return null;
+    return { id: r.p.id, sym: r.p.sym, mark: input.mark, stop: input.curStop ?? input.stop, target: input.reference ? null : !input.t1Hit ? input.t1 : !input.t2Hit ? input.t2 : null, input };
+  }).filter((x): x is NonNullable<typeof x> => !!x), 2), [auto.rows, ownOpen, outcomes, showAuto]);
+  // a position that closed in the last three days is the one paper-book change the ladder rows and the hit card do not already carry
+  const closedLately = useMemo(() => buildFeed({ hits: [], rows: auto.rows, ledger: null, nowSec: Math.floor(Date.now() / 1000) }).filter((f) => f.kind === 'closed'), [auto.rows]);
   const autoState = (p: { sym: string; engine: string; asOf: string }) => dupOf(p) ? 'in' : auto.plan?.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf)?.why ? 'no' : 'wait';
   const allPicks = (out?.runs ?? []).flatMap((r) => r.picks).sort((a, b) => b.score - a.score); const shownPicks = allPicks.slice(0, TOP);
   const pickSyms = shownPicks.map((p) => p.sym); const pickQ = useLiveSymbols(pickSyms, !fresh && pickSyms.length > 0);
-  const hasChanges = s.follows.length > 0 || needs;
   const bt = useBacktest(); const evHead = evidenceHeadline(ACTIVE.map((e) => e.id), bt.data, bt.loading);
-  // the news is drawn one frame later so opening Today paints at once; its slot is reserved so nothing below it moves
+  // news, once for the page: company stories go on their board rows, India-wide stories in Market news, and no event is listed in both (dedupe by event id)
+  const lists = useMemo(() => ({ follows: s.follows, paper: [...inBook] }), [s.follows.join(), [...inBook].join()]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const nb = useNewsBoard(lists);
+  const news = useMemo(() => splitNews(nb.pool, todayList(nb.pool, 'market', lists, nb.at), s.follows, nb.at), [nb.pool, nb.at, lists, s.follows]);
+  // the news and the board are drawn one frame later so opening Today paints at once; their slots are reserved so nothing below them moves
   const [late, setLate] = useState(false); useEffect(() => { const x = window.setTimeout(() => setLate(true), 60); return () => window.clearTimeout(x); }, []);
   const macroLine = ['GOLD', 'BRENT', 'USDINR'].map((k) => MACRO.find((d) => d.key === k)).filter((d): d is NonNullable<typeof d> => !!d).map((d) => { const q = macro.data?.quotes[d.key]; return q ? { k: d.label, v: fmtMacro(d, q.px), ch: (q.px / q.prev - 1) * 100 } : null; }).filter(Boolean) as { k: string; v: string; ch: number | null }[];
 
   return <div>
-    <PageBar title="Today" sub={<><span className={sess.phase === 'open' ? 'up' : ''}>{sess.label}</span> · {sess.detail}</>} />
-    <div className="today">
-      {/* the hero: what Tripwire is in one line, how current the data is, and the Signals gate state. The gate card draws nothing without a gate in the feed; its slot is held only while the feed loads. */}
-      <section className="t-hero" data-hero aria-label="Research data status">
-        <FreshnessPill />
-      </section>
-      {/* (0) target hits in the last completed session: only when there are some, and only ever a list computed from the book on this page load */}
+    <PageBar title="Today" />
+    <div className="today t2">
+      {/* (0) targets hit in the last completed session: only when there are some, computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
-      {/* (a) the market takeaway FIRST, then the paragraph of measured facts, with its freshness stated */}
-      {<section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
-        <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small" style={{ gap: 8 }}><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} />{rg && <span className="tag" title={rg.note}>Mood {rg.word}</span>}</span></div>
-        <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
+      {/* (a) the market: gauge + one sentence, then the index tape. The session is said here on a phone; the top bar says it on a wider screen. */}
+      <section className="tsec brief card" aria-labelledby="t-brief" data-sec="brief">
+        <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small t-sess-row"><span className={`t-sess ${sess.phase}`} data-session>{sess.label} · {sess.detail}</span><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /></span></div>
+        <div className="pulse"><BreadthGauge upPct={t.upPct} downPct={t.downPct} n={t.map.n} /><p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p></div>
         <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span><span className="brief-spark" aria-hidden="true">{q && q.c.length > 2 ? <DayChart q={q} size="compact" nse good={k === 'VIX' ? (ch ?? 0) <= 0 : (ch ?? 0) >= 0} label={`${nm}, latest session`} /> : <span className="small mute">Chart unavailable</span>}</span></a>; })}
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <FlowLine />
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
-        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Screen data through {dayWord(day)} · times in IST · Prices: <Observed sec={pulse.obs} err={pulse.err} /></span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a>{fresh && <> · <a href="#/news">Market news</a></>} · <a href="#/data">Data and coverage</a></span></p>
-      </section>}
+        <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a></span></p>
+      </section>
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
@@ -102,63 +105,59 @@ export function Today() {
       </section>}
       {fresh && <SampleWalkthrough />}
 
-      {/* the followed companies: what changed, and what is due. Rendered only when there is something it can be about. */}
-      {!fresh && hasChanges && <div className="tsec tchg" data-sec="changes">
-        {scr.loading && s.follows.length > 0 && <Loading what="the market read" />}
+      {/* (b) your names: the departure board */}
+      {!fresh && s.follows.length === 0 && <NamesEmpty />}
+      {!fresh && s.follows.length > 0 && <>
         {scr.err && <Failed what="the market data" err={scr.err} retry={scr.retry} />}
-        {scr.data && s.follows.length > 0 && <SinceVisit rows={rows} day={day} today={today} />}
-        {scr.data && needs && <section className="needs" aria-labelledby="t-needs"><h2 id="t-needs" className="sec">Due for review</h2><div className="card" style={{ padding: '2px 14px' }}><div className="list">
-          {reviews.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left', width: '100%' }} onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="tag peach">{reviewDue(e) === 'overdue' ? 'Overdue' : 'Today'}</span><span className="grow"><span className="sym">{e.sym}</span><span className="dim small trunc" style={{ display: 'block' }}>Review: {current(e).trigger || current(e).thesis}</span></span></button>)}
-          {events.map((r) => <a key={r.sym} className="li" href={`#/c/${r.sym}`}><span className="tag">{dayWord(r.next_earnings)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="dim small" style={{ display: 'block' }}>Results, estimated date</span></span></a>)}
-        </div></div></section>}
-      </div>}
+        {scr.loading && <div className="tsec board-slot" data-sec="changes"><Loading what="your names" /></div>}
+        {scr.data && <NamesBoard rows={rows} day={day} today={today} newsBySym={news.bySym} inBook={inBook} />}
+      </>}
 
-      {/* (b) what matters now */}
-      {!fresh && <section className="tsec tnews" aria-label="What matters now" data-sec="news">
-        <div className="newsslot">{late && <WhatMattersNowSlot syms={s.follows} />}</div>
-      </section>}
+      {/* (c) market news: three India-wide stories, then All news */}
+      {!fresh && <div className="tsec tnews" data-sec="news"><div className="newsslot">{late && <MarketNews b={nb} market={news.market} lists={lists} />}</div></div>}
 
       {/* (d) the paper book, one card */}
-      {!fresh && scr.data && showAuto && feed.length > 0 && <section className="tsec talerts" aria-labelledby="t-alerts" data-sec="alerts">
-        <h2 id="t-alerts" className="sec">What changed</h2>
-        <div className="card" style={{ padding: '2px 14px' }}><ul className="list alertlist" aria-label="Changes in the paper book">{feed.map((f) => <li key={f.id}><a className="li" href={f.href} data-alert={f.kind}><span className={`dot ${f.tone === 'up' ? 'up' : f.tone === 'down' ? 'down' : ''}`} aria-hidden="true" /><span className="grow small">{f.text}</span></a></li>)}</ul>
-          <p className="small mute" style={{ margin: '4px 0 8px' }}>Shown here only; nothing is sent to you. Paper book, not advice.</p></div>
-      </section>}
       {!fresh && scr.data && (showAuto || ownRows.length > 0) && <section className="tsec tbook" aria-labelledby="t-book" data-sec="book">
-        <h2 id="t-book" className="sec">Paper book</h2>
+        <div className="row between sechead"><h2 id="t-book" className="sec">Paper book</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
         <div className="card bookcard">
-          <div className="row between" style={{ alignItems: 'flex-start' }}>
-            <div><div className={`num amt bigpnl ${tone(pnl)}`}><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></div><div className="small dim">{openN ? `open now · ${openN} position${openN === 1 ? '' : 's'}` : 'nothing open'}{showAuto && auto.sum.waiting ? ` · ${auto.sum.waiting} waiting for the next open` : ''}</div></div>
-            {showAuto && <Ring value={auto.slots} max={auto.cfg.maxOpen} size={52} stroke={6} label={`${auto.slots} of ${auto.cfg.maxOpen} places in use`} color="var(--a2)"><Tick v={auto.slots}>{String(auto.slots)}</Tick></Ring>}</div>
-          {showAuto && auto.sum.closed > 0 && <p className="small dim" style={{ margin: '8px 0 0' }}>Realised so far: <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b> over {auto.sum.closed} closed. Paper money only.</p>}
-          <div className="row bookact"><a className="btn sm" href="#/live">Paper P&amp;L</a><a className="btn sm" href="#/signals?v=auto">Signals</a></div>
+          <dl className="bk-stats num">
+            <div><dt>Unrealised</dt><dd className={`amt bigpnl ${tone(pnl)}`}><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
+            <div><dt>Open</dt><dd>{openN}{showAuto && auto.sum.waiting ? <small> +{auto.sum.waiting} waiting</small> : null}</dd></div>
+            <div><dt>Closed</dt><dd>{showAuto ? auto.sum.closed : 0}<small> of {MIN_TRADES}</small></dd></div>
+          </dl>
+          {near.length > 0 && <ul className="bk-near" aria-label="Positions nearest a stop or target">{near.map((x) => <li key={x.id}>
+            <div className="row between bk-near-h"><a href={`#/c/${x.sym}`} className="sym">{x.sym}</a><span className={`small ${x.near === 'stop' ? 'down' : 'up'}`}>{(x.gap * 100).toFixed(1)}% from its {x.near === 'stop' ? 'stop' : 'next target'}</span></div>
+            <TargetLadder sym={x.sym} input={x.input} quiet /></li>)}</ul>}
+          {closedLately.length > 0 && <ul className="bk-closed small" aria-label="Closed in the last three days">{closedLately.map((f) => <li key={f.id}><a href={f.href}><span className={`dot ${f.tone === 'up' ? 'up' : 'down'}`} aria-hidden="true" />{f.text}</a></li>)}</ul>}
+          <p className="small mute bk-note">Paper money only{showAuto && auto.sum.closed > 0 ? <> · realised <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b></> : null}.</p>
         </div>
       </section>}
 
-      {/* (e) the last close's picks, compact */}
+      {/* (e) the last close's top picks */}
       {!fresh && scr.data && allPicks.length > 0 && <section className="tsec tpicks" aria-labelledby="t-picks" data-sec="picks">
-        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><span className="tag amber" title={evHead ?? 'Experimental'}>Experimental</span></div>
-        <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p); const up = (lp?.ch ?? 0) >= 0;
+        <div className="row between sechead"><h2 id="t-picks" className="sec">Picks from the close of {dayWord(day)}</h2><a className="seclink" href="#/signals">All picks <span aria-hidden="true">→</span></a></div>
+        <div className="card" style={{ padding: '2px 14px' }}><div className="list">{shownPicks.map((p) => { const row = rows.find((x) => x.sym === p.sym); const q = pickQ.data?.quotes[p.sym] ?? null; const lp = row ? livePrice(row, q) : null; const st = autoState(p);
           return <a key={p.engine + p.sym} className="li pickrow" href={`#/c/${p.sym}`}>
             <span className="avatar" style={avatarStyle(p.sym)} aria-hidden="true">{initials(p.sym)}</span>
-            <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className={`tag ${p.engine === 'MOM' ? 'amber' : 'violet'}`} style={{ fontSize: '0.625rem' }} title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span></span>
+            <span className="grow" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="sym">{p.sym}</span><span className="br-chip" title={ENGINES.find((e) => e.id === p.engine)?.name}>{p.engine}</span><span className={`br-chip ${st === 'in' ? 'accent' : ''}`}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'}</span></span>
               <span className="small dim trunc" style={{ display: 'block' }}>{factLine(pickFacts(p.engine, row), 3)}</span>
-              <span className="small mute trunc" style={{ display: 'block' }}>{st === 'in' ? 'In book' : st === 'no' ? 'Not taken' : 'Next open'} · signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)}</> : ''} · stop {inr0(p.stop)}{(() => { const o = auto.ledger.data?.ledger.outcomes[pickId(p.asOf, p.engine, p.sym)]; const x = targetPrices(p, false, o && (o.status === 'open' || o.status === 'closed') ? o.entry : null); return x ? ` · T1 ${inr0(x.t1)} · T2 ${inr0(x.t2)} (${x.ref ? 'ref' : BASIS_NOTE[x.basis]})` : ''; })()}</span></span>
-            <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={up} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
+              <span className="small mute trunc" style={{ display: 'block' }}>signal {inr0(p.ref)}{lp?.px != null && lp.fromQuote ? <> → {pct(((lp.px / p.ref) - 1) * 100)}</> : ''} · stop {inr0(p.stop)}{(() => { const o = auto.ledger.data?.ledger.outcomes[pickId(p.asOf, p.engine, p.sym)]; const x = targetPrices(p, false, o && (o.status === 'open' || o.status === 'closed') ? o.entry : null); return x ? ` · T1 ${inr0(x.t1)} · T2 ${inr0(x.t2)} (${x.ref ? 'ref' : BASIS_NOTE[x.basis]})` : ''; })()}</span></span>
+            <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={(lp?.ch ?? 0) >= 0} refs={[{ v: q.prev, kind: 'prev' }]} h={28} label={`${p.sym} today`} /> : null}</span>
             <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-          <p className="small dim" style={{ margin: '4px 0 0' }}>{evHead ? `${evHead} ` : ''}{fr.behind ? `That close is ${fr.behind === 1 ? 'one session' : `${fr.behind} sessions`} ago. ` : ''}A rank, not a chance of winning.</p>
-          <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "Since" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices: "at signal close" for a pick that has not entered yet (the fill sets the booked levels), "from the fill" once it has; "(ref)" means reference only, not traded. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
-          <a className="btn sm picks-all" href="#/signals">{allPicks.length > TOP ? `All ${allPicks.length} picks in Signals` : 'Open Signals'}</a></div>
+          <p className="small mute picks-note">Experimental: {evHead ? `${evHead} ` : ''}A rank, not a chance of winning. Paper only.</p>
+          <details className="more"><summary>How to read these picks</summary><div>Ranked by each engine's own rank among eligible names. "→" is the live price against the signal close. The paper book skips an entry that opens more than 2% above that close. T1 and T2 are the profit-booking prices: "at signal close" for a pick that has not entered yet (the fill sets the booked levels), "from the fill" once it has; "(ref)" means reference only, not traded. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version {rulesFor(day ?? '9999')}.</div></details>
+        </div>
       </section>}
 
       {/* nothing fired is a finding, said plainly */}
       {!fresh && scr.data && allPicks.length === 0 && <section className="tsec tpicks" aria-labelledby="t-nopicks" data-sec="picks-empty">
-        <h2 id="t-nopicks" className="sec">Fired at the last close</h2>
-        <EmptyState icon="info" action={<a className="btn sec" href="#/signals">Open Signals</a>}>No rules fired at the last close. The gate is doing its job.</EmptyState>
+        <div className="row between sechead"><h2 id="t-nopicks" className="sec">Fired at the last close</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
+        <p className="small dim card t-quiet">No rules fired at the last close. The gate is doing its job.</p>
       </section>}
 
       <div className="t-capture"><CaptureModule source="tripwire-today" /></div>
-      {scr.data && <p className="mute small tfoot">{scr.data.count} companies in the screen · <a href="#/data" style={{ textDecoration: 'underline' }}>data and coverage</a>{fresh ? '' : '. Picks are starting points, not recommendations.'}</p>}
+      {/* how current each file is, once, collapsed, at the foot: the header pill and the banner carry the headline */}
+      <DataStatus extra={scr.data ? <p className="mute">{scr.data.count} companies in the screen · <a href="#/data">Data and coverage</a>{fresh ? '' : ' · picks are starting points, not recommendations.'}</p> : null} />
       <IdentityFooter />
     </div>
   </div>;

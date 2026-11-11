@@ -102,10 +102,10 @@ const SheetCtx = createContext<{ open: (s: Sheet) => void }>({ open: () => {} })
 export const useSheets = () => useContext(SheetCtx);
 
 /** Five destinations. Today, Signals, Discover and My Desk are the daily ones; everything else is under More. News, Markets, Live and a macro series are reached from Today, so they stay in its tab; the Lab from Discover. */
-export const TABS = [{ id: 'today', label: 'Today', c: 'var(--lime)' }, { id: 'signals', label: 'Signals', c: 'var(--a3)' }, { id: 'discover', label: 'Discover', c: 'var(--a2)' }, { id: 'desk', label: 'My Desk', c: 'var(--a4)' }, { id: 'more', label: 'More', c: 'var(--a5)' }];
+export const TABS = [{ id: 'today', label: 'Today', c: 'var(--accent)' }, { id: 'discover', label: 'Research', c: 'var(--accent)' }, { id: 'signals', label: 'Book', c: 'var(--accent)' }, { id: 'more', label: 'Menu', c: 'var(--accent)' }];   /* 11 Nov 2026: three daily places and a Menu (My Desk, settings, data, method, help). */
 const MORE_HEADS = ['more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
-export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' ? 'desk' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
-const TITLES: Record<string, string> = { signals: 'Signals', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
+export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' || p[0] === 'desk' ? 'more' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
+const TITLES: Record<string, string> = { signals: 'Book', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 /** Replaces the address (no extra Back step) and draws nothing. */
@@ -148,14 +148,14 @@ export function App(): ReactNode {
   // Route chunks are fetched once the page has loaded and gone idle (a first-time visitor's welcome screen fetches them when touched): see prefetch.ts. Not at start-up, where they compete with the first screen.
   useEffect(() => (s.onboarded ? prefetchWhenIdle() : undefined), [s.onboarded]);
   const pwa = usePwa(); const [updMsg, setUpdMsg] = useState('');
-  const tab = tabOf(loc.path); const ti = Math.max(0, TABS.findIndex((t) => t.id === tab));
-  if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'desk' || tab === 'more' || tab === 'signals' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
+  const tab = tabOf(loc.path); const tiRaw = TABS.findIndex((t) => t.id === tab); const ti = Math.max(0, tiRaw);   /* a Menu page (desk, more) highlights no tab */
+  if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'more' || tab === 'signals' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
   const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
   useEffect(() => {
     const own = loc.path[0] === 'discover' && isRestoring(loc.raw);   // Discover puts itself back
     if (!own && !(isRestoring(loc.raw) && restoreScroll(loc.raw))) window.scrollTo(0, 0);
-    document.title = `${resolveRoute(loc.path).kind === 'notfound' ? 'Not found' : TITLES[loc.path[0]] ?? TABS[ti].label} · Tripwire`;
+    document.title = `${resolveRoute(loc.path).kind === 'notfound' ? 'Not found' : TITLES[loc.path[0]] ?? (loc.path[0] === 'desk' ? 'My Desk' : TABS[ti].label)} · Tripwire`;
   }, [nav.current, ti]); // eslint-disable-line react-hooks/exhaustive-deps
   /** A tap on a tab. On the tab you are in: back to the top, and if you are already there, back to the tab's first screen. On another: where you left it, scroll and all. */
   const onTab = (id: string) => (e: React.MouseEvent) => {
@@ -180,7 +180,7 @@ export function App(): ReactNode {
   else if (head === 'compare') view = <Compare syms={(vl.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
   else if (head === 'more') view = <More />;
-  else if (head === 'signals') view = <Signals seg={vl.q.get('v') ?? 'picks'} />;
+  else if (head === 'signals') view = <Signals seg={vl.q.get('v')} />;   // 11 Nov 2026: the Book opens on Positions; every older ?v= still lands (bookview.ts)
   else if (head === 'settings' || head === 'profile') view = <Settings />;   // #/profile is the older address of the same screen
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
@@ -189,12 +189,12 @@ export function App(): ReactNode {
   else if (head === 'privacy') view = <Privacy />;
   else if (head === 'terms') view = <Terms />;
   else if (head === 'live') view = <Live />;
-  else if (head === 'paper' || head === 'book') view = <Redirect to="#/signals?v=tracker" />;   // the obvious addresses for the paper book land on it (Signals > Mine), not on a dead end
+  else if (head === 'paper' || head === 'book') view = <Redirect to="#/signals?v=positions" />;   // the obvious addresses for the paper book land on it (Book > Positions), not on a dead end
   else if (head === 'news') view = <NewsPage />;
   else if (head === 'markets') view = <Markets />;
   else if (head === 'lab') view = <Lab />;
   else if (vtab === 'discover') view = <Discover />;
-  else if (vtab === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
+  else if (vl.path[0] === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
   else view = <Today />;
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
@@ -211,7 +211,7 @@ export function App(): ReactNode {
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
         <ScrollTop />
       </main>
-      <nav className="tabs" aria-label="Primary" style={{ '--tc': TABS[ti].c, '--i': ti } as React.CSSProperties}>
+      <nav className="tabs" aria-label="Primary" data-none={tiRaw < 0 ? '' : undefined} style={{ '--tc': TABS[ti].c, '--i': ti, '--n': TABS.length } as React.CSSProperties}>
         <span className="rail-brand" aria-hidden="true"><i />Tripwire<small>Research workspace</small></span>
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}

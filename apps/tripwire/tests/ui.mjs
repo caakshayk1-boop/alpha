@@ -173,8 +173,8 @@ for (const reducedMotion of ['no-preference', 'reduce']) { const ctx = await new
 
 /* N+3. Five destinations in the bottom bar, Signals among them, none clipped at 320. */
 { const ctx = await newCtx(b, 320, ohlcSeries(300, 'TCS')); const pg = await ctx.newPage(); await open(pg, '/#/signals', 'nav.tabs');
-  ok((await pg.locator('nav.tabs a').allTextContents()).map((x) => x.trim()).join('|') === 'Today|Signals|Discover|My Desk|More', 'the bar reads Today, Signals, Discover, My Desk, More');
-  ok((await pg.locator('nav.tabs a[aria-current=page]').innerText()).trim() === 'Signals', 'Signals is the current tab on the Signals page');
+  ok((await pg.locator('nav.tabs a').allTextContents()).map((x) => x.trim()).join('|') === 'Today|Research|Book|Menu', 'the bar reads Today, Research, Book, Menu (11 Nov 2026 redesign: four tabs, My Desk lives in Menu)');
+  ok((await pg.locator('nav.tabs a[aria-current=page]').innerText()).trim() === 'Book', 'Book is the current tab on the Signals page (renamed 11 Nov 2026)');
   const m = await pg.evaluate(() => [...document.querySelectorAll('nav.tabs a')].map((a) => ({ t: a.textContent.trim(), w: Math.round(a.getBoundingClientRect().width), h: Math.round(a.getBoundingClientRect().height), clip: a.scrollWidth - a.clientWidth > 1 || a.scrollHeight - a.clientHeight > 1 })));
   ok(m.every((x) => x.w >= 44 && x.h >= 44 && !x.clip), `each tab is a 44px target with its label whole at 320 (${m.map((x) => `${x.t} ${x.w}x${x.h}`).join(', ')})`); await ctx.close(); }
 

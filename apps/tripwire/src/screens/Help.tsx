@@ -6,9 +6,9 @@ import { Fold, Workflow } from './fold.tsx';
 /** How to use Tripwire: the path through the app, and where things are kept. Only what the app does today. */
 export function Help() {
   const step = (n: number, t: string, body: string) => <li key={n} style={{ marginBottom: 10 }}><b>{t}.</b> {body}</li>;
-  return <div className="read">
-    <PageBar title="How to use Tripwire" onBack sub="A paper-only research workspace" />
-    <div className="card small"><p style={{ margin: 0 }}>Tripwire shows which public rules fired at the last close and the evidence on each side. Everything is paper: no order is placed, and your notes stay on this device.</p></div>
+  // 11 Nov 2026 (revamp v2): the sub said "paper-only" and the card under it said it again; one sentence now, in the sub's place. "Your notes stay on this device" is said once, under Where things are kept.
+  return <div className="mp read">
+    <PageBar title="How to use Tripwire" onBack sub="Which public rules fired at the last close, and the evidence on each side. Everything is paper: no order is placed." />
     <Workflow />
     <Fold id="session" title="A first session, step by step" summary="Five steps from Today to a paper plan." open>
     <div className="card"><ol className="small helpsteps">
@@ -34,7 +34,7 @@ export function Help() {
     <div className="card small"><p style={{ margin: 0 }} data-holiday>{holidayStatement()}</p></div>
     </Fold>
     <Head>More</Head>
-    <div className="card"><div className="list"><a className="li" href="#/methodology"><span className="grow">Methodology and evidence</span></a><a className="li" href="#/data"><span className="grow">Data and coverage</span></a><a className="li" href="#/settings"><span className="grow">Settings and backup</span></a></div></div>
+    <nav className="mp-links" aria-label="Related pages"><a href="#/methodology">Methodology and evidence<small>How things are worked out, and what the tests found</small></a><a href="#/data">Data and coverage<small>What is in the screen and how old each figure is</small></a><a href="#/settings">Settings and backup<small>Back up what you wrote on this device</small></a></nav>
     <IdentityFooter />
   </div>;
 }

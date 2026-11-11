@@ -1,0 +1,149 @@
+/* Today, revamp v2 (11 Nov 2026). Loaded LAST (after board.css). Tokens only. Selectors start `html .today.t2` so they win over the older Today layers (today, polish, atelier, workspace)
+   without !important. Motion: transform and opacity only, decorative motion under html.fx, nothing under reduced motion. */
+
+/* ---- the page: DOM order is reading order; on a wide screen two columns under a full-width brief ---- */
+html .today.t2{gap:var(--sp-5);grid-template-columns:minmax(0,1fr)}
+html .today.t2>*{order:0;grid-column:auto;min-width:0}
+@media (min-width:1024px){
+  html .today.t2{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);column-gap:var(--sp-5);align-items:start}
+  html .today.t2>:is(.brief,.setup,.sample,.hitcard,.t-capture,.t-status,.ident){grid-column:1/-1}
+  html .today.t2>.board,html .today.t2>.board-slot,html .today.t2>.tbook{grid-column:1}
+  html .today.t2>.tnews,html .today.t2>.tpicks{grid-column:2}
+  html .today.t2>.tnews{grid-row:span 1}
+}
+html .today.t2 .sechead{margin:0 0 var(--sp-3);gap:var(--sp-3);align-items:baseline;flex-wrap:nowrap}
+html .today.t2 .sechead>h2.sec{min-width:0}
+html .today.t2 .sechead>h2.sec,html .today.t2 h2.sec{font:700 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+html .today.t2 .seclink{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:var(--hit);color:var(--accent);font-size:var(--fs-data);font-weight:600;text-decoration:none;white-space:nowrap}
+html .today.t2 .seclink:hover{text-decoration:underline}
+
+/* ---- the market card ---- */
+html .today.t2 .brief{padding:var(--card-pad)}
+html .today.t2 .brief>.brief-top{margin-bottom:0;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
+html .today.t2 .brief>.brief-top .sec{font:600 var(--fs-label)/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+html .today.t2 .t-sess-row{gap:var(--sp-2);flex-wrap:wrap}
+html .today.t2 .t-sess{color:var(--ink-2)}
+html .today.t2 .t-sess.open{color:var(--up)}
+@media (min-width:700px){html .today.t2 .t-sess{display:none}}
+/* on a phone the badge sits beside the heading and the session takes its own full line, so the badge's word arriving ("Checking prices" to "Last traded") never wraps the row (CLS) */
+@media (max-width:699px){html .today.t2 .t-sess-row{display:contents}html .today.t2 .brief>.brief-top .livebadge{order:2;margin-left:auto}html .today.t2 .t-sess{order:3;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.5em}}   /* the top bar says the session from this width; on a phone this chip is the one place it is said */
+html .today.t2 .pulse{margin:var(--sp-3) 0 var(--sp-4)}
+@media (min-width:700px){html .today.t2 .pulse{grid-template-columns:220px minmax(0,1fr);gap:var(--sp-6)}html .today.t2 .gauge svg{width:100%}}
+html .today.t2 .br-k{margin:0;font-size:var(--fs-label);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+html .today.t2 .brief .t-take{font-size:clamp(1.375rem,4.4vw,2rem);line-height:1.2;font-weight:700;letter-spacing:var(--track-tight);margin:0;min-height:2.4em;text-wrap:balance}
+@media (max-width:699px){html .today.t2 .brief .t-take{text-align:center;min-height:2.4em}}
+/* the index tape: three cells in one strip, name over price over change, no sparkline */
+html .today.t2 .brief-ix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:var(--radius-input);background:var(--bg-2);overflow:hidden}
+html .today.t2 .brief-ix .bix{grid-column:auto;border-bottom:0;display:grid;grid-template-columns:minmax(0,1fr);gap:2px;min-height:0;min-width:0;padding:var(--sp-3);border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;color:inherit;text-decoration:none}
+html .today.t2 .brief-ix .bix:last-child{border-right:0}
+html .today.t2 .brief-ix .bix>.small{font-size:var(--fs-label);grid-column:auto;align-self:auto;justify-self:auto}
+html .today.t2 .brief-ix .bix b{font:700 clamp(1rem,3.6vw,1.375rem)/1.2 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums;grid-column:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .today.t2 .brief-ix .bix>.small:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+html .today.t2 .brief-macro{padding:var(--sp-3) 0 0;margin:var(--sp-2) 0 0;border-bottom:0;gap:var(--sp-3);min-height:0;font-size:var(--fs-label)}
+html .today.t2 .brief-fresh{margin:var(--sp-3) 0 0;font-size:var(--fs-label);display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-1) var(--sp-3);line-height:1.5}
+html .today.t2 .brief-fresh a{border:0;text-decoration:underline;min-height:0}
+
+/* ---- your names: the departure board ---- */
+html .today.t2 .board-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);overflow:hidden}
+html .today.t2 .br+.br{border-top:1px solid var(--line)}
+html .today.t2 .br-hit{display:grid;grid-template-columns:minmax(0,1fr) auto 20px;grid-template-areas:"id px chev" "chips chips chips";align-items:center;gap:var(--sp-1) var(--sp-3);width:100%;min-height:64px;padding:var(--sp-3) var(--sp-4);background:transparent;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer;border-radius:0}
+html .today.t2 .br-hit:hover{background:var(--surface-2)}
+html .today.t2 .br-hit:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html .today.t2 .br-id{grid-area:id;display:grid;gap:2px;min-width:0}
+html .today.t2 .br-sym{font:800 1.125rem/1.2 var(--font);letter-spacing:.01em;color:var(--ink)}
+html .today.t2 .br-name{font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .today.t2 .br-px{grid-area:px;display:grid;justify-items:end;gap:2px;text-align:right}
+html .today.t2 .br-px b{font:700 1.375rem/1.15 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums;color:var(--ink)}
+html .today.t2 .br-ch{font-size:var(--fs-data);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+html .today.t2 .br-ch>span{font-size:.625rem;vertical-align:1px}
+html .today.t2 .br-chev{grid-area:chev;display:grid;place-items:center;color:var(--ink-3)}
+html .today.t2 .br-chev svg{width:16px;height:16px}
+html .today.t2 .br.open .br-chev svg{transform:rotate(180deg)}
+html .today.t2 .br-chips{grid-area:chips;min-width:0;display:flex;flex-wrap:wrap;gap:var(--sp-1) 6px;margin-top:var(--sp-1)}
+html .today :is(.br-chip){display:inline-flex;align-items:center;min-height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:600;line-height:1;letter-spacing:.01em;color:var(--ink-2);background:var(--surface-3);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+html .today .br-chip.up{color:var(--up);background:var(--up-tint)}
+html .today .br-chip.down{color:var(--down);background:var(--down-tint)}
+html .today .br-chip.amber{color:var(--amber);background:var(--amber-tint)}
+html .today .br-chip.accent{color:var(--accent);background:var(--accent-tint)}
+html .today.t2 .br.has-new .br-sym::after{content:"";display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:var(--accent);vertical-align:3px}
+/* the expanding panel: 0fr to 1fr; hidden from focus and the accessibility tree while closed */
+html .today.t2 .br-panel{display:grid;grid-template-rows:0fr;visibility:hidden}
+html .today.t2 .br.open .br-panel{grid-template-rows:1fr;visibility:visible}
+html .today.t2 .br-inner{overflow:hidden;min-height:0;display:grid;gap:var(--sp-2);padding:0 var(--sp-4)}
+html .today.t2 .br.open .br-inner{padding:0 var(--sp-4) var(--sp-4)}
+html .today.t2 .br-inner .svevents{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--radius-input);background:var(--bg-2)}
+html .today.t2 .br-inner .svi{border:0;border-radius:0;background:none;padding:var(--sp-3)}
+html .today.t2 .br-inner .svi+.svi{border-top:1px solid var(--line)}
+html .today.t2 .br-news{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-3)}
+html .today.t2 .br-news li{display:grid;gap:2px}
+html .today.t2 .br-news a{color:var(--ink);font-weight:600;line-height:1.35;text-decoration:none}
+html .today.t2 .br-news a:hover{text-decoration:underline}
+html .today.t2 .br-quiet{margin:0}
+html .today.t2 .br-act{gap:var(--sp-2);flex-wrap:wrap}
+html .today.t2 .br-act .btn{min-height:var(--hit)}
+html .today.t2 .board-note{margin:var(--sp-2) 0 0}
+html .today.t2 .board .svmsg{min-height:1.4rem;margin:var(--sp-1) 0 0}
+html .today.t2 .board-empty-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-4) var(--card-pad)}
+html .today.t2 .board-empty-card p{margin:0;flex:1 1 14rem}
+html .today.t2 .board-empty-card .btn{min-height:var(--hit)}
+
+/* ---- market news: three stories ---- */
+html .today.t2 .newsslot{min-height:22rem}
+html .today.t2 .tnw .nw-bar{margin-bottom:var(--sp-2)}
+html .today.t2 .tnw .nw-title{font:700 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight)}
+html .today.t2 .tnw .nw-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2)}
+html .today.t2 .tnw .nw-foot .btn{min-height:var(--hit)}
+
+/* ---- the paper book card ---- */
+html .today.t2 .bookcard{padding:var(--card-pad);display:grid;gap:var(--sp-4)}
+html .today.t2 .bk-stats{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:var(--sp-3);margin:0}
+html .today.t2 .bk-stats>div{display:grid;gap:2px;min-width:0}
+html .today.t2 .bk-stats dt{font-size:var(--fs-label);color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+html .today.t2 .bk-stats dd{margin:0;font:700 var(--fs-num-s)/1.15 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+html .today.t2 .bk-stats dd.bigpnl{font-size:var(--fs-num-l);min-width:0}
+html .today.t2 .bk-stats dd.up{color:var(--up)}html .today.t2 .bk-stats dd.down{color:var(--down)}
+html .today.t2 .bk-stats small{font-size:var(--fs-label);color:var(--ink-3);font-weight:500;letter-spacing:0}
+html .today.t2 .bk-near{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-4);border-top:1px solid var(--line);padding-top:var(--sp-4)}
+html .today.t2 .bk-near-h{align-items:baseline;gap:var(--sp-2);margin-bottom:var(--sp-1)}
+html .today.t2 .bk-near-h .sym{font-weight:800;color:var(--ink);text-decoration:none}
+html .today.t2 .bk-closed{list-style:none;margin:0;padding:var(--sp-3) 0 0;border-top:1px solid var(--line);display:grid;gap:var(--sp-1)}
+html .today.t2 .bk-closed a{display:flex;align-items:center;gap:var(--sp-2);min-height:var(--hit);color:var(--ink-2);text-decoration:none}
+html .today.t2 .bk-note{margin:0}
+
+/* ---- picks ---- */
+html .today.t2 .tpicks .pickrow .br-chip{min-height:20px;font-size:.6875rem}
+html .today.t2 .picks-note{margin:var(--sp-2) 0 0}
+html .today.t2 .t-quiet{margin:0;padding:var(--sp-4) var(--card-pad)}
+
+/* ---- the one data status line, at the foot ---- */
+html .today.t2 .t-status{margin:0;border:1px solid var(--line);border-radius:var(--radius-input);background:var(--bg-2)}
+html .today.t2 .t-status>summary{display:flex;align-items:center;gap:var(--sp-2);min-height:var(--hit);padding:0 var(--sp-4);cursor:pointer;list-style:none;font-size:var(--fs-data);color:var(--ink-2)}
+html .today.t2 .t-status>summary::-webkit-details-marker{display:none}
+html .today.t2 .t-status>summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(45deg) translateY(-2px);flex:none}
+html .today.t2 .t-status[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+html .today.t2 .t-status-k{font-weight:600;color:var(--ink);white-space:nowrap}
+html .today.t2 .t-status .fresh-pill{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-3);background:none;border:0;padding:0}
+html .today.t2 .t-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ink-3)}
+html .today.t2 .t-dot.ok{background:var(--up)}html .today.t2 .t-dot.stale{background:var(--amber)}
+html .today.t2 .t-status[data-fresh="stale"] .fresh-pill{color:var(--amber)}
+html .today.t2 .t-status-body{padding:0 var(--sp-4) var(--sp-3);display:grid;gap:var(--sp-1)}
+html .today.t2 .t-status-body p{margin:0}
+html .today.t2 .t-status-body .fresh-why{color:var(--amber)}
+html .today.t2 .t-status-body a{text-decoration:underline}
+
+/* ---- motion: press feedback and the panel, transform/opacity only; nothing when reduced ---- */
+html.fx .today.t2 :is(.br-hit,.pickrow,.bix):active{transform:scale(.97)}
+html.fx .today.t2 :is(.br-hit,.pickrow,.bix){transition:transform var(--dur-1) var(--ease),background-color var(--dur-1) var(--ease)}
+html.fx .today.t2 .br-chev svg{transition:transform var(--dur-2) var(--ease)}
+html.fx .today.t2 .br-panel{transition:grid-template-rows var(--dur-2) var(--ease),visibility 0s linear var(--dur-2)}
+html.fx .today.t2 .br.open .br-panel{transition:grid-template-rows var(--dur-2) var(--ease),visibility 0s}
+html.fx .today.t2 .br-inner{opacity:0;transform:translateY(-4px);transition:opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--ease)}
+html.fx .today.t2 .br.open .br-inner{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){html .today.t2 :is(.br-hit,.pickrow,.bix,.br-panel,.br-inner,.svi){transition:none;transform:none}html .today.t2 .br-chev svg{transition:none}}
+/* 11 Nov 2026: reserve the two lines that change when prices arrive (shell.mjs "delayed screen" CLS < 0.01).
+   The price word grows from "Checking prices" to its final word, and "Prices: …" grows when the observation lands;
+   either one re-wrapping moved the whole card below. Each now holds its slot. */
+html .today.t2 .brief-fresh{flex-direction:column;align-items:flex-start}
+html .today.t2 .brief-fresh .bf-px{min-height:2lh}
+html .today.t2 .t-sess-row .livebadge{min-width:15ch;justify-content:flex-start}
+html .today.t2 .brief-top{min-height:2lh;align-items:flex-start}

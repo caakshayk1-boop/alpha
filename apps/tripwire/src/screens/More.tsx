@@ -1,27 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon, useUi } from '../ui.tsx';
-import { Head, PageBar } from './common.tsx';
+import { PageBar } from './common.tsx';
 import { promptInstall, usePwa } from '../pwa.ts';
+import { useScreen } from '../data.ts';
+import { useLivePulse } from '../quotes.ts';
+import { quoteWord } from '../stamp.ts';
+import { freshness } from '../fresh.ts';
+import { dayWord } from '../fmt.ts';
 
-/** More: every destination that is not one of the three daily ones, as a plain list. Nothing here is a feature of its own; each row is a link to a page that already exists. */
-interface Row { href: string; title: string; note: string; id: string }
+/** Menu: every destination that is not one of the three daily tabs, as a grouped list of big rows (icon, title, one-line note). Nothing here is a feature of its own;
+ *  each row is a link to a page that already exists. 11 Nov 2026 (revamp v2): Signals left this list (it is the Book tab), and the app's state is one line at the
+ *  top, so no page under Menu repeats it in its own header. Operations stays one link away, from Settings. */
+interface Row { href: string; title: string; note: string; id: string; icon: string }
 const GROUPS: { head: string; rows: Row[] }[] = [
+  { head: 'Yours', rows: [
+    { id: 'desk', href: '#/desk', icon: 'desk', title: 'My Desk', note: 'The companies you follow, your theses, journal and plans' },
+  ] },
   { head: 'Research', rows: [
-    { id: 'signals', href: '#/signals', title: 'Signals', note: 'The rules that fired at the last close, your paper trades and the record' },
-    { id: 'markets', href: '#/markets', title: 'Markets', note: 'Indices, commodities and the trend map' },
-    { id: 'news', href: '#/news', title: 'News', note: 'Headlines for the market, what you follow and your paper book' },
+    { id: 'markets', href: '#/markets', icon: 'chart', title: 'Markets', note: 'Indices, commodities and the trend map' },
+    { id: 'news', href: '#/news', icon: 'note', title: 'News', note: 'Headlines for the market, what you follow and your paper book' },
   ] },
-  { head: 'Understand', rows: [
-    { id: 'data', href: '#/data', title: 'Data and coverage', note: 'How current each dataset is, and what it covers' },
-    { id: 'methodology', href: '#/methodology', title: 'Methodology and evidence', note: 'How picks and trends are worked out, and what the tests found' },
-    { id: 'help', href: '#/help', title: 'Help', note: 'How to use Tripwire' },
-    { id: 'privacy', href: '#/privacy', title: 'Privacy', note: 'What stays on your device, and what the server is asked' },
-    { id: 'terms', href: '#/terms', title: 'Terms of use', note: 'Paper only, not advice, no order placed' },
+  { head: 'About the data', rows: [
+    { id: 'data', href: '#/data', icon: 'clock', title: 'Data and coverage', note: 'How current each dataset is, and what it covers' },
+    { id: 'methodology', href: '#/methodology', icon: 'check', title: 'Methodology', note: 'How picks and trends are worked out, and what the tests found' },
+    { id: 'help', href: '#/help', icon: 'info', title: 'Help', note: 'How to use Tripwire' },
   ] },
-  { head: 'This device', rows: [
-    { id: 'settings', href: '#/settings', title: 'Settings', note: 'Stored on this device only: backup and restore, defaults, privacy, app lock' },
+  { head: 'Settings', rows: [
+    { id: 'settings', href: '#/settings', title: 'Settings', icon: 'profile', note: 'Backup and restore, defaults, display, app lock' },
+  ] },
+  { head: 'Legal', rows: [
+    { id: 'privacy', href: '#/privacy', icon: 'lock', title: 'Privacy', note: 'What stays on your device, and what the server is asked' },
+    { id: 'terms', href: '#/terms', icon: 'flag', title: 'Terms of use', note: 'Not advice, no order placed, data can be late' },
   ] },
 ];
+
+/** The app's state in one line: the close the screen carries, and the word for the newest index print (Live, Delayed, Last traded, Unavailable). */
+export function MenuState() {
+  const scr = useScreen(); const pulse = useLivePulse(); const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);   // 12 Nov 2026 (Codex on #60): the price word ages with the clock, so a stale print never keeps reading Live
+  const asOf = scr.data?.as_of; const fr = asOf ? freshness(asOf) : null;
+  const word = pulse.loading ? null : quoteWord(pulse.obs, now);
+  return <p className={`mn-state${fr && fr.word !== 'Current' ? ' behind' : ''}`} data-menu-state role="status">
+    <span className="mn-dot" aria-hidden="true" />
+    <span className="mn-line">{scr.loading ? 'Checking the data' : asOf ? <>Data through <b className="num">{dayWord(asOf)}</b></> : 'Data date unavailable'}<span className="mn-sep" aria-hidden="true"> · </span>Prices <b>{word ? word.toLowerCase() : 'checking'}</b></span>
+  </p>;
+}
 
 /** Install guidance. Shown only when it can help: never when the app is already installed, and no promise the browser has not made. */
 export function InstallHint() {
@@ -37,14 +60,15 @@ export function InstallHint() {
 }
 
 export function More() {
-  return <div data-more>
-    <PageBar title="More" sub="Everything else, in one list" />
-    {GROUPS.map((g) => <section key={g.head} aria-label={g.head}><Head>{g.head}</Head>
-      <div className="card" style={{ padding: '2px 14px' }}><div className="list">{g.rows.map((r) => <a key={r.id} className="li more-row" href={r.href} data-more-row={r.id}>
-        <span className="grow"><span className="more-t">{r.title}</span><span className="small dim more-n">{r.note}</span></span><Icon n="chev" className="more-go" /></a>)}</div></div></section>)}
+  return <div className="mp mn" data-more>
+    <PageBar title="Menu" />
+    <MenuState />
+    {GROUPS.map((g) => <section key={g.head} className="mn-g" aria-labelledby={`mn-${g.rows[0].id}`}><h2 className="mn-h" id={`mn-${g.rows[0].id}`}>{g.head}</h2>
+      <div className="mn-list">{g.rows.map((r) => <a key={r.id} className="mn-row" href={r.href} data-more-row={r.id}>
+        <span className="mn-ic" aria-hidden="true"><Icon n={r.icon} /></span>
+        <span className="mn-tx"><span className="mn-t">{r.title}</span><span className="mn-n">{r.note}</span></span><Icon n="chev" className="mn-go" /></a>)}</div></section>)}
     <InstallHint />
-    <section aria-label="About"><Head>About</Head>
-      <div className="card small dim" data-about><p style={{ marginTop: 0 }}><b style={{ color: 'var(--tx)' }}>Experimental, closed research beta.</b> Tripwire shows which public rules fired at the last close and the evidence on each side. It is educational research, not investment advice. Every trade in it is a paper trade: no order is ever placed, and paper results are not real results.</p>
-        <p style={{ marginBottom: 0 }}>No account, no tracking, no analytics. Your notes stay on this device.</p></div></section>
+    <section className="mn-about" aria-label="About" data-about><p><b>Experimental, closed research beta.</b> Tripwire shows which public rules fired at the last close and the evidence on each side. It is educational research, not investment advice. Every trade in it is a paper trade: no order is ever placed, and paper results are not real results.</p>
+      <p>No account, no tracking, no analytics. Your notes stay on this device.</p></section>
   </div>;
 }
