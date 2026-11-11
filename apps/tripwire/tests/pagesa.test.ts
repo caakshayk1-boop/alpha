@@ -42,6 +42,7 @@ test('takeaway: the VIX is mentioned only when it moved enough; a stale screen i
   const noBreadth = marketTakeaway({ ...base, upPct: null, downPct: null, nTrend: 0 })!; assert.equal(noBreadth.parts.breadth, false); assert.equal(noBreadth.text, 'Nifty +0.9% at the last close.');
   const noIndex = marketTakeaway({ ...base, niftyCh: null })!; assert.equal(noIndex.parts.index, false); assert.equal(noIndex.text, 'Breadth is strong.');
   assert.equal(marketTakeaway(base)!.text, marketTakeaway({ ...base })!.text, 'deterministic: the same inputs give the same sentence');
+  assert.equal(marketTakeaway({ ...base, shares: true })!.text, 'Nifty +0.9% at the last close, and breadth agrees. 54% of 812 liquid names are in an uptrend and 12% in a downtrend.', 'a page with no gauge (Markets) asks for the shares');
   assert.equal(marketTakeaway({ ...base, niftyCh: null, upPct: null, downPct: null, nTrend: 0 }), null, 'nothing measured, nothing said');
 });
 test('takeaway: never predicts, advises or explains a cause, across a sweep of inputs', () => {

@@ -121,7 +121,7 @@ export function Today() {
         <div className="row between sechead"><h2 id="t-book" className="sec">Paper book</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
         <div className="card bookcard">
           <dl className="bk-stats num">
-            <div><dt>Unrealised</dt><dd className={`bigpnl ${tone(pnl)}`}><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
+            <div><dt>Unrealised</dt><dd className={`amt bigpnl ${tone(pnl)}`}><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
             <div><dt>Open</dt><dd>{openN}{showAuto && auto.sum.waiting ? <small> +{auto.sum.waiting} waiting</small> : null}</dd></div>
             <div><dt>Closed</dt><dd>{showAuto ? auto.sum.closed : 0}<small> of {MIN_TRADES}</small></dd></div>
           </dl>
@@ -129,7 +129,7 @@ export function Today() {
             <div className="row between bk-near-h"><a href={`#/c/${x.sym}`} className="sym">{x.sym}</a><span className={`small ${x.near === 'stop' ? 'down' : 'up'}`}>{(x.gap * 100).toFixed(1)}% from its {x.near === 'stop' ? 'stop' : 'next target'}</span></div>
             <TargetLadder sym={x.sym} input={x.input} quiet /></li>)}</ul>}
           {closedLately.length > 0 && <ul className="bk-closed small" aria-label="Closed in the last three days">{closedLately.map((f) => <li key={f.id}><a href={f.href}><span className={`dot ${f.tone === 'up' ? 'up' : 'down'}`} aria-hidden="true" />{f.text}</a></li>)}</ul>}
-          <p className="small mute bk-note">Paper money only{showAuto && auto.sum.closed > 0 ? <> · realised <b className={`num ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b></> : null}.</p>
+          <p className="small mute bk-note">Paper money only{showAuto && auto.sum.closed > 0 ? <> · realised <b className={`num amt ${tone(auto.sum.closedPnl)}`}>{money(auto.sum.closedPnl)}</b></> : null}.</p>
         </div>
       </section>}
 

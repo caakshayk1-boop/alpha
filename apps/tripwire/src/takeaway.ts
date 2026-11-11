@@ -12,6 +12,8 @@ export interface TakeawayIn {
   live: boolean;
   /** sessions the screen's data trails the last finished one by. Accepted for callers that still pass it; the sentence no longer says it (the banner does). */
   behind?: number | null;
+  /** add the breadth shares as a second sentence: for a page with no breadth gauge beside the sentence (Markets). Today leaves it off, because its gauge shows them. */
+  shares?: boolean;
 }
 export interface Takeaway {
   /** the sentence, e.g. "Nifty +1.4%, but breadth is weak." */
@@ -44,6 +46,7 @@ export function marketTakeaway(i: TakeawayIn): Takeaway | null {
     const ix = `Nifty ${sg(i.niftyCh!)}${i.live ? '' : ' at the last close'}`;
     text = !st ? `${ix}.` : disagree ? `${ix}, but breadth is ${st}.` : agree ? `${ix}, and breadth agrees.` : `${ix}; breadth is ${st}.`;
   } else text = `Breadth is ${st}.`;
+  if (br && i.shares) text += ` ${Math.round(i.upPct!)}% of ${i.nTrend.toLocaleString('en-IN')} liquid names are in an uptrend and ${Math.round(i.downPct!)}% in a downtrend.`;
   if (vix) text += ` India VIX ${sg(i.vixCh!)}.`;
   return { text, parts: { index: idx, breadth: br, vix }, disagree, word };
 }

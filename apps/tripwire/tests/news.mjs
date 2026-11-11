@@ -40,7 +40,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   ok(await pg.locator('.tape, marquee').count() === 0, 'no ticker tape');
   ok(ctl.calls.query.length === 1 && /Gujarat|GCSL/i.test(decodeURIComponent(ctl.calls.query[0])) === true || ctl.calls.query.length >= 1, 'a followed name the snapshot does not cover is queried live, through the same endpoint');
   /* tabs, labels and drawers: the News page */
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   const counts = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/^All/.test(counts[0]) && /Market\s*2/.test(counts[1]) && /Following\s*\d/.test(counts[2]) && /Paper book\s*\d/.test(counts[3]), `the News page tab counts are separate: ${counts.join(' | ').replace(/\n/g, ' ')}`);
   const nrows = (p) => p.locator('.nw-list > .nw-row .nw-head').allInnerTexts();
   await tab(pg, 'Market'); ok((await nrows(pg)).length === 2, 'Market: the two India-wide events');
@@ -60,7 +60,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   const { ctx, pg } = await open({ ...STATE, follows: [] });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
   ok(await pg.locator('[data-board-row]').count() === 0 && await pg.locator('[data-sec="changes"]').getByRole('button', { name: 'Find a company' }).count() === 1, 'Today: no board rows are borrowed from the paper book; one line and Find a company');
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   const c = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/Following\s*0/.test(c[2]) && /Paper book\s*[1-9]/.test(c[3]), `zero follows: Following 0, Paper book separate (${c.join(' | ').replace(/\n/g, ' ')})`);
   await tab(pg, 'Following'); const t = await pg.locator('.nw').first().innerText();
   ok(/You follow no companies yet/.test(t) && /never filled from the paper book/.test(t) && await pg.locator('.nw-empty a[href="#/discover"]').count() === 1, 'Following with no names has a useful empty state with a Discover link');
@@ -71,7 +71,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
 /* 3. "New": published after the last visit AND first seen after it. 11 Nov 2026 (revamp v2): the one New story is a followed company's, so it is read on the News page, which keeps the tag. */
 {
   const { ctx, pg } = await open(STATE, { seen: nowS() - 3 * 3600 });
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   const news = await pg.locator('.nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();
@@ -136,7 +136,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
 /* 7. the News page */
 {
   const { ctx, pg, errs } = await open(STATE);
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   ok(await pg.locator('h1').innerText() === 'News', 'the News page exists at #/news');
   ok(!await pg.locator('dl.nw-times').isVisible(), 'check timestamps are available on demand, not repeated above the news');
   await pg.locator('details.nw-method > summary').click();

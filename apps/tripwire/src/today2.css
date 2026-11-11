@@ -24,7 +24,9 @@ html .today.t2 .brief>.brief-top .sec{font:600 var(--fs-label)/1.2 var(--font);l
 html .today.t2 .t-sess-row{gap:var(--sp-2);flex-wrap:wrap}
 html .today.t2 .t-sess{color:var(--ink-2)}
 html .today.t2 .t-sess.open{color:var(--up)}
-@media (min-width:700px){html .today.t2 .t-sess{display:none}}   /* the top bar says the session from this width; on a phone this chip is the one place it is said */
+@media (min-width:700px){html .today.t2 .t-sess{display:none}}
+/* on a phone the badge sits beside the heading and the session takes its own full line, so the badge's word arriving ("Checking prices" to "Last traded") never wraps the row (CLS) */
+@media (max-width:699px){html .today.t2 .t-sess-row{display:contents}html .today.t2 .brief>.brief-top .livebadge{order:2;margin-left:auto}html .today.t2 .t-sess{order:3;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.5em}}   /* the top bar says the session from this width; on a phone this chip is the one place it is said */
 html .today.t2 .pulse{margin:var(--sp-3) 0 var(--sp-4)}
 @media (min-width:700px){html .today.t2 .pulse{grid-template-columns:220px minmax(0,1fr);gap:var(--sp-6)}html .today.t2 .gauge svg{width:100%}}
 html .today.t2 .br-k{margin:0;font-size:var(--fs-label);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
@@ -57,8 +59,8 @@ html .today.t2 .br-ch>span{font-size:.625rem;vertical-align:1px}
 html .today.t2 .br-chev{grid-area:chev;display:grid;place-items:center;color:var(--ink-3)}
 html .today.t2 .br-chev svg{width:16px;height:16px}
 html .today.t2 .br.open .br-chev svg{transform:rotate(180deg)}
-html .today.t2 .br-chips{grid-area:chips;display:flex;flex-wrap:wrap;gap:var(--sp-1) 6px;margin-top:var(--sp-1)}
-html .today :is(.br-chip){display:inline-flex;align-items:center;min-height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:600;line-height:1;letter-spacing:.01em;color:var(--ink-2);background:var(--surface-3);white-space:nowrap}
+html .today.t2 .br-chips{grid-area:chips;min-width:0;display:flex;flex-wrap:wrap;gap:var(--sp-1) 6px;margin-top:var(--sp-1)}
+html .today :is(.br-chip){display:inline-flex;align-items:center;min-height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:600;line-height:1;letter-spacing:.01em;color:var(--ink-2);background:var(--surface-3);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 html .today .br-chip.up{color:var(--up);background:var(--up-tint)}
 html .today .br-chip.down{color:var(--down);background:var(--down-tint)}
 html .today .br-chip.amber{color:var(--amber);background:var(--amber-tint)}
