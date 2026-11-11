@@ -17,7 +17,6 @@ const open = async (state, { clock = false, seen = null, news = {} } = {}) => {
 };
 const rows = (pg) => pg.locator('section.nw .nw-list > .nw-row');
 const heads = (pg) => rows(pg).locator('.nw-head').allInnerTexts();
-const tab = async (pg, name) => { await pg.locator('.nw-tabs .chip', { hasText: name }).first().click(); await pg.waitForTimeout(150); };
 const nowS = () => Math.floor(Date.now() / 1000);
 /* 11 Nov 2026 (revamp v2): the News page's filters sit behind one Filter button that opens the shared sheet; it replaced the "More filters" drawer and the "Show summaries" button. */
 const filters = async (pg) => { if (!(await pg.locator('[role=dialog]').count())) { await pg.locator('[data-news-filter]').click(); await pg.waitForSelector('[role=dialog]'); } };
@@ -43,13 +42,13 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   ok(await pg.locator('.tape, marquee').count() === 0, 'no ticker tape');
   ok(ctl.calls.query.length === 1 && /Gujarat|GCSL/i.test(decodeURIComponent(ctl.calls.query[0])) === true || ctl.calls.query.length >= 1, 'a followed name the snapshot does not cover is queried live, through the same endpoint');
   /* tabs, labels and drawers: the News page */
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
-  const counts = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/^All/.test(counts[0]) && /Market\s*2/.test(counts[1]) && /Following\s*\d/.test(counts[2]) && /Paper book\s*\d/.test(counts[3]), `the News page tab counts are separate: ${counts.join(' | ').replace(/\n/g, ' ')}`);
-  const nrows = (p) => p.locator('.nw-list > .nw-row .nw-head').allInnerTexts();
-  await tab(pg, 'Market'); ok((await nrows(pg)).length === 2, 'Market: the two India-wide events');
-  await tab(pg, 'Following'); const f = await nrows(pg); ok(f.length >= 2 && f.some((x) => /SEBI bars/.test(x)) && f.some((x) => /TCS Q2/.test(x)) && !f.some((x) => /Infosys/.test(x)), 'Following: the names the reader follows');
-  await tab(pg, 'Paper book'); const pb = await nrows(pg); ok(pb.length >= 1 && pb.every((x) => /TCS/.test(x)) && pb.some((x) => /TCS Q2/.test(x)), 'Paper book: its own tab');
-  await tab(pg, 'All'); const lbl = await pg.locator('.nw-label').allInnerTexts(); ok(lbl.includes('Following') && lbl.includes('Paper book') && lbl.includes('Market'), `All carries a label on each row: ${[...new Set(lbl)].join(', ')}`);
+  /* 11 Nov 2026 (merge of the Today and Research lanes): the News page has no tabs; it is grouped by what each event is about. The four readings the tabs gave are checked as sections. */
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  const grp = (g) => pg.locator(`[data-news-group="${g}"] .nw-row .nw-head`).allInnerTexts();
+  ok((await grp('market')).length === 2, 'Market: the two India-wide events');
+  const f = await grp('yours'); ok(f.length >= 2 && f.some((x) => /SEBI bars/.test(x)) && f.some((x) => /TCS Q2/.test(x)) && !f.some((x) => /Infosys/.test(x)), 'Your names: the names the reader follows');
+  ok(!(await grp('paper')).some((x) => /TCS Q2/.test(x)) && await pg.locator('[data-news-group="yours"] .nw-row', { hasText: 'TCS Q2' }).locator('.nw-inpaper').count() === 1, 'Paper book: a held name the reader also follows is listed once, under Your names, marked In paper book');
+  ok(/Your names/.test(await pg.locator('#nwg-yours').innerText()) && /Paper book/.test(await pg.locator('#nwg-paper').innerText()) && /Market/.test(await pg.locator('#nwg-market').innerText()), 'each section heading says why its rows are listed');
   /* drawer */
   const row = pg.locator('.nw-row', { hasText: 'TCS Q2 net profit' }).first(); ok(await row.locator('details.nw-more[open]').count() === 0, 'coverage and ranking sit in a closed drawer'); await row.locator('details.nw-more summary').click();
   const d = await row.locator('.nw-body').innerText(); ok(/3 outlets carried this/.test(d) && /Why it ranks here/.test(d) && /Published \(the outlet's own time\)\s*\n?.*IST/.test(d) && /Collected \(first seen by Tripwire's check\)\s*\n?.*IST/.test(d), 'the drawer lists the outlets, the ranking reason and the dates');
@@ -63,18 +62,17 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   const { ctx, pg } = await open({ ...STATE, follows: [] });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
   ok(await pg.locator('[data-board-row]').count() === 0 && await pg.locator('[data-sec="changes"]').getByRole('button', { name: 'Find a company' }).count() === 1, 'Today: no board rows are borrowed from the paper book; one line and Find a company');
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
-  const c = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/Following\s*0/.test(c[2]) && /Paper book\s*[1-9]/.test(c[3]), `zero follows: Following 0, Paper book separate (${c.join(' | ').replace(/\n/g, ' ')})`);
-  await tab(pg, 'Following'); const t = await pg.locator('.nw').first().innerText();
-  ok(/You follow no companies yet/.test(t) && /never filled from the paper book/.test(t) && await pg.locator('.nw-empty a[href="#/discover"]').count() === 1, 'Following with no names has a useful empty state with a Discover link');
-  ok(await pg.locator('.nw-list > .nw-row').count() === 0, 'Following shows no rows for a guest');
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });   // 11 Nov 2026: sections, not tabs
+  const t = await pg.locator('[data-news-group="yours"]').innerText();
+  ok(/You follow no companies yet/.test(t) && /never filled from the paper book/.test(t) && await pg.locator('[data-news-group="yours"] a[href="#/discover"]').count() === 1, 'Your names with no follows has a useful empty state with a Research link');
+  ok(await pg.locator('[data-news-group="yours"] .nw-row').count() === 0 && await pg.locator('[data-news-group="paper"] .nw-row').count() >= 1, 'zero follows: Your names is empty and the paper book stays separate');
   await ctx.close();
 }
 
 /* 3. "New": published after the last visit AND first seen after it. 11 Nov 2026 (revamp v2): the one New story is a followed company's, so it is read on the News page, which keeps the tag. */
 {
   const { ctx, pg } = await open(STATE, { seen: nowS() - 3 * 3600 });
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   const news = await pg.locator('.nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();
@@ -139,7 +137,7 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
 /* 7. the News page */
 {
   const { ctx, pg, errs } = await open(STATE);
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   ok(await pg.locator('h1').innerText() === 'News', 'the News page exists at #/news');
   ok(!await pg.locator('dl.nw-times').isVisible(), 'check timestamps are available on demand, not repeated above the news');
   await pg.locator('details.nw-method > summary').click();
