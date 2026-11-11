@@ -22,7 +22,7 @@ export function Operations() {
   const [now, setNow] = useState(() => Date.now()); useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(i); }, []);
   const ev: Evidence = { nowMs: now, health: h.data, healthErr: !!h.err, news: nh, screenAsOf: scr.data?.as_of ?? null, ledgerUpdated: led.data?.ledger?.updated ?? null, storageOk: stor, lockSupported: lock };
   const sum = serviceSummary(SERVICES, ev);
-  return <div className="read" data-ops>
+  return <div className="mp read" data-ops>
     <PageBar title="Operations" onBack sub="Service health, in plain words" />
     <div className="note info" data-ops-unprotected><b>This page is not access-protected.</b> Tripwire has no accounts and no sign-in, so anyone with the address can open it, and the health data behind it is public. Keeping a link out of the menu or closing a section hides nothing. The page shows names, times and counts, never a key, token or other secret value.</div>
 

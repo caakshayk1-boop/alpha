@@ -21,8 +21,8 @@ export function Desk({ seg }: { seg: string }) {
   const v = ['follow', 'journal', 'plans', 'saved'].includes(seg) && explicit ? seg : 'desk';
   // a view is offered when it holds something, or when the person has opened it on purpose (its link always works)
   const items = [{ id: 'desk', label: 'Desk' }, ...([['follow', 'Following'], ['journal', 'Journal'], ['plans', 'Plans'], ['saved', 'Saved']] as const).filter(([id]) => has[id] || v === id).map(([id, label]) => ({ id, label }))];
-  return <div>
-    <PageBar title="My Desk" sub="Kept on this device" />
+  return <div className="mp mp-desk">
+    <PageBar title="My Desk" onBack sub="Kept on this device" />
     {items.length > 1 && <Seg label="Desk view" value={v as 'desk'} onChange={(x) => go(x === 'desk' ? '/desk' : `/desk?v=${x}`)} items={items} />}
     {v === 'desk' ? (has.any ? <Workspace /> : <NewDesk />) : v === 'follow' ? <Following /> : v === 'journal' ? <Journal /> : v === 'plans' ? <Plans /> : <Saved />}
   </div>;
@@ -31,7 +31,7 @@ export function Desk({ seg }: { seg: string }) {
 function NewDesk() {
   const { open } = useSheets();
   return <div className="dsk dsk-empty" data-desk="new"><section className="card desk-start" aria-labelledby="dsk-new"><span className="k">Your research, in one place</span><h2 id="dsk-new" className="sec">Your next idea starts here.</h2>
-    <p className="dim">Follow a company to track what changes, then save your thesis when you are ready. Your notes stay on this device.</p>
+    <p className="dim">Follow a company to track what changes, then save your thesis when you are ready.</p>
     <button className="btn pri" onClick={() => open({ k: 'search' })}>Find a company</button></section>
     <Fold id="workflow" title="A guide to researching a company" summary="From first look to your own thesis."><Workflow /></Fold>
     <div className="dsk-way"><h3>Explore a paper plan</h3><p className="small dim">Calculate position size and modelled risk. No order is placed.</p><button className="btn" onClick={() => open({ k: 'plan' })}>Size a paper position</button><a className="small" href="#/desk?v=plans" style={{ display: 'block', marginTop: 12 }}>Paper snapshot and CSV import →</a></div>
@@ -125,7 +125,7 @@ function Plans() {
     <div className="row">{p.status === 'saved' && <button className="btn sm" onClick={() => { setState((x) => markPaperFill(x, p.id)); toast('Marked as a paper fill'); }}>Record paper fill</button>}
       {p.status === 'paper-filled' && <button className="btn sm" onClick={() => { setState((x) => closePlan(x, p.id)); toast('Plan closed'); }}>Close</button>}
       {p.status === 'saved' && <button className="btn sm" onClick={() => open({ k: 'plan', sym: p.sym, entry: p.entry, stop: p.stop })}>Edit</button>}</div></div>)}
-    <p className="mute small">Paper plans only. Tripwire connects to no broker and places no order.</p></>;
+    </>;
 }
 function Saved() {
   const s = useAppState();

@@ -18,14 +18,14 @@ import { Fold } from './fold.tsx';
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
 export function Methodology() {
   const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES); const scr = useJson<ScreenFeed>('/data/screen.json'); const gap = scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on).breadthGap : null;
-  return <div className="read meth">
+  // 11 Nov 2026 (revamp v2): the paper-only statement was made three times at the top (a note said "no order" twice, then the summary's first line); it is made once, below.
+  return <div className="mp read meth">
     <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />
-    <div className="note info"><b>Paper only, and experimental.</b> Tripwire is a research tool: it places no orders and gives no advice. Nothing here is advice and no order is ever placed. A pick is a starting point for your own research; a rank is a position among eligible names, not a chance of winning.</div>
 
     <section className="card sumcard" aria-labelledby="mt-glance" data-summary="methodology">
       <h2 id="mt-glance">At a glance</h2>
       <ul className="sumlist">
-        <li><span className="sk-k">What this is</span><span className="sk-v">Paper-only research. Rules fire at the close, the evidence is shown on each side, and no order is ever placed.</span></li>
+        <li><span className="sk-k">What this is</span><span className="sk-v">Paper-only, experimental research. Rules fire at the close and the evidence is shown on each side. It gives no advice and places no order; a pick is a starting point for your own research.</span></li>
         {ENGINES.filter((e) => !e.retired).map((e) => { const ev = engineEvidence(e.id, bt.data, bt.loading); return <li key={e.id} data-engine-summary={e.id}><span className="sk-k">{e.name}</span><span className={`sk-v${ev.tone === 'bad' ? ' bad' : ''}`}>{ev.word}: {ev.line}</span></li>; })}
         <li><span className="sk-k">Eligibility</span><span className="sk-v">Rule {rules.id}, {rules.steps.length} steps in order. A night keeps the rules it was filed under.</span></li>
         <li><span className="sk-k">How to read a rank</span><span className="sk-v">A position among eligible names, not a chance of winning. A name with no flags is not a name with no risks.</span></li>
@@ -85,7 +85,7 @@ export function Methodology() {
     </Fold>
 
     <Head>More</Head>
-    <div className="card"><div className="list"><a className="li" href="#/data"><span className="grow">Data and coverage<span className="small dim" style={{ display: 'block' }}>What is in the screen and how old each figure is</span></span></a><a className="li" href="#/help"><span className="grow">How to use Tripwire</span></a></div></div>
+    <nav className="mp-links" aria-label="Related pages"><a href="#/data">Data and coverage<small>What is in the screen and how old each figure is</small></a><a href="#/help">How to use Tripwire<small>The path through the app</small></a></nav>
     <div className="t-capture"><CaptureModule source="tripwire-methodology" /></div>
     <IdentityFooter />
   </div>;

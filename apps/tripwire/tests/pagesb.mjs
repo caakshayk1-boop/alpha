@@ -69,9 +69,23 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
   await dev.locator('summary').click(); const dt = await dev.innerText(); ok(/Service probes/.test(dt) && /Schedules and caches/.test(dt) && /binding/i.test(dt), 'probes, schedules and bindings are inside diagnostics');
   ok(!/(sk-|ghp_|github_pat|Bearer |secret value:|token:)/i.test(await pg.locator('body').innerText()), 'no secret or token text on the page'); await ctx.close(); }
 
+/* ---- 11 Nov 2026 (revamp v2): Menu pages share one header with one h1; Data names the sessions the ledger never recorded (mocked ledger with a hole on 29 Oct).
+   The helper reads the clock, so the check holds whatever today is: the hole is always listed, and the count is whatever the calendar makes it. ---- */
+{ for (const r of ['/#/more', '/#/desk', '/#/data', '/#/methodology', '/#/help', '/#/settings', '/#/ops', '/#/privacy', '/#/terms']) {
+    const { ctx, pg } = await open(r); await pg.waitForSelector('.mp h1', { timeout: 15000 }).catch(() => {});
+    ok(await pg.locator('h1').count() === 1 && await pg.locator('.mp > .bar h1').count() === 1, `${r}: one page header with one h1`); await ctx.close(); }
+  const day = (asOf) => ({ asOf, recorded: 'x', engines: {} });
+  const ledger = { ok: true, ledger: { schema: 'tripwire-ledger/1', started: '2026-10-28', updated: '2026-10-30T20:00:00.000Z', cost: 0.25, days: [day('2026-10-28'), day('2026-10-30')], picks: [], outcomes: {} } };
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }); await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);
+  await mockApi(ctx); await ctx.route('**/api/ledger*', (rt) => rt.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ledger) }));
+  const pg = await ctx.newPage(); await pg.goto(base + '/#/data'); await pg.waitForSelector('[data-ledger-gaps-row]', { timeout: 15000 }).catch(() => {});
+  const row = (await pg.locator('[data-file="ledger"]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok(/\d+ sessions? not recorded: [^.]*29 Oct 2026/.test(row) && !/28 Oct 2026|30 Oct 2026/.test(row.split('not recorded:')[1] ?? ''), `Data: the ledger row names the session that was never recorded (${row.slice(0, 140)})`);
+  ok(/not recorded/.test(await pg.locator('[data-ledger-gaps]').innerText().catch(() => '')), 'Data: At a glance says it too'); await ctx.close(); }
+
 /* ---- 320 to 430 px: nothing overflows, nothing clips ---- */
 { const bad = [];
-  for (const w of [320, 360, 430]) for (const [r, st] of [['/#/news', STATE], ['/#/desk', EMPTY], ['/#/desk', STATE], ['/#/desk?v=plans', STATE], ['/#/data', STATE], ['/#/methodology', STATE], ['/#/help', STATE], ['/#/settings', STATE], ['/#/ops', STATE]]) {
+  for (const w of [320, 360, 430]) for (const [r, st] of [['/#/more', STATE], ['/#/privacy', STATE], ['/#/terms', STATE], ['/#/news', STATE], ['/#/desk', EMPTY], ['/#/desk', STATE], ['/#/desk?v=plans', STATE], ['/#/data', STATE], ['/#/methodology', STATE], ['/#/help', STATE], ['/#/settings', STATE], ['/#/ops', STATE]]) {
     const { ctx, pg } = await open(r, st, w); await pg.locator('details.fold').evaluateAll((d) => d.forEach((x) => { x.open = true; })).catch(() => {}); await pg.waitForTimeout(200);
     const o = await over(pg); const clipped = await pg.evaluate(() => [...document.querySelectorAll('.fold-t,.fold-s,.sk-k,.sk-v,.wf-b,.dsk-way,.set-backup,.nw-cover,.nw-clocks')].filter((e) => e.scrollWidth > e.clientWidth + 1).length);
     if (o > 1) bad.push(`${r} ${w}px +${o}`); if (clipped) bad.push(`${r} ${w}px clipped ${clipped}`); await ctx.close(); }
