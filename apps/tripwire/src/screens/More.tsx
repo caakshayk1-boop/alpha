@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon, useUi } from '../ui.tsx';
 import { PageBar } from './common.tsx';
 import { promptInstall, usePwa } from '../pwa.ts';
@@ -36,7 +36,8 @@ const GROUPS: { head: string; rows: Row[] }[] = [
 
 /** The app's state in one line: the close the screen carries, and the word for the newest index print (Live, Delayed, Last traded, Unavailable). */
 export function MenuState() {
-  const scr = useScreen(); const pulse = useLivePulse(); const [now] = useState(() => Date.now());
+  const scr = useScreen(); const pulse = useLivePulse(); const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);   // 12 Nov 2026 (Codex on #60): the price word ages with the clock, so a stale print never keeps reading Live
   const asOf = scr.data?.as_of; const fr = asOf ? freshness(asOf) : null;
   const word = pulse.loading ? null : quoteWord(pulse.obs, now);
   return <p className={`mn-state${fr && fr.word !== 'Current' ? ' behind' : ''}`} data-menu-state role="status">

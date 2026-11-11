@@ -14,12 +14,22 @@ export const CHANGE_CHIP: Record<ChangeKind, (c: SeenChange) => { text: string; 
   sma200: (c) => ({ text: /above/i.test(c.title) ? 'Crossed above 200-day' : 'Fell below 200-day', tone: /above/i.test(c.title) ? 'up' : 'down' }),
   high52: () => ({ text: '52-week high', tone: 'up' }),
   low52: () => ({ text: '52-week low', tone: 'down' }),
-  rsi: (c) => ({ text: c.title.replace('RSI crossed', 'RSI above').replace('RSI fell back under', 'RSI back under'), tone: '' }),
+  rsi: (c) => ({ text: rsiChip(c), tone: '' }),
   results: () => ({ text: 'Results soon', tone: 'amber' }),
   risk: (c) => ({ text: `Risk ${c.after}`, tone: 'amber' }),
   elig: () => ({ text: 'Eligibility changed', tone: 'amber' }),
   move: (c) => ({ text: c.title.replace(/ since .*/, ''), tone: /^Up/.test(c.title) ? 'up' : 'down' }),
 };
+
+/** The RSI chip says the direction of the crossing, read from the two readings, never from the title alone: "RSI crossed 30" is a FALL through 30
+ *  and "RSI crossed 70" a rise through 70 (sincevisit.ts uses one verb for both). 12 Nov 2026, Codex review on #60. */
+export function rsiChip(c: Pick<SeenChange, 'title' | 'before' | 'after'>): string {
+  const lvl = c.title.match(/(\d+)\s*$/)?.[1]; const n = (x: string) => Number(x.match(/-?\d+(?:\.\d+)?/)?.[0]);
+  const b = n(c.before), a = n(c.after);
+  if (!lvl || !Number.isFinite(a) || !Number.isFinite(b) || a === b) return c.title;
+  if (/fell back under|recovered above/i.test(c.title)) return `RSI back ${a > b ? 'above' : 'under'} ${lvl}`;
+  return `RSI ${a > b ? 'above' : 'below'} ${lvl}`;
+}
 
 export interface RowFacts {
   sym: string;

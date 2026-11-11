@@ -65,3 +65,12 @@ test('nearest levels: the gap is to the nearer of the stop and the next target, 
   assert.deepEqual(n.map((x) => [x.sym, x.near]), [['B', 'stop'], ['D', 'stop']]);
   assert.equal(nearestLevels([]).length, 0);
 });
+
+/* 12 Nov 2026 (Codex review on #60): "RSI crossed 30" is a fall; the chip must not read "RSI above 30". */
+test('the RSI chip reads the direction of the crossing from the readings', async () => {
+  const { rsiChip } = await import('../src/todayboard.ts');
+  assert.equal(rsiChip({ title: 'RSI crossed 70', before: 'RSI 66', after: 'RSI 72' }), 'RSI above 70');
+  assert.equal(rsiChip({ title: 'RSI crossed 30', before: 'RSI 34', after: 'RSI 28' }), 'RSI below 30');
+  assert.equal(rsiChip({ title: 'RSI fell back under 70', before: 'RSI 73', after: 'RSI 65' }), 'RSI back under 70');
+  assert.equal(rsiChip({ title: 'RSI recovered above 30', before: 'RSI 27', after: 'RSI 36' }), 'RSI back above 30');
+});
