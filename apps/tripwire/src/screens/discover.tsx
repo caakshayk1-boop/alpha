@@ -5,7 +5,7 @@ import { throughWord } from '../freshness.ts';
 import { Icon, useUi, Empty } from '../ui.tsx';
 import { FilterSheet } from '../components/index.ts';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
-import { NO_FILTER, describeFilters, filterRows, TREND_WORD, type Filters, type Row } from '../screen.ts';
+import { NO_FILTER, describeFilters, filterRows, trendOf, TREND_WORD, type Filters, type Row } from '../screen.ts';
 import { saveScreen } from '../store.ts';
 import { ScreenFeedback } from './ScreenFeedback.tsx';
 import { livePrice, useQuotes, useWatchQuotes } from '../quotes.ts';
@@ -65,7 +65,9 @@ export function Discover() {
   const dst = useDeferredValue(st); const run = useMemo(() => runScreen(rows, dst), [rows, dst]);
   const shown = useMemo(() => revealed(run, dst), [run, dst]); const pm = useMemo(() => predicateMetrics(dst), [dst]);
   const cols = (COLUMN_SETS.find((c) => c.id === st.cols) ?? COLUMN_SETS[0]).cols;
-  useWatchQuotes(shown.map((r) => r.sym)); const quotes = useQuotes(shown.map((r) => r.sym));
+  // the reader's own names lead the page (revamp v2, 11 Nov 2026): a quick row of what they follow, with the day's move, above the screen; they are watched with the rows shown
+  const mine = useMemo(() => { const by = new Map(rows.map((r) => [r.sym, r])); return app.follows.map((x) => by.get(x)).filter((r): r is Row => !!r); }, [rows, app.follows]);
+  const watch = [...new Set([...shown.map((r) => r.sym), ...mine.map((r) => r.sym)])]; useWatchQuotes(watch); const quotes = useQuotes(watch);
   const disp = (r: Row) => displayRow(r, livePrice(r, quotes[r.sym] ?? null));
   const anyLive = shown.some((r) => disp(r).live); const anyPrintLive = shown.some((r) => isLiveQuote(quotes[r.sym] ?? null));
   const active = describeFilters(filtersOf(st)); const total = rows.length; const stale = dst !== st;
@@ -78,7 +80,8 @@ export function Discover() {
     window.scrollTo(0, p.y); const w = wrapRef.current; if (w) { w.scrollLeft = p.tx ?? 0; w.scrollTop = p.ty ?? 0; }
     if (p.at) { const a = document.querySelector<HTMLElement>(`${symSel(p.at)} a`); if (a) { a.focus({ preventScroll: true }); if (p.y === 0) a.scrollIntoView({ block: 'center' }); } }
   }, [scr.data]);
-  const remember = useCallback(() => { const w = wrapRef.current; savePlace(serialiseDiscover(stRef.current), { y: Math.round(window.scrollY), at: selRef.current, tx: w ? Math.round(w.scrollLeft) : undefined, ty: w ? Math.round(w.scrollTop) : undefined }); }, []);
+  // only while Discover is the page: once a company link has changed the address, a scroll is the browser clamping to the next page, not the reader (it saved a short y and Back landed 450 px early)
+  const remember = useCallback(() => { if (!/^#\/discover(\?|$)/.test(location.hash)) return; const w = wrapRef.current; savePlace(serialiseDiscover(stRef.current), { y: Math.round(window.scrollY), at: selRef.current, tx: w ? Math.round(w.scrollLeft) : undefined, ty: w ? Math.round(w.scrollTop) : undefined }); }, []);
   useEffect(() => { let t = 0; const f = () => { window.clearTimeout(t); t = window.setTimeout(remember, 120); }; window.addEventListener('scroll', f, { passive: true }); return () => { window.removeEventListener('scroll', f); window.clearTimeout(t); }; }, [remember]);
   // opening a company is a real history entry (a plain link); before it goes, the URL is made current and the place and the company are written down
   const onOpen = (e: React.MouseEvent) => { const el = (e.target as HTMLElement).closest<HTMLElement>('a[href^="#/c/"]'); if (!el) return; const row = el.closest<HTMLElement>('[data-sym]'); if (row?.dataset.sym) { selRef.current = row.dataset.sym; setSelected(row.dataset.sym); } flush(); remember(); };
@@ -116,35 +119,41 @@ export function Discover() {
   const noFig = run.unmeasured + run.notApplicable;
 
   return <div className="disc" onClickCapture={onOpen}>
-    <PageBar title="Discover" sub={scr.data ? <>{plural(scr.data.count, 'company', 'companies')} in the published screen, prices through {throughWord(scr.data.as_of)}{rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <> · weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : null} · <a href="#/data" style={{ textDecoration: 'underline' }}>coverage</a></> : undefined} />
+    {/* revamp v2 (11 Nov 2026): Research leads with the search, the research presets as chips and the reader's own names; the toolbar and the results follow. The company count is stated once, in the count line below. */}
+    <PageBar title="Research" sub={scr.data && rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <>Weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : undefined} />
     {ignored.length > 0 && <p className="small mute" role="status" style={{ margin: '0 0 6px' }}>Left out of the link, not understood: {ignored.slice(0, 4).join(', ')}.</p>}
 
-    <div className="dtool" role="group" aria-label="Search, filters, sort, columns and view">
-      <div className="search dsearch"><Icon n="search" /><input className="field" type="search" placeholder="Company or symbol" value={st.q} onChange={(e) => patch({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
-      <button className="chip dbtn" onClick={() => setSheet('filters')} aria-haspopup="dialog"><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
-      <div className="dsort">
-        <label className="sr" htmlFor="d-sort">Sort by</label>
-        <select id="d-sort" className="field" value={st.sort.key} onChange={(e) => patch({ sort: nextSort({ key: 'x' as SortId, dir: 'asc' }, e.target.value as SortId) })} aria-label="Sort by">
-          <optgroup label="Common">{QUICK_SORTS.map((k) => <option key={k} value={k}>{sortName(k)}</option>)}</optgroup>
-          <optgroup label="More figures">{METRICS.filter((m) => !QUICK_SORTS.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</optgroup>
-        </select>
-        <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
+    <div className="rs-hero">
+      <div className="search dsearch rs-search"><Icon n="search" /><input className="field" type="search" placeholder={scr.data ? `Search ${scr.data.count.toLocaleString('en-IN')} companies` : 'Company or symbol'} value={st.q} onChange={(e) => patch({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
+      <div className="rs-rows">
+        {hasAnyFilter(st) && <div className="dfilterbar">
+        <div className="chips chosen dchips" role="group" aria-label="Active filters">
+          {st.q.trim() && hasAnyFilter(st) && <button className="chip cc on-x" data-chip="q" onClick={() => patch({ q: '' })} aria-label={`Remove search: ${st.q.trim()}`}>Search: {st.q.trim()}<span aria-hidden="true">×</span></button>}
+          {chips.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={c.off} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}
+          {st.cond.map((c) => <button key={`${c.m}${c.op}${c.v}${c.unk ? 1 : 0}`} className="chip cc on-x" onClick={() => patch({ cond: st.cond.filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
+
+          {hasAnyFilter(st) && <button className="chip" onClick={clearAll}>Clear all</button>}
+        </div>
+        </div>}
+        <div className="quick-research rs-chiprow" role="group" aria-label="Quick research screens">{PRESETS.map((p) => <button key={p.id} className="chip rs-preset" aria-pressed={preset?.id === p.id} title={presetCriteria(p).join('; ')} onClick={() => { setSt((x) => preset?.id === p.id ? clearPreset(x) : applyPreset(x, p)); tick(); }}>{p.title}</button>)}</div>
+        {mine.length > 0 && <nav className="rs-mine rs-chiprow" aria-label="Your names"><span className="rs-mine-k" aria-hidden="true">Your names</span>{mine.map((r) => { const dc = cellOf(r, disp(r), 'r1d'); const tr = trendOf(r).trend;
+          return <a key={r.sym} className="rs-name" href={`#/c/${encodeURIComponent(r.sym)}`} title={r.name}><b>{r.sym}</b><span className="sr">{r.name}, on the day</span><span className={`num ${tone(dc.v)}`}>{dc.v === null ? '—' : pct(dc.v)}</span>{tr && <span className={`rs-arrow ${tr}`} aria-hidden="true">{tr === 'up' ? '↑' : tr === 'down' ? '↓' : '→'}</span>}</a>; })}</nav>}
       </div>
+      <div className="dtool" role="group" aria-label="Filters, sort, columns and view">
+        <button className="chip dbtn" onClick={() => setSheet('filters')} aria-haspopup="dialog"><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
+        <div className="dsort">
+          <label className="sr" htmlFor="d-sort">Sort by</label>
+          <select id="d-sort" className="field" value={st.sort.key} onChange={(e) => patch({ sort: nextSort({ key: 'x' as SortId, dir: 'asc' }, e.target.value as SortId) })} aria-label="Sort by">
+            <optgroup label="Common">{QUICK_SORTS.map((k) => <option key={k} value={k}>{sortName(k)}</option>)}</optgroup>
+            <optgroup label="More figures">{METRICS.filter((m) => !QUICK_SORTS.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</optgroup>
+          </select>
+          <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
+        </div>
 
-      <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
+        <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
+      </div>
     </div>
 
-    <div className="dfilterbar">
-    <div className="chips chosen dchips" role="group" aria-label="Active filters">
-      {st.q.trim() && hasAnyFilter(st) && <button className="chip cc on-x" data-chip="q" onClick={() => patch({ q: '' })} aria-label={`Remove search: ${st.q.trim()}`}>Search: {st.q.trim()}<span aria-hidden="true">×</span></button>}
-      {chips.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={c.off} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}
-      {st.cond.map((c) => <button key={`${c.m}${c.op}${c.v}${c.unk ? 1 : 0}`} className="chip cc on-x" onClick={() => patch({ cond: st.cond.filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
-
-      {hasAnyFilter(st) && <button className="chip" onClick={clearAll}>Clear all</button>}
-    </div>
-
-    <div className="quick-research" role="group" aria-label="Quick research screens">{PRESETS.slice(0, 3).map((p) => <button key={p.id} className="chip" aria-pressed={preset?.id === p.id} title={presetCriteria(p).join('; ')} onClick={() => { setSt((x) => preset?.id === p.id ? clearPreset(x) : applyPreset(x, p)); tick(); }}>{p.title}</button>)}</div>
-    </div>
     {preset && <p className="small preset-on" role="status" data-preset-active><b>Preset: {preset.title}.</b> Criteria: {presetCriteria(preset).join('; ')}. <button className="linkbtn" onClick={() => { setSt(clearPreset); tick(); }}>Clear preset</button></p>}
 
     <details className="adv" onToggle={(e) => setAdvOpen(e.currentTarget.open)}>
@@ -188,7 +197,7 @@ export function Discover() {
     <div className="dcount">
       <p className="small num" role="status" aria-live="polite" data-testid="count">{scr.data ? <><b>{run.ordered.length.toLocaleString('en-IN')}</b> of {total.toLocaleString('en-IN')} {total === 1 ? 'company' : 'companies'}{stale ? ' …' : ''} · {sortLine}</> : ''}</p>
       {scr.data && (noFig > 0 || run.unknownIncluded > 0) && <p className="small mute">{run.unmeasured - run.notApplicable > 0 ? `${plural(run.unmeasured - run.notApplicable, 'name')} left out for having no figure for a filter. ` : ''}{run.notApplicable > 0 ? `${plural(run.notApplicable, 'financial-sector name')} left out of a ratio that is not defined for them. ` : ''}{run.unknownIncluded > 0 ? `${plural(run.unknownIncluded, 'name')} included although they have no figure, as asked.` : ''}</p>}
-      {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at {anyPrintLive ? "today's live price" : 'the last traded price'}. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
+      {scr.data && <div className="small mute basis"><span className="basis-short">Filters and sort use the close of {asOf ? dayWord(asOf) : 'the last session'} · </span>{anyLive ? <span className="basis-live"><i className="ldot" aria-hidden="true" /> marks a figure worked out at {anyPrintLive ? "today's live price" : 'the last traded price'}. </span> : ''}<span className="basis-line">Filtering and sorting use the close of {asOf ? dayWord(asOf) : 'the last session'}; a live price never changes who is listed or in what order. </span><a href="#/data" className="basis-cov">Coverage</a> · <details className="inl"><summary>Details</summary>Price, day change, distance from the high and low, PE, PB and the distance from the averages can be redone at a live price, and are shown that way with a dot. Where a figure you filtered or sorted on differs live, the close is printed beside it. RSI, averages, ranks, scores and every statement ratio are at the close only.</details></div>}
     </div>
 
     {scr.loading && <Loading what="the screen" />}
@@ -197,7 +206,7 @@ export function Discover() {
       {st.q.trim() && parts.length > 1 && <button className="btn" onClick={searchOnly}>Search only</button>}
       {preset && <button className="btn" onClick={() => { setSt(clearPreset); tick(); }}>Clear preset</button>}
       <button className="btn" onClick={clearAll}>Clear all filters</button></div>}>{parts.length > 1 ? 'Every part must hold at once: the search and each filter narrow the same list. ' : ''}{noFig > 0 ? `${plural(noFig, 'name')} had no usable figure for a filter. ` : ''}A name with no figure is left out unless a condition says to include it, and is never counted as zero.</Empty>}
-    {scr.data && run.ordered.length > 0 && st.view === 'list' && <div className="card dl-card" style={{ padding: '2px 14px' }}><ListHead /><div className="list">
+    {scr.data && run.ordered.length > 0 && st.view === 'list' && <div className="card dl-card board" style={{ padding: '2px 14px' }}><ListHead sort={st.sort.key} /><div className="list">
       {shown.map((r) => <ListRow key={r.sym} r={r} d={disp(r)} pm={pm} sort={st.sort.key} picked={st.pick.includes(r.sym)} full={st.pick.length >= MAX_PICK} onPick={() => togglePick(r.sym)} selected={selected === r.sym} />)}
     </div></div>}
     {scr.data && run.ordered.length > 0 && st.view === 'table' && <>
@@ -259,21 +268,25 @@ function FigCell({ r, d, id, pm }: { r: Row; d: { row: Row; live: boolean }; id:
   if (c.state === 'missing') return <span title="No figure published" aria-label="no figure">—</span>;
   return <>{fmtMetric(m, c.v)}{c.live && <i className="ldot" aria-label="price print" title="Worked out at the latest price print: live while the market is open, otherwise the last traded price" />}{c.live && c.differs && pm.has(id) && <small className="atclose" title="The filter and the sort used the close">close {fmtMetric(m, c.close)}</small>}</>;
 }
-/** Column labels once, above the list, on screens wide enough to show the figure columns; each row then carries only its values. Same DOM shape as a row so the columns line up. */
-const LIST_COLS: [MetricKey, string][] = [['pe', 'PE'], ['roce_med', 'ROCE'], ['rs3m', 'vs Nifty 3m'], ['from_high', 'From high']];
-function ListHead() {
-  return <div className="discover-row dl-head" aria-hidden="true"><div className="row grow discover-main"><span className="avatar dl-ph" /><span className="grow discover-identity">Company</span><span className="wide num">{LIST_COLS.map(([id, l]) => <span key={id}><small>{l}</small></span>)}</span><span className="px num"><b>Price · day</b></span></div><div className="discover-actions"><span className="dl-ph icon-btn" /><span className="dl-ph icon-btn" /></div></div>;
+/** The departure-board list (revamp v2, 11 Nov 2026). Each row: the symbol in bold, the name small, a trend arrow chip, and ONE key figure big and right-aligned: the figure the list is sorted by
+ *  (the price, with the day's change under it, when the sort is by name or symbol). On a wide screen the other common figures sit between them as columns; the sorted figure is never printed twice. */
+const LIST_COLS: [MetricKey, string][] = [['pe', 'PE'], ['roce_med', 'ROCE'], ['rs3m', 'vs Nifty 3m'], ['from_high', 'From high'], ['price', 'Price']];
+const keyOf = (sort: SortId): MetricKey | null => (sort === 'name' || sort === 'sym' || sort === 'price' || sort === 'r1d' ? null : (sort as MetricKey));
+const wideCols = (sort: SortId) => LIST_COLS.filter(([id]) => id !== keyOf(sort) && !(id === 'price' && keyOf(sort) === null));
+function ListHead({ sort }: { sort: SortId }) {
+  const k = keyOf(sort); const km = k ? metricOf(k) : null;
+  return <div className="discover-row dl-head" aria-hidden="true"><div className="row grow discover-main"><span className="avatar dl-ph" /><span className="grow discover-identity">Company</span><span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small></span>)}</span><span className="px num"><b>{km ? km.short : 'Price · day'}</b></span></div><div className="discover-actions"><span className="dl-ph icon-btn" /><span className="dl-ph icon-btn" /></div></div>;
 }
 function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d: { row: Row; live: boolean }; pm: Set<MetricKey>; sort: SortId; picked: boolean; full: boolean; onPick: () => void; selected: boolean }) {
-  const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const sm = sort === 'name' || sort === 'sym' ? null : metricOf(sort);
-  const closeVal = sm ? cellOf(r, { row: r, live: false }, sort as MetricKey) : null;
+  const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const k = keyOf(sort); const km = k ? metricOf(k) : null;
+  const kc = k ? cellOf(r, d, k) : null; const signed = !!(km?.signed && kc?.state === 'value' && kc.v !== null);
   return <div className={`li discover-row ${selected ? 'sel' : ''}`} data-sym={r.sym}>
     <a className="row grow discover-main" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }} aria-current={selected ? 'true' : undefined}>
       <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
-      <span className="grow discover-identity" style={{ minWidth: 0 }}><span className="sym trunc" style={{ display: 'block' }}>{r.sym}</span><span className="row" style={{ gap: 6, minWidth: 0 }}><TrendTag r={r} compact />
-        {sm && closeVal && closeVal.state === 'value' && <span className="metatag" style={{ '--mc': 'var(--a4)' } as React.CSSProperties} title="The figure the list is sorted by, at the close">{sm.short} {fmtMetric(sm, closeVal.v)}</span>}<span className="dim small company-name">{r.name}</span></span></span>
-      <span className="wide num">{(['pe', 'roce_med', 'rs3m', 'from_high'] as MetricKey[]).map((id) => <span key={id}><small>{id === 'pe' ? 'PE' : id === 'roce_med' ? 'ROCE' : id === 'rs3m' ? 'vs Nifty 3m' : 'From high'}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}</span>
-      <span className="px num" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="price print" title="Latest price print: live while the market is open, otherwise the last traded price" />}</b><span className={tone(dc.v)}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>
+      <span className="grow discover-identity" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6, minWidth: 0 }}><span className="sym trunc">{r.sym}</span><TrendTag r={r} compact /></span><span className="dim small company-name trunc">{r.name}</span></span>
+      <span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}</span>
+      {km && kc ? <span className={`px num key${signed ? (kc.v! > 0 ? ' up' : kc.v! < 0 ? ' down' : '') : ''}`} style={{ flex: 'none' }}><b><FigCell r={r} d={d} id={k!} pm={pm} /></b><span className="kl">{km.short}</span></span>
+        : <span className="px num key" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="price print" title="Latest price print: live while the market is open, otherwise the last traded price" />}</b><span className={`kd ${tone(dc.v)}`}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>}
     </a>
     <div className="discover-actions"><button className="icon-btn" aria-pressed={picked} disabled={full && !picked} aria-label={`${picked ? 'Remove from' : 'Add to'} comparison: ${r.sym}`} onClick={onPick}><Icon n="compare" /></button>
     <FollowButton sym={r.sym} name={r.name} /></div>

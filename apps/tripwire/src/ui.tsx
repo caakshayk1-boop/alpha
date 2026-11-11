@@ -17,7 +17,7 @@ const P: Record<string, string> = {
   chev: 'm6 9 6 6 6-6', alert: 'M12 9v4M12 17h.01M10.3 4.3 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z', minus: 'M6 12h12', inbox: 'M3 13h5l1 3h6l1-3h5M5 5h14l2 8v6H3v-6z', share: 'M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6', bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
   info: 'M12 8h.01M11 12h1v5h1M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z',
   print: 'M7 9V4h10v5M7 17H5v-6h14v6h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13', filter: 'M4 6h16M7 12h10M10 18h4',
-  up: 'm6 15 6-6 6 6', eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', eyeoff: 'M4 4l16 16M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-3 3.8M6.2 7.9A15.6 15.6 0 0 0 2.5 12S6 18.5 12 18.5a9.5 9.5 0 0 0 3.6-.7M10 10a3 3 0 0 0 4 4', clock: 'M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', flag: 'M6 21V4h11l-2 4 2 4H6',
+  up: 'm6 15 6-6 6 6', refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7', eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', eyeoff: 'M4 4l16 16M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-3 3.8M6.2 7.9A15.6 15.6 0 0 0 2.5 12S6 18.5 12 18.5a9.5 9.5 0 0 0 3.6-.7M10 10a3 3 0 0 0 4 4', clock: 'M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', flag: 'M6 21V4h11l-2 4 2 4H6',
 };
 export function Icon({ n, className = '' }: { n: string; className?: string }) {
   return <svg className={`ic ${className}`} viewBox="0 0 24 24" aria-hidden="true"><path d={P[n] ?? ''} /></svg>;

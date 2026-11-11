@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { Icon } from '../ui.tsx';
 import { lastVisitSec, markVisited, useNameNews, useNewsBoard, type RefreshState } from '../news.ts';
 import { isNewStory, newsViewState, type NewsView, plural, storyTime, type NewsHealth } from '../newshealth.ts';
 import { fmtIst } from '../stamp.ts';
@@ -22,16 +23,19 @@ export function NewsReadingControl({ summaries, setSummaries }: { summaries: boo
 }
 
 /** One line saying how current the news is, in the one vocabulary (newshealth.ts). */
-export function NewsHealthLine({ h, full }: { h: NewsHealth; full?: boolean }) {
-  return <div className={`nw-health ${h.state}`} role="status" data-news-state={h.state}><span className="nw-state"><span className="nw-dot" aria-hidden="true" />{h.word}</span><span className="nw-hline">{h.line}</span>
+export function NewsHealthLine({ h, full, compact }: { h: NewsHealth; full?: boolean; compact?: boolean }) {
+  // compact (the News page header, revamp v2): the word shows; the sentence is spoken and is the tooltip, and the page prints it once under the title
+  return <div className={`nw-health ${h.state}${compact ? ' compact' : ''}`} role="status" data-news-state={h.state} title={compact ? h.line : undefined}><span className="nw-state"><span className="nw-dot" aria-hidden="true" />{h.word}</span><span className={compact ? 'nw-hline sr' : 'nw-hline'}>{h.line}</span>
     {full && <details className="nw-checks"><summary>Check details</summary><NewsCheckTimes h={h} /></details>}</div>;
 }
 export function NewsCheckTimes({ h }: { h: NewsHealth }) {
   return <dl className="nw-times"><div><dt>Last successful check</dt><dd>{h.state === 'loading' ? 'checking…' : h.lastGood ?? 'none yet'}</dd></div>{h.onDemand && <div><dt>Refreshed on demand</dt><dd>{h.onDemand}</dd></div>}<div><dt>Latest check</dt><dd>{h.state === 'loading' ? 'checking…' : h.checked ?? 'none yet'}</dd></div><div><dt>Next check due</dt><dd>{h.state === 'loading' ? 'checking…' : h.state === 'unavailable' || h.state === 'error' ? 'unknown' : h.next ?? 'unknown'}</dd></div></dl>;
 }
 const REFRESH_LABEL: Record<RefreshState, string> = { idle: 'Check for updates', checking: 'Checking…', updated: 'Updated', none: 'No new stories', failed: 'Failed, try again' };
-export function RefreshControl({ state, message, onClick }: { state: RefreshState; message: string; onClick: () => void }) {
+/** `icon`: the News page's header form (revamp v2, 11 Nov 2026), a 44 px icon button whose name is the same words the text button shows; the state is still spoken and still in its title. */
+export function RefreshControl({ state, message, onClick, icon = false }: { state: RefreshState; message: string; onClick: () => void; icon?: boolean }) {
   const id = useId();
+  if (icon) return <span className={`nw-refresh nw-refresh-icon is-${state}`}><button className="icon-btn" onClick={onClick} disabled={state === 'checking'} aria-describedby={id} aria-label={REFRESH_LABEL[state]} title={REFRESH_LABEL[state]}><Icon n="refresh" /></button><span id={id} className="sr" role="status" aria-live="polite">{message}</span></span>;
   return <span className="nw-refresh"><button className="btn sm" onClick={onClick} disabled={state === 'checking'} aria-describedby={id}>{REFRESH_LABEL[state]}</button><span id={id} className="sr" role="status" aria-live="polite">{message}</span></span>;
 }
 export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
@@ -39,21 +43,26 @@ export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
 }
 
 /** One event. `lead` draws the first row larger and gives its summary room; every row carries the same facts: headline (a link), source and publication age, one event tag, the company, an optional one-line summary, and a drawer. */
-export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym }: { ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string }) {
+/** `board` (the News page, revamp v2): the section heading says why the row is listed, so no list labels; the row carries a source-count chip and, under Your names, an "In paper book" chip
+ *  instead of a second copy of the headline under Paper book. */
+export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym, board = false, inPaper = false }: { ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string; board?: boolean; inPaper?: boolean }) {
   const t = storyTime(ev.publishedAt, nowMs); const href = safeHref(ev.canonicalUrl); const fresh = isNewStory(ev, seenSec); const tags = label ? labelsOf(ev, lists) : [];
   const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known; const clk = timeLabels(ev, nowMs);
-  return <li className={`nw-row${lead ? ' lead' : ''}`}>
+  const nSrc = Math.max(ev.sources.length, ev.moreSources + 1, 1);
+  return <li className={`nw-row${lead ? ' lead' : ''}${board ? ' nw-board' : ''}`}>
     {href ? <a className="nw-head" href={href} target="_blank" rel="noopener noreferrer">{ev.headline}<span className="sr"> (opens in a new tab)</span></a> : <span className="nw-head">{ev.headline}</span>}
     <span className="nw-meta">
       {fresh && <span className="tag aqua nw-tag" title="Published, and first seen by the news check, since you last looked">New</span>}
       <span>{ev.sourceTitle}</span><span aria-hidden="true">·</span>
       <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''} data-clock="published"><span className="sr">Published </span>{t.ageWord}</time>
-      <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`}>{ev.eventType}</span>
+      <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`} title={board ? categoryOf(ev.eventType) : undefined}>{ev.eventType}</span>
+      {board && nSrc > 1 && <span className="tag nw-src-n" title={`${plural(nSrc, 'outlet')} carried this event`}>{plural(nSrc, 'source')}</span>}
+      {board && inPaper && <span className="tag nw-inpaper">In paper book</span>}
       {ev.entities.filter((e) => e.sym !== companySym).map((e) => e.sym ? <a key={e.sym} className="nw-entity" href={`#/c/${encodeURIComponent(e.sym)}`} title={`Research ${e.name ?? e.sym}`}>{e.sym}<span className="sr"> company evidence</span></a> : <span key={e.name} className="nw-entity">{e.name}</span>)}
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
     {summaries && ev.summary && <p className="nw-summary" title={`Publisher description: ${ev.summary.provenance.feedId}; retrieved ${ev.summary.provenance.retrievedAt ?? 'at an unknown time'}`}>{ev.summary.text}</p>}
-    <details className="nw-more"><summary>{ev.moreSources > 0 ? `${plural(ev.moreSources + 1, 'source')} · ` : ''}Evidence &amp; context</summary><div className="nw-body">
+    <details className="nw-more"><summary>{!board && ev.moreSources > 0 ? `${plural(ev.moreSources + 1, 'source')} · ` : ''}Evidence &amp; context</summary><div className="nw-body">
       {!summaries && ev.summary && <p className="nw-summary">{ev.summary.text}<span className="mute"> — {ev.summary.provenance.feedId}, publisher description</span></p>}
       <p><b>{ev.sources.length > 1 ? `${plural(ev.sources.length, 'outlet')} carried this` : '1 outlet'}</b>{ev.sources.length > 1 ? '; the first listed is the primary source.' : '.'}</p>
       <ul className="nw-src" data-cover>{ev.sources.map((s) => { const h = safeHref(s.canonicalUrl); const st = storyTime(s.publishedAt, nowMs); return <li key={s.sourceId}>{h ? <a href={h} target="_blank" rel="noopener noreferrer">{s.sourceTitle}<span className="sr"> (opens in a new tab)</span></a> : s.sourceTitle} <span className="mute">· {s.tier} · {st.known ? st.ist : 'publication time unknown'}</span></li>; })}</ul>

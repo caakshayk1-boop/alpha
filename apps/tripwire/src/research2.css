@@ -1,0 +1,154 @@
+/* Revamp v2, the Research lane (11 Nov 2026): Research (#/discover), the company page and the News page. Loaded last (app.css) so it wins over the older layers; tokens only.
+   Direction: a departure board. Bold symbol, small name, one big right-aligned figure, colour chips for meaning only. Motion: transform and opacity only, decorative motion only under html.fx. */
+
+/* ---------------- Research: search first, presets and your names as chip rows ---------------- */
+.disc .rs-hero{display:grid;gap:var(--sp-2);margin:var(--sp-1) 0 var(--sp-3)}
+.disc .rs-search{position:relative}
+.disc .rs-search .field{min-height:52px;font-size:1rem;font-weight:500;border-radius:var(--radius-input);background:var(--surface);border:1px solid var(--line-2);padding-left:44px}
+.disc .rs-search .ic{top:16px;left:14px}
+.disc .rs-search .field:focus-visible{border-color:var(--accent)}
+.disc .rs-rows{display:grid;gap:var(--sp-2);min-width:0}
+.disc .rs-chiprow{display:flex;gap:var(--sp-2);align-items:center;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 0;margin:0;min-width:0;flex-wrap:nowrap}
+.disc .rs-chiprow::-webkit-scrollbar{display:none}
+.disc .rs-chiprow>*{flex:0 0 auto}
+.disc .rs-preset{min-height:var(--hit);white-space:nowrap;font-weight:600}
+.disc .rs-preset[aria-pressed=true]{background:var(--accent-tint);border-color:var(--accent);color:var(--accent)}
+.disc .rs-mine-k{font-size:var(--fs-label);font-weight:650;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase;padding-right:var(--sp-1)}
+.disc .rs-name{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:var(--hit);padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);background:var(--bg-2);color:var(--ink);text-decoration:none;font-variant-numeric:tabular-nums}
+.disc .rs-name b{font-weight:750;letter-spacing:.01em}
+.disc .rs-name .num{font-size:var(--fs-data);font-weight:600}
+.disc .rs-name:hover{border-color:var(--line-2)}
+.rs-arrow{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;font-size:.8125rem;font-weight:700;background:var(--surface-3);color:var(--ink-2)}
+.rs-arrow.up{background:var(--up-tint);color:var(--up)}.rs-arrow.down{background:var(--down-tint);color:var(--down)}
+/* desktop: the search and the toolbar share one row; the active filters, the presets and your names share the next, each part scrolling sideways on its own */
+@media (min-width:900px){
+  .disc .rs-hero{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search tool" "rows rows";column-gap:var(--sp-3);row-gap:var(--sp-2);align-items:center}
+  .disc .rs-hero>.rs-search{grid-area:search}
+  .disc .rs-hero>.dtool{grid-area:tool;display:flex;flex-wrap:nowrap;margin:0;gap:var(--sp-2)}
+  .disc .rs-hero>.rs-rows{grid-area:rows;display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+  .disc .rs-rows>.dfilterbar{flex:0 1 auto;min-width:0;max-width:45%;display:block}
+  .disc .rs-rows>.dfilterbar .dchips{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0;padding:2px 0}
+  .disc .rs-rows>.dfilterbar .dchips>*{flex:0 0 auto}
+  .disc .rs-rows>.quick-research{flex:1 1 0;min-width:0;margin:0;padding:2px 0}
+  .disc .rs-rows>.rs-mine{flex:0 1 auto;max-width:40%;min-width:0;padding-left:var(--sp-3);border-left:1px solid var(--line)}
+  .disc .rs-search .field{min-height:48px}
+  .disc .rs-search .ic{top:14px}
+}
+@media (max-width:899px){
+  .disc .rs-hero>.dtool{margin:var(--sp-1) 0 0}
+  .disc .rs-rows>.dfilterbar .dchips{margin:0}
+}
+@media (max-width:699px){
+  .disc .dtool{grid-template-columns:minmax(0,1fr) auto}
+}
+.disc .basis-cov{text-decoration:underline}
+
+/* ---------------- Research: departure-board rows ---------------- */
+.disc .dl-card.board{padding:2px 16px!important;background:var(--bg-2);border-color:var(--line)}
+.disc .dl-card .discover-row:not(.dl-head){display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:var(--sp-2);padding:12px 0;border-bottom:1px solid var(--line)}
+.disc .dl-card .list>.discover-row:last-child{border-bottom:0}
+.disc .dl-card .discover-row:not(.dl-head) .discover-main{display:flex;align-items:center;gap:var(--sp-3);min-width:0;width:100%;color:inherit;text-decoration:none}
+.disc .dl-card .discover-row .discover-main>.avatar{display:none}
+.disc .dl-card .discover-identity{display:grid;gap:2px;min-width:0;flex:1 1 auto}
+.disc .dl-card .discover-identity>.row{flex-wrap:nowrap;align-items:center;min-width:0}
+.disc .dl-card .discover-identity .sym{font-size:1.0625rem;font-weight:750;letter-spacing:.01em;color:var(--ink);line-height:1.25}
+.disc .dl-card .discover-identity .company-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-label);color:var(--ink-3);line-height:1.35;min-width:0}
+.disc .dl-card .discover-identity .tag{border-radius:6px}
+.disc .dl-card .px.key{display:grid;justify-items:end;gap:1px;min-width:5.5rem;max-width:none;align-self:center;font-variant-numeric:tabular-nums}
+.disc .dl-card .px.key b{font-size:var(--fs-num-s);line-height:1.15;font-weight:750;letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
+.disc .dl-card .px.key.up b{color:var(--up)}.disc .dl-card .px.key.down b{color:var(--down)}
+.disc .dl-card .px.key .kl{font-size:var(--fs-label);color:var(--ink-3);font-weight:600}
+.disc .dl-card .px.key .kd{font-size:var(--fs-label);font-weight:650}
+.disc .dl-card .px.key .atclose{display:block;font-size:var(--fs-label);color:var(--ink-3);font-weight:400}
+.disc .dl-card .discover-actions{display:flex;gap:0;justify-self:end}
+.disc .dl-card .discover-actions .icon-btn{width:var(--hit);height:var(--hit);min-height:var(--hit);background:transparent;border-color:transparent;color:var(--ink-3)}
+.disc .dl-card .discover-actions .icon-btn[aria-pressed=true]{color:var(--accent)}
+.disc .dl-card .discover-row.sel{background:var(--accent-tint);box-shadow:-16px 0 0 var(--accent-tint),16px 0 0 var(--accent-tint)}
+@media (max-width:1099px){.disc .dl-card .dl-head{display:none}}
+@media (max-width:359px){.disc .dl-card .px.key{min-width:4.5rem}.disc .dl-card .px.key b{font-size:1.0625rem}}
+@media (min-width:1100px){
+  .disc .dl-card .discover-row:not(.dl-head){padding:10px 0}
+  .disc .dl-card .discover-row:not(.dl-head) .discover-main{gap:var(--sp-5)}
+  .disc .dl-card .wide{gap:var(--sp-5)}
+  .disc .dl-card .wide>span{min-width:4.5rem;font-size:var(--fs-data)}
+  /* a live dot sits beside its figure, not on a line of its own, so a row is the same height before and after the quotes arrive (Back restores the scroll to the pixel) */
+  .disc .dl-card .list .wide>span{display:flex;align-items:baseline;justify-content:flex-end;gap:2px;white-space:nowrap}
+  .disc .dl-card .px.key{min-width:7rem}
+  .disc .dl-card .dl-head .px{min-width:7rem}
+  .disc .dl-card .dl-head .wide>span{min-width:4.5rem}
+  .disc .dl-card .discover-actions .icon-btn{width:40px;height:40px;min-height:40px}
+  .disc .dl-card .dl-head .discover-actions .icon-btn{height:0;min-height:0}   /* the header row keeps the action column width only; it was 48px tall */
+}
+
+/* ---------------- Company: the hero and the verdict row ---------------- */
+.c-head .co-hero{align-items:flex-start}
+.c-head .co-price{font:750 clamp(2rem,8vw,2.75rem)/1 var(--font);letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.c-head .co-ch{margin-top:6px;font-size:var(--fs-body);font-weight:650}
+.c-head .co-chw{color:var(--ink-3);font-weight:500}
+.verdict{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:0;min-height:48px}
+.vchip{display:grid;gap:0;padding:5px 12px 6px;border:1px solid var(--line-2);border-radius:var(--radius-input);background:var(--bg-2);min-width:0;max-width:100%}
+.vchip .vk{font-size:.6875rem;line-height:1.2;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.vchip .vv{font-size:var(--fs-data);line-height:1.35;font-weight:650;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vchip.up{border-color:color-mix(in srgb,var(--up) 45%,transparent);background:var(--up-tint)}.vchip.up .vv{color:var(--up)}
+.vchip.down{border-color:color-mix(in srgb,var(--down) 45%,transparent);background:var(--down-tint)}.vchip.down .vv{color:var(--down)}
+.vchip.warn{border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:var(--amber-tint)}.vchip.warn .vv{color:var(--amber)}
+/* phone: the verdict is one sideways row and the change sits beside the price, so the chart keeps its place on the first screens (charts.mjs budget) */
+@media (max-width:699px){
+  .verdict{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:var(--sp-1) calc(var(--card-pad) * -1) 0;padding:0 var(--card-pad);min-height:34px}
+  .verdict::-webkit-scrollbar{display:none}
+  .vchip{flex:0 0 auto;display:flex;align-items:baseline;gap:6px;padding:6px 10px}   /* label and word on one line: the chips are read, not tapped */
+  .c-head .co-px{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:var(--sp-3)}
+  .c-head .co-ch{margin-top:0}
+  .c-head details.asof-fold>summary{flex-wrap:nowrap;line-height:1.35}   /* the chevron sits beside the date line instead of taking a line of its own */
+  .c-head details.asof-fold>summary .asof-line{flex:1 1 0}
+  .c-head .asof{margin-top:var(--sp-1);padding-top:var(--sp-1)}
+  .c-head .co-price{font-size:1.875rem}
+}
+.co-range .k{display:inline-block}
+@media (min-width:900px){
+  .c-head{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--sp-6);align-items:center}
+  .c-head>.co-hero{gap:var(--sp-4);justify-content:flex-start}
+  .c-head>.verdict{margin:0;justify-content:flex-end;min-height:0}
+  .c-head>.asof{grid-column:1/-1}
+}
+
+/* ---------------- News: sections, a header freshness word, one Filter button ---------------- */
+.nwp .nwp-line{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nwp .nwp-fresh{display:inline-flex;align-items:center;gap:2px;flex:none}
+.nwp .nw-health.compact{margin:0;padding:0 var(--sp-1) 0 0;border:0;background:none;font-size:var(--fs-data);white-space:nowrap}
+.nwp .nw-refresh-icon .icon-btn{width:var(--hit);height:var(--hit)}
+.nwp .nw-refresh-icon.is-checking .ic{opacity:.5}
+.nwp .nwp-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin:var(--sp-1) 0 var(--sp-3);min-height:var(--hit)}
+.nwp .nwp-count{margin:0;font-size:var(--fs-data);color:var(--ink-2);min-width:0}
+.nwp .nwp-filter{min-height:var(--hit);flex:none;gap:var(--sp-2)}
+.nwp .nwp-group{margin:0 0 var(--sp-5)}
+.nwp .nwp-gh{display:flex;align-items:center;gap:var(--sp-2);margin:0 0 var(--sp-2);font:700 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+.nwp .nwp-n{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 7px;border-radius:var(--radius-pill);background:var(--surface-3);font-size:var(--fs-label);font-weight:700;color:var(--ink-2)}
+.nwp .nwp-none{margin:0;padding:var(--sp-3) var(--sp-4);border:1px dashed var(--line);border-radius:var(--radius-input);font-size:var(--fs-data);color:var(--ink-3)}
+.nwp .nwp-none a{color:var(--accent);text-decoration:underline}
+.nwp .nw-list.card{padding:2px var(--sp-4) 4px}
+.nwp .nw-board{padding:14px 0}
+.nwp .nw-board .nw-head{font-size:var(--fs-body);font-weight:650;line-height:1.4}
+.nwp .nw-src-n{background:var(--surface-3);border-color:transparent;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.nwp .nw-inpaper{background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent)}
+.nwp-filters{display:grid;gap:var(--sp-3)}
+.nwp-filters label{display:grid;gap:var(--sp-1);font-size:var(--fs-data);color:var(--ink-2)}
+.nwp-filters input[type=search],.nwp-filters select{min-height:var(--hit);padding:0 var(--sp-3);border:1px solid var(--line-2);border-radius:var(--radius-input);background:var(--surface);color:var(--ink);font:inherit;font-size:1rem}
+.nwp-filters .nwp-check{display:flex;align-items:center;gap:var(--sp-3);min-height:var(--hit);color:var(--ink)}
+.nwp-filters .nwp-check input{width:20px;height:20px;accent-color:var(--accent)}
+@media (max-width:379px){.nwp .bar .sub{display:none}}
+
+/* ---------------- motion: transform and opacity only; decorative motion only under html.fx; nothing under reduced motion ---------------- */
+.disc .rs-preset,.disc .rs-name,.vchip,.nwp .nwp-filter,.nwp .nw-refresh-icon .icon-btn,.disc .dl-card .discover-actions .icon-btn{transition:transform var(--dur-1) var(--ease),opacity var(--dur-1) var(--ease)}
+.disc .rs-preset:active,.disc .rs-name:active,.nwp .nwp-filter:active,.nwp .nw-refresh-icon .icon-btn:active,.disc .dl-card .discover-actions .icon-btn:active{transform:scale(.97)}
+@keyframes rs-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+html.fx .verdict .vchip{animation:rs-rise var(--dur-3) var(--ease) both}
+html.fx .verdict .vchip:nth-child(2){animation-delay:40ms}html.fx .verdict .vchip:nth-child(3){animation-delay:80ms}html.fx .verdict .vchip:nth-child(4){animation-delay:120ms}
+html.fx .nwp .nwp-group{animation:rs-rise var(--dur-3) var(--ease) both}
+@keyframes rs-spin{to{transform:rotate(360deg)}}
+html.fx .nwp .nw-refresh-icon.is-checking .ic{animation:rs-spin 900ms linear infinite}
+@media (prefers-reduced-motion:reduce){
+  .disc .rs-preset,.disc .rs-name,.vchip,.nwp .nwp-filter,.nwp .nw-refresh-icon .icon-btn,.disc .dl-card .discover-actions .icon-btn{transition:none}
+  .disc .rs-preset:active,.disc .rs-name:active,.nwp .nwp-filter:active,.nwp .nw-refresh-icon .icon-btn:active,.disc .dl-card .discover-actions .icon-btn:active{transform:none}
+  html.fx .verdict .vchip,html.fx .nwp .nwp-group,html.fx .nwp .nw-refresh-icon.is-checking .ic{animation:none}
+}
