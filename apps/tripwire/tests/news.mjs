@@ -169,7 +169,12 @@ const nowS = () => Math.floor(Date.now() / 1000);
   ok(await pg.locator('section.nw .nw-row > .nw-summary').count() > 0, 'reader can reveal permitted publisher summaries');
   await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row');
   ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).getAttribute('aria-pressed') === 'true', 'reading preference carries from Today into News');
-  ok(await pg.evaluate(() => localStorage.getItem('tripwire:v1')) === stored, 'news preferences leave research and paper state unchanged');
+  /* 11 Nov 2026: Today's redesign puts "Since your last visit" on screen during the 5s fast-forward, and it records its own
+     visit baseline (seen/inbox/dismissed) by design. That is not a news preference, so those three keys are left out; every
+     research and paper key is still compared. */
+  const core = (j) => { const o = JSON.parse(j ?? '{}'); delete o.seen; delete o.inbox; delete o.dismissed; return JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]])); };   // key order is not state
+  const after = await pg.evaluate(() => localStorage.getItem('tripwire:v1'));
+  ok(core(after) === core(stored), 'news preferences leave research and paper state unchanged');
   for (const width of [320, 390, 1280]) {
     await pg.setViewportSize({ width, height: 844 });
     ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `news controls fit at ${width}px`);

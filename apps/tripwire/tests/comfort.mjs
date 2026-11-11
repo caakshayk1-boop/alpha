@@ -27,7 +27,7 @@ const ratio = (a, c) => { const [x, y] = [lum(a), lum(c)].sort((p, q) => q - p);
   // Floors re-set 2026-11-01 for the owner's palette (--ink #F5F4EE, --ink-2 #B9B9B4, --ink-3 #8A8A85 on --surface-3 #202023). The old floors (15/9/7) were written for the olive palette
   // and cannot all hold on the lightest card surface: measured now ink 14.5, ink-2 8.1, ink-3 4.6, accent 13, up 8.9, down 5.9. Nothing is below WCAG AA 4.5; body copy uses ink and ink-2 only (both
   // clear AAA 7), and ink-3 is for timestamps and labels. Raising a floor again is fine; lowering one needs a reason here.
-  for (const [n, min] of [['tx', 14], ['dim', 7.5], ['mute', 4.5], ['lime', 9], ['up', 8], ['down', 5.5]]) { const worst = Math.min(ratio(c[n], c.bg), ratio(c[n], c.s2), ratio(c[n], c.s3)); ok(worst >= min, `${n} text keeps ${worst.toFixed(1)}:1 on the page and card surfaces (needs ${min}:1)`); }
+  for (const [n, min] of [['tx', 14], ['dim', 7.5], ['mute', 4.5], ['lime', 7], /* 11 Nov 2026: the approved periwinkle accent sits at 7.8:1; floor is WCAG AAA 7:1, matching design.test.ts */ ['up', 8], ['down', 5.5]]) { const worst = Math.min(ratio(c[n], c.bg), ratio(c[n], c.s2), ratio(c[n], c.s3)); ok(worst >= min, `${n} text keeps ${worst.toFixed(1)}:1 on the page and card surfaces (needs ${min}:1)`); }
   /* 3. inputs do not trigger the iPhone zoom */
   await pg.goto(base + '/#/discover'); await pg.reload(); await pg.waitForSelector('input'); const small = await pg.evaluate(() => [...document.querySelectorAll('input,select,textarea')].filter((e) => e.offsetParent && parseFloat(getComputedStyle(e).fontSize) < 16).length);
   ok(small === 0, 'every visible field is 16px or larger, so iPhone Safari does not zoom into it');
