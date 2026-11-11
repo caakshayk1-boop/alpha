@@ -92,6 +92,18 @@ test('book.css: every animation and transition sits under html.fx, and only tran
   assert.ok(!/(?<![-\w])(left|top|width|height|margin|padding|background)\s*:/.test(kf), 'keyframes touch transform/opacity only');
   assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(css), 'no hex colour');
 });
+/* 11 Nov 2026 (revamp v2): the Book's new layer, book2.css, keeps the same two rules: motion under html.fx only, transform and opacity only, and tokens only. */
+test('book2.css: motion only under html.fx, only transform and opacity; tokens only; reduced motion switches it off', () => {
+  const css = readFileSync(new URL('../src/book2.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].trim().replace(/^@media[^{]*\{/, '').trim(), body: m[2] }));
+  const moving = rules.filter((r) => /(^|;)\s*(animation|transition)(-[a-z]+)?\s*:/.test(r.body));
+  assert.ok(moving.length >= 4, 'the motion rules exist');
+  for (const r of moving) { assert.ok(r.sel.split(',').every((s) => s.trim().startsWith('html.fx')), `not under html.fx: ${r.sel}`); const t = /transition\s*:\s*([a-z-]+)/.exec(r.body); if (t) assert.ok(['transform', 'opacity'].includes(t[1]), r.sel); }
+  const kf = [...css.matchAll(/@keyframes[^{]+\{([\s\S]*?\})\s*\}/g)].map((m) => m[1]).join(' ');
+  assert.ok(!/(?<![-\w])(left|top|width|height|margin|padding|background)\s*:/.test(kf), 'keyframes touch transform/opacity only');
+  assert.ok(/prefers-reduced-motion:\s*reduce/.test(css), 'reduced motion is honoured');
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(css) && !/font-family\s*:/.test(css) && !/rgb\(|rgba\(|hsl\(/.test(css), 'tokens only');
+});
 test('book.css reads the design tokens: no literal font family, no new palette', () => {
   const css = readFileSync(new URL('../src/book.css', import.meta.url), 'utf8');
   assert.ok(!/font-family\s*:/.test(css)); assert.ok(!/rgb\(|rgba\(|hsl\(/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')));

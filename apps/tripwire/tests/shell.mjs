@@ -60,7 +60,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   const bad = [];
   for (const [h, want] of R) { await go(pg, h); const got = await current(pg); if (got !== want) bad.push(`${h}: ${got} not ${want}`); if (await pg.locator('.boundary, .welcome').count()) bad.push(`${h}: error or welcome screen`); }
   ok(bad.length === 0, `${R.length} deep links each open under the right tab${bad.length ? ': ' + bad.join('; ') : ''}`);
-  await go(pg, '#/signals?v=record'); ok((await pg.title()).startsWith('Signals'), `the tab title names the page, not the tab (${await pg.title()})`);
+  await go(pg, '#/signals?v=record'); ok((await pg.title()).startsWith('Book'), `the tab title names the page, not its sub-view (${await pg.title()})`);   // 11 Nov 2026: the page is called Book, like its tab; the sub-view (Record) is not in the title
   await go(pg, '#/profile'); ok((await pg.title()).startsWith('Settings'), `Profile reads as Settings in the title (${await pg.title()})`);
   ok(errs.length === 0, `no page errors across the links${errs.length ? ': ' + errs[0] : ''}`);
   await ctx.close(); }

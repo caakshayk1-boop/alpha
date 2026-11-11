@@ -281,8 +281,9 @@ ok(dl.suggestedFilename() === 'tripwire-journal.csv', 'journal exports as CSV');
 await shot('07-journal');
 
 // signals: three engines, picks, paper tracker with mocked bars
-await pg.goto(base + '/#/signals'); await pg.waitForSelector('section[aria-label]'); await shot('08-signals');
-ok((await pg.locator('section[aria-label]').count()) === 3, 'signals shows the three engines: Momentum, Quality and Short-Term (Steady uptrend is retired)');
+// 11 Nov 2026 (revamp v2): the Book opens on Positions; the engines' picks are its Picks view, one section per engine
+await pg.goto(base + '/#/signals?v=picks'); await pg.waitForSelector('section.pk-eng'); await shot('08-signals');
+ok((await pg.locator('section.pk-eng').count()) === 3, 'signals shows the three engines: Momentum, Quality and Short-Term (Steady uptrend is retired)');
 ok(!/E[1-6]\b|Blocked: data|Alerts are off|lifecycle/i.test(await text()), 'no engine-selection or lifecycle chooser remains');
 ok(/Momentum/i.test(await text()) && /Quality at a fair price/i.test(await text()) && !/Steady uptrend/i.test(await pg.locator('section[aria-label]').first().innerText()) && !(await pg.locator('section[aria-label]').allInnerTexts()).some((x) => /Steady uptrend/i.test(x)), 'the engines are named and the retired one makes no picks');
 const firstPick = await pg.locator('section[aria-label] a .sym').first().innerText().then((s) => s.replace(/^\d+\.\s*/, ''));
@@ -292,7 +293,7 @@ await pg.locator('section[aria-label]').first().getByText('Why it qualified').fi
 ok(/Close above the 200-day/.test(await text()), 'each pick lists the criteria it passed');
 const sym = firstPick;
 const day = 86400;
-const refTxt = await pg.locator('section[aria-label]').first().locator('.card').nth(1).innerText();
+const refTxt = await pg.locator('section[aria-label]').first().locator('.pickcard').first().innerText();   // 11 Nov 2026: the engine card above the picks became the section's header
 const ref = Number((refTxt.match(/Signal close\s*₹([\d,]+\.?\d*)/) || [])[1]?.replace(/,/g, ''));
 ok(ref > 0, `a pick states its signal close (${ref})`);
 // Move the browser through four real exchange sessions after taking the paper trade.
@@ -317,11 +318,12 @@ T.stock = () => quote(ref * 1.0, ref * 1.03);
 await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Add paper trade' }).first().click();
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
 await ctx.clock.setFixedTime(new Date(replayNow * 1000)); now0 = replayNow;
-await pg.getByRole('tab', { name: /^Mine/ }).click(); await pg.waitForSelector('.card .tag');
+await pg.getByRole('tab', { name: 'Positions' }).click(); await pg.waitForSelector('.pcard[data-pos]');   // 11 Nov 2026: Mine and Auto are one Positions board; your trade is labelled You
 await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
 ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
 // 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
-ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('.card.glass .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('.card.glass').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
+ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('[data-strip] .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('[data-strip]').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
+ok(/You/.test(await pg.locator('.pcard .own-chip').first().innerText()), 'the trade you took is labelled as yours on the board (11 Nov 2026)');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
 ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[data-daychart]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
 const wiBefore = await pg.locator('input.slider').evaluate((el) => el.value); await pg.locator('input.slider').evaluate((el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(Number(wiBefore) * 0.97));
@@ -332,8 +334,8 @@ await shot('09-tracker');
 ok(await pg.locator('.pcard[data-status="Open"]').count() > 0, 'the trade opens at the first open after it was taken');
 const heldText = await text();
 ok(/\blive\b/i.test(heldText) && /session 4 of/i.test(heldText), `an open trade is marked live and counts four exchange sessions (${heldText.match(/session \d+ of \d+/i)?.[0] ?? 'session count missing'})`);
-ok(/\+₹\d/.test(await pg.locator('.card .num.up').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
-ok(/How a trade is followed/.test(await text()) && /next open|first session after/i.test(await text()), 'tracker states its entry and exit rules');
+ok(/\+₹\d/.test(await pg.locator('[data-strip] .bk-pnl b').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
+{ const m = await pg.locator('[data-method]').textContent(); ok(/How a trade is followed/.test(m) && /next open|first session after/i.test(m), 'tracker states its entry and exit rules (folded under How the paper book works since 11 Nov 2026)'); }
 // a failed price service shows an honest error, not a guess
 await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
 await pg.reload(); await pg.waitForSelector('text=Live prices are unavailable', { timeout: 15000 });
@@ -350,16 +352,17 @@ await pg.unroute('**/api/ledger*');
 const led = (() => { const picks = [], outcomes = {}; for (let i = 0; i < 12; i++) { const id = `2026-10-2${i % 8}|MOM|S${i}`; picks.push({ id, engine: 'MOM', sym: 'S' + i, asOf: '2026-10-23', ref: 100, stop: 95, horizon: 20, score: 90, rank: 1 }); outcomes[id] = i < 9 ? { status: 'closed', final: true, r: i % 3 ? 1.2 : -1, pct: 3, niftyPct: 1, reason: 'Time exit after 20 sessions', sessions: 20, exitDay: '2026-11-20' } : { status: 'open', final: false }; }
   return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-27T01:00:00Z', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
 await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
-await pg.reload(); await pg.waitForSelector('text=of 30 trades closed', { timeout: 15000 }); await shot('09b-record');
-ok(/9 of 30 trades closed/.test(await text()), 'the record counts closed trades against the 30 needed');
-ok(/stay hidden until 30 trades have closed/.test(await text()) && !/Average R \+|won \d+%/.test(await text()), 'average R and win rate are withheld below thirty trades');
+await pg.reload(); await pg.waitForSelector('[data-record-headline]', { timeout: 15000 }); await shot('09b-record');
+ok(/9\s*of 30 closed/.test(await pg.locator('[data-record-headline]').innerText()), 'the record counts closed trades against the 30 needed');   // 11 Nov 2026: one headline, "9 of 30 closed"
+ok(/withheld until 30 close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
-await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('.slots', { timeout: 15000 });
+await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('[data-slots]', { timeout: 15000 });
+await pg.locator('[data-positions] details').evaluateAll((d) => d.forEach((x) => { x.open = true; }));   // 11 Nov 2026: the log and the method are folded under the board
 ok(await pg.locator('canvas.confetti').count() === 0 && await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen is noted once, in words, with no reward effect');
 ok(/of 50/.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await text()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
-ok(/at most 50 positions at a time/.test(await text()) && /at most ₹1,00,000/.test(await text()) && await pg.locator('.slots i').count() === 50, 'the automatic book states and draws its 50-position limit');
+ok(/at most 50 positions at a time/.test(await text()) && /at most ₹1,00,000/.test(await text()) && await pg.locator('[data-slots] circle').count() === 50, 'the automatic book states and draws its 50-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
 await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026

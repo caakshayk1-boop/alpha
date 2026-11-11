@@ -123,7 +123,7 @@ export function SearchSheet({ onClose }: { onClose: () => void }) {
   const t = q.trim().toLowerCase();
   const co = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 8)), [t, scr.data]);
   const notes = t.length < 2 ? [] : st.entries.filter((e) => (e.sym + JSON.stringify(current(e))).toLowerCase().includes(t)).slice(0, 4);
-  const PAGES = [{ l: 'Today', h: '/today' }, { l: 'Discover', h: '/discover' }, { l: 'Signals: engine picks', h: '/signals' }, { l: 'Signals: paper tracker', h: '/signals?v=tracker' }, { l: 'My Desk: journal', h: '/desk?v=journal' }, { l: 'My Desk: plans', h: '/desk?v=plans' }, { l: 'Profile and data', h: '/profile' }].filter((p) => t && p.l.toLowerCase().includes(t));
+  const PAGES = [{ l: 'Today', h: '/today' }, { l: 'Discover', h: '/discover' }, { l: 'Book: positions', h: '/signals?v=positions' }, { l: 'Book: engine picks', h: '/signals?v=picks' }, { l: 'Book: record', h: '/signals?v=record' }, { l: 'My Desk: journal', h: '/desk?v=journal' }, { l: 'My Desk: plans', h: '/desk?v=plans' }, { l: 'Profile and data', h: '/profile' }].filter((p) => t && p.l.toLowerCase().includes(t));
   const TOOLS = [{ l: 'Position size planner', f: 'plan' }, { l: 'Explain a figure', f: 'explain' }].filter((p) => t && p.l.toLowerCase().includes(t));
   const terms = glossarySearch(q).slice(0, 4);
   const to = (h: string) => { onClose(); go(h); };

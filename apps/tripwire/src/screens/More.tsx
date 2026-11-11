@@ -10,7 +10,7 @@ const GROUPS: { head: string; rows: Row[] }[] = [
     { id: 'desk', href: '#/desk', title: 'My Desk', note: 'The companies you follow, your theses, journal and plans' },
   ] },
   { head: 'Research', rows: [
-    { id: 'signals', href: '#/signals', title: 'Signals', note: 'The rules that fired at the last close, your paper trades and the record' },
+    { id: 'signals', href: '#/signals', title: 'Book', note: 'Your paper positions, the rules that fired at the last close, and the record' },
     { id: 'markets', href: '#/markets', title: 'Markets', note: 'Indices, commodities and the trend map' },
     { id: 'news', href: '#/news', title: 'News', note: 'Headlines for the market, what you follow and your paper book' },
   ] },

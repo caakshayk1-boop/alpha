@@ -13,7 +13,7 @@ const go = async (pg, route, sel) => { await pg.goto(base + route); await pg.wai
 const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /* ---- Signals: the market checks behind the gate are listed with their figures ---- */
-{ const { ctx, pg } = await mk(390); await go(pg, '/#/signals', 'details.signal-method summary'); await pg.locator('details.signal-method summary', { hasText: 'Legacy market context' }).click(); await pg.waitForSelector('[data-gate-panel]', { state: 'visible', timeout: 5000 });   // the legacy market checks sit in their own section, apart from the model votes
+{ const { ctx, pg } = await mk(390); await go(pg, '/#/signals?v=picks', 'details.signal-method summary'); /* 11 Nov 2026: the Book opens on Positions; the legacy context sits under Picks */ await pg.locator('details.signal-method summary', { hasText: 'Legacy market context' }).click(); await pg.waitForSelector('[data-gate-panel]', { state: 'visible', timeout: 5000 });   // the legacy market checks sit in their own section, apart from the model votes
   const rows = await pg.locator('[data-gate-panel] .gp-list li').count(); const txt = await pg.locator('[data-gate-panel]').innerText();
   ok(rows >= 3 && /market checks pass/.test(txt) && /statistical validation are separate/.test(txt), `Signals: the gate panel lists ${rows} market checks and says statistical validation is separate from them`);
   ok((await pg.locator('[data-gate-panel] .gp-list li .gp-val').count()) >= 1, 'each check shows the figures it was judged on'); await ctx.close(); }

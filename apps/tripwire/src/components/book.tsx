@@ -59,7 +59,9 @@ export function TargetLadder({ sym, input, model: given, isNew, quiet }: { sym: 
 
 export interface PositionCardProps {
   id: string; sym: string; name?: string | null;
-  /** quiet pills: the engine, the holding style, a trend tag */
+  /** the chips on the row: who took it (engine or you) and the engine. Kept to two so a row reads at a glance */
+  chips?: ReactNode;
+  /** quieter pills that open with the details: the holding style, the rule basis, a trend tag */
   tags?: ReactNode;
   status: { label: string; tone: Tone };
   /** the price now (open) or the exit (closed); null while there is none */
@@ -69,6 +71,8 @@ export interface PositionCardProps {
   pnl: number | null; r: number | null; pct: number | null;
   /** the ladder, or null (skipped, or levels that cannot be worked out) */
   ladder: LadderInput | null;
+  /** how long it has been held, in sessions, for the row: "Session 4 of 20", "Held 4 sessions", "Enters at the next open" */
+  held?: ReactNode;
   /** one line under the header: shares, signal, stop, limit, or why it was skipped */
   line?: ReactNode;
   timeline?: ReactNode;
@@ -77,13 +81,16 @@ export interface PositionCardProps {
   children?: ReactNode;
   /** a position that is still open or waiting is drawn live; a closed one in its completed state */
   closed?: boolean;
+  /** when the price is within a few percent of the stop or the next target: which, and the words the row says ("1.2% above its stop", "At or below its stop", "2.0% from T1") */
+  near?: { kind: 'stop' | 'target'; text: string } | null;
   tabIndexHead?: number;
 }
 const sgn = (v: number | null | undefined, f: (n: number) => string) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`);
 const money = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const rFmt = (n: number) => n.toFixed(2);
 
-/** One position, as a card: symbol and company, the entry-to-price journey, the target ladder, and P&L in rupees and R set large. The header is the one control; it opens the details passed as children.
+/** One position as a departure-board row (11 Nov 2026): the symbol bold with two chips and how long it has been held on the left, the P&L set large on the right, the compact target ladder
+ *  under it. The row is the one control; it opens the existing details (the journey, the timeline, the risk ladder, the what-if, the bases) passed as children.
  *  Rupee figures carry `.amt` so the privacy switch blurs them. `<PositionCard id sym name status price entry pnl r pct ladder expanded onToggle>{details}</PositionCard>` */
 export function PositionCard(p: PositionCardProps) {
   const model = useMemo(() => (p.ladder ? ladderModel(p.ladder) : null), [p.ladder]);
@@ -95,27 +102,31 @@ export function PositionCard(p: PositionCardProps) {
   const up = (p.pnl ?? 0) > 0 ? 'up' : (p.pnl ?? 0) < 0 ? 'down' : '';
   /* a position the paper book never took has a result in R but no rupee figure: say so rather than print a rupee zero */
   const rOnly = p.pnl == null && p.r != null && !!p.closed; const upR = (p.r ?? 0) > 0 ? 'up' : (p.r ?? 0) < 0 ? 'down' : '';
-  return <article className={`pcard ${p.closed ? 'is-closed' : ''}`} data-pos={p.id} data-status={p.status.label} aria-label={`${p.sym}${p.name ? `, ${p.name}` : ''}`}>
+  const rWord = p.r == null ? null : <TweenNumber value={p.r} format={(n) => `${sgn(Math.round(n * 100) / 100, rFmt)}R`} />;
+  return <article className={`pcard pc-row ${p.closed ? 'is-closed' : ''} ${p.near ? `near-${p.near.kind}` : ''}`} data-pos={p.id} data-status={p.status.label} data-near={p.near?.kind} aria-label={`${p.sym}${p.name ? `, ${p.name}` : ''}`}>
     <button type="button" className="tcard-head pc-head" aria-expanded={p.expanded} onClick={p.onToggle}>
-      <span className="pc-top"><span className="pc-id"><span className="pc-sym">{p.sym}</span>{p.name && <span className="pc-name">{p.name}</span>}</span><StatusPill tone={p.status.tone}>{p.status.label}</StatusPill></span>
-      {p.tags && <span className="pc-tags">{p.tags}</span>}
-      {p.price ? <span className="pc-nums">
-        <span className="pc-px"><span className="k">{p.price.label}</span><b className="num pc-big">{p.price.value != null ? price(p.price.value) : "—"}</b>
-          <span className="pc-journey num">{p.entry != null && p.price.value != null ? <>Entry {price(p.entry)} <span aria-hidden="true">→</span><span className="sr"> to </span> {price(p.price.value)}</> : p.entry != null ? `Entry ${price(p.entry)}` : null}</span>
-          {p.price.sub}</span>
-        {rOnly ? <span className="pc-pnl"><span className="k">Result (paper)</span>
-          <b className={`num pc-big ${upR}`}><TweenNumber value={p.r!} format={(n) => `${sgn(Math.round(n * 100) / 100, rFmt)}R`} /></b>
-          <span className="pc-r num"><span className="dim">{p.pct == null ? '—' : `${sgn(p.pct, (n) => n.toFixed(2))}%`} · not in the paper book</span></span></span>
-        : <span className="pc-pnl"><span className="k">P&L (paper)</span>
-          <b className={`num amt pc-big ${up}`}>{p.pnl == null ? '—' : <TweenNumber value={p.pnl} format={(n) => sgn(Math.round(n), money)} />}</b>
-          <span className={`pc-r num ${up}`}>{p.r == null ? '—' : <TweenNumber value={p.r} format={(n) => `${sgn(Math.round(n * 100) / 100, rFmt)}R`} />}<span className="dim"> · {p.pct == null ? '—' : `${sgn(p.pct, (n) => n.toFixed(2))}%`}</span></span></span>}
-      </span> : null}
-      {p.timeline}
-      {p.line && <span className="pc-line num">{p.line}</span>}
+      <span className="pr-id">
+        <span className="pr-symline"><span className="pc-sym">{p.sym}</span>{p.chips && <span className="pr-chips">{p.chips}</span>}</span>
+        <span className="pr-sub"><span className={`pr-state ${p.status.tone}`}>{p.status.label}</span>{p.held && <><span aria-hidden="true"> · </span><span className="pr-held num">{p.held}</span></>}{p.near && <><span aria-hidden="true"> · </span><b className={`pr-near ${p.near.kind === 'stop' ? 'down' : 'up'}`}>{p.near.text}</b></>}</span>
+      </span>
+      {rOnly ? <span className="pr-pnl"><b className={`num pc-big ${upR}`}>{rWord}</b><span className="pc-r num dim">R only · not in the paper book</span></span>
+        : <span className="pr-pnl"><b className={`num amt pc-big ${up}`}>{p.pnl == null ? '—' : <TweenNumber value={p.pnl} format={(n) => sgn(Math.round(n), money)} />}</b>
+          <span className={`pc-r num ${up}`}>{rWord ?? '—'}<span className="dim"> · {p.pct == null ? '—' : `${sgn(p.pct, (n) => n.toFixed(2))}%`}</span></span></span>}
       <Icon n="chev" className="pc-chev" />
     </button>
     {model && <TargetLadder sym={p.sym} model={model} isNew={fresh.current} />}
-    {p.expanded && p.children && <div className="pc-more">{p.children}</div>}
+    {p.expanded && <div className="pc-more">
+      {p.name && <p className="pc-name">{p.name}</p>}
+      {p.tags && <span className="pc-tags">{p.tags}</span>}
+      {p.price && <span className="pc-nums">
+        <span className="pc-px"><span className="k">{p.price.label}</span><b className="num pc-mid">{p.price.value != null ? price(p.price.value) : '—'}</b>
+          <span className="pc-journey num">{p.entry != null && p.price.value != null ? <>Entry {price(p.entry)} <span aria-hidden="true">→</span><span className="sr"> to </span> {price(p.price.value)}</> : p.entry != null ? `Entry ${price(p.entry)}` : null}</span>
+          {p.price.sub}</span>
+      </span>}
+      {p.timeline}
+      {p.line && <p className="pc-line num">{p.line}</p>}
+      {p.children}
+    </div>}
   </article>;
 }
 
