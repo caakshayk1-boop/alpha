@@ -20,17 +20,5 @@ html .pulse .t-take{font-size:clamp(1.35rem,4.6vw,1.9rem);line-height:1.22;font-
 .gauge .g-num{fill:var(--ink);font:800 44px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .gauge .g-cap{fill:var(--ink-3);font:600 11px/1 var(--font);letter-spacing:.08em;text-transform:uppercase}
 .gauge figcaption{font-size:var(--fs-data);color:var(--ink-2);text-align:center}
-/* the index tape: one compact strip, sideways scroll on a phone; the big sparkline tiles are gone */
-html .today .brief-ix{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;border:1px solid var(--line);border-radius:var(--radius-input);background:var(--bg-2)}
-html .today .brief-ix::-webkit-scrollbar{display:none}
-html .today .brief-ix .bix{flex:1 0 132px;min-width:132px;padding:var(--sp-3) var(--sp-4);border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;display:grid;gap:2px}
-html .today .brief-ix .bix:last-child{border-right:0}
-html .today .brief-ix .bix svg,html .today .brief-ix .bix .spark,html .today .brief-ix .bix .daychart{display:none}
-html .today .brief-ix .bix b{font-size:1.125rem;font-weight:700}
-.t-fresh-foot{opacity:.9}
-
-html .today .brief-ix .bix{min-height:0}
-html .today .brief-ix .bix:first-child b{font-size:1.125rem}
-@media (max-width:1099px){html .today .brief-ix{display:flex}}
 html .pulse .t-take{min-height:0}
 html .gauge figcaption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* the sentence beside the gauge already says the three shares; the caption stays for assistive tech only */

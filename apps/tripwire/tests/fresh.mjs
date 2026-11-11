@@ -30,7 +30,8 @@ const same = { ledgerDay: DAY, rsiDay: DAY, factorsDay: DAY };
 }
 {
   const { ctx, pg } = await open('/#/today', { ledgerDay: prevSession(prevSession(DAY)), rsiDay: prevSession(prevSession(DAY)), factorsDay: DAY }); await pg.waitForSelector('[data-fresh="stale"]', { timeout: 15000 });
-  const t = await pg.locator('.fresh-pill').first().innerText();
+  // 11 Nov 2026 (revamp v2): on Today the file-by-file detail is folded into one collapsed "Data status" line at the foot; open it to read which files are behind
+  await pg.locator('.t-status > summary').click(); const t = await pg.locator('.t-status').innerText();
   ok(/Forward record 2 sessions behind/.test(t) && /RSI sheet 2 sessions behind/.test(t), `amber, and in words which files: "${t.slice(0, 160)}"`);
   const colour = await pg.locator('.fresh-pill').first().evaluate((e) => getComputedStyle(e).color); ok(colour !== 'rgb(184, 239, 67)', 'the stale pill is not the lime of a healthy one'); await ctx.close();
 }

@@ -26,7 +26,7 @@ export function Markets() {
   const [dayIx, setDayIx] = useState<'NIFTY' | 'BANKNIFTY' | 'VIX'>('NIFTY');
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
-  const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null });
+  const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });   // 11 Nov 2026: no gauge on this page, so the shares stay in the sentence
   return <div>
     <PageBar title="Markets" onBack sub={<>{sess.label} · {sess.detail}</>} />
     <section className="card mk-glance" aria-label="Market summary" data-glance>

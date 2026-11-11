@@ -1,5 +1,5 @@
 // News in the browser, against the served build with the news endpoints mocked (newsmock.mjs). Usage: node apps/tripwire/tests/news.mjs [baseUrl]
-// Pins: What matters now (lead + compact rows, never padded), the four tabs and an empty Following that is not seeded from the paper book, publication vs check times in IST, "New" semantics,
+// Pins: Today's Market news (three India-wide stories, company stories on the board; 11 Nov 2026), the News page tabs, the four tabs and an empty Following that is not seeded from the paper book, publication vs check times in IST, "New" semantics,
 // "N new updates" without reordering, manual refresh feedback, delayed and unavailable states, one health line shared by Today and Profile, safe links, the News page.
 // These are automated checks on mocked responses. They say nothing about the live sources.
 import { chromium } from 'playwright';
@@ -20,62 +20,70 @@ const heads = (pg) => rows(pg).locator('.nw-head').allInnerTexts();
 const tab = async (pg, name) => { await pg.locator('.nw-tabs .chip', { hasText: name }).first().click(); await pg.waitForTimeout(150); };
 const nowS = () => Math.floor(Date.now() / 1000);
 
-/* 1. default reader: follows TCS and GCSL, paper book TCS */
+/* 1. default reader: follows TCS and GCSL, paper book TCS.
+   11 Nov 2026 (revamp v2): Today splits the news. India-wide stories are "Market news" (at most three, then All news); a followed company's stories sit on its own row of the
+   "Your names" board, never in both places. The tabs, the labels, the evidence drawer and the method drawer are checked on the News page (#/news), where they now live. */
 {
   const { ctx, pg, ctl, errs } = await open(STATE);
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
-  ok(await pg.locator('#nw-title').innerText() === 'What matters now', 'Today names the block "What matters now"');
-  const h = await heads(pg);
-  ok(h.length === 4 && h.some((x) => /RBI keeps repo rate/.test(x)) && h.some((x) => /TCS Q2/.test(x)) && h.some((x) => /SEBI bars/.test(x)) && h.some((x) => /inflation eases/.test(x)), `All is the union of Market, Following and Paper book: ${h.length} rows`);
-  ok(!h.some((x) => /Infosys to acquire/.test(x)) && !h.some((x) => /Pune/.test(x)) && !h.some((x) => /buyback/.test(x)), 'a name nobody follows or holds, an undated story and a five-day-old event are not on Today');
-  ok(await rows(pg).first().evaluate((e) => e.classList.contains('lead')), 'the first row is the lead event');
-  ok(await pg.locator('.nw-foot button', { hasText: /Show \d+ more/ }).count() === 0 && /4 verified updates\. There are no more right now\./.test(await pg.locator('section.nw').innerText()), 'four qualify, four are shown, and it says quietly there are no more: nothing is padded');
+  await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 }); await pg.waitForSelector('[data-board-row]'); await pg.waitForTimeout(600);
+  ok(await pg.locator('#nw-title').innerText() === 'Market news', 'Today names the block "Market news"');
+  const h = await heads(pg); const board = await pg.locator('[data-board-row] .br-news a').evaluateAll((a) => a.map((x) => x.textContent));
+  ok(h.length === 2 && h.some((x) => /RBI keeps repo rate/.test(x)) && h.some((x) => /inflation eases/.test(x)), `Market news: the two India-wide events (${h.length} rows)`);
+  ok(board.some((x) => /TCS Q2/.test(x)) && board.some((x) => /SEBI bars/.test(x)) && !h.some((x) => /TCS Q2|SEBI bars/.test(x)), 'the followed names\' events are on their board rows and not repeated in Market news');
+  const all = await pg.locator('.today').evaluate((e) => e.textContent);
+  ok(!/Infosys to acquire/.test(all) && !/Pune/.test(all) && !/buyback/.test(all), 'a name nobody follows or holds, an undated story and a five-day-old event are not on Today');
+  ok(await pg.locator('section.nw .nw-foot button', { hasText: /Show \d+ more/ }).count() === 0 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, 'two qualify, two are shown, nothing is padded, and All news follows');
   ok(!/wider match/i.test(await pg.locator('body').innerText()), 'there is no "wider match"');
   const t = await pg.locator('.nw-health').innerText(); ok(/Fresh/.test(t) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(t) && !/live/i.test(t), `the health line says Fresh and when it was checked, in IST, and never "live": ${t.replace(/\n/g, ' | ')}`);
   const title = await rows(pg).first().locator('time').getAttribute('title'); ok(/^published .*IST$/.test(title ?? ''), `a story's own time is separate, in IST, and on the row: ${title}`);
-  const hrefs = await pg.locator('a.nw-head').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 4 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), 'every story link is http(s), opens in a new tab and carries rel=noopener');
+  const hrefs = await pg.locator('a.nw-head, [data-board-row] .br-news a').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 4 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), `every story link on Today is http(s), opens in a new tab and carries rel=noopener (${hrefs.length})`);
   ok(await pg.locator('.tape, marquee').count() === 0, 'no ticker tape');
   ok(ctl.calls.query.length === 1 && /Gujarat|GCSL/i.test(decodeURIComponent(ctl.calls.query[0])) === true || ctl.calls.query.length >= 1, 'a followed name the snapshot does not cover is queried live, through the same endpoint');
-  /* tabs */
-  const counts = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/All\s*4/.test(counts[0]) && /Market\s*2/.test(counts[1]) && /Following\s*2/.test(counts[2]) && /Paper book\s*1/.test(counts[3]), `tab counts are separate: ${counts.join(' | ').replace(/\n/g, ' ')}`);
-  await tab(pg, 'Market'); ok((await heads(pg)).length === 2, 'Market: the two India-wide events');
-  await tab(pg, 'Following'); const f = await heads(pg); ok(f.length === 2 && f.some((x) => /SEBI bars/.test(x)) && f.some((x) => /TCS Q2/.test(x)), 'Following: the names the reader follows');
-  await tab(pg, 'Paper book'); ok((await heads(pg)).length === 1 && /TCS Q2/.test((await heads(pg))[0]), 'Paper book: its own tab');
-  await tab(pg, 'All'); const lbl = await pg.locator('section.nw .nw-label').allInnerTexts(); ok(lbl.includes('Following') && lbl.includes('Paper book') && lbl.includes('Market'), `All carries a label on each row: ${[...new Set(lbl)].join(', ')}`);
+  /* tabs, labels and drawers: the News page */
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  const counts = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/^All/.test(counts[0]) && /Market\s*2/.test(counts[1]) && /Following\s*\d/.test(counts[2]) && /Paper book\s*\d/.test(counts[3]), `the News page tab counts are separate: ${counts.join(' | ').replace(/\n/g, ' ')}`);
+  const nrows = (p) => p.locator('.nw-list > .nw-row .nw-head').allInnerTexts();
+  await tab(pg, 'Market'); ok((await nrows(pg)).length === 2, 'Market: the two India-wide events');
+  await tab(pg, 'Following'); const f = await nrows(pg); ok(f.length >= 2 && f.some((x) => /SEBI bars/.test(x)) && f.some((x) => /TCS Q2/.test(x)) && !f.some((x) => /Infosys/.test(x)), 'Following: the names the reader follows');
+  await tab(pg, 'Paper book'); const pb = await nrows(pg); ok(pb.length >= 1 && pb.every((x) => /TCS/.test(x)) && pb.some((x) => /TCS Q2/.test(x)), 'Paper book: its own tab');
+  await tab(pg, 'All'); const lbl = await pg.locator('.nw-label').allInnerTexts(); ok(lbl.includes('Following') && lbl.includes('Paper book') && lbl.includes('Market'), `All carries a label on each row: ${[...new Set(lbl)].join(', ')}`);
   /* drawer */
-  const row = rows(pg).first(); ok(await row.locator('details.nw-more[open]').count() === 0, 'coverage and ranking sit in a closed drawer'); await row.locator('details.nw-more summary').click();
+  const row = pg.locator('.nw-row', { hasText: 'TCS Q2 net profit' }).first(); ok(await row.locator('details.nw-more[open]').count() === 0, 'coverage and ranking sit in a closed drawer'); await row.locator('details.nw-more summary').click();
   const d = await row.locator('.nw-body').innerText(); ok(/3 outlets carried this/.test(d) && /Why it ranks here/.test(d) && /Published \(the outlet's own time\)\s*\n?.*IST/.test(d) && /Collected \(first seen by Tripwire's check\)\s*\n?.*IST/.test(d), 'the drawer lists the outlets, the ranking reason and the dates');
-  ok(await pg.locator('section.nw > details.nw-method').count() === 1 && await pg.locator('section.nw details.nw-method[open]').count() === 0, 'methodology is one closed Details drawer for the block, not under each headline');
+  ok(await pg.locator('details.nw-method').count() === 1 && await pg.locator('details.nw-method[open]').count() === 0, 'methodology is one closed Details drawer for the page, not under each headline');
   ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
 }
 
-/* 2. a fresh guest: zero follows, but TCS is in the paper book. Following is empty and is NOT seeded from the paper book. */
+/* 2. a fresh guest: zero follows, but TCS is in the paper book. Following is empty and is NOT seeded from the paper book.
+   11 Nov 2026 (revamp v2): Today's board says so in one line with Find a company; the Following tab and its empty state are on the News page. */
 {
   const { ctx, pg } = await open({ ...STATE, follows: [] });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
-  const c = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/Following\s*0/.test(c[2]) && /Paper book\s*1/.test(c[3]), `zero follows: Following 0, Paper book separate (${c.join(' | ').replace(/\n/g, ' ')})`);
-  await tab(pg, 'Following'); const t = await pg.locator('section.nw').innerText();
-  ok(/You follow no companies yet/.test(t) && /never filled from the paper book/.test(t) && await pg.locator('section.nw a[href="#/discover"]').count() === 1, 'Following with no names has a useful empty state with a Discover link');
-  ok(await rows(pg).count() === 0, 'Following shows no rows for a guest');
+  ok(await pg.locator('[data-board-row]').count() === 0 && await pg.locator('[data-sec="changes"]').getByRole('button', { name: 'Find a company' }).count() === 1, 'Today: no board rows are borrowed from the paper book; one line and Find a company');
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  const c = await pg.locator('.nw-tabs .chip').allInnerTexts(); ok(/Following\s*0/.test(c[2]) && /Paper book\s*[1-9]/.test(c[3]), `zero follows: Following 0, Paper book separate (${c.join(' | ').replace(/\n/g, ' ')})`);
+  await tab(pg, 'Following'); const t = await pg.locator('.nw').first().innerText();
+  ok(/You follow no companies yet/.test(t) && /never filled from the paper book/.test(t) && await pg.locator('.nw-empty a[href="#/discover"]').count() === 1, 'Following with no names has a useful empty state with a Discover link');
+  ok(await pg.locator('.nw-list > .nw-row').count() === 0, 'Following shows no rows for a guest');
   await ctx.close();
 }
 
-/* 3. "New": published after the last visit AND first seen after it */
+/* 3. "New": published after the last visit AND first seen after it. 11 Nov 2026 (revamp v2): the one New story is a followed company's, so it is read on the News page, which keeps the tag. */
 {
   const { ctx, pg } = await open(STATE, { seen: nowS() - 3 * 3600 });
-  await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
-  const news = await pg.locator('section.nw .nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  const news = await pg.locator('.nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();
   const o = await open(STATE, { seen: nowS() - 3 * 24 * 3600 }); await o.pg.goto(base + '/#/news'); await o.pg.waitForSelector('.nw-row', { timeout: 20000 });
   await o.pg.locator('[data-more-filters] > summary').click(); await o.pg.getByLabel('Period').selectOption('14'); await o.pg.waitForTimeout(200);
   const buy = o.pg.locator('.nw-row', { hasText: 'buyback of ₹15,000' }); ok(await buy.count() === 1 && await buy.locator('.nw-tag', { hasText: /^New$/ }).count() === 0, 'an old event first seen an hour ago is not New, however recently it was fetched');
   await o.ctx.close();
-  const z = await open(STATE, { seen: 0 }); await z.pg.goto(base + '/#/today'); await z.pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
-  ok(await z.pg.locator('section.nw .nw-tag', { hasText: /^New$/ }).count() === 0, 'with no earlier visit nothing is called New'); await z.ctx.close();
+  const z = await open(STATE, { seen: 0 }); await z.pg.goto(base + '/#/news'); await z.pg.waitForSelector('.nw-row', { timeout: 20000 });
+  ok(await z.pg.locator('.nw-tag', { hasText: /^New$/ }).count() === 0, 'with no earlier visit nothing is called New'); await z.ctx.close();
 }
 
-/* 4. N new updates without reordering; refresh feedback */
+/* 4. N new updates without reordering; refresh feedback (Today's Market news keeps the offer and the check control) */
 {
   const { ctx, pg, ctl } = await open(STATE, { clock: true });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 });
@@ -88,8 +96,8 @@ const nowS = () => Math.floor(Date.now() / 1000);
   ok(JSON.stringify(await heads(pg)) === JSON.stringify(before), 'the list on screen was not reordered or extended under the reader');
   await pg.locator('.nw-offer').click(); await pg.waitForTimeout(250);
   const after = await heads(pg); ok(after.some((x) => /algorithmic trading/.test(x)) && await pg.locator('.nw-offer').count() === 0, 'a tap applies them and the offer goes');
-  ok(after.length <= 5 || await pg.locator('.nw-foot button', { hasText: /Show \d+ more/ }).count() === 1, 'seven qualify: five show with "Show N more"');
-  await pg.locator('.nw-foot button', { hasText: /Show \d+ more/ }).click(); ok((await heads(pg)).length === 7, 'Show more reveals the rest, up to ten, never padded');
+  // 11 Nov 2026 (revamp v2): Today shows at most three market stories, never more, and sends the rest to All news (was: five, then "Show N more")
+  ok(after.length === 3 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `five qualify: three show, then All news (${after.length})`);
   /* refresh feedback */
   const btn = pg.locator('.nw-refresh button'); ok(/Check for updates/.test(await btn.innerText()), 'the refresh control says what it does');
   await btn.click(); await pg.waitForFunction(() => /No new stories/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); ok(true, 'refresh with nothing new says "No new stories"');
@@ -97,7 +105,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
   await btn.click(); await pg.waitForFunction(() => /Updated/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); await pg.waitForTimeout(300);
   ok((await heads(pg)).some((x) => /digital lending/.test(x)), 'refresh with something new says "Updated" and applies it, because the reader asked');
   await pg.clock.fastForward(35_000); ctl.versionFails = true; await btn.click(); await pg.waitForFunction(() => /Failed/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); ok(true, 'refresh while the service is down says "Failed"; the stories stay');
-  ok((await rows(pg).count()) >= 4, 'cached stories stay on screen after a failed refresh');
+  ok((await rows(pg).count()) >= 2, 'cached stories stay on screen after a failed refresh');
   await ctx.close();
 }
 
@@ -128,7 +136,7 @@ const nowS = () => Math.floor(Date.now() / 1000);
 /* 7. the News page */
 {
   const { ctx, pg, errs } = await open(STATE);
-  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-tabs .chip', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
   ok(await pg.locator('h1').innerText() === 'News', 'the News page exists at #/news');
   ok(!await pg.locator('dl.nw-times').isVisible(), 'check timestamps are available on demand, not repeated above the news');
   await pg.locator('details.nw-method > summary').click();
@@ -152,23 +160,19 @@ const nowS = () => Math.floor(Date.now() / 1000);
   await pg.getByLabel('Category').selectOption('cat:rules'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() >= 1 && (await pg.locator('.nw-row .nw-tag').allInnerTexts()).every((t) => !/^(Results|Deal)$/.test(t.trim()) || t.trim() === 'Regulator' || true), 'a category narrows the archive to its types');
   ok(await pg.locator('a[href="#/news"]').count() >= 0, 'ok'); ok(errs.length === 0, `no page errors ${errs.join(';')}`); await ctx.close();
 }
-/* Reading preferences survive a reload without changing research/position state or marking hidden news seen. */
+/* Reading preferences survive a reload without changing research/position state.
+   11 Nov 2026 (revamp v2): Today's news is three market stories with no Minimise and no summary switch (the lean block replaced "What matters now"); the summaries preference
+   and its persistence are checked on the News page, which owns the reading controls. */
 {
   const { ctx, pg } = await open(STATE, { clock: true });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row');
   const stored = await pg.evaluate(() => localStorage.getItem('tripwire:v1'));
-  await pg.getByRole('button', { name: 'Minimise', exact: true }).click();
-  ok(!await rows(pg).first().isVisible() && await pg.locator('section.nw .nw-health').isVisible(), 'minimise hides stories and controls but keeps freshness visible');
-  await pg.clock.fastForward(5000);
-  ok(await pg.evaluate(() => localStorage.getItem('tripwire:newsSeen')) === null, 'hidden headlines are not marked read');
-  await pg.reload(); await pg.waitForSelector('section.nw .nw-health');
-  ok(await pg.getByRole('button', { name: 'Expand news' }).getAttribute('aria-expanded') === 'false', 'minimise is remembered after reload');
-  await pg.getByRole('button', { name: 'Expand news' }).click();
-  ok(await rows(pg).first().isVisible(), 'expanding restores the same stories');
-  await pg.getByRole('button', { name: 'Show summaries', exact: true }).click();
-  ok(await pg.locator('section.nw .nw-row > .nw-summary').count() > 0, 'reader can reveal permitted publisher summaries');
+  ok(await pg.locator('section.nw').getByRole('button', { name: /Minimise|Show summaries/ }).count() === 0 && await rows(pg).first().isVisible(), 'Today\'s market news carries no reading controls of its own; the stories show');
   await pg.goto(base + '/#/news'); await pg.waitForSelector('.nw-row');
-  ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).getAttribute('aria-pressed') === 'true', 'reading preference carries from Today into News');
+  await pg.getByRole('button', { name: 'Show summaries', exact: true }).click();
+  ok(await pg.locator('.nw-row > .nw-summary').count() > 0, 'reader can reveal permitted publisher summaries');
+  await pg.reload(); await pg.waitForSelector('.nw-row');
+  ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).getAttribute('aria-pressed') === 'true', 'the reading preference is remembered after reload');
   /* 11 Nov 2026: Today's redesign puts "Since your last visit" on screen during the 5s fast-forward, and it records its own
      visit baseline (seen/inbox/dismissed) by design. That is not a news preference, so those three keys are left out; every
      research and paper key is still compared. */
