@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { go, useAppState, useLoc, useSheets, setState } from '../app.tsx';
-import { useCompany, useScreen } from '../data.ts';
+import { useChart, useCompany, useScreen } from '../data.ts';
+import { asOfRows, asOfWhy } from '../asof.ts';
 import { Icon, Seg, useUi } from '../ui.tsx';
 import { FollowButton, Head, Failed, Loading, PageBar } from './common.tsx';
 import { trendOf, TREND_RULE_TEXT, TREND_WORD } from '../screen.ts';
-import { curateCase, eligibilityOf, meaningful, riskGradeOf, riskSentence, NO_FLAGS_SENTENCE } from '../eligibility.ts';
+import { counterCoverage, curateCase, eligibilityOf, meaningful, riskGradeOf, riskSentence } from '../eligibility.ts';
 import { ACTIVE, evaluate, type Q } from '../quant.ts';
 import { useEngines } from '../useEngines.ts';
 import { cr, dayWord, inr, isNum, pct, plural, tone, x1, dash } from '../fmt.ts';
@@ -34,7 +35,8 @@ type Tab = 'overview' | 'financials' | 'ownership' | 'risks' | 'thesis';
 export function Company({ sym }: { sym: string }) {
   const [tab, setTab] = useState<Tab>('overview');
   useWatchQuotes([sym]); const quote = useQuote(sym); const first = useLoc().q.get('first') === '1';   // set only by first use: the case and countercase come first, with the optional thought beneath them
-  const c = useCompany(sym); const scr = useScreen(); const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
+  const c = useCompany(sym); const scr = useScreen(); const hist = useChart(sym);
+  const [wideAsOf] = useState(() => typeof matchMedia === 'function' && matchMedia('(min-width: 700px)').matches);  /* read once at mount: no reflow while reading */ const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
   const row = c.data?.row; const el = row ? eligibilityOf(row, c.data?.years ?? []) : null;
   const day = scr.data?.as_of ?? null;
   const notes = s.entries.filter((e) => e.sym === sym && !e.archived);
@@ -66,17 +68,20 @@ export function Company({ sym }: { sym: string }) {
   const pxAt = at(px);
   const swot = c.data.swot; const flags = c.data.risk?.flags ?? [];
   const cur = curateCase({ strengths: swot?.s ?? [], flags, weaknesses: swot?.w ?? [] }, el!); const cases = cur.strengths; const counters = cur.counters; const grade = riskGradeOf(row, el!);
+  const cov = counterCoverage(row, el!, counters.length, !!c.data.risk);
   const caseBlock = <>
     <Head>Case and countercase</Head>
+    {/* The coverage line leads, before any count: an empty countercase is "nothing the screen measured", never "no risk" (audit, 10 Nov 2026). Neutral styling: no reassuring green. */}
+    <div className={`coverage cov-${cov.state}`} data-coverage={cov.state} role="note"><b>{cov.title}</b> <span className="dim">{cov.line}</span></div>
     <details className="ev" open={first || undefined}><summary><span className="up">●</span> Case ({cases.length})<span className="chev">▾</span></summary><div className="body">
       {cases.length ? cases.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">The screen found no strengths clear enough to list. That is not a negative finding.</span>}</div></details>
-    <details className="ev" open={first || undefined}><summary><span className="down">●</span> Countercase ({counters.length})<span className="chev">▾</span></summary><div className="body">
-      {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">{NO_FLAGS_SENTENCE}</span>}</div></details>
+    <details className="ev" open={first || undefined}><summary><span className={counters.length ? 'down' : 'mute'} aria-hidden="true">●</span> Countercase ({counters.length}){!counters.length && <span className="tag cov-tag">{cov.state === 'none' ? 'none detected' : cov.state === 'not-assessed' ? 'partly assessed' : cov.state}</span>}<span className="chev">▾</span></summary><div className="body">
+      {counters.length ? counters.map((x) => <p key={x.t} style={{ margin: '0 0 10px' }}>{x.t}<br /><span className="mute small">{x.k}</span></p>) : <span className="dim">{cov.title} {cov.line}</span>}</div></details>
     <p className="mute small" style={{ margin: '8px 0 0' }}>Facts and calculations from the screen, listed as it states them. Interpretation is yours.{grade.level ? ` ${riskSentence(grade.level, flags.length)}` : ''}{grade.note ? ` ${grade.note}` : ''}</p>
     {el!.notes.length > 0 && <div className="note info" style={{ marginTop: 8 }}>{el!.notes.map((t, k) => <p key={t} style={{ margin: k === el!.notes.length - 1 ? 0 : '0 0 6px' }}>{t}</p>)}</div>}
     {(cur.hidden.length > 0 || cur.merged > 0) && <details className="more"><summary>How the case and countercase were listed</summary><div>{cur.hidden.length > 0 ? `${plural(cur.hidden.length, 'statement-based line')} left out because ${cur.hidden.length === 1 ? 'its figure is' : 'their figures are'} not meaningful for this company. ` : ''}{cur.merged > 0 ? `${plural(cur.merged, 'line')} on a topic already listed ${cur.merged === 1 ? 'was' : 'were'} merged into the first.` : ''}</div></details>}
   </>;
-  const mainRisk = counters[0] ? { line: counters[0].t, note: counters[0].k } : { line: 'The screen raised no flag or weakness for this company.', note: NO_FLAGS_SENTENCE };
+  const mainRisk = counters[0] ? { line: counters[0].t, note: counters[0].k } : { line: cov.title, note: cov.line };
   const riskNote = [grade.level ? riskSentence(grade.level, flags.length) : null, mainRisk.note].filter(Boolean).join(' ') || null;
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id, sym })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
   const overview = <>
@@ -161,19 +166,25 @@ export function Company({ sym }: { sym: string }) {
     <section className="card glass c-head">
       <div className="row between"><div><div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={px}>{inr(px)}</Tick></div><div className={`num ${tone(lp.ch)}`} style={{ marginTop: 4 }}>{pct(lp.ch)} {lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</div></div>
         {row.tier && <div className="c-pills" role="group" aria-label="Size class"><Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill></div>}</div>
-      <div className="c-times small">{lp.fromQuote ? <span className={lp.live ? 'up' : 'mute'} title={`Source: Yahoo Finance. Exchange timestamp ${fmtIst(lp.t!)}.`}>{lp.word} · {fmtIst(lp.t!)}</span> : <span className={fr.tone === 'peach' ? '' : 'mute'} style={fr.tone === 'peach' ? { color: 'var(--a4)' } : undefined}>Close of {dayWord(row.last_date)}</span>}{lp.fromQuote ? <span className="mute">Screen figures: close of {dayWord(row.last_date)}</span> : <span className="mute">Live price not available</span>}</div>
+      {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
+        const rows = asOfRows(ai); const grid = <dl className="asof-grid">{rows.map((r) => <div key={r.id} className={`asof-row${r.missing ? ' miss' : ''}${r.id === 'quote' && lp.live ? ' live' : ''}`} data-asof-row={r.id}><dt>{r.k}</dt><dd className="num">{r.v}</dd></div>)}</dl>;
+        const why = <details className="more asof-why"><summary>Why these dates differ</summary><div>{asOfWhy(ai)}</div></details>;
+        // On a phone the five clocks fold into one line (the quote and the screen close, the two that differ most often), so the chart stays near the top; wider screens show the grid open.
+        return wideAsOf ? <div className="asof" data-asof aria-labelledby="asof-h"><h2 id="asof-h" className="asof-h">Data as of</h2>{grid}{why}</div>
+          : <details className="asof asof-fold" data-asof><summary><span className="sr">Data as of: </span><span className="asof-line">{ai.quote ? `${ai.quote.word} · ${fmtIst(ai.quote.t)}` : 'Live price not available'} · {rows.find((r) => r.id === 'screen')!.v}</span></summary>{grid}{why}</details>; })()}
     </section>
 
-    <ResearchRead company={c.data} />
-    {first && <>
-      <div className="note info ft-strip" data-first="strip">First look at {row.name}. Read the case and the countercase, then save a thought if you want one. Nothing here is a recommendation.</div>
-      {caseBlock}
-      <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
-    </>}
-
-    <div className="co-grid has-side" style={{ marginTop: 'var(--sp-4)', gap: 'var(--sp-4)' }}>
-      <div><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
-      <div className="co-side"><DecisionCard c={c.data} lp={lp} /></div>
+    <StickyHead name={row.name} sym={sym} px={inr(px)} ch={lp.ch ?? null} word={lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'} />
+    {/* 10 Nov 2026: on a wide screen the one-minute read and the decision summary sit side by side, and the chart gets the full width beneath them. On a phone the order is read, chart, decision, as before. */}
+    <div className={`co-top${first ? ' has-first' : ''}`}>
+      <div className="co-read"><ResearchRead company={c.data} /></div>
+      {first && <div className="co-first">
+        <div className="note info ft-strip" data-first="strip">First look at {row.name}. Read the case and the countercase, then save a thought if you want one. Nothing here is a recommendation.</div>
+        {caseBlock}
+        <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
+      </div>}
+      <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
+      <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 
     <div className="co-tabs"><Seg label="Company sections" value={tab} onChange={setTab} items={TABS} /></div>
@@ -192,4 +203,11 @@ export function Company({ sym }: { sym: string }) {
     const on = s.follows.includes(sym);
     return <button className="btn" aria-pressed={on} onClick={() => { setState((x) => toggleFollow(x, sym)); toast(on ? `Stopped following ${sym}` : `Following ${sym}. Kept on this device.`); }}><Icon n="star" />{on ? 'Following' : 'Follow'}</button>;
   }
+}
+
+/** A slim bar with the company and its price, shown once the price card has scrolled out of view. It is a reading aid only: no control lives here that is not also on the page. */
+function StickyHead({ name, sym, px, ch, word }: { name: string; sym: string; px: string; ch: number | null; word: string }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const el = document.querySelector('.c-head'); if (!el || typeof IntersectionObserver === 'undefined') return; const io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting && e.boundingClientRect.top < 0), { threshold: 0 }); io.observe(el); return () => io.disconnect(); }, []);
+  return <div className="co-sticky" data-shown={shown || undefined} aria-hidden={!shown}><div className="co-sticky-in"><b className="trunc">{name}</b><span className="mute small">{sym}</span><span className="grow" /><span className="num">{px}</span><span className={`num small ${tone(ch)}`}>{pct(ch)} <span className="mute">{word}</span></span></div></div>;
 }

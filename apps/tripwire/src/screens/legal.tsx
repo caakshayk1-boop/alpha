@@ -91,7 +91,7 @@ export function Privacy() {
     </Fold>
     <Fold id="links" title="TradingView and other links" summary="A plain link. Nothing from TradingView is loaded into Tripwire.">
       <Body>
-        <p>A TradingView button opens TradingView's own chart for a company in a new tab. It is a link, not an embed: no TradingView script or widget runs inside Tripwire, and the page's security policy would block one. TradingView sees your visit under its own terms and privacy policy, and the company's symbol is in the link. The link to askakshay.com works the same way.</p>
+        <p>A TradingView button opens TradingView's own chart for a company in a new tab. It is a link, not an embed: no TradingView script or widget runs inside Tripwire, and the page's security policy would block one. TradingView sees your visit under its own terms and privacy policy, and the company's symbol is in the link.</p>
       </Body>
     </Fold>
     <Fold id="erase" title="Erasing your data" summary="Settings, then Delete all my data. Clearing site data removes the rest.">

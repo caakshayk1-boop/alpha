@@ -22,7 +22,7 @@ export function DecisionCard({ c, lp }: { c: Company; lp: LivePx }) {
     const engines = out ? ACTIVE.map((e) => { const ev = evaluate(e.id, row as Q, out.ctx); return { id: e.id, name: e.name, pass: ev.pass, score: ev.score, eligible: ev.eligible }; }) : [];
     const evidence = Object.fromEntries(ACTIVE.map((e) => [e.id, engineEvidence(e.id, bt.data, bt.loading)]));
     const entry = s.entries.find((e) => e.sym === sym && !e.archived);
-    const sup = cur.strengths[0]; const dec = decisionOf({ row, elig, curated: cur, pick: out?.picks.find((p) => p.sym === sym) ?? null, engines, evidence, eligibleCount: out?.ctx.elig.length ?? null, thesis: entry ? current(entry) : null, today: istDay(), livePriceLabel: lp.fromQuote && lp.live ? `Live, ${fmtIst(lp.t!)}` : null });
+    const sup = cur.strengths[0]; const dec = decisionOf({ row, hasRisk: !!c.risk, elig, curated: cur, pick: out?.picks.find((p) => p.sym === sym) ?? null, engines, evidence, eligibleCount: out?.ctx.elig.length ?? null, thesis: entry ? current(entry) : null, today: istDay(), livePriceLabel: lp.fromQuote && lp.live ? `Live, ${fmtIst(lp.t!)}` : null });
     return { ...dec, support: sup ? { text: sup.t, detail: sup.k } : null };
   }, [c, row, out, bt.data, bt.loading, s.entries, lp.fromQuote, lp.live, lp.t, sym]);
   const loading = !out || bt.loading;

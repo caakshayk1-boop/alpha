@@ -1,0 +1,137 @@
+/* Refresh layer, 10 Nov 2026. Loaded after workspace.css and before motion/print, so it restyles without rewriting the older layers.
+   Aims (owner: "the chart is poor; browsing feels old and weak"; audit of the same day): calmer hierarchy, sentence-case labels instead of letter-spaced capitals,
+   a price chart with a real axis gutter and crosshair, one "Data as of" block, an honest neutral countercase, denser Discover rows, and motion that is short and optional. */
+
+/* ---- labels: sentence case, no wide tracking. Capitals with tracking read as an older dashboard; the words are unchanged. ---- */
+.k,h2.h,.dk,.wide small,.drow .dk{text-transform:none;letter-spacing:0;font-weight:550}
+.k{font-size:var(--fs-label);color:var(--ink-3)}
+.dk{font-size:.8125rem;color:var(--ink-3)}
+details.ev>summary,details.more>summary{text-transform:none;letter-spacing:0}
+
+/* ---- surfaces: one radius, quieter borders, a hover on what is clickable ---- */
+.card{border-radius:16px}
+a.li,button.li,.discover-row{transition:background-color var(--dur-1) var(--ease)}
+@media(hover:hover){a.li:hover,.discover-row:hover{background:color-mix(in srgb,var(--ink) 3%,transparent)}}
+
+/* ---- company: slim sticky header ---- */
+.co-sticky{position:sticky;top:0;z-index:30;height:0;overflow:visible}
+.co-sticky-in{display:flex;align-items:center;gap:var(--sp-3);height:48px;padding:0 var(--sp-4);border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:hidden;opacity:0;transform:translateY(-8px);pointer-events:none;visibility:hidden;min-width:0}
+.co-sticky[data-shown] .co-sticky-in{opacity:1;transform:none;visibility:visible}
+.co-sticky-in b{min-width:0;font-size:.9375rem}
+html.fx .co-sticky-in{transition:opacity var(--dur-1) var(--ease),transform var(--dur-1) var(--ease),visibility 0s linear var(--dur-1)}
+html.fx .co-sticky[data-shown] .co-sticky-in{transition:opacity var(--dur-1) var(--ease),transform var(--dur-1) var(--ease),visibility 0s}
+@media(max-width:699px){.co-sticky-in{padding:0 var(--sp-3);gap:var(--sp-2)}.co-sticky-in .mute.small{display:none}}
+
+/* ---- company: one "Data as of" block ---- */
+.asof{margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--line)}
+.asof-h{margin:0 0 var(--sp-2);font:600 var(--fs-label)/1.3 var(--font);color:var(--ink-3)}
+.asof-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--sp-2) var(--sp-4);margin:0}
+.asof-row{min-width:0}
+.asof-row dt{font-size:var(--fs-label);color:var(--ink-3);line-height:1.3}
+.asof-row dd{margin:2px 0 0;font-size:var(--fs-data);line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.asof-row.miss dd{color:var(--ink-2)}
+.asof-row.live dd{color:var(--up)}
+.asof-why{margin-top:var(--sp-2)}
+@media(max-width:899px){.asof-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px var(--sp-3)}.asof-row dd{margin-top:0}}
+details.asof-fold>summary{list-style:none;cursor:pointer;min-height:var(--hit);display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:.8125rem}
+details.asof-fold>summary::-webkit-details-marker{display:none}
+details.asof-fold>summary .asof-h{margin:0}
+details.asof-fold>summary::after{content:"▾";margin-left:auto;color:var(--ink-3)}
+details.asof-fold[open]>summary::after{transform:rotate(180deg)}
+.asof-line{color:var(--ink-2);min-width:0;overflow-wrap:anywhere}
+@media(max-width:699px){.asof{margin-top:var(--sp-2);padding-top:0}.asof-h{margin-bottom:4px}.asof-row dt,.asof-row dd{font-size:.75rem;line-height:1.3}.asof-why>summary{min-height:var(--hit)}}
+
+/* ---- company: countercase coverage. Neutral: an empty countercase is not reassurance ---- */
+.coverage{margin:var(--sp-2) 0 var(--sp-3);padding:var(--sp-3) var(--sp-4);border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:var(--fs-data);line-height:1.5}
+.coverage b{color:var(--ink);font-weight:600}
+.cov-unavailable,.cov-stale{border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.cov-tag{margin-left:var(--sp-2);font-weight:500}
+
+/* ---- company: the one-minute read ---- */
+.rr-key{margin:var(--sp-2) 0 var(--sp-3)}
+.rr-kind{display:inline-block;padding:1px 7px;border-radius:999px;font-size:.6875rem;font-weight:600;line-height:1.5;border:1px solid var(--line-2);color:var(--ink-2);vertical-align:1px}
+.rr-kind.fact{border-color:color-mix(in srgb,var(--series-1) 55%,transparent);color:var(--series-1)}
+.rr-kind.rule{border-color:color-mix(in srgb,var(--series-2) 55%,transparent);color:var(--series-2)}
+.rr-sum{display:grid;grid-template-columns:minmax(5.5rem,auto) minmax(0,1fr);align-items:baseline;gap:2px var(--sp-3)}
+.rr-sum .k{grid-row:span 2}
+.rr-sum .rr-fact{grid-column:2}
+.rr-pub{display:inline-block;margin-left:var(--sp-2);font-size:.6875rem;font-weight:500;color:var(--ink-3)}
+.rr-pub-short,.rr-foot{display:none}
+.rr-pub::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;border:1px solid var(--ink-3);vertical-align:1px}
+.rr-plus{color:var(--ink-3)}
+.rr-body>p{margin:0 0 var(--sp-2)}
+.rr-line .rr-kind{margin-right:6px}
+.rr-method{margin:var(--sp-3) 0;padding:var(--sp-3);border-radius:12px;background:var(--bg-2);border:1px solid var(--line)}
+.rr-prov{display:grid;gap:6px;margin:var(--sp-2) 0 0}
+.rr-prov>div{display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:var(--sp-3);font-size:var(--fs-data)}
+.rr-prov dt{color:var(--ink-3)}.rr-prov dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:699px){.rr-sum{grid-template-columns:minmax(0,1fr)}.rr-sum .k{grid-row:auto}.rr-sum .rr-fact{grid-column:1}.rr-prov>div{grid-template-columns:1fr;gap:0}.rr-key{display:none}.rr-pub{margin-left:2px}.rr-pub::before{display:none}
+  .rr-pub-long{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.rr-pub-short{display:inline;font-size:.8125rem}.rr-foot{display:block;margin:4px 0 0}}
+@media(max-width:480px){.research-read .research-lines details.ev>summary{padding-block:6px}.research-read .research-lines{gap:6px}}
+
+/* ---- company: layout. Read and decision side by side on a wide screen; the chart takes the full width beneath ---- */
+.co-top{display:grid;gap:var(--sp-4);grid-template-columns:minmax(0,1fr);grid-template-areas:"read" "first" "chart" "dec";margin-top:var(--sp-4)}
+.co-top>*{min-width:0}
+.co-read{grid-area:read}.co-first{grid-area:first}.co-chart{grid-area:chart}.co-dec{grid-area:dec}
+.co-top:not(.has-first){grid-template-areas:"read" "chart" "dec"}
+.co-top .research-read{margin:0}
+@media(min-width:1000px){
+  .co-top{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);grid-template-areas:"read dec" "first first" "chart chart";align-items:start}
+  .co-top:not(.has-first){grid-template-areas:"read dec" "chart chart"}
+  .co-top .co-side{position:static}
+  .co-top .decision{height:100%}
+}
+
+/* ---- the price chart: an axis gutter outside the plot, more room, a crosshair ---- */
+.chart-plot.pc-plot{margin-right:4.25rem;overflow:visible;border:0;border-radius:0;background:none;border-bottom:1px solid var(--line-2)}
+.pc-plot .c-ylab{left:calc(100% + 8px);right:auto;transform:translateY(-50%);background:none;padding:0;font:500 .6875rem/1 var(--font);font-variant-numeric:tabular-nums;color:var(--ink-3)}
+.pc-plot .c-last{left:calc(100% + 4px);right:auto;border-radius:6px;padding:4px 6px;font:600 .6875rem/1 var(--font);font-variant-numeric:tabular-nums}
+.pc-plot .c-end{left:calc(100% + 4px);right:auto;background:none;padding:0}
+.pc-plot .c-lvl{left:auto;right:4px}
+.c-ycur{position:absolute;left:calc(100% + 4px);transform:translateY(-50%);z-index:3;padding:3px 6px;border-radius:6px;background:var(--ink);color:var(--bg);font:600 .6875rem/1 var(--font);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
+.c-xcur{position:absolute;top:calc(100% + 3px);transform:translateX(-50%);z-index:3;padding:3px 6px;border-radius:6px;background:var(--surface-3);border:1px solid var(--line-2);color:var(--ink);font:500 .6875rem/1 var(--font);white-space:nowrap;pointer-events:none}
+.pc-plot~.c-xaxis{margin-right:4.25rem}
+.pc-plot .c-line{stroke-width:2}
+.pc-plot.pair .c-line{stroke-width:1.75}
+.cf .chart-plot.pc-plot[tabindex]{height:300px!important}
+@media(min-width:1000px){.co-chart .cf .chart-plot.pc-plot[tabindex]{height:400px!important}.co-chart .cf{min-height:0}}
+@media(max-width:480px){.chart-plot.pc-plot{margin-right:3.75rem}.pc-plot~.c-xaxis{margin-right:3.75rem}.cf .chart-plot.pc-plot[tabindex]{height:240px!important}}
+.c-xaxis span{color:var(--ink-3)}
+.cf .c-prim .mini-seg button,.cf .c-prim .radios button{text-transform:none;letter-spacing:0}
+
+/* ---- the decision card: no mid-word breaks in its labels ---- */
+.decision .dk{hyphens:none;overflow-wrap:normal;word-break:normal}
+@media(min-width:421px){.drow{grid-template-columns:minmax(0,9rem) minmax(0,1fr)}}
+
+/* ---- the action bar: a compact pill at the right on a wide screen, so it covers less of the page ---- */
+@media(min-width:1000px){
+  .fab-row{width:max-content;margin-left:auto;grid-template-columns:repeat(4,auto);gap:6px;padding:6px;border-radius:999px;background:color-mix(in srgb,var(--bg-2) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .fab-row .btn{flex-direction:row;height:40px;min-height:40px;padding:0 16px;gap:8px;font-size:.8125rem;border-radius:999px;white-space:nowrap}
+}
+
+/* ---- Discover: one header row, compact rows ---- */
+.dl-head{display:none}
+@media(min-width:1100px){
+  .dl-card .dl-head{display:flex;align-items:center;padding:4px 0 2px;border-bottom:1px solid var(--line);font-size:var(--fs-label);color:var(--ink-3)}
+  .dl-head .discover-identity{font-weight:550}
+  .disc .dl-card .discover-row.dl-head{padding:4px 0 3px;align-items:flex-end;line-height:16px}
+  .disc .dl-card .dl-head span,.disc .dl-card .dl-head small,.disc .dl-card .dl-head b{line-height:16px}
+  .disc .dcount{margin-bottom:0}.disc .dl-card{margin-top:6px}
+  /* the column header costs a row, so the basis sentence takes its short form, as on a phone; the full explanation stays under Details */
+  .disc:has(.dl-card) .basis .basis-line{display:none}.disc:has(.dl-card) .basis .basis-short{display:inline}.disc:has(.dl-card) .basis details{display:inline}
+  .dl-head .px b{font-weight:550;font-size:var(--fs-label);color:var(--ink-3)}
+  .dl-card .list .wide small{display:none}
+  .disc .dl-card .discover-row{padding:10px 0;align-items:center}
+  .disc .dl-card .discover-identity>.row{flex-wrap:nowrap;min-width:0}
+  .disc .dl-card .discover-identity .company-name{display:inline;flex-basis:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .disc .dl-card .discover-identity>.sym{font-size:.9375rem}
+  .disc .dl-card .avatar{width:32px;height:32px}
+  .disc .dl-card .discover-actions .icon-btn{width:40px;height:40px;min-height:40px}
+  .disc .dl-card .dl-head .dl-ph{visibility:hidden;height:0;min-height:0;border:0;padding-block:0}
+}
+
+/* ---- motion: short, optional. Disclosures fade in; nothing pulses or loops ---- */
+@keyframes rf-open{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+html.fx details[open]>.body,html.fx details[open]>div:not(.body):last-child,html.fx details.fold[open]>.fold-body{animation:rf-open 150ms var(--ease)}
+@media(prefers-reduced-motion:reduce){html.fx details[open]>*{animation:none!important}.co-sticky-in{transition:none!important}}

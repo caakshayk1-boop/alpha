@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CAPTURE_LINE, DEFAULT_CAPTURE, IDENTITY_LINKS, captureReady, subscribe, validEmail, type CaptureConfig } from '../capture.ts';
+import { CAPTURE_LINE, DEFAULT_CAPTURE, captureReady, subscribe, validEmail, type CaptureConfig } from '../capture.ts';
 import { Button } from '../components/index.ts';
 
 /** The one email-capture module. With the flag off (the default) it is a hidden, empty placeholder: no field, no text, no network.
@@ -19,7 +19,7 @@ export function CaptureModule({ source, cfg = DEFAULT_CAPTURE }: { source: strin
   </section>;
 }
 
-/** The identity footer: where the person behind Tripwire writes. A plain link; no tracking. */
+/** The footer line: what Tripwire is, and the legal pages. It links nowhere outside Tripwire. */
 export function IdentityFooter() {
-  return <p className="small mute ident">Tripwire is paper-only research from {IDENTITY_LINKS.map((l, i) => <span key={l.href}>{i ? ' · ' : ''}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></span>)}. Not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
+  return <p className="small mute ident">Tripwire is paper-only research. Not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
 }

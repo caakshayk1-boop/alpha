@@ -109,6 +109,9 @@ export function Discover() {
     ...(st.momentum ? [{ k: 'momentum', label: st.momentum === 'strong' ? 'Ahead of Nifty' : st.momentum === 'weak' ? 'Behind Nifty' : 'Near 52w high', off: () => patch({ momentum: '' }) }] : []),
   ];
   const clearAll = () => { setSt(clearFilters); setUnread([]); tick(); };
+  // A search and a preset intersect: a known company can vanish under a preset it does not meet. The empty state names every part of the intersection and offers to undo each (audit, 10 Nov 2026).
+  const searchOnly = () => { setSt((x) => ({ ...clearFilters(x), q: x.q })); setUnread([]); tick(); };
+  const parts = [...(st.q.trim() ? [`“${st.q.trim()}”`] : []), ...chips.map((c) => c.label), ...st.cond.map(describeCond)];
   const sortLine = `Sorted by ${sortWords(st.sort)}${isDefaultSort(st.sort) ? ' (the default)' : ''}`;
   const noFig = run.unmeasured + run.notApplicable;
 
@@ -133,6 +136,7 @@ export function Discover() {
 
     <div className="dfilterbar">
     <div className="chips chosen dchips" role="group" aria-label="Active filters">
+      {st.q.trim() && hasAnyFilter(st) && <button className="chip cc on-x" data-chip="q" onClick={() => patch({ q: '' })} aria-label={`Remove search: ${st.q.trim()}`}>Search: {st.q.trim()}<span aria-hidden="true">×</span></button>}
       {chips.map((c) => <button key={c.k} className="chip cc on-x" style={{ '--cc': KIND_C[c.k] } as React.CSSProperties} onClick={c.off} aria-label={`Remove filter: ${c.label}`}>{c.label}<span aria-hidden="true">×</span></button>)}
       {st.cond.map((c) => <button key={`${c.m}${c.op}${c.v}${c.unk ? 1 : 0}`} className="chip cc on-x" onClick={() => patch({ cond: st.cond.filter((x) => !sameCond(x, c)) })} aria-label={`Remove condition: ${describeCond(c)}`}>{describeCond(c)} <span aria-hidden="true">×</span></button>)}
 
@@ -189,8 +193,11 @@ export function Discover() {
 
     {scr.loading && <Loading what="the screen" />}
     {scr.err && <Failed what="the screen" err={scr.err} retry={scr.retry} />}
-    {scr.data && !run.ordered.length && <Empty title="No company matches" action={<button className="btn" onClick={clearAll}>Clear all filters</button>}>{noFig > 0 ? `${plural(noFig, 'name')} had no usable figure for a filter. ` : ''}A name with no figure is left out unless a condition says to include it, and is never counted as zero.</Empty>}
-    {scr.data && run.ordered.length > 0 && st.view === 'list' && <div className="card" style={{ padding: '2px 14px' }}><div className="list">
+    {scr.data && !run.ordered.length && <Empty title={parts.length > 1 ? `No company matches ${parts.join(' + ')}` : 'No company matches'} action={<div className="row empty-acts" data-empty-actions style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+      {st.q.trim() && parts.length > 1 && <button className="btn" onClick={searchOnly}>Search only</button>}
+      {preset && <button className="btn" onClick={() => { setSt(clearPreset); tick(); }}>Clear preset</button>}
+      <button className="btn" onClick={clearAll}>Clear all filters</button></div>}>{parts.length > 1 ? 'Every part must hold at once: the search and each filter narrow the same list. ' : ''}{noFig > 0 ? `${plural(noFig, 'name')} had no usable figure for a filter. ` : ''}A name with no figure is left out unless a condition says to include it, and is never counted as zero.</Empty>}
+    {scr.data && run.ordered.length > 0 && st.view === 'list' && <div className="card dl-card" style={{ padding: '2px 14px' }}><ListHead /><div className="list">
       {shown.map((r) => <ListRow key={r.sym} r={r} d={disp(r)} pm={pm} sort={st.sort.key} picked={st.pick.includes(r.sym)} full={st.pick.length >= MAX_PICK} onPick={() => togglePick(r.sym)} selected={selected === r.sym} />)}
     </div></div>}
     {scr.data && run.ordered.length > 0 && st.view === 'table' && <>
@@ -251,6 +258,11 @@ function FigCell({ r, d, id, pm }: { r: Row; d: { row: Row; live: boolean }; id:
   if (c.state === 'na') return <span title="Not defined for this company (a financial-sector ratio)" aria-label="not applicable">n/a</span>;
   if (c.state === 'missing') return <span title="No figure published" aria-label="no figure">—</span>;
   return <>{fmtMetric(m, c.v)}{c.live && <i className="ldot" aria-label="price print" title="Worked out at the latest price print: live while the market is open, otherwise the last traded price" />}{c.live && c.differs && pm.has(id) && <small className="atclose" title="The filter and the sort used the close">close {fmtMetric(m, c.close)}</small>}</>;
+}
+/** Column labels once, above the list, on screens wide enough to show the figure columns; each row then carries only its values. Same DOM shape as a row so the columns line up. */
+const LIST_COLS: [MetricKey, string][] = [['pe', 'PE'], ['roce_med', 'ROCE'], ['rs3m', 'vs Nifty 3m'], ['from_high', 'From high']];
+function ListHead() {
+  return <div className="discover-row dl-head" aria-hidden="true"><div className="row grow discover-main"><span className="avatar dl-ph" /><span className="grow discover-identity">Company</span><span className="wide num">{LIST_COLS.map(([id, l]) => <span key={id}><small>{l}</small></span>)}</span><span className="px num"><b>Price · day</b></span></div><div className="discover-actions"><span className="dl-ph icon-btn" /><span className="dl-ph icon-btn" /></div></div>;
 }
 function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d: { row: Row; live: boolean }; pm: Set<MetricKey>; sort: SortId; picked: boolean; full: boolean; onPick: () => void; selected: boolean }) {
   const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const sm = sort === 'name' || sort === 'sym' ? null : metricOf(sort);

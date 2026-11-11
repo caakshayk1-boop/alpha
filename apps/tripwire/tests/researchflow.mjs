@@ -8,12 +8,15 @@ try {
     const ctx = await newCtx(browser, width, ohlcSeries(300, 'TCS'), { reducedMotion: 'reduce' });
     await ctx.route('**/data/c/TCS.json', async (route) => {
       const company = await (await route.fetch()).json();
-      company.row.pe_pctile = null; company.row.stale = true;
+      company.row.pe_pctile = null; company.row.stale = true; company.row.last_date = '2022-03-20';
       company.inst = { ...company.inst, fii_pp: -1.2, dii_pp: 1.3, prev_period: '2026-06', period: '2026-09' };
       await route.fulfill({ json: company });
     });
     const pg = await ctx.newPage(); await pg.goto(base + '/#/c/TCS');
     const read = pg.locator('[data-research-read]'); await read.waitFor();
+    assert.equal(await pg.locator('details[data-asof]').evaluate((e) => e.open), false);
+    const dateLine = await pg.locator('details[data-asof] > summary').innerText();
+    assert.match(dateLine, /Close of Sun 20 Mar 2022 \(stale\)/, 'collapsed mobile line preserves year and stale warning');
     await pg.addStyleTag({ content: ':root { --sans: Arial, sans-serif; }' });
     assert.ok(await read.getByText('Historical comparison unavailable', { exact: true }).isVisible());
     assert.ok(await read.getByText('Reported stakes changed', { exact: true }).isVisible());
@@ -21,6 +24,12 @@ try {
     assert.ok(box.height < 560 && box.fits, `${width}: complete summary remains bounded (${JSON.stringify(box)})`);
     await read.locator('summary').first().click();
     assert.ok(await read.getByRole('button', { name: 'Formula and limits' }).first().isVisible());
+    await pg.getByRole('button', { name: "Ask about TCS's evidence" }).click();
+    await pg.locator('.research-questions article').filter({ hasText: 'Which ownership groups changed' }).getByRole('button').click();
+    assert.match(await pg.locator('#t-support').inputValue(), /Published: Publication date unavailable/);
+    await pg.getByRole('button', { name: 'Save as new version' }).click();
+    const entries = await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1')).entries);
+    assert.match(entries[0].versions.at(-1).support, /Published: Publication date unavailable/);
     await ctx.close(); console.log(`PASS long research labels and fallback font at ${width}px`);
   }
   for (const width of [320, 390, 1280]) {

@@ -63,6 +63,17 @@ export const RISK_SCOPE = 'Scope: this counts the warning flags the screen raise
 export function riskSentence(level: string, flags: number | null): string { return `${RISK_NAME} ${level}${flags == null ? '' : `: ${flags === 0 ? 'no flags' : flags === 1 ? '1 flag' : `${flags} flags`} raised`}.`; }
 /** What an empty flag list may be called. It is never "no risk". */
 export const NO_FLAGS_SENTENCE = 'No screen flag was raised. That is not a finding that there are no risks: the screen reads only the ratios and price measures in the scope line, so read the filings and the chart anyway.';
+/** What an empty countercase means. "No flag", "not assessed", "unavailable" and "stale" are different findings and must not look alike: none of them is evidence that a company has no risk.
+ *  Precedence: no statements at all (unavailable) outranks stale prices, which outranks withheld ratios (not assessed); only a clean, current, fully assessed read is "none". */
+export type CoverageState = 'flagged' | 'none' | 'not-assessed' | 'unavailable' | 'stale';
+export const COVERAGE_LIMIT = 'This screen does not assess every business risk.';
+export function counterCoverage(row: Pick<Row, 'stale' | 'has_stmts'>, e: Pick<Eligibility, 'notes'>, counters: number, hasRisk: boolean): { state: CoverageState; title: string; line: string } {
+  if (counters > 0) return { state: 'flagged', title: `${counters === 1 ? '1 screen counterflag' : `${counters} screen counterflags`} detected.`, line: `${COVERAGE_LIMIT} The list is what the screen measured, not every risk.` };
+  if (!hasRisk || row.has_stmts === false) return { state: 'unavailable', title: 'Risk screen unavailable for this company.', line: `${COVERAGE_LIMIT} The risk record or annual statements are unavailable; an empty result cannot establish that the screen passed. Read the filings directly.` };
+  if (row.stale) return { state: 'stale', title: 'Risk screen is stale for this company.', line: `${COVERAGE_LIMIT} This name has not printed a close for more than a session, so its figures are older than the rest of the screen.` };
+  if (e.notes.length) return { state: 'not-assessed', title: 'No screen counterflags detected; some ratios were not assessed.', line: `${COVERAGE_LIMIT} Ratios that do not fit this company were withheld, not counted as passing. The reason is under Risks.` };
+  return { state: 'none', title: 'No screen counterflags detected.', line: `${COVERAGE_LIMIT} It reads only prices and annual ratios; read the filings, the results call and the auditor's notes anyway.` };
+}
 /** The screen's risk grade is built from the ratios above. When any of them is withheld the grade is not a clean finding, so it is not printed as one. */
 export function riskGradeOf(row: Pick<Row, 'risk_lvl'>, e: Eligibility): { level: string | null; note: string | null } {
   if (!row.risk_lvl) return { level: null, note: null };

@@ -10,6 +10,6 @@ process.on('exit', stop);
 let up = false; for (let i = 0; i < 90 && !up; i++) { try { up = (await fetch(base + '/')).ok; } catch { /* starting */ } if (!up) await new Promise((r) => setTimeout(r, 1000)); }
 if (!up) { console.error('FAIL  the app Worker did not start'); process.exit(1); }
 const run = (f) => new Promise((res) => { const p = spawn('node', [f, base], { stdio: 'inherit' }); p.on('exit', (c) => res(c ?? 1)); });
-const SUITES = ['journey', 'a11y', 'beta', 'comfort', 'r3', 'news', 'discover', 'today', 'screens', 'ui', 'charts', 'chartfail', 'reliability', 'shell', 'firstuse', 'platform', 'prefetch', 'fresh', 'motion', 'book', 'hits', 'critical', 'phase1', 'pagesa', 'pagesb', 'print', 'legal', 'researchflow'];
+const SUITES = ['journey', 'a11y', 'beta', 'comfort', 'r3', 'news', 'discover', 'today', 'screens', 'ui', 'charts', 'chartfail', 'reliability', 'shell', 'firstuse', 'platform', 'prefetch', 'fresh', 'motion', 'book', 'hits', 'critical', 'phase1', 'pagesa', 'pagesb', 'print', 'legal', 'researchflow', 'audit'];
 let bad = 0; for (const n of SUITES) { const code = await run(`apps/tripwire/tests/${n}.mjs`); if (code) bad++; }
 stop(); process.exit(bad ? 1 : 0);
