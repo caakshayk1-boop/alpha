@@ -214,5 +214,5 @@ function StickyHead({ name, sym, px, ch, word }: { name: string; sym: string; px
 /** Verdict at a glance (revamp v2, 11 Nov 2026): three or four chips read off words this page already derives (verdict.ts); no new score. The basis of each is its tooltip and is spoken. */
 function Verdict({ chips }: { chips: VerdictChip[] }) {
   if (!chips.length) return null;
-  return <ul className="verdict" aria-label="Verdict at a glance" data-verdict>{chips.map((c) => <li key={c.id} className={`vchip ${c.tone}`} data-vchip={c.id} title={c.basis}><span className="vk">{c.k}</span><span className="vv">{c.glyph && <span aria-hidden="true">{c.glyph} </span>}{c.v}</span></li>)}</ul>;
+  return <ul className="verdict" aria-label="Verdict at a glance" data-verdict tabIndex={0}>{chips.map((c) => <li key={c.id} className={`vchip ${c.tone}`} data-vchip={c.id} title={c.basis}><span className="vk">{c.k}</span><span className="vv">{c.glyph && <span aria-hidden="true">{c.glyph} </span>}{c.v}</span></li>)}</ul>;
 }

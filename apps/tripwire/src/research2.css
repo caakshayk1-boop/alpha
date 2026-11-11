@@ -71,10 +71,13 @@
   .disc .dl-card .discover-row:not(.dl-head) .discover-main{gap:var(--sp-5)}
   .disc .dl-card .wide{gap:var(--sp-5)}
   .disc .dl-card .wide>span{min-width:4.5rem;font-size:var(--fs-data)}
+  /* a live dot sits beside its figure, not on a line of its own, so a row is the same height before and after the quotes arrive (Back restores the scroll to the pixel) */
+  .disc .dl-card .list .wide>span{display:flex;align-items:baseline;justify-content:flex-end;gap:2px;white-space:nowrap}
   .disc .dl-card .px.key{min-width:7rem}
   .disc .dl-card .dl-head .px{min-width:7rem}
   .disc .dl-card .dl-head .wide>span{min-width:4.5rem}
   .disc .dl-card .discover-actions .icon-btn{width:40px;height:40px;min-height:40px}
+  .disc .dl-card .dl-head .discover-actions .icon-btn{height:0;min-height:0}   /* the header row keeps the action column width only; it was 48px tall */
 }
 
 /* ---------------- Company: the hero and the verdict row ---------------- */
@@ -89,7 +92,18 @@
 .vchip.up{border-color:color-mix(in srgb,var(--up) 45%,transparent);background:var(--up-tint)}.vchip.up .vv{color:var(--up)}
 .vchip.down{border-color:color-mix(in srgb,var(--down) 45%,transparent);background:var(--down-tint)}.vchip.down .vv{color:var(--down)}
 .vchip.warn{border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:var(--amber-tint)}.vchip.warn .vv{color:var(--amber)}
-@media (max-width:699px){.verdict{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* phone: the verdict is one sideways row and the change sits beside the price, so the chart keeps its place on the first screens (charts.mjs budget) */
+@media (max-width:699px){
+  .verdict{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:var(--sp-1) calc(var(--card-pad) * -1) 0;padding:0 var(--card-pad);min-height:34px}
+  .verdict::-webkit-scrollbar{display:none}
+  .vchip{flex:0 0 auto;display:flex;align-items:baseline;gap:6px;padding:6px 10px}   /* label and word on one line: the chips are read, not tapped */
+  .c-head .co-px{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:var(--sp-3)}
+  .c-head .co-ch{margin-top:0}
+  .c-head details.asof-fold>summary{flex-wrap:nowrap;line-height:1.35}   /* the chevron sits beside the date line instead of taking a line of its own */
+  .c-head details.asof-fold>summary .asof-line{flex:1 1 0}
+  .c-head .asof{margin-top:var(--sp-1);padding-top:var(--sp-1)}
+  .c-head .co-price{font-size:1.875rem}
+}
 .co-range .k{display:inline-block}
 @media (min-width:900px){
   .c-head{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--sp-6);align-items:center}

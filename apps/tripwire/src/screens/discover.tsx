@@ -80,7 +80,8 @@ export function Discover() {
     window.scrollTo(0, p.y); const w = wrapRef.current; if (w) { w.scrollLeft = p.tx ?? 0; w.scrollTop = p.ty ?? 0; }
     if (p.at) { const a = document.querySelector<HTMLElement>(`${symSel(p.at)} a`); if (a) { a.focus({ preventScroll: true }); if (p.y === 0) a.scrollIntoView({ block: 'center' }); } }
   }, [scr.data]);
-  const remember = useCallback(() => { const w = wrapRef.current; savePlace(serialiseDiscover(stRef.current), { y: Math.round(window.scrollY), at: selRef.current, tx: w ? Math.round(w.scrollLeft) : undefined, ty: w ? Math.round(w.scrollTop) : undefined }); }, []);
+  // only while Discover is the page: once a company link has changed the address, a scroll is the browser clamping to the next page, not the reader (it saved a short y and Back landed 450 px early)
+  const remember = useCallback(() => { if (!/^#\/discover(\?|$)/.test(location.hash)) return; const w = wrapRef.current; savePlace(serialiseDiscover(stRef.current), { y: Math.round(window.scrollY), at: selRef.current, tx: w ? Math.round(w.scrollLeft) : undefined, ty: w ? Math.round(w.scrollTop) : undefined }); }, []);
   useEffect(() => { let t = 0; const f = () => { window.clearTimeout(t); t = window.setTimeout(remember, 120); }; window.addEventListener('scroll', f, { passive: true }); return () => { window.removeEventListener('scroll', f); window.clearTimeout(t); }; }, [remember]);
   // opening a company is a real history entry (a plain link); before it goes, the URL is made current and the place and the company are written down
   const onOpen = (e: React.MouseEvent) => { const el = (e.target as HTMLElement).closest<HTMLElement>('a[href^="#/c/"]'); if (!el) return; const row = el.closest<HTMLElement>('[data-sym]'); if (row?.dataset.sym) { selRef.current = row.dataset.sym; setSelected(row.dataset.sym); } flush(); remember(); };
