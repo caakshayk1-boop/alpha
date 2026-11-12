@@ -86,7 +86,7 @@ test('at a glance: missing data is the word for its absence, never a zero', () =
   const g = glanceOf(gin({ px: null, lo: null, hi: null, fromHigh: null, roceMeaningful: false, riskLevel: null, riskNote: 'Risk grade not shown.' }, { pe: null, pe_pctile: null, tier: null, turnover_cr: null, liquid: null, next_earnings: null, sma50: null }, null));
   assert.equal(byId(g, 'range').v, 'Not available'); assert.equal(byId(g, 'trend').v, 'Not tagged'); assert.equal(byId(g, 'quality').v, 'Not meaningful');
   assert.equal(byId(g, 'valuation').v, 'No positive PE'); assert.equal(byId(g, 'size').v, 'Size not published'); assert.equal(byId(g, 'size').sub, 'Traded value not held');
-  assert.equal(byId(g, 'results').v, 'Not published'); assert.equal(byId(g, 'ownership').v, 'Not available'); assert.equal(byId(g, 'risk').v, 'Not graded'); assert.equal(byId(g, 'risk').sub, 'Risk grade not shown.');
+  assert.equal(byId(g, 'results').v, 'Not published'); assert.equal(byId(g, 'ownership').v, 'Not available'); assert.equal(byId(g, 'risk').v, 'Not graded'); assert.equal(byId(g, 'risk').sub, 'The grade is withheld for this name; the reason is under Risks.');
   for (const c of g) assert.ok(!/(^|\s)0(\.0)?%?$/.test(c.v), `${c.id} must not read as a zero`);
 });
 test('at a glance: a lender is not judged on ROCE; a past results date is flagged; a stale trend says so', () => {
