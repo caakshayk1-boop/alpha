@@ -82,6 +82,26 @@ Status words: done (already true here), partial, missing, obsolete (the premise 
 | Any engine, eligibility, exit, formula, threshold or cost (0.25%) change | Forbidden by the owner and the guardrails. |
 | Watchdog "fires on a deliberately missed build" (§5.12) | A real workflow cannot be triggered from here; the assertion functions are unit-tested instead. |
 
+### Outcome (end of the lane, 12 Nov 2026)
+
+| Item | Result | Where |
+|---|---|---|
+| 1.1 | done | `src/ledgerview.ts`, `src/lifecycle.ts`; strip, Record, Picks, Evidence reworded; tests `ledgerview.test.ts` |
+| 1.2 | done | `splitOpen/splitClosed/splitOfRow`, `attribute()` takes the split; tests `pnlsplit.test.ts` (§5.3 fixture, tracker agreement to the paisa) |
+| 1.3a | done | `snapshotOf`, id on the strip, the P&L page and the table; gainers and losers listed apart; `snapshot.test.ts` |
+| 1.3b, 1.3d, 1.3e | done (pinned) | `ledgerpin.test.ts` |
+| 1.3c | no backfill, by decision | the rule text (`rules.ts`) already says a class is published for index-sized names only; the build warning text now says so; null share cannot be measured here |
+| 1.4a | not diagnosable here | no Actions history in this sandbox |
+| 1.4b, 1.4d | done | `check-data.mjs` `checkLedgerFile`; `tripwire.yml` summary + optional Telegram behind `FRESHNESS_ALERT=1`; `ledgerfresh.test.ts` |
+| 2.1 | done | scope labels (Both / Engine paper book / My paper plans), two statuses, coverage, "awaiting entry" |
+| 2.2 | done | `nearWord`: "Quote above T1 · fill unconfirmed", "Near T1 · x% away"; `barstatus.test.ts` |
+| 2.3a | not done | the company page belongs to another agent; no `nextEventState` helper existed when this lane ended |
+| 2.3b | done (data model and labels) | `barStatus`, `completedBars`, `barsCaption`, `provisionalOf`, `BookRow.provisional`; no chart styling touched. Finding: the tracker lets a forming bar's low stop a position and its high fill a target (an existing exit rule, left unchanged); the result is now LABELLED provisional |
+| 2.4 | done | "What contributes to open-trade P&L?" with the basis stated |
+| 3.1 | done | `src/screens/pnlstrip.tsx`, Positions strip; cards stay the expandable detail; table is the all-figures view |
+| 3.2 | done | `src/ledger4.css`; `tests/ledger4.mjs` |
+| contact | done, last commit | `src/contact.ts` |
+
 ### Contact (last task of this lane)
 
 `SUPPORT_EMAIL` in `src/contact.ts` is set to `hello@askakshay.com` as the final commit of the lane, per the owner's file ("Set a real contact").
