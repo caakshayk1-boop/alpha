@@ -158,7 +158,7 @@ ok(/Comparison saved/.test(await text()), 'comparison can be saved');
 await pg.getByRole('button', { name: 'Valuation' }).click();
 ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view');
 
-await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
+await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('[data-glance]', { timeout: 15000 })/* 12 Nov 2026: the 52-week meter is inside the closed 'Trend and range' disclosure; the At a glance grid carries the range now */; await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
 // 1 Nov 2026 (charts work): the company page is split into Overview / Financials / Ownership / Risks / Thesis, so each check below opens the section that now holds it
 const tab = (n) => pg.getByRole('tab', { name: n, exact: true }).click();
