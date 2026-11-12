@@ -87,8 +87,8 @@ test('trend of any close series: its own 50 and 200-day averages; sideways is th
   assert.equal(TREND_WORD.mixed, 'Sideways');
 });
 test('news query: the legal suffix goes, the name stays together', () => {
-  assert.equal(companyQ('Edelweiss Financial Services Ltd.'), '"Edelweiss Financial Services" when:7d');
-  assert.equal(companyQ('Tata Consultancy Services Limited'), '"Tata Consultancy Services" when:7d');
+  assert.equal(companyQ('Edelweiss Financial Services Ltd.'), '"Edelweiss Financial Services" when:2d');
+  assert.equal(companyQ('Tata Consultancy Services Limited'), '"Tata Consultancy Services" when:2d');
 });
 test('macro: every instrument the app lists is one the Worker serves, formatted with its own unit', () => {
   assert.deepEqual(MACRO.map((m) => m.key).sort(), Object.keys(WORKER_MACRO).sort());

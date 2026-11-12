@@ -70,9 +70,10 @@ test('two routes: a buyback and a results night of one company stay two rows; so
   assert.equal(mergePools([ev('s2', 'Infosys Q2 profit up 5%', { entities: E('INFY') })], [ev('l2', 'Infosys Q2 profit down 3%', { entities: E('INFY'), sourceId: 'c', sources: [src('c', 'C')] })]).length, 2);
   assert.equal(sameCoverage(snap, ev('x', 'TCS Q2 net profit rises 5% to ₹12,300 crore', { entities: E('WIPRO') })), false, 'a different company is never the same event');
 });
-test('two routes: two snapshot events are never merged by the browser (the job already grouped them); the source cap is the pipeline\'s own', () => {
+test('two routes: 12 Nov 2026 (news-pipe-3): two snapshot events that are one event by the pipeline rule are merged by the browser too (an older snapshot may hold both); the source cap is the pipeline\'s own', () => {
   const a = ev('s1', 'TCS Q2 net profit rises 5%'), b = ev('s2', 'Tata Consultancy Services Q2 profit up 5%', { sourceId: 'b', sources: [src('b', 'B')] });
-  assert.equal(mergePools([a, b], []).length, 2);
+  assert.equal(mergePools([a, b], []).length, 1, 'same company, same kind, same figure');
+  assert.equal(mergePools([a, ev('s3', 'TCS announces share buyback of ₹15,000 crore')], []).length, 2, 'a results night and a buyback stay two');
   const many = ev('l1', 'Tata Consultancy Services Q2 profit up 5%', { sources: ['p', 'q', 'r', 's', 't', 'u', 'v'].map((i) => src(i, i.toUpperCase())) });
   assert.ok(mergeCoverage(a, many).sources.length <= 6);
 });

@@ -4,11 +4,11 @@
 import { FEEDS, GLOBAL_LIMITS, GLOBAL_TIERS, LIMITS, PIPELINE_VERSION, RANKING_VERSION, TODAY_WINDOW_H, VERIFIED, sourceTier } from './config.js';
 import { classifyCue } from './cues.js';
 import { classify } from './events.js';
-import { clusterItems, tokens } from './cluster.js';
+import { SAME_EVENT_SEC, clusterItems, tokens } from './cluster.js';
 import { buildRegistry, matchEntities } from './entities.js';
 import { parseDate } from './feed.js';
 import { explain, rankEvents, reasonLine } from './rank.js';
-import { hasIndia, isInternational, isMacro, judge } from './rules.js';
+import { hasIndia, isInternational, isMacro, isPromoRewrite, judge } from './rules.js';
 import { canonicalUrl, hash, hostOf, urlKind } from './urls.js';
 
 const iso = (sec) => (sec == null ? null : new Date(sec * 1000).toISOString());
@@ -40,7 +40,7 @@ export function normalise(raw, batch, ctx) {
     if (!macro && !filing) return { rejected: 'not_event' };
   }
   const cls = classify(raw.title, { filing });
-  const flags = [...j.flags]; if (dt?.assumed) flags.push('date_zone_assumed'); if (tier.tier === 'aggregator') flags.push('aggregator_source'); if (kind.kind === 'filing') flags.push('exchange_filing');
+  const flags = [...j.flags]; if (dt?.assumed) flags.push('date_zone_assumed'); if (tier.tier === 'aggregator') { flags.push('aggregator_source'); if (isPromoRewrite(raw.title)) flags.push('promotional_rewrite'); } if (kind.kind === 'filing') flags.push('exchange_filing');
   if (!entities.length) flags.push('market_scope'); if (cls.eventType === 'Update') flags.push('no_event_keyword');
   const summary = usableSummary(raw.title, raw.description, feed, batch.fetchedAt);
   return { item: {
@@ -102,7 +102,7 @@ export function runPipeline({ batches, registry, prevItems = [], nowMs, paperSym
   }
   const items = [...byId.values()].map(toCandidate);
   const prevCluster = new Map(prevItems.filter((p) => p.eventClusterId).map((p) => [p.itemId, p.eventClusterId]));
-  const groups = clusterItems(items, prevCluster);
+  const groups = settlePromo(clusterItems(items, prevCluster), bump);
   const events = groups.map((g) => buildEvent(g, ctx));
   const capped = capGlobal(rankEvents(events, nowMs), nowMs); const nGlobal = capped.filter((e) => e.scope === 'global').length; let room = Math.max(0, limit - nGlobal);
   const ranked = capped.filter((e) => e.scope === 'global' || room-- > 0).map((ev) => ({ ...ev, rankingVersion: RANKING_VERSION, rank: { reason: reasonLine(ev, ev.factors, nowMs), factors: explain(ev.factors) }, factors: undefined }));
@@ -111,6 +111,21 @@ export function runPipeline({ batches, registry, prevItems = [], nowMs, paperSym
   const finalEvents = ranked.map((ev) => { const members = ev.members.map((m) => ({ ...stripCandidate(m), eventClusterId: ev.eventClusterId, relevanceScore: ev.relevanceScore })); const { members: _m, factors: _f, ...rest } = ev; return full ? { ...rest, items: members.slice(0, LIMITS.itemsPerEvent) } : rest; });
   return { events: finalEvents, items: outItems.map((i) => ({ ...i, eventClusterId: finalEvents.find((e) => e.items?.some((m) => m.itemId === i.itemId))?.eventClusterId ?? null })), rejections, counts: { seen, admitted: items.length, events: finalEvents.length, rejected: Object.values(rejections).reduce((a, b) => a + b, 0) }, pipelineVersion: PIPELINE_VERSION, rankingVersion: RANKING_VERSION };
 }
+/** 12 Nov 2026 (news-pipe-3). A group whose EVERY report is an aggregator's promotional rewrite: dropped (counted as `promotional_rewrite`) unless it is the only report of a real results event, in which case it is
+ *  kept, labelled and ranked below (buildEvent). A promotional rewrite of a results night another outlet already reported is dropped too: it adds a second row and no information. A group with any other report is untouched. */
+export function settlePromo(groups, bump = () => {}) {
+  const promo = (g) => g.members.every((m) => m.qualityFlags.includes('promotional_rewrite')); const key = (e) => e.sym ?? e.name;
+  const real = groups.filter((g) => !promo(g));
+  return groups.filter((g) => {
+    if (!promo(g)) return true;
+    const res = g.members.filter((m) => m.eventType === 'Results'); const syms = new Set(res.flatMap((m) => m.entities.map(key)));
+    const covered = res.length > 0 && real.some((r) => r.members.some((x) => x.eventType === 'Results' && x.entities.some((e) => syms.has(key(e))) && res.some((m) => m.publishedSec != null && x.publishedSec != null && Math.abs(m.publishedSec - x.publishedSec) <= SAME_EVENT_SEC)));
+    if (res.length && !covered) return true;
+    for (const _m of g.members) bump('promotional_rewrite');
+    return false;
+  });
+}
+const PROMO_SIGNIFICANCE = 0.3;     // a results line told only in promotional words ranks below every real event type's own significance but a bare update
 const stripCandidate = ({ publishedSec: _p, tk: _t, ...rest }) => rest;
 
 const TIER_ORDER = { official: 0, wire: 1, major: 2, known: 3, unknown: 4, aggregator: 5 };
@@ -119,6 +134,7 @@ function buildEvent(group, ctx) {
   const primary = members[0]; const dated = members.filter((m) => m.publishedSec != null);
   const pubSec = dated.length ? Math.min(...dated.map((m) => m.publishedSec)) : null; const updSec = dated.length ? Math.max(...dated.map((m) => m.publishedSec)) : null;
   const best = members.reduce((b, m) => (m.significance > b.significance ? m : b), primary);
+  const promoOnly = members.every((m) => m.qualityFlags.includes('promotional_rewrite'));   // 12 Nov 2026: kept only as the sole report of a results event; ranked below, not on Today
   const ent = new Map(); for (const m of members) for (const e of m.entities) { const k = e.sym ?? e.name; const o = ent.get(k); if (!o || e.confidence > o.confidence) ent.set(k, e); }
   const entities = [...ent.values()].sort((a, b) => b.confidence - a.confidence);
   const seenSources = new Set(); const sources = [];
@@ -127,11 +143,11 @@ function buildEvent(group, ctx) {
   const scopes = isGlobal ? ['global'] : entities.length ? ['company'] : ['market']; if (entities.some((e) => e.sym && ctx.paperSyms.includes(e.sym))) scopes.push('paper');
   const flags = [...new Set(members.flatMap((m) => m.qualityFlags))]; const firstSeen = members.map((m) => m.firstSeenAt).sort()[0];
   return {
-    eventClusterId: group.eventClusterId, headline: primary.headline, eventType: best.eventType, significance: best.significance, entities, scopes,
+    eventClusterId: group.eventClusterId, headline: primary.headline, eventType: best.eventType, significance: promoOnly ? Math.min(best.significance, PROMO_SIGNIFICANCE) : best.significance, entities, scopes,
     publishedAt: iso(pubSec), updatedAt: iso(updSec) ?? primary.updatedAt, firstSeenAt: firstSeen, fetchedAt: primary.fetchedAt,
     sourceId: primary.sourceId, sourceTitle: primary.sourceTitle, sourceTier: primary.sourceTier, sourceWeight: primary.sourceWeight, canonicalUrl: primary.canonicalUrl, sourceTimezone: primary.sourceTimezone,
     moreSources: Math.max(0, sources.length - 1), sources: sources.slice(0, LIMITS.sourcesPerEvent), summary: primary.summary ?? members.find((m) => m.summary)?.summary ?? null,
-    qualityFlags: flags, todayEligible: !isGlobal && best.eventType !== 'Update' && pubSec != null, members,
+    qualityFlags: flags, todayEligible: !isGlobal && !promoOnly && best.eventType !== 'Update' && pubSec != null, members,
     ...(isGlobal ? { scope: 'global', cues } : {}),
   };
 }

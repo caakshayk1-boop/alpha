@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { replaceHash, setState, useAppState } from '../app.tsx';
 import { Icon, useUi } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
-import { DEFAULTS, checkBackup, exportJson, journalCsv, mergeStates, type State } from '../store.ts';
+import { DEFAULTS, EFFECTS_MODES, checkBackup, effectsOf, exportJson, journalCsv, mergeStates, type State } from '../store.ts';
 import { download, downloadBackup } from '../backupfile.ts';
 import { backupStatus, readBackup } from '../backupstatus.ts';
 import { readUnreadable, storageWorks } from '../persist.ts';
@@ -54,6 +54,13 @@ export function Settings() {
     <Head>Display and feel</Head>
     <div className="card">
       <label className="row between set-row"><span>Motion<span className="dim small" style={{ display: 'block' }}>Also follows your device’s reduce-motion setting.</span></span><input type="checkbox" role="switch" checked={p.motion === 'auto'} onChange={(e) => set({ motion: e.target.checked ? 'auto' : 'off' })} /></label>
+      <fieldset className="set-fx" data-effects-group style={{ border: 0, margin: 0, padding: '12px 0 4px' }}>
+        <legend className="small" style={{ padding: 0, color: 'var(--ink)' }}>Effects<span className="dim small" style={{ display: 'block' }}>How the screen reacts when something changes. They only run while Motion is on and your device allows motion.</span></legend>
+        <div role="radiogroup" aria-label="Effects" className="mini-seg fx-seg" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+          {EFFECTS_MODES.map((m) => <button key={m} type="button" role="radio" aria-checked={effectsOf(p) === m} data-effects={m} className={effectsOf(p) === m ? 'on' : ''} onClick={() => set({ effects: m })} style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)' }}>{m === 'off' ? 'Off' : m === 'calm' ? 'Calm' : 'Lively'}</button>)}
+        </div>
+        <p className="small dim" style={{ margin: '8px 0 0' }} data-effects-note>{effectsOf(p) === 'off' ? 'Nothing animates: no halo on a changed price, no fades, no press feedback.' : effectsOf(p) === 'calm' ? 'A soft halo behind a price that changed, content that fades in, a gentle press. This is the default.' : 'Calm, plus a shimmer while content loads, a slightly longer rise, and charts that draw on once.'}</p>
+      </fieldset>
       <label className="row between set-row"><span>Haptics<span className="dim small" style={{ display: 'block' }}>{hapticsNote(support())}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
       <div className="set-row" style={{ display: "block" }}><span>Text size</span><span className="dim small" style={{ display: 'block' }}>Follows your device’s text-size setting where the browser supports it (Safari on iPhone does; most others follow the browser’s own font-size setting). There is no separate control here.</span></div>
       <label className="row between set-row"><span>Hide my amounts<span className="dim small" style={{ display: 'block' }}>Blurs profit and loss and the money in your paper books.</span></span><input type="checkbox" role="switch" checked={!!p.hideAmounts} onChange={(e) => set({ hideAmounts: e.target.checked })} /></label>

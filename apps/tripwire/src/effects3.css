@@ -1,0 +1,35 @@
+/* Effects, third pass (12 Nov 2026). The Settings -> Effects preset (Off / Calm / Lively) decides which of these apply. The app sets html.fx only when motion is on, the device has not asked for
+   reduced motion AND Effects is not Off, and adds html.fx-calm or html.fx-lively beside it. Every rule that moves or fades is under one of those, so Off and reduced motion remove all of it;
+   labels, signs and status words are never in here. Tokens only. Opacity and transform; the halo is a sibling element that takes no space, so nothing shifts.
+
+   Calm (default): a soft halo behind a changed price, content that fades, a gentle press.  Lively: Calm plus a shimmer while loading, the longer rise, charts that draw on once. */
+
+/* ---- the price halo (live.tsx Tick; rules in flash.ts). ONE low-opacity tint, 10px, behind the numeral, fading fully in --halo-dur. Never on text, never on the card. ---- */
+.tick{position:relative;isolation:isolate}
+.tk-halo{position:absolute;inset:-2px -5px;border-radius:8px;z-index:-1;pointer-events:none;opacity:0;background:var(--halo-c,transparent);box-shadow:0 0 var(--halo-blur) 2px var(--halo-c,transparent)}
+.tick[data-cue=up]{--halo-c:var(--halo-up)}
+.tick[data-cue=down]{--halo-c:var(--halo-down)}
+.tick[data-cue=neutral] .tk-halo{display:none}
+/* the direction is also a sign, not only a tint (never red or green alone) */
+.tk-halo::after{position:absolute;right:-1px;top:-.7em;font-size:.55em;line-height:1;color:var(--ink-2)}
+.tick[data-cue=up] .tk-halo::after{content:"\25B2"}
+.tick[data-cue=down] .tk-halo::after{content:"\25BC"}
+@keyframes fx-halo{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+@keyframes fx-reveal{from{opacity:0}to{opacity:1}}
+html.fx .tk-halo{animation:fx-halo var(--halo-dur) var(--ease) both}
+html.fx .tick[data-cue=neutral] .roll{animation:fx-reveal var(--fade-dur-2) var(--ease) both}
+
+/* ---- Calm ---- */
+html.fx-calm .view{animation:ds-fade var(--fade-dur) var(--ease) both}                       /* tab and filter: 160 ms opacity, nothing moves, the panel keeps its size */
+html.fx-calm details.ev[open]>.body,html.fx-calm details.ev[open] .body,html.fx-calm details[open]>.body{animation:ds-fade var(--fade-dur-2) var(--ease) both}   /* expanded details: 200 ms, scroll and focus untouched */
+html.fx-calm .ds-stagger>*{animation:ds-fade var(--fade-dur) var(--ease) both;animation-delay:0s}
+html.fx-calm .ds-skel::after{animation:none;opacity:0}                                       /* no shimmer in Calm */
+html.fx-calm :is(.btn,.chip,.icon-btn,.tile,a.card,a.li,.ds-hover,.tm-btn,.mini-seg button,.seg button,.pick-row,.tcard-head,.cchip button,.lens,.tabs a,details.ev>summary):active:not(:focus-visible){transform:scale(.98)}   /* a gentle press */
+html.fx-calm .fin-svg .fin-bar,html.fx-calm .fl-bars rect,html.fx-calm .sb-fill,html.fx-calm .contrib .bar2 i,html.fx-calm .sh-breadth i,html.fx-calm .market-breadth .rangebar i,html.fx-calm .fin-line{animation:ds-fade 240ms var(--ease) both}
+
+/* ---- Lively: the fuller motion stays (rise, press .97, shimmer, roll, draw-on, bar grow); only the details below are set here ---- */
+html.fx-lively details.ev[open]>.body,html.fx-lively details.ev[open] .body{animation-duration:220ms}
+
+/* ---- reduced motion, belt and braces: html.fx is already removed in the app; a stale class still moves nothing ---- */
+@media(prefers-reduced-motion:reduce){.tk-halo,.tick .roll{animation:none!important}.tk-halo{display:none}}
+@media print{.tk-halo{display:none}}

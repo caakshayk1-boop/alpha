@@ -72,3 +72,21 @@ jobs:
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::Cloudflare secrets missing. Nothing was deployed."; exit 1; fi
           npx wrangler deploy --config wrangler.tripwire.jsonc
+      # 12 Nov 2026 (Tripwire 2.0, 1.4): a failed or stale morning build says so in the run summary, and (only when the repository variable FRESHNESS_ALERT is 1) in the SAME Telegram channel the ledger job uses.
+      # No new secret and no new channel: it reuses TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID. Off unless FRESHNESS_ALERT=1. The freshness assertions themselves (tools/check-data.mjs) already write their own lines into this summary.
+      - name: Say that the build failed or is stale (any failure on a data build)
+        if: ${{ failure() && github.event_name != 'pull_request' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FRESHNESS_ALERT: ${{ vars.FRESHNESS_ALERT }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          msg="Tripwire morning build failed or is stale on $(date -u +%Y-%m-%d) UTC: the site may still show the previous session. $RUN_URL"
+          echo "::error::$msg"
+          { echo '## Tripwire build: failed or stale'; echo; echo "$msg"; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$FRESHNESS_ALERT" = "1" ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -fsS --max-time 20 -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${msg}" || echo 'Telegram alert could not be sent'
+          else
+            echo 'Telegram alert is off (needs FRESHNESS_ALERT=1 and the brief secrets).'
+          fi

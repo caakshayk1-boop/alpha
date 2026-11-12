@@ -158,11 +158,11 @@ ok(/Comparison saved/.test(await text()), 'comparison can be saved');
 await pg.getByRole('button', { name: 'Valuation' }).click();
 ok(/PE \(trailing\)/.test(await text()), 'compare switches to the valuation view');
 
-await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.meter', { timeout: 15000 }); await pg.waitForTimeout(500); await shot('04-company');
+await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('[data-glance]', { timeout: 15000 })/* 12 Nov 2026: the 52-week meter is inside the closed 'Trend and range' disclosure; the At a glance grid carries the range now */; await pg.waitForTimeout(500); await shot('04-company');
 const t = await text();
 // 1 Nov 2026 (charts work): the company page is split into Overview / Financials / Ownership / Risks / Thesis, so each check below opens the section that now holds it
 const tab = (n) => pg.getByRole('tab', { name: n, exact: true }).click();
-await pg.getByText('Why this trend').click();   // the four-rule calculation now sits behind this control, not in the overview
+await pg.getByText('Trend and range', { exact: true }).click();   /* 12 Nov 2026: 'Why this trend' is now the closed 'Trend and range' disclosure */   // the four-rule calculation now sits behind this control, not in the overview
 ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(await text()), 'the company page tags its trend and, behind "Why this trend", shows the averages behind it');
 ok(/Seasonality/i.test(await text()), 'the company page carries seasonality (Overview)');
 await tab('Ownership'); ok(/Who owns it/i.test(await text()), 'the Ownership section carries who owns it');
@@ -172,7 +172,7 @@ await pg.locator('summary', { hasText: 'Indicator fingerprint' }).click();
 ok(/did not pass the study/.test(await text()) && /description, not as a signal/.test(await text()), 'the indicator fingerprint says which indicators failed the study');
 ok((await pg.locator('a[href*="tradingview.com/chart"]').count()) >= 2, 'the company page links to TradingView');
 ok(!/Not a live quote|delayed/i.test(t) && /Live price not available|Live|Last price/.test(t), 'the company price does not call itself delayed or not live: it is live, or says a live price is not available');
-await tab('Overview'); await pg.waitForSelector('.nw-company'); ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
+await tab('Overview'); await pg.locator('details[data-fold=news] > summary').click(); await pg.waitForSelector('.nw-company');   /* 12 Nov 2026: News is a closed disclosure on the Overview */ ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
 ok(/Close of /.test(t), 'company price carries its date');   // t was read before the tab changes, and the header is on every tab
 // a live quote from today replaces the published close, and says when it printed
 T.stock = (s) => (s === 'TCS' ? quote(2500, 2600) : null);
@@ -183,7 +183,7 @@ T.stock = null;
 // GCSL, the name that exposed it: a live print beyond the published 52-week high must move the high, and a financial-sector name must not show a margin the page says it withholds
 T.stock = (s) => (s === 'GCSL' ? quote(726, 100000) : null);
 await pg.goto(base + '/#/c/GCSL'); await pg.reload(); await pg.waitForSelector('text=/(Live|Last price|Last traded) · \\d\\d:\\d\\d IST/', { timeout: 40000 }); await pg.waitForTimeout(400);
-{ const ov = await text(); await tab('Financials'); ok(/a new 52-week high/.test(ov) && /· (live|last traded)/.test(ov) && /at the (live|last traded) price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price'); }   // the range is on Overview, the PE on Financials since 1 Nov 2026
+{ const ov = await text(); await tab('Financials'); ok(/a new 52-week high/i.test(ov) && /· (live|last traded)/.test(ov) && /at the (live|last traded) price/.test(await text()), 'GCSL: a live print above the published 52-week high reads as a new high, with the multiples worked out at that price'); }   // the range is on Overview, the PE on Financials since 1 Nov 2026
 ok(!/Net margin/.test(await text()) && /withheld for this company/.test(await text()), 'GCSL: the page that says margins are withheld for a financial-sector name does not print one');
 T.stock = null;
 
@@ -326,7 +326,8 @@ ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says 
 await ctx.clock.setFixedTime(new Date(replayNow * 1000)); now0 = replayNow;
 await pg.getByRole('tab', { name: 'Positions' }).click(); await pg.waitForSelector('.pcard[data-pos]');   // 11 Nov 2026: Mine and Auto are one Positions board; your trade is labelled You
 await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
-ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
+/* 12 Nov 2026 (Tripwire 2.0, 1.2): the interim honest label for the open figure, which includes booked partials */
+ok(/Open-trade P&L, includes booked partials/i.test(await text()), 'tracker shows paper P&L');
 // 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
 ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('[data-strip] .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('[data-strip]').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
 ok(/^you$/i.test((await pg.locator('.pcard .own-chip').first().textContent()).trim()), 'the trade you took is labelled as yours on the board (11 Nov 2026)');
@@ -340,7 +341,8 @@ await shot('09-tracker');
 ok(await pg.locator('.pcard[data-status="Open"]').count() > 0, 'the trade opens at the first open after it was taken');
 const heldText = await text();
 ok(/\blive\b/i.test(heldText) && /session 4 of/i.test(heldText), `an open trade is marked live and counts four exchange sessions (${heldText.match(/session \d+ of \d+/i)?.[0] ?? 'session count missing'})`);
-ok(/\+₹\d/.test(await pg.locator('[data-strip] .bk-pnl b').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
+/* 12 Nov 2026 (Tripwire 2.0, 3.1): the strip's answer is Total P&L (realised + unrealised), shown with its sign; the open-trade figure is named in its note */
+ok(/\+₹\d/.test(await pg.locator('[data-strip] [data-total]').first().innerText().catch(() => '')) && /Open-trade P&L, includes booked partials: \+₹\d/.test(await pg.locator('[data-strip] [data-total-note]').innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 { const m = await pg.locator('[data-method]').textContent(); ok(/How a trade is followed/.test(m) && /next open|first session after/i.test(m), 'tracker states its entry and exit rules (folded under How the paper book works since 11 Nov 2026)'); }
 // a failed price service shows an honest error, not a guess
 await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
@@ -359,8 +361,10 @@ const led = (() => { const picks = [], outcomes = {}; for (let i = 0; i < 12; i+
   return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-27T01:00:00Z', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
 await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
 await pg.reload(); await pg.waitForSelector('[data-record-headline]', { timeout: 15000 }); await shot('09b-record');
-ok(/9\s*of 30 closed/.test(await pg.locator('[data-record-headline]').innerText()), 'the record counts closed trades against the 30 needed');   // 11 Nov 2026: one headline, "9 of 30 closed"
-ok(/withheld until 30 close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
+/* 12 Nov 2026: the headline counts resolved observations */
+ok(/9\s*resolved observations/.test(await pg.locator('[data-record-headline]').innerText()), 'the record counts closed trades against the 30 needed');   // 11 Nov 2026: one headline, "9 of 30 closed"
+/* 12 Nov 2026: the gate counts qualifying lifecycles (ledgerview.ts), still 30 */
+ok(/withheld until 30 qualifying lifecycles close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most

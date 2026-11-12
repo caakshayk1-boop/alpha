@@ -4,6 +4,7 @@ import type { Filters } from './screen.ts';
 import type { Paper, View } from './tracker.ts';
 import type { SeenSnap, SeenChange } from './sincevisit.ts';
 import { agreementSettings, type AgreementSettings } from './agreement.ts';
+import { lifecycleIdFor, normalizeLifecycles } from './lifecycle.ts';
 export const VERSION = 1;
 /** `question` is optional and absent from every version written before 27 Oct 2026: an open question the thesis has not answered yet. */
 export type ReviewState = 'new' | 'waiting' | 'results' | 'reviewed';
@@ -11,7 +12,11 @@ export interface Version { at: string; thesis: string; support: string; counter:
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
-export interface Prefs { motion: 'auto' | 'off'; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
+/** The effects preset (12 Nov 2026): what the motion layer does when motion is on. Optional: a payload saved before this field reads as 'calm'. */
+export type EffectsMode = 'off' | 'calm' | 'lively';
+export const EFFECTS_MODES: readonly EffectsMode[] = ['off', 'calm', 'lively'];
+export const effectsOf = (p: { effects?: unknown } | undefined | null): EffectsMode => (p && EFFECTS_MODES.includes(p.effects as EffectsMode) ? (p.effects as EffectsMode) : 'calm');
+export interface Prefs { motion: 'auto' | 'off'; /** Off, Calm (default) or Lively. Additive, 12 Nov 2026. */ effects?: EffectsMode; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
   /** Entry-candidate settings on this device. Never change existing positions or the shared auto book's published settings. */
   signalAgreement?: AgreementSettings;
@@ -29,7 +34,7 @@ export interface State {
   storageNote?: boolean;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
-  prefs: { motion: 'auto', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
+  prefs: { motion: 'auto', motionV: 2, effects: 'calm', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const iso = (d: Date) => d.toISOString();
@@ -89,7 +94,8 @@ export function saveScreen(s: State, name: string, f: Filters): State {
 /** Take a paper trade from an engine pick. One live paper trade per symbol: a second take of the same name is refused, not duplicated. */
 export function takePaper(s: State, p: Omit<Paper, 'id' | 'takenAt'>, nowSec = Math.floor(Date.now() / 1000)): { s: State; ok: boolean } {
   if (s.paper.some((x) => x.sym === p.sym && !x.closedByUser && !['closed', 'skipped'].includes(x.lastView?.status ?? ''))) return { s, ok: false };
-  return { s: { ...s, paper: [{ ...p, id: uid(), takenAt: nowSec, transitions: [{ at: new Date(nowSec * 1000).toISOString(), from: 'candidate', to: 'pending', reason: 'Paper entry requested; stop, horizon and targets stored' }] }, ...s.paper] }, ok: true };
+  const id = uid();
+  return { s: { ...s, paper: [{ ...p, id, lifecycleId: lifecycleIdFor(id), takenAt: nowSec, transitions: [{ at: new Date(nowSec * 1000).toISOString(), from: 'candidate', to: 'pending', reason: 'Paper entry requested; stop, horizon and targets stored' }] }, ...s.paper] }, ok: true };
 }
 export const removePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.filter((x) => x.id !== id) });
 /** Closing by hand stops the one-per-symbol lock but keeps the record; the tracker still shows what the rules did. */
@@ -177,6 +183,8 @@ function checkPrefs(raw: unknown): Prefs {
   const p: Record<string, unknown> = isObj(raw) ? raw : {}; const D = DEFAULTS.prefs; const out: Record<string, unknown> = { ...D, ...p };
   for (const k of NUM_PREFS) if (!isNum(p[k]) || (p[k] as number) < 0) out[k] = D[k];
   if (p.motion !== 'auto' && p.motion !== 'off') out.motion = D.motion;
+  out.effects = effectsOf(p);   // 12 Nov 2026: absent or unreadable reads as Calm
+
   if (typeof p.haptics !== 'boolean') out.haptics = D.haptics;
   if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
   out.interests = Array.isArray(p.interests) ? p.interests.filter(isStr) : D.interests;
@@ -197,6 +205,7 @@ export function checkBackup(text: string): BackupCheck {
   const plans: Plan[] = []; for (const [i, p] of (d.plans as unknown[]).entries()) { const c = checkPlan(p); if (!c) return { ok: false, reason: `Plan ${i + 1} is damaged (it has no symbol, id or readable prices).` }; plans.push(c); }
   const paperIn = d.paper === undefined ? [] : d.paper; if (!Array.isArray(paperIn)) return { ok: false, reason: 'The paper trades section is damaged.' };
   const paper: Paper[] = []; for (const [i, p] of paperIn.entries()) { const c = checkPaper(p); if (!c) return { ok: false, reason: `Paper trade ${i + 1} is damaged (it has no symbol, id or readable prices).` }; paper.push(c); }
+  paper.splice(0, paper.length, ...normalizeLifecycles(paper));   // 12 Nov 2026: an old backup gets derived lifecycle ids, a duplicate is re-keyed, nothing is dropped
   const compares = Array.isArray(d.compares) ? (d.compares as unknown[]).filter((c): c is string[] => Array.isArray(c) && c.every(isStr)) : [];
   const screens = Array.isArray(d.screens) ? (d.screens as unknown[]).filter((c): c is { name: string; f: Filters } => isObj(c) && isStr(c.name) && isObj(c.f)) : [];
   const snaps: State['snaps'] = {}; if (isObj(d.snaps)) for (const [sym, list] of Object.entries(d.snaps)) if (Array.isArray(list)) snaps[sym] = list.filter((x): x is Snap => isObj(x) && isStr(x.day) && isStr(x.at));
@@ -230,7 +239,7 @@ export function mergeStates(a: State, b: State): State {
     ...(a.storageNote || b.storageNote ? { storageNote: true } : {}),
     // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
     // The motion choice is ignored in that test: a device saved before the default changed holds the old default ('off'), and counting it as a customisation would stop a clean install from restoring the backup's preferences.
-    prefs: JSON.stringify({ ...a.prefs, haptics: true, motion: DEFAULTS.prefs.motion }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
+    prefs: JSON.stringify({ ...a.prefs, haptics: true, motion: DEFAULTS.prefs.motion, effects: DEFAULTS.prefs.effects }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
 }
 /** What is on this device, read defensively. Nothing readable is "no data yet"; something there that cannot be read is NOT the same, and the caller keeps a copy of it
  *  before anything is written over it. */

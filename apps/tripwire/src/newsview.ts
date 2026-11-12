@@ -7,7 +7,7 @@
  *    All          the union of those three, each row labelled with where it came from
  *  Today shows only events fit for it (a known recent date, an event type that is an event); the News page shows the whole archive. A quiet day gives a short list and says so:
  *  there is no widening, no padding and no quota. */
-import { DIVERSITY, LIMITS, TODAY_WINDOW_H } from '../news/config.js';
+import { DIVERSITY, LIMITS, MAX_AGE_DAYS, TODAY_WINDOW_H } from '../news/config.js';
 import { CUES, cueById } from '../news/cues.js';
 import { sectorHeat } from './sectorheat.ts';
 import type { Row } from './screen.ts';
@@ -39,7 +39,7 @@ export function labelsOf(ev: NewsEvent, l: Lists): string[] { const out: string[
 export const inTab = (ev: NewsEvent, tab: Tab, l: Lists) => (tab === 'market' ? isMarket(ev) : tab === 'following' ? inFollowing(ev, l) : tab === 'paper' ? inPaper(ev, l) : isMarket(ev) || inFollowing(ev, l) || inPaper(ev, l));
 
 const ms = (iso: string | null) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? t : null; };
-/** Fit for Today: a known publication time that is not in the future, an event type that is an event, and inside the window of its kind (72 h for a company event, 48 h for an India-wide one). */
+/** Fit for Today: a known publication time that is not in the future, an event type that is an event, and inside the window of its kind (48 h, 12 Nov 2026: two days at most for every kind). */
 export function fitForToday(ev: NewsEvent, nowMs: number): boolean {
   const p = ms(ev.publishedAt); if (p == null || p > nowMs + 600e3 || !ev.todayEligible) return false;
   return nowMs - p <= (isMarket(ev) ? TODAY_WINDOW_H.market : TODAY_WINDOW_H.company) * 3600e3;
@@ -55,11 +55,11 @@ export const tabCounts = (pool: NewsEvent[], l: Lists, nowMs: number): Record<Ta
 
 /** The News page's archive: every kept event of the tab, newest first by publication time (unknown times last), with the filters applied. */
 export type NewsScope = 'all' | 'india' | 'global';
-export interface ArchiveFilter { tab: Tab; types: string[]; days: number; includeOther: boolean; covered: boolean; text: string; /** 12 Nov 2026: absent means all */ scope?: NewsScope }
+export interface ArchiveFilter { tab: Tab; types: string[]; /** at most MAX_AGE_DAYS (2): the page has no Period control any more (12 Nov 2026) */ days: number; includeOther: boolean; covered: boolean; text: string; /** 12 Nov 2026: absent means all */ scope?: NewsScope }
 export function archiveList(pool: NewsEvent[], f: ArchiveFilter, l: Lists, nowMs: number): NewsEvent[] {
   const q = f.text.trim().toLowerCase();
   const scope = f.scope ?? 'all';
-  return pool.filter((e) => {
+  return collapseDuplicates(pool.filter((e) => {
     if (isGlobal(e)) {   // the global lane has its own window (36 h, never longer than the period asked for) and ignores the category filters: a cue is not a company event type
       if (scope === 'india' || f.types.length) return false;
       const g = ms(e.publishedAt); if (g == null || g > nowMs + 600e3 || nowMs - g > Math.min(f.days * 86400e3, TODAY_WINDOW_H.global * 3600e3)) return false;
@@ -72,7 +72,7 @@ export function archiveList(pool: NewsEvent[], f: ArchiveFilter, l: Lists, nowMs
     const p = ms(e.publishedAt); if (p != null && (p > nowMs + 600e3 || nowMs - p > f.days * 86400e3)) return false;
     if (q && !(e.headline.toLowerCase().includes(q) || e.entities.some((x) => (x.sym ?? '').toLowerCase() === q || (x.name ?? '').toLowerCase().includes(q)))) return false;
     return true;
-  }).sort((a, b) => (ms(b.publishedAt) ?? -1) - (ms(a.publishedAt) ?? -1) || (a.eventClusterId < b.eventClusterId ? -1 : 1));
+  })).sort((a, b) => (ms(b.publishedAt) ?? -1) - (ms(a.publishedAt) ?? -1) || (a.eventClusterId < b.eventClusterId ? -1 : 1));
 }
 /* ---------- the same event, told by several outlets ---------- */
 const TIER_RANK: Record<string, number> = { official: 0, wire: 1, major: 2, known: 3, unknown: 4, aggregator: 5 };
@@ -90,7 +90,7 @@ export function mergeCoverage(a: NewsEvent, b: NewsEvent): NewsEvent {
   const times = [a.publishedAt, b.publishedAt].filter((x): x is string => ms(x) != null).sort(); const upd = [a.updatedAt, b.updatedAt].filter((x): x is string => ms(x) != null).sort();
   const seenEnt = new Map<string, NewsEntity>(); for (const x of [...a.entities, ...b.entities]) { const k = x.sym ?? x.name ?? ''; const o = seenEnt.get(k); if (!o || x.confidence > o.confidence) seenEnt.set(k, x); }
   const kept = sources.slice(0, LIMITS.sourcesPerEvent);
-  return { ...first, eventClusterId: a.eventClusterId, sources: kept, moreSources: Math.max(0, sources.length - 1, a.moreSources, b.moreSources),   /* each input's own total is a floor the capped links cannot show; the merged total is never below any of them */ publishedAt: times[0] ?? null, updatedAt: upd[upd.length - 1] ?? first.updatedAt,
+  return { ...first, eventClusterId: a.eventClusterId, scopes: [...new Set([...a.scopes, ...b.scopes])], sources: kept, moreSources: Math.max(0, sources.length - 1, a.moreSources, b.moreSources),   /* each input's own total is a floor the capped links cannot show; the merged total is never below any of them */ publishedAt: times[0] ?? null, updatedAt: upd[upd.length - 1] ?? first.updatedAt,
     firstSeenAt: [a.firstSeenAt, b.firstSeenAt].filter((x): x is string => !!x).sort()[0] ?? null, entities: [...seenEnt.values()].sort((x, y) => y.confidence - x.confidence), todayEligible: a.todayEligible || b.todayEligible,
     qualityFlags: [...new Set([...a.qualityFlags, ...b.qualityFlags])], rank: a.rank ?? b.rank, relevanceScore: Math.max(a.relevanceScore ?? 0, b.relevanceScore ?? 0) };
 }
@@ -98,12 +98,12 @@ export function mergeCoverage(a: NewsEvent, b: NewsEvent): NewsEvent {
  *  and no outlet's link is lost). */
 export function mergePools(a: NewsEvent[], b: NewsEvent[]): NewsEvent[] {
   const out: NewsEvent[] = []; const ids = new Map<string, number>(), urls = new Map<string, number>();
-  const fromB = new Set(b); // Semantic grouping only crosses feeds; the snapshot was already clustered.
+  // 12 Nov 2026 (news-pipe-3): the rule changed, so a snapshot written under the old one may still hold two rows of one story; the same rule is applied to every event, not only across feeds.
   for (const e of [...a, ...b]) {
     const links = [e.canonicalUrl, ...e.sources.map((s) => s.canonicalUrl)].filter(Boolean);
     const shared = links.map((u) => urls.get(u)).find((i) => i != null);
     const known = ids.get(e.eventClusterId) ?? shared;
-    const at = known ?? (fromB.has(e) ? out.findIndex((o) => sameCoverage(o, e)) : -1);
+    const at = known ?? out.findIndex((o) => sameCoverage(o, e));
     const index = at >= 0 ? at : out.length;
     ids.set(e.eventClusterId, index); links.forEach((u) => urls.set(u, index));
     /* 12 Nov 2026 (Codex on #61): an id or link match must not cross the global/India scope line. The pipeline's own rule (cluster.js) is that the India reading wins when one link arrives in both lanes:
@@ -111,6 +111,16 @@ export function mergePools(a: NewsEvent[], b: NewsEvent[]): NewsEvent[] {
     if (at >= 0 && isGlobal(out[at]) !== isGlobal(e)) { if (isGlobal(out[at])) out[at] = e; }
     else if (at >= 0) out[at] = mergeCoverage(out[at], e);
     else out.push(e);
+  }
+  return out;
+}
+/** One row per story in a list that is already filtered: events that share a link or are the same event by the pipeline's rule are merged (best-tier outlet primary, every outlet link kept). Order of first appearance. */
+export function collapseDuplicates(events: NewsEvent[]): NewsEvent[] {
+  const out: NewsEvent[] = [];
+  for (const e of events) {
+    const links = new Set([e.canonicalUrl, ...e.sources.map((s) => s.canonicalUrl)].filter(Boolean));
+    const at = out.findIndex((o) => o.eventClusterId === e.eventClusterId || (isGlobal(o) === isGlobal(e) && ([o.canonicalUrl, ...o.sources.map((s) => s.canonicalUrl)].some((u) => links.has(u)) || sameCoverage(o, e))));
+    if (at >= 0) out[at] = mergeCoverage(out[at], e); else out.push(e);
   }
   return out;
 }

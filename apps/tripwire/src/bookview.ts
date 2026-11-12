@@ -41,7 +41,8 @@ export function attention(i: AttnInput): Attn {
 /** What a row says when it is near a level, in words, or null: "At or below its stop" (a recorded mark under the stop is said, never hidden), "1.2% above its stop", "2.0% from T1". */
 export function nearWord(a: Attn): { kind: 'stop' | 'target'; text: string } | null {
   if (a.near === 'stop' && a.toStop != null) return { kind: 'stop', text: a.toStop <= 0 ? 'At or below its stop' : `${a.toStop.toFixed(1)}% above its stop` };
-  if (a.near === 'target' && a.toTarget != null && a.next) return { kind: 'target', text: a.toTarget <= 0 ? `At ${a.next}` : `${a.toTarget.toFixed(1)}% from ${a.next}` };
+  if (a.near === 'target' && a.toTarget != null && a.next) /* 12 Nov 2026 (Tripwire 2.0, 2.2): a quote above a target is NOT a fill. Only a confirmed fill reads 'booked' (the ladder, from the booked fill); this line never says the target was hit. */
+  return { kind: 'target', text: a.toTarget <= 0 ? `Quote above ${a.next} · fill unconfirmed` : `Near ${a.next} · ${a.toTarget.toFixed(1)}% away` };
   return null;
 }
 /** Rows in the order they need attention: nearest the stop first, then nearest a target, then every other open position (closest to its stop first), then those waiting for an open, then finished ones.

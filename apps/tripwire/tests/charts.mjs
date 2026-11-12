@@ -14,6 +14,7 @@ const series = (n, sym, opts) => ohlcSeries(n, sym, opts);
 // bound the chart/header separately so added research detail cannot permit unrelated vertical growth.
 // 10 Nov 2026: +40px on both budgets, taken on purpose. The audit asked for one "Data as of" line on the price card and a publication-date marker beside each statement-based claim in the read; on a 320px phone those cost about 40px. The chart is still the first thing after the read.
 const READ_MAX = 600, PLOT_MAX = 740;
+// 12 Nov 2026 (one-pager): the chart now precedes the one-minute read, which is a closed disclosure under the tabs bar, so its height here is one summary row and the plot budget below is met with room to spare (plot top about 660px at 390). The budgets are kept as the ceiling.
 const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Math.ceil(e.getBoundingClientRect().height) + 16);
 
 /* 1. the first screen on a phone: the chart is in it, with its takeaway, and it opens on one year against the Nifty */

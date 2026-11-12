@@ -2,6 +2,7 @@
 import type { Row } from './screen.ts';
 import { eligibilityOf, meaningful } from './eligibility.ts';
 import { isNum, dayWord, pct } from './fmt.ts';
+import { resultsDate } from './resultsdate.ts';
 
 /** Share of liquid names above their own 50-day average, measured rows only. */
 export function breadth(rows: readonly Row[]): { pct: number | null; n: number } {
@@ -13,7 +14,8 @@ export function breadth(rows: readonly Row[]): { pct: number | null; n: number }
 export function checklistFor(r: Row, today: string): string[] {
   const out: string[] = [];
   out.push('Write what would make you wrong, as a price or an event, before anything else.');
-  if (r.next_earnings) out.push(`Results are expected around ${dayWord(r.next_earnings)} (an estimate). Decide before then whether you hold through them.`);
+  // 12 Nov 2026: a results date that has passed is not "expected"; only an upcoming (or today's) estimate earns the line.
+  if (r.next_earnings && resultsDate(r.next_earnings, Date.parse(`${today}T12:00:00+05:30`)).next) out.push(`Results are expected around ${dayWord(r.next_earnings)} (an estimate). Decide before then whether you hold through them.`);
   if (isNum(r.from_high) && r.from_high <= -20) out.push(`It closed ${pct(r.from_high)} from its 52-week high. Find out what changed since, from the company's own filings.`);
   if (isNum(r.rsi) && r.rsi >= 70) out.push(`RSI is ${r.rsi.toFixed(0)}: recent closes were strongly one-sided. Check you are not reacting to a move already made.`);
   if (isNum(r.rsi) && r.rsi <= 30) out.push(`RSI is ${r.rsi.toFixed(0)}: recent closes were strongly one-sided downward. Check the cause is not something that is still happening.`);

@@ -7,7 +7,8 @@ export const STATUS_SCHEMA = 'tripwire-news-status/1';
 export const QUERY_SCHEMA = 'tripwire-news-q/1';
 /** Bump when a validation, classification or clustering rule changes (what is admitted, and how it is grouped). */
 // 12 Nov 2026: news-pipe-2 adds the global-cue lane (scope 'global': other countries' headlines admitted only when a rule in cues.js matches, from a known-tier source).
-export const PIPELINE_VERSION = 'news-pipe-2';
+// 12 Nov 2026: news-pipe-3 is two days at most (MAX_AGE_DAYS 2, Today windows 48 h) and smart dedupe (cluster.js: shared distinctive word, same title; rules.js: promotional rewrites from aggregators).
+export const PIPELINE_VERSION = 'news-pipe-3';
 /** Bump when a weight, half-life or tier below changes (only the order changes, never what is admitted). */
 export const RANKING_VERSION = 'news-rank-1';
 
@@ -17,7 +18,7 @@ const OFFICIAL = ['nseindia.com', 'nsearchives.nseindia.com', 'bseindia.com', 's
 const WIRE = ['reuters', 'pti', 'press trust of india', 'bloomberg', 'ani', 'ians'];
 const MAJOR = ['the economic times', 'economic times', 'economictimes.indiatimes.com', 'mint', 'livemint', 'business standard', 'the hindu businessline', 'hindu businessline', 'the hindu', 'moneycontrol', 'cnbc-tv18', 'cnbctv18', 'ndtv profit', 'financial express', 'the financial express', 'business today', 'the times of india', 'times of india', 'indian express', 'the indian express', 'hindustan times', 'forbes india', 'fortune india', 'the print', 'theprint', 'scroll', 'bbc', 'the new indian express'];
 const KNOWN = ['zee business', 'business insider', 'india today', 'firstpost', 'news18', 'outlook business', 'businessline', 'the week', 'deccan herald', 'deccan chronicle', 'the tribune', 'rediff', 'rediff money', 'investing.com', 'marketscreener', 'tipranks', 'simply wall st', 'benzinga', 'exchange4media', 'the free press journal', 'free press journal', 'asian news international', 'the statesman', 'telangana today', 'devdiscourse', 'inc42', 'entrackr', 'yourstory'];
-const AGGREGATOR = ['tradingview', 'univest', 'stockedge', 'trendlyne', 'groww', 'tickertape', 'screener', 'upstox', 'zerodha', 'angel one', 'five paisa', '5paisa', 'whalesbook', 'dailyhunt', 'newsbreak', 'msn', 'yahoo', 'ticker', 'marketsmojo', 'marketsmith', 'investorsobserver', 'stocktwits', 'telegraphindia', 'google', 'bing'];
+const AGGREGATOR = ['tradingview', 'univest', 'stockedge', 'trendlyne', 'groww', 'tickertape', 'screener', 'upstox', 'zerodha', 'angel one', 'five paisa', '5paisa', 'whalesbook', 'dailyhunt', 'newsbreak', 'msn', 'yahoo', 'ticker', 'marketsmojo', 'markets mojo', 'marketsmith', 'investorsobserver', 'stocktwits', 'telegraphindia', 'google', 'bing'];
 const has = (list, s) => list.some((x) => s === x || s.includes(x));
 /** `{ tier, weight }` for a publisher name and the host of its link. Official means a regulator, an exchange or a ministry: a company's own filing carried by one of these hosts. */
 export function sourceTier(name, host) {
@@ -35,13 +36,14 @@ export function sourceTier(name, host) {
 export const WEIGHTS = { significance: 0.30, entity: 0.20, source: 0.15, recency: 0.20, novelty: 0.05, user: 0.10 };
 /** Recency half-life in hours, by event type (policy and macro stories age faster than a results night). */
 export const HALF_LIFE_H = { Policy: 24, Macro: 24, default: 36 };
-/** How old an event may be to appear on Today, by scope, in hours. The archive on the News page keeps MAX_AGE_DAYS. */
-export const TODAY_WINDOW_H = { company: 72, market: 48, global: 36 };
+/** How old an event may be to appear on Today, by scope, in hours. The News page archive keeps MAX_AGE_DAYS (the same 48 hours for a company or India-wide event). */
+export const TODAY_WINDOW_H = { company: 48, market: 48, global: 36 };
 /** Global cues: at most this many events per cue (by the first cue a headline matches) and in all. Documented on the News page. */
 export const GLOBAL_LIMITS = { perCue: 2, total: 10 };
 /** The source tiers a global headline may come from. Aggregators and unknown publishers are refused for it. */
 export const GLOBAL_TIERS = ['official', 'wire', 'major', 'known'];
-export const MAX_AGE_DAYS = 14;
+/** 12 Nov 2026 (owner): news older than two days is not kept anywhere. The pipeline refuses it (rules.js stale), the archive and the live searches use it. */
+export const MAX_AGE_DAYS = 2;
 /** A timestamp this far past the check is not a clock skew, it is a wrong date: quarantined, not shown. */
 export const FUTURE_TOLERANCE_MS = 10 * 60 * 1000;
 export const VERIFIED = 0.6;          // an entity match at or above this is "verified"

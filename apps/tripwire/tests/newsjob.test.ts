@@ -77,7 +77,7 @@ test('plan: bounded, paper-book names every tick, the others rotate, unresolved 
   assert.deepEqual(names.paper, ['TCS']); assert.deepEqual(names.unresolved, ['ZZZNEW']);
   const a = queryPlan({ names, tick: 1 }), b = queryPlan({ names, tick: 2 }); assert.ok(a.length <= 2 + 4 + GLOBAL_QUERIES.length + 1 + BOUNDS.otherPerTick);   // 12 Nov 2026: + the global-cue searches (news-pipe-2)
   assert.ok(a.some((s) => s.sym === 'TCS') && b.some((s) => s.sym === 'TCS')); const others = (p: typeof a) => p.filter((s) => s.scope === 'covered').map((s) => s.sym).join(); assert.notEqual(others(a), others(b));
-  assert.equal(companyQuery('Tata Consultancy Services Ltd.'), '"Tata Consultancy Services" when:7d');
+  assert.equal(companyQuery('Tata Consultancy Services Ltd.'), '"Tata Consultancy Services" when:2d');
   const withUniverse = buildNames({ ledger: { picks: [{ sym: 'ZZZNEW' }] }, covered: inputs.covered, aliases: inputs.aliases, universe: [['ZZZNEW', 'Tech', 'Zzz New Ltd.']] }); assert.deepEqual(withUniverse.unresolved, []);
 });
 
