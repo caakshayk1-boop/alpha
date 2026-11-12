@@ -1,6 +1,6 @@
 import { StatusBar } from './statusbar.tsx';
 import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { DEFAULTS, type State } from './store.ts';
+import { DEFAULTS, effectsOf, type State } from './store.ts';
 import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type SaveFailure } from './persist.ts';
 import { downloadBackup } from './backupfile.ts';
 import { prefetchWhenIdle } from './prefetch.ts';
@@ -127,10 +127,14 @@ export function App(): ReactNode {
   const close = useCallback(() => setSheet(null), []);
   useEffect(() => { const a = () => setOnline(true), b = () => setOnline(false); window.addEventListener('online', a); window.addEventListener('offline', b); return () => { window.removeEventListener('online', a); window.removeEventListener('offline', b); }; }, []);
   useEffect(() => {
-    const root = document.documentElement;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    root.classList.toggle('fx', s.prefs.motion === 'auto' && !reduced);
-  }, [s.prefs.motion]);
+    const root = document.documentElement; const mq = matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => {
+      const mode = effectsOf(s.prefs); const on = s.prefs.motion === 'auto' && !mq.matches && mode !== 'off';
+      root.classList.toggle('fx', on); root.classList.toggle('fx-calm', on && mode === 'calm'); root.classList.toggle('fx-lively', on && mode === 'lively');   // 12 Nov 2026: the Effects preset; the device setting is re-read live, not once
+      root.dataset.effects = mode;
+    };
+    apply(); mq.addEventListener?.('change', apply); return () => mq.removeEventListener?.('change', apply);
+  }, [s.prefs.motion, s.prefs.effects]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSheet({ k: 'search' }); } }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
   // the on-screen keyboard: sticky bars step aside while a field is being typed in, and sheets size to what is actually visible
   useEffect(() => {

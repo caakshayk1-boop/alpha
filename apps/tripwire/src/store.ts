@@ -11,7 +11,11 @@ export interface Version { at: string; thesis: string; support: string; counter:
 export interface Entry { id: string; sym: string; created: string; archived: boolean; versions: Version[] }   // the last version is current; earlier ones are never rewritten
 export interface Plan { id: string; sym: string; at: string; status: 'saved' | 'paper-filled' | 'closed'; entry: number; stop: number; qty: number; riskPct: number; expiry: string | null; rev: number; note: string; filledAt?: string }
 export interface Snap { at: string; day: string; px: number | null; rsi: number | null; rs3m: number | null; from_high: number | null }
-export interface Prefs { motion: 'auto' | 'off'; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
+/** The effects preset (12 Nov 2026): what the motion layer does when motion is on. Optional: a payload saved before this field reads as 'calm'. */
+export type EffectsMode = 'off' | 'calm' | 'lively';
+export const EFFECTS_MODES: readonly EffectsMode[] = ['off', 'calm', 'lively'];
+export const effectsOf = (p: { effects?: unknown } | undefined | null): EffectsMode => (p && EFFECTS_MODES.includes(p.effects as EffectsMode) ? (p.effects as EffectsMode) : 'calm');
+export interface Prefs { motion: 'auto' | 'off'; /** Off, Calm (default) or Lively. Additive, 12 Nov 2026. */ effects?: EffectsMode; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
   /** Entry-candidate settings on this device. Never change existing positions or the shared auto book's published settings. */
   signalAgreement?: AgreementSettings;
@@ -29,7 +33,7 @@ export interface State {
   storageNote?: boolean;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
-  prefs: { motion: 'auto', motionV: 2, haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
+  prefs: { motion: 'auto', motionV: 2, effects: 'calm', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const iso = (d: Date) => d.toISOString();
@@ -177,6 +181,8 @@ function checkPrefs(raw: unknown): Prefs {
   const p: Record<string, unknown> = isObj(raw) ? raw : {}; const D = DEFAULTS.prefs; const out: Record<string, unknown> = { ...D, ...p };
   for (const k of NUM_PREFS) if (!isNum(p[k]) || (p[k] as number) < 0) out[k] = D[k];
   if (p.motion !== 'auto' && p.motion !== 'off') out.motion = D.motion;
+  out.effects = effectsOf(p);   // 12 Nov 2026: absent or unreadable reads as Calm
+
   if (typeof p.haptics !== 'boolean') out.haptics = D.haptics;
   if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
   out.interests = Array.isArray(p.interests) ? p.interests.filter(isStr) : D.interests;
@@ -230,7 +236,7 @@ export function mergeStates(a: State, b: State): State {
     ...(a.storageNote || b.storageNote ? { storageNote: true } : {}),
     // preferences: keep this device's, unless it has never been customised (a fresh install restoring a backup should get the backup's equity, risk and theme)
     // The motion choice is ignored in that test: a device saved before the default changed holds the old default ('off'), and counting it as a customisation would stop a clean install from restoring the backup's preferences.
-    prefs: JSON.stringify({ ...a.prefs, haptics: true, motion: DEFAULTS.prefs.motion }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
+    prefs: JSON.stringify({ ...a.prefs, haptics: true, motion: DEFAULTS.prefs.motion, effects: DEFAULTS.prefs.effects }) === JSON.stringify(DEFAULTS.prefs) ? { ...b.prefs } : a.prefs };
 }
 /** What is on this device, read defensively. Nothing readable is "no data yet"; something there that cannot be read is NOT the same, and the caller keeps a copy of it
  *  before anything is written over it. */
