@@ -16,6 +16,8 @@ import { checkStagesAgree, checkMarksCurrent, formatViolations } from '../src/le
 export function checkLedgerFile(path, nowMs = Date.now(), env = process.env) {
   if (!existsSync(path)) return { errors: [], warnings: ['ledger/ledger.json does not exist; the ledger freshness assertions were skipped'] };
   if (env.TRIPWIRE_ALLOW_STALE === '1') return { errors: [], warnings: [] };
+  // 12 Nov 2026: a manual code-only deploy (workflow_dispatch input skip_ledger_check) may go out while the nightly ledger lags a session. Only the ledger rules are skipped, the screen and company-file rules stay on, and the skip is said out loud (a warning here, a line in the run summary) so a deploy that shipped over a lagging ledger is never mistaken for one that checked it. The scheduled and repository_dispatch runs never set it.
+  if (env.TRIPWIRE_SKIP_LEDGER_CHECK === '1') return { errors: [], warnings: ['ledger freshness check SKIPPED on request (code-only deploy): the Record may be a session behind the screen'] };
   const l = JSON.parse(readFileSync(path, 'utf8')); const v = [...checkStagesAgree(l), ...checkMarksCurrent(l, nowMs)];
   return { errors: formatViolations(v).map((m) => `ledger: ${m}`), warnings: [] };
 }
