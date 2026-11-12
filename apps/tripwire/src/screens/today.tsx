@@ -121,7 +121,7 @@ export function Today() {
         <div className="row between sechead"><h2 id="t-book" className="sec">Paper book</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
         <div className="card bookcard">
           <dl className="bk-stats num">
-            <div><dt>Unrealised</dt><dd className={`amt bigpnl ${tone(pnl)}`}><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
+            <div><dt>Open-trade P&amp;L</dt><dd className={`amt bigpnl ${tone(pnl)}`} title="Booked partial exits plus the remaining shares marked at the observed price"><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
             <div><dt>Open</dt><dd>{openN}{showAuto && auto.sum.waiting ? <small> +{auto.sum.waiting} waiting</small> : null}</dd></div>
             <div><dt>Closed</dt><dd>{showAuto ? auto.sum.closed : 0}<small> of {MIN_TRADES}</small></dd></div>
           </dl>
