@@ -92,7 +92,7 @@ export function Company({ sym }: { sym: string }) {
   const nowMs = Date.now(); const rd = resultsDate(row.next_earnings, nowMs); const tr = trendOf(row);
   const peers = scr.data ? sectorPeers(sym, scr.data.rows, 5) : null; const like = scr.data ? similarTo(sym, scr.data.rows, 5) : [];
   const evPass = evals.filter((x) => x.ev.pass).length;
-  const glance = glanceOf({ c: { row, inst: c.data.inst, built_on: c.data.built_on }, nowMs, px: isNum(px) ? px : null, lo: isNum(lo) ? lo : null, hi: isNum(hi) ? hi : null, fromHigh: isNum(rp.fromHigh) ? rp.fromHigh : null, basisWord: rp.basis === 'live' ? pxWord : 'at close',
+  const glance = glanceOf({ c: { row, inst: c.data.inst, built_on: c.data.built_on }, nowMs, px: isNum(px) ? px : null, lo: isNum(lo) ? lo : null, hi: isNum(hi) ? hi : null, fromHigh: isNum(rp.fromHigh) ? rp.fromHigh : null, newHigh: !!rp.newHigh, basisWord: rp.basis === 'live' ? pxWord : 'at close',
     roceMeaningful: meaningful(el!, 'roce'), financial: !!el!.financial, riskLevel: grade.level, riskNote: grade.note, flagCount: c.data.risk ? flags.length : null, stale: !!row.stale || fr.tone === 'peach' });
   const overview = <>
     <ResearchRead company={c.data} />

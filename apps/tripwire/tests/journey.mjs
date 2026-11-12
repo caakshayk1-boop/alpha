@@ -162,7 +162,7 @@ await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('[data-glance]', { ti
 const t = await text();
 // 1 Nov 2026 (charts work): the company page is split into Overview / Financials / Ownership / Risks / Thesis, so each check below opens the section that now holds it
 const tab = (n) => pg.getByRole('tab', { name: n, exact: true }).click();
-await pg.getByText('Why this trend').click();   // the four-rule calculation now sits behind this control, not in the overview
+await pg.getByText('Trend and range', { exact: true }).click();   /* 12 Nov 2026: 'Why this trend' is now the closed 'Trend and range' disclosure */   // the four-rule calculation now sits behind this control, not in the overview
 ok(/(Uptrend|Downtrend|Sideways)/.test(t) && /50-day/.test(await text()), 'the company page tags its trend and, behind "Why this trend", shows the averages behind it');
 ok(/Seasonality/i.test(await text()), 'the company page carries seasonality (Overview)');
 await tab('Ownership'); ok(/Who owns it/i.test(await text()), 'the Ownership section carries who owns it');
@@ -172,7 +172,7 @@ await pg.locator('summary', { hasText: 'Indicator fingerprint' }).click();
 ok(/did not pass the study/.test(await text()) && /description, not as a signal/.test(await text()), 'the indicator fingerprint says which indicators failed the study');
 ok((await pg.locator('a[href*="tradingview.com/chart"]').count()) >= 2, 'the company page links to TradingView');
 ok(!/Not a live quote|delayed/i.test(t) && /Live price not available|Live|Last price/.test(t), 'the company price does not call itself delayed or not live: it is live, or says a live price is not available');
-await tab('Overview'); await pg.waitForSelector('.nw-company'); ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
+await tab('Overview'); await pg.locator('details[data-fold=news] > summary').click(); await pg.waitForSelector('.nw-company');   /* 12 Nov 2026: News is a closed disclosure on the Overview */ ok(/Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d/.test(await text()), 'the company page carries its own news');
 ok(/Close of /.test(t), 'company price carries its date');   // t was read before the tab changes, and the header is on every tab
 // a live quote from today replaces the published close, and says when it printed
 T.stock = (s) => (s === 'TCS' ? quote(2500, 2600) : null);
