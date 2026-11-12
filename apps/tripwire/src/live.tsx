@@ -3,6 +3,7 @@ import { Icon } from './ui.tsx';
 import { tvUrl } from './tv.ts';
 import { rollDiff, type RollChange } from './roll.ts';
 import { fmtIst, quoteAge } from './stamp.ts';
+import { CUE_MS, cueWord, flashFlush, flashInit, flashPush, type Cue, type FlashState, type Obs, type ObsState } from './flash.ts';
 
 /** A small price line. `refs` are horizontal guides (previous close, entry, stop) drawn only when they fall inside the range. */
 export function Spark({ c, refs = [], up, h = 34, label, area = false }: { c: number[]; refs?: { v: number; kind: 'prev' | 'entry' | 'stop' }[]; up: boolean; h?: number; label: string; area?: boolean }) {
@@ -22,26 +23,51 @@ export function Spark({ c, refs = [], up, h = 34, label, area = false }: { c: nu
   </svg>;
 }
 
-/** A figure that changes: tinted for a moment (green up, coral down), and its changed digits roll for 200 ms. At rest the text is plain. */
-export function Roll({ text }: { text: string }) {
+const fxOn = () => typeof document !== 'undefined' && document.documentElement.classList.contains('fx');
+const lively = () => typeof document !== 'undefined' && document.documentElement.classList.contains('fx-lively');
+
+/** A figure that changes: in Lively its changed digits roll for 200 ms (a single step from the old digit to the new one, never counting through values in between).
+ *  At rest, and in Calm, it is plain text; the cue is the halo behind it (Tick). `word` is the direction in words for a screen reader while a cue is on. */
+export function Roll({ text, word = '' }: { text: string; word?: string }) {
   const prev = useRef(text); const [chg, setChg] = useState<Map<number, RollChange>>(new Map());
   useEffect(() => {
     if (prev.current === text) return;
     const d = rollDiff(prev.current, text); prev.current = text;
-    if (!d.length || !document.documentElement.classList.contains('fx')) { setChg(new Map()); return; }
+    if (!d.length || !lively()) { setChg(new Map()); return; }   // 12 Nov 2026: rolling digits are a Lively effect (Calm cues with the halo alone); html.fx-lively exists only with motion on and no reduced-motion request
     setChg(new Map(d.map((c) => [c.fromEnd, c]))); const t = window.setTimeout(() => setChg(new Map()), 230); return () => window.clearTimeout(t);
   }, [text]);
   const cs = [...text];
   // one accessible value for the whole figure ("₹3,812.40"), the digit spans hidden from it: a screen reader gets the price once, not character by character, and not again as it changes
-  return <span className="roll" role="img" aria-label={text}>{cs.map((c, i) => { const k = cs.length - 1 - i; const ch = chg.get(k); return <span key={k} className={`rd${ch ? ` ${ch.dir}` : ''}`} aria-hidden="true"><span className="cur">{c}</span>{ch && <span className="old">{ch.from}</span>}</span>; })}</span>;
+  return <span className="roll" role="img" aria-label={word ? `${text}, ${word}` : text}>{cs.map((c, i) => { const k = cs.length - 1 - i; const ch = chg.get(k); return <span key={k} className={`rd${ch ? ` ${ch.dir}` : ''}`} aria-hidden="true"><span className="cur">{c}</span>{ch && <span className="old">{ch.from}</span>}</span>; })}</span>;
 }
-export function Tick({ v, children, className = '' }: { v: number | null | undefined; children: ReactNode; className?: string }) {
-  const prev = useRef<number | null | undefined>(v); const [dir, setDir] = useState<'' | 'u' | 'd'>('');
+
+/** The cue for one figure (src/flash.ts holds the rules). Returns the cue to show now and a counter that changes only when a NEW cue starts, so a render or an unchanged poll never
+ *  restarts it. Nothing is shown unless html.fx is on (motion on, device not asking for less, Effects not Off); the baseline is tracked either way. */
+export function useCue(o: Obs): { cue: Cue; n: number } {
+  const [shown, setShown] = useState<{ cue: Cue; n: number }>({ cue: 'none', n: 0 });
+  const st = useRef<FlashState>(flashInit()); const n = useRef(0); const flushT = useRef<number | undefined>(undefined); const clearT = useRef<number | undefined>(undefined);
+  const show = (c: Cue) => {
+    if (c === 'none' || !fxOn()) return;
+    n.current += 1; setShown({ cue: c, n: n.current });
+    window.clearTimeout(clearT.current); clearT.current = window.setTimeout(() => setShown({ cue: 'none', n: n.current }), CUE_MS);
+  };
   useEffect(() => {
-    if (v != null && prev.current != null && v !== prev.current) { setDir(v > prev.current ? 'u' : 'd'); prev.current = v; const t = window.setTimeout(() => setDir(''), 1150); return () => window.clearTimeout(t); }
-    prev.current = v;
-  }, [v]);
-  return <span className={`tick ${dir} ${className}`}>{typeof children === 'string' ? <Roll text={children} /> : children}</span>;
+    const r = flashPush(st.current, o, performance.now()); st.current = r.state; show(r.cue);
+    window.clearTimeout(flushT.current);
+    if (r.flushIn !== null) flushT.current = window.setTimeout(() => { const f = flashFlush(st.current, performance.now()); st.current = f.state; show(f.cue); }, r.flushIn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.v, o.basis, o.state, o.text]);
+  useEffect(() => () => { window.clearTimeout(flushT.current); window.clearTimeout(clearT.current); }, []);
+  return shown;
+}
+
+/** A price or total that can change under the reader. `basis` says what the number is a price OF ('live' by default; pass 'recorded' for a stored close) and `state` says when it is
+ *  not a fresh reading; a change of basis is a neutral reveal, never a gain or a loss. The halo sits BEHIND the numeral (it is a sibling, aria-hidden, and takes no space), the numeral stays sharp. */
+export function Tick({ v, children, className = '', basis = 'live', state }: { v: number | null | undefined; children: ReactNode; className?: string; basis?: string; state?: ObsState }) {
+  const text = typeof children === 'string' ? children : undefined;
+  const { cue, n } = useCue({ v, basis, state: state ?? (v == null ? 'missing' : undefined), text });
+  const word = cueWord(cue);
+  return <span className={`tick${cue !== 'none' ? ` tk-${cue}` : ''} ${className}`} data-cue={cue !== 'none' ? cue : undefined}>{cue !== 'none' && <i key={n} className="tk-halo" aria-hidden="true" />}{text !== undefined ? <Roll text={text} word={word} /> : children}</span>;
 }
 
 export function LiveBadge({ live, label }: { live: boolean; label: string }) {

@@ -11,7 +11,12 @@
   --accent:#A5B4FF;--accent-press:#8E9FF5;--accent-tint:rgba(165,180,255,.14);--on-accent:#07090D;
   --up:#3DDC97;--down:#FF7A7A;--amber:#FFC24B;
   /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
-  --series-1:#5CD6F5;--series-2:#FFD43B;--series-3:#FF8FC7;
+  --series-1:#2A9FCB;--series-2:#B98A00;--series-3:#D2508F;   /* 12 Nov 2026: moved into the validated dark band (OKLCH L .48 to .67; dataviz validate_palette: CVD worst adjacent dE 14.8 deutan, normal 22.7, contrast on surface >= 3:1) */
+  /* chart look (12 Nov 2026): one hairline grid, a plot surface, thin round-capped lines, a soft area under them, a current-value dot with a ring */
+  --chart-grid:rgba(190,205,255,.07);--chart-plot:linear-gradient(180deg,rgba(190,205,255,.035),rgba(190,205,255,0));--chart-line-w:1.75px;--chart-area-top:.3;
+  --chart-ring:rgba(165,180,255,.28);--chart-dot-edge:var(--surface);--bar-r:4px;
+  /* effects (12 Nov 2026): the price halo is ONE low-opacity tint, 10px, gone in 600 ms; the fade and rise lengths are per preset (effects3.css) */
+  --halo-up:rgba(61,220,151,.26);--halo-down:rgba(255,122,122,.26);--halo-neutral:rgba(165,180,255,.2);--halo-blur:10px;--halo-dur:600ms;--fade-dur:160ms;--fade-dur-2:200ms;--rise-dur:280ms;
   --down-tint:rgba(255,122,122,.12);--up-tint:rgba(61,220,151,.12);--amber-tint:rgba(255,194,75,.12);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -64,7 +69,7 @@
   --accent:var(--print-ink);--accent-press:var(--print-ink);--accent-tint:transparent;--on-accent:var(--print-bg);
   --up:var(--print-up);--down:var(--print-down);--amber:var(--print-amber);
   --series-1:var(--print-series-1);--series-2:var(--print-series-2);--series-3:var(--print-series-3);
-  --down-tint:transparent;--up-tint:transparent;--amber-tint:transparent;--surface-grad:none;--shadow-raised:none;--glow-cta:none;--shimmer:transparent;--elev-1:none
+  --halo-up:transparent;--halo-down:transparent;--halo-neutral:transparent;--chart-grid:var(--print-line);--chart-plot:none;--chart-ring:transparent;--down-tint:transparent;--up-tint:transparent;--amber-tint:transparent;--surface-grad:none;--shadow-raised:none;--glow-cta:none;--shimmer:transparent;--elev-1:none
 }}
 @media(min-width:700px){:root{--section-gap:var(--sp-6);--card-pad:24px}}
 @media(min-width:1100px){:root{--section-gap:var(--sp-7);--gutter:48px}}

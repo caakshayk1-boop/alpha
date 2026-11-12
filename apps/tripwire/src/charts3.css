@@ -28,24 +28,39 @@
 .pc-plot .c-lvl{transform:translateY(-50%);right:4px;font:600 var(--fs-label)/1.2 var(--font);letter-spacing:0;padding:2px var(--sp-2);border-radius:6px;border:1px solid var(--line-2);background:color-mix(in srgb,var(--surface) 88%,transparent)}
 .pc-plot .c-lvl.stop{border-color:var(--down)}.pc-plot .c-lvl.target{border-color:var(--up)}
 
-/* ---- Chart motion. Once per chart; off without html.fx. ---- */
+/* ---- Chart motion. Once per chart; draw-on and bar growth are Lively effects (html.fx-lively, effects3.css gives Calm a plain fade); off without html.fx. 12 Nov 2026. ---- */
 @keyframes c3-grow-x{from{transform:scaleX(0)}to{transform:none}}
 @keyframes c3-grow-y{from{transform:scaleY(0)}to{transform:none}}
 @keyframes c3-fade{from{opacity:0}to{opacity:1}}
-html.fx .fin-svg .fin-bar{transform-box:fill-box;transform-origin:50% 100%;animation:c3-grow-y 520ms var(--ease) both}
-html.fx .fin-svg .fin-bar.neg{transform-origin:50% 0}
-html.fx .fin-line{stroke-dasharray:1;stroke-dashoffset:1;animation:dc-draw 700ms var(--ease,ease) forwards}
-html.fx .fin-line.dash{stroke-dasharray:6 3;stroke-dashoffset:0;animation:c3-fade 700ms var(--ease) both}
-html.fx .fl-bars rect.up{transform-box:fill-box;transform-origin:50% 100%;animation:c3-grow-y 520ms var(--ease) both}
-html.fx .fl-bars rect.down{transform-box:fill-box;transform-origin:50% 0;animation:c3-grow-y 520ms var(--ease) both}
-html.fx .sb-fill.pos{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
-html.fx .sb-fill.neg{transform-origin:100% 50%;animation:c3-grow-x 520ms var(--ease) both}
-html.fx .contrib .bar2 i.pos{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
-html.fx .contrib .bar2 i.neg{transform-origin:100% 50%;animation:c3-grow-x 520ms var(--ease) both}
-html.fx .sh-breadth i,html.fx .market-breadth .rangebar i{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
-html.fx .moodhero .idx .rg .nw{animation:c3-fade 360ms var(--ease) both}
+html.fx-lively .fin-svg .fin-bar{transform-box:fill-box;transform-origin:50% 100%;animation:c3-grow-y 520ms var(--ease) both}
+html.fx-lively .fin-svg .fin-bar.neg{transform-origin:50% 0}
+html.fx-lively .fin-line{stroke-dasharray:1;stroke-dashoffset:1;animation:dc-draw 700ms var(--ease,ease) forwards}
+html.fx-lively .fin-line.dash{stroke-dasharray:6 3;stroke-dashoffset:0;animation:c3-fade 700ms var(--ease) both}
+html.fx-lively .fl-bars rect.up{transform-box:fill-box;transform-origin:50% 100%;animation:c3-grow-y 520ms var(--ease) both}
+html.fx-lively .fl-bars rect.down{transform-box:fill-box;transform-origin:50% 0;animation:c3-grow-y 520ms var(--ease) both}
+html.fx-lively .sb-fill.pos{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
+html.fx-lively .sb-fill.neg{transform-origin:100% 50%;animation:c3-grow-x 520ms var(--ease) both}
+html.fx-lively .contrib .bar2 i.pos{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
+html.fx-lively .contrib .bar2 i.neg{transform-origin:100% 50%;animation:c3-grow-x 520ms var(--ease) both}
+html.fx-lively .sh-breadth i,html.fx-lively .market-breadth .rangebar i{transform-origin:0 50%;animation:c3-grow-x 520ms var(--ease) both}
+html.fx-lively .moodhero .idx .rg .nw{animation:c3-fade 360ms var(--ease) both}
 @media (prefers-reduced-motion:reduce){
-  html.fx .fin-svg .fin-bar,html.fx .fin-line,html.fx .fl-bars rect,html.fx .sb-fill,html.fx .contrib .bar2 i,html.fx .sh-breadth i,html.fx .market-breadth .rangebar i,html.fx .moodhero .idx .rg .nw{animation:none!important;transform:none!important;stroke-dashoffset:0!important;opacity:1!important}
-  html.fx .fin-line:not(.dash){stroke-dasharray:none}
+  html.fx-lively .fin-svg .fin-bar,html.fx-lively .fin-line,html.fx-lively .fl-bars rect,html.fx-lively .sb-fill,html.fx-lively .contrib .bar2 i,html.fx-lively .sh-breadth i,html.fx-lively .market-breadth .rangebar i,html.fx-lively .moodhero .idx .rg .nw{animation:none!important;transform:none!important;stroke-dashoffset:0!important;opacity:1!important}
+  html.fx-lively .fin-line:not(.dash){stroke-dasharray:none}
 }
 @media print{.fin-line{stroke-dashoffset:0!important}}
+
+/* ---- Chart look (12 Nov 2026): calmer, richer, same data. Tokens only. A hairline grid, a faint plot surface, thin round-capped lines, a current-value dot with a soft ring, tabular axis labels, rounded data ends. ---- */
+.cf .chart-plot:not(.sub){background:var(--chart-plot);border-radius:var(--rad-md)}
+.chart-plot svg line[stroke="var(--line)"],.chart-plot svg .dc-grid{stroke:var(--chart-grid)}
+.cf .c-line,.cchart .c-line{stroke-linecap:round;stroke-linejoin:round;stroke-width:var(--chart-line-w)}
+.pc-plot.pair .c-line{stroke-width:1.5px}
+.c-ylab,.c-xaxis span,.c-xcur,.c-ycur,.dc-t{font-variant-numeric:tabular-nums}
+.c-ylab,.c-xaxis span{color:var(--ink-3)}
+.dc-line{stroke-width:1.75px}
+.dc-dot{stroke:var(--chart-dot-edge);stroke-width:2px;paint-order:stroke}
+.c-now{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:currentColor;box-shadow:0 0 0 2px var(--chart-dot-edge),0 0 0 6px var(--chart-ring);pointer-events:none;z-index:1}
+.sb-fill.pos,.contrib .bar2 i.pos,.sh-breadth i,.market-breadth .rangebar i{border-radius:0 var(--bar-r) var(--bar-r) 0}
+.sb-fill.neg,.contrib .bar2 i.neg{border-radius:var(--bar-r) 0 0 var(--bar-r)}
+.cf-chip{border-radius:var(--rad-md)}
+@media print{.c-now{box-shadow:none}.cf .chart-plot:not(.sub){background:none}}
