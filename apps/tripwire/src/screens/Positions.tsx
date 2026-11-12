@@ -9,7 +9,7 @@ import { archivePaper } from '../store.ts';
 import { ENGINES } from '../quant.ts';
 import { figuresOf } from '../recordview.ts';
 import type { Outcome } from '../ledger.ts';
-import { buildLedgerView, bookClosedCount, bookClosedWord, resolvedObservationCount, partitionWord } from '../ledgerview.ts';
+import { splitOfRow, buildLedgerView, bookClosedCount, bookClosedWord, resolvedObservationCount, partitionWord } from '../ledgerview.ts';
 import { throughOf } from '../recordview.ts';
 import { ladderInputFor } from '../ladder.ts';
 import { byAttention, attention, nearWord, type AttnInput } from '../bookview.ts';
@@ -93,7 +93,7 @@ export function Positions() {
 
     <section className="bk-strip" aria-label="The paper book now" data-strip>
       <SlotGauge used={auto.slots} max={auto.cfg.maxOpen} />
-      <div className="bk-fig bk-pnl"><span className="k">Open P&L (paper)</span><b className={`num amt ${tone(unreal)}`}><Tick v={unreal}>{money(unreal)}</Tick></b><span className={`bk-note num ${tone(openR)}`}>{openR == null ? '—' : `${Rw(openR)} summed`}</span></div>
+      <div className="bk-fig bk-pnl"><span className="k">Open-trade P&L, includes booked partials</span><b className={`num amt ${tone(unreal)}`}><Tick v={unreal}>{money(unreal)}</Tick></b><span className={`bk-note num ${tone(openR)}`}>{openR == null ? '—' : `${Rw(openR)} summed`}</span></div>
       <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b><span className="bk-note">{waiting ? `${waiting} enter${waiting === 1 ? 's' : ''} at the next open` : `${active.filter((x) => x.owner === 'you').length} yours`}</span></div>
       <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
         : <><b className="num" data-book-closed>{lv ? bookClosedCount(lv) : '—'}</b><span className="bk-note">{lv ? `${resolvedObservationCount(lv)} resolved observations are in the Record, a different count` : 'record unavailable'}</span></>}</div>
@@ -121,7 +121,7 @@ export function Positions() {
     {(dups + retired > 0 || hidden > 0) && <p className="small mute">{dups + retired > 0 ? `${dups + retired} older ${dups + retired === 1 ? 'entry of yours is' : 'entries of yours are'} not shown or counted: ${[dups ? `${dups} duplicate${dups === 1 ? '' : 's'} of the engine book` : '', retired ? `${retired} from a retired engine` : ''].filter(Boolean).join(', ')}. ` : ''}{hidden ? `${hidden} hidden by you. ` : ''}They stay in your backup.</p>}
 
     <details className="more bk-fold" data-attr-fold><summary>Where the P&L came from · by engine and position</summary>
-      <PnlAttribution rows={auto.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r }))} nameOf={engineName} /></details>
+      <PnlAttribution rows={auto.rows.map((r) => ({ id: r.p.id, sym: r.p.sym, engine: r.p.engine, status: r.v.status, pnl: r.v.pnl, r: r.v.r, split: splitOfRow(r, auto.cost) }))} nameOf={engineName} /></details>
     <details className="more bk-fold"><summary>Book log · {log.length} entr{log.length === 1 ? 'y' : 'ies'}</summary>
       {log.length ? <div className="list">{shownLog.map((e) => <div key={e.kind + e.id} className="li" style={{ alignItems: 'flex-start' }}>
         <span className={`tag ${e.kind === 'closed' ? 'lime' : e.kind === 'refused' || e.kind === 'skipped' ? 'peach' : ''}`} style={{ flex: 'none', minWidth: 60, justifyContent: 'center' }}>{dayWord(e.day).replace(/^\w+ /, '')}</span>

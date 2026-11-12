@@ -79,7 +79,7 @@ export function Live() {
         <h2>Your paper portfolio.</h2><span className="k">Open position value</span>
         <div className="hero-value num amt">{ls.length ? inr0(tot.value) : '—'}</div>
         <span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span>
-        <dl><div><dt>Open P&L</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
+        <dl><div><dt>Open-trade P&L, includes booked partials</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
           <div><dt>{live ? 'Today' : 'Last session'}</dt><dd className={`amt ${tone(tot.dayPnl)}`}>{money(tot.dayPnl)}</dd></div>
           <div><dt>Positions</dt><dd>{tot.open} open · {waiting} waiting</dd></div></dl>
       </section>

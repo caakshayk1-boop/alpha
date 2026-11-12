@@ -326,7 +326,8 @@ ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says 
 await ctx.clock.setFixedTime(new Date(replayNow * 1000)); now0 = replayNow;
 await pg.getByRole('tab', { name: 'Positions' }).click(); await pg.waitForSelector('.pcard[data-pos]');   // 11 Nov 2026: Mine and Auto are one Positions board; your trade is labelled You
 await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
-ok(/Open P&L \(paper\)/i.test(await text()), 'tracker shows paper P&L');
+/* 12 Nov 2026 (Tripwire 2.0, 1.2): the interim honest label for the open figure, which includes booked partials */
+ok(/Open-trade P&L, includes booked partials/i.test(await text()), 'tracker shows paper P&L');
 // 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
 ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('[data-strip] .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('[data-strip]').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
 ok(/^you$/i.test((await pg.locator('.pcard .own-chip').first().textContent()).trim()), 'the trade you took is labelled as yours on the board (11 Nov 2026)');

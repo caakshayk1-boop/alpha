@@ -36,3 +36,26 @@ test('a finished position is wholly realised; R-only and unmarked positions are 
   const m = splitOpen({ qty0: 100, fill: 100, stop: 90, qtyLeft: 50, booked: 1000, mark: null, costPct: 0.25 });
   assert.equal(m.unrealised, null); assert.equal(m.total, null); assert.ok(m.realised > 0, 'the booked part is known even when the mark is not');
 });
+
+// ---- the attribution reducer (the defect: an open position's whole pnl, booked partial profit included, was filed under "unrealised") ----
+import { attribute } from '../src/attribution.ts';
+test('the reducer puts booked partial profit in REALISED and only the remaining mark in UNREALISED; engine and position totals reconcile to the paisa', () => {
+  const half = splitOpen({ qty0: 100, fill: 100, stop: 90, qtyLeft: 50, booked: 1000, mark: 110, costPct: 0.25 });
+  const c = splitOpen({ qty0: 100, fill: 100, stop: 90, qtyLeft: 100, booked: 0, mark: 98.9, costPct: 0.25 });
+  const rows = [
+    { id: 'a', sym: 'AAA', engine: 'QLT', status: 'open', pnl: half.total, r: half.r, split: half },
+    { id: 'b', sym: 'BBB', engine: 'QLT', status: 'closed', pnl: -300, r: -0.3, split: splitClosed(-300, 1000) },
+    { id: 'c', sym: 'CCC', engine: 'MOM', status: 'open', pnl: c.total, r: -0.1, split: c },
+  ];
+  const a = attribute(rows, (e) => e);
+  assert.equal(Math.round(a.realised * 100), Math.round((half.realised - 300) * 100), 'AAA booked half is realised');
+  assert.ok(a.realised > 600, 'not hidden in the open bucket'); assert.equal(a.splitKnown, true);
+  assert.equal(Math.round((a.realised + a.unrealised) * 100), Math.round(a.total * 100)); assert.ok(a.engineReconciles && a.positionsReconcile);
+  assert.equal(a.byEngine.reduce((s, e) => s + Math.round(e.total * 100), 0), Math.round(a.total * 100), 'engine totals = sum of position totals');
+  assert.equal(Math.round(a.openTrade * 100), Math.round((half.total! + c.total!) * 100), 'open-trade = booked partials + remaining marks of the open positions');
+  assert.notEqual(a.openTrade, a.unrealised, 'open-trade P&L is not unrealised P&L');
+});
+test('without a split the open figure is open-trade P&L and the reducer says it cannot call it unrealised', () => {
+  const a = attribute([{ id: 'a', sym: 'AAA', engine: 'QLT', status: 'open', pnl: 1500, r: 1.5 }], (e) => e);
+  assert.equal(a.splitKnown, false); assert.equal(a.total, 1500); assert.equal(a.openTrade, 1500);
+});
