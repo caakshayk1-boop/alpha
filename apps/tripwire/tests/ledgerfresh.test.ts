@@ -35,3 +35,12 @@ test('a laptop built from an old snapshot may skip it (TRIPWIRE_ALLOW_STALE=1); 
 test('a missing ledger file is reported as skipped, not as a pass', () => {
   const r = checkLedgerFile(join(tmpdir(), 'no-such-ledger.json'), NOW, {}); assert.equal(r.errors.length, 0); assert.match(r.warnings[0], /skipped/);
 });
+
+test('skip_ledger_check skips only the ledger rules and says so; absent or other values keep them on', () => {
+  const stale = write(base('2026-11-05'));
+  assert.ok(checkLedgerFile(stale, NOW, {}).errors.length > 0, 'off by default');
+  assert.ok(checkLedgerFile(stale, NOW, { TRIPWIRE_SKIP_LEDGER_CHECK: '0' }).errors.length > 0);
+  const r = checkLedgerFile(stale, NOW, { TRIPWIRE_SKIP_LEDGER_CHECK: '1' });
+  assert.deepEqual(r.errors, []);
+  assert.match(r.warnings.join(' '), /SKIPPED/);
+});
