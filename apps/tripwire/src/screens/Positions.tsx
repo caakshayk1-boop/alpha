@@ -77,7 +77,11 @@ export function Positions() {
   const lv = led && auto.plan ? buildLedgerView(led, auto.plan, myRows) : null;   // 12 Nov 2026: every count on this page reads this one view (ledgerview.ts)
   const snap = snapshotOf(items.map((x) => ({ p: x.r.p, v: x.r.v, dayPnl: x.r.dayPnl, markT: x.r.markT, owner: x.owner })), scope === 'mine' ? mine.cost : auto.cost, led?.updated ?? null);   // ONE snapshot: the strip, the table and the moved row read it
   const through = led && scope !== 'mine' ? throughOf(led, Date.now()) : null;
-  const priceWord = auto.priceWord ?? mine.priceWord; const session = auto.rows.length ? auto.session : mine.session; const intra = auto.rows.length ? auto.intra : mine.intra; const bars = auto.rows.length ? auto.bars : mine.bars;
+  /* 12 Nov 2026 (Codex on #62): the quote status and session follow the SELECTED scope, never the engine book by default. "My paper plans" reads its own quotes; "Both" shows the least fresh of the two words. */
+  const WORD_ORDER = ['Live', 'Delayed', 'Last traded', 'Unavailable']; const worse = (a: string | null | undefined, b: string | null | undefined) => (a == null ? b ?? null : b == null ? a : WORD_ORDER.indexOf(b) > WORD_ORDER.indexOf(a) ? b : a);
+  const fromMine = scope === 'mine' || !auto.rows.length;
+  const priceWord = scope === 'mine' ? mine.priceWord : scope === 'engine' ? auto.priceWord : (auto.rows.length && myRows.length ? worse(auto.priceWord, mine.priceWord) : auto.priceWord ?? mine.priceWord);
+  const session = fromMine ? mine.session : auto.session; const intra = fromMine ? mine.intra : auto.intra; const bars = fromMine ? mine.bars : auto.bars;
   const live = session.phase === 'open';
   const engines = ENGINES.filter((e) => !e.retired && active.some((x) => x.r.p.engine === e.id));
   const shown = active.filter((x) => f === 'all' ? true : f === 'stop' ? near.get(x.r.p.id) === 'stop' : f === 'target' ? near.get(x.r.p.id) === 'target' : f === 'you' ? x.owner === 'you' : x.r.p.engine === f);

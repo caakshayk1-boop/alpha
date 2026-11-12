@@ -151,6 +151,8 @@ export interface Coverage {
   open: number; measured: number; missing: number; state: CoverageState;
   /** open positions whose daily history is missing or incomplete: their quote is real, their exit has not been verified */
   historyIncomplete: number;
+  /** closed positions with no rupee figure (R only): the totals leave them out, so the totals are a partial subtotal and this says so (12 Nov 2026, Codex on #62) */
+  closedUnpriced: number;
   /** the oldest and the newest exchange print among live marks; positions marked at a daily close have no print time */
   oldestPrint: number | null; newestPrint: number | null; live: number; atClose: number;
 }
@@ -171,13 +173,13 @@ export function snapshotOf(rows: readonly SnapRow[], costPct: number, ledgerUpda
   const open = positions.filter((x) => x.state === 'open');
   const measured = open.filter((x) => x.split?.total != null); const prints = open.filter((x) => x.markKind === 'live' && x.markT != null).map((x) => x.markT!);
   const coverage: Coverage = { open: open.length, measured: measured.length, missing: open.length - measured.length, state: !open.length ? 'none' : !measured.length ? 'unavailable' : measured.length === open.length ? 'complete' : 'partial',
-    historyIncomplete: open.filter((x) => x.incompleteHistory).length, oldestPrint: prints.length ? Math.min(...prints) : null, newestPrint: prints.length ? Math.max(...prints) : null, live: open.filter((x) => x.markKind === 'live').length, atClose: open.filter((x) => x.markKind === 'close').length };
+    historyIncomplete: open.filter((x) => x.incompleteHistory).length, closedUnpriced: positions.filter((x) => x.state === 'closed' && !x.split).length, oldestPrint: prints.length ? Math.min(...prints) : null, newestPrint: prints.length ? Math.max(...prints) : null, live: open.filter((x) => x.markKind === 'live').length, atClose: open.filter((x) => x.markKind === 'close').length };
   const withSplit = positions.filter((x) => x.split); const known = (f: (s: Split) => number | null) => { const v = withSplit.map((x) => f(x.split!)).filter((n): n is number => n != null && Number.isFinite(n)); return v.length ? v.reduce((a, n) => a + paise(n), 0) / 100 : null; };
   const unavailable = open.length > 0 && !measured.length; const realised = withSplit.length ? known((s) => (Number.isFinite(s.realised) ? s.realised : null)) : null;
   const unrealised = unavailable ? null : known((s) => s.unrealised); const openTrade = unavailable ? null : known((s) => s.openTrade);
   const total = realised == null && unrealised == null ? null : unavailable ? null : (paise(realised ?? 0) + paise(unrealised ?? 0)) / 100;
   const days = positions.filter((x) => x.dayPnl != null).map((x) => x.dayPnl!); const day = days.length ? days.reduce((a, n) => a + paise(n), 0) / 100 : null;
-  const totals: Totals = { realised, unrealised, total, openTrade, day, partial: coverage.state === 'partial', unavailable };
+  const totals: Totals = { realised, unrealised, total, openTrade, day, partial: coverage.state === 'partial' || coverage.closedUnpriced > 0, unavailable };
   const priced = positions.filter((x) => x.split?.total != null);
   const gainers = priced.filter((x) => x.split!.total! > 0).sort((a, b) => b.split!.total! - a.split!.total! || a.sym.localeCompare(b.sym)).slice(0, 3);
   const losers = priced.filter((x) => x.split!.total! < 0).sort((a, b) => a.split!.total! - b.split!.total! || a.sym.localeCompare(b.sym)).slice(0, 3);
@@ -186,13 +188,14 @@ export function snapshotOf(rows: readonly SnapRow[], costPct: number, ledgerUpda
   if (total != null && realised != null && (unrealised != null || !open.length) && paise(total) !== paise(realised) + paise(unrealised ?? 0)) failed.push('realised + unrealised is not the total');
   const rowSum = priced.reduce((a, x) => a + paise(x.split!.total!), 0); if (total != null && !totals.partial && rowSum !== paise(total)) failed.push('the position totals do not add up to the total');
   const id = `snap-${fnv([ledgerUpdated ?? '', costPct, ...positions.map((x) => `${x.id}|${x.state}|${x.mark ?? ''}|${x.split?.total ?? ''}|${x.dayPnl ?? ''}`)].join(';'))}`;
-  return { id, ledgerUpdated, positions, totals, coverage, gainers, losers, largest: top && sum > 0 ? { sym: top.sym, pct: Math.round((top.value! / sum) * 1000) / 10 } : null, exceptions: positions.filter((x) => x.state === 'open' && (x.mark == null || x.split?.total == null || x.incompleteHistory)), invariants: { ok: !failed.length, failed } };
+  return { id, ledgerUpdated, positions, totals, coverage, gainers, losers, largest: top && sum > 0 ? { sym: top.sym, pct: Math.round((top.value! / sum) * 1000) / 10 } : null, exceptions: positions.filter((x) => (x.state === 'open' && (x.mark == null || x.split?.total == null || x.incompleteHistory)) || (x.state === 'closed' && !x.split)), invariants: { ok: !failed.length, failed } };
 }
 /* Words for the two statuses. Quote freshness and exit verification are different questions and are never one "Live". */
 export function coverageWords(c: Coverage, lastConfirmed: string | null): { marks: string; exit: string; exitComplete: boolean } {
   const marks = c.state === 'none' ? 'No open positions to mark' : c.state === 'unavailable' ? 'Marks unavailable: no open position has a price, so no total is shown' : `Marks: ${c.measured} of ${c.open} open position${c.open === 1 ? '' : 's'} measured${c.missing ? `; the figures below are a partial subtotal of those ${c.measured}` : ''}`;
+  const marksAll = c.closedUnpriced > 0 ? `${marks}${c.state === 'none' ? '' : '. '}${c.closedUnpriced} closed position${c.closedUnpriced === 1 ? ' has' : 's have'} an R result but no rupee figure, so the totals leave ${c.closedUnpriced === 1 ? 'it' : 'them'} out` : marks;
   const complete = c.historyIncomplete === 0;
-  return { marks, exitComplete: complete, exit: complete ? `Exit verification: complete${lastConfirmed ? ` through ${lastConfirmed}` : ''}` : `Exit verification: incomplete · daily history is missing or incomplete for ${c.historyIncomplete} of ${c.open} open position${c.open === 1 ? '' : 's'}${lastConfirmed ? `; last confirmed history ${lastConfirmed}` : ''}` };
+  return { marks: marksAll, exitComplete: complete, exit: complete ? `Exit verification: complete${lastConfirmed ? ` through ${lastConfirmed}` : ''}` : `Exit verification: incomplete · daily history is missing or incomplete for ${c.historyIncomplete} of ${c.open} open position${c.open === 1 ? '' : 's'}${lastConfirmed ? `; last confirmed history ${lastConfirmed}` : ''}` };
 }
 /* ---- Bar status (Tripwire 2.0, 2.3) ----------------------------------------------------------------------------------------------------------------------------------------------------
  *  A daily bar is CONFIRMED (its session is over and the exchange has closed it), FORMING (its session is still on, or the provider marked it so), STALE (an old confirmed bar: a newer session has finished

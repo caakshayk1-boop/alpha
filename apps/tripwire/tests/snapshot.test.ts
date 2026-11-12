@@ -59,3 +59,14 @@ test('the largest weight is by value of the shares still held', () => {
   assert.equal(snapshotOf([done('d', 'DDD', 1)], 0.25).largest, null);
   assert.ok(splitClosed(5, 100).total === 5);
 });
+
+/* 12 Nov 2026 (Codex on #62): a closed position with an R result but no rupee figure is left out of the totals, so the totals must say they are a partial subtotal
+   (coverage used to count only open positions, so "partial" stayed false and Total P&L looked complete). */
+test('a closed position with no rupee P&L makes the totals a partial subtotal and is listed as an exception', () => {
+  const noRupee: SnapRow = { p: { id: 'z', sym: 'ZZZ', engine: 'QLT', qty: 100, stop: 90 }, v: { status: 'closed', entry: 100, mark: 100, markKind: 'close', pnl: null, r: 1.2, sessions: 5 } } as unknown as SnapRow;
+  const s = snapshotOf([...BOOK, noRupee], 0.25);
+  assert.equal(s.coverage.closedUnpriced, 1); assert.equal(s.totals.partial, true, 'the total leaves one closed position out');
+  assert.ok(s.exceptions.some((x) => x.sym === 'ZZZ'), 'listed as an exception');
+  assert.match(coverageWords(s.coverage, null).marks, /1 closed position has an R result but no rupee figure/);
+  assert.equal(snapshotOf(BOOK, 0.25).coverage.closedUnpriced, 0); assert.equal(snapshotOf(BOOK, 0.25).totals.partial, false, 'a fully priced book is not flagged');
+});
