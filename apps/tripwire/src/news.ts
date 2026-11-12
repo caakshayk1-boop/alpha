@@ -13,7 +13,7 @@ import { mergePools, newUpdates, todayList, type Lists, type NewsEvent } from '.
 import { companyQuery } from '../news/plan.js';
 import { useScreen } from './data.ts';
 
-export const companyQ = (name: string): string => companyQuery(name, 7);
+export const companyQ = (name: string): string => companyQuery(name, 2);
 export interface SourceStatus { id: string; label: string; status: string; queries?: number; ok?: number; failed?: number; skipped?: number; httpStatus?: number | null; error?: string | null; breaker?: { failures: number; openUntil: number | null }; breakerState?: string }
 export interface NewsSnapshot {
   ok: true; schema: string; snapshotVersion: number; pipelineVersion: string; rankingVersion: string; scheduledAt: string | null; startedAt: string | null; completedAt: string | null; checkedAt: string | null; lastSuccessfulAt: string | null; nextScheduledAt: string | null; cadenceMin: number;

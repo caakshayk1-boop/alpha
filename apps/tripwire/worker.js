@@ -394,7 +394,7 @@ async function newsFile(which, ctx, force, minVersion = 0) {
     return res;
   } catch { return json({ ok: false, reason: 'upstream', error: 'the news snapshot could not be read' }, 200, { 'cache-control': 'no-store' }); }
 }
-/** The company a live query is about: the quoted phrase of `"Name" when:7d`. A query with no quoted name is a market query: no company, only India-wide events pass. */
+/** The company a live query is about: the quoted phrase of `"Name" when:2d`. A query with no quoted name is a market query: no company, only India-wide events pass. */
 const queryEntity = (q, sym) => { const m = q.match(/"([^"]{2,80})"/); return m ? [{ sym: sym || null, name: m[1], aliases: ALIASES[sym] ?? [] }] : []; };
 const QOK = /^[\p{L}\p{N} .,&'"()\-:+%]{2,110}$/u;
 async function news(url, ctx, request) {
@@ -416,7 +416,7 @@ async function news(url, ctx, request) {
 /** The live query itself: Google News, then Bing News. Concurrent identical queries share one run. */
 async function newsLive(q, sym, key, cache, ctx, H1) {
   try {
-    const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 7); const tried = []; let retryAfter = 0;
+    const days = Number(q.match(/when:(\d+)d/)?.[1] ?? 2); const tried = []; let retryAfter = 0;
     const order = [FEEDS.google, FEEDS.bing];                                   // Google News first; Bing News with the same words when Google refuses or has nothing
     for (const feed of order) {
       try {

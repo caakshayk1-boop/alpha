@@ -18,9 +18,9 @@ test('Following is the explicit follows only: an empty follow list has no events
   assert.equal(pool.filter((e) => inTab(e, 'following', none)).length, 0); assert.equal(todayList(pool, 'following', none, NOW).length, 0);
   assert.deepEqual(tabCounts(pool, none, NOW), { all: 3, market: 1, following: 0, paper: 2 });
 });
-test('Today: only events with a known recent date, an event type, and inside the window (72 h company, 48 h India-wide); never future-dated', () => {
+test('Today: only events with a known recent date, an event type, and inside the window (12 Nov 2026: 48 h for a company event and for an India-wide one); never future-dated', () => {
   assert.equal(fitForToday(ev('a'), NOW), true); assert.equal(fitForToday(ev('a', { publishedAt: null }), NOW), false, 'unknown time is not "now"');
-  assert.equal(fitForToday(ev('a', { sym: 'TCS', publishedAt: h(71) }), NOW), true); assert.equal(fitForToday(ev('a', { sym: 'TCS', publishedAt: h(73) }), NOW), false);
+  assert.equal(fitForToday(ev('a', { sym: 'TCS', publishedAt: h(47) }), NOW), true); assert.equal(fitForToday(ev('a', { sym: 'TCS', publishedAt: h(49) }), NOW), false);
   assert.equal(fitForToday(ev('a', { publishedAt: h(47) }), NOW), true); assert.equal(fitForToday(ev('a', { publishedAt: h(49) }), NOW), false);
   assert.equal(fitForToday(ev('a', { publishedAt: new Date(NOW + 3 * 3600e3).toISOString() }), NOW), false); assert.equal(fitForToday(ev('a', { todayEligible: false }), NOW), false);
 });

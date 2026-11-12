@@ -9,6 +9,7 @@ import { FilterSheet } from '../components/index.ts';
 import { PageBar } from './common.tsx';
 import { GlobalCues } from './GlobalCues.tsx';
 import { NewsHealthLine, NewsCheckTimes, NewsMethod, NewsRow, RefreshControl, UpdateOffer, EmptyTab, useNewsPreference } from './News.tsx';
+import { MAX_AGE_DAYS } from '../../news/config.js';
 import { REJECT } from '../../news/rules.js';
 import { EVENT_TYPES } from '../../news/events.js';
 
@@ -17,9 +18,8 @@ export function usePaperSyms(): string[] {
   const s = useAppState(); const auto = useAutoBook(false);
   return useMemo(() => [...new Set([...auto.rows.filter((r) => r.v.status === 'open' || r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym), ...s.paper.filter((p) => !p.closedByUser).map((p) => p.sym)])], [auto.rows, s.paper]);
 }
-const DAYS = [{ d: 2, l: 'Last 2 days' }, { d: 7, l: 'Last 7 days' }, { d: 14, l: 'Last 14 days' }];
 const PAGE = 40;
-const NO_FILTER: ArchiveFilter = { tab: 'all', types: [], days: 7, includeOther: false, covered: false, text: '', scope: 'all' };
+const NO_FILTER: ArchiveFilter = { tab: 'all', types: [], days: MAX_AGE_DAYS, includeOther: false, covered: false, text: '', scope: 'all' };
 const SCOPES: { id: NewsScope; l: string }[] = [{ id: 'all', l: 'All' }, { id: 'india', l: 'India' }, { id: 'global', l: 'Global' }];   // 12 Nov 2026
 const GROUP_EMPTY: Record<NewsGroupId, string> = { global: '', yours: 'Nothing for the names you follow under these filters.', paper: 'Nothing for the paper book under these filters.', market: 'No India-wide event under these filters.', other: '' };
 
@@ -35,7 +35,7 @@ export function NewsPage() {
   const types = useMemo(() => EVENT_TYPES.filter((t: string) => t !== 'Update' && b.pool.some((e) => e.eventType === t)), [b.pool]);
   const set = (p: Partial<ArchiveFilter>) => { setF({ ...f, ...p }); setShown(PAGE); };
   const [summaries, setSummaries] = useNewsPreference('summaries');
-  const changed = [f.types.length > 0, f.days !== 7, (f.scope ?? 'all') !== 'all', f.includeOther, f.covered, f.text.trim() !== ''].filter(Boolean).length;
+  const changed = [f.types.length > 0, (f.scope ?? 'all') !== 'all', f.includeOther, f.covered, f.text.trim() !== ''].filter(Boolean).length;
   const snap = b.snapshot;
   let budget = shown;   // "Show more" reveals the grouped list in reading order: the first PAGE rows across the sections, then the next
   return <div className="nw nwp">
@@ -64,7 +64,7 @@ export function NewsPage() {
         <label>Category <select value={typeFilterValue(f.types)} onChange={(e) => set({ types: typesFromValue(e.target.value) })}><option value="">All categories</option>{NEWS_CATEGORIES.filter((c) => c.id !== 'other').map((c) => { const have = c.types.filter((t) => types.includes(t)); if (!have.length) return null;
           return <optgroup key={c.id} label={c.label}>{have.length > 1 && <option value={`cat:${c.id}`}>All of {c.label.toLowerCase()}</option>}{have.map((t: string) => <option key={t} value={t}>{t}</option>)}</optgroup>; })}</select></label>
         <label>Scope <select value={f.scope ?? 'all'} onChange={(e) => set({ scope: e.target.value as NewsScope })}>{SCOPES.map((s) => <option key={s.id} value={s.id}>{s.l}</option>)}</select></label>
-        <label>Period <select value={f.days} onChange={(e) => set({ days: Number(e.target.value) })}>{DAYS.map((d) => <option key={d.d} value={d.d}>{d.l}</option>)}</select></label>
+        <p className="small mute nwp-window">Last {MAX_AGE_DAYS} days. Older stories are not kept.</p>
         <label className="nwp-check"><input type="checkbox" checked={f.includeOther} onChange={(e) => set({ includeOther: e.target.checked })} /> Include other updates</label>
         <label className="nwp-check"><input type="checkbox" checked={f.covered} onChange={(e) => set({ covered: e.target.checked })} /> Every covered name</label>
         <label className="nwp-check"><input type="checkbox" checked={summaries} onChange={(e) => setSummaries(e.target.checked)} /> Show publisher summaries</label>

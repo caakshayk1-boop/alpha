@@ -10,6 +10,8 @@ export const REJECT = {
   market_recap: 'A market preview or wrap (Gift Nifty, closing bell, live blog).', promotional: 'Promotional or tip-sheet language.', international: 'About another country\'s market, with nothing Indian in it.',
   no_entity: 'Names no company this app covers and carries no India-wide event.', not_event: 'About a covered company or the market, but reports no event (no results, deal, order, rating, payout, regulator, people or policy item).', duplicate_url: 'The same link, already counted.',
   // 12 Nov 2026 (news-pipe-2): the global-cue lane's own refusals.
+  // 12 Nov 2026 (news-pipe-3): a promotional rewrite of a results line, from an aggregator, that is not the only report of a results event.
+  promotional_rewrite: 'An aggregator\'s promotional rewrite of a results line ("reports very positive quarterly financial performance amid strong market returns"): no figure, no information, and not a results event.',
   not_a_cue: 'A headline from the global searches that matches none of the cue rules (so there is no stated connection to show).', global_source: 'A global headline from an aggregator or an unknown publisher: this lane takes official, wire, major or known outlets only.', global_window: 'A global headline older than 36 hours, or with no publication time.',
 };
 
@@ -21,6 +23,15 @@ const RECAP = /\bgift nifty|\bnifty (today|outlook|prediction|forecast|view)|\bs
 const RECAP_GLOBAL = /\bgift nifty|\bmarket (wrap|live|preview|outlook)|stock market today|\bclosing bell|\bopening bell|\blive updates?|\blive blog|\btop (gainers|losers)|\bwhat to expect (from|in|on)\b|\bweek ahead\b|\bpre-?market\b|\bmarket mood\b/i;
 const PROMO = /\b(multibagger|penny stocks?|jackpot|rocket(s|ed)?\b|skyrockets?|zooms?\b|best stock to buy|you must|don'?t miss|once in a lifetime|wealth creator|doubles? your|shocking|bumper|sensational|blockbuster (stock|returns))\b/i;
 const GLOBAL = /\b(wall street|dow jones|dow\b|s&p 500|nasdaq|ftse|dax\b|cac 40|nikkei|hang seng|shanghai composite|kospi|asx 200|euro stoxx|european (stocks|shares|markets?)|us stocks|u\.s\. stocks|asian (markets?|shares|stocks)|bank of england|ecb\b|bank of japan|boj\b|bitcoin|ethereum|crypto(currency)?)\b/i;
+/** 12 Nov 2026 (news-pipe-3). Low-information promotional rewrites: "reports very positive quarterly financial performance amid strong market returns". NARROW on purpose: it needs the praise phrase
+ *  AND no figure anywhere in the headline, and the pipeline applies it only to an aggregator-tier outlet. An official, wire or major outlet is never judged by it. */
+const PROMO_REWRITE = [
+  /\b(reports?|posts?|delivers?|records?|announces?|clocks?|shows?)\s+(a\s+)?(very\s+|highly\s+|extremely\s+|exceptionally\s+|remarkably\s+)?(positive|strong|stellar|robust|impressive|outstanding|stupendous|healthy|solid)\s+(quarterly\s+|annual\s+|half[- ]yearly\s+|yearly\s+)?(financial\s+)?(performance|results|numbers|showing)\b/i,
+  /\bamid\s+(very\s+)?(strong|robust|stellar|impressive|solid|healthy|positive)\s+(market\s+)?(returns|momentum|performance|gains|investor\s+(interest|confidence|sentiment))\b/i,
+  /\bvery\s+(positive|strong)\b[^.]{0,40}\b(quarterly|financial)\s+(performance|results)\b/i,
+];
+/** True for a promotional rewrite: the praise pattern with no figure in the headline (a headline that states a number is carrying information). */
+export const isPromoRewrite = (t) => !/\d/.test(String(t ?? '')) && PROMO_REWRITE.some((r) => r.test(String(t ?? '')));
 export const INDIA = /\b(india|indian|sensex|nifty|bse|nse|rbi|sebi|rupee|dalal street|mumbai|union budget|gst|lok sabha|niti aayog|finance ministry|crisil|icra|fii|fpi|dii|mca|pib|ministry of|lakh crore|crore)\b|₹|\brs\.?\s?\d/i;
 const HINGLISH = /\b(ne|ke|ki|ka|ko|par|pehle|baad|tezi|giravat|hai|hain|mein|kya|aaj|maari|kharidari|bechne|nivesh|dhamaka|shandar|kamaal|jabardast|ghoshna)\b/gi;
 /** The India-wide drivers a market-scope headline needs to be an event. Company headlines need an event type instead. */
