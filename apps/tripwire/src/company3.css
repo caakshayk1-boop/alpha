@@ -1,0 +1,60 @@
+/* 12 Nov 2026: the company one-pager. The trend is in the hero, the chart comes first, then "At a glance" and the decision in two lines; every other topic is a closed disclosure.
+   Tokens only. Loaded last (app.css), so it wins over refresh.css and research2.css at equal specificity. */
+
+/* ---- hero: the trend chip beside the size pill, costing no extra row ---- */
+.c-head .co-hero{flex-wrap:nowrap;gap:var(--sp-2)}
+.c-head .co-px{min-width:0;flex:1 1 auto}
+.c-head .c-pills{flex:none;flex-wrap:nowrap;align-items:center;justify-content:flex-end;gap:var(--sp-1);max-width:62%}
+.c-head .hero-trend{display:inline-flex;align-items:center;gap:0;padding:4px 10px;min-height:var(--hit);box-sizing:border-box;white-space:nowrap}
+.c-head .hero-trend .vk{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.c-head .hero-trend .vv{font-size:var(--fs-data);overflow:visible}
+.c-head .hero-trend:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.c-head .hero-trend[data-trend-state=unavailable] .vv{color:var(--ink-2);font-weight:550}
+@media(max-width:480px){
+  .c-head .c-pills{flex-direction:column;align-items:flex-end;gap:var(--sp-1);max-width:none}
+  .c-head .hero-trend{min-height:0;padding:3px 10px}
+}
+@media(min-width:481px){.c-head .hero-trend .vk{position:static;width:auto;height:auto;clip-path:none;margin-right:var(--sp-2)}}
+
+/* ---- layout: chart, chips (phone), glance, decision ---- */
+.co-top{grid-template-columns:minmax(0,1fr);grid-template-areas:"first" "chart" "chips" "glance" "dec"}
+.co-top:not(.has-first){grid-template-areas:"chart" "chips" "glance" "dec"}
+.co-chips{grid-area:chips}.co-chips .co-verdict{margin:0}.co-glance{grid-area:glance}
+.co-top .co-glance,.co-top .decision{margin:0}
+@media(min-width:1000px){
+  .co-top,.co-top:not(.has-first){grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-areas:"first first" "chart glance" "chart dec";align-items:start}
+  .co-top:not(.has-first){grid-template-areas:"chart glance" "chart dec"}
+  .co-top .decision{height:auto}
+}
+
+/* ---- At a glance ---- */
+.co-glance{padding:var(--sp-3) var(--sp-4)}
+.co-glance .sec{margin:0 0 var(--sp-2)}
+.gl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2) var(--sp-4);margin:0}
+.gl-cell{min-width:0;padding:var(--sp-1) 0;border-top:1px solid var(--line)}
+.gl-cell:nth-child(-n+2){border-top:0}
+.gl-k{font-size:var(--fs-label);line-height:1.3;color:var(--ink-3)}
+.gl-v{margin:0;font-size:var(--fs-body);line-height:1.3;font-weight:650;color:var(--ink);overflow-wrap:anywhere}
+.gl-cell.up .gl-v{color:var(--up)}.gl-cell.down .gl-v{color:var(--down)}.gl-cell.warn .gl-v{color:var(--amber)}
+.gl-s{margin:0;font-size:var(--fs-label);line-height:1.35;color:var(--ink-3);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(min-width:700px) and (max-width:999px){.gl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.gl-cell:nth-child(-n+4){border-top:0}}
+
+/* ---- decision card: two lines and an expand ---- */
+.decision .dec-line{display:flex;gap:var(--sp-2);align-items:baseline;margin:var(--sp-2) 0 0;min-width:0}
+.decision .dec-line .dk{flex:none;min-width:4.5rem;padding:0}
+.decision .dec-line .dec-t{min-width:0;font-size:var(--fs-data);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.decision .dec-line.warn .dec-t{color:var(--amber)}
+.decision .nextstep{margin-top:var(--sp-3);padding-top:var(--sp-2)}
+.decision .nextstep .btn{min-height:var(--hit)}
+.decision .dec-more{margin-top:var(--sp-2)}
+.decision [data-dec-more][aria-expanded=true] .chev{display:inline-block;transform:rotate(180deg)}
+
+/* ---- the Overview's disclosures: a tight stack, each one line ---- */
+.co-tabs~[role=tabpanel]>details.fold,.co-tabs~[role=tabpanel]>details.ev{margin-top:var(--sp-2)}
+.co-tabs~[role=tabpanel]>details.fold:first-child{margin-top:0}
+.co-tabs~[role=tabpanel] details.fold>summary{padding:var(--sp-2) var(--sp-4)}
+.co-tabs~[role=tabpanel] .fold-s{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.co-tabs~[role=tabpanel] .fold-body{padding:0 var(--sp-4) var(--sp-3)}
+.co-tabs~[role=tabpanel] details.fold.research-read{border:1px solid var(--line)}
+.co-tabs{margin-top:var(--sp-4)}
+@media(prefers-reduced-motion:reduce){.decision [data-dec-more] .chev{transition:none}}

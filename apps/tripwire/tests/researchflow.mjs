@@ -13,7 +13,7 @@ try {
       await route.fulfill({ json: company });
     });
     const pg = await ctx.newPage(); await pg.goto(base + '/#/c/TCS');
-    const read = pg.locator('[data-research-read]'); await read.waitFor();
+    const read = pg.locator('[data-research-read]'); await read.waitFor(); await read.locator(':scope > summary').click();   // 12 Nov 2026: the one-minute read is a closed disclosure under the chart now; open it, then the checks below are unchanged
     assert.equal(await pg.locator('details[data-asof]').evaluate((e) => e.open), false);
     const dateLine = await pg.locator('details[data-asof] > summary').innerText();
     assert.match(dateLine, /Close of Sun 20 Mar 2022 \(stale\)/, 'collapsed mobile line preserves year and stale warning');
@@ -22,7 +22,7 @@ try {
     assert.ok(await read.getByText('Reported stakes changed', { exact: true }).isVisible());
     const box = await read.evaluate((e) => ({ height: e.getBoundingClientRect().height + 16, fits: [...e.querySelectorAll('summary .grow, summary .grow > *')].every((n) => n.scrollWidth <= n.clientWidth + 1) }));
     assert.ok(box.height < 560 && box.fits, `${width}: complete summary remains bounded (${JSON.stringify(box)})`);
-    await read.locator('summary').first().click();
+    await read.locator('[data-fact] > summary').first().click();
     assert.ok(await read.getByRole('button', { name: 'Formula and limits' }).first().isVisible());
     await pg.getByRole('button', { name: "Ask about TCS's evidence" }).click();
     await pg.locator('.research-questions article').filter({ hasText: 'Which ownership groups changed' }).getByRole('button').click();
@@ -41,7 +41,7 @@ try {
     await pg.getByRole('button', { name: 'Save as new version' }).click();
     assert.deepEqual(await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1')).entries), legacy.entries, 'unchanged legacy thesis retains its exact history and absent review date');
     await pg.goto(base + '/#/c/TCS'); await pg.locator('[data-research-read]').waitFor();
-    assert.ok(await pg.locator('[data-research-read]').getByText('One-minute read', { exact: true }).isVisible());
+    assert.ok(await pg.locator('[data-research-read]').getByText('One-minute read', { exact: true }).isVisible()); await pg.locator('[data-research-read] > summary').click();   // 12 Nov 2026: opened on purpose (closed by default)
     if (width === 390 && process.env.TW_RESEARCH_SHOT) await pg.screenshot({ path: process.env.TW_RESEARCH_SHOT });
     await pg.getByRole('button', { name: "Ask about TCS's evidence" }).click();
     await pg.getByRole('button', { name: 'Connect to thesis v1' }).first().click();
