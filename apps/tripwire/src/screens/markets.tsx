@@ -41,7 +41,7 @@ export function Markets() {
     {scr.data && <SectorHeat rows={rows} day={day} />}
     <FlowCard />
     <div className="market-grid">
-      <section className="moodhero card market-indices" aria-label="Indices"><div className="row between small" style={{ marginBottom: 6 }}><b>Indices</b><span className="row" style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}<span className="mute" data-market-status><Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></span></div>
+      <section className="moodhero card market-indices" aria-label="Bank Nifty and India VIX"><div className="row between small" style={{ marginBottom: 6 }}><b>Bank Nifty and India VIX</b><span className="row" style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}<span className="mute" data-market-status><Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></span></div>
         <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
       <section className="market-breadth">
       {scr.loading && <Loading what="the trend map" />}
