@@ -34,12 +34,12 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   ok(h.length === 3 && h.some((x) => /RBI keeps repo rate/.test(x)) && h.some((x) => /inflation eases/.test(x)) && h.filter((x) => /Brent crude climbs/.test(x)).length === 1 && await pg.locator('[data-today-cue="crude"]').count() === 1, `Market news: the two India-wide events and one Global cue row (${h.length} rows)`);
   ok(board.some((x) => /TCS Q2/.test(x)) && board.some((x) => /SEBI bars/.test(x)) && !h.some((x) => /TCS Q2|SEBI bars/.test(x)), 'the followed names\' events are on their board rows and not repeated in Market news');
   const all = await pg.locator('.today').evaluate((e) => e.textContent);
-  ok(!/Infosys to acquire/.test(all) && !/Pune/.test(all) && !/buyback/.test(all), 'a name nobody follows or holds, an undated story and a five-day-old event are not on Today');
+  ok(!/Infosys to acquire/.test(all) && !/Pune/.test(all) && !/dividend record date/.test(all), 'a name nobody follows or holds, an undated story and a 60-hour-old event are not on Today (12 Nov 2026: two days at most)');
   ok(await pg.locator('section.nw .nw-foot button', { hasText: /Show \d+ more/ }).count() === 0 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, 'two qualify, two are shown, nothing is padded, and All news follows');
   ok(!/wider match/i.test(await pg.locator('body').innerText()), 'there is no "wider match"');
   const t = await pg.locator('.nw-health').innerText(); ok(/Fresh/.test(t) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(t) && !/live/i.test(t), `the health line says Fresh and when it was checked, in IST, and never "live": ${t.replace(/\n/g, ' | ')}`);
   const title = await rows(pg).first().locator('time').getAttribute('title'); ok(/^published .*IST$/.test(title ?? ''), `a story's own time is separate, in IST, and on the row: ${title}`);
-  const hrefs = await pg.locator('a.nw-head, [data-board-row] .br-news a').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 5 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), `every story link on Today is http(s), opens in a new tab and carries rel=noopener (${hrefs.length})`);
+  const hrefs = await pg.locator('a.nw-head, [data-board-row] .br-news a').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 6 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), `every story link on Today is http(s), opens in a new tab and carries rel=noopener (${hrefs.length})`);
   ok(await pg.locator('.tape, marquee').count() === 0, 'no ticker tape');
   ok(ctl.calls.query.length === 1 && /Gujarat|GCSL/i.test(decodeURIComponent(ctl.calls.query[0])) === true || ctl.calls.query.length >= 1, 'a followed name the snapshot does not cover is queried live, through the same endpoint');
   /* tabs, labels and drawers: the News page */
@@ -77,8 +77,8 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   const news = await pg.locator('.nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();
-  const o = await open(STATE, { seen: nowS() - 3 * 24 * 3600 }); await o.pg.goto(base + '/#/news'); await o.pg.waitForSelector('.nw-row', { timeout: 20000 });
-  await filters(o.pg); await o.pg.getByLabel('Period').selectOption('14'); await o.pg.waitForTimeout(200); await closeFilters(o.pg);
+  const o = await open(STATE, { seen: nowS() - 30 * 3600 }); await o.pg.goto(base + '/#/news'); await o.pg.waitForSelector('.nw-row', { timeout: 20000 });
+  await filters(o.pg); await o.pg.waitForTimeout(200); await closeFilters(o.pg);
   const buy = o.pg.locator('.nw-row', { hasText: 'buyback of ₹15,000' }); ok(await buy.count() === 1 && await buy.locator('.nw-tag', { hasText: /^New$/ }).count() === 0, 'an old event first seen an hour ago is not New, however recently it was fetched');
   await o.ctx.close();
   const z = await open(STATE, { seen: 0 }); await z.pg.goto(base + '/#/news'); await z.pg.waitForSelector('.nw-row', { timeout: 20000 });
@@ -155,8 +155,8 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   ok(await pg.getByRole('button', { name: 'Show summaries', exact: true }).count() === 0 && await pg.locator('[data-more-filters]').count() === 0, 'no separate summaries button or filter drawer: one Filter button');
   const n0 = await pg.locator('.nw-row').count(); await filters(pg); await pg.getByLabel('Include other updates').check(); await pg.waitForTimeout(200);
   const pune = pg.locator('.nw-row', { hasText: 'Pune' }); ok(await pg.locator('.nw-row').count() > n0 && /time unknown/.test(await pune.innerText()) && !/just now/.test(await pune.innerText()), 'an undated story shows "time unknown", never "just now"');
-  await pg.getByLabel('Period').selectOption('14'); await pg.getByLabel('Category').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');
-  ok(/Filter · 3/.test(await pg.locator('[data-news-filter]').innerText().catch(() => '')) || /Filter · 3/.test(await pg.locator('[data-news-filter]').textContent()), 'the Filter button counts the filters in force'); await closeFilters(pg);
+  await pg.getByLabel('Category').selectOption('Regulator'); await pg.waitForTimeout(200); ok(await pg.locator('.nw-row').count() === 1, 'filters narrow the archive');   // 12 Nov 2026: the Period control is gone (two days, stated once in the sheet); two filters are in force
+  ok(/Filter · 2/.test(await pg.locator('[data-news-filter]').innerText().catch(() => '')) || /Filter · 2/.test(await pg.locator('[data-news-filter]').textContent()), 'the Filter button counts the filters in force'); await closeFilters(pg);
   ok(await pg.locator('details.nw-method').count() === 1 && /Pipeline news-pipe-1/.test(await pg.locator('details.nw-method').innerText().catch(() => '')) || true, 'the methodology drawer is on the page');
   await closeFilters(pg); await pg.locator('details.nw-method > summary').click(); const m = await pg.locator('details.nw-method').innerText(); ok(/news-rank-1/.test(m) && /Nothing is ever admitted by a "wider match"/.test(m) && /refused/i.test(m) && /quote_page|quote page/i.test(m), 'matching rules, weights, dedup method and refusal counts are behind Details');
   /* Phase 4: one event, several outlets: every outlet is a visible link; two clocks on every row; grouped categories */
