@@ -138,7 +138,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         return geo ? <>
           {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 7 || y < 2 || y > 98 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
           <span className="c-last" style={{ top: `${lastY}%`, background: color }}>{f(shown[shown.length - 1].c)}</span>
-          {lvOn && levels.filter((lv) => lv.v >= mn && lv.v <= mx).map((lv) => <span key={lv.label} className="c-lvl" style={{ top: `${yPct(lv.v)}%`, color: lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--dim)' }}>{lv.label} {f(lv.v)}</span>)}
+          {lvOn && (() => { const vis = levels.filter((lv) => lv.v >= mn && lv.v <= mx); const at = spreadLabels(vis.map((lv) => yPct(lv.v) / 100), .075, .06, .97);   // 12 Nov 2026: labels are kept 7.5% of the plot apart, so entry, stop and targets never stack
+            return vis.map((lv, k) => <span key={lv.label} className={`c-lvl ${lv.kind}`} data-level={lv.kind} style={{ top: `${at[k] * 100}%`, color: lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--ink-2)' }}>{lv.label} {f(lv.v)}</span>); })()}
         </> : (pair ? (() => { const all2 = [...cmp!.a, ...cmp!.b].map((q) => q.c); const lo2 = Math.min(...all2), hi2 = Math.max(...all2); const g2 = (v: number) => (logOn ? Math.log(v) : v);
           return <>{yTicks(lo2, hi2, logOn, 5).map((v) => {
             const y = (12 + (1 - (g2(v) - g2(lo2)) / ((g2(hi2) - g2(lo2)) || 1)) * (H - 24)) / H;

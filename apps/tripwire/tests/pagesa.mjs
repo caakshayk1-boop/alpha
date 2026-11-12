@@ -150,9 +150,11 @@ for (const w of [320, 390]) {
   await card.locator('.dc-table summary').click(); const rows = await card.locator('.dc-table tbody tr').count(); const pts = await svg.evaluate((e) => e.querySelectorAll('.dc-line').length); ok(rows >= 10 && pts === 1, `${w}: the same figures are in a table (${rows} rows)`);
   ok(await noOverflow(pg), `${w}: Markets with the day chart does not scroll sideways`); await ctx.close();
 }
-{ const { ctx, pg } = await plain(STATE, 390, '/#/markets'); await pg.waitForSelector('.ix .sp svg.dc-compact', { timeout: 15000 });
-  const n = await pg.locator('.ix .sp svg.dc-compact').count(); const h = await pg.locator('.ix .sp svg.dc-compact').first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  ok(n >= 3 && h >= 24, `Markets index rows carry a compact day chart each (${n}, ${h}px tall, was 22px)`); await ctx.close(); }
+/* 12 Nov 2026 (revamp v3): the Indices rows no longer repeat the day chart as a sparkline; the Nifty 50 row is gone (the day chart owns it). Same intent: the index rows are legible and
+   carry something of their own, now a range-position bar with a marker, for Bank Nifty and India VIX only, and no second drawing of the session. */
+{ const { ctx, pg } = await plain(STATE, 390, '/#/markets'); await pg.waitForSelector('.ix .rg', { timeout: 15000 });
+  const n = await pg.locator('.ix .rg').count(); const sp = await pg.locator('.ix svg.dc-compact').count(); const h = await pg.locator('.ix .rg').first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  ok(n === 2 && sp === 0 && h >= 8, `Markets index rows are Bank Nifty and India VIX, each a range-position bar (${n} rows, ${sp} sparklines, bar ${h}px tall)`); await ctx.close(); }
 
 /* ---- Markets: the FII and DII flows card (present with a fresh file; hidden with none, or with an old one) ---- */
 { const iso = (back) => new Date(Date.parse(`${lastSession}T00:00:00Z`) - back * 86400000).toISOString().slice(0, 10);

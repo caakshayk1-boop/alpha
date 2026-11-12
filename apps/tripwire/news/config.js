@@ -6,7 +6,8 @@ export const SCHEMA = 'tripwire-news/1';
 export const STATUS_SCHEMA = 'tripwire-news-status/1';
 export const QUERY_SCHEMA = 'tripwire-news-q/1';
 /** Bump when a validation, classification or clustering rule changes (what is admitted, and how it is grouped). */
-export const PIPELINE_VERSION = 'news-pipe-1';
+// 12 Nov 2026: news-pipe-2 adds the global-cue lane (scope 'global': other countries' headlines admitted only when a rule in cues.js matches, from a known-tier source).
+export const PIPELINE_VERSION = 'news-pipe-2';
 /** Bump when a weight, half-life or tier below changes (only the order changes, never what is admitted). */
 export const RANKING_VERSION = 'news-rank-1';
 
@@ -35,7 +36,11 @@ export const WEIGHTS = { significance: 0.30, entity: 0.20, source: 0.15, recency
 /** Recency half-life in hours, by event type (policy and macro stories age faster than a results night). */
 export const HALF_LIFE_H = { Policy: 24, Macro: 24, default: 36 };
 /** How old an event may be to appear on Today, by scope, in hours. The archive on the News page keeps MAX_AGE_DAYS. */
-export const TODAY_WINDOW_H = { company: 72, market: 48 };
+export const TODAY_WINDOW_H = { company: 72, market: 48, global: 36 };
+/** Global cues: at most this many events per cue (by the first cue a headline matches) and in all. Documented on the News page. */
+export const GLOBAL_LIMITS = { perCue: 2, total: 10 };
+/** The source tiers a global headline may come from. Aggregators and unknown publishers are refused for it. */
+export const GLOBAL_TIERS = ['official', 'wire', 'major', 'known'];
 export const MAX_AGE_DAYS = 14;
 /** A timestamp this far past the check is not a clock skew, it is a wrong date: quarantined, not shown. */
 export const FUTURE_TOLERANCE_MS = 10 * 60 * 1000;

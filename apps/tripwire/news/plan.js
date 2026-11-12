@@ -1,6 +1,7 @@
 // What the job fetches on one tick: the market searches, the official feeds, every paper-book name, and a rotating slice of the other covered names.
 // Pure. The plan is bounded (BOUNDS below), so a tick is at most a few dozen requests whatever the universe size.
 import { MARKET_QUERIES } from './config.js';
+import { GLOBAL_QUERIES } from './cues.js';
 
 export const BOUNDS = { paperNames: 25, otherPerTick: 8 };
 const LEGAL = /\b(ltd|limited|inc|corp|corporation|pvt|private)\b\.?/gi;
@@ -23,6 +24,7 @@ export function buildNames({ ledger, covered, aliases, universe = [] }) {
 export function queryPlan({ names, tick }) {
   const plan = [{ feed: 'rbi', query: null, scope: 'market' }, { feed: 'sebi', query: null, scope: 'market' }];
   for (const q of MARKET_QUERIES) plan.push({ feed: 'google', query: q, scope: 'market' });
+  for (const q of GLOBAL_QUERIES) plan.push({ feed: 'google', query: q, scope: 'global' });   // 12 Nov 2026 (news-pipe-2)
   for (const s of names.paper) plan.push({ feed: 'google', query: companyQuery(names.names[s]), scope: 'paper', sym: s });
   const n = names.covered.length; if (n) { const per = Math.min(BOUNDS.otherPerTick, n); for (let i = 0; i < per; i++) { const s = names.covered[(tick * per + i) % n]; plan.push({ feed: 'google', query: companyQuery(names.names[s]), scope: 'covered', sym: s }); } }
   return plan;

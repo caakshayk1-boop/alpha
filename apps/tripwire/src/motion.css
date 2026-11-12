@@ -6,9 +6,10 @@
 html.fx .view{animation:ds-rise var(--dur-3) var(--ease) both}
 @keyframes ds-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-/* press: 0.98, on pointer-down, 160 ms */
-html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,.ds-hover,.tm-btn,.mini-seg button):active{transform:scale(.98)}
-html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,.ds-hover,.tm-btn,.mini-seg button){transition:transform var(--dur-1) var(--ease),opacity var(--dur-1) var(--ease)}
+/* press: .97 on pointer-down, 160 ms, on every pressable (12 Nov 2026: was .98 on a shorter list). Not while the element holds KEYBOARD focus (:focus-visible), so Enter or Space held
+   on a button never makes it pulse. */
+html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,a.li,.ds-hover,.tm-btn,.mini-seg button,.seg button,.pick-row,.tcard-head,.cchip button,.lens,.tabs a,details.ev>summary):active:not(:focus-visible){transform:scale(.97)}
+html.fx :is(.btn,.chip,.icon-btn,.tile,a.card,a.li,.ds-hover,.tm-btn,.mini-seg button,.seg button,.pick-row,.tcard-head,.cchip button,.lens,.tabs a,details.ev>summary){transition:transform var(--dur-1) var(--ease),opacity var(--dur-1) var(--ease)}
 
 /* hover: the surface steps up one level. An overlay that fades in (opacity), so no colour is animated */
 html.fx .ds-hover::before{transition:opacity var(--dur-1) var(--ease)}

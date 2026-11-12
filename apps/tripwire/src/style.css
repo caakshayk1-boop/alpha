@@ -799,9 +799,9 @@ html.fx .fab-row.fab-away{transition:opacity var(--dur-2,160ms) var(--ease,ease)
 html.fx .scrolltop{transition:opacity var(--dur-2,160ms) var(--ease,ease),transform var(--dur-2,160ms) var(--ease,ease)}
 html.fx .scrolltop .bar{transition:stroke-dashoffset 120ms linear}
 html.fx .scrolltop:active{transform:scale(.94)}
-/* In the document flow: never cover a chart, label, heat tile or action. */
-.scrolltop{position:relative;right:auto;bottom:auto;margin:24px auto;box-shadow:none;z-index:auto}
-.scrolltop[data-hidden=true]{visibility:hidden;transform:none}
+/* floats bottom-right above the action bar (.fab-row) and the tab bar; shown only on the way back up or at the foot (ScrollTop.tsx) */
+.scrolltop{width:52px;height:52px}
+@media(min-width:900px){.scrolltop{bottom:calc(env(safe-area-inset-bottom) + 96px)}}
 
 /* institutional flows on Markets */
 .flows{margin:12px 0}

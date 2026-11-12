@@ -8,6 +8,9 @@
  *  Today shows only events fit for it (a known recent date, an event type that is an event); the News page shows the whole archive. A quiet day gives a short list and says so:
  *  there is no widening, no padding and no quota. */
 import { DIVERSITY, LIMITS, TODAY_WINDOW_H } from '../news/config.js';
+import { CUES, cueById } from '../news/cues.js';
+import { sectorHeat } from './sectorheat.ts';
+import type { Row } from './screen.ts';
 import { sameEvent, tokens } from '../news/cluster.js';
 import { diversify, rankEvents, userRelevance } from '../news/rank.js';
 
@@ -18,13 +21,17 @@ export interface NewsEvent {
   publishedAt: string | null; updatedAt: string | null; firstSeenAt: string | null; fetchedAt: string | null;
   sourceId: string; sourceTitle: string; sourceTier: string; sourceWeight: number; canonicalUrl: string; sourceTimezone: string;
   moreSources: number; sources: NewsSource[]; summary: { text: string; provenance: { kind: string; feedId: string; retrievedAt: string | null; note: string } } | null;
+  /** 12 Nov 2026 (news-pipe-2): set on a global-cue event (a headline from outside India that matched a rule in news/cues.js); absent on every other event. */
+  scope?: 'global'; cues?: string[];
   qualityFlags: string[]; todayEligible: boolean; relevanceScore: number; rankingVersion: string; rank?: { reason: string; factors: { k: string; value: number; weight: number; points: number }[] };
 }
 export type Tab = 'all' | 'market' | 'following' | 'paper';
 export const TABS: { id: Tab; label: string }[] = [{ id: 'all', label: 'All' }, { id: 'market', label: 'Market' }, { id: 'following', label: 'Following' }, { id: 'paper', label: 'Paper book' }];
 export interface Lists { follows: string[]; paper: string[] }
 const syms = (ev: NewsEvent) => ev.entities.map((e) => e.sym).filter((s): s is string => !!s);
-export const isMarket = (ev: NewsEvent) => ev.scopes.includes('market') && !ev.entities.length;
+export const isMarket = (ev: NewsEvent) => ev.scopes.includes('market') && !ev.entities.length && ev.scope !== 'global';
+/** A headline from outside India that matched a cue rule. Never in Following, Paper book, Market or the Today lists; only in the Global cues section and the one Today row. */
+export const isGlobal = (ev: NewsEvent) => ev.scope === 'global' || ev.scopes.includes('global');
 export const inFollowing = (ev: NewsEvent, l: Lists) => syms(ev).some((s) => l.follows.includes(s));
 export const inPaper = (ev: NewsEvent, l: Lists) => syms(ev).some((s) => l.paper.includes(s));
 /** The labels that say why a row is in All. A name can be both followed and in the paper book: both labels show. */
@@ -47,10 +54,18 @@ export function todayList(pool: NewsEvent[], tab: Tab, l: Lists, nowMs: number, 
 export const tabCounts = (pool: NewsEvent[], l: Lists, nowMs: number): Record<Tab, number> => ({ all: pool.filter((e) => inTab(e, 'all', l) && fitForToday(e, nowMs)).length, market: pool.filter((e) => inTab(e, 'market', l) && fitForToday(e, nowMs)).length, following: pool.filter((e) => inFollowing(e, l) && fitForToday(e, nowMs)).length, paper: pool.filter((e) => inPaper(e, l) && fitForToday(e, nowMs)).length });
 
 /** The News page's archive: every kept event of the tab, newest first by publication time (unknown times last), with the filters applied. */
-export interface ArchiveFilter { tab: Tab; types: string[]; days: number; includeOther: boolean; covered: boolean; text: string }
+export type NewsScope = 'all' | 'india' | 'global';
+export interface ArchiveFilter { tab: Tab; types: string[]; days: number; includeOther: boolean; covered: boolean; text: string; /** 12 Nov 2026: absent means all */ scope?: NewsScope }
 export function archiveList(pool: NewsEvent[], f: ArchiveFilter, l: Lists, nowMs: number): NewsEvent[] {
   const q = f.text.trim().toLowerCase();
+  const scope = f.scope ?? 'all';
   return pool.filter((e) => {
+    if (isGlobal(e)) {   // the global lane has its own window (36 h, never longer than the period asked for) and ignores the category filters: a cue is not a company event type
+      if (scope === 'india' || f.types.length) return false;
+      const g = ms(e.publishedAt); if (g == null || g > nowMs + 600e3 || nowMs - g > Math.min(f.days * 86400e3, TODAY_WINDOW_H.global * 3600e3)) return false;
+      return !q || e.headline.toLowerCase().includes(q);
+    }
+    if (scope === 'global') return false;
     if (!(f.covered ? true : inTab(e, f.tab, l))) return false;
     if (!f.includeOther && (e.eventType === 'Update' || e.publishedAt == null)) return false;
     if (f.types.length && !f.types.includes(e.eventType)) return false;
@@ -64,7 +79,7 @@ const TIER_RANK: Record<string, number> = { official: 0, wire: 1, major: 2, know
 const secOf = (iso: string | null) => { const t = ms(iso); return t == null ? null : Math.floor(t / 1000); };
 /** A published event as the clustering rule's candidate: the SAME rule (`news/cluster.js#sameEvent`) the scheduled job groups items with, applied to two events that reached the browser by different routes
  *  (the shared snapshot and a live per-company query). Only fields the pipeline already published are read; nothing is summarised or invented. */
-const asCandidate = (e: NewsEvent) => ({ headline: e.headline, tk: tokens(e.headline), eventType: e.eventType, publishedSec: secOf(e.publishedAt), entities: e.entities, canonicalUrl: e.canonicalUrl });
+const asCandidate = (e: NewsEvent) => ({ headline: e.headline, tk: tokens(e.headline), eventType: e.eventType, publishedSec: secOf(e.publishedAt), entities: e.entities, canonicalUrl: e.canonicalUrl, scope: e.scope });
 export const sameCoverage = (a: NewsEvent, b: NewsEvent): boolean => sameEvent(asCandidate(a), asCandidate(b));
 /** One event from two reports of it. The more authoritative outlet stays primary; EVERY source link of both is kept (one per outlet, the first seen wins), up to the pipeline's own cap; the earliest
  *  publication time is the event's, the latest is its update. The id of `a` is kept. */
@@ -91,7 +106,10 @@ export function mergePools(a: NewsEvent[], b: NewsEvent[]): NewsEvent[] {
     const at = known ?? (fromB.has(e) ? out.findIndex((o) => sameCoverage(o, e)) : -1);
     const index = at >= 0 ? at : out.length;
     ids.set(e.eventClusterId, index); links.forEach((u) => urls.set(u, index));
-    if (at >= 0) out[at] = mergeCoverage(out[at], e);
+    /* 12 Nov 2026 (Codex on #61): an id or link match must not cross the global/India scope line. The pipeline's own rule (cluster.js) is that the India reading wins when one link arrives in both lanes:
+       a global snapshot event is REPLACED by the India-company reading, and a global reading never replaces or enriches an India one. Merging them would put an India company into Global cues. */
+    if (at >= 0 && isGlobal(out[at]) !== isGlobal(e)) { if (isGlobal(out[at])) out[at] = e; }
+    else if (at >= 0) out[at] = mergeCoverage(out[at], e);
     else out.push(e);
   }
   return out;
@@ -169,13 +187,54 @@ export function todayTabCounts(pool: NewsEvent[], l: Lists, nowMs: number): Reco
  *    market  an India-wide event (no single company)
  *    other   a covered company in none of the reader's lists (only reached when the "every covered name" filter is on)
  *  The order inside a section is the order of the list passed in (the archive's newest-first). No event is dropped and none is repeated. */
-export type NewsGroupId = 'yours' | 'paper' | 'market' | 'other';
-export const NEWS_GROUPS: { id: NewsGroupId; label: string }[] = [{ id: 'yours', label: 'Your names' }, { id: 'paper', label: 'Paper book' }, { id: 'market', label: 'Market' }, { id: 'other', label: 'Other covered names' }];
+// 12 Nov 2026: 'global' is the new FIRST group (Global cues), ahead of Your names.
+export type NewsGroupId = 'global' | 'yours' | 'paper' | 'market' | 'other';
+export const NEWS_GROUPS: { id: NewsGroupId; label: string }[] = [{ id: 'global', label: 'Global cues' }, { id: 'yours', label: 'Your names' }, { id: 'paper', label: 'Paper book' }, { id: 'market', label: 'Market' }, { id: 'other', label: 'Other covered names' }];
 export interface NewsGroupItem { ev: NewsEvent; inPaper: boolean }
 export interface NewsGroup { id: NewsGroupId; label: string; items: NewsGroupItem[] }
-export const groupOf = (ev: NewsEvent, l: Lists): NewsGroupId => (inFollowing(ev, l) ? 'yours' : inPaper(ev, l) ? 'paper' : isMarket(ev) ? 'market' : 'other');
+export const groupOf = (ev: NewsEvent, l: Lists): NewsGroupId => (isGlobal(ev) ? 'global' : inFollowing(ev, l) ? 'yours' : inPaper(ev, l) ? 'paper' : isMarket(ev) ? 'market' : 'other');
 export function groupNews(events: readonly NewsEvent[], l: Lists): NewsGroup[] {
-  const seen = new Set<string>(); const by: Record<NewsGroupId, NewsGroupItem[]> = { yours: [], paper: [], market: [], other: [] };
+  const seen = new Set<string>(); const by: Record<NewsGroupId, NewsGroupItem[]> = { global: [], yours: [], paper: [], market: [], other: [] };
   for (const ev of events) { if (seen.has(ev.eventClusterId)) continue; seen.add(ev.eventClusterId); const g = groupOf(ev, l); by[g].push({ ev, inPaper: g === 'yours' && inPaper(ev, l) }); }
   return NEWS_GROUPS.map((g) => ({ ...g, items: by[g.id] }));
 }
+
+/* ---------- Global cues (12 Nov 2026) ----------
+ *  A cue block is the events whose FIRST matched cue is that cue, newest first. An event sits under one cue only; a second matched cue is a chip on its row (`also`).
+ *  Nothing here reads a headline's tone. The channel text is the standing copy in news/cues.js; the moves shown beside it are measured, passed in by the caller. */
+export interface CueBlock { id: string; label: string; channel: string; exposed: string; watch: string; sectors: string[]; measure: string; items: { ev: NewsEvent; also: { id: string; label: string }[] }[] }
+export function cueBlocks(events: readonly NewsEvent[], perCue = 2): CueBlock[] {
+  const seen = new Set<string>(); const by = new Map<string, CueBlock>();
+  const newest = [...events].filter(isGlobal).sort((a, b) => (ms(b.publishedAt) ?? -1) - (ms(a.publishedAt) ?? -1) || (a.eventClusterId < b.eventClusterId ? -1 : 1));
+  for (const ev of newest) {
+    if (seen.has(ev.eventClusterId)) continue; seen.add(ev.eventClusterId);
+    const first = cueById(ev.cues?.[0] ?? ''); if (!first) continue;   // a cue id this build does not know is not drawn under a made-up heading
+    const b = by.get(first.id) ?? { id: first.id, label: first.label, channel: first.channel, exposed: first.exposed, watch: first.watch, sectors: first.sectors, measure: first.measure, items: [] as CueBlock['items'] }; by.set(first.id, b);
+    if (b.items.length < perCue) b.items.push({ ev, also: (ev.cues ?? []).slice(1).map((id) => cueById(id)).filter((c): c is NonNullable<typeof c> => !!c).map((c) => ({ id: c.id, label: c.label })) });
+  }
+  return [...by.values()].sort((a, b) => (ms(b.items[0].ev.publishedAt) ?? -1) - (ms(a.items[0].ev.publishedAt) ?? -1) || (CUES as { id: string }[]).findIndex((c) => c.id === a.id) - (CUES as { id: string }[]).findIndex((c) => c.id === b.id));
+}
+/** The one global headline Today may show: the best-ranked global event inside 36 h that is not the same story as a market row already listed. Null when there is none. */
+export function todayGlobalRow(pool: readonly NewsEvent[], market: readonly NewsEvent[], l: Lists, nowMs: number): NewsEvent | null {
+  const inWindow = (e: NewsEvent) => { const p = ms(e.publishedAt); return p != null && p <= nowMs + 600e3 && nowMs - p <= TODAY_WINDOW_H.global * 3600e3; };
+  const fit = pool.filter((e) => isGlobal(e) && !!cueById(e.cues?.[0] ?? '') && inWindow(e));
+  const ranked = rankEvents(fit as NewsEvent[], nowMs, relevance(l)) as NewsEvent[];
+  return ranked.find((e) => !market.some((m) => m.eventClusterId === e.eventClusterId || sameCoverage(m, e))) ?? null;
+}
+/** A sector's measured one-day change from the published screen (traded-value weighted, liquid names only), or null when the screen does not measure it. NEVER zero for a missing figure. */
+export function sectorDay(rows: readonly Row[] | undefined, sector: string): number | null {
+  if (!rows?.length) return null; const h = sectorHeat(rows as Row[], 'r1d', 3).find((s) => s.sector === sector); return h ? h.chg : null;
+}
+/** A change in percent, in words and an arrow, so colour is never the only carrier: "up 0.4%", "down 1.2%", "flat". Null is "not measured". */
+export function moveWords(chg: number | null | undefined, dp = 1): { arrow: string; text: string; dir: 'up' | 'down' | 'flat' | 'none' } {
+  if (typeof chg !== 'number' || !Number.isFinite(chg)) return { arrow: '', text: 'not measured', dir: 'none' };
+  const r = Math.round(Math.abs(chg) * 10 ** dp) / 10 ** dp; if (r === 0) return { arrow: '–', text: 'flat', dir: 'flat' };
+  return chg > 0 ? { arrow: '▲', text: `up ${r.toFixed(dp)}%`, dir: 'up' } : { arrow: '▼', text: `down ${r.toFixed(dp)}%`, dir: 'down' };
+}
+/** "2026-11-11" to "11 Nov". Anything unreadable is returned as given. */
+export function dayWord(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? '')); if (!m) return String(iso ?? 'an unknown date');
+  return `${Number(m[3])} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[2]) - 1] ?? ''}`;
+}
+export const GLOBAL_NOTE = 'Headlines from outside India. The connection text is standing context for that kind of headline; moves shown are measured, not predicted.';
+export const GLOBAL_EMPTY = 'No global cues in the last 36 hours';

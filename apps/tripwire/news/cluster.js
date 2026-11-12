@@ -17,6 +17,7 @@ const DAY72 = 72 * 3600;
 
 /** True when two candidate items are the same event. Each item: `{ headline, tk, num, eventType, publishedSec, entities }`. Pure; symmetric. */
 export function sameEvent(a, b) {
+  if ((a.scope === 'global') !== (b.scope === 'global')) return false;         // 12 Nov 2026: a global headline and an India one are never one event
   if (a.canonicalUrl && a.canonicalUrl === b.canonicalUrl) return true;
   if (a.publishedSec != null && b.publishedSec != null && Math.abs(a.publishedSec - b.publishedSec) > DAY72) return false;
   const ea = new Set(a.entities.map((e) => e.sym ?? e.name)), eb = new Set(b.entities.map((e) => e.sym ?? e.name));

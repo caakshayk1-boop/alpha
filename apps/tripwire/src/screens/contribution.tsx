@@ -9,7 +9,7 @@ export function ContributionBars({ items, label, noun = 'position', max = 8, fmt
   const c = useMemo(() => contributions(items, max), [items, max]);
   if (c.count < 2) return null;
   const maxAbs = Math.max(1, ...c.rows.map((r) => Math.abs(r.value)), Math.abs(c.other?.value ?? 0));
-  const bar = (v: number) => { const w = (Math.abs(v) / maxAbs) * 50; return <span className="bar2"><i style={{ width: `${w}%`, left: v >= 0 ? '50%' : `${50 - w}%`, background: v >= 0 ? 'var(--up)' : 'var(--down)' }} /></span>; };
+  const bar = (v: number) => { const w = (Math.abs(v) / maxAbs) * 50; return <span className="bar2"><i className={v >= 0 ? 'pos' : 'neg'} style={{ width: `${w}%`, left: v >= 0 ? '50%' : `${50 - w}%`, background: v >= 0 ? 'var(--up)' : 'var(--down)' }} /></span>; };
   const plural = (n: number) => `${n} ${n === 1 ? noun : `${noun}s`}`;
   return <div style={{ marginTop: 10 }} aria-label={label} data-contrib>
     {c.rows.map((r) => <div key={r.key} className="contrib"><span className="sym trunc">{r.label}</span>{bar(r.value)}<span className={`num amt ${r.value >= 0 ? 'up' : 'down'}`}>{fmt(r.value)}</span></div>)}

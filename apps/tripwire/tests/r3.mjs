@@ -15,7 +15,8 @@ const pg = await ctx.newPage(); const text = async () => { await pg.waitForFunct
 
 /* Markets (the index cards and the trend map moved here from Today on 27 Oct 2026) */
 await pg.goto(base + '/#/markets'); await pg.waitForSelector('.moodhero .ix .rg'); await pg.waitForTimeout(600);
-ok((await pg.locator('.moodhero a.ix').count()) === 3 && (await pg.locator('.moodhero .ix .rg').count()) === 3, 'Markets: Nifty, Bank Nifty and VIX each carry a day-range bar');
+/* 12 Nov 2026 (revamp v3): the Nifty 50 is the day chart; Indices is Bank Nifty and India VIX, each with a day-range bar. */
+ok((await pg.locator('.moodhero a.ix').count()) === 2 && (await pg.locator('.moodhero .ix .rg').count()) === 2, 'Markets: Bank Nifty and VIX each carry a day-range bar (the Nifty is the day chart)');
 ok(/prev [\d,]+/.test(await text()) && /opened [+−-]?\d/.test(await text()) && /low [\d,]+/.test(await text()), 'Markets: each index shows the previous close, the open against it, and the day low and high');
 ok(/Banks (ahead of|behind|level with) the Nifty by/.test(await text()), 'Markets: Bank Nifty is set against the Nifty in points');
 const h1 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height);
@@ -35,7 +36,7 @@ ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'To
 await pg.waitForSelector('section.nw', { timeout: 15000 }); ok(/Market news/.test(await pg.locator('section.nw').innerText()) && await pg.locator('section.nw a[href="#/news"]').count() >= 1, 'Today: market news, with All news one tap away');
 // 11 Nov 2026 (merge of Today and Research lanes): the News page reads the news as sections (Your names, Paper book, Market), not tabs
 await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 15000 });
-ok((await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')))).slice(0, 3).join() === 'yours,paper,market', 'News: news is read as Your names, Paper book and Market');
+ok((await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')))).filter((x) => x !== 'global').slice(0, 3).join() === 'yours,paper,market', 'News: news is read as Your names, Paper book and Market');   // 12 Nov 2026: Global cues is the new first section; the India sections keep their order
 
 await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [data-ladder]');
 ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');
