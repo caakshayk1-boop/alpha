@@ -45,10 +45,11 @@ test('KNOWN_HEADS and app.tsx agree in both directions', () => {
   assert.match(src, /resolveRoute\(loc\.path\)\.kind === 'ok' && \(tab ===/, 'a Not found address is never remembered as the tab\'s last place');
 });
 
-test('contact: blank or malformed is "not set up yet"; a good address is a mailto link', () => {
-  assert.equal(SUPPORT_EMAIL, '', 'the owner supplies the address; none is invented');
+test('contact: blank or malformed is "not set up yet"; the owner\'s address is a mailto link', () => {
+  /* 12 Nov 2026 (Tripwire 2.0): the owner's file says to set hello@askakshay.com; it is the one address, and a blank or malformed one still reads "not set up yet" (checked with the explicit arguments below) */
+  assert.equal(SUPPORT_EMAIL, 'hello@askakshay.com', 'the owner supplied this address; none is invented');
   assert.deepEqual(contactView(''), { line: 'Contact: not set up yet', email: null, href: null });
-  assert.deepEqual(contactView(SUPPORT_EMAIL), { line: 'Contact: not set up yet', email: null, href: null });
+  assert.deepEqual(contactView(SUPPORT_EMAIL), { line: 'Contact: hello@askakshay.com', email: 'hello@askakshay.com', href: 'mailto:hello@askakshay.com' });
   for (const bad of ['   ', 'nobody', 'a@b', 'a b@c.com', 'a@b@c.com', '<x@y.com>', 'x@y.com,z@y.com', 'javascript:alert(1)//@x.com'.replace('//', ' ')]) assert.equal(contactView(bad).href, null, bad);
   assert.deepEqual(contactView(' help@example.com '), { line: 'Contact: help@example.com', email: 'help@example.com', href: 'mailto:help@example.com' });
   assert.equal(contactView('x'.repeat(250) + '@example.com').href, null, 'over 254 characters is not an address');

@@ -35,7 +35,8 @@ for (const [route, id, title] of [['/#/privacy', 'privacy', 'Privacy'], ['/#/ter
       const folds = await pg.locator('details.fold').count(); ok(folds >= 8, `${id}: ${folds} sections as shared Fold components`);
       ok(await pg.locator('details.fold[data-fold="short"][open]').count() === 1, `${id}: the short version is open, the detail is one tap away`);
       ok(await pg.title() === `${title} · Tripwire`, `${id}: document title "${await pg.title()}"`);
-      const c = await pg.locator('[data-contact]').innerText(); ok(c === 'Contact: not set up yet' && await pg.locator('[data-contact] a').count() === 0, `${id}: contact reads "${c}" with no link while SUPPORT_EMAIL is unset`);
+      const c = await pg.locator('[data-contact]').innerText(); /* 12 Nov 2026 (Tripwire 2.0): SUPPORT_EMAIL is set to the owner's address, so the line is a mailto link; the "not set up yet" case is pinned in legal.test.ts */
+      ok(c === 'Contact: hello@askakshay.com' && await pg.locator('[data-contact] a[href="mailto:hello@askakshay.com"]').count() === 1, `${id}: contact reads "${c}" and links to mailto:hello@askakshay.com`);
       ok(await pg.locator('.tabs [aria-current="page"]').innerText().then((t) => /Menu/.test(t)), `${id}: the Menu tab is the current one`); // 11 Nov 2026: More was renamed Menu
       ok(await pg.locator('a[href="#/terms"], a[href="#/privacy"]').count() >= 1, `${id}: links to its sibling page`);
       const text = (await pg.locator('main').innerText()).replace(/\s+/g, ' ');
@@ -137,7 +138,8 @@ for (const w of [320, 390, 1280]) {
   const robots = await (await rq.get(base + '/robots.txt')).text(); ok(/Allow: \/\$/.test(robots) && /Disallow: \/api\//.test(robots) && !/Disallow: \/\s*$/m.test(robots) && /Sitemap: https:\/\/tripwire\.askakshay\.com\/sitemap\.xml/.test(robots), 'robots.txt: the page is allowed, /api/ and /data/ are not, the sitemap is named');
   const sm = await (await rq.get(base + '/sitemap.xml')).text(); const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   ok(/^<\?xml/.test(sm) && locs.length === 1 && locs[0] === 'https://tripwire.askakshay.com/' && /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(sm) && !/__LASTMOD__/.test(sm), `sitemap.xml: valid, the root only (${locs.join(',')}), a dated lastmod`);
-  const sec = await rq.get(base + '/.well-known/security.txt'); const st = await sec.text(); ok(!/^Contact:/m.test(st), 'security.txt is not published while SUPPORT_EMAIL is empty');
+  const sec = await rq.get(base + '/.well-known/security.txt'); const st = await sec.text(); /* 12 Nov 2026: published now that SUPPORT_EMAIL is set */
+  ok(/^Contact: mailto:hello@askakshay\.com$/m.test(st) && /^Expires: /m.test(st), 'security.txt is published with the owner\'s contact and an expiry');
   const llms = await (await rq.get(base + '/llms.txt')).text(); ok(/#\/privacy/.test(llms) && /#\/terms/.test(llms), 'llms.txt points at the Privacy and Terms pages');
   await ctx.close(); }
 await b.close();
