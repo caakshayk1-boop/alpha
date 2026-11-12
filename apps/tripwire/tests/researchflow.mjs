@@ -53,7 +53,7 @@ try {
     await pg.getByRole('button', { name: 'Save as new version' }).click();
     const saved = await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1')));
     assert.equal(saved.entries[0].versions.length, 2); assert.equal(saved.entries[0].versions[0].thesis, 'Seed thesis');
-    assert.equal(saved.entries[0].versions[1].reviewState, 'waiting'); assert.deepEqual(saved.paper, STATE.paper);
+    assert.equal(saved.entries[0].versions[1].reviewState, 'waiting'); assert.deepEqual(saved.paper.map(({ lifecycleId, ...r }) => r), STATE.paper);   // 12 Nov 2026: the ledger lane adds a stable lifecycleId to each paper row (additive); the rest of the row must be untouched
     assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}: company overflow`);
     await pg.goto(base + '/#/desk?v=follow'); await pg.locator('[data-follow-review]').waitFor();
     assert.ok(await pg.getByText('Waiting for evidence', { exact: true }).isVisible());
