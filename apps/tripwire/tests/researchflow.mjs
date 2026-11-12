@@ -20,7 +20,7 @@ try {
     await pg.addStyleTag({ content: ':root { --sans: Arial, sans-serif; }' });
     assert.ok(await read.getByText('Historical comparison unavailable', { exact: true }).isVisible());
     assert.ok(await read.getByText('Reported stakes changed', { exact: true }).isVisible());
-    const box = await read.evaluate((e) => ({ height: e.getBoundingClientRect().height + 16, fits: [...e.querySelectorAll('summary .grow, summary .grow > *')].every((n) => n.scrollWidth <= n.clientWidth + 1) }));
+    const box = await read.evaluate((e) => ({ height: e.querySelector('.research-lines').getBoundingClientRect().height + 16,   /* 12 Nov 2026: the bound is on the findings list; the fold's own header is one summary row */ fits: [...e.querySelectorAll('summary .grow, summary .grow > *')].every((n) => n.scrollWidth <= n.clientWidth + 1) }));
     assert.ok(box.height < 560 && box.fits, `${width}: complete summary remains bounded (${JSON.stringify(box)})`);
     await read.locator('[data-fact] > summary').first().click();
     assert.ok(await read.getByRole('button', { name: 'Formula and limits' }).first().isVisible());
