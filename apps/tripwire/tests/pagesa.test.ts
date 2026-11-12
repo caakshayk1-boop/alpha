@@ -153,11 +153,13 @@ test('realised curve: no trades is no curve; a run of losses is a drop from the 
 /* ---------------- reading a short record ---------------- */
 test('record reading: a short record says it cannot tell, in numbers; it never says a strategy works', () => {
   const four = readRecord([-1.03, -1.03, -1.03, -1.03]); assert.equal(four.enough, false); const t = four.lines.join(' ');
-  assert.match(t, /4 trades have closed: 0 in profit, 4 at a loss, −4\.12R in total/); assert.match(t, new RegExp(`4 of ${MIN_TRADES} trades`)); assert.match(t, /cannot show whether the rules work/); assert.match(t, /Open positions are not in these figures/);
+  /* 12 Nov 2026: worded as resolved observations (ledgerview.ts); the intent, a short record is read as too short to tell, is unchanged */
+  assert.match(t, /4 resolved observations have closed: 0 in profit, 4 at a loss, −4\.12R in total/); assert.match(t, new RegExp(`4 of ${MIN_TRADES} observations`)); assert.match(t, /cannot show whether the rules work/); assert.match(t, /Open positions are not in these figures/);
   assert.equal(readRecord([]).enough, false); assert.match(readRecord([]).lines[0], /Nothing has closed yet/);
 });
 test('record reading: it names a total that rests on one trade, and past the minimum it still says a minimum is not proof', () => {
-  const one = readRecord([3, -1, -1, -0.5]).lines.join(' '); assert.match(one, /best single trade is \+3\.00R\. Without it the total would be −2\.50R, so the total rests on that one trade/);
+  /* 12 Nov 2026: "observation", not "trade" (ledgerview.ts); intent unchanged */
+  const one = readRecord([3, -1, -1, -0.5]).lines.join(' '); assert.match(one, /best single observation is \+3\.00R\. Without it the total would be −2\.50R, so the total rests on that one trade/);
   const many = readRecord(Array.from({ length: MIN_TRADES }, (_, i) => (i % 2 ? -1 : 1.5))); assert.equal(many.enough, true); assert.match(many.lines.join(' '), /minimum is not proof/);
   for (const rs of [[], [1], [-1, -1, -1], Array.from({ length: 40 }, (_, i) => (i % 3 ? 1 : -1))]) for (const l of readRecord(rs).lines) assert.ok(!/\b(proven|validated|reliable|guarantee|edge|profitable strategy)\b/i.test(l), l);
 });

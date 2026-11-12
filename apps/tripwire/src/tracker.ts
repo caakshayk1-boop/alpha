@@ -17,7 +17,7 @@ import { ladderPrices } from './exits.ts';
 export interface Bar { t: number; o: number; h: number; l: number; c: number; forming?: boolean }
 /** two profit targets in R: half is sold at T1 (stop to the fill), the rest at T2. Absent: the original stop-and-time rule. */
 export interface PaperTargets { t1R: number; t2R: number }
-export interface Paper { agreement?: import('./agreement.ts').Agreement; targets?: PaperTargets | null; id: string; sym: string; engine: string; asOf: string; ref: number; stop: number; horizon: number; qty: number; takenAt: number; note?: string; closedByUser?: boolean; lastView?: View; transitions?: { at: string; from: string; to: string; reason: string }[] }
+export interface Paper { /** 12 Nov 2026, additive: the stable id of this position's lifecycle (lifecycle.ts); absent in every state saved before it, and derived on read */ lifecycleId?: string; agreement?: import('./agreement.ts').Agreement; targets?: PaperTargets | null; id: string; sym: string; engine: string; asOf: string; ref: number; stop: number; horizon: number; qty: number; takenAt: number; note?: string; closedByUser?: boolean; lastView?: View; transitions?: { at: string; from: string; to: string; reason: string }[] }
 export type Status = 'waiting' | 'pending' | 'open' | 'closed' | 'skipped';
 export interface View {
   /** A retained recorded position with unavailable/incomplete new prices. Never a fresh quote. */

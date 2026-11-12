@@ -3,6 +3,7 @@ import { attribute, realisedCurve, readRecord, type AttrRow, type CurveIn } from
 import { ContributionBars } from './contribution.tsx';
 import { SectionHeader } from '../components/index.ts';
 import { dayWord, inr0 } from '../fmt.ts';
+import { COST_CONVENTION, OPEN_TRADE_LABEL } from '../ledgerview.ts';
 
 const money = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`;
 const R = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`;
@@ -15,16 +16,17 @@ export function PnlAttribution({ rows, nameOf }: { rows: readonly AttrRow[]; nam
   const a = useMemo(() => attribute(rows, nameOf, all ? 10_000 : 8), [rows, nameOf, all]);
   if (!a.byEngine.length) return null;
   return <section className="card attr" aria-labelledby="attr-h" data-attribution>
-    <SectionHeader id="attr-h" title="Where the P&L came from" description="Realised plus open, paper money, split two ways. Both splits add up to the same total." level={3} />
-    <div className="attr-total num"><span className="k">Total</span><b className={`amt ${tone(a.total)}`}>{money(a.total)}</b><span className="small dim">{money(a.realised)} realised · {money(a.unrealised)} open</span></div>
+    <SectionHeader id="attr-h" title="Where the P&L came from" description={a.splitKnown ? 'Realised plus unrealised, paper money, split two ways. Both splits add up to the same total.' : `Realised plus open-trade, paper money, split two ways. ${OPEN_TRADE_LABEL}.`} level={3} />
+    <div className="attr-total num"><span className="k">Total</span><b className={`amt ${tone(a.total)}`}>{money(a.total)}</b><span className="small dim" data-attr-parts>{money(a.realised)} realised · {money(a.unrealised)} {a.splitKnown ? 'unrealised' : 'open-trade'}</span></div>
     <div className="scroll-x" tabIndex={0} role="region" aria-label="P&L by engine, scrolls sideways"><table className="tbl attr-eng"><caption className="sr">P&amp;L by engine, signed</caption>
-      <thead><tr><th scope="col">Engine</th><th scope="col">Positions</th><th scope="col">Realised</th><th scope="col">Open</th><th scope="col">Total</th></tr></thead>
+      <thead><tr><th scope="col">Engine</th><th scope="col">Positions</th><th scope="col">Realised</th><th scope="col">{a.splitKnown ? 'Unrealised' : 'Open-trade'}</th><th scope="col">Total</th></tr></thead>
       <tbody>{a.byEngine.map((e) => <tr key={e.engine} data-engine={e.engine}><th scope="row">{e.label}</th><td className="num">{e.closed} closed · {e.open} open</td><td className={`num amt ${tone(e.realised)}`}>{money(e.realised)}</td><td className={`num amt ${tone(e.unrealised)}`}>{money(e.unrealised)}</td><td className={`num amt ${tone(e.total)}`}><b>{money(e.total)}</b></td></tr>)}
         <tr className="attr-sum" data-engine-total><th scope="row">All engines</th><td /><td className={`num amt ${tone(a.realised)}`}>{money(a.realised)}</td><td className={`num amt ${tone(a.unrealised)}`}>{money(a.unrealised)}</td><td className={`num amt ${tone(a.total)}`}><b>{money(a.total)}</b></td></tr></tbody></table></div>
     <h3 className="attr-sub">By position</h3>
-    <ContributionBars label="P&L by position, realised and open" items={rows.filter((r) => (r.status === 'open' || (r.status === 'closed' && r.r != null)) && typeof r.pnl === 'number').map((r) => ({ key: r.id, label: r.sym, value: r.pnl as number }))} max={all ? 10_000 : 8} />
+    <ContributionBars label="P&L by position, realised and open" items={rows.filter((r) => (r.status === 'open' || (r.status === 'closed' && r.r != null)) && (typeof (r.split?.total ?? r.pnl) === 'number')).map((r) => ({ key: r.id, label: r.sym, value: (r.split?.total ?? r.pnl) as number }))} max={all ? 10_000 : 8} />
     {a.positions.count > 8 && <button className="btn sm" style={{ marginTop: 8 }} aria-pressed={all} onClick={() => setAll((x) => !x)}>{all ? 'Show the largest 8' : `Show all ${a.positions.count} positions`}</button>}
-    <p className="small mute" style={{ margin: '10px 0 0' }} data-attr-note>{a.engineReconciles && a.positionsReconcile ? 'The engine rows and the position rows each add up to the total to the paisa. ' : ''}{a.unpriced ? `${a.unpriced} position${a.unpriced === 1 ? ' has' : 's have'} no P&L figure yet and ${a.unpriced === 1 ? 'is' : 'are'} in neither split. ` : ''}Paper money after costs and slippage. A gain or loss here describes this book on these days; it is not a forecast.</p>
+    <p className="small mute" style={{ margin: '10px 0 0' }} data-attr-note>{a.engineReconciles && a.positionsReconcile ? 'The engine rows and the position rows each add up to the total to the paisa. ' : ''}{a.unpriced ? `${a.unpriced} position${a.unpriced === 1 ? ' has' : 's have'} no P&L figure yet and ${a.unpriced === 1 ? 'is' : 'are'} in neither split. ` : ''}{a.splitKnown && a.openTrade !== a.unrealised ? `Open-trade P&L (booked partials plus the remaining mark, for positions still open) is ${money(a.openTrade)}; it is a different quantity from unrealised. ` : ''}Paper money after costs and slippage. A gain or loss here describes this book on these days; it is not a forecast.</p>
+    {a.splitKnown && <details className="more"><summary>How realised and unrealised are worked out</summary><p className="small" data-cost-convention>{COST_CONVENTION}</p></details>}
   </section>;
 }
 

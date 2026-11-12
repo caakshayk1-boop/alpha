@@ -12,13 +12,14 @@ import { hasCelebrated, markCelebrated } from './celebrate.ts';
 import { useUi } from './ui.tsx';
 import { isLiveQuote, quoteWord } from './stamp.ts';
 import { alertsNow, inputFromRow } from './alerts.ts';
+import { provisionalOf } from './ledgerview.ts';
 
 import { DEFAULT_COST } from './tracker.ts';
 export { DEFAULT_COST };
 export function useCost(): number { const s = useSignals(); return s.data?.cost_round_trip_pct ?? DEFAULT_COST; }
 const day = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
 
-export interface BookRow { p: Paper; v: View; q: Quote | null; dayPnl: number | null; /** the exchange print time (epoch s) of the price used as the mark, when the mark is a print; absent for a closed or daily-close mark */ markT?: number | null }
+export interface BookRow { /** 12 Nov 2026 (2.3): set when the state came from a daily bar that is still forming (ledgerview.provisionalOf), so a provisional exit or fill is never read as a confirmed one */ provisional?: string | null; p: Paper; v: View; q: Quote | null; dayPnl: number | null; /** the exchange print time (epoch s) of the price used as the mark, when the mark is a print; absent for a closed or daily-close mark */ markT?: number | null }
 /** Papers with their live prices: bars decide the state of each trade, the five-minute feed gives the live mark, the previous close and the
  *  day's line. Day P&L is measured from the entry price on the day a trade was entered, and from the previous close after that. */
 function useLivePapers(active: Paper[], on: boolean) {
@@ -36,7 +37,7 @@ function useLivePapers(active: Paper[], on: boolean) {
     if (['open', 'closed', 'skipped'].includes(v.status) && !v.dataNote) confirmed.current.set(p.id, v);
     let dayPnl: number | null = null;
     if (v.status === 'open' && q && v.mark != null && v.entryT != null) { const base = day(v.entryT) === day(q.pt) ? v.entry! : q.prev; dayPnl = Math.round((v.mark - base) * p.qty * 100) / 100; }
-    return { p, v, q, dayPnl, markT: v.markKind === 'live' && live ? live.t : null };
+    return { p, v, q, dayPnl, markT: v.markKind === 'live' && live ? live.t : null, provisional: provisionalOf(v, arr) };
   }), [active, bars.data, intra.data, cost]);
   const anyLive = intra.data ? Object.values(intra.data.quotes).some((q) => isLiveQuote(q)) : null;
   /** ONE word for the whole book: the newest exchange print among its quotes (Live / Delayed / Last traded / Unavailable); null while the first answer is loading */

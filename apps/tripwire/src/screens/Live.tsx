@@ -12,6 +12,8 @@ import { LiveBadge, Observed, Tick } from '../live.tsx';
 import { freshestPrint, quoteWord } from '../stamp.ts';
 import { Empty } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
+import { snapshotOf, OPEN_TRADE_LABEL } from '../ledgerview.ts';
+import { TrustRow, TotalRow } from './pnlstrip.tsx';
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const tone = (v: number | null | undefined) => (v == null || v === 0 ? '' : v > 0 ? 'up' : 'down');
@@ -52,10 +54,12 @@ function Road({ l }: { l: Line }) {
 
 export function Live() {
   const s = useAppState(); const scr = useScreen(); const auto = useAutoBook(true); const own = useLiveBook(true);
-  const [asking, setAsking] = useState(false); const [question, setQuestion] = useState('What changed?');
+  const [asking, setAsking] = useState(false); const [question, setQuestion] = useState('What contributes to open-trade P&L?');
   const [key, setKey] = useState<Key>('pnl'); const [dir, setDir] = useState<'asc' | 'desc'>('desc');
   const dupOf = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
   const rows: BookRow[] = useMemo(() => [...auto.rows, ...own.rows.filter((r) => !dupOf(r.p) && !ENGINES.some((e) => e.id === r.p.engine && e.retired))], [auto.rows, own.rows, auto.plan]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const hasOwn = rows.some((r) => !auto.rows.includes(r));
+  const snap = snapshotOf(rows.map((r) => ({ p: r.p, v: r.v, dayPnl: r.dayPnl, markT: r.markT, owner: auto.rows.includes(r) ? 'engine' as const : 'you' as const })), auto.cost, auto.ledger.data?.ledger.updated ?? null);   // ONE snapshot for this page
   const ls = useMemo(() => lines(rows), [rows]); const tot = useMemo(() => totals(ls), [ls]); const curve = useMemo(() => {
     const open = rows.filter((r) => r.v.status === 'open');
     // A subset or mixed sessions cannot stand in for a portfolio curve.
@@ -74,14 +78,14 @@ export function Live() {
   return <div>
     <PageBar title="Paper P&L" onBack sub={<><span className={live ? 'up' : ''}>{auto.session.label}</span> · {auto.session.detail}</>} />
     <div className="live-overview">
-      <section className="live-value" aria-label="Paper portfolio snapshot">
-        <LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} />
-        <h2>Your paper portfolio.</h2><span className="k">Open position value</span>
-        <div className="hero-value num amt">{ls.length ? inr0(tot.value) : '—'}</div>
-        <span className="small mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span>
-        <dl><div><dt>Open P&L</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
-          <div><dt>{live ? 'Today' : 'Last session'}</dt><dd className={`amt ${tone(tot.dayPnl)}`}>{money(tot.dayPnl)}</dd></div>
-          <div><dt>Positions</dt><dd>{tot.open} open · {waiting} waiting</dd></div></dl>
+      <section className="live-value l4-live" aria-label="Paper portfolio snapshot" data-snapshot={snap.id}>
+        {/* 12 Nov 2026 (Tripwire 2.0, 2.1 and 3.1): the heading names the scope; the answer is Total P&L; the remaining value is supporting; quote freshness and exit verification are two statuses */}
+        <h2 data-scope-name>{hasOwn ? 'Engine paper book and my paper plans' : 'Engine paper book'}</h2>
+        <TrustRow snap={snap} scope="engine" onScope={() => {}} hasMine={false} throughWord={null} quotes={<>Quotes: <LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} /> <span className="mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></>} />
+        <TotalRow snap={snap} dayLabel={live ? 'Today' : 'Last session'} />
+        <dl><div><dt>{OPEN_TRADE_LABEL}</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
+          <div><dt>Open position value</dt><dd className="amt">{ls.length ? inr0(tot.value) : '—'}</dd></div>
+          <div><dt>Positions</dt><dd>{tot.open} open · {waiting} awaiting entry</dd></div></dl>
       </section>
       <section className="live-performance" aria-label="Session performance">
         <div className="row between"><h2>Session performance</h2><span className="small mute">Remaining positions · ₹</span></div>
@@ -93,8 +97,8 @@ export function Live() {
     {auto.intra.err && <p className="small down">{auto.intra.err === SLOW_DOWN ? `${SLOW_DOWN}: prices will refresh on their own.` : `Intraday prices unavailable: ${auto.intra.err}.`} Showing available dated daily bars.</p>}
     <section className="live-question" aria-label="Questions about your paper portfolio">
       <QuestionOrb label="Ask about the paper portfolio" expanded={asking} onClick={() => setAsking(!asking)} />
-      {asking && <><div className="chips">{['What changed?', 'Where is the concentration?', 'How is P&L calculated?'].map((q) => <button key={q} className="chip" aria-pressed={question === q} onClick={() => setQuestion(q)}>{q}</button>)}</div>
-        <p aria-live="polite" className="small amt">{question === 'What changed?' ? tot.best ? <><a href={`#/c/${tot.best.sym}`}>{tot.best.sym}</a> contributes {money(tot.best.pnl)} to the current open P&L of {money(tot.pnl)}. {tot.worst && tot.worst.id !== tot.best.id ? `${tot.worst.sym} contributes ${money(tot.worst.pnl)}. ` : ''}These figures measure change since entry; they do not explain what caused the price move.</> : 'No measured open position is available.' : question === 'Where is the concentration?' ? risk.topPosition ? <><a href={`#/c/${risk.topPosition.sym}`}>{risk.topPosition.sym}</a> is {risk.topPosition.pct.toFixed(1)}% of the measured open value. {risk.topSector ? `${risk.topSector.name} is the largest sector at ${risk.topSector.pct.toFixed(1)}%.` : ''} Weights use the displayed prices and remaining paper quantities.</> : 'Complete position values are needed to measure concentration.' : 'P&L combines booked partial exits and the remaining quantity marked at its observed price, less the recorded cost and slippage assumptions. Entry dates and observed sessions are shown on every position below. This is paper analysis, not executed returns.'}</p>
+      {asking && <><div className="chips">{['What contributes to open-trade P&L?', 'Where is the concentration?', 'How is P&L calculated?'].map((q) => <button key={q} className="chip" aria-pressed={question === q} onClick={() => setQuestion(q)}>{q}</button>)}</div>
+        <p aria-live="polite" className="small amt">{question === 'What contributes to open-trade P&L?' ? tot.best ? <><a href={`#/c/${tot.best.sym}`}>{tot.best.sym}</a> contributes {money(tot.best.pnl)} to the current open P&L of {money(tot.pnl)}. {tot.worst && tot.worst.id !== tot.best.id ? `${tot.worst.sym} contributes ${money(tot.worst.pnl)}. ` : ''}Basis: since entry, booked partials included. Each name contributes to that figure; none is said to have caused it.</> : 'No measured open position is available.' : question === 'Where is the concentration?' ? risk.topPosition ? <><a href={`#/c/${risk.topPosition.sym}`}>{risk.topPosition.sym}</a> is {risk.topPosition.pct.toFixed(1)}% of the measured open value. {risk.topSector ? `${risk.topSector.name} is the largest sector at ${risk.topSector.pct.toFixed(1)}%.` : ''} Weights use the displayed prices and remaining paper quantities.</> : 'Complete position values are needed to measure concentration.' : 'P&L combines booked partial exits and the remaining quantity marked at its observed price, less the recorded cost and slippage assumptions. Entry dates and observed sessions are shown on every position below. This is paper analysis, not executed returns.'}</p>
         <p className="small mute">Calculated locally from this book. Open a company to inspect the evidence.</p></>}
     </section>
 
@@ -108,7 +112,7 @@ export function Live() {
         <div className="row between small mute num"><span>{inr(l.entry)} in</span><span title={l.wordDetail}>{l.word} {inr(l.last)}</span></div>
         <div className="row between small num" style={{ marginTop: 2 }}><span className="down">stop {inr0(l.stop)}</span>{l.t1 != null ? <span className={l.ref ? 'dim' : 'up'} title={l.ref ? 'Reference only: this pick was filed before profit booking began, so it exits on its stop and time limit.' : 'Profit-booking targets'}>{l.t1Hit ? 'T1 ✓ · ' : ''}T1 {inr0(l.t1)}{l.t2 != null ? ` · T2 ${inr0(l.t2)}` : ''}{l.ref ? ' (ref)' : ''}</span> : <span className="dim">no targets</span>}</div>
       </a>)}</div></>}
-    {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Waiting ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
+    {waiting > 0 && <p className="small dim" style={{ margin: '10px 0 0' }}>Awaiting entry ({waiting}): {rows.filter((r) => r.v.status === 'pending' || r.v.status === 'waiting').map((r) => r.p.sym).join(', ')}. {rows.some((r) => r.v.status === 'waiting') ? 'A name with no price history yet stays out of the P&L rather than being guessed.' : 'These enter at the next session\'s open, or at the first session whose daily bar is published.'}</p>}
 
     <details className="more"><summary>Full position table · sort and compare</summary>
     {ls.length ? <div className="stbl-wrap"><table className="stbl"><caption className="sr">Open paper positions with live profit and loss. Tap a column heading to sort.</caption>
@@ -120,7 +124,7 @@ export function Live() {
         <td className={`num amt ${tone(l.pnl)}`}>{money(l.pnl)}</td><td className={`num ${tone(l.pct)}`}>{pct(l.pct)}</td><td className={`num amt ${tone(l.dayPnl)}`}>{money(l.dayPnl)}</td><td className="num amt">{inr0(l.value)}</td>
         <td className="num down">{l.toStop == null ? '—' : pct(l.toStop)}<span className="sub2">{inr(l.stop)}</span></td><td className={`num ${tone(l.r)}`}>{R(l.r)}</td>
         <td className="num">{l.t1Hit ? <span className="up">T1 ✓</span> : l.t1 != null ? <span className={l.ref ? 'dim' : ''} title={l.ref ? 'Reference level, not traded' : undefined}>T1 {inr0(l.t1)}{l.toT1 != null ? ` (${pct(l.toT1)})` : ''}</span> : '—'}{l.t2 != null && <span className="sub2">T2 {inr0(l.t2)}{l.toT2 != null ? ` (${pct(l.toT2)})` : ''}{l.ref ? ' ref' : ''}</span>}</td></tr>)}</tbody></table></div>
-      : <div className="card dim">Nothing is open yet. {waiting} {waiting === 1 ? 'position is' : 'positions are'} waiting for the next open.</div>}
+      : <div className="card dim">Nothing is open yet. {waiting} {waiting === 1 ? 'position is' : 'positions are'} awaiting entry at the next open.</div>}
 
     </details>
     {ls.length > 0 && <><Head>Risk lens</Head>

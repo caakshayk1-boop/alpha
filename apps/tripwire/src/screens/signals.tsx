@@ -87,7 +87,7 @@ function Picks() {
     {out.runs.map((run) => { const def = ENGINES.find((e) => e.id === run.id)!; const fe = fwd?.engines.find((x) => x.engine === run.id); return <section key={run.id} id={`engine-${run.id}`} className="pk-eng" aria-label={def.name}>
       <header className="pk-head">
         <div className="pk-title"><h2>{def.name}</h2><span className="tag num">{run.picks.length}</span></div>
-        <div className="pk-meta"><span className="tag pk-exp">Experimental</span><EvidenceChip id={def.id} /><span className="small num dim" data-sample>{fe ? `${fe.closed} of ${MIN_TRADES} closed in the record` : 'record unavailable'}</span></div>
+        <div className="pk-meta"><span className="tag pk-exp">Experimental</span><EvidenceChip id={def.id} /><span className="small num dim" data-sample>{fe ? `${fe.closed} of ${MIN_TRADES} observations resolved in the record` : 'record unavailable'}</span></div>
         <p className="small dim pk-line">{def.line} · {run.minimum}/3 models must agree · up to {def.horizon} sessions</p>
         <details className="ev"><summary>How it picks<span className="chev">▾</span></summary><div className="body"><p className="small mute" style={{ marginTop: 0 }}>{def.theory}</p><ol style={{ margin: 0, paddingLeft: 20 }}>{def.how.map((h) => <li key={h} style={{ marginBottom: 6 }}>{h}</li>)}</ol>
           <p className="small dim" style={{ marginBottom: 0 }}>Universe: {run.funnel.universe} · eligible: {run.funnel.eligible} · filters and agreement passed: {run.funnel.passed} · selected: {run.funnel.picked}. Stop ceiling: {def.maxStopPct}%. Original factor evidence excludes the confirmation layer.</p></div></details>

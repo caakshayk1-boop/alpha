@@ -4,6 +4,7 @@ import type { Filters } from './screen.ts';
 import type { Paper, View } from './tracker.ts';
 import type { SeenSnap, SeenChange } from './sincevisit.ts';
 import { agreementSettings, type AgreementSettings } from './agreement.ts';
+import { lifecycleIdFor, normalizeLifecycles } from './lifecycle.ts';
 export const VERSION = 1;
 /** `question` is optional and absent from every version written before 27 Oct 2026: an open question the thesis has not answered yet. */
 export type ReviewState = 'new' | 'waiting' | 'results' | 'reviewed';
@@ -93,7 +94,8 @@ export function saveScreen(s: State, name: string, f: Filters): State {
 /** Take a paper trade from an engine pick. One live paper trade per symbol: a second take of the same name is refused, not duplicated. */
 export function takePaper(s: State, p: Omit<Paper, 'id' | 'takenAt'>, nowSec = Math.floor(Date.now() / 1000)): { s: State; ok: boolean } {
   if (s.paper.some((x) => x.sym === p.sym && !x.closedByUser && !['closed', 'skipped'].includes(x.lastView?.status ?? ''))) return { s, ok: false };
-  return { s: { ...s, paper: [{ ...p, id: uid(), takenAt: nowSec, transitions: [{ at: new Date(nowSec * 1000).toISOString(), from: 'candidate', to: 'pending', reason: 'Paper entry requested; stop, horizon and targets stored' }] }, ...s.paper] }, ok: true };
+  const id = uid();
+  return { s: { ...s, paper: [{ ...p, id, lifecycleId: lifecycleIdFor(id), takenAt: nowSec, transitions: [{ at: new Date(nowSec * 1000).toISOString(), from: 'candidate', to: 'pending', reason: 'Paper entry requested; stop, horizon and targets stored' }] }, ...s.paper] }, ok: true };
 }
 export const removePaper = (s: State, id: string): State => ({ ...s, paper: s.paper.filter((x) => x.id !== id) });
 /** Closing by hand stops the one-per-symbol lock but keeps the record; the tracker still shows what the rules did. */
@@ -203,6 +205,7 @@ export function checkBackup(text: string): BackupCheck {
   const plans: Plan[] = []; for (const [i, p] of (d.plans as unknown[]).entries()) { const c = checkPlan(p); if (!c) return { ok: false, reason: `Plan ${i + 1} is damaged (it has no symbol, id or readable prices).` }; plans.push(c); }
   const paperIn = d.paper === undefined ? [] : d.paper; if (!Array.isArray(paperIn)) return { ok: false, reason: 'The paper trades section is damaged.' };
   const paper: Paper[] = []; for (const [i, p] of paperIn.entries()) { const c = checkPaper(p); if (!c) return { ok: false, reason: `Paper trade ${i + 1} is damaged (it has no symbol, id or readable prices).` }; paper.push(c); }
+  paper.splice(0, paper.length, ...normalizeLifecycles(paper));   // 12 Nov 2026: an old backup gets derived lifecycle ids, a duplicate is re-keyed, nothing is dropped
   const compares = Array.isArray(d.compares) ? (d.compares as unknown[]).filter((c): c is string[] => Array.isArray(c) && c.every(isStr)) : [];
   const screens = Array.isArray(d.screens) ? (d.screens as unknown[]).filter((c): c is { name: string; f: Filters } => isObj(c) && isStr(c.name) && isObj(c.f)) : [];
   const snaps: State['snaps'] = {}; if (isObj(d.snaps)) for (const [sym, list] of Object.entries(d.snaps)) if (Array.isArray(list)) snaps[sym] = list.filter((x): x is Snap => isObj(x) && isStr(x.day) && isStr(x.at));

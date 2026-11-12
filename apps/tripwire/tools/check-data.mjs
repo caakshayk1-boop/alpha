@@ -5,10 +5,20 @@
 //   3. no row without a sector (the mapped exceptions are build.mjs SECTOR_FIX), and no more than 35% without a size class (the feed publishes one for index-sized names only)
 //   4. the company files carry the same data day as the screen; signals is reported (WARN) and fatal only with STRICT_SIGNALS=1, because it is a separate pipeline
 // TRIPWIRE_ALLOW_STALE=1 skips rules 1 and 4 on a laptop that built from an old snapshot; CI never sets it. TRIPWIRE_NOW (ISO instant) overrides the clock for tests.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertScreen, statusOf, expectedSession, throughWord } from '../src/freshness.ts';
+import { checkStagesAgree, checkMarksCurrent, formatViolations } from '../src/ledgerchecks.ts';
+
+/** 12 Nov 2026 (Tripwire 2.0, 1.4): the nightly ledger's own freshness, asserted in the deploy job as well as in the ledger job, so a stale outcome stage is a red build with one line per fault and not something found at audit time.
+ *  (a) the outcome stage's newest mark day equals the pick stage's last night, (b) no open position is marked older than the last completed NSE session. Both read src/ledgerchecks.ts, which reads src/calendar.ts. */
+export function checkLedgerFile(path, nowMs = Date.now(), env = process.env) {
+  if (!existsSync(path)) return { errors: [], warnings: ['ledger/ledger.json does not exist; the ledger freshness assertions were skipped'] };
+  if (env.TRIPWIRE_ALLOW_STALE === '1') return { errors: [], warnings: [] };
+  const l = JSON.parse(readFileSync(path, 'utf8')); const v = [...checkStagesAgree(l), ...checkMarksCurrent(l, nowMs)];
+  return { errors: formatViolations(v).map((m) => `ledger: ${m}`), warnings: [] };
+}
 
 export function checkDist(dist, nowMs = Date.now(), env = process.env) {
   const errors = [], warnings = []; const read = (f) => JSON.parse(readFileSync(join(dist, 'data', f), 'utf8'));
@@ -29,7 +39,7 @@ export function checkDist(dist, nowMs = Date.now(), env = process.env) {
   // Data quality that is reported, never fatal: a row whose last price is older than the screen's day (the app flags it stale and gives it no model vote), and rows with no size class (the app says "Size class not published").
   const rowsOld = screen.rows.filter((r) => r.last_date && r.last_date < screen.as_of); const noTier = screen.rows.filter((r) => !r.tier);
   if (rowsOld.length) warnings.push(`${rowsOld.length} row${rowsOld.length === 1 ? '' : 's'} carry a last price older than the screen's day ${screen.as_of} (${rowsOld.slice(0, 6).map((r) => `${r.sym} ${r.last_date}`).join(', ')}${rowsOld.length > 6 ? ', ...' : ''}); the app treats them as stale`);
-  if (noTier.length) warnings.push(`${noTier.length} of ${screen.rows.length} rows (${(100 * noTier.length / screen.rows.length).toFixed(1)}%) have no size class from the upstream screen; the app says so and does not guess one`);
+  if (noTier.length) warnings.push(`${noTier.length} of ${screen.rows.length} rows (${(100 * noTier.length / screen.rows.length).toFixed(1)}%) have no size class: the published size class (rule elig-2) exists for index-sized names only, so the app says "Size class not published" and does not guess one`);
   // the committed nightly sheets (served by /api/rsi and /api/factors) against the screen they were built from: WARN, fatal with STRICT_SHEETS=1
   const ledgerDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger'); const expected = screen.rows.filter((r) => r.liquid && r.tier !== 'micro').length;
   for (const [f, count, floor] of [['rsi.json', (j) => Object.keys(j.rows ?? {}).length, 0.75], ['factors.json', (j) => j.universe ?? 0, 0.6]]) {
@@ -41,8 +51,14 @@ export function checkDist(dist, nowMs = Date.now(), env = process.env) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const dist = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'dist'); const now = process.env.TRIPWIRE_NOW ? Date.parse(process.env.TRIPWIRE_NOW) : Date.now();
   const { errors, warnings } = checkDist(dist, now);
+  { const lg = checkLedgerFile(join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger', 'ledger.json'), now); errors.push(...lg.errors); warnings.push(...lg.warnings); }
   for (const w of warnings) console.warn(`WARN  ${w}`);
   for (const e of errors) console.error(`FAIL  ${e}`);
-  if (errors.length) { console.error(`tripwire verify-data: ${errors.length} rule(s) broken; the build must not deploy.`); process.exit(1); }
+  if (errors.length) {
+    console.error(`tripwire verify-data: ${errors.length} rule(s) broken; the build must not deploy.`);
+    /* a failed or stale build must be visible on the run page itself, not only in a step log */
+    if (process.env.GITHUB_STEP_SUMMARY) { try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Tripwire freshness check FAILED\n\nExpected session: ${expectedSession(now)}. The build was not deployed.\n\n${errors.map((e) => `- ${e}`).join('\n')}\n`); } catch { /* the log above still has it */ } }
+    process.exit(1);
+  }
   console.log(`tripwire verify-data: ok (expected session ${expectedSession(now)})`);
 }
