@@ -52,7 +52,7 @@ try {
     ok(await pg.locator('[data-asof]').count() === 1 && await pg.getByText('Screen figures: close of').count() === 0, 'the scattered date strings are gone from the price card');
     const pubs = await pg.locator('[data-research-read] [data-pub-missing]').count(); const stm = await pg.locator('[data-research-read] [data-fact]').count();
     ok(pubs >= 1 && pubs < stm + 1, `each statement-based claim says beside itself that its publication date is unavailable (${pubs} of ${stm})`);
-    await pg.locator('[data-research-read] [data-fact] > summary').first().click();
+    await pg.locator('[data-research-read] > summary').click(); await pg.locator('[data-research-read] [data-fact] > summary').first().click();   // 12 Nov 2026: the read opens first (it is a closed disclosure now)
     ok(/Method & limits/.test(await pg.locator('[data-research-read] .rr-method').first().innerText()) && /Snapshot built/.test(await pg.locator('[data-research-read] .rr-prov').first().innerText()), 'Method & limits names period, source, snapshot build and publication');
     await pg.getByRole('tab', { name: 'Risks', exact: true }).click(); await pg.waitForSelector('[data-coverage]');
     const order = await pg.evaluate(() => { const c = document.querySelector('[data-coverage]'); const s = [...document.querySelectorAll('details.ev > summary')].find((x) => /Countercase/.test(x.textContent)); return { before: !!(c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING), text: c.textContent, colour: getComputedStyle(c).backgroundColor, state: c.getAttribute('data-coverage') }; });

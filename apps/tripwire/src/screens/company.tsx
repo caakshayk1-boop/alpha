@@ -26,10 +26,13 @@ import { CompanyNews } from './News.tsx';
 import { livePrice, useQuote, useWatchQuotes } from '../quotes.ts';
 import { fmtIst } from '../stamp.ts';
 import { Pill } from '../components/index.ts';
-import { verdictChips, type VerdictChip } from '../verdict.ts';
+import { trendChip, verdictChips, type VerdictChip } from '../verdict.ts';
 import { FirstThought } from './firstthought.tsx';
 import { NotFound } from './notfound.tsx';
 import { ResearchRead } from './ResearchRead.tsx';
+import { Fold } from './fold.tsx';
+import { glanceOf, type GlanceCell } from '../glance.ts';
+import { resultsDate } from '../resultsdate.ts';
 
 type Tab = 'overview' | 'financials' | 'ownership' | 'risks' | 'thesis';
 export function Company({ sym }: { sym: string }) {
@@ -84,42 +87,42 @@ export function Company({ sym }: { sym: string }) {
   const mainRisk = counters[0] ? { line: counters[0].t, note: counters[0].k } : { line: cov.title, note: cov.line };
   const riskNote = [grade.level ? riskSentence(grade.level, flags.length) : null, mainRisk.note].filter(Boolean).join(' ') || null;
   const Metric = ({ id, label, v }: { id: string; label: string; v: string }) => <button className="li" style={{ width: '100%', textAlign: 'left', minHeight: 48 }} onClick={() => open({ k: 'explain', id, sym })}><span className="grow dim">{label}</span><span className="num">{v}</span><Icon n="info" className="mute" /></button>;
+  // 12 Nov 2026 (owner: "a ONE-PAGER but smart info"): the Overview is the answer above the tabs (hero, chart, At a glance, the decision in two lines) and, below them, one closed
+  // disclosure per topic, each leading with one line. Nothing was removed; each figure is now said once: the range position, trend, ROCE, valuation, size, results date, ownership and flags are in the grid.
+  const nowMs = Date.now(); const rd = resultsDate(row.next_earnings, nowMs); const tr = trendOf(row);
+  const peers = scr.data ? sectorPeers(sym, scr.data.rows, 5) : null; const like = scr.data ? similarTo(sym, scr.data.rows, 5) : [];
+  const evPass = evals.filter((x) => x.ev.pass).length;
+  const glance = glanceOf({ c: { row, inst: c.data.inst, built_on: c.data.built_on }, nowMs, px: isNum(px) ? px : null, lo: isNum(lo) ? lo : null, hi: isNum(hi) ? hi : null, fromHigh: isNum(rp.fromHigh) ? rp.fromHigh : null, basisWord: rp.basis === 'live' ? pxWord : 'at close',
+    roceMeaningful: meaningful(el!, 'roce'), financial: !!el!.financial, riskLevel: grade.level, riskNote: grade.note, flagCount: c.data.risk ? flags.length : null, stale: !!row.stale || fr.tone === 'peach' });
   const overview = <>
-    {/* revamp v2 (11 Nov 2026): the day's change and the trend tag are in the hero, the distance from the high is in the range row below; this card says each of them nowhere else */}
-    <section className="card co-range" aria-label="Range and trend">
-      <p className="small" style={{ margin: '12px 0 0' }}><span className="k">Range and trend</span>{isNum(row.r1m) ? <><br /><span className={`num ${tone(row.r1m)}`}>{pct(row.r1m)}</span> <span className="dim">over a month</span></> : null}</p>
-      {(() => { const tr = trendOf(row); const short = { up: 'All four trend rules hold.', down: 'All four mirrored rules hold.', mixed: 'It meets neither the uptrend nor the downtrend rule.' };
-        return tr.trend ? <details className="more"><summary>Why this trend</summary><div><p style={{ margin: '0 0 6px' }}>{short[tr.trend]}{lp.fromQuote ? ' Measured at the last close.' : ''} {tr.detail}</p><p style={{ margin: 0 }}>The rule for an uptrend: {TREND_RULE_TEXT.up}. A downtrend is {TREND_RULE_TEXT.down}. Anything else is sideways. It describes the past and forecasts nothing.</p></div></details>
-          : <p className="small mute" style={{ margin: '12px 0 0' }}>Trend not tagged: a moving average is missing.</p>; })()}
-      {pxAt !== null ? <><div className="meter" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
+    <ResearchRead company={c.data} />
+    <Fold id="trend" title="Trend and range" summary={tr.trend ? `${TREND_WORD[tr.trend]}: ${{ up: 'all four trend rules hold.', down: 'all four mirrored rules hold.', mixed: 'it meets neither the uptrend nor the downtrend rule.' }[tr.trend]}` : 'Trend not tagged: a moving average is missing.'}>
+      {isNum(row.r1m) && <p className="small" style={{ margin: '0 0 8px' }}><span className={`num ${tone(row.r1m)}`}>{pct(row.r1m)}</span> <span className="dim">over a month</span></p>}
+      {tr.trend && <p className="small" style={{ margin: '0 0 8px' }}>{lp.fromQuote ? 'Measured at the last close. ' : ''}{tr.detail} The rule for an uptrend: {TREND_RULE_TEXT.up}. A downtrend is {TREND_RULE_TEXT.down}. Anything else is sideways. It describes the past and forecasts nothing.</p>}
+      {pxAt !== null ? <><div className="meter" role="img" aria-label={`52-week range: low ${inr(lo)}, high ${inr(hi)}, now ${inr(px)}`}>
         <div className="fill" style={{ width: `${pxAt}%` }} />
         {([['50d', row.sma50], ['200d', row.sma200]] as const).map(([l, v]) => { const a = at(v); return a === null ? null : <span key={l} className="mk" style={{ left: `${a}%` }} title={`${l} average ${inr(v!)}`} />; })}
         <span className="now" style={{ left: `${pxAt}%` }} /></div>
-        <div className="row between small dim num"><span>52w low {inr(lo, 0)}</span><span>{pct(rp.fromHigh)} from {rp.newHigh ? 'its old high: a new 52-week high' : 'high'} {inr(hi, 0)}<span className="mute"> · {rp.basis === 'live' ? pxWord : 'at close'}</span></span></div>
-        <div className="small num mute" style={{ marginTop: 4 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ')}</div></> : <p className="dim small">52-week range not available.</p>}
-    </section>
-    {(() => { const peers = scr.data ? sectorPeers(sym, scr.data.rows, 5) : null; return peers && <><Head>Same sector</Head>
-      <section className="card" aria-label="Companies in the same sector">{peers.list.length > 0 ? <>{peers.list.map((r) => <a key={r.sym} className="li" href={`#/c/${encodeURIComponent(r.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{r.sym}</b> <span className="mute small">{r.name}</span></span><span className="small mute num">{cr(r.turnover_cr)} a day</span></a>)}
-        <p className="small mute" style={{ margin: '8px 0 0' }}>{peers.sector}, {peers.tier} cap, by value traded a day. A sector label is a broad grouping from the data provider: it does not mean the same products, customers or risks.</p></> : <p className="small dim" style={{ margin: 0 }}>{peers.why}</p>}</section></>; })()}
-    {(() => { const like = scr.data ? similarTo(sym, scr.data.rows, 5) : []; return like.length > 0 && <><Head>Similar measured patterns</Head>
-      <section className="card" aria-label="Companies whose measured figures are nearest">{like.map((l) => <a key={l.row.sym} className="li" href={`#/c/${encodeURIComponent(l.row.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{l.row.sym}</b> <span className="mute small">{l.row.name}{l.row.sector && l.row.sector !== row.sector ? ` · ${l.row.sector}` : ''}</span><br /><span className="small mute">Nearest on {l.closest.map((k) => metricOf(k)?.short ?? k).join(', ')} · {plural(l.shared, 'figure')} compared</span></span></a>)}
-        <p className="small mute" style={{ margin: '8px 0 0' }}>These are statistically close on today's measured figures, from any sector. Close figures do not make the businesses alike, and the shares need not move together.</p></section></>; })()}
-
-    <Head>Engine check</Head>
-    {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>
-      <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }}><span aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="sr">{c.pass === true ? 'Passes: ' : c.pass === false ? 'Fails: ' : 'Not measured: '}</span></span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
-        {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
-    {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
-    <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p>
-
-    <Head>News</Head>
-    <CompanyNews name={row.name} sym={row.sym} />
-    <Head>Calendar</Head>
-    <div className="card"><div className="list">
-      {row.stale && <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data<b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b></span></div>}
-      <div className="li"><span className="tag">{row.next_earnings ? dayWord(row.next_earnings) : 'Unknown'}</span><span className="grow dim">{row.next_earnings ? 'Next results, estimated date' : 'No results date is published'}</span></div>
-    </div><p className="mute small" style={{ margin: '8px 0 0' }}>Announcements and corporate actions are not in this data yet. Read the exchange filings for those.</p></div>
-
+        <div className="small num mute" style={{ marginTop: 6 }}>{[['50D', row.sma50], ['200D', row.sma200]].filter(([, v]) => typeof v === 'number' && (v as number) > 0).map(([l, v]) => `${l} ${inr(v as number)}`).join(' · ') || '50 and 200-day averages not held'}. The marks on the bar are those averages.</div></> : <p className="dim small" style={{ margin: 0 }}>52-week range not available.</p>}
+    </Fold>
+    {peers && <Fold id="sector" title="Same sector" summary={peers.list.length > 0 ? `${peers.sector}, ${plural(peers.list.length, 'company', 'companies')} of ${peers.tier} cap by value traded` : peers.why}>
+      <section aria-label="Companies in the same sector">{peers.list.length > 0 ? <>{peers.list.map((r) => <a key={r.sym} className="li" href={`#/c/${encodeURIComponent(r.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{r.sym}</b> <span className="mute small">{r.name}</span></span><span className="small mute num">{cr(r.turnover_cr)} a day</span></a>)}
+        <p className="small mute" style={{ margin: '8px 0 0' }}>{peers.sector}, {peers.tier} cap, by value traded a day. A sector label is a broad grouping from the data provider: it does not mean the same products, customers or risks.</p></> : <p className="small dim" style={{ margin: 0 }}>{peers.why}</p>}</section></Fold>}
+    {like.length > 0 && <Fold id="similar" title="Similar measured patterns" summary={`${plural(like.length, 'company', 'companies')} with the nearest measured figures, from any sector`}>
+      <section aria-label="Companies whose measured figures are nearest">{like.map((l) => <a key={l.row.sym} className="li" href={`#/c/${encodeURIComponent(l.row.sym)}`}><span className="grow" style={{ minWidth: 0 }}><b>{l.row.sym}</b> <span className="mute small">{l.row.name}{l.row.sector && l.row.sector !== row.sector ? ` · ${l.row.sector}` : ''}</span><br /><span className="small mute">Nearest on {l.closest.map((k) => metricOf(k)?.short ?? k).join(', ')} · {plural(l.shared, 'figure')} compared</span></span></a>)}
+        <p className="small mute" style={{ margin: '8px 0 0' }}>These are statistically close on today's measured figures, from any sector. Close figures do not make the businesses alike, and the shares need not move together.</p></section></Fold>}
+    <Fold id="engines" title="Engine check" summary={evals.length ? `${evPass} of ${evals.length} paper-test rules qualify this name` : 'Engine results load with the screen.'}>
+      {evals.map(({ e, ev }) => <details key={e.id} className="ev"><summary><span style={{ color: ev.pass ? 'var(--lime)' : 'var(--mute)' }}>{ev.pass ? '●' : '○'}</span><span className="grow">{e.name}</span><span className={`tag ${ev.pass ? 'lime' : ''}`}>{ev.pass ? 'Qualifies' : ev.eligible ? 'Does not qualify' : 'Not eligible'}</span><span className="chev">▾</span></summary>
+        <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }}><span aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="sr">{c.pass === true ? 'Passes: ' : c.pass === false ? 'Fails: ' : 'Not measured: '}</span></span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
+          {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
+      {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
+      <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p></Fold>
+    <Fold id="news" title="News" summary={`Headlines that name ${row.name}`}><CompanyNews name={row.name} sym={row.sym} /></Fold>
+    <Fold id="calendar" title="Calendar" summary={rd.line} aside={row.stale ? <span className="tag peach">Old close</span> : undefined}>
+      <div className="list">
+        {row.stale && <div className="li"><span className="tag">{dayWord(row.last_date)}</span><span className="grow dim">Last close in this data<b className="down"> · this name has not printed a close for more than a session; its figures are older than the rest of the screen</b></span></div>}
+        <div className="li" data-results-state={rd.state}><span className="tag">{rd.tag}</span><span className="grow dim">{rd.line}</span></div>
+      </div><p className="mute small" style={{ margin: '8px 0 0' }}>Announcements and corporate actions are not in this data yet. Read the exchange filings for those.</p></Fold>
     <Intel c={c.data} rows={scr.data?.rows ?? []} only={['season']} />
   </>;
   const financials = <>
@@ -133,7 +136,6 @@ export function Company({ sym }: { sym: string }) {
       {meaningful(el!, 'margin') && <Metric id="net_margin" label="Net margin" v={pct(row.net_margin, 1, false)} />}
       <Metric id="rsi" label="RSI (14)" v={x1(row.rsi, 0)} />
       <Metric id="rs3m" label="Against the Nifty, 3m" v={isNum(row.rs3m) ? `${row.rs3m > 0 ? '+' : '−'}${Math.abs(row.rs3m).toFixed(1)} pts` : dash} />
-      <Metric id="turnover_cr" label="Traded value a day" v={cr(row.turnover_cr)} />
     </div></div>
     <details className="more"><summary>Which figures follow the latest price, which are at the close{rp.basis === 'live' ? ` (PE and range follow the ${pxWord} price)` : ''}</summary><div>{rp.basis === 'live' ? `PE and the 52-week range use the ${pxWord} print of ${lp.t ? fmtIst(lp.t) : 'now'}. ` : ''}RSI, the Nifty comparison, the averages and the scores are as of the close of {dayWord(row.last_date)}; ROCE, debt, margins and growth come from the {row.fy ?? 'latest'} accounts and do not move with the price.</div></details>
 
@@ -158,13 +160,14 @@ export function Company({ sym }: { sym: string }) {
       : <div className="card dim">You have written nothing on {sym}. A thesis with its invalidation is the part that protects you.</div>}
 
   </>;
-  const verdict = <Verdict chips={verdictChips(c.data, grade.level, c.data.risk ? flags.length : null)} />;
+  const verdict = <Verdict chips={verdictChips(c.data, grade.level, c.data.risk ? flags.length : null).filter((x) => x.id !== 'trend')} />;   // 12 Nov 2026: the trend chip moved to the hero (it is said once)
+  const tchip = trendChip(row, !!row.stale || fr.tone === 'peach');
   const TABS: { id: Tab; label: string }[] = [{ id: 'overview', label: 'Overview' }, { id: 'financials', label: 'Financials' }, { id: 'ownership', label: 'Ownership' }, { id: 'risks', label: 'Risks' }, { id: 'thesis', label: 'Thesis' }];
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
       <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
-        {row.tier && <div className="c-pills" role="group" aria-label="Size class"><Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill></div>}</div>
+        <div className="c-pills" role="group" aria-label="Trend and size class"><span className={`vchip hero-trend ${tchip.tone}`} data-vchip="trend" data-trend-state={tchip.state} title={tchip.basis} tabIndex={0}><span className="vk">Trend</span><span className="vv">{tchip.glyph && <span aria-hidden="true">{tchip.glyph} </span>}{tchip.word}</span></span>{row.tier && <Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill>}</div></div>
       {wideAsOf && verdict}
       {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
         const rows = asOfRows(ai); const grid = <dl className="asof-grid">{rows.map((r) => <div key={r.id} className={`asof-row${r.missing ? ' miss' : ''}${r.id === 'quote' && lp.live ? ' live' : ''}`} data-asof-row={r.id}><dt>{r.k}</dt><dd className="num">{r.v}</dd></div>)}</dl>;
@@ -177,14 +180,14 @@ export function Company({ sym }: { sym: string }) {
     <StickyHead name={row.name} sym={sym} px={inr(px)} ch={lp.ch ?? null} word={lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'} />
     {/* 10 Nov 2026: on a wide screen the one-minute read and the decision summary sit side by side, and the chart gets the full width beneath them. On a phone the order is read, chart, decision, as before. */}
     <div className={`co-top${first ? ' has-first' : ''}`}>
-      <div className="co-read"><ResearchRead company={c.data} /></div>
       {first && <div className="co-first">
         <div className="note info ft-strip" data-first="strip">First look at {row.name}. Read the case and the countercase, then save a thought if you want one. Nothing here is a recommendation.</div>
         {caseBlock}
         <FirstThought sym={sym} name={row.name} risk={{ line: mainRisk.line, note: riskNote }} />
       </div>}
-      <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
-      {!wideAsOf && verdict}   {/* 12 Nov 2026: on a phone the verdict follows the chart, so the plot keeps its first-screen place (charts.mjs budget; CI fonts are wider) */}
+      <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={rd.next && row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
+      {!wideAsOf && <div className="co-chips">{verdict}</div>}   {/* 12 Nov 2026: on a phone the verdict follows the chart, so the plot keeps its first-screen place (charts.mjs budget; CI fonts are wider) */}
+      <section className="card co-glance" aria-labelledby="glance-h" data-glance><h2 id="glance-h" className="sec">At a glance</h2><dl className="gl-grid">{glance.map((g: GlanceCell) => <div key={g.id} className={`gl-cell ${g.tone}`} data-glance-cell={g.id}><dt className="gl-k">{g.k}</dt><dd className="gl-v num">{g.v}</dd><dd className="gl-s">{g.sub}</dd></div>)}</dl></section>
       <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 

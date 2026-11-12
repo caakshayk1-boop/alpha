@@ -21,6 +21,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('button', { name: /GCSL/ }).first().click(); await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
   ok(!(await saved(pg)).follows.length, 'choosing a company during first use does not follow it');
   await pg.getByRole('button', { name: 'Not now' }).click(); await pg.waitForSelector('.decision', { timeout: 15000 });
+  await pg.locator('.decision [data-dec-more]').click();   // 12 Nov 2026: the decision card is two lines and an expand now; the detail opens first
   await pg.locator('.decision .dqd summary').click();   // data quality sits behind its own control now, with the count of notes on the summary
   const d = await pg.locator('.decision').innerText();
   for (const k of ['Why it surfaced', 'Strongest counterargument', 'Evidence status', 'Data quality', 'Invalidation', 'Next review']) ok(new RegExp(k, 'i').test(d), `the decision summary answers "${k}"`);
