@@ -25,7 +25,7 @@ export function Settings() {
   const [saving, setSaving] = useState<boolean | null>(null); useEffect(() => { setSaving(storageWorks(ls())); }, [s]);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const kept = useMemo(() => readUnreadable(ls(), KEY), [s]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (/^#\/profile(\?|$)/.test(location.hash)) replaceHash(location.hash.replace('#/profile', '#/settings').slice(1)); }, []);   // the old address keeps working, and the bar shows the new one
+  useEffect(() => { if (/^#\/profile(\?|$)/.test(location.hash)) replaceHash(location.hash.replace('#/profile', '#/settings').slice(1), true); }, []);   // the old address keeps working, and the bar shows the new one
   const [rec, setRec] = useState(() => readBackup(ls())); const [now] = useState(() => Date.now()); const bs = backupStatus(rec, now); const backupRef = useRef<HTMLDivElement>(null);
   const backUp = () => { const ok = downloadBackup(s); setRec(readBackup(ls())); toast(ok ? 'Backup file created' : 'Backup file created (this browser would not record it)'); };
   const p = s.prefs; const set = (o: Partial<typeof p>) => setState((x) => ({ ...x, prefs: { ...x.prefs, ...o } }));
