@@ -1,5 +1,5 @@
 // The motion layer: OFF by default, on only when the person turns it on and the device allows it. With it off every state change is instant and nothing animates;
-// with it on the tab content fades and rises, a press scales to .98, and a skeleton shimmers. Simulated both ways (the in-app switch, the device setting, and html.fx directly).
+// with it on the tab content fades and rises, a press scales to .97, and a skeleton shimmers. Simulated both ways (the in-app switch, the device setting, and html.fx directly).
 // Usage: node apps/tripwire/tests/motion.mjs [baseUrl]
 import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
@@ -27,19 +27,22 @@ const probe = () => { const v = document.querySelector('.view'); const cs = getC
 /* 3. motion ON: the tab content fades in and rises, a press scales, the skeleton shimmers */
 { const ctx = await mk({ motion: 'auto' }); const pg = await ctx.newPage(); await pg.goto(base + '/#/today'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(800);
   const fx = await pg.evaluate(() => document.documentElement.classList.contains('fx')); ok(fx, 'motion on: the layer is on (html.fx)');
-  await pg.evaluate(() => { window.__s = []; const v0 = performance.now(); const tick = () => { const v = document.querySelector('.view'); if (v) { const cs = getComputedStyle(v); window.__s.push([Math.round(performance.now() - v0), parseFloat(cs.opacity), cs.transform]); } if (performance.now() - v0 < 700) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  await pg.evaluate(() => { window.__s = []; const v0 = performance.now(); const tick = () => { const v = document.querySelector('.view'); if (v) { const cs = getComputedStyle(v); window.__s.push([Math.round(performance.now() - v0), parseFloat(cs.opacity), cs.transform, document.documentElement.dataset.vt ?? '']); } if (performance.now() - v0 < 700) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
   await pg.locator('nav.tabs a[href="#/discover"]').click(); await pg.waitForTimeout(800);
-  const s = await pg.evaluate(() => window.__s); const lo = Math.min(...s.map((x) => x[1])); const risen = s.some((x) => /matrix/.test(x[2]) && x[2] !== 'matrix(1, 0, 0, 1, 0, 0)');
-  ok(lo < 0.9, `motion on: the new view fades in (lowest opacity seen ${lo.toFixed(2)})`); ok(risen, 'motion on: the new view rises (a translate was applied while it arrived)');
+  // 12 Nov 2026: where the browser has View Transitions, a tab switch is a short crossfade (html[data-vt] is set while it runs) and the .view rise stands down; elsewhere the rise is the arrival
+  const vtSeen = await pg.evaluate(() => typeof document.startViewTransition === 'function'); const s = await pg.evaluate(() => window.__s); const lo = Math.min(...s.map((x) => x[1])); const risen = s.some((x) => /matrix/.test(x[2]) && x[2] !== 'matrix(1, 0, 0, 1, 0, 0)');
+  if (vtSeen) ok(s.some((x) => x[3] === 'tab'), 'motion on: a tab switch runs as a view-transition crossfade (html[data-vt=tab])');
+  else { ok(lo < 0.9, `motion on: the new view fades in (lowest opacity seen ${lo.toFixed(2)})`); ok(risen, 'motion on: the new view rises (a translate was applied while it arrived)'); }
+  ok(await pg.evaluate(() => !document.documentElement.dataset.vt), 'motion on: the transition marker is gone once it has finished');
   const end = await pg.evaluate(probe); ok(end.op === 1 && (end.tf === 'none' || end.tf === 'matrix(1, 0, 0, 1, 0, 0)'), `motion on: it settles (opacity ${end.op}, transform ${end.tf})`);
-  const name = await pg.evaluate(() => getComputedStyle(document.querySelector('.view')).animationDuration); ok(name === '0.36s', `the view transition lasts 360 ms (${name})`);
+  const name = await pg.evaluate(() => getComputedStyle(document.querySelector('.view')).animationDuration); if (!vtSeen) ok(name === '0.36s', `the view transition lasts 360 ms (${name})`);   // the fallback rise; a view transition is 200 ms or less and is set in motion3.css
   await pg.evaluate(() => { const d = document.createElement('div'); d.className = 'ds-skel'; d.id = 'skx'; d.style.height = '20px'; document.body.appendChild(d); });
   await pg.waitForTimeout(200); const shimmer = await pg.evaluate(() => document.getAnimations().some((a) => a.animationName === 'ds-shimmer' && a.playState === 'running')); ok(shimmer, 'motion on: a skeleton shimmers');
   await pg.evaluate(() => document.getElementById('skx')?.remove());
   const press = await pg.evaluate(() => { const bt = document.createElement('button'); bt.className = 'btn'; bt.id = 'pb'; bt.textContent = 'x'; document.body.prepend(bt); return true; });
   const box = await pg.locator('#pb').boundingBox(); await pg.mouse.move(box.x + 4, box.y + 4); await pg.mouse.down(); await pg.waitForTimeout(260);
   const tf = await pg.evaluate(() => getComputedStyle(document.getElementById('pb')).transform); await pg.mouse.up();
-  ok(press && /matrix\(0\.98/.test(tf), `motion on: a press scales to .98 (${tf})`);
+  ok(press && /matrix\(0\.97/.test(tf), `motion on: a press scales to .97 (${tf})`);
   await ctx.close(); }
 
 await b.close(); console.log(fails ? `\nmotion: ${fails} failed` : '\nmotion: all passed'); process.exit(fails ? 1 : 0);

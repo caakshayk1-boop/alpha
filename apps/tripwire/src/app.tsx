@@ -1,5 +1,5 @@
 import { StatusBar } from './statusbar.tsx';
-import { Suspense, lazy, createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULTS, type State } from './store.ts';
 import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type SaveFailure } from './persist.ts';
 import { downloadBackup } from './backupfile.ts';
@@ -42,6 +42,7 @@ import { ScrollTop } from './components/ScrollTop.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
 import { resolveRoute } from './route.ts';
+import { useRouteView } from './routevt.ts';
 
 /* ---- state: this device only, until an identity provider is configured ---- */
 const KEY = 'tripwire:v1';
@@ -115,7 +116,7 @@ export function App(): ReactNode {
   const s = useAppState();
   const loc = useLoc();
   /** The screen follows the address one render later, so a tap on a tab keeps the last screen until the next one has arrived: no blank frame, no spinner. The tab bar uses `loc` and answers at once. */
-  const vl = useDeferredValue(loc);
+  const vl = useRouteView(loc, tabOf, isQuiet);   // 12 Nov 2026: through a View Transition under html.fx (routevt.ts); otherwise the deferred address, as before
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const screen = useScreen();

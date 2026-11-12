@@ -8,13 +8,21 @@ import { isTradingDay, lastFinishedSession, nextSession } from './calendar.ts';
 
 export interface GapLedger { days: readonly { asOf: string }[] }
 
-export function missingNights(ledger: GapLedger | null | undefined, nowMs: number): string[] {
-  const days = (ledger?.days ?? []).map((d) => d.asOf).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+/** THE implementation (12 Nov 2026; the Book Record used to carry its own copy): the trading sessions from the first recorded night up to, but not including, `until` that have no recorded
+ *  night. Holidays and weekends are never sessions (calendar.ts). Dates only, no clock. Callers choose where the record is expected to run to: the Data page, to the latest FINISHED session;
+ *  the Book Record (bookview.missingNights), to its own last recorded night, since a trailing gap there is lateness, which the picks-through pill states. */
+export function missingSessions(recorded: readonly string[], until: string): string[] {
+  const days = recorded.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   if (!days.length) return [];
-  const have = new Set(days), latest = lastFinishedSession(nowMs), out: string[] = [];
+  const have = new Set(days), out: string[] = [];
   let d = isTradingDay(days[0]) ? days[0] : nextSession(days[0]);
-  for (let guard = 0; d < latest && guard < 3700; guard++, d = nextSession(d)) if (!have.has(d)) out.push(d);
+  for (let guard = 0; d < until && guard < 3700; guard++, d = nextSession(d)) if (!have.has(d)) out.push(d);
   return out;
+}
+
+/** The Data page's reading: gaps up to the latest finished session, which is itself not missing yet. */
+export function missingNights(ledger: GapLedger | null | undefined, nowMs: number): string[] {
+  return missingSessions((ledger?.days ?? []).map((d) => d.asOf), lastFinishedSession(nowMs));
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
