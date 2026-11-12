@@ -22,7 +22,7 @@ export function FinancialCharts({ years, margins }: { years: readonly Year[]; ma
         <line x1="0" x2={W} y1={y0} y2={y0} stroke="var(--line-2)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
         {vals.map((v, i) => { if (v === null) return <line key={i} x1={i * colW + 30} x2={i * colW + 70} y1={y0} y2={y0} stroke="var(--ink-3)" strokeWidth="2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />;
           const h = Math.abs(v / span) * (H - 2 * pad); const top = v >= 0 ? y0 - h : y0; const neg = v < 0;
-          return <rect key={i} x={i * colW + 22} width={colW - 44} y={top} height={Math.max(1.5, h)} fill={neg ? 'var(--bg)' : 'var(--series-1)'} stroke="var(--series-1)" strokeWidth="1.5" strokeDasharray={neg ? '4 2' : undefined} vectorEffect="non-scaling-stroke" />; })}
+          return <rect key={i} x={i * colW + 22} width={colW - 44} y={top} height={Math.max(1.5, h)} fill={neg ? 'var(--bg)' : 'var(--series-1)'} stroke="var(--series-1)" strokeWidth="1.5" strokeDasharray={neg ? '4 2' : undefined} className={neg ? 'fin-bar neg' : 'fin-bar'} vectorEffect="non-scaling-stroke" />; })}
       </svg>
       {axis}
       <div className="fin-val" style={{ gridTemplateColumns: `repeat(${n},1fr)` }}>{vals.map((v, i) => <span key={i} className="num">{v === null ? dash : fmtv(v)}</span>)}</div></div>;
@@ -33,8 +33,8 @@ export function FinancialCharts({ years, margins }: { years: readonly Year[]; ma
     return <div className="fin-panel"><span className="k">Margins <span className="mute">% of revenue</span></span>
       <svg className="fin-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Margins by fiscal year: ${ys.map((_, i) => `${ys[i].fy} net ${nm[i] === null ? 'not held' : signedPct(nm[i] as number)}, EBIT ${em[i] === null ? 'not held' : signedPct(em[i] as number)}`).join('; ')}`}>
         <line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="var(--line-2)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        <path d={line(nm)} fill="none" stroke="var(--series-1)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        <path d={line(em)} fill="none" stroke="var(--series-2)" strokeWidth="2" strokeDasharray="6 3" vectorEffect="non-scaling-stroke" />
+        <path className="fin-line" pathLength={1} d={line(nm)} fill="none" stroke="var(--series-1)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        <path className="fin-line dash" pathLength={1} d={line(em)} fill="none" stroke="var(--series-2)" strokeWidth="2" strokeDasharray="6 3" vectorEffect="non-scaling-stroke" />
       </svg>
       {axis}
       <div className="fin-val" style={{ gridTemplateColumns: `repeat(${n},1fr)` }}>{ys.map((_, i) => <span key={i} className="num">{nm[i] === null ? dash : `${(nm[i] as number).toFixed(1)}%`}<br /><span className="mute">{em[i] === null ? dash : `${(em[i] as number).toFixed(1)}%`}</span></span>)}</div>

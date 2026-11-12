@@ -50,7 +50,8 @@ ok(/Data through/.test(await pg.locator('.t-status .fresh-pill').textContent()),
 await pg.waitForSelector('.brief-ix .bix b');
 ok((await pg.locator('.brief-ix a[href="#/markets"]').count()) === 3 && /24,120/.test(await text()) && /Nifty 50/i.test(await text()) && /Bank Nifty/.test(await text()) && /India VIX/.test(await text()), 'Today shows the Nifty, Bank Nifty and VIX in the brief, each opening the Markets page');
 await pg.locator('.brief-ix a').first().click(); await pg.waitForSelector('.moodhero a[href*="tradingview.com"]');
-ok(await pg.locator('.moodhero a[target=_blank][rel*=noopener]').count() >= 3 && (await pg.locator('.moodhero a[href*="tradingview.com"]').count()) === 3, 'the Markets page lists the three indices, outbound links open in a new tab without handing over the window');
+/* 12 Nov 2026 (revamp v3): the Nifty 50 is the day chart above; the Indices card lists Bank Nifty and India VIX. */
+ok(await pg.locator('.moodhero a[target=_blank][rel*=noopener]').count() >= 2 && (await pg.locator('.moodhero a[href*="tradingview.com"]').count()) === 2, 'the Markets page lists Bank Nifty and India VIX (the Nifty is the day chart), outbound links open in a new tab without handing over the window');
 await pg.waitForSelector('.rangebar', { timeout: 15000 }); ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await text()), 'the Markets page carries the trend map');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'the Markets page shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');

@@ -49,7 +49,7 @@ export function DayChart({ q, label, size = 'full', refs = [], nse = true, fmt, 
       <defs><clipPath id={`${gid}a`}><rect x="0" y="0" width={dims.w} height={g.baseY} /></clipPath><clipPath id={`${gid}b`}><rect x="0" y={g.baseY} width={dims.w} height={dims.h - g.baseY} /></clipPath>
         <linearGradient id={`${gid}u`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--up)" stopOpacity=".34" /><stop offset="1" stopColor="var(--up)" stopOpacity=".02" /></linearGradient>
         <linearGradient id={`${gid}d`} x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="var(--down)" stopOpacity=".34" /><stop offset="1" stopColor="var(--down)" stopOpacity=".02" /></linearGradient></defs>
-      {[.25, .5, .75].map((f) => <line key={f} x1={g.pad.l} x2={dims.w - g.pad.r} y1={g.pad.t + f * (dims.h - g.pad.t - g.pad.b)} y2={g.pad.t + f * (dims.h - g.pad.t - g.pad.b)} className="dc-grid" />)}
+      {[.5].map((f) => <line key={f} x1={g.pad.l} x2={dims.w - g.pad.r} y1={g.pad.t + f * (dims.h - g.pad.t - g.pad.b)} y2={g.pad.t + f * (dims.h - g.pad.t - g.pad.b)} className="dc-grid" />)}
       <rect x={g.x(g.last.t)} y={g.pad.t} width={Math.max(0, g.x(g.end) - g.x(g.last.t))} height={dims.h - g.pad.t - g.pad.b} className="dc-rest" />
       <path d={area} fill={`url(#${gid}u)`} clipPath={`url(#${gid}a)`} /><path d={area} fill={`url(#${gid}d)`} clipPath={`url(#${gid}b)`} />
       <line x1={g.pad.l} x2={dims.w - g.pad.r} y1={g.baseY} y2={g.baseY} className="dc-prev" /><text x={dims.w - g.pad.r - 2} y={g.baseY - 3} textAnchor="end" className="dc-t dc-faint">prev {f(q.prev)}</text>
