@@ -106,7 +106,10 @@ export function mergePools(a: NewsEvent[], b: NewsEvent[]): NewsEvent[] {
     const at = known ?? (fromB.has(e) ? out.findIndex((o) => sameCoverage(o, e)) : -1);
     const index = at >= 0 ? at : out.length;
     ids.set(e.eventClusterId, index); links.forEach((u) => urls.set(u, index));
-    if (at >= 0) out[at] = mergeCoverage(out[at], e);
+    /* 12 Nov 2026 (Codex on #61): an id or link match must not cross the global/India scope line. The pipeline's own rule (cluster.js) is that the India reading wins when one link arrives in both lanes:
+       a global snapshot event is REPLACED by the India-company reading, and a global reading never replaces or enriches an India one. Merging them would put an India company into Global cues. */
+    if (at >= 0 && isGlobal(out[at]) !== isGlobal(e)) { if (isGlobal(out[at])) out[at] = e; }
+    else if (at >= 0) out[at] = mergeCoverage(out[at], e);
     else out.push(e);
   }
   return out;

@@ -41,7 +41,7 @@ import { lastDiscoverQuery } from './discoverstate.ts';
 import { ScrollTop } from './components/ScrollTop.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
-import { resolveRoute } from './route.ts';
+import { pathOnly, resolveRoute } from './route.ts';
 import { useRouteView } from './routevt.ts';
 
 /* ---- state: this device only, until an identity provider is configured ---- */
@@ -84,7 +84,7 @@ window.addEventListener('popstate', () => { restoreHash = location.hash; });
 window.addEventListener('hashchange', () => { leave(); quietRaw = ''; if (location.hash !== restoreHash) restoreHash = ''; });
 /** `force` is for the one caller that deliberately rewrites ONE route into another (#/profile to #/settings). Every other caller describes the screen it is drawing, so it only writes while the address still names that screen:
  *  a Discover write that fires after the person has already left (a debounce, or a screen that only just arrived through a route transition) used to put #/discover back over #/desk (12 Nov 2026, audit.mjs). */
-export function replaceHash(to: string, force = false) { try { if (!force && location.hash.slice(1).split('?')[0] !== to.split('?')[0]) return; history.replaceState(history.state, '', `#${to}`); quietRaw = read().raw; const y = scrollAt.get(curRaw); curRaw = quietRaw; if (y !== undefined) scrollAt.set(curRaw, y); } catch { /* see above */ } }
+export function replaceHash(to: string, force = false) { try { if (!force && pathOnly(location.hash) !== pathOnly(to)) return; history.replaceState(history.state, '', `#${to}`); quietRaw = read().raw; const y = scrollAt.get(curRaw); curRaw = quietRaw; if (y !== undefined) scrollAt.set(curRaw, y); } catch { /* see above */ } }
 /** Put the page back where `raw` was left, once the screen has the height for it (a lazy screen is still arriving). A touch, wheel or key press means the person has taken over: stop. */
 function restoreScroll(raw: string): boolean {
   const y = scrollAt.get(raw); if (y === undefined || y < 2) return false;

@@ -1,7 +1,7 @@
 // The News page's sections (revamp v2, 11 Nov 2026): Your names, Paper book, Market, Other covered names. Each event appears once, in the first section that claims it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveList, cueBlocks, dayWord, groupNews, groupOf, moveWords, sectorDay, todayGlobalRow, todayList, GLOBAL_NOTE, GLOBAL_EMPTY, type NewsEvent } from '../src/newsview.ts';
+import { archiveList, cueBlocks, dayWord, groupNews, groupOf, mergePools, moveWords, sectorDay, todayGlobalRow, todayList, GLOBAL_NOTE, GLOBAL_EMPTY, type NewsEvent } from '../src/newsview.ts';
 import { FORBIDDEN } from '../src/brief.ts';
 
 const ev = (id: string, syms: string[] = []): NewsEvent => ({ eventClusterId: id, headline: `h ${id}`, eventType: 'Results', significance: 0.75, entities: syms.map((s) => ({ sym: s, name: `${s} Ltd.`, confidence: 0.95, matchedOn: 'name' })), scopes: syms.length ? ['company'] : ['market'], publishedAt: '2026-10-27T08:00:00Z', updatedAt: null, firstSeenAt: null, fetchedAt: null, sourceId: 'mint', sourceTitle: 'Mint', sourceTier: 'major', sourceWeight: 0.8, canonicalUrl: `https://x.com/${id}`, sourceTimezone: 'UTC', moreSources: 0, sources: [], summary: null, qualityFlags: [], todayEligible: true, relevanceScore: 50, rankingVersion: 'news-rank-1' });
@@ -58,4 +58,16 @@ test('global events: measured moves are words, a missing figure is never zero', 
 test('global cues: the copy this screen adds passes the shared forbidden-words lint (no forecast, no cause claim)', () => {
   assert.ok(!FORBIDDEN.test(GLOBAL_NOTE) && !FORBIDDEN.test(GLOBAL_EMPTY)); assert.equal(GLOBAL_EMPTY, 'No global cues in the last 36 hours');
   assert.equal(GLOBAL_NOTE, 'Headlines from outside India. The connection text is standing context for that kind of headline; moves shown are measured, not predicted.');
+});
+
+/* 12 Nov 2026 (Codex on #61): a global snapshot event and a live per-company result that share an id or a link must not merge across the scope line:
+   the India reading wins, and a global reading never enriches an India one (otherwise an India company lands in Global cues). */
+test('mergePools: an id or link match across the global/India scope line keeps the India reading only', () => {
+  const g = { ...ev('shared', []), scope: 'global', scopes: ['global'], cues: ['crude'], canonicalUrl: 'https://x.com/same' } as NewsEvent;
+  const india = { ...ev('live1', ['RELIANCE']), canonicalUrl: 'https://x.com/same' } as NewsEvent;
+  const m = mergePools([g], [india]);
+  assert.equal(m.length, 1); assert.notEqual((m[0] as NewsEvent & { scope?: string }).scope, 'global'); assert.deepEqual(m[0].entities.map((x) => x.sym), ['RELIANCE']);
+  const m2 = mergePools([india], [g]);   // the other order: the global reading is dropped
+  assert.equal(m2.length, 1); assert.deepEqual(m2[0].entities.map((x) => x.sym), ['RELIANCE']);
+  assert.equal(mergePools([g], [{ ...ev('g2', []), scope: 'global', scopes: ['global'], cues: ['crude'], canonicalUrl: 'https://x.com/same' } as NewsEvent]).length, 1);   // same scope still merges
 });

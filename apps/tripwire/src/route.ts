@@ -21,3 +21,6 @@ export function resolveRoute(path: readonly string[]): Resolved {
   const shapeOk = head === '' ? segs.length === 0 : segs.length === want && (want === 1 || !!segs[1]);
   return KNOWN_HEADS.includes(head) && shapeOk ? { kind: 'ok', head } : { kind: 'notfound', asked: askedPath(path) };
 }
+
+/** The path of an address with no leading `#`, no query and no trailing slash: `#/discover/?q=1` and `/discover` name the same screen (the router drops trailing slashes too, resolveRoute). */
+export const pathOnly = (hash: string): string => hash.replace(/^#/, '').split('?')[0].replace(/\/+$/, '') || '/';
