@@ -35,7 +35,7 @@ ok(new Set(picks).size === picks.length && picks.every((s) => s.length > 8), 'To
 await pg.waitForSelector('section.nw', { timeout: 15000 }); ok(/Market news/.test(await pg.locator('section.nw').innerText()) && await pg.locator('section.nw a[href="#/news"]').count() >= 1, 'Today: market news, with All news one tap away');
 // 11 Nov 2026 (merge of Today and Research lanes): the News page reads the news as sections (Your names, Paper book, Market), not tabs
 await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 15000 });
-ok((await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')))).slice(0, 3).join() === 'yours,paper,market', 'News: news is read as Your names, Paper book and Market');
+ok((await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')))).filter((x) => x !== 'global').slice(0, 3).join() === 'yours,paper,market', 'News: news is read as Your names, Paper book and Market');   // 12 Nov 2026: Global cues is the new first section; the India sections keep their order
 
 await pg.goto(base + '/#/signals?v=tracker'); await pg.waitForSelector('.pcard [data-ladder]');
 ok(/Stop ₹[\d,.]+, signal close ₹[\d,.]+, T1 ₹[\d,.]+ \(reference\), T2 ₹[\d,.]+ \(reference\)/.test(await pg.locator('.pcard .tl-vis').first().getAttribute('aria-label')) && /Reference only — predates target tracking/.test(await pg.locator('.pcard').first().innerText()), 'a paper position card shows its stop and its two targets on the ladder, and says in words that the reference ones were never traded (a pick filed before profit booking began)');

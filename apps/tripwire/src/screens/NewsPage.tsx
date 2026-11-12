@@ -30,7 +30,7 @@ export function NewsPage() {
   const b = useNewsBoard(lists); const [seen] = useState(() => lastVisitSec());
   const [f, setF] = useState<ArchiveFilter>(NO_FILTER); const [shown, setShown] = useState(PAGE); const [sheet, setSheet] = useState(false);
   useEffect(() => { document.title = 'News · Tripwire'; const t = window.setTimeout(() => markVisited(), 4000); return () => window.clearTimeout(t); }, []);
-  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const india = useMemo(() => rows.filter((e) => !isGlobal(e)), [rows]); const nc = useMemo(() => newsCounts(india), [india]);   // the counts line keeps its definition: India events; the Global cues heading counts its own
+  const rows = useMemo(() => archiveList(b.pool, f, lists, b.at), [b.pool, f, lists, b.at]); const view = newsViewState(b.health, { loading: b.loading, rows: rows.length }); const india = useMemo(() => rows.filter((e) => !isGlobal(e)), [rows]); const nc = useMemo(() => newsCounts(rows), [rows]);   // every event listed, global cues included, so the section counts add up to this total
   const groups = useMemo(() => groupNews(rows, lists), [rows, lists]);
   const types = useMemo(() => EVENT_TYPES.filter((t: string) => t !== 'Update' && b.pool.some((e) => e.eventType === t)), [b.pool]);
   const set = (p: Partial<ArchiveFilter>) => { setF({ ...f, ...p }); setShown(PAGE); };

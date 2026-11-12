@@ -1,7 +1,8 @@
 // The News page's sections (revamp v2, 11 Nov 2026): Your names, Paper book, Market, Other covered names. Each event appears once, in the first section that claims it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveList, cueBlocks, dayWord, groupNews, groupOf, moveWords, sectorDay, todayGlobalRow, todayList, type NewsEvent } from '../src/newsview.ts';
+import { archiveList, cueBlocks, dayWord, groupNews, groupOf, moveWords, sectorDay, todayGlobalRow, todayList, GLOBAL_NOTE, GLOBAL_EMPTY, type NewsEvent } from '../src/newsview.ts';
+import { FORBIDDEN } from '../src/brief.ts';
 
 const ev = (id: string, syms: string[] = []): NewsEvent => ({ eventClusterId: id, headline: `h ${id}`, eventType: 'Results', significance: 0.75, entities: syms.map((s) => ({ sym: s, name: `${s} Ltd.`, confidence: 0.95, matchedOn: 'name' })), scopes: syms.length ? ['company'] : ['market'], publishedAt: '2026-10-27T08:00:00Z', updatedAt: null, firstSeenAt: null, fetchedAt: null, sourceId: 'mint', sourceTitle: 'Mint', sourceTier: 'major', sourceWeight: 0.8, canonicalUrl: `https://x.com/${id}`, sourceTimezone: 'UTC', moreSources: 0, sources: [], summary: null, qualityFlags: [], todayEligible: true, relevanceScore: 50, rankingVersion: 'news-rank-1' });
 const L = { follows: ['TCS', 'GCSL'], paper: ['TCS', 'INFY'] };
@@ -53,4 +54,8 @@ test('global events: measured moves are words, a missing figure is never zero', 
   assert.deepEqual(moveWords(0.43), { arrow: '▲', text: 'up 0.4%', dir: 'up' }); assert.deepEqual(moveWords(-1.24), { arrow: '▼', text: 'down 1.2%', dir: 'down' });
   assert.equal(moveWords(0.01).text, 'flat'); assert.equal(moveWords(null).text, 'not measured'); assert.equal(moveWords(undefined).dir, 'none'); assert.equal(moveWords(NaN).text, 'not measured');
   assert.equal(dayWord('2026-11-11'), '11 Nov'); assert.equal(sectorDay([], 'Energy'), null); assert.equal(sectorDay(undefined, 'Energy'), null);
+});
+test('global cues: the copy this screen adds passes the shared forbidden-words lint (no forecast, no cause claim)', () => {
+  assert.ok(!FORBIDDEN.test(GLOBAL_NOTE) && !FORBIDDEN.test(GLOBAL_EMPTY)); assert.equal(GLOBAL_EMPTY, 'No global cues in the last 36 hours');
+  assert.equal(GLOBAL_NOTE, 'Headlines from outside India. The connection text is standing context for that kind of headline; moves shown are measured, not predicted.');
 });

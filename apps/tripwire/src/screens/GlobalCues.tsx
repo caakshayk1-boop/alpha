@@ -45,7 +45,7 @@ function Block({ b, feed, rows, asOf, lists, seenSec, nowMs, summaries, i }: { b
     <p className="cue-channel">{b.channel}</p>
     <details className="cue-more"><summary>What is exposed, and what to watch</summary>
       <dl className="cue-dl"><div><dt>Exposed on the Indian side</dt><dd>{b.exposed}</dd></div><div><dt>Measures to watch</dt><dd>{b.watch}</dd></div></dl>
-      <p className="mute small">Standing context for this kind of headline, the same for every one. It is not a reading of today's headline and not a forecast.</p></details>
+      <p className="mute small">Standing context for this kind of headline, the same for every one. It is not read from today's headline, and it says nothing about where any price goes.</p></details>
     <div className="cue-measure" data-cue-measure>
       <p className="cue-mh">Measured now</p>
       <InstrumentChip f={f} />

@@ -30,7 +30,8 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   await pg.goto(base + '/#/today'); await pg.waitForSelector('section.nw .nw-row', { timeout: 20000 }); await pg.waitForSelector('[data-board-row]'); await pg.waitForTimeout(600);
   ok(await pg.locator('#nw-title').innerText() === 'Market news', 'Today names the block "Market news"');
   const h = await heads(pg); const board = await pg.locator('[data-board-row] .br-news a').evaluateAll((a) => a.map((x) => x.textContent));
-  ok(h.length === 2 && h.some((x) => /RBI keeps repo rate/.test(x)) && h.some((x) => /inflation eases/.test(x)), `Market news: the two India-wide events (${h.length} rows)`);
+  // 12 Nov 2026 (global cues): Market news is the two India-wide events PLUS at most one Global cue row (data-today-cue), so three rows
+  ok(h.length === 3 && h.some((x) => /RBI keeps repo rate/.test(x)) && h.some((x) => /inflation eases/.test(x)) && h.filter((x) => /Brent crude climbs/.test(x)).length === 1 && await pg.locator('[data-today-cue="crude"]').count() === 1, `Market news: the two India-wide events and one Global cue row (${h.length} rows)`);
   ok(board.some((x) => /TCS Q2/.test(x)) && board.some((x) => /SEBI bars/.test(x)) && !h.some((x) => /TCS Q2|SEBI bars/.test(x)), 'the followed names\' events are on their board rows and not repeated in Market news');
   const all = await pg.locator('.today').evaluate((e) => e.textContent);
   ok(!/Infosys to acquire/.test(all) && !/Pune/.test(all) && !/buyback/.test(all), 'a name nobody follows or holds, an undated story and a five-day-old event are not on Today');
@@ -38,7 +39,7 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   ok(!/wider match/i.test(await pg.locator('body').innerText()), 'there is no "wider match"');
   const t = await pg.locator('.nw-health').innerText(); ok(/Fresh/.test(t) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(t) && !/live/i.test(t), `the health line says Fresh and when it was checked, in IST, and never "live": ${t.replace(/\n/g, ' | ')}`);
   const title = await rows(pg).first().locator('time').getAttribute('title'); ok(/^published .*IST$/.test(title ?? ''), `a story's own time is separate, in IST, and on the row: ${title}`);
-  const hrefs = await pg.locator('a.nw-head, [data-board-row] .br-news a').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 4 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), `every story link on Today is http(s), opens in a new tab and carries rel=noopener (${hrefs.length})`);
+  const hrefs = await pg.locator('a.nw-head, [data-board-row] .br-news a').evaluateAll((a) => a.map((x) => [x.href, x.rel, x.target])); ok(hrefs.length === 5 && hrefs.every(([u, r, t2]) => /^https?:\/\//.test(u) && /noopener/.test(r) && t2 === '_blank'), `every story link on Today is http(s), opens in a new tab and carries rel=noopener (${hrefs.length})`);
   ok(await pg.locator('.tape, marquee').count() === 0, 'no ticker tape');
   ok(ctl.calls.query.length === 1 && /Gujarat|GCSL/i.test(decodeURIComponent(ctl.calls.query[0])) === true || ctl.calls.query.length >= 1, 'a followed name the snapshot does not cover is queried live, through the same endpoint');
   /* tabs, labels and drawers: the News page */
@@ -98,7 +99,7 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   await pg.locator('.nw-offer').click(); await pg.waitForTimeout(250);
   const after = await heads(pg); ok(after.some((x) => /algorithmic trading/.test(x)) && await pg.locator('.nw-offer').count() === 0, 'a tap applies them and the offer goes');
   // 11 Nov 2026 (revamp v2): Today shows at most three market stories, never more, and sends the rest to All news (was: five, then "Show N more")
-  ok(after.length === 3 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `five qualify: three show, then All news (${after.length})`);
+  ok(after.length === 4 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `five qualify: three show, then All news (${after.length})`);
   /* refresh feedback */
   const btn = pg.locator('.nw-refresh button'); ok(/Check for updates/.test(await btn.innerText()), 'the refresh control says what it does');
   await btn.click(); await pg.waitForFunction(() => /No new stories/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); ok(true, 'refresh with nothing new says "No new stories"');
@@ -145,7 +146,7 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   await pg.locator('details.nw-method > summary').click();
   /* revamp v2: the page is grouped by what each event is about, each event once */
   const groups = await pg.locator('[data-news-group]').evaluateAll((g) => g.map((x) => x.getAttribute('data-news-group')));
-  ok(groups.join() === 'yours,paper,market', `the News page is three sections in order: Your names, Paper book, Market (${groups.join()})`);
+  ok(groups.join() === 'global,yours,paper,market', `the News page is four sections in order: Global cues, Your names, Paper book, Market (${groups.join()})`);   // 12 Nov 2026: Global cues first
   const allHeads = await pg.locator('.nw-row .nw-head').allInnerTexts(); ok(allHeads.length === new Set(allHeads).size, 'no headline is printed twice across the sections');
   const tq = pg.locator('[data-news-group="yours"] .nw-row', { hasText: 'TCS Q2 net profit' }); ok(await tq.count() === 1 && await tq.locator('.nw-inpaper').count() === 1 && await pg.locator('[data-news-group="paper"] .nw-row', { hasText: 'TCS Q2 net profit' }).count() === 0, 'a followed name also in the paper book is listed once, under Your names, with an In paper book chip');
   ok(/3 sources/.test(await tq.locator('.nw-meta').innerText()) && await tq.locator('.nw-meta .nw-tag').count() >= 1 && await tq.locator('[data-clock="published"]').isVisible(), 'a row carries its source count, its category and its published time');
@@ -195,6 +196,46 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
     await pg.setViewportSize({ width, height: 844 });
     ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `news controls fit at ${width}px`);
   }
+  await ctx.close();
+}
+/* 12 Nov 2026: Global cues on the News page. Mocked snapshot: crude (Reuters + Bloomberg) and Fed + dollar (Bloomberg). Checks structure and honesty, not live prices. */
+for (const width of [390, 1280]) {
+  const { ctx, pg, errs } = await open(STATE); await pg.setViewportSize({ width, height: 900 });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group="global"] .cue', { timeout: 20000 }); await pg.waitForTimeout(500);
+  const g = pg.locator('[data-news-group="global"]');
+  ok(await pg.locator('h1').count() === 1, `one h1 (${width})`);
+  ok(/Headlines from outside India\. The connection text is standing context for that kind of headline; moves shown are measured, not predicted\./.test(await g.locator('[data-global-note]').innerText()), `the one-line note is printed once (${width})`);
+  ok(await g.locator('.cue').count() === 2 && await g.locator('[data-cue="crude"]').count() === 1 && await g.locator('[data-cue="fed_rates"]').count() === 1, `two cue blocks, each event once under its first cue (${width})`);
+  ok(await g.locator('.nw-row').count() === 2 && await g.locator('.nw-row', { hasText: 'Federal Reserve' }).locator('.nw-cue-also', { hasText: 'Dollar and currencies' }).count() === 1, `a headline matching two cues sits once and shows the second as a chip (${width})`);
+  ok(await g.locator('.nw-row', { hasText: 'Brent crude' }).locator('.nw-src-n').count() === 1, `the source-count chip is on the row (${width})`);
+  ok(/India imports most of the crude/.test(await g.locator('[data-cue="crude"] .cue-channel').innerText()), `the connection line is visible without opening anything (${width})`);
+  const d = g.locator('[data-cue="crude"] details.cue-more'); ok(await d.getAttribute('open') === null && !(await g.locator('[data-cue="crude"] .cue-dl').isVisible()), `exposed and watch sit in a closed disclosure (${width})`);
+  await d.locator('summary').click(); ok(/Brent/.test(await g.locator('[data-cue="crude"] .cue-dl').innerText()), `the disclosure opens (${width})`);
+  ok((await d.locator('summary').boundingBox()).height >= 43.5, `the disclosure target is at least 44 px (${width})`);
+  const inst = await g.locator('[data-cue="crude"] [data-cue-instrument="BRENT"]').innerText(); ok(/Brent oil/.test(inst), `the linked instrument is shown with its name (${inst.replace(/\n/g, ' ')})`);
+  const sec = await g.locator('[data-cue="crude"] [data-cue-sector]').evaluateAll((a) => a.map((x) => [x.getAttribute('data-cue-sector'), x.getAttribute('href'), x.textContent]));
+  ok(sec.length === 4 && sec.every(([, h]) => /^#\/discover\?sector=/.test(h)) && sec.every(([, , t]) => /(up|down|flat|not measured)/.test(t) && !/\b0\.0%/.test(t)), `each sector chip links to Research and reads a measured move in words or "not measured" (${sec.map((x) => x[0]).join(', ')})`);
+  ok(/close of \d{1,2} \w{3}/.test(await g.locator('[data-cue="crude"] .cue-mh').nth(1).innerText()), `the sector strip is labelled with its close date (${width})`);
+  ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `no horizontal overflow (${width})`);
+  ok(!/\b(will|expected to|forecast|predict)\b/i.test(await g.innerText()), `no forecast words in the section (${width})`);
+  if (width === 390) {
+    /* Scope: India hides the section, Global hides the India groups */
+    await pg.locator('[data-news-filter]').click(); await pg.waitForSelector('[role=dialog]');
+    await pg.locator('[role=dialog] select', { has: pg.locator('option[value="india"]') }).selectOption('india'); await pg.waitForTimeout(200);
+    await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
+    ok(await pg.locator('[data-news-group="global"]').count() === 0 && await pg.locator('[data-news-group="market"]').count() === 1, 'Scope India: no Global cues, India sections stay');
+    await pg.locator('[data-news-filter]').click(); await pg.waitForSelector('[role=dialog]'); await pg.locator('[role=dialog] select', { has: pg.locator('option[value="india"]') }).selectOption('global'); await pg.waitForTimeout(200); await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
+    ok(await pg.locator('[data-news-group="global"]').count() === 1 && await pg.locator('[data-news-group="market"]').count() === 0, 'Scope Global: only Global cues');
+    /* motion: reduced motion leaves nothing animated */
+    await pg.emulateMedia({ reducedMotion: 'reduce' }); const an = await pg.locator('.cue').first().evaluate((e) => getComputedStyle(e).animationName); ok(an === 'none', `reduced motion: cue blocks do not animate (${an})`);
+  }
+  ok(errs.length === 0, `no page errors (${errs.join(' | ')})`);
+  await ctx.close();
+}
+{ /* no global events: the empty sentence, distinct from loading and from a late check */
+  const { ctx, pg } = await open(STATE, { news: { snapshot: { events: makeEvents(Date.now()).filter((e) => !e.scope) } } });
+  await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group="global"]', { timeout: 20000 });
+  ok((await pg.locator('[data-news-empty="global"]').innerText()).trim() === 'No global cues in the last 36 hours', 'the empty state says there are no global cues in the last 36 hours');
   await ctx.close();
 }
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nall news checks passed'); process.exit(fails ? 1 : 0);
