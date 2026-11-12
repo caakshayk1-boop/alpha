@@ -11,7 +11,7 @@ export interface GlanceCell { id: 'range' | 'trend' | 'quality' | 'valuation' | 
 export interface GlanceIn {
   c: { row: Row; inst?: Company['inst']; built_on?: string }; nowMs: number;
   /** the price the range position is worked from, and the 52-week low and high it is worked against (live when a live print moved them) */ px: number | null; lo: number | null; hi: number | null;
-  fromHigh: number | null; /** 'live' | 'at close' | 'last traded' */ basisWord: string;
+  fromHigh: number | null; /** the live print is above the published 52-week high */ newHigh?: boolean; /** 'live' | 'at close' | 'last traded' */ basisWord: string;
   /** the screen's own gates, from eligibility.ts: is ROCE meaningful here, is this a lender */ roceMeaningful: boolean; financial: boolean;
   riskLevel: string | null; riskNote: string | null; flagCount: number | null; stale: boolean;
 }
@@ -24,7 +24,7 @@ export function glanceOf(i: GlanceIn): GlanceCell[] {
   // 1. where the price sits in its 52-week range
   const span = num(i.lo) && num(i.hi) && i.hi > i.lo ? i.hi - i.lo : null; const at = span && num(i.px) ? Math.min(100, Math.max(0, ((i.px - i.lo!) / span) * 100)) : null;
   out.push(at === null ? { id: 'range', k: '52-week range', v: 'Not available', sub: 'The 52-week low or high is not held.', tone: 'neutral', at: null }
-    : { id: 'range', k: '52-week range', v: `${Math.round(at)}% up the range`, sub: `${inr0(i.lo!)} to ${inr0(i.hi!)}${num(i.fromHigh) ? ` · ${sgn(i.fromHigh)} from high` : ''} · ${i.basisWord}`, tone: 'neutral', at });
+    : { id: 'range', k: '52-week range', v: i.newHigh ? 'A new 52-week high' : `${Math.round(at)}% up the range`, sub: `${inr0(i.lo!)} to ${inr0(i.hi!)}${num(i.fromHigh) ? ` · ${sgn(i.fromHigh)} from high` : ''} · ${i.basisWord}`, tone: 'neutral', at });
   // 2. the trend, by the one rule, and the close it was tagged at
   const tr = trendOf(r); const ck = trendChecks(r); const held = ck && tr.trend ? (tr.trend === 'down' ? ck.down : ck.up).filter(([, ok]) => ok).length : null;
   out.push(tr.trend ? { id: 'trend', k: 'Trend', v: i.stale ? `${TREND_WORD[tr.trend]} · stale` : TREND_WORD[tr.trend], sub: `At the close of ${dayWord(r.last_date)} · ${held} of 4 rules hold${i.stale ? ' · close is older than a session' : ''}`, tone: i.stale ? 'neutral' : tr.trend === 'up' ? 'up' : tr.trend === 'down' ? 'down' : 'neutral' }
