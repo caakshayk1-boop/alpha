@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { nextCue, accepted, flashInit, flashPush, flashFlush, COALESCE_MS, CUE_MS, type Obs, type FlashState } from '../src/flash.ts';
 
+import { DEFAULTS, checkBackup, effectsOf, exportJson } from '../src/store.ts';
+
 const live = (v: number | null, text?: string): Obs => ({ v, basis: 'live', state: 'live', ...(text ? { text } : {}) });
 const rec = (v: number | null): Obs => ({ v, basis: 'recorded', state: 'recorded' });
 
@@ -70,3 +72,12 @@ test('a basis change inside a window is still neutral, never a gain or a loss', 
 });
 test('flush with nothing waiting does nothing', () => { const r = flashFlush(flashInit(), 0); assert.equal(r.cue, 'none'); assert.equal(r.flushIn, null); });
 test('the cue outlasts the halo (600 ms) and not by much', () => { assert.ok(CUE_MS >= 600 && CUE_MS <= 700); });
+
+// ---- the Effects preference (12 Nov 2026): additive, defaults to Calm, round-trips ----
+test('Effects: an old payload without the field reads as Calm; Off and Lively survive export and import; junk reads as Calm', () => {
+  const old = JSON.parse(exportJson(DEFAULTS)); delete old.prefs.effects;
+  const a = checkBackup(JSON.stringify(old)); assert.ok(a.ok); if (a.ok) assert.equal(effectsOf(a.state.prefs), 'calm');
+  for (const m of ['off', 'calm', 'lively'] as const) { const r = checkBackup(exportJson({ ...DEFAULTS, prefs: { ...DEFAULTS.prefs, effects: m } })); assert.ok(r.ok); if (r.ok) assert.equal(r.state.prefs.effects, m); }
+  const junk = JSON.parse(exportJson(DEFAULTS)); junk.prefs.effects = 'disco'; const j = checkBackup(JSON.stringify(junk)); assert.ok(j.ok); if (j.ok) assert.equal(j.state.prefs.effects, 'calm');
+  assert.equal(effectsOf(undefined), 'calm');
+});

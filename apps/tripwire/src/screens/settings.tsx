@@ -57,7 +57,7 @@ export function Settings() {
       <fieldset className="set-fx" data-effects-group style={{ border: 0, margin: 0, padding: '12px 0 4px' }}>
         <legend className="small" style={{ padding: 0, color: 'var(--ink)' }}>Effects<span className="dim small" style={{ display: 'block' }}>How the screen reacts when something changes. They only run while Motion is on and your device allows motion.</span></legend>
         <div role="radiogroup" aria-label="Effects" className="mini-seg fx-seg" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-          {EFFECTS_MODES.map((m) => <button key={m} type="button" role="radio" aria-checked={effectsOf(p) === m} aria-pressed={effectsOf(p) === m} data-effects={m} className={effectsOf(p) === m ? 'on' : ''} onClick={() => set({ effects: m })} style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)' }}>{m === 'off' ? 'Off' : m === 'calm' ? 'Calm' : 'Lively'}</button>)}
+          {EFFECTS_MODES.map((m) => <button key={m} type="button" role="radio" aria-checked={effectsOf(p) === m} data-effects={m} className={effectsOf(p) === m ? 'on' : ''} onClick={() => set({ effects: m })} style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)' }}>{m === 'off' ? 'Off' : m === 'calm' ? 'Calm' : 'Lively'}</button>)}
         </div>
         <p className="small dim" style={{ margin: '8px 0 0' }} data-effects-note>{effectsOf(p) === 'off' ? 'Nothing animates: no halo on a changed price, no fades, no press feedback.' : effectsOf(p) === 'calm' ? 'A soft halo behind a price that changed, content that fades in, a gentle press. This is the default.' : 'Calm, plus a shimmer while content loads, a slightly longer rise, and charts that draw on once.'}</p>
       </fieldset>

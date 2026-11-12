@@ -25,7 +25,7 @@ const probe = () => { const v = document.querySelector('.view'); const cs = getC
   ok(!p.fx && p.name === 'none' && p.op === 1, `device reduced motion: no layer, no animation (fx ${p.fx})`); await ctx.close(); }
 
 /* 3. motion ON: the tab content fades in and rises, a press scales, the skeleton shimmers */
-{ const ctx = await mk({ motion: 'auto' }); const pg = await ctx.newPage(); await pg.goto(base + '/#/today'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(800);
+{ const ctx = await mk({ motion: 'auto', effects: 'lively' }); const pg = await ctx.newPage(); await pg.goto(base + '/#/today'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(800);   // 12 Nov 2026: the shimmer, the rise and the .97 press are the LIVELY preset; Calm (the default) fades, does not shimmer and presses to .98 (tests/effects.mjs)
   const fx = await pg.evaluate(() => document.documentElement.classList.contains('fx')); ok(fx, 'motion on: the layer is on (html.fx)');
   await pg.evaluate(() => { window.__s = []; const v0 = performance.now(); const tick = () => { const v = document.querySelector('.view'); if (v) { const cs = getComputedStyle(v); window.__s.push([Math.round(performance.now() - v0), parseFloat(cs.opacity), cs.transform, document.documentElement.dataset.vt ?? '']); } if (performance.now() - v0 < 700) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
   await pg.locator('nav.tabs a[href="#/discover"]').click(); await pg.waitForTimeout(800);
