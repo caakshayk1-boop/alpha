@@ -7,6 +7,7 @@
 //
 // Pure apart from the injected `fetchImpl`: no clock, no cache, no network of its own.
 import { FEEDS, MARKET_QUERIES } from './config.js';
+import { GLOBAL_QUERIES } from './cues.js';
 import { buildRegistry } from './entities.js';
 import { parseFeed } from './feed.js';
 import { compactEvent, runPipeline } from './pipeline.js';
@@ -35,7 +36,8 @@ export const entitiesFromSnapshot = (snap) => Object.entries(snap?.names ?? {}).
 /** Run the market scope: the two official feeds and the market searches, Bing for any search Google would not answer. Returns the on-demand document. */
 export async function runCatchup({ fetchImpl, nowMs, status = null, snapshot = null, decision = null }) {
   const registry = buildRegistry(entitiesFromSnapshot(snapshot)); const fetchedAt = new Date(nowMs).toISOString();
-  const steps = [{ feed: FEEDS.rbi, url: FEEDS.rbi.url() }, { feed: FEEDS.sebi, url: FEEDS.sebi.url() }, ...MARKET_QUERIES.map((q) => ({ feed: FEEDS.google, url: FEEDS.google.url(q), q }))];
+  const steps = [{ feed: FEEDS.rbi, url: FEEDS.rbi.url() }, { feed: FEEDS.sebi, url: FEEDS.sebi.url() }, ...MARKET_QUERIES.map((q) => ({ feed: FEEDS.google, url: FEEDS.google.url(q), q })),
+    ...GLOBAL_QUERIES.slice(0, 2).map((q) => ({ feed: FEEDS.google, url: FEEDS.google.url(q), q, scope: 'global' }))];   // 12 Nov 2026: two global-cue searches ride along (same rules, same lane)
   const tried = []; const batches = [];
   const get = async (feed, url) => {
     try { const r = await fetchImpl(url, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/rss+xml,text/xml' }, signal: AbortSignal.timeout(8000) });
@@ -45,7 +47,7 @@ export async function runCatchup({ fetchImpl, nowMs, status = null, snapshot = n
   for (const { s, text } of out) {
     let t = text, feed = s.feed;
     if (t == null && s.q) { feed = FEEDS.bing; t = await get(feed, feed.url(s.q)); }
-    if (t != null) batches.push({ feed, rawItems: parseFeed(t), fetchedAt });
+    if (t != null) batches.push({ feed, rawItems: parseFeed(t), fetchedAt, scope: s.scope });
   }
   if (!batches.length) return { ok: false, error: `the news sources did not answer (${tried.join(', ') || 'none tried'})` };
   const p = runPipeline({ batches, registry, nowMs, paperSyms: snapshot?.scopes?.paper ?? [], full: false, limit: 30 });

@@ -28,7 +28,7 @@ export function assemble({ prev = null, result, sources, scheduledMs, startedMs,
     sources: sources.map(({ validators, ...s }) => ({ ...s, validatorCount: Object.keys(validators ?? {}).length })), sourceValidators: Object.fromEntries(sources.map((s) => [s.id, s.validators ?? {}])),
     coverage: { feeds: total, answered, failed: failedFeeds, unresolvedNames: unresolved, note },
     rejections: kept ? prev?.rejections ?? {} : result.rejections, counts: kept ? prev?.counts ?? null : result.counts,
-    scopes: { market: 'India-wide events with no single company', paper, covered }, names, events,
+    scopes: { market: 'India-wide events with no single company', global: 'headlines from outside India that match a stated cue (news/cues.js)', paper, covered }, names, events,
   };
   return { snapshot, status: statusOf(snapshot) };
 }

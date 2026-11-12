@@ -7,7 +7,7 @@ import { FORBIDDEN } from '../src/brief.ts';
 import { MACRO } from '../src/macro.ts';
 
 test('every cue is complete, unique, and uses only known sectors and instruments', () => {
-  assert.equal(new Set(CUES.map((c) => c.id)).size, CUES.length);
+  assert.equal(new Set(CUES.map((c: { id: string }) => c.id)).size, CUES.length);
   for (const c of CUES) {
     assert.ok(String(c.id).length > 2, c.id); assert.ok(String(c.label).length >= 4, c.id); for (const f of ['channel', 'exposed', 'watch'] as const) assert.ok(String(c[f]).length > 8, `${c.id}.${f}`);
     assert.ok(c.sectors.length >= 1 && c.sectors.every((s: string) => SECTORS.includes(s)), `${c.id} sectors`);

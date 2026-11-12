@@ -35,7 +35,7 @@ export function explain(f) { return Object.keys(WEIGHTS).map((k) => ({ k, value:
 /** One sentence on why an event is where it is. Built from the event's own facts. */
 export function reasonLine(ev, f, nowMs) {
   const parts = [`${ev.eventType} (significance ${f.significance.toFixed(2)})`];
-  const best = (ev.entities ?? [])[0]; if (best) parts.push(`${best.sym ?? best.name} matched on ${best.matchedOn} (${best.confidence.toFixed(2)})`); else if ((ev.scopes ?? []).includes('market')) parts.push('India-wide, no single company');
+  const best = (ev.entities ?? [])[0]; if (best) parts.push(`${best.sym ?? best.name} matched on ${best.matchedOn} (${best.confidence.toFixed(2)})`); else if ((ev.scopes ?? []).includes('market')) parts.push('India-wide, no single company'); else if ((ev.scopes ?? []).includes('global')) parts.push('from outside India, matched to a stated cue');
   parts.push(`${ev.sourceTitle ?? 'source'}${ev.sourceTier ? ` (${ev.sourceTier})` : ''}${ev.moreSources ? `, ${ev.moreSources} more ${ev.moreSources === 1 ? 'source' : 'sources'}` : ''}`);
   const pub = ms(ev.publishedAt); parts.push(Number.isFinite(pub) ? `published ${fmtAge((nowMs - pub) / H)} before this was ranked` : 'publication time unknown');
   return parts.join('; ');

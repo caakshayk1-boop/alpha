@@ -1,7 +1,8 @@
 // The pipeline: normalise -> validate (URL, date, entity) -> reject noise -> cluster events -> rank -> diversify -> snapshot.
 // A pure function of its inputs: raw feed items, the entity registry, the previous snapshot's items and the clock the caller passes. The same inputs give the same output on the Worker, in the
 // scheduled job and in the tests. It does no I/O and reads no clock.
-import { FEEDS, LIMITS, PIPELINE_VERSION, RANKING_VERSION, VERIFIED, sourceTier } from './config.js';
+import { FEEDS, GLOBAL_LIMITS, GLOBAL_TIERS, LIMITS, PIPELINE_VERSION, RANKING_VERSION, TODAY_WINDOW_H, VERIFIED, sourceTier } from './config.js';
+import { classifyCue } from './cues.js';
 import { classify } from './events.js';
 import { clusterItems, tokens } from './cluster.js';
 import { buildRegistry, matchEntities } from './entities.js';
@@ -26,8 +27,10 @@ export function usableSummary(title, description, feed, fetchedAt) {
 export function normalise(raw, batch, ctx) {
   const url = canonicalUrl(raw.link); const feed = batch.feed; const dt = raw.dateText ? parseDate(raw.dateText, feed.tz) : null;
   const kind = url ? urlKind(url) : { kind: 'invalid' }; const filing = kind.kind === 'filing';
-  const j = judge({ title: raw.title, url, publishedSec: dt?.sec ?? null, nowMs: ctx.nowMs, filing });
+  const isGlobal = batch.scope === 'global';
+  const j = judge({ title: raw.title, url, publishedSec: dt?.sec ?? null, nowMs: ctx.nowMs, filing, global: isGlobal });
   if (j.reasons.length) return { rejected: j.reasons[0], reasons: j.reasons };
+  if (isGlobal) return normaliseGlobal(raw, batch, ctx, { url, feed, dt, j });
   const entities = matchEntities(raw.title, ctx.registry).filter((e) => e.confidence >= VERIFIED);
   const publisher = raw.publisher || feed.publisherName || (hostOf(url) || 'Unknown'); const tier = sourceTier(publisher, hostOf(raw.publisherUrl) || hostOf(url));
   const macro = isMacro(raw.title) && hasIndia(raw.title);
@@ -47,6 +50,33 @@ export function normalise(raw, batch, ctx) {
   } };
 }
 
+/** The global lane (12 Nov 2026, news-pipe-2). Other countries' headlines are admitted ONLY when a cue rule (cues.js) matches the headline, from an official, wire, major or known outlet, published inside 36 hours.
+ *  No company is matched (a global story is never evidence about an Indian name), the event type is the same keyword rule as everywhere, and the item is marked scope 'global' with its cue ids. */
+function normaliseGlobal(raw, batch, ctx, { url, feed, dt, j }) {
+  const cues = classifyCue(raw.title); if (!cues.length) return { rejected: 'not_a_cue' };
+  const publisher = raw.publisher || feed.publisherName || (hostOf(url) || 'Unknown'); const tier = sourceTier(publisher, hostOf(raw.publisherUrl) || hostOf(url));
+  if (!GLOBAL_TIERS.includes(tier.tier)) return { rejected: 'global_source' };
+  if (!dt || dt.sec * 1000 < ctx.nowMs - TODAY_WINDOW_H.global * 3600e3) return { rejected: 'global_window' };
+  const cls = classify(raw.title); const flags = [...j.flags, 'global_scope']; if (dt.assumed) flags.push('date_zone_assumed');
+  return { item: {
+    itemId: `it_${hash(url)}`, canonicalUrl: url, feedId: feed.id, sourceId: slug(publisher), sourceTitle: publisher, sourceTier: tier.tier, sourceWeight: tier.weight, headline: raw.title.replace(/\s+/g, ' ').trim(),
+    publishedAt: iso(dt.sec), fetchedAt: batch.fetchedAt, updatedAt: batch.fetchedAt, firstSeenAt: batch.fetchedAt, sourceTimezone: feed.tz ?? 'UTC', entities: [], eventType: cls.eventType, significance: cls.significance,
+    eventClusterId: null, summary: null, qualityFlags: flags, relevanceScore: 0, rankingVersion: RANKING_VERSION, scope: 'global', cues,
+  } };
+}
+
+/** Global events kept: inside the window, at most GLOBAL_LIMITS.perCue per first cue and GLOBAL_LIMITS.total in all, best-ranked first (the input order). Pure. */
+export function capGlobal(ranked, nowMs) {
+  const per = new Map(); let total = 0; const out = [];
+  for (const ev of ranked) {
+    if (ev.scope !== 'global') { out.push(ev); continue; }
+    const p = ev.publishedAt ? Date.parse(ev.publishedAt) : NaN; if (!Number.isFinite(p) || nowMs - p > TODAY_WINDOW_H.global * 3600e3) continue;
+    const c = ev.cues?.[0] ?? '?'; if ((per.get(c) ?? 0) >= GLOBAL_LIMITS.perCue || total >= GLOBAL_LIMITS.total) continue;
+    per.set(c, (per.get(c) ?? 0) + 1); total++; out.push(ev);
+  }
+  return out;
+}
+
 const toCandidate = (it) => ({ ...it, publishedSec: it.publishedAt ? Math.floor(Date.parse(it.publishedAt) / 1000) : null, tk: tokens(it.headline) });
 
 /** Merge a re-seen item into what the last snapshot knew: the original publication time and first-seen time stay; `updatedAt` moves only when the headline changed. */
@@ -63,17 +93,19 @@ export function runPipeline({ batches, registry, prevItems = [], nowMs, paperSym
   const feedOf = (id) => Object.values(FEEDS).find((f) => f.id === id) ?? FEEDS.google;
   const all = [...batches, ...(prevItems.length ? [{ feed: null, rawItems: prevItems.map((p) => ({ title: p.headline, link: p.canonicalUrl, dateText: p.publishedAt ?? '', publisher: p.sourceTitle, publisherUrl: '', description: p.summary?.text ?? '', prev: p })), fetchedAt: null }] : [])];
   for (const b of all) for (const raw of b.rawItems) {
-    seen++; const isPrev = !!raw.prev; const batch = isPrev ? { feed: feedOf(raw.prev.feedId), fetchedAt: raw.prev.fetchedAt } : b;
+    seen++; const isPrev = !!raw.prev; const batch = isPrev ? { feed: feedOf(raw.prev.feedId), fetchedAt: raw.prev.fetchedAt, scope: raw.prev.scope } : b;
     const r = normalise(raw, batch, ctx); if (r.rejected) { if (!isPrev || r.rejected === 'stale' || true) bump(r.rejected); continue; }
     const it = carry(r.item, isPrev ? raw.prev : prevById.get(r.item.itemId)); if (isPrev && raw.prev.summary && !it.summary) it.summary = raw.prev.summary;
-    const old = byId.get(it.itemId); if (old) { if (!isPrev) bump('duplicate_url'); const keep = old.fetchedAt >= it.fetchedAt ? old : it; byId.set(it.itemId, { ...keep, firstSeenAt: old.firstSeenAt < it.firstSeenAt ? old.firstSeenAt : it.firstSeenAt, publishedAt: old.publishedAt ?? it.publishedAt, summary: old.summary ?? it.summary }); continue; }
+    const old = byId.get(it.itemId); if (old && (old.scope === 'global') !== (it.scope === 'global')) { if (it.scope !== 'global') byId.set(it.itemId, it); continue; }   // the same link in both lanes: the India reading wins, never a second copy
+    if (old) { if (!isPrev) bump('duplicate_url'); const keep = old.fetchedAt >= it.fetchedAt ? old : it; byId.set(it.itemId, { ...keep, firstSeenAt: old.firstSeenAt < it.firstSeenAt ? old.firstSeenAt : it.firstSeenAt, publishedAt: old.publishedAt ?? it.publishedAt, summary: old.summary ?? it.summary }); continue; }
     byId.set(it.itemId, it);
   }
   const items = [...byId.values()].map(toCandidate);
   const prevCluster = new Map(prevItems.filter((p) => p.eventClusterId).map((p) => [p.itemId, p.eventClusterId]));
   const groups = clusterItems(items, prevCluster);
   const events = groups.map((g) => buildEvent(g, ctx));
-  const ranked = rankEvents(events, nowMs).slice(0, limit).map((ev) => ({ ...ev, rankingVersion: RANKING_VERSION, rank: { reason: reasonLine(ev, ev.factors, nowMs), factors: explain(ev.factors) }, factors: undefined }));
+  const capped = capGlobal(rankEvents(events, nowMs), nowMs); const nGlobal = capped.filter((e) => e.scope === 'global').length; let room = Math.max(0, limit - nGlobal);
+  const ranked = capped.filter((e) => e.scope === 'global' || room-- > 0).map((ev) => ({ ...ev, rankingVersion: RANKING_VERSION, rank: { reason: reasonLine(ev, ev.factors, nowMs), factors: explain(ev.factors) }, factors: undefined }));
   const keepIds = new Set(); for (const ev of ranked) for (const m of ev.members) keepIds.add(m.itemId);
   const outItems = items.filter((i) => keepIds.has(i.itemId)).map(stripCandidate);
   const finalEvents = ranked.map((ev) => { const members = ev.members.map((m) => ({ ...stripCandidate(m), eventClusterId: ev.eventClusterId, relevanceScore: ev.relevanceScore })); const { members: _m, factors: _f, ...rest } = ev; return full ? { ...rest, items: members.slice(0, LIMITS.itemsPerEvent) } : rest; });
@@ -91,14 +123,16 @@ function buildEvent(group, ctx) {
   const entities = [...ent.values()].sort((a, b) => b.confidence - a.confidence);
   const seenSources = new Set(); const sources = [];
   for (const m of members) { if (seenSources.has(m.sourceId)) continue; seenSources.add(m.sourceId); sources.push({ sourceId: m.sourceId, sourceTitle: m.sourceTitle, tier: m.sourceTier, canonicalUrl: m.canonicalUrl, publishedAt: m.publishedAt }); }
-  const scopes = entities.length ? ['company'] : ['market']; if (entities.some((e) => e.sym && ctx.paperSyms.includes(e.sym))) scopes.push('paper');
+  const isGlobal = members.every((m) => m.scope === 'global'); const cues = isGlobal ? [...new Set(members.flatMap((m) => m.cues ?? []))].slice(0, 2) : undefined;
+  const scopes = isGlobal ? ['global'] : entities.length ? ['company'] : ['market']; if (entities.some((e) => e.sym && ctx.paperSyms.includes(e.sym))) scopes.push('paper');
   const flags = [...new Set(members.flatMap((m) => m.qualityFlags))]; const firstSeen = members.map((m) => m.firstSeenAt).sort()[0];
   return {
     eventClusterId: group.eventClusterId, headline: primary.headline, eventType: best.eventType, significance: best.significance, entities, scopes,
     publishedAt: iso(pubSec), updatedAt: iso(updSec) ?? primary.updatedAt, firstSeenAt: firstSeen, fetchedAt: primary.fetchedAt,
     sourceId: primary.sourceId, sourceTitle: primary.sourceTitle, sourceTier: primary.sourceTier, sourceWeight: primary.sourceWeight, canonicalUrl: primary.canonicalUrl, sourceTimezone: primary.sourceTimezone,
     moreSources: Math.max(0, sources.length - 1), sources: sources.slice(0, LIMITS.sourcesPerEvent), summary: primary.summary ?? members.find((m) => m.summary)?.summary ?? null,
-    qualityFlags: flags, todayEligible: best.eventType !== 'Update' && pubSec != null, members,
+    qualityFlags: flags, todayEligible: !isGlobal && best.eventType !== 'Update' && pubSec != null, members,
+    ...(isGlobal ? { scope: 'global', cues } : {}),
   };
 }
 

@@ -5,11 +5,12 @@ import { isNewStory, newsViewState, type NewsView, plural, storyTime, type NewsH
 import { fmtIst } from '../stamp.ts';
 import { checkedLabel } from '../timelabels.ts';
 import { categoryOf, COUNT_DEFINITION, inTab, labelsOf, safeHref, timeLabels, todayTabCounts, TABS, todayList, type Lists, type NewsEvent, type Tab } from '../newsview.ts';
-import { RANKING_VERSION, PIPELINE_VERSION, TIERS, WEIGHTS, HALF_LIFE_H, TODAY_WINDOW_H, DIVERSITY, CADENCE, DELAY_AFTER, MAX_AGE_DAYS } from '../../news/config.js';
+import { RANKING_VERSION, PIPELINE_VERSION, TIERS, WEIGHTS, HALF_LIFE_H, TODAY_WINDOW_H, DIVERSITY, CADENCE, DELAY_AFTER, MAX_AGE_DAYS, GLOBAL_LIMITS } from '../../news/config.js';
+import { CUES, GLOBAL_QUERIES } from '../../news/cues.js';
 import { EVENT_TYPES, SIGNIFICANCE } from '../../news/events.js';
 
 const TAGC: Record<string, string> = { Results: 'amber', IPO: 'violet', Deal: 'aqua', Order: 'blue', Rating: 'pink', Payout: 'lime', Regulator: 'peach', Policy: 'peach', Macro: 'blue', Filing: 'aqua', People: '', Update: '' };
-const FLAG_WORD: Record<string, string> = { date_unknown: 'Publication time unknown', date_zone_assumed: 'Time zone not stated by the feed; read as the feed\'s own', aggregator_source: 'From an aggregator, not the original publisher', market_scope: 'India-wide: no single company', no_event_keyword: 'No event type recognised in the headline', exchange_filing: 'A dated exchange or regulator document' };
+const FLAG_WORD: Record<string, string> = { date_unknown: 'Publication time unknown', date_zone_assumed: 'Time zone not stated by the feed; read as the feed\'s own', aggregator_source: 'From an aggregator, not the original publisher', market_scope: 'India-wide: no single company', no_event_keyword: 'No event type recognised in the headline', exchange_filing: 'A dated exchange or regulator document', global_scope: 'From outside India: shown only because a cue rule matched the headline' };
 
 /** Presentation only: never writes the research, holdings or news-seen stores. */
 export function useNewsPreference(key: 'minimised' | 'summaries' | 'companyMinimised') {
@@ -45,7 +46,7 @@ export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
 /** One event. `lead` draws the first row larger and gives its summary room; every row carries the same facts: headline (a link), source and publication age, one event tag, the company, an optional one-line summary, and a drawer. */
 /** `board` (the News page, revamp v2): the section heading says why the row is listed, so no list labels; the row carries a source-count chip and, under Your names, an "In paper book" chip
  *  instead of a second copy of the headline under Paper book. */
-export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym, board = false, inPaper = false }: { ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string; board?: boolean; inPaper?: boolean }) {
+export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym, board = false, inPaper = false, also = [], extra }: { also?: { id: string; label: string }[]; extra?: ReactNode; ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string; board?: boolean; inPaper?: boolean }) {
   const t = storyTime(ev.publishedAt, nowMs); const href = safeHref(ev.canonicalUrl); const fresh = isNewStory(ev, seenSec); const tags = label ? labelsOf(ev, lists) : [];
   const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known; const clk = timeLabels(ev, nowMs);
   const nSrc = Math.max(ev.sources.length, ev.moreSources + 1, 1);
@@ -55,9 +56,11 @@ export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = fa
       {fresh && <span className="tag aqua nw-tag" title="Published, and first seen by the news check, since you last looked">New</span>}
       <span>{ev.sourceTitle}</span><span aria-hidden="true">·</span>
       <time dateTime={ev.publishedAt ?? undefined} title={t.ist} className={unknownDate ? 'nw-unknown' : ''} data-clock="published"><span className="sr">Published </span>{t.ageWord}</time>
-      <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`} title={board ? categoryOf(ev.eventType) : undefined}>{ev.eventType}</span>
+      {ev.scope !== 'global' && <span className={`tag nw-tag ${TAGC[ev.eventType] ?? ''}`} title={board ? categoryOf(ev.eventType) : undefined}>{ev.eventType}</span>}
+      {also.map((c) => <span key={c.id} className="tag nw-cue-also" title="This headline matches a second cue">Also: {c.label}</span>)}
       {board && nSrc > 1 && <span className="tag nw-src-n" title={`${plural(nSrc, 'outlet')} carried this event`}>{plural(nSrc, 'source')}</span>}
       {board && inPaper && <span className="tag nw-inpaper">In paper book</span>}
+      {extra}
       {ev.entities.filter((e) => e.sym !== companySym).map((e) => e.sym ? <a key={e.sym} className="nw-entity" href={`#/c/${encodeURIComponent(e.sym)}`} title={`Research ${e.name ?? e.sym}`}>{e.sym}<span className="sr"> company evidence</span></a> : <span key={e.name} className="nw-entity">{e.name}</span>)}
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
@@ -84,6 +87,7 @@ export function NewsMethod({ extra }: { extra?: ReactNode }) {
     <p><b>Same story, once.</b> Links are canonicalised (trackers, www, amp and fragments removed). Items about the same company within three days that share most of their words, or state the same figure for the same kind of event, are one event: the most authoritative outlet is primary and the rest are counted as more sources. A buyback and a results night, or "profit up 5%" and "profit down 3%", stay separate events.</p>
     <p data-news-definition><b>What the numbers count.</b> {COUNT_DEFINITION} A number on a tab is the number of events listed once you press it, under the same filters.</p>
     <p><b>Order.</b> {RANKING_VERSION}, a fixed weighted sum, not a model: significance {WEIGHTS.significance}, verified company match {WEIGHTS.entity}, source reliability {WEIGHTS.source}, recency {WEIGHTS.recency}, novelty {WEIGHTS.novelty}, your lists {WEIGHTS.user}. Significance by type: {EVENT_TYPES.filter((x: string) => x !== 'Update').map((x: string) => `${x} ${(SIGNIFICANCE[x] ?? 0).toFixed(2)}`).join(', ')}. Recency halves every {HALF_LIFE_H.default} hours ({HALF_LIFE_H.Policy} for policy and macro). Source tiers: {Object.entries(TIERS as Record<string, number>).map(([k, v]) => `${k} ${v}`).join(', ')}. The wording of a headline (surges, slumps) never changes its rank.</p>
+    <p><b>Global cues.</b> A separate lane reads {GLOBAL_QUERIES.length} searches about markets and events outside India. A headline is kept only if it matches one of the {CUES.length} cue rules in news/cues.js, comes from an official, wire, major or known outlet, and is under {TODAY_WINDOW_H.global} hours old: at most {GLOBAL_LIMITS.perCue} per cue and {GLOBAL_LIMITS.total} in all. The line under a cue is standing context for that kind of headline and is the same for every headline of that kind; it is not read from the headline and it never says what a market will do. The moves beside it (an instrument, a sector's close) are measured and dated. A global headline is never a company event and never ranks a company.</p>
     <p><b>Today.</b> Company events up to {TODAY_WINDOW_H.company} hours old and India-wide events up to {TODAY_WINDOW_H.market} hours old, at most {DIVERSITY.perCompanyDefault} per company in the first {DIVERSITY.firstPage} ({DIVERSITY.perCompanyExtended} in the extended list; a regulator, policy or deal event carried by an official source or three outlets may take a third place). If three qualify, three are shown. The News page keeps the whole archive.</p>
     <p><b>Summaries.</b> Shown only when the publisher's own feed description is available and permitted (official release feeds); otherwise a story is its headline alone, with no summary and no judgement of its tone. Article bodies are never fetched.</p>
     <p className="mute">Pipeline {PIPELINE_VERSION}. Paper-only research; nothing here is a recommendation.</p>{extra}</div></details>;
