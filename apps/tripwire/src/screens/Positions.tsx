@@ -8,7 +8,8 @@ import { summarize, SLIPPAGE_PCT } from '../tracker.ts';
 import { archivePaper } from '../store.ts';
 import { ENGINES } from '../quant.ts';
 import { figuresOf } from '../recordview.ts';
-import { MIN_TRADES, type Outcome } from '../ledger.ts';
+import type { Outcome } from '../ledger.ts';
+import { buildLedgerView, bookClosedCount, bookClosedWord, resolvedObservationCount, partitionWord } from '../ledgerview.ts';
 import { throughOf } from '../recordview.ts';
 import { ladderInputFor } from '../ladder.ts';
 import { byAttention, attention, nearWord, type AttnInput } from '../bookview.ts';
@@ -72,6 +73,7 @@ export function Positions() {
   const rs = openRows.map((x) => x.r.v.r).filter((x): x is number => typeof x === 'number'); const openR = rs.length ? Math.round(rs.reduce((a, b) => a + b, 0) * 100) / 100 : null;
   const dayParts = [auto.dayTotal, mine.dayTotal].filter((x): x is number => x != null); const dayTotal = dayParts.length ? dayParts.reduce((a, b) => a + b, 0) : null;
   const led = auto.ledger.data?.ledger ?? null; const fig = led ? figuresOf(led) : null;
+  const lv = led && auto.plan ? buildLedgerView(led, auto.plan, myRows) : null;   // 12 Nov 2026: every count on this page reads this one view (ledgerview.ts)
   const priceWord = auto.priceWord ?? mine.priceWord; const session = auto.rows.length ? auto.session : mine.session; const intra = auto.rows.length ? auto.intra : mine.intra; const bars = auto.rows.length ? auto.bars : mine.bars;
   const live = session.phase === 'open';
   const engines = ENGINES.filter((e) => !e.retired && active.some((x) => x.r.p.engine === e.id));
@@ -93,8 +95,8 @@ export function Positions() {
       <SlotGauge used={auto.slots} max={auto.cfg.maxOpen} />
       <div className="bk-fig bk-pnl"><span className="k">Open P&L (paper)</span><b className={`num amt ${tone(unreal)}`}><Tick v={unreal}>{money(unreal)}</Tick></b><span className={`bk-note num ${tone(openR)}`}>{openR == null ? '—' : `${Rw(openR)} summed`}</span></div>
       <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b><span className="bk-note">{waiting ? `${waiting} enter${waiting === 1 ? 's' : ''} at the next open` : `${active.filter((x) => x.owner === 'you').length} yours`}</span></div>
-      <div className="bk-fig bk-closed"><span className="k">Closed</span>{!fig && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
-        : <><b className="num">{fig ? fig.closed : '—'}<small> of {MIN_TRADES}</small></b><span className="bk-note">{fig ? (fig.enough ? `${Rw(fig.totalR)} in total` : 'too few to judge') : 'record unavailable'}</span></>}</div>
+      <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
+        : <><b className="num" data-book-closed>{lv ? bookClosedCount(lv) : '—'}</b><span className="bk-note">{lv ? `${resolvedObservationCount(lv)} resolved observations are in the Record, a different count` : 'record unavailable'}</span></>}</div>
       <div className="bk-live small">
         <LiveBadge live={priceWord === 'Live'} label={priceWord ?? (items.length ? 'Checking prices' : 'No positions')} />
         <span className="dim">{live ? 'Today' : 'Last session'} <b className={`num amt ${tone(dayTotal)}`}><Tick v={dayTotal}>{money(dayTotal)}</Tick></b></span>
@@ -115,7 +117,7 @@ export function Positions() {
 
     {mineDone.length > 0 && <details className="more bk-fold"><summary>Your finished trades · {mineDone.length}</summary><div className="bk-board">{mineDone.map(card)}</div>
       {mineSum.closed > 0 && <p className="small">Closed: <b className="num">{Rw(mineSum.totalR)}</b> over {mineSum.closed} trade{mineSum.closed === 1 ? '' : 's'}.{!mineSum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}</details>}
-    {(engineDone > 0 || engineSkipped > 0) && <p className="small mute">{engineDone ? <>{engineDone} engine position{engineDone === 1 ? ' has' : 's have'} closed: <a href="#/signals?v=record">see them in Record</a>.</> : null}{engineSkipped ? ` ${engineSkipped} pick${engineSkipped === 1 ? ' was' : 's were'} skipped at the open and never counted.` : ''}</p>}
+    {(engineDone > 0 || engineSkipped > 0) && <p className="small mute">{engineDone ? <>{lv ? bookClosedWord(lv) : `${engineDone} closed book position${engineDone === 1 ? '' : 's'}`}: <a href="#/signals?v=record">the Record</a> lists the wider set of resolved observations.</> : null}{engineSkipped ? ` ${engineSkipped} pick${engineSkipped === 1 ? ' was' : 's were'} skipped at the open and never counted.` : ''}{lv ? <span data-partition> {partitionWord(lv)}</span> : null}</p>}
     {(dups + retired > 0 || hidden > 0) && <p className="small mute">{dups + retired > 0 ? `${dups + retired} older ${dups + retired === 1 ? 'entry of yours is' : 'entries of yours are'} not shown or counted: ${[dups ? `${dups} duplicate${dups === 1 ? '' : 's'} of the engine book` : '', retired ? `${retired} from a retired engine` : ''].filter(Boolean).join(', ')}. ` : ''}{hidden ? `${hidden} hidden by you. ` : ''}They stay in your backup.</p>}
 
     <details className="more bk-fold" data-attr-fold><summary>Where the P&L came from · by engine and position</summary>

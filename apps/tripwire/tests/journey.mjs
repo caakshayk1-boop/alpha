@@ -359,8 +359,10 @@ const led = (() => { const picks = [], outcomes = {}; for (let i = 0; i < 12; i+
   return { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-27T01:00:00Z', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: 'x', engines: { MOM: { eligible: 750, passed: 90, picked: 5, skippedWideStop: 1 }, QLT: { eligible: 750, passed: 0, picked: 0, skippedWideStop: 0 }, LVT: { eligible: 750, passed: 3, picked: 3, skippedWideStop: 0 } } }], picks, outcomes }; })();
 await pg.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
 await pg.reload(); await pg.waitForSelector('[data-record-headline]', { timeout: 15000 }); await shot('09b-record');
-ok(/9\s*of 30 closed/.test(await pg.locator('[data-record-headline]').innerText()), 'the record counts closed trades against the 30 needed');   // 11 Nov 2026: one headline, "9 of 30 closed"
-ok(/withheld until 30 close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
+/* 12 Nov 2026: the headline counts resolved observations */
+ok(/9\s*resolved observations/.test(await pg.locator('[data-record-headline]').innerText()), 'the record counts closed trades against the 30 needed');   // 11 Nov 2026: one headline, "9 of 30 closed"
+/* 12 Nov 2026: the gate counts qualifying lifecycles (ledgerview.ts), still 30 */
+ok(/withheld until 30 qualifying lifecycles close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most

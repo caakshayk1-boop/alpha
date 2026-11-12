@@ -16,7 +16,8 @@ for (const width of [320, 360, 390, 1280]) {
   await pg.goto(`${base}/#/signals?v=auto`, { waitUntil: 'networkidle' }); await pg.waitForSelector('.pcard [data-ladder]', { timeout: 20000 });
   ok(await pg.getByRole('tab', { name: 'Positions' }).getAttribute('aria-selected') === 'true', `${width}: the old ?v=auto address opens Positions`);
   ok(await pg.locator('.pcard').count() === 1 && await pg.locator('.pcard[data-pos="' + D.id + '"]').count() === 1, `${width}: the board lists the open position once, and no closed one`);
-  ok(/3 engine positions have closed/.test(await pg.locator('[data-positions]').innerText()), `${width}: and says where the closed ones are`);
+  /* 12 Nov 2026 (Tripwire 2.0 1.1): the book says '3 closed book positions'; intent unchanged: it says where the closed ones are */
+  ok(/3 closed book positions/.test(await pg.locator('[data-positions]').innerText()), `${width}: and says where the closed ones are`);
   ok(await pg.locator('h1').count() === 1, `${width}: one h1 on the Book`);
   ok(await noOverflow(pg), `${width}: the Book does not scroll sideways`);
   const head = pg.locator('.pc-head').first(); const hb = await head.boundingBox();
@@ -25,7 +26,7 @@ for (const width of [320, 360, 390, 1280]) {
   ok(/DDD/.test(dt) && /Engine/i.test(dt) && /Momentum/.test(dt) && /Session \d+ of 20/.test(dt), `${width}: a row names the symbol, who took it, the engine and the session count`);
   ok(await pg.locator('[data-through]').count() === 1 && /Picks through/.test(await pg.locator('[data-through]').innerText()) && /Outcomes through/.test(await pg.locator('[data-through]').innerText()), `${width}: the Book shows picks-through and outcomes-through`);
   ok(await pg.locator('[data-sec="hits"]').count() === 1 && /T2 hit — position closed/.test(await pg.locator('[data-sec="hits"]').innerText()) && /nothing is sent to you/.test(await pg.locator('[data-sec="hits"]').innerText()), `${width}: the target-hit card is at the top of the Book`);
-  ok(await pg.locator('[data-strip]').count() === 1 && /of 50 slots/i.test(await pg.locator('[data-strip]').innerText()) && /3\s*of 30/.test(await pg.locator('[data-strip]').innerText()) && /too few to judge/.test(await pg.locator('[data-strip]').innerText()), `${width}: the strip states slots used, and closed of 30 with "too few to judge"`);
+  ok(await pg.locator('[data-strip]').count() === 1 && /of 50 slots/i.test(await pg.locator('[data-strip]').innerText()) && /Closed book positions\s*3/i.test(await pg.locator('[data-strip]').innerText()), `${width}: the strip states slots used and the book's own closed count (3 closed book positions; the observation count is named as a different one)`);
   ok(await pg.evaluate(() => document.querySelector('.pcard .amt') !== null), `${width}: rupee figures carry .amt so the privacy switch hides them`);
   // expanding keeps the existing details
   await head.click(); ok(await pg.locator('.pcard .pc-more').count() === 1 && await head.getAttribute('aria-expanded') === 'true', `${width}: the row opens the existing details`);
@@ -49,8 +50,9 @@ for (const width of [320, 360, 390, 1280]) {
   ok(await noOverflow(pg), `${width}: the Record does not scroll sideways`);
   // 11 Nov 2026: one headline (closed of 30 and total R) replaces the three stat tiles that repeated both; the win rate is withheld in words, never a zero
   const hl = await pg.locator('[data-record-headline]').innerText();
-  ok(/^3\s*of 30 closed/.test(hl.trim()) && /\+1\.70R/.test(hl), `${width}: one headline: closed = the ledger's count, once (3 of 30), and total R (${hl.replace(/\s+/g, ' ')})`);
-  ok(/Too few to judge/.test(rt) && /win rate and average R withheld until 30 close/.test(rt) && !/\d+% won/.test(rt), `${width}: win rate is withheld in words below 30 trades, never a zero`);
+  /* 12 Nov 2026: the headline is the count of resolved observations, labelled as such */
+  ok(/^3\s*resolved observations/.test(hl.trim()) && /\+1\.70R/.test(hl), `${width}: one headline: closed = the ledger's count, once (3 of 30), and total R (${hl.replace(/\s+/g, ' ')})`);
+  ok(/Too few to judge/.test(rt) && /win rate and average R withheld until 30 qualifying lifecycles close/.test(rt) && !/\d+% won/.test(rt), `${width}: win rate is withheld in words below 30 trades, never a zero`);
   ok(/Picks through/.test(rt) && /Outcomes through/.test(rt), `${width}: the Record shows picks-through and outcomes-through`);
   ok(await pg.locator('[data-record] .pcard').count() === 3, `${width}: each closed trade appears once, as a row`);
   ok(/Signals gate/.test(rt) && await pg.locator('[data-sec="gate"] .ds-gatecard').count() === 1, `${width}: the Signals gate is a labelled section inside the Record`);
@@ -95,7 +97,7 @@ for (const width of [320, 360, 390, 1280]) {
   const empty = { ...ledger, picks: [D], outcomes: { [D.id]: outcomes[D.id] } }; const ctx = await open(390, empty); const pg = await ctx.newPage();
   await pg.goto(`${base}/#/signals?v=record`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-record]', { timeout: 20000 });
   ok(/Nothing has closed yet — the first positions are still open\./.test(await pg.locator('[data-record]').innerText()), 'empty record: says plainly that nothing has closed yet');
-  const hl0 = await pg.locator('[data-record-headline]').innerText(); ok(/^0\s*of 30 closed/.test(hl0.trim()) && !/R/.test(hl0) && !/\+0\.00R/.test(await pg.locator('[data-record]').innerText()), 'empty record: closed is a measured 0, and no total R is printed rather than +0.00R');   // 11 Nov 2026: one headline replaces the stat tiles
+  const hl0 = await pg.locator('[data-record-headline]').innerText(); ok(/^0\s*resolved observations/.test(hl0.trim()) && !/R/.test(hl0) && !/\+0\.00R/.test(await pg.locator('[data-record]').innerText()), 'empty record: closed is a measured 0, and no total R is printed rather than +0.00R');   // 11 Nov 2026: one headline replaces the stat tiles
   await ctx.close();
 }
 // outcomes trailing picks are named

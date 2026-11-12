@@ -194,7 +194,8 @@ for (const w of [320, 390, 1280]) {
 for (const w of [320, 390, 1280]) {
   const ctx = await openCtx(b, w); const pg = await ctx.newPage(); await pg.goto(`${base}/#/signals?v=record`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-record-read]', { timeout: 20000 });
   const rd = await pg.locator('[data-record-read]').innerText();
-  ok(/of 30 trades/.test(rd) && /cannot show whether the rules work/.test(rd), `${w}: a short record is read as too short to tell`);
+  /* 12 Nov 2026: worded as observations (ledgerview.ts); intent unchanged */
+  ok(/of 30 observations/.test(rd) && /cannot show whether the rules work/.test(rd), `${w}: a short record is read as too short to tell`);
   ok(!/\b(proven|validated|reliable|guarantee)\b/i.test(await pg.locator('[data-record]').innerText()), `${w}: nothing on the Record implies a validated strategy`);
   ok(await pg.locator('[data-record-attr] [data-contrib-total]').count() === 1, `${w}: the R attribution has a total row`);
   ok(await pg.locator('[data-curve] [data-drop]').count() === 1 && /closed trades only/.test(await pg.locator('[data-curve] [data-drop]').innerText() + ' closed trades only'), `${w}: the realised curve states its drop and basis`);

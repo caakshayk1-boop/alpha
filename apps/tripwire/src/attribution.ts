@@ -66,9 +66,10 @@ export function readRecord(rs: readonly number[], minTrades: number = MIN_TRADES
   const n = rs.length; const enough = n >= minTrades; const lines: string[] = [];
   if (n === 0) return { lines: ['Nothing has closed yet, so there is no result to read. Open positions are not in any figure here.'], enough: false };
   const total = rs.reduce((a, x) => a + x, 0); const wins = rs.filter((x) => x > 0).length; const losses = rs.filter((x) => x < 0).length;
-  lines.push(`${n} trade${n === 1 ? ' has' : 's have'} closed: ${wins} in profit, ${losses} at a loss${n - wins - losses ? `, ${n - wins - losses} flat` : ''}, ${R(total)} in total. Open positions are not in these figures.`);
-  if (n >= 3) { const best = Math.max(...rs); const without = total - best; if (best > 0) lines.push(`The best single trade is ${R(best)}. Without it the total would be ${R(without)}${without <= 0 && total > 0 ? ', so the total rests on that one trade' : ''}.`); }
-  lines.push(enough ? `${n} closed trades is past the ${minTrades}-trade minimum. A minimum is not proof: it only lets the average and the win rate be shown.`
-    : `${n} of ${minTrades} trades. A record this short cannot show whether the rules work; a few trades either way would change every figure here, so average R and win rate stay hidden until ${minTrades} have closed.`);
+  /* 12 Nov 2026: these are RESOLVED OBSERVATIONS (picks, repeats and not-taken ones included), not trades the book closed; ledgerview.ts holds the book's own count */
+  lines.push(`${n} resolved observation${n === 1 ? ' has' : 's have'} closed: ${wins} in profit, ${losses} at a loss${n - wins - losses ? `, ${n - wins - losses} flat` : ''}, ${R(total)} in total. Open positions are not in these figures.`);
+  if (n >= 3) { const best = Math.max(...rs); const without = total - best; if (best > 0) lines.push(`The best single observation is ${R(best)}. Without it the total would be ${R(without)}${without <= 0 && total > 0 ? ', so the total rests on that one trade' : ''}.`); }
+  lines.push(enough ? `${n} resolved observations is past the ${minTrades}-observation minimum. A minimum is not proof: it only lets the average and the win rate be shown, and overlapping observations are not independent trials.`
+    : `${n} of ${minTrades} observations. A record this short cannot show whether the rules work; a few either way would change every figure here, so average R and win rate stay hidden until ${minTrades} have resolved.`);
   return { lines, enough };
 }

@@ -8,6 +8,7 @@ import { RETIRED, summarizeLedger, MIN_TRADES } from '../ledger.ts';
 import { closedItems, definitionLines, figuresOf, throughOf, viewOfClosed } from '../recordview.ts';
 import { missingNights, missingNightsLine, rBars } from '../bookview.ts';
 import { evidenceHeadline } from '../evidence.ts';
+import { buildLedgerView, bookClosedCount, resolvedObservationCount, validationClosedCount, validationLines, partitionWord } from '../ledgerview.ts';
 import { dayWord, inr0 } from '../fmt.ts';
 import { Empty } from '../ui.tsx';
 import { Loading } from './common.tsx';
@@ -27,7 +28,7 @@ const SHOWN = 6;
 function RBars({ items }: { items: readonly { id: string; label: string; r: number; day?: string | null }[] }) {
   const bars = useMemo(() => rBars(items), [items]); const total = Math.round(items.reduce((a, x) => a + x.r, 0) * 100) / 100;
   return <section className="rec-sec card rec-bars" aria-labelledby="rec-attr" data-record-attr>
-    <SectionHeader id="rec-attr" title="Each closed trade, in R" description="Oldest exit first. Above the line made R; below lost it." />
+    <SectionHeader id="rec-attr" title="Each resolved observation, in R" description="Oldest exit first. Above the line made R; below lost it. Repeats and not-taken signals are included." />
     <div className="rb-plot" role="img" aria-label={`${bars.length} closed trades in R: ${bars.map((b) => `${b.label} ${fmtR(b.r)}`).join(', ')}. Total ${fmtR(total)}.`}>
       {bars.map((b) => <span key={b.id} className={`rb ${b.tone}`} title={`${b.label} ${fmtR(b.r)}`}><i style={{ transform: `scaleY(${b.h / 100})` }} /></span>)}
     </div>
@@ -44,6 +45,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
   const [openId, setOpenId] = useState<string | null>(null); const [all, setAll] = useState(false); const [ev, setEv] = useState(anchor === 'evidence');
   const evRef = useRef<HTMLElement>(null);
   const l = feed.data?.ledger ?? null;
+  const lv = useMemo(() => (l && book.plan ? buildLedgerView(l, book.plan) : null), [l, book.plan]);
   const fig = useMemo(() => (l ? figuresOf(l) : null), [l]); const sum = useMemo(() => (l ? summarizeLedger(l) : null), [l]);
   const items = useMemo(() => (l ? closedItems(l) : []), [l]);
   const gaps = useMemo(() => (l ? missingNights(l.days.map((d) => d.asOf)) : []), [l]);
@@ -68,12 +70,16 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
     {feed.err && <p className="note" role="status">{feed.err} <button className="btn sm" onClick={feed.retry}>Refresh record</button></p>}
     <section className="rec-hero" aria-labelledby="rec-h">
       <SectionHeader id="rec-h" title="Forward record" description={`Every pick, every night since ${dayWord(fig.first)}, written down before anyone knew how it turned out, whether or not it was taken.`} />
-      <p className="rec-big" data-record-headline><b className="num">{fig.closed}</b><span> of {MIN_TRADES} closed</span>{fig.totalR != null && <b className={`num rec-big-r ${fig.totalR > 0 ? 'up' : fig.totalR < 0 ? 'down' : ''}`}>{fmtR(fig.totalR)}</b>}</p>
+      {/* 12 Nov 2026 (Tripwire 2.0, 1.1): the headline counts RESOLVED OBSERVATIONS and says so; the book's own closures and the validation sample are separate lines below (ledgerview.ts) */}
+      <p className="rec-big" data-record-headline><b className="num">{lv ? resolvedObservationCount(lv) : fig.closed}</b><span> resolved observations</span>{fig.totalR != null && <b className={`num rec-big-r ${fig.totalR > 0 ? 'up' : fig.totalR < 0 ? 'down' : ''}`}>{fmtR(fig.totalR)}</b>}</p>
+      <p className="rec-line" data-record-scope>Includes repeated and not-taken signals: one engine naming one company on one night is one observation, so they overlap and are not independent trades.{lv ? <> The paper book itself has <b className="num" data-book-closed>{bookClosedCount(lv)}</b> closed position{bookClosedCount(lv) === 1 ? '' : 's'} ({lv.open} open).</> : null}</p>
       {/* 11 Nov 2026: ONE headline (closed of 30, total R) and one verdict. The three stat tiles repeated both numbers; the win rate is withheld below 30, which the pill and Reading say. */}
-      <p className="rec-verdict">{fig.enough ? <StatusPill tone="neutral" icon="check">{fig.winRate}% won · average {fmtR(fig.avgR)} a trade{sum.all.avgExcess != null ? ` · ${sum.all.avgExcess > 0 ? '+' : '−'}${Math.abs(sum.all.avgExcess).toFixed(2)}% against the Nifty` : ''}</StatusPill>
-        : <StatusPill tone="amber" icon="clock">Too few to judge · win rate and average R withheld until {MIN_TRADES} close</StatusPill>}</p>
-      <div className="rec-prog" role="img" aria-label={`${fig.closed} of ${MIN_TRADES} trades closed`}>{Array.from({ length: MIN_TRADES }, (_, i) => <i key={i} className={i < Math.min(fig.closed, MIN_TRADES) ? 'on' : ''} />)}</div>
-      <p className="rec-line">{fig.nights} night{fig.nights === 1 ? '' : 's'} recorded · {fig.picks} pick observations · {fig.open} open · {fig.skipped} skipped · {fig.pending} waiting for prices.</p>
+      <p className="rec-verdict">{fig.enough && (!lv || validationClosedCount(lv) >= MIN_TRADES) ? <StatusPill tone="neutral" icon="check">{fig.winRate}% won · average {fmtR(fig.avgR)} a trade{sum.all.avgExcess != null ? ` · ${sum.all.avgExcess > 0 ? '+' : '−'}${Math.abs(sum.all.avgExcess).toFixed(2)}% against the Nifty` : ''}</StatusPill>
+        : <StatusPill tone="amber" icon="clock">Too few to judge · win rate and average R withheld until {MIN_TRADES} qualifying lifecycles close</StatusPill>}</p>
+      {(() => { const q = lv ? validationClosedCount(lv) : 0; return <div className="rec-prog" role="img" aria-label={`${q} of ${MIN_TRADES} qualifying lifecycles closed`} data-validation>{Array.from({ length: MIN_TRADES }, (_, i) => <i key={i} className={i < Math.min(q, MIN_TRADES) ? 'on' : ''} />)}</div>; })()}
+      {lv && validationLines(lv).map((t) => <p key={t} className="rec-line" data-validation-line>{t}</p>)}
+      <p className="rec-line">{fig.nights} night{fig.nights === 1 ? '' : 's'} recorded · {fig.picks} pick observations · {fig.open} open · {fig.skipped} skipped · {fig.pending} awaiting entry or prices.</p>
+      {lv && <p className="rec-line" data-partition>{partitionWord(lv)}</p>}
       <ThroughPills through={through} />
       {gapLine && <p className="rec-line rec-gaps" data-missing-nights>{gapLine}</p>}
       <details className="more"><summary>What is counted</summary><ObservationNote />{basisLine(basisCounts(l)) && <p className="rec-line" data-basis-line>{basisLine(basisCounts(l))}</p>}</details>
@@ -84,7 +90,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
     <RecordReading rs={items.map((x) => x.outcome.r as number)} min={MIN_TRADES} />
 
     <section className="rec-sec" aria-labelledby="rec-closed">
-      <SectionHeader id="rec-closed" title="Closed positions" description="Newest exit first. Tap a row for where it entered, what was booked and when, and where it left." />
+      <SectionHeader id="rec-closed" title="Resolved observations" description="Every pick whose replay has finished, newest exit first, whether or not the book took it. Tap a row for where it entered, what was booked and when, and where it left." />
       {items.length === 0 ? <EmptyState icon="clock">Nothing has closed yet — the first positions are still open.</EmptyState> : <>
         <div className="bk-board ds-stagger">{shown.map(({ pick, outcome }) => {
           const br = bookRow(pick.id); const v = viewOfClosed(pick, outcome, br ? br.p.qty : null, br ? br.v.pnl : null);
@@ -98,10 +104,10 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
     <RealisedCurve items={items.map((x) => ({ id: x.pick.id, exitDay: x.outcome.exitDay, r: x.outcome.r }))} />
 
     <section className="rec-sec" aria-labelledby="rec-eng">
-      <SectionHeader id="rec-eng" title="By engine" description="The same closed trades, split by the rule that picked them." />
+      <SectionHeader id="rec-eng" title="By engine" description="The same resolved observations, split by the rule that picked them." />
       <div>{sum.engines.map((e) => { const d = ENGINES.find((x) => x.id === e.engine)!; const idle = l.days.filter((x) => (x.engines[e.engine]?.picked ?? 0) === 0).length; return <div key={e.engine} className="rec-eng">
         <div className="top"><b>{d.name}</b><span className="ds-pill num">{e.picks} picks</span></div>
-        <div className="fig num">{e.closed} closed · {e.open} open · {e.skipped} skipped · {e.pending} pending · total <b>{fmtR(e.closed ? e.totalR : null)}</b>{e.enough ? ` · average ${fmtR(e.avgR)}` : ''}</div>
+        <div className="fig num">{e.closed} resolved observations · {e.open} open · {e.skipped} skipped · {e.pending} pending · total <b>{fmtR(e.closed ? e.totalR : null)}</b>{e.enough ? ` · average ${fmtR(e.avgR)}` : ''}</div>
         <div className="sub">{d.retired ? `Retired ${dayWord(d.retired)}. Its record stays; it makes no new picks.` : `${idle} of ${l.days.length} night${l.days.length === 1 ? '' : 's'} with no pick.`}</div></div>; })}</div>
     </section>
 
