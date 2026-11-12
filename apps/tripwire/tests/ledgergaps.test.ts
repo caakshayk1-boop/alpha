@@ -25,3 +25,15 @@ test('nothing before the first recorded night is asked for; an empty or absent l
   assert.equal(missingNightsNote([]), null);
   assert.equal(gapDate('2026-01-02'), '2 Jan 2026');
 });
+
+// 12 Nov 2026: ONE implementation. The Book Record's missingNights (bookview.ts) is missingSessions with `until` = its own last recorded night.
+import { missingSessions } from '../src/ledgergaps.ts';
+import { missingNights as recordGaps } from '../src/bookview.ts';
+test('missingSessions is the single implementation both callers use', () => {
+  const days = ['2026-10-30', '2026-11-02', '2026-11-03', '2026-11-06', '2026-11-09'];
+  assert.deepEqual(missingSessions(days, '2026-11-09'), ['2026-11-04', '2026-11-05'], 'up to, not including, until');
+  assert.deepEqual(missingSessions(days, '2026-11-10'), ['2026-11-04', '2026-11-05'], '10 Nov is an NSE holiday, never expected');
+  assert.deepEqual(missingSessions(days, '2026-11-12'), ['2026-11-04', '2026-11-05', '2026-11-11'], 'the Data page asks for everything up to the latest finished session');
+  assert.deepEqual(recordGaps(days), missingSessions(days, '2026-11-09'), 'the Record reads to its own last night');
+  assert.deepEqual(missingSessions([], '2026-11-12'), []); assert.deepEqual(recordGaps(['2026-11-02']), []);
+});

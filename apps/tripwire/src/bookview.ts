@@ -1,7 +1,7 @@
 /** The Book's display logic (11 Nov 2026, revamp v2). Pure: no React, no clock of its own, so it is unit-tested (tests/bookview.test.ts).
  *  Nothing here computes a P&L, an R, a level, an entry or an exit: it ORDERS rows the book already worked out, says how far each is from levels the book already booked,
  *  and finds the NSE sessions the forward ledger has no night for. Display only; no rule, cost or stored shape changes. */
-import { nextSession } from './calendar.ts';
+import { missingSessions } from './ledgergaps.ts';
 import { dayWord } from './fmt.ts';
 
 /** Within this many percent of the stop (or of the next target) a position counts as "near" it, for the chips and the order. A display threshold, not a rule. */
@@ -58,10 +58,8 @@ export function byAttention<T>(rows: readonly T[], input: (r: T) => AttnInput): 
 /** The NSE sessions between the first and the last recorded night that have no night in the ledger. Holidays and weekends are not sessions (calendar.ts), so they are never "missing".
  *  Only gaps INSIDE the record: a trailing gap after the last night is lateness, which the picks-through pill already states. */
 export function missingNights(days: readonly string[]): string[] {
-  const have = new Set(days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))); if (have.size < 2) return [];
-  const sorted = [...have].sort(); const first = sorted[0], last = sorted[sorted.length - 1]; const out: string[] = [];
-  for (let d = nextSession(first); d < last; d = nextSession(d)) if (!have.has(d)) out.push(d);
-  return out;
+  const valid = days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)); if (new Set(valid).size < 2) return [];
+  return missingSessions(valid, [...valid].sort()[valid.length - 1]);   // one implementation, shared with the Data page (ledgergaps.ts)
 }
 /** One sentence for the gaps, in words: "Wed 4 Nov and Thu 5 Nov 2026: not recorded. The record has no night for those sessions, and nothing was filled in for them." Null when there is no gap. */
 export function missingNightsLine(gaps: readonly string[]): string | null {

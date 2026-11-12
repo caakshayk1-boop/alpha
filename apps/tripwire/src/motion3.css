@@ -1,0 +1,40 @@
+/* Motion, third pass (12 Nov 2026). Same rules as motion.css: html.fx only (the app sets it when motion is on AND the device has not asked for reduced motion), transform and opacity only,
+   one curve. Nothing here moves data the reader is reading, and nothing here applies to a keyboard-driven repeat. */
+:root{--ease-vt:cubic-bezier(.23,1,.32,1)}
+
+/* ---- route transitions (routevt.ts sets html[data-vt] = fwd | back | tab for the length of a View Transition; total at most 240 ms) ---- */
+html.fx[data-vt=fwd]{--vt-x:12px}
+html.fx[data-vt=back]{--vt-x:-12px}
+html.fx[data-vt=tab]{--vt-x:0px}
+/* the screen being left is captured as it was and fades out fast; the one arriving comes in from the side (or just fades) */
+html.fx[data-vt]::view-transition-old(root){animation:vt-out 110ms var(--ease-vt) both}
+html.fx[data-vt]::view-transition-new(root){animation:vt-in 200ms var(--ease-vt) both}
+html.fx[data-vt=tab]::view-transition-new(root){animation-duration:160ms}
+html.fx[data-vt]::view-transition-group(root){animation-duration:0s}
+@keyframes vt-out{to{opacity:0}}
+@keyframes vt-in{from{opacity:0;transform:translateX(var(--vt-x,0px))}to{opacity:1;transform:none}}
+/* fixed furniture is lifted out of the page snapshot so it stays still while the screen moves; it shows its live state, never a ghost of the old one */
+html.fx[data-vt] .tabs{view-transition-name:vt-tabs}
+html.fx[data-vt] .scrolltop{view-transition-name:vt-top}
+html.fx[data-vt] .toast{view-transition-name:vt-toast}
+html.fx[data-vt]::view-transition-old(vt-tabs),html.fx[data-vt]::view-transition-old(vt-top),html.fx[data-vt]::view-transition-old(vt-toast){display:none}
+html.fx[data-vt]::view-transition-new(vt-tabs),html.fx[data-vt]::view-transition-new(vt-top),html.fx[data-vt]::view-transition-new(vt-toast){animation:none}
+html.fx[data-vt]::view-transition-group(vt-tabs),html.fx[data-vt]::view-transition-group(vt-top),html.fx[data-vt]::view-transition-group(vt-toast){animation-duration:0s}
+/* the keyed .view rise is the fallback; inside a view transition the transition IS the arrival */
+html.fx[data-vt] .view{animation:none}
+
+/* ---- skeleton to content: what replaces a skeleton fades in (opacity only, same 240 ms) and takes the space the skeleton reserved, so nothing shifts ---- */
+html.fx .ds-reveal{animation:ds-fade var(--dur-2) var(--ease) both}
+@keyframes ds-fade{from{opacity:0}to{opacity:1}}
+
+/* ---- sheets, scrim and disclosures share one curve and one duration ---- */
+html.fx .sheet{animation-duration:var(--dur-2);animation-timing-function:var(--ease)}
+html.fx .scrim{animation:ds-fade var(--dur-2) var(--ease) both}
+html.fx details.ev>summary .chev{transition:transform var(--dur-2) var(--ease)}
+html.fx details.ev[open]>.body,html.fx details.ev[open] .body{animation:ds-rise var(--dur-2) var(--ease) both}
+
+/* ---- the back-to-top button fades and lifts 10px; a press is .94 (it is a small round target) ---- */
+html.fx .scrolltop{transition:opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--ease),visibility 0s linear 0s}
+html.fx .scrolltop[data-hidden=true]{transition:opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--ease),visibility 0s linear var(--dur-2)}
+
+@media(prefers-reduced-motion:reduce){html.fx *,html.fx *::before,html.fx *::after{animation:none!important;transition:none!important}}

@@ -10,8 +10,12 @@ import { current, istDay, toggleFollow } from '../store.ts';
 import { primaryAction } from '../overview.ts';
 import { fmtIst } from '../stamp.ts';
 import { plural } from '../fmt.ts';
+import { companyRead } from '../research.ts';
 import type { Company } from '../data.ts';
 import type { LivePx } from '../quotes.ts';
+
+/** The eligibility topics (eligibility.ts TOPICS) whose figure each line of the one-minute read (research.ts companyRead) already prints. */
+const READ_TOPICS: Record<string, string[]> = { roce: ['roce_level', 'roce_trend'], rev_cagr: ['growth'] };
 
 /** Six answers before acting, each from this page's own data. The detail (case, countercase, engine criteria, statements) stays below, unchanged. */
 export function DecisionCard({ c, lp }: { c: Company; lp: LivePx }) {
@@ -22,7 +26,9 @@ export function DecisionCard({ c, lp }: { c: Company; lp: LivePx }) {
     const engines = out ? ACTIVE.map((e) => { const ev = evaluate(e.id, row as Q, out.ctx); return { id: e.id, name: e.name, pass: ev.pass, score: ev.score, eligible: ev.eligible }; }) : [];
     const evidence = Object.fromEntries(ACTIVE.map((e) => [e.id, engineEvidence(e.id, bt.data, bt.loading)]));
     const entry = s.entries.find((e) => e.sym === sym && !e.archived);
-    const sup = cur.strengths[0]; const dec = decisionOf({ row, hasRisk: !!c.risk, elig, curated: cur, pick: out?.picks.find((p) => p.sym === sym) ?? null, engines, evidence, eligibleCount: out?.ctx.elig.length ?? null, thesis: entry ? current(entry) : null, today: istDay(), livePriceLabel: lp.fromQuote && lp.live ? `Live, ${fmtIst(lp.t!)}` : null });
+    // 12 Nov 2026: "each fact once". The one-minute read beside this card already prints the ROCE and the revenue-growth figures, so the strongest support is the first strength about
+    // something ELSE; when every strength repeats the read, the line is dropped rather than say the same figure twice.
+    const printed = new Set(companyRead(c).flatMap((x) => READ_TOPICS[x.id] ?? [])); const sup = cur.strengths.find((x) => !printed.has(x.topic)); const dec = decisionOf({ row, hasRisk: !!c.risk, elig, curated: cur, pick: out?.picks.find((p) => p.sym === sym) ?? null, engines, evidence, eligibleCount: out?.ctx.elig.length ?? null, thesis: entry ? current(entry) : null, today: istDay(), livePriceLabel: lp.fromQuote && lp.live ? `Live, ${fmtIst(lp.t!)}` : null });
     return { ...dec, support: sup ? { text: sup.t, detail: sup.k } : null };
   }, [c, row, out, bt.data, bt.loading, s.entries, lp.fromQuote, lp.live, lp.t, sym]);
   const loading = !out || bt.loading;
@@ -30,7 +36,7 @@ export function DecisionCard({ c, lp }: { c: Company; lp: LivePx }) {
   const row2 = (k: string, body: React.ReactNode, tone?: 'warn') => <div className="drow"><div className="dk">{k}</div><div className={`dv ${tone ?? ''}`}>{body}</div></div>;
   const act = primaryAction(s, sym, istDay()); const stale = d.quality.find((x) => x.k === 'Price')?.warn;
   const run = () => { if (act.id === 'follow') setState((x) => toggleFollow(x, sym)); else if (act.id === 'plan') open({ k: 'plan', sym }); else open({ k: 'thesis', sym, id: s.entries.find((e) => e.sym === sym && !e.archived)?.id }); };
-  return <section className="card decision" aria-label="Decision summary">
+  return <section className="card decision ds-reveal" aria-label="Decision summary">
     <div className="row between"><span className="k">Read in 30 seconds</span><span className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{stale && <span className="tag peach" title="The price behind this page is more than a few sessions old">Old data</span>}{d.evidence.experimental && <span className="tag amber" title="No engine here has passed its tests. Treat a pick as an experiment.">Experimental</span>}</span></div>
     {d.support && row2('Strongest support', <>{d.support.text}<span className="small dim" style={{ display: 'block', marginTop: 2 }}>{d.support.detail}</span></>)}
     {row2('Strongest counterargument', <>{d.counter.text}{d.counter.detail && <span className="small dim" style={{ display: 'block', marginTop: 2 }}>{d.counter.detail}</span>}</>)}
