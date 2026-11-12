@@ -48,6 +48,6 @@ export function glanceOf(i: GlanceIn): GlanceCell[] {
     : { id: 'ownership', k: 'Ownership', v: 'Not available', sub: 'No shareholding pattern is held; nothing is estimated.', tone: 'neutral' });
   // 8. the screen's flag grade and how many flags it counted
   out.push(i.riskLevel ? { id: 'risk', k: 'Screen flags', v: `${i.riskLevel[0]}${i.riskLevel.slice(1).toLowerCase()}${i.flagCount == null ? '' : ` · ${i.flagCount} ${i.flagCount === 1 ? 'flag' : 'flags'}`}`, sub: 'Counts warnings on statements and trading; it forecasts nothing', tone: i.riskLevel.toUpperCase() === 'HIGH' ? 'warn' : 'neutral' }
-    : { id: 'risk', k: 'Screen flags', v: 'Not graded', sub: i.riskNote ?? 'No flag grade is held for this name.', tone: 'neutral' });
+    : { id: 'risk', k: 'Screen flags', v: 'Not graded', sub: i.riskNote ? 'The grade is withheld for this name; the reason is under Risks.' : 'No flag grade is held for this name.', tone: 'neutral' });
   return out;
 }
