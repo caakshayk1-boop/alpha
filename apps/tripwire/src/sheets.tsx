@@ -12,6 +12,7 @@ import { companyRead, evidenceDate, sourceLink } from './research.ts';
 import { figureOf, fmtMetric, metricOf, type MetricKey } from './screener.ts';
 import type { ReviewState, Version } from './store.ts';
 import { inr, inr0, isNum, dayWord } from './fmt.ts';
+import { resultsDate } from './resultsdate.ts';
 
 const addDays = (d: string, n: number) => new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
 
@@ -86,7 +87,7 @@ export function ThesisSheet({ onClose, sym, id, seed }: { onClose: () => void; s
     {F('decisionReason', 'Reason for the decision')}
     {F('thesis', 'Thesis: why this, in one or two lines')}{F('support', 'Evidence that supports it')}{F('counter', 'Strongest argument against it')}{F('decision', 'Decision (watch, plan, pass…)', 1)}{F('invalidation', 'Wrong if… (a price or an event)', 1)}{!f.invalidation.trim() && <p className="small" style={{ margin: '4px 0 0', color: 'var(--a4)' }}>Without this you cannot tell a bad day from being wrong. It is the line that protects you.</p>}{F('trigger', 'Review trigger', 1)}
     <label className="l" htmlFor="t-date">Review date</label><input id="t-date" className="field" type="date" value={f.reviewOn} onChange={(ev) => setF({ ...f, reviewOn: ev.target.value })} />
-    {row?.next_earnings && <button className="btn sm" onClick={() => { setReviewState('results'); setF({ ...f, reviewOn: row.next_earnings!, trigger: `After results expected ${row.next_earnings}; verify the company announcement` }); }}>After next results · {row.next_earnings}</button>}
+    {row?.next_earnings && resultsDate(row.next_earnings, Date.now()).next && <button className="btn sm" onClick={() => { setReviewState('results'); setF({ ...f, reviewOn: row.next_earnings!, trigger: `After results expected ${row.next_earnings}; verify the company announcement` }); }}>After next results · {row.next_earnings}</button>}
     <p className="small mute">Review states are your assessment. A price move does not automatically strengthen or weaken a business thesis. “Took it” records a paper decision, not an executed trade or real P&L.</p>
     <div className="row" style={{ marginTop: 14 }}><button className="btn pri grow" disabled={!f.thesis.trim()} onClick={save}>{e ? 'Save as new version' : 'Save thesis'}</button>{e && e.versions.length > 1 && <button className="btn" onClick={() => setHist(!hist)}>History</button>}</div>
     {hist && e && <div style={{ marginTop: 12 }}>{[...e.versions].reverse().map((v, i) => <div key={`${v.at}-${i}`} className="card"><div className="k">{i === 0 ? 'Current' : 'Earlier'} · version {e.versions.length - i} · {dayWord(v.at)}</div><p>{v.thesis}</p>{[['Question', v.question], ['Evidence', v.support], ['Counterview', v.counter], ['Decision', v.decision], ['Reason', v.decisionReason], ['Wrong if', v.invalidation], ['Review', `${v.reviewState ?? 'not set'} · ${v.reviewOn ?? 'no date'} · ${v.trigger}`], ['Evidence assessment', v.evidenceChange]].map(([label, value]) => value ? <p key={label} className="small dim" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><b>{label}:</b> {value}</p> : null)}</div>)}</div>}

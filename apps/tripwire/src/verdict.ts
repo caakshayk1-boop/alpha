@@ -20,3 +20,14 @@ export function verdictChips(c: Pick<Company, 'row' | 'years' | 'inst' | 'sym' |
   if (flagLevel) { const lvl = flagLevel.toUpperCase(); out.push({ id: 'flags', k: 'Screen flags', v: `${lvl[0]}${lvl.slice(1).toLowerCase()}${flagCount == null ? '' : ` · ${flagCount}`}`, glyph: '', tone: lvl === 'HIGH' ? 'warn' : 'neutral', basis: `Screen flag level ${lvl}${flagCount == null ? '' : `, ${flagCount} flag${flagCount === 1 ? '' : 's'} raised`}. It counts warnings on the latest statements and trading; it reads no trend and forecasts nothing.` }); }
   return out;
 }
+
+/** The trend chip in the page hero (12 Nov 2026, owner: "the TREND should show above, at the top"). The SAME rule as the verdict chip (trendOf); the hero only places it.
+ *  Untagged is the words "Trend unavailable", never a guess; a name whose last close is more than a session old says so beside the word and is not coloured as a live call. */
+export interface TrendChip { state: 'tagged' | 'stale' | 'unavailable'; word: string; glyph: string; tone: VerdictChip['tone']; basis: string }
+export function trendChip(r: Row, stale: boolean): TrendChip {
+  const tr = trendOf(r).trend;
+  if (!tr) return { state: 'unavailable', word: 'Trend unavailable', glyph: '', tone: 'neutral', basis: 'The trend needs the price, the 20, 50 and 200-day averages and the 3-month return; one of them is missing, so no trend is tagged.' };
+  const glyph = tr === 'up' ? '↑' : tr === 'down' ? '↓' : '→'; const rule = 'The four-rule trend at the last close: price over its 20 and 50-day averages, the 50-day 1% over the 200-day, and a positive 3-month return (mirrored for a downtrend).';
+  return stale ? { state: 'stale', word: `${TREND_WORD[tr]} · stale`, glyph, tone: 'neutral', basis: `${rule} This name's last close is more than a session old, so the tag describes older prices.` }
+    : { state: 'tagged', word: TREND_WORD[tr], glyph, tone: tr === 'up' ? 'up' : tr === 'down' ? 'down' : 'neutral', basis: rule };
+}
