@@ -42,6 +42,7 @@ function Block({ b, feed, rows, asOf, lists, seenSec, nowMs, summaries, i }: { b
   const f = feed(b.measure); const hid = `cue-${b.id}`;
   return <article className="cue" data-cue={b.id} aria-labelledby={hid} style={{ ['--i' as string]: i } as CSSProperties}>
     <h3 className="cue-h" id={hid}><span className="tag cue-chip">{b.label}</span></h3>
+    <ul className="nw-list">{b.items.map(({ ev, also }) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seenSec} nowMs={nowMs} summaries={summaries} board also={also} />)}</ul>
     <p className="cue-channel">{b.channel}</p>
     <details className="cue-more"><summary>What is exposed, and what to watch</summary>
       <dl className="cue-dl"><div><dt>Exposed on the Indian side</dt><dd>{b.exposed}</dd></div><div><dt>Measures to watch</dt><dd>{b.watch}</dd></div></dl>
@@ -52,7 +53,6 @@ function Block({ b, feed, rows, asOf, lists, seenSec, nowMs, summaries, i }: { b
       <p className="cue-mh">Sectors it connects to · close of {asOf ? dayWord(asOf) : 'an unknown date'}</p>
       <ul className="cue-sectors">{b.sectors.map((s) => { const chg = sectorDay(rows, s); return <li key={s}><a className="cue-sector" href={`#/discover?sector=${encodeURIComponent(s)}`} data-cue-sector={s}><span>{s}</span> <Move chg={chg} /><span className="sr">, one-day change at the close of {asOf ? dayWord(asOf) : 'an unknown date'}. Research {s}</span></a></li>; })}</ul>
     </div>
-    <ul className="nw-list">{b.items.map(({ ev, also }) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seenSec} nowMs={nowMs} summaries={summaries} board also={also} />)}</ul>
   </article>;
 }
 
