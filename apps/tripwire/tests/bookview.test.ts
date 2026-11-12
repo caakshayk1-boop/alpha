@@ -35,11 +35,13 @@ test('byAttention: nearest stop first, then nearest target, then other open by s
   assert.deepEqual(byAttention([], (r: AttnInput) => r), []);
 });
 
+/* 12 Nov 2026 (2.2): 'Near T1 · x% away' and 'Quote above T1 · fill unconfirmed' replace '% from T1' / 'At T1'; intent unchanged: how near, in words */
 test('nearWord: says how near, in words, and says a mark under the stop rather than hiding it', () => {
   assert.deepEqual(nearWord(attention(row('a', { mark: 100, stop: 98.8 }))), { kind: 'stop', text: '1.2% above its stop' });
   assert.deepEqual(nearWord(attention(row('b', { mark: 90, stop: 95 }))), { kind: 'stop', text: 'At or below its stop' });
-  assert.deepEqual(nearWord(attention(row('c', { mark: 100, stop: 80, t1: 102 }))), { kind: 'target', text: '2.0% from T1' });
-  assert.deepEqual(nearWord(attention(row('d', { mark: 100, stop: 80, t1Hit: true, t2: 101 }))), { kind: 'target', text: '1.0% from T2' });
+  assert.deepEqual(nearWord(attention(row('c', { mark: 100, stop: 80, t1: 102 }))), { kind: 'target', text: 'Near T1 · 2.0% away' });
+  assert.deepEqual(nearWord(attention(row('d', { mark: 100, stop: 80, t1Hit: true, t2: 101 }))), { kind: 'target', text: 'Near T2 · 1.0% away' });
+  assert.deepEqual(nearWord(attention(row('g', { mark: 103, stop: 80, t1: 102 }))), { kind: 'target', text: 'Quote above T1 · fill unconfirmed' }, 'a quote above the target is not a fill');
   assert.equal(nearWord(attention(row('e', {}))), null); assert.equal(nearWord(attention(row('f', { status: 'pending' }))), null);
 });
 

@@ -341,7 +341,8 @@ await shot('09-tracker');
 ok(await pg.locator('.pcard[data-status="Open"]').count() > 0, 'the trade opens at the first open after it was taken');
 const heldText = await text();
 ok(/\blive\b/i.test(heldText) && /session 4 of/i.test(heldText), `an open trade is marked live and counts four exchange sessions (${heldText.match(/session \d+ of \d+/i)?.[0] ?? 'session count missing'})`);
-ok(/\+₹\d/.test(await pg.locator('[data-strip] .bk-pnl b').first().innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
+/* 12 Nov 2026 (Tripwire 2.0, 3.1): the strip's answer is Total P&L (realised + unrealised), shown with its sign; the open-trade figure is named in its note */
+ok(/\+₹\d/.test(await pg.locator('[data-strip] [data-total]').first().innerText().catch(() => '')) && /Open-trade P&L, includes booked partials: \+₹\d/.test(await pg.locator('[data-strip] [data-total-note]').innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
 { const m = await pg.locator('[data-method]').textContent(); ok(/How a trade is followed/.test(m) && /next open|first session after/i.test(m), 'tracker states its entry and exit rules (folded under How the paper book works since 11 Nov 2026)'); }
 // a failed price service shows an honest error, not a guess
 await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));

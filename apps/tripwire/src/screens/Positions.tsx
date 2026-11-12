@@ -9,15 +9,16 @@ import { archivePaper } from '../store.ts';
 import { ENGINES } from '../quant.ts';
 import { figuresOf } from '../recordview.ts';
 import type { Outcome } from '../ledger.ts';
-import { splitOfRow, buildLedgerView, bookClosedCount, bookClosedWord, resolvedObservationCount, partitionWord } from '../ledgerview.ts';
+import { splitOfRow, snapshotOf, HISTORY_WARNING, buildLedgerView, bookClosedCount, bookClosedWord, resolvedObservationCount, partitionWord } from '../ledgerview.ts';
 import { throughOf } from '../recordview.ts';
 import { ladderInputFor } from '../ladder.ts';
 import { byAttention, attention, nearWord, type AttnInput } from '../bookview.ts';
-import { LiveBadge, Observed, Tick } from '../live.tsx';
+import { LiveBadge, Observed } from '../live.tsx';
 import { Empty, useUi } from '../ui.tsx';
 import { Loading } from './common.tsx';
 import { TradeCard, engineName, shortEngine } from './Tracker.tsx';
 import { PnlAttribution } from './attribution.tsx';
+import { TrustRow, TotalRow, MovedRow, PnlTable } from './pnlstrip.tsx';
 import { HitCard, ThroughPills } from '../components/index.ts';
 import { dayWord, inr0 } from '../fmt.ts';
 
@@ -52,14 +53,17 @@ export function SlotGauge({ used, max }: { used: number; max: number }) {
 export function Positions() {
   const s = useAppState(); const { open } = useSheets(); const { toast } = useUi();
   const auto = useAutoBook(); const mine = useLiveBook();
-  const [openId, setOpenId] = useState<string | null>(null); const [f, setF] = useState<Filter>('all'); const [allLog, setAllLog] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null); const [f, setF] = useState<Filter>('all'); const [allLog, setAllLog] = useState(false); const [scopeSel, setScope] = useState<'all' | 'engine' | 'mine'>('all');
   const outcomes = auto.ledger.data?.ledger.outcomes;
   // a copy of a pick the engine book already holds is the same trade at another rupee size: never listed or counted twice. Retired engines are out of every list. Both stay in the saved data.
   const isDup = (p: { sym: string; engine: string; asOf: string }) => !!auto.plan?.taken.some((t) => t.pick.sym === p.sym && t.pick.engine === p.engine && t.pick.asOf === p.asOf);
   const isGone = (p: { engine: string }) => ENGINES.some((e) => e.id === p.engine && e.retired);
   const myRows = mine.rows.filter((r) => !isDup(r.p) && !isGone(r.p));
   const dups = mine.rows.filter((r) => isDup(r.p) && !isGone(r.p)).length; const retired = mine.rows.filter((r) => isGone(r.p)).length;
-  const items: Item[] = [...auto.rows.map((r) => ({ r, owner: 'engine' as const, outcome: outcomes?.[r.p.id] ?? null })), ...myRows.map((r) => ({ r, owner: 'you' as const, outcome: null }))];
+  const everyItem: Item[] = [...auto.rows.map((r) => ({ r, owner: 'engine' as const, outcome: outcomes?.[r.p.id] ?? null })), ...myRows.map((r) => ({ r, owner: 'you' as const, outcome: null }))];
+  /* 12 Nov 2026 (2.1): the engine book and the plans you took are two scopes, never one list under one heading. The switch appears only when you have your own positions. */
+  const hasMine = myRows.length > 0; const scope = hasMine ? scopeSel : 'engine';
+  const items: Item[] = everyItem.filter((x) => scope === 'all' || (scope === 'engine') === (x.owner === 'engine'));
   if (auto.ledger.loading && !auto.plan && !myRows.length) return <Loading what="the paper book" />;
 
   const isActive = (x: Item) => x.r.v.status === 'open' || x.r.v.status === 'pending' || x.r.v.status === 'waiting';
@@ -69,11 +73,10 @@ export function Positions() {
   const engineDone = items.filter((x) => x.owner === 'engine' && x.r.v.status === 'closed').length; const engineSkipped = items.filter((x) => x.owner === 'engine' && x.r.v.status === 'skipped').length;
   const openRows = active.filter((x) => x.r.v.status === 'open'); const waiting = active.length - openRows.length;
   const mineSum = summarize(myRows.map((r) => r.v));
-  const unreal = openRows.length ? auto.sum.openPnl + mineSum.openPnl : null;
-  const rs = openRows.map((x) => x.r.v.r).filter((x): x is number => typeof x === 'number'); const openR = rs.length ? Math.round(rs.reduce((a, b) => a + b, 0) * 100) / 100 : null;
-  const dayParts = [auto.dayTotal, mine.dayTotal].filter((x): x is number => x != null); const dayTotal = dayParts.length ? dayParts.reduce((a, b) => a + b, 0) : null;
   const led = auto.ledger.data?.ledger ?? null; const fig = led ? figuresOf(led) : null;
   const lv = led && auto.plan ? buildLedgerView(led, auto.plan, myRows) : null;   // 12 Nov 2026: every count on this page reads this one view (ledgerview.ts)
+  const snap = snapshotOf(items.map((x) => ({ p: x.r.p, v: x.r.v, dayPnl: x.r.dayPnl, markT: x.r.markT, owner: x.owner })), scope === 'mine' ? mine.cost : auto.cost, led?.updated ?? null);   // ONE snapshot: the strip, the table and the moved row read it
+  const through = led && scope !== 'mine' ? throughOf(led, Date.now()) : null;
   const priceWord = auto.priceWord ?? mine.priceWord; const session = auto.rows.length ? auto.session : mine.session; const intra = auto.rows.length ? auto.intra : mine.intra; const bars = auto.rows.length ? auto.bars : mine.bars;
   const live = session.phase === 'open';
   const engines = ENGINES.filter((e) => !e.retired && active.some((x) => x.r.p.engine === e.id));
@@ -82,6 +85,8 @@ export function Positions() {
   const chips: { id: Filter; label: string; n: number }[] = [{ id: 'all', label: 'All', n: active.length }, { id: 'stop', label: 'Near stop', n: count('stop') }, { id: 'target', label: 'Near target', n: count('target') },
     ...engines.map((e) => ({ id: e.id as Filter, label: shortEngine(e.id), n: count(e.id) })), ...(active.some((x) => x.owner === 'you') ? [{ id: 'you' as Filter, label: 'Yours', n: count('you') }] : [])];
   const toggle = (id: string) => setOpenId(openId === id ? null : id);
+  /** open a row from the strip or the table: show it in the list, expand it, bring it into view */
+  const focusRow = (id: string) => { setF('all'); setOpenId(id); requestAnimationFrame(() => document.querySelector(`[data-pos="${id}"]`)?.scrollIntoView({ block: 'center' })); };
   const card = (x: Item) => <TradeCard key={x.r.p.id} r={x.r} outcome={x.outcome} owner={x.owner} near={nearOf.get(x.r.p.id) ?? null} cost={x.owner === 'engine' ? auto.cost : mine.cost} expanded={openId === x.r.p.id} onToggle={() => toggle(x.r.p.id)} live={live}
     onHide={x.owner === 'you' ? () => { setState((st) => archivePaper(st, x.r.p.id)); toast('Taken off the active list. The record is kept.'); } : undefined} />;
   const log = auto.plan?.log ?? []; const shownLog = allLog ? log : log.slice(0, 25);
@@ -89,18 +94,18 @@ export function Positions() {
 
   return <div className="bk" data-positions>
     {auto.ledger.err && <p className="note" role="status">{auto.plan ? auto.ledger.err : `The engine book could not be read (${auto.ledger.err}). This does not mean it is empty or that positions have exited.`} <button className="btn sm" onClick={auto.ledger.retry}>Refresh record</button></p>}
-    {auto.rows.some((r) => r.v.dataNote) && <p className="note" role="status">Recorded positions are preserved while daily prices are unavailable or incomplete. Marks shown are last recorded values; only a confirmed stop, target or time exit closes a position.</p>}
+    {auto.rows.some((r) => r.v.dataNote) && <p className="note" role="status" data-history-warning>{HISTORY_WARNING} Marks shown are last recorded values where the history is incomplete.</p>}
 
-    <section className="bk-strip" aria-label="The paper book now" data-strip>
-      <SlotGauge used={auto.slots} max={auto.cfg.maxOpen} />
-      <div className="bk-fig bk-pnl"><span className="k">Open-trade P&L, includes booked partials</span><b className={`num amt ${tone(unreal)}`}><Tick v={unreal}>{money(unreal)}</Tick></b><span className={`bk-note num ${tone(openR)}`}>{openR == null ? '—' : `${Rw(openR)} summed`}</span></div>
-      <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b><span className="bk-note">{waiting ? `${waiting} enter${waiting === 1 ? 's' : ''} at the next open` : `${active.filter((x) => x.owner === 'you').length} yours`}</span></div>
-      <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
-        : <><b className="num" data-book-closed>{lv ? bookClosedCount(lv) : '—'}</b><span className="bk-note">{lv ? `${resolvedObservationCount(lv)} resolved observations are in the Record, a different count` : 'record unavailable'}</span></>}</div>
-      <div className="bk-live small">
-        <LiveBadge live={priceWord === 'Live'} label={priceWord ?? (items.length ? 'Checking prices' : 'No positions')} />
-        <span className="dim">{live ? 'Today' : 'Last session'} <b className={`num amt ${tone(dayTotal)}`}><Tick v={dayTotal}>{money(dayTotal)}</Tick></b></span>
-        <span className="mute"><Observed sec={intra.obs} err={intra.err} loading={intra.loading} /></span>
+    <section className="bk-strip l4" aria-label="The paper book now" data-strip data-snapshot={snap.id}>
+      <TrustRow snap={snap} scope={scope} onScope={setScope} hasMine={hasMine} throughWord={through?.outcomes.day ? through.outcomes.word : null}
+        quotes={<>Quotes: <LiveBadge live={priceWord === 'Live'} label={priceWord ?? (items.length ? 'Checking prices' : 'No positions')} /> <span className="mute"><Observed sec={intra.obs} err={intra.err} loading={intra.loading} /></span></>} />
+      <TotalRow snap={snap} dayLabel={live ? 'Today' : 'Last session'} />
+      <MovedRow snap={snap} onRow={focusRow} />
+      <div className="l4-support">
+        <SlotGauge used={auto.slots} max={auto.cfg.maxOpen} />
+        <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b><span className="bk-note">{waiting ? `${waiting} awaiting entry, at the next open` : '0 awaiting entry'}{snap.positions.some((x) => x.value != null) ? ` · value ${inr0(snap.positions.reduce((a, x) => a + (x.value ?? 0), 0))}` : ''}</span></div>
+        <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
+          : <><b className="num" data-book-closed>{lv ? bookClosedCount(lv) : '—'}</b><span className="bk-note">{lv ? `${resolvedObservationCount(lv)} resolved observations are in the Record, a different count` : 'record unavailable'}</span></>}</div>
       </div>
       {intra.err && <p className="small down bk-err">Live prices are unavailable: {intra.err}. {bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </section>
@@ -114,6 +119,8 @@ export function Positions() {
       <div className="bk-board ds-stagger" role="list" aria-label="Positions">{shown.map((x) => <div role="listitem" key={x.r.p.id}>{card(x)}</div>)}</div>
       {!shown.length && <p className="small dim">No position matches this filter.</p>}
     </>}
+
+    <PnlTable snap={snap} onRow={focusRow} live={live} />
 
     {mineDone.length > 0 && <details className="more bk-fold"><summary>Your finished trades · {mineDone.length}</summary><div className="bk-board">{mineDone.map(card)}</div>
       {mineSum.closed > 0 && <p className="small">Closed: <b className="num">{Rw(mineSum.totalR)}</b> over {mineSum.closed} trade{mineSum.closed === 1 ? '' : 's'}.{!mineSum.enough ? <span className="dim"> Average R is withheld until 30 have closed.</span> : null}</p>}</details>}

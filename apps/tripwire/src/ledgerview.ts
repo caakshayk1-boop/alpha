@@ -14,7 +14,7 @@ import type { AutoPlan } from './autobook.ts';
 import { bookRulesOf } from './autobook.ts';
 import { resultBasis, type ResultBasis } from './provenance.ts';
 import { rulesFor } from './rules.ts';
-import { lifecycleIdFor } from './lifecycle.ts';
+import { lifecycleIdFor, lifecycleIdOf } from './lifecycle.ts';
 export { lifecycleIdFor, lifecycleIdOf, normalizeLifecycles } from './lifecycle.ts';
 
 export type LifeState = 'awaiting' | 'open' | 'closed' | 'skipped';
@@ -131,8 +131,98 @@ export interface SplitRow { p: { qty: number; stop: number }; v: { status: strin
 export function splitOfRow(row: SplitRow, costPct: number): Split | null {
   const { p, v } = row; const adj = v.adjFactor && v.adjFactor !== 1 ? v.adjFactor : 1; const qty0 = p.qty / adj; const stop = Math.round(p.stop * adj * 100) / 100;
   if (v.status === 'closed') { const s = splitClosed(v.pnl, v.entry != null ? (v.entry - stop) * qty0 : 0); return s.total == null ? null : s; }
-  if (v.status !== 'open' || v.entry == null) return null;
+  if (v.status !== 'open' || v.entry == null || !(Number.isFinite(v.entry) && v.entry > 0)) return null;
+  /* a ladder with a missing share count or booked figure (a partial or damaged saved state) cannot be split: it is NOT measured, never guessed as a full position */
+  if (v.ladder && !(Number.isFinite(v.ladder.qtyLeft) && Number.isFinite(v.ladder.booked))) return null;
   return splitOpen({ qty0, fill: v.entry, stop, qtyLeft: v.ladder ? v.ladder.qtyLeft : qty0, booked: v.ladder?.booked ?? 0, mark: v.mark, costPct });
 }
-export const OPEN_TRADE_LABEL = 'Open-trade P&L, includes booked partials';
+/* ---- Snapshot, coverage, totals (Tripwire 2.0, 1.3, 2.1) --------------------------------------------------------------------------------------------------------------------------------
+ *  ONE snapshot per render of the book: Book, the P&L page, the insights and the export all read the same object and carry its id, so two numbers on one screen cannot come from two moments.
+ *  Rounding is done once, here, in whole paise. A missing mark is never a zero: one missing mark makes the total a PARTIAL SUBTOTAL that says how many positions it covers; no mark at all makes it unavailable. */
+export interface SnapRow {
+  p: { id: string; sym: string; engine: string; qty: number; stop: number; lifecycleId?: unknown };
+  v: { status: string; entry?: number; mark: number | null; markKind: 'live' | 'close' | null; pnl: number | null; r: number | null; dataNote?: string; adjFactor?: number; ladder?: { qtyLeft: number; booked: number } | null; sessions: number };
+  dayPnl: number | null; markT?: number | null; owner: 'engine' | 'you';
+}
+export interface SnapPosition { id: string; lifecycleId: string; sym: string; engine: string; owner: 'engine' | 'you'; state: LifeState; qtyLeft: number; entry: number | null; mark: number | null; markKind: 'live' | 'close' | null; markT: number | null; split: Split | null; dayPnl: number | null; value: number | null; incompleteHistory: boolean }
+export type CoverageState = 'none' | 'complete' | 'partial' | 'unavailable';
+export interface Coverage {
+  /** positions still open (a mark is expected for each) */
+  open: number; measured: number; missing: number; state: CoverageState;
+  /** open positions whose daily history is missing or incomplete: their quote is real, their exit has not been verified */
+  historyIncomplete: number;
+  /** the oldest and the newest exchange print among live marks; positions marked at a daily close have no print time */
+  oldestPrint: number | null; newestPrint: number | null; live: number; atClose: number;
+}
+export interface Totals { realised: number | null; unrealised: number | null; total: number | null; openTrade: number | null; day: number | null; /** the figures cover only the measured positions */ partial: boolean; unavailable: boolean }
+export interface Snapshot {
+  id: string; ledgerUpdated: string | null; positions: SnapPosition[]; totals: Totals; coverage: Coverage;
+  gainers: SnapPosition[]; losers: SnapPosition[]; largest: { sym: string; pct: number } | null; exceptions: SnapPosition[];
+  invariants: { ok: boolean; failed: string[] };
+}
+const fnv = (s: string): string => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+export function snapshotOf(rows: readonly SnapRow[], costPct: number, ledgerUpdated: string | null = null): Snapshot {
+  const positions: SnapPosition[] = rows.map((r) => {
+    const split = splitOfRow(r, costPct); const state = lifeStateOf(r.v); const adj = r.v.adjFactor && r.v.adjFactor !== 1 ? r.v.adjFactor : 1;
+    const qtyLeft = state === 'open' ? (r.v.ladder && Number.isFinite(r.v.ladder.qtyLeft) ? r.v.ladder.qtyLeft : r.p.qty / adj) : state === 'awaiting' ? r.p.qty / adj : 0;
+    return { id: r.p.id, lifecycleId: lifecycleIdOf(r.p), sym: r.p.sym, engine: r.p.engine, owner: r.owner, state, qtyLeft, entry: r.v.entry ?? null, mark: r.v.mark, markKind: r.v.markKind, markT: r.markT ?? null, split, dayPnl: r.dayPnl,
+      value: state === 'open' && r.v.mark != null ? paise(r.v.mark * qtyLeft) / 100 : null, incompleteHistory: state === 'open' && !!r.v.dataNote };
+  });
+  const open = positions.filter((x) => x.state === 'open');
+  const measured = open.filter((x) => x.split?.total != null); const prints = open.filter((x) => x.markKind === 'live' && x.markT != null).map((x) => x.markT!);
+  const coverage: Coverage = { open: open.length, measured: measured.length, missing: open.length - measured.length, state: !open.length ? 'none' : !measured.length ? 'unavailable' : measured.length === open.length ? 'complete' : 'partial',
+    historyIncomplete: open.filter((x) => x.incompleteHistory).length, oldestPrint: prints.length ? Math.min(...prints) : null, newestPrint: prints.length ? Math.max(...prints) : null, live: open.filter((x) => x.markKind === 'live').length, atClose: open.filter((x) => x.markKind === 'close').length };
+  const withSplit = positions.filter((x) => x.split); const known = (f: (s: Split) => number | null) => { const v = withSplit.map((x) => f(x.split!)).filter((n): n is number => n != null && Number.isFinite(n)); return v.length ? v.reduce((a, n) => a + paise(n), 0) / 100 : null; };
+  const unavailable = open.length > 0 && !measured.length; const realised = withSplit.length ? known((s) => (Number.isFinite(s.realised) ? s.realised : null)) : null;
+  const unrealised = unavailable ? null : known((s) => s.unrealised); const openTrade = unavailable ? null : known((s) => s.openTrade);
+  const total = realised == null && unrealised == null ? null : unavailable ? null : (paise(realised ?? 0) + paise(unrealised ?? 0)) / 100;
+  const days = positions.filter((x) => x.dayPnl != null).map((x) => x.dayPnl!); const day = days.length ? days.reduce((a, n) => a + paise(n), 0) / 100 : null;
+  const totals: Totals = { realised, unrealised, total, openTrade, day, partial: coverage.state === 'partial', unavailable };
+  const priced = positions.filter((x) => x.split?.total != null);
+  const gainers = priced.filter((x) => x.split!.total! > 0).sort((a, b) => b.split!.total! - a.split!.total! || a.sym.localeCompare(b.sym)).slice(0, 3);
+  const losers = priced.filter((x) => x.split!.total! < 0).sort((a, b) => a.split!.total! - b.split!.total! || a.sym.localeCompare(b.sym)).slice(0, 3);
+  const val = open.filter((x) => x.value != null); const sum = val.reduce((a, x) => a + x.value!, 0); const top = val.length ? val.reduce((a, x) => (x.value! > a.value! ? x : a), val[0]) : null;
+  const failed: string[] = [];
+  if (total != null && realised != null && (unrealised != null || !open.length) && paise(total) !== paise(realised) + paise(unrealised ?? 0)) failed.push('realised + unrealised is not the total');
+  const rowSum = priced.reduce((a, x) => a + paise(x.split!.total!), 0); if (total != null && !totals.partial && rowSum !== paise(total)) failed.push('the position totals do not add up to the total');
+  const id = `snap-${fnv([ledgerUpdated ?? '', costPct, ...positions.map((x) => `${x.id}|${x.state}|${x.mark ?? ''}|${x.split?.total ?? ''}|${x.dayPnl ?? ''}`)].join(';'))}`;
+  return { id, ledgerUpdated, positions, totals, coverage, gainers, losers, largest: top && sum > 0 ? { sym: top.sym, pct: Math.round((top.value! / sum) * 1000) / 10 } : null, exceptions: positions.filter((x) => x.state === 'open' && (x.mark == null || x.split?.total == null || x.incompleteHistory)), invariants: { ok: !failed.length, failed } };
+}
+/* Words for the two statuses. Quote freshness and exit verification are different questions and are never one "Live". */
+export function coverageWords(c: Coverage, lastConfirmed: string | null): { marks: string; exit: string; exitComplete: boolean } {
+  const marks = c.state === 'none' ? 'No open positions to mark' : c.state === 'unavailable' ? 'Marks unavailable: no open position has a price, so no total is shown' : `Marks: ${c.measured} of ${c.open} open position${c.open === 1 ? '' : 's'} measured${c.missing ? `; the figures below are a partial subtotal of those ${c.measured}` : ''}`;
+  const complete = c.historyIncomplete === 0;
+  return { marks, exitComplete: complete, exit: complete ? `Exit verification: complete${lastConfirmed ? ` through ${lastConfirmed}` : ''}` : `Exit verification: incomplete · daily history is missing or incomplete for ${c.historyIncomplete} of ${c.open} open position${c.open === 1 ? '' : 's'}${lastConfirmed ? `; last confirmed history ${lastConfirmed}` : ''}` };
+}
+/* ---- Bar status (Tripwire 2.0, 2.3) ----------------------------------------------------------------------------------------------------------------------------------------------------
+ *  A daily bar is CONFIRMED (its session is over and the exchange has closed it), FORMING (its session is still on, or the provider marked it so), STALE (an old confirmed bar: a newer session has finished
+ *  and has no bar here) or MISSING. A forming bar is provisional: a completed-close view leaves it out, or draws it as a provisional endpoint with the time it was observed. Nothing here changes a rule. */
+import { lastFinishedSession } from './calendar.ts';
+export type BarStatus = 'confirmed' | 'forming' | 'stale' | 'missing';
+const istDayOf = (t: number) => new Date((t + 19800) * 1000).toISOString().slice(0, 10);
+export function barStatus(bar: { t: number; forming?: boolean } | null | undefined, nowMs: number): BarStatus {
+  if (!bar || !Number.isFinite(bar.t)) return 'missing';
+  const day = istDayOf(bar.t); const last = lastFinishedSession(nowMs);
+  if (bar.forming || day > last) return 'forming';
+  return day < last ? 'stale' : 'confirmed';
+}
+/** The bars a completed-close view may use: confirmed and stale ones, never a forming bar. */
+export const completedBars = <T extends { t: number; forming?: boolean }>(bars: readonly T[], nowMs: number): T[] => bars.filter((b) => barStatus(b, nowMs) !== 'forming');
+/** The newest confirmed day, and, when the last bar is still forming, the provisional endpoint with the time it was observed. Never one without the other being said. */
+export function barsCaption(bars: readonly { t: number; forming?: boolean }[] | null | undefined, nowMs: number): { through: string | null; provisional: string | null; status: BarStatus } {
+  if (!bars || !bars.length) return { through: null, provisional: null, status: 'missing' };
+  const done = completedBars(bars, nowMs); const last = bars[bars.length - 1]; const st = barStatus(last, nowMs);
+  const hm = `${new Date(nowMs + 19800000).toISOString().slice(11, 16)} IST`;
+  return { through: done.length ? istDayOf(done[done.length - 1].t) : null, provisional: st === 'forming' ? `Provisional: ${istDayOf(last.t)} is still forming, observed ${hm}` : null, status: st };
+}
+/** When the state a view reports came from a bar that is still forming, the sentence that says so; otherwise null. The tracker's own rule is unchanged (a forming bar's low can stop a position and its high can fill a target;
+ *  a forming bar never produces a time exit); this only LABELS the result so a provisional exit or fill is never read as a confirmed one. */
+export function provisionalOf(v: { status: string; exitT?: number; ladder?: { t1T?: number; t2T?: number } | null }, bars: readonly { t: number; forming?: boolean }[] | null | undefined): string | null {
+  const f = bars?.length ? bars[bars.length - 1] : null; if (!f?.forming) return null;
+  if (v.status === 'closed' && v.exitT === f.t) return `Exit on a bar still forming (${istDayOf(f.t)}): provisional until that session closes.`;
+  if (v.ladder && (v.ladder.t1T === f.t || v.ladder.t2T === f.t)) return `A target fill on a bar still forming (${istDayOf(f.t)}): provisional until that session closes.`;
+  return null;
+}
+export const HISTORY_WARNING ='Where daily history is missing or incomplete the position is kept and priced from the live quote; only a confirmed stop, target or time exit closes it. A quote is not a fill.';
+export const OPEN_TRADE_LABEL ='Open-trade P&L, includes booked partials';
 export const COST_CONVENTION = 'Costs are allocated by shares: the shares already sold carry their part of the round-trip cost, the shares still held carry the rest, so the cost is charged once. Unrealised marks the shares still held at the observed price against the same fill, after the exit slippage the tracker assumes. R is the total over the original risk (fill minus the filed stop, times the original shares); it does not change after a partial exit.';

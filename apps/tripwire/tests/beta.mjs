@@ -78,7 +78,8 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForSelector('.welcome');
   await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today'); await pg.goto(base + '/#/profile'); await pg.waitForSelector('text=Import backup');
   await pg.locator('input[type=file]').setInputFiles(path); await pg.waitForTimeout(500);
-  const back = await saved(pg); ok(JSON.stringify(back.entries) === JSON.stringify(STATE.entries) && JSON.stringify(back.paper) === JSON.stringify(STATE.paper) && back.follows.length === 2, 'import on a new device restores the journal, trades and follows exactly');
+  /* 12 Nov 2026 (Tripwire 2.0, 1.1): an import adds the additive lifecycleId (derived lc:<id>); every other field must come back exactly */
+  const back = await saved(pg); ok(JSON.stringify(back.entries) === JSON.stringify(STATE.entries) && JSON.stringify(back.paper.map(({ lifecycleId, ...p }) => p)) === JSON.stringify(STATE.paper) && back.paper.every((p) => p.lifecycleId === `lc:${p.id}`) && back.follows.length === 2, 'import on a new device restores the journal, trades and follows exactly');
   await pg.setInputFiles('input[type=file]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":99}') }); await pg.waitForTimeout(400);
   ok(/version 99 of Tripwire; this one reads version 1\. Nothing was changed\./.test(await text(pg)) && (await saved(pg)).entries.length === 1, 'a file that is not ours is refused, says why, and nothing changes');
   await pg.evaluate(() => localStorage.setItem('tripwire:v1', '{"v":7,corrupt')); await pg.reload(); await pg.waitForTimeout(800);

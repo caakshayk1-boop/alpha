@@ -58,7 +58,8 @@ let exportPath = join(tmp, 'tw-backup.json');
   await importFile(c.pg, 'tw-backup.json', readFileSync(exportPath));
   const got = await saved(c.pg);
   ok(/Imported and merged: 1 journal entry, 1 plan, 1 paper trade, 2 followed names/.test(await text(c.pg)), 'the import says what it brought in');
-  ok(JSON.stringify(got.entries) === JSON.stringify(RICH.entries) && JSON.stringify(got.plans) === JSON.stringify(RICH.plans) && JSON.stringify(got.paper) === JSON.stringify(RICH.paper) && JSON.stringify([...got.follows].sort()) === JSON.stringify(['GCSL', 'TCS']), 'a clean profile gets back the journal versions, the plan, the paper trade and the follows exactly');
+  /* 12 Nov 2026 (Tripwire 2.0, 1.1): a restore adds the additive lifecycleId (derived lc:<id>) to each paper trade; every other field must come back exactly */
+  ok(JSON.stringify(got.entries) === JSON.stringify(RICH.entries) && JSON.stringify(got.plans) === JSON.stringify(RICH.plans) && JSON.stringify(got.paper.map(({ lifecycleId, ...p }) => p)) === JSON.stringify(RICH.paper) && got.paper.every((p) => p.lifecycleId === `lc:${p.id}`) && JSON.stringify([...got.follows].sort()) === JSON.stringify(['GCSL', 'TCS']), 'a clean profile gets back the journal versions, the plan, the paper trade and the follows exactly');
   ok(JSON.stringify(got.compares) === JSON.stringify(RICH.compares) && got.screens.length === 1 && got.reviews[0].note === 'kept to the plan' && got.prefs.equity === 2500000 && got.prefs.hideAmounts === true && JSON.stringify(got.prefs.interests) === '["Energy"]', 'and the comparisons, saved screen, weekly review and preferences');
   ok(JSON.stringify(got.seen) === JSON.stringify(RICH.seen) && JSON.stringify(got.inbox) === JSON.stringify(RICH.inbox) && JSON.stringify(got.dismissed) === JSON.stringify(RICH.dismissed), 'and what was seen, the inbox and the dismissals');
   const before = await raw(c.pg); await importFile(c.pg, 'again.json', readFileSync(exportPath)); ok((await raw(c.pg)) === before, 'importing the same backup a second time changes nothing');
@@ -81,7 +82,8 @@ let exportPath = join(tmp, 'tw-backup.json');
   const a = await mk(RICH); await a.pg.goto(base + '/#/desk'); await a.pg.waitForSelector('nav.tabs', { timeout: 15000 }); await a.pg.waitForTimeout(500);
   const state = await a.ctx.storageState(); await a.ctx.close();
   const r = await mk(null, { storageState: state }); await r.pg.goto(base + '/#/desk'); await r.pg.waitForSelector('nav.tabs', { timeout: 15000 }); await r.pg.waitForTimeout(600);
-  const got = await saved(r.pg); ok(JSON.stringify(got.entries) === JSON.stringify(RICH.entries) && JSON.stringify(got.plans) === JSON.stringify(RICH.plans) && JSON.stringify(got.paper) === JSON.stringify(RICH.paper) && got.prefs.equity === 2500000, 'after a restart the journal versions, the plan, the paper trade and the preferences are the same');
+  /* 12 Nov 2026: the raw stored copy only gains the additive lifecycleId when the app next writes it; it may be absent here, and must never differ when present */
+  const got = await saved(r.pg); ok(JSON.stringify(got.entries) === JSON.stringify(RICH.entries) && JSON.stringify(got.plans) === JSON.stringify(RICH.plans) && JSON.stringify(got.paper.map(({ lifecycleId, ...p }) => p)) === JSON.stringify(RICH.paper) && got.paper.every((p) => p.lifecycleId === undefined || p.lifecycleId === `lc:${p.id}`) && got.prefs.equity === 2500000, 'after a restart the journal versions, the plan, the paper trade and the preferences are the same');
   ok(/GCSL/.test(await text(r.pg)) && !(await r.pg.locator('.welcome').count()), 'and the app opens on the Desk with the followed names, not on the welcome screen');
   await r.pg.goto(base + '/#/profile'); await r.pg.waitForSelector('#p-equity'); ok((await r.pg.locator('#p-equity').inputValue()) === '2500000', 'the plan defaults read back the saved equity'); await r.ctx.close();
 }

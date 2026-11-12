@@ -1,0 +1,68 @@
+/* 12 Nov 2026, Tripwire 2.0 (3.1 hierarchy and 3.2 layout). The Book's P&L strip: scope and trust, then the Total P&L answer, then what moved, then the supporting figures.
+   Tokens only (npm run tripwire:lint). Nothing here animates, so nothing needs html.fx.
+   3.2: a large Indian-format amount never wraps its last digit. Its font size is container-aware: it follows the width of the box it sits in (container query units) and the length of its own text
+   (--ch, set by the component), and it is never allowed to break inside the number. Not clipped, not hidden. */
+.bk-strip.l4{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:none;gap:var(--sp-4);align-items:start;min-height:0;container-type:inline-size}
+.bk-strip.l4>*{grid-area:auto;min-width:0}
+
+/* row 1: scope and trust */
+.l4-scope{display:grid;gap:var(--sp-2)}
+.l4-who{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
+.l4-scope-name{font-size:var(--fs-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.l4-tag{font-size:var(--fs-label);color:var(--ink-3);border:1px solid var(--line);border-radius:var(--radius-pill);padding:2px var(--sp-3)}
+.l4-seg{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1);padding:var(--sp-1);border:1px solid var(--line);border-radius:var(--radius-pill)}
+.l4-seg button{min-height:var(--hit);padding:0 var(--sp-4);border:0;border-radius:var(--radius-pill);background:transparent;color:var(--ink-2);font:inherit;font-weight:600;cursor:pointer}
+.l4-seg button[aria-pressed="true"]{background:var(--surface-3);color:var(--ink)}
+.l4-status{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
+.l4-st{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);font-size:var(--fs-data);color:var(--ink-2);min-width:0}
+.l4-st.warn{color:var(--amber)}
+.l4-marks{margin:0}
+
+/* row 2: the answer */
+.l4-hero{display:grid;gap:var(--sp-2);padding-top:var(--sp-3);border-top:1px solid var(--line);container-type:inline-size;min-width:0}
+.l4-hero .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.l4-big{display:block;max-width:100%;white-space:nowrap;overflow-wrap:normal;word-break:keep-all;font-weight:800;line-height:1.05;letter-spacing:-.03em;font-variant-numeric:tabular-nums lining-nums;
+  /* 0.62em is the widest a tabular figure runs in this face; the size is the container's width over the number of characters, capped at 3rem and never below 1rem */
+  font-size:clamp(1rem,calc(100cqi / (var(--ch,10) * .66)),3rem)}
+.l4-big.up{color:var(--up)}.l4-big.down{color:var(--down)}
+.l4-parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr));gap:var(--sp-3);margin:0}
+.l4-parts>div{min-width:0}
+.l4-parts dt{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.l4-parts dd{margin:0;white-space:nowrap;font-weight:700;font-size:clamp(.9375rem,calc(100cqi / 14),1.25rem);font-variant-numeric:tabular-nums lining-nums}
+.l4-parts dd.up{color:var(--up)}.l4-parts dd.down{color:var(--down)}
+.l4-note{margin:0}
+
+/* row 3: what moved */
+.l4-moved{list-style:none;margin:0;padding:var(--sp-3) 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr));gap:var(--sp-3)}
+.l4-moved li{display:grid;gap:2px;min-width:0;font-size:var(--fs-data)}
+.l4-moved .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.l4-link{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1);align-items:baseline;min-height:var(--hit);align-content:center;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+
+/* supporting figures: slots, open, closed book positions. Smaller than the answer by design. */
+.l4-support{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr));gap:var(--sp-4);align-items:center;padding-top:var(--sp-3);border-top:1px solid var(--line)}
+.l4-support>*{grid-area:auto}
+.l4-support .bk-fig b{font-size:clamp(1.25rem,6cqi,1.75rem)}
+.l4-support .bk-gauge{max-width:9rem}
+
+/* the all-figures table */
+.l4-table th[scope="row"]{white-space:nowrap}
+.l4-table td,.l4-table th{vertical-align:top}
+.l4-lc{display:block;color:var(--ink-3);font-size:var(--fs-label);overflow-wrap:anywhere;max-width:16ch}
+.l4-age{display:block;color:var(--ink-3);font-size:var(--fs-label)}
+.l4-table td.num,.l4-table td .num{white-space:nowrap}
+
+/* 3.2b: an unavailable chart is one compact line, not an empty plot across the page */
+.live-chart-empty{display:grid;gap:var(--sp-1);padding:var(--sp-3) var(--sp-4);min-height:0;height:auto;border:1px dashed var(--line);border-radius:var(--radius-card)}
+.live-chart-empty strong{font-size:var(--fs-data)}.live-chart-empty span{font-size:var(--fs-data);color:var(--ink-3)}
+@media (min-width:900px){
+  .bk-strip.l4{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);grid-template-areas:"s s" "h m" "u u";min-height:0}
+  .bk-strip.l4>.l4-scope{grid-area:s}.bk-strip.l4>.l4-hero{grid-area:h;border-top:0;padding-top:0}.bk-strip.l4>.l4-moved{grid-area:m;border-top:0;padding-top:0;grid-template-columns:1fr 1fr}.bk-strip.l4>.l4-support{grid-area:u}
+  .bk-strip.l4>.bk-err{grid-area:u}
+}
+/* the longer question label wraps inside its chip instead of pushing the page sideways at 320 */
+.live-question .chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.live-question .chip{white-space:normal;text-align:left;max-width:100%;height:auto;min-height:var(--hit)}
+
+/* the longer question label wraps inside its chip instead of pushing the page sideways at 320 */
+.live-question .chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.live-question .chip{white-space:normal;text-align:left;max-width:100
