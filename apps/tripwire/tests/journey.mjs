@@ -259,7 +259,7 @@ await pg.getByLabel(/^Stop/).fill(String(Math.round(entry * 0.95)));
 await pg.waitForSelector('text=Planned risk'); await shot('05-planner');
 ok(/Sized by/.test(await text()), 'planner reports which limit bound the quantity');
 await pg.getByRole('button', { name: 'Save plan' }).click();
-await pg.waitForURL(/desk\?v=plans/); 
+await pg.waitForURL(/desk\?v=plans/); await pg.waitForSelector("text=Saved plan", { timeout: 5000 }).catch(() => {});   // 12 Nov 2026: under html.fx the screen swaps inside a view transition, a beat after the address changes
 ok(/Saved plan/.test(await text()) && !/Paper fill/.test(await text()), 'a saved plan is not shown as a fill');
 await shot('06-plans');
 await pg.getByRole('button', { name: 'Record paper fill' }).click();
