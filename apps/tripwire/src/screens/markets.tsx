@@ -8,12 +8,15 @@ import { sessionNow } from '../market.ts';
 import { Observed } from '../live.tsx';
 import { useTrendSummary } from '../trendsummary.ts';
 import { PageBar } from './common.tsx';
+import { bankLead, indexFacts } from '../indexfacts.ts';
 import { marketTakeaway } from '../takeaway.ts';
 import { freshness } from '../fresh.ts';
 import { useAppState } from '../app.tsx';
 import { useNewsBoard } from '../news.ts';
 import { usePaperSyms } from './NewsPage.tsx';
-import { BreadthCard, CuesList, FxStrip, IndexTile, Movers, SectorTiles } from './mk.tsx';
+import { BreadthCard, CuesList, FxStrip, IndexTile, Movers } from './mk.tsx';
+import { SectorHeat } from './SectorHeat.tsx';
+import { SectorBars } from './SectorBars.tsx';
 
 /** Markets (v6, 13 Nov 2026): a summary row of index tiles, the session chart with the trend map and sectors beside the movers and the global cues, then the commodities strip and the flows.
  *  Every card has one job and a one-line title; what the numbers mean is on #/info. Same feeds and the same rules as before: nothing here was recalculated. */
@@ -24,6 +27,7 @@ export function Markets() {
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });
+  const lead = bankLead(indexFacts(pulse.data?.quotes.BANKNIFTY)?.ch ?? null, indexFacts(pulse.data?.quotes.NIFTY)?.ch ?? null);
   const s = useAppState(); const paper = usePaperSyms(); const news = useNewsBoard({ follows: s.follows, paper });
   const q = pulse.data?.quotes[dayIx]; const nm = dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX';
   return <div className="mk6">
@@ -35,7 +39,7 @@ export function Markets() {
         <IndexTile k="BANKNIFTY" name="Bank Nifty" q={pulse.data?.quotes.BANKNIFTY} d={0} err={!!pulse.err} />
         <IndexTile k="VIX" name="India VIX" q={pulse.data?.quotes.VIX} d={2} vix err={!!pulse.err} />
       </div>
-      <p className="mk-basis small mute" data-market-status>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}Against the previous close · <Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></p>
+      <p className="mk-basis small mute"><span data-ix-note>{lead == null ? '' : `Banks ${lead > 0 ? 'ahead of' : lead < 0 ? 'behind' : 'level with'} the Nifty by ${Math.abs(lead).toFixed(2)} percentage points`}</span><span className="row" data-market-status style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}Against the previous close · <Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></p>
     </section>
     <div className="mk-cols">
       <div className="mk-main">
@@ -45,7 +49,8 @@ export function Markets() {
           <DayChart key={dayIx} q={q} nse lean good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={nm} />
         </section> : null}
         {scr.data && <BreadthCard rows={rows} map={t.map} day={day} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} />}
-        {scr.data && <SectorTiles rows={rows} day={day} />}
+        {scr.data && <SectorHeat rows={rows} day={day} compact />}
+        {scr.data && <details className="market-depth mk-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
         {scr.loading && !scr.data && <section className="card mk-card" aria-busy="true"><div className="sk" style={{ height: 120 }} aria-label="Loading the trend map" /></section>}
       </div>
       <aside className="mk-side" aria-label="Movers and global cues">

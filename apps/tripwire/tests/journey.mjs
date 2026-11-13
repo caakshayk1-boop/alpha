@@ -82,8 +82,8 @@ ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not 
 // 11 Nov 2026 (revamp v2): "Your names" is now the one board for followed companies (this reader follows one), so its heading is expected; the empty-state and ticker checks stand
 ok(!/Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0 && (await pg.locator('[data-board-row]').count()) === 1, 'Today carries no empty-state cards and no duplicate ticker; the followed name is one board row');
 ok((await pg.locator('section.nw .nw-list > .nw-row').count()) <= 3, 'the market news on Today is at most three lines, then All news (11 Nov 2026: was five)');
-await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }); await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
-ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
+await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 }); await pg.locator('[data-sectorheat] .sh-cell').first().click(); await pg.locator('a.sh-discover').click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
+ok(/Filters · 1/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the Markets heat map opens Discover already filtered');
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.brief-ix');
 
 // the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
@@ -375,8 +375,8 @@ ok(/of 50/i.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00
 ok(/at most 50 positions at a time/.test(await book()) && /at most ₹1,00,000/.test(await book()) && await pg.locator('[data-slots] circle').count() === 50, 'the automatic book states and draws its 50-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
-await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
-ok(await pg.locator('.heat a').count() >= 3, 'the Markets page has a sector heat map (the ticker tape that repeated the strip is gone)');
+await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.mk-tiles .mk-tile'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
+ok(await pg.locator('[data-sectorheat] .sh-cell').count() >= 3, 'the Markets page has a sector heat map (the ticker tape that repeated the strip is gone)');
 ok(await pg.locator('canvas').count() === 0, 'the mood card is a plain data panel: no canvas, no moving water');
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
 await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.brief'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the note does not repeat on the next visit');

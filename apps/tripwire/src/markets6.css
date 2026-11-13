@@ -87,3 +87,22 @@
 .mk-fx-tile .mk-px{font-size:var(--fs-body)}
 
 .mk-flows .row.between{min-height:var(--hit);margin-bottom:var(--sp-2)}
+
+/* sector heat, compact: the existing component, one line of overview, small tiles, no standing paragraphs */
+.mk6 .sh-compact{padding:var(--sp-4)}
+@media(min-width:700px){.mk6 .sh-compact{padding:var(--sp-5)}}
+.mk6 .sh-compact .sh-top h2{margin:0;font:600 var(--fs-body)/var(--lh-body) var(--font);letter-spacing:var(--track-tight)}
+.mk6 .sh-compact .sh-sub{margin:var(--sp-1) 0 var(--sp-3)}
+.mk6 .sh-compact .sh-read{grid-template-columns:repeat(3,minmax(0,1fr));padding:var(--sp-3) 0;margin:0 0 var(--sp-3);gap:var(--sp-3)}
+.mk6 .sh-compact .sh-read strong{font-size:var(--fs-num-s);font-weight:600}
+.mk6 .sh-compact .sh-read>button{padding-left:var(--sp-3);min-height:var(--hit)}
+.mk6 .sh-compact .sh-controls{margin-bottom:var(--sp-3)}
+.mk6 .sh-compact .sh-box{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:var(--sp-2)}
+.mk6 .sh-compact .sh-cell{gap:var(--sp-2);padding:var(--sp-3)}
+.mk6 .sh-compact .sh-cell-top{min-height:0}
+.mk6 .sh-compact .sh-cell .sh-change{font-size:var(--fs-num-s);font-weight:600}
+.mk6 .sh-compact .sh-share{display:none}
+.mk6 .sh-compact .sh-legend{margin:var(--sp-3) 0 0}
+.mk6 .mk-depth{border:1px solid var(--line);border-radius:var(--radius-card);padding:0 var(--sp-4);background:var(--surface)}
+.mk6 .mk-depth>summary{min-height:var(--hit);display:flex;align-items:center}
+.mk6 .mk-fig>summary{min-height:var(--hit);display:flex;align-items:center}

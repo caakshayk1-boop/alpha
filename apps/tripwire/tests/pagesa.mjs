@@ -154,9 +154,9 @@ for (const w of [320, 390]) {
 }
 /* 12 Nov 2026 (revamp v3): the Indices rows no longer repeat the day chart as a sparkline; the Nifty 50 row is gone (the day chart owns it). Same intent: the index rows are legible and
    carry something of their own, now a range-position bar with a marker, for Bank Nifty and India VIX only, and no second drawing of the session. */
-{ const { ctx, pg } = await plain(STATE, 390, '/#/markets'); await pg.waitForSelector('.ix .rg', { timeout: 15000 });
-  const n = await pg.locator('.ix .rg').count(); const sp = await pg.locator('.ix svg.dc-compact').count(); const h = await pg.locator('.ix .rg').first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  ok(n === 2 && sp === 0 && h >= 8, `Markets index rows are Bank Nifty and India VIX, each a range-position bar (${n} rows, ${sp} sparklines, bar ${h}px tall)`); await ctx.close(); }
+{ const { ctx, pg } = await plain(STATE, 390, '/#/markets'); await pg.waitForSelector('.mk-tile .rg', { timeout: 15000 });
+  const n = await pg.locator('.mk-tile .rg').count(); const sp = await pg.locator('.mk-tile svg.dc-compact').count(); const h = await pg.locator('.mk-tile .rg').first().evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  ok(n === 3 && sp === 3 && h >= 6, `Markets index tiles are Nifty 50, Bank Nifty and India VIX, each a sparkline and a range-position bar (${n} tiles, ${sp} sparklines, bar ${h}px tall)`); await ctx.close(); }
 
 /* ---- Markets: the FII and DII flows card (present with a fresh file; hidden with none, or with an old one) ---- */
 { const iso = (back) => new Date(Date.parse(`${lastSession}T00:00:00Z`) - back * 86400000).toISOString().slice(0, 10);
@@ -170,7 +170,7 @@ for (const w of [320, 390]) {
     ok(/FIIs bought ₹6,837 cr while DIIs sold ₹3,679 cr\./.test(await card.locator('[data-fiidii-line]').innerText()), `${w}: one plain sentence says what was reported`);
     ok(/Last 5 sessions: FIIs \+₹5,437 cr, DIIs −₹1,779 cr\./.test(t), `${w}: the five-session window is summed (-900+300-1200+400+6836.81 = 5436.81; 500-200+1500+100-3678.85 = -1778.85, shown rounded to 1,779)`);
     ok((await card.locator('svg.fl-bars rect').count()) === 10 && /Table below/.test((await card.locator('svg.fl-bars').getAttribute('aria-label')) ?? ''), `${w}: five sessions of two bars, named, with a table alternative`);
-    ok(/Provisional figures as published by NSE/.test(t) && !/will |forecast|expect|likely|signal/i.test((await card.locator('[data-fiidii-line]').innerText()) + ' ' + (t.match(/Last \d sessions[^\n]*/) ?? [''])[0]), `${w}: it says the figures are provisional, and the reading itself predicts nothing`);
+    ok(/NSE provisional/.test(t) && !/will |forecast|expect|likely|signal/i.test((await card.locator('[data-fiidii-line]').innerText()) + ' ' + (t.match(/Last \d sessions[^\n]*/) ?? [''])[0]), `${w}: it says the figures are provisional, and the reading itself predicts nothing`);
     await card.locator('summary').click(); ok((await card.locator('tbody tr').count()) === 5, `${w}: the table lists the five sessions`);
     ok(await noOverflow(pg), `${w}: Markets with the card does not scroll sideways`); await ctx.close(); }
   for (const [label, body, status] of [['no file yet', '{"ok":false,"error":"the first nightly FII/DII run has not happened yet"}', 404], ['an old file', file([mk(30, 100, -100), mk(29, 50, 20)]), 200], ['a damaged file', '{"ok":true,"schema":"tripwire-fiidii/1","rows":[{"date":"x"}]}', 200]]) {

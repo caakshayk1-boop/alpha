@@ -14,15 +14,15 @@ await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'app
 const pg = await ctx.newPage(); const text = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };
 
 /* Markets (the index cards and the trend map moved here from Today on 27 Oct 2026) */
-await pg.goto(base + '/#/markets'); await pg.waitForSelector('.moodhero .ix .rg'); await pg.waitForTimeout(600);
+await pg.goto(base + '/#/markets'); await pg.waitForSelector('.mk-tile .rg'); await pg.waitForTimeout(600);
 /* 12 Nov 2026 (revamp v3): the Nifty 50 is the day chart; Indices is Bank Nifty and India VIX, each with a day-range bar. */
-ok((await pg.locator('.moodhero a.ix').count()) === 2 && (await pg.locator('.moodhero .ix .rg').count()) === 2, 'Markets: Bank Nifty and VIX each carry a day-range bar (the Nifty is the day chart)');
-ok(/prev [\d,]+/.test(await text()) && /opened [+−-]?\d/.test(await text()) && /low [\d,]+/.test(await text()), 'Markets: each index shows the previous close, the open against it, and the day low and high');
-ok(/Banks (ahead of|behind|level with) the Nifty by/.test(await text()), 'Markets: Bank Nifty is set against the Nifty in points');
-const h1 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height);
-await pg.reload(); await pg.waitForSelector('.moodhero'); const h0 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height); await pg.waitForSelector('.moodhero .ix .rg .nw'); await pg.waitForTimeout(500); const h2 = await pg.locator('.moodhero').evaluate((e) => e.getBoundingClientRect().height);
-ok(Math.abs(h0 - h2) < 2, `Today: the mood card does not change height when the prices arrive (${Math.round(h0)} px before, ${Math.round(h2)} after)`); void h1;
-await pg.waitForSelector('.trendmap .tm-word', { timeout: 15000 });
+ok((await pg.locator('.mk-tile').count()) === 3 && (await pg.locator('.mk-tile .rg').count()) === 3 && (await pg.locator('.mk-tile svg.dc-compact').count()) === 3, 'Markets: Nifty 50, Bank Nifty and India VIX each carry a sparkline and a day-range bar');
+ok(/prev [\d,]+/.test(await text()) && /Open\s+[\d,]+/.test(await text()) && (await pg.locator('.mk-rg-ends').first().innerText()).replace(/\s/g, '').length > 6 && /Against the previous close/.test(await text()), 'Markets: the previous close, the open, and each tile day low, move in points and high are shown, with the basis stated once');
+ok(/Banks (ahead of|behind|level with) the Nifty by/.test(await pg.locator('[data-ix-note]').innerText()), 'Markets: Bank Nifty is set against the Nifty in points');
+const h1 = await pg.locator('.mk-tiles').evaluate((e) => e.getBoundingClientRect().height);
+await pg.reload(); await pg.waitForSelector('.mk-tiles'); const h0 = await pg.locator('.mk-tiles').evaluate((e) => e.getBoundingClientRect().height); await pg.waitForSelector('.mk-tile .rg .nw'); await pg.waitForTimeout(500); const h2 = await pg.locator('.mk-tiles').evaluate((e) => e.getBoundingClientRect().height);
+ok(Math.abs(h0 - h2) < 2, `Markets: the index tiles do not change height when the prices arrive (${Math.round(h0)} px before, ${Math.round(h2)} after)`); void h1;
+await pg.waitForSelector('.trendmap .mk-line b', { timeout: 15000 });
 ok(/^(broad strength|broad weakness|mixed|no read)$/i.test((await pg.locator('.tm-word').innerText()).trim()), 'trend map: a one-word read from its printed rule');
 ok((await pg.locator('.tm-stats [role=listitem]').count()) === 5 && (await pg.locator('.tm-go a').count()) === 3, 'trend map: five breadth figures and three one-tap questions');
 await pg.locator('.tm-go a').first().click(); await pg.waitForSelector('h1:text-is("Research")');   /* 11 Nov 2026: the Discover page is titled Research (revamp v2) */ await pg.waitForTimeout(500);

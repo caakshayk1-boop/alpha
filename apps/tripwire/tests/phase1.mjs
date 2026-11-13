@@ -29,8 +29,8 @@ const open = async (route, at, o = {}) => {
   ok(!/\bLIVE\b/.test(await pg.locator('.brief').innerText()), 'the brief never says LIVE on a weekend'); ok(/Last traded/.test(t), 'the price line says Last traded with its time'); await ctx.close();
 }
 { // Tuesday 20 Oct 2026 (Dussehra, a listed exchange holiday) at 11:00 IST
-  const { ctx, pg } = await open('/#/markets', '2026-10-20T05:30:00Z'); await pg.waitForSelector('.moodhero [data-market-status]'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
-  const badge = (await pg.locator('.moodhero [data-market-status]').first().innerText()).trim();
+  const { ctx, pg } = await open('/#/markets', '2026-10-20T05:30:00Z'); await pg.waitForSelector('[data-market-status]'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
+  const badge = (await pg.locator('[data-market-status]').first().innerText()).trim().replace(/^Against the previous close\s*·\s*/, '');
   ok(/^Last traded\b/i.test(badge) && !/\blive\b/i.test(badge), `exchange holiday inside trading hours: Last traded, not Live (got "${badge}")`); ok(/NSE holiday/.test(await pg.locator('header.bar, body').first().innerText()), 'the header names the NSE holiday'); await ctx.close();
 }
 { // the paper book on a weekend: positions and the Live P&L page never say Live
@@ -38,7 +38,7 @@ const open = async (route, at, o = {}) => {
   const t = await text(pg); ok(!/\bLIVE\b/.test(t) && !/\blive \d/.test(t) && !/>\s*live\s*</i.test(await pg.content().then((h) => h.replace(/<title>.*?<\/title>/g, ''))), 'weekend: the Live P&L page labels no price or position as live'); await ctx.close();
 }
 { // gold / Bitcoin trade round the clock: a fresh print is Live even on a Sunday
-  const { ctx, pg } = await open('/#/markets', '2026-11-01T07:00:00Z'); await pg.waitForSelector('.moodhero'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
+  const { ctx, pg } = await open('/#/markets', '2026-11-01T07:00:00Z'); await pg.waitForSelector('.mk-tiles'); await pg.clock.runFor(15000); await pg.waitForTimeout(500);
   const t = await text(pg); ok(/Commodities, currencies, Bitcoin/.test(t), 'Markets loads on a weekend'); await ctx.close();
 }
 

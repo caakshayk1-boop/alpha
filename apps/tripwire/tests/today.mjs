@@ -37,7 +37,7 @@ const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-ro
   await pg.getByRole('button', { name: 'Find a company' }).click(); await pg.waitForSelector('[role=dialog] input'); ok(true, 'Find a company opens the search sheet'); await pg.keyboard.press('Escape');
   ok(!(await pg.locator('.trendmap').count()) && !(await pg.locator('.strip .tile').count()), 'the trend map and the commodity grid are not on Today');
   await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.trendmap', { timeout: 15000 });
-  ok(await pg.locator('.strip .tile').count() >= 6 && /trend map/i.test(await text(pg)), 'the Markets page carries the indices, the commodity grid and the trend map');
+  ok(await pg.locator('.mk-fx .tile').count() >= 6 && /trend map/i.test(await text(pg)), 'the Markets page carries the indices, the commodity grid and the trend map');
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs[0] : '')); await ctx.close();
 }
 /* ---- 1b. a returning user: the market takeaway first (Phase 4, 1 Nov 2026), then changes and reviews, then the news (one heading), picks ---- */

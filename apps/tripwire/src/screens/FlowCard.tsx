@@ -23,7 +23,7 @@ export function FlowCard({ slim = false }: { slim?: boolean } = {}) {
       <div><span className="k">DIIs · net</span><b className={`num ${r.dii >= 0 ? 'up' : 'down'}`}>{arrow(r.dii)} {crSigned(r.dii)}</b></div>
     </div>
     <p className="fl-read" data-fiidii-line>{r.line}</p>
-    {!slim && r.window && <p className="small dim" style={{ margin: '4px 0 0' }}>{r.window}</p>}
+    {r.window && <p className="small dim" style={{ margin: '4px 0 0' }}>{r.window}</p>}
     {w.length >= 2 && <svg className="fl-bars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Net FII and DII flows, last ${w.length} sessions, in rupees crore. Table below.`} focusable="false">
       <line x1="0" x2={W} y1={MID} y2={MID} className="fl-axis" />
       {w.map((d, i) => { const cx = gap * i + gap / 2; return <g key={d.date}>
