@@ -42,10 +42,11 @@ test('the footer says research not advice, claims no SEBI registration, and read
   assert.ok(!FORBIDDEN.test(f.replace(/<[^>]+>/g, ' ')), 'no prediction word');
   assert.ok(!/margin ?notes/i.test(f), 'no Margin Notes link: no real URL exists in the repo');
 });
-test('Today: the hero leads, the stale-data banner slot is one place under the top bar for every page (Today passes none)', () => {
+test('Today: the hero leads, and the stale-data banner is drawn once by the shell, never inside the page body', () => {
   const t = src('screens/today.tsx');
-  const hero = t.indexOf('<HeroLine />'), brief = t.indexOf('data-sec="brief"'), ban = t.indexOf('{banner}'), setup = t.indexOf('data-sec="setup"');
-  assert.ok(hero > 0 && hero < brief && brief < ban && ban < setup, `order hero(${hero}) < brief(${brief}) < banner(${ban}) < setup(${setup})`);
+  const hero = t.indexOf('<HeroLine />'), brief = t.indexOf('<MarketStrip'), setup = t.indexOf('data-sec="setup"');
+  assert.ok(hero > 0 && hero < brief && brief < setup, `order hero(${hero}) < market strip(${brief}) < setup(${setup})`);
+  assert.ok(!t.includes('{banner}') && !/banner\??:/.test(t), 'Today takes no banner and draws none');
   const a = src('app.tsx');
   // v6 (13 Nov 2026): ONE banner slot, directly under the top bar, on every page; Today no longer draws its own (the prop stays optional, nothing passes it)
   assert.match(a, /<StatusBar asOf=\{screen\.data\?\.as_of\} \/>\s*\{staleBanner\}/); assert.match(a, /<Today \/>/); assert.ok(!/\{!onToday && staleBanner\}/.test(a), 'not repeated lower down');

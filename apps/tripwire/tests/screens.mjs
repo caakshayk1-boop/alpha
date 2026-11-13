@@ -24,7 +24,7 @@ const over = (pg) => pg.evaluate(() => document.documentElement.scrollWidth - do
   ok(await pg.locator('.research-status, .ds-gatecard').count() === 0 && (await pg.locator('.ds-gate').count()) === 1, 'Today: the gate is stated once, by the top-bar pill (no second row repeating it)');
   ok(/^Market (supportive|cautious)$/.test(gt.trim()) && /\d of \d legacy market checks pass/.test(ga) && /not a model-vote count/.test(ga) && !/validat/i.test(gt + ga), `the pill says what the gate is (a market filter for new setups), not "unvalidated": "${gt.trim()}" / "${ga.slice(0, 70)}"`);
   ok(await pg.locator('.ds-gate .gate-dots i').count() === 4, 'one dot per market check');
-  const hy = await pg.evaluate(() => { const h = document.querySelector('[data-hero]'); const b = document.querySelector('[data-sec="brief"]'); return h.getBoundingClientRect().top > b.getBoundingClientRect().top; });
+  const hy = await pg.evaluate(() => { const h = document.querySelector('.t-main'); const b = document.querySelector('[data-sec="brief"]'); return !!h && h.getBoundingClientRect().top > b.getBoundingClientRect().top; });
   ok(hy, 'Today: the market brief leads, before research diagnostics');
   const cap = pg.locator('[data-capture]'); ok(await cap.count() === 1 && await cap.getAttribute('data-capture') === 'off' && !(await cap.isVisible()) && (await cap.innerText()) === '', 'Today: the capture slot is present but hidden and empty (flag off)');
   ok(await pg.locator('form input[type=email]').count() === 0, 'Today: no email field is drawn while the flag is off');
