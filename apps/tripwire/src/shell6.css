@@ -36,5 +36,7 @@
 
 /* ---- the footer: one low-key row of short phrases; each wraps whole, never mid-phrase ---- */
 .ident{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--sp-4);margin:var(--sp-6) 0 0;padding-top:var(--sp-4);border-top:1px solid var(--line);font-size:var(--fs-label);line-height:1.6;color:var(--ink-3)}
+.today>.ident{grid-column:1/-1}
+.ident{max-width:none}   /* the footer spans the whole page, whatever columns Today draws above it */
 .ident>span{display:inline}
 .ident a{display:inline;min-height:0;line-height:inherit;color:var(--ink-2);text-decoration:underline}
