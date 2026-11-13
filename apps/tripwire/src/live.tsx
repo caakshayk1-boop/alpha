@@ -61,9 +61,9 @@ export function useCue(o: Obs): { cue: Cue; n: number } {
   return shown;
 }
 
-/** A price or total that can change under the reader. `basis` says what the number is a price OF ('live' by default; pass 'recorded' for a stored close) and `state` says when it is
+/** A price or total that can change under the reader. `basis` says what the number is a price OF ('live' for a live print, 'recorded' for a stored close; src/tickbasis.ts derives it) and `state` says when it is
  *  not a fresh reading; a change of basis is a neutral reveal, never a gain or a loss. The halo sits BEHIND the numeral (it is a sibling, aria-hidden, and takes no space), the numeral stays sharp. */
-export function Tick({ v, children, className = '', basis = 'live', state }: { v: number | null | undefined; children: ReactNode; className?: string; basis?: string; state?: ObsState }) {
+export function Tick({ v, children, className = '', basis, state }: { v: number | null | undefined; children: ReactNode; className?: string; /** REQUIRED (13 Nov 2026): what the number is a reading of. Derive it with src/tickbasis.ts so it agrees with the word printed beside the figure. */ basis: string; state?: ObsState }) {
   const text = typeof children === 'string' ? children : undefined;
   const { cue, n } = useCue({ v, basis, state: state ?? (v == null ? 'missing' : undefined), text });
   const word = cueWord(cue);

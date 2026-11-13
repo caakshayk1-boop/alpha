@@ -44,3 +44,10 @@ test('skip_ledger_check skips only the ledger rules and says so; absent or other
   assert.deepEqual(r.errors, []);
   assert.match(r.warnings.join(' '), /SKIPPED/);
 });
+
+test('13 Nov 2026: the deploy workflow keeps the ledger rules out of the blocking step and runs them report-only', async () => {
+  const { readFileSync } = await import('node:fs'); const y = readFileSync(new URL('../../../.github/workflows/tripwire.yml', import.meta.url), 'utf8');
+  assert.match(y, /verify-data -- --no-ledger/, 'the step that can stop the deploy must not read the ledger');
+  const i = y.indexOf('Ledger freshness (reported'); assert.ok(i > 0, 'a separate ledger step exists');
+  const block = y.slice(i, y.indexOf('- name:', i + 10)); assert.match(block, /continue-on-error: true/); assert.match(block, /--ledger-only/);
+});

@@ -32,9 +32,11 @@ const plain = async (state, width, route) => {
 for (const w of [320, 360]) {
   const { ctx, pg } = await plain(GUEST, w, '/#/today'); await pg.waitForSelector('[data-sample]');
   const s = pg.locator('[data-sample]'); ok(/Sample walkthrough/.test(await s.innerText()) && /Sample, not real data/.test(await s.innerText()), `${w}: the walkthrough is labelled SAMPLE in its heading`);
-  ok(await s.locator('details').evaluate((d) => !d.open), `${w}: collapsed until asked (progressive disclosure)`);
-  await s.locator('summary').click(); const body = await s.innerText();
-  ok(/not a real company, price, signal or record/.test(body) && !/\d/.test(await s.locator('.sample-steps').innerText()), `${w}: opened, it says it is not real and contains no figure`);
+  // 13 Nov 2026 (master prompt 3.3): a FIRST-TIME visitor sees the walkthrough open (it is the way into the product); one tap folds it away. A returning user does not see it at all (above).
+  ok(await s.locator('details').evaluate((d) => d.open), `${w}: open for a first-time visitor`);
+  const body = await s.innerText();
+  ok(/not a real company, price, signal or record/.test(body) && !/\d/.test(await s.locator('.sample-steps').innerText()), `${w}: it says it is not real and contains no figure`);
+  await s.locator('summary').click(); ok(await s.locator('details').evaluate((d) => !d.open), `${w}: one tap folds it away`);
   ok(await s.locator('summary').evaluate((e) => e.getBoundingClientRect().height >= 44), `${w}: its toggle is a 44 px target`);
   ok(await noOverflow(pg), `${w}: Today (new user) does not scroll sideways`); ok(await pg.locator('[data-sec="setup"]').count() === 1, `${w}: the one setup action is still there`); await ctx.close();
 }

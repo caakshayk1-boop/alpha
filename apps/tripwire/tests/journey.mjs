@@ -232,7 +232,7 @@ ok(homeTxt !== (await pg.locator('.chart-head').innerText()) && Number(await pg.
 await shot('04b-chart');
 // an instrument's own page: its chart, no Nifty line, and the scale explained
 await pg.goto(base + '/#/m/GOLD'); await pg.waitForSelector('.chart-plot svg path.c-line', { timeout: 15000 }); await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
-await pg.getByText('About this chart').first().click();
+await pg.getByText(/About this chart|Notes, scale and source/).first().click();   // 13 Nov 2026: a phone folds the chart's notes into one disclosure
 ok(/Gold/i.test(await pg.locator('h1').innerText()) && await pg.getByRole('radio', { name: 'vs Nifty' }).count() === 0 && /Linear scale/.test(await text()) && /\$2,650\.50/.test(await text()), 'the gold page shows its live price and chart without a Nifty line, and explains the scale');
 await opts(); await pg.getByRole('radio', { name: 'Log' }).click(); await closeOpts(); ok(/Log scale: equal steps are equal percentage moves/.test(await text()), 'switching to Log explains what Log does');
 ok((await pg.locator('a[href*="tradingview.com"][href*="GOLD"]').count()) >= 1, 'the instrument links to its TradingView chart');

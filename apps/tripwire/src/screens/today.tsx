@@ -1,6 +1,8 @@
 import { HitCard, TargetLadder } from '../components/index.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { HeroLine } from './herolines.tsx';
+import { heroDue } from '../hero.ts';
 import { useAppState, useSheets } from '../app.tsx';
 import { Failed, Loading, PageBar } from './common.tsx';
 import { DataStatus } from './FreshnessPill.tsx';
@@ -17,6 +19,7 @@ import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { buildFeed } from '../alertsfeed.ts';
 import { useMacro, MACRO, fmtMacro } from '../macro.ts';
 import { LiveBadge, Observed, Spark, Tick } from '../live.tsx';
+import { marksTick, quoteTick } from '../tickbasis.ts';
 import { FlowLine } from './FlowCard.tsx';
 import { avatarStyle } from '../widgets.tsx';
 import { initials } from '../fmt.ts';
@@ -43,8 +46,9 @@ const TOP = 3;
 /** Today (revamp v2, 11 Nov 2026), each fact said once, in the order a person needs it: the market (a breadth gauge and one sentence, the index tape), your names (a departure
  *  board: price, change and chips per followed company, each row opening to its changes, headlines and actions), the market's own news (three stories), the paper book in one card,
  *  the last close's top picks, and one collapsed "Data status" line at the foot. How current the screen is lives in the header pill and the app banner, not again here. */
-export function Today() {
+export function Today({ banner }: { banner?: ReactNode } = {}) {
   const s = useAppState(); const { open } = useSheets();
+  const [firstVisit] = useState(() => heroDue());   // decided once at mount: dismissing the line does not fold the walkthrough under the reader's thumb
   const { scr, out } = useEngines();
   const rows = useMemo(() => scr.data?.rows ?? [], [scr.data]); const day = scr.data?.as_of ?? null; const today = istDay();
   const fresh = isNewUser(s);   // a new user gets the setup card and the brief; the book, picks, news and changes need something of theirs to be about
@@ -83,6 +87,7 @@ export function Today() {
   return <div>
     <PageBar title="Today" />
     <div className="today t2">
+      <HeroLine />
       {/* (0) targets hit in the last completed session: only when there are some, computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
@@ -91,19 +96,22 @@ export function Today() {
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small t-sess-row"><span className={`t-sess ${sess.phase}`} data-session>{sess.label} · {sess.detail}</span><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /></span></div>
         <div className="pulse"><BreadthGauge upPct={t.upPct} downPct={t.downPct} n={t.map.n} /><p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p></div>
         <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px} {...quoteTick(q?.pt, Date.now())}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <FlowLine />
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
         <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a></span></p>
       </section>
 
+      {/* the stale-data banner sits directly under the brief (alarm ordering only): same words, same severity, one section lower than it was */}
+      {banner}
+
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
         <h2 id="t-setup" className="sec">Start with one company</h2>
         <button className="btn pri" onClick={() => open({ k: 'search' })}><Icon n="search" />Find a company</button>
       </section>}
-      {fresh && <SampleWalkthrough />}
+      {fresh && <SampleWalkthrough defaultOpen={firstVisit} />}
 
       {/* (b) your names: the departure board */}
       {!fresh && s.follows.length === 0 && <NamesEmpty />}
@@ -121,7 +129,7 @@ export function Today() {
         <div className="row between sechead"><h2 id="t-book" className="sec">Paper book</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
         <div className="card bookcard">
           <dl className="bk-stats num">
-            <div><dt>Open-trade P&amp;L</dt><dd className={`amt bigpnl ${tone(pnl)}`} title="Booked partial exits plus the remaining shares marked at the observed price"><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
+            <div><dt>Open-trade P&amp;L</dt><dd className={`amt bigpnl ${tone(pnl)}`} title="Booked partial exits plus the remaining shares marked at the observed price"><Tick v={openN ? pnl : null} {...marksTick([...(showAuto ? auto.rows.filter((r) => r.v.status === 'open') : []), ...ownOpen].map((r) => r.v.markKind))}>{openN ? money(pnl) : '—'}</Tick></dd></div>
             <div><dt>Open</dt><dd>{openN}{showAuto && auto.sum.waiting ? <small> +{auto.sum.waiting} waiting</small> : null}</dd></div>
             <div><dt>Closed</dt><dd>{showAuto ? auto.sum.closed : 0}<small> of {MIN_TRADES}</small></dd></div>
           </dl>

@@ -8,7 +8,7 @@ export const QUERY_SCHEMA = 'tripwire-news-q/1';
 /** Bump when a validation, classification or clustering rule changes (what is admitted, and how it is grouped). */
 // 12 Nov 2026: news-pipe-2 adds the global-cue lane (scope 'global': other countries' headlines admitted only when a rule in cues.js matches, from a known-tier source).
 // 12 Nov 2026: news-pipe-3 is two days at most (MAX_AGE_DAYS 2, Today windows 48 h) and smart dedupe (cluster.js: shared distinctive word, same title; rules.js: promotional rewrites from aggregators).
-export const PIPELINE_VERSION = 'news-pipe-3';
+export const PIPELINE_VERSION = 'news-pipe-4';
 /** Bump when a weight, half-life or tier below changes (only the order changes, never what is admitted). */
 export const RANKING_VERSION = 'news-rank-1';
 

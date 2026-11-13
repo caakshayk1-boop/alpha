@@ -4,7 +4,7 @@ import { hash } from './urls.js';
 
 const STOP = new Set('a an the of to in on for and or at by with from as is are be its it this that after over into amid says said new will has have had was were than then also but not no up down'.split(' '));
 /** Content words of a headline, lightly stemmed so "rises" and "rise", "profits" and "profit" meet. Numbers are kept as numbers ("5%" becomes "5"). */
-const stem = (w) => { let s = w; if (s.length > 4 && /ies$/.test(s)) s = s.slice(0, -3) + 'y'; else if (s.length > 3 && /s$/.test(s) && !/ss$/.test(s)) s = s.slice(0, -1); if (s.length > 5 && /(ing|ed)$/.test(s)) s = s.replace(/(ing|ed)$/, ''); if (s.length > 3 && /e$/.test(s)) s = s.slice(0, -1); return s; };
+const stem = (w) => { let s = w; if (/^acquisitions?$/.test(s)) return 'acquir'; if (s.length > 4 && /ies$/.test(s)) s = s.slice(0, -3) + 'y'; else if (s.length > 3 && /s$/.test(s) && !/ss$/.test(s)) s = s.slice(0, -1); if (s.length > 5 && /(ing|ed)$/.test(s)) s = s.replace(/(ing|ed)$/, ''); if (s.length > 3 && /e$/.test(s)) s = s.slice(0, -1); return s; };
 export function tokens(headline) {
   return new Set(String(headline ?? '').toLowerCase().replace(/(\d),(\d)/g, '$1$2').replace(/[‘’']s\b/g, '').replace(/[^a-z0-9. ]+/g, ' ').split(/\s+/)
     .map((w) => w.replace(/^\.+|\.+$/g, '')).filter((w) => w && !STOP.has(w) && (w.length > 2 || /^\d/.test(w) || /^q[1-4]$/.test(w)))
@@ -12,6 +12,23 @@ export function tokens(headline) {
 }
 /** The figures a headline states (a year is not a figure). Two headlines that both state figures and share none are reporting different things. */
 const numbers = (tk) => new Set([...tk].filter((w) => /^\d+(\.\d+)?$/.test(w) && !/^(19|20)\d{2}$/.test(w)));
+/** 13 Nov 2026 (news-pipe-4): one amount, told in different units, is ONE figure. "₹20 lakh" and "2 Million Rupees" are 2,000,000; "24,000 Cr" and "24 000 cr" are the same number (a thousands group may be a comma or a space).
+ *  Only an amount with a unit word is normalised (a bare "20" stays the bare token it was), and only the unit words below; currencies are NOT converted (a dollar amount never equals a rupee amount). */
+const UNIT = { thousand: 1e3, k: 1e3, lakh: 1e5, lakhs: 1e5, lac: 1e5, lacs: 1e5, million: 1e6, mn: 1e6, m: 1e6, crore: 1e7, crores: 1e7, cr: 1e7, billion: 1e9, bn: 1e9, b: 1e9, trillion: 1e12, tn: 1e12 };
+export function amounts(headline) {
+  const out = new Set(); const t = String(headline ?? '').toLowerCase();
+  const re = /(\d{1,3}(?:[ ,]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(thousand|lakhs?|lacs?|crores?|cr|million|mn|billion|bn|trillion|tn|k|m|b)\b/g; let m;
+  while ((m = re.exec(t))) {
+    const v = Number(m[1].replace(/[ ,]/g, '')) * UNIT[m[2]]; if (!Number.isFinite(v) || v <= 0) continue;
+    // 13 Nov 2026 (Codex on #64): the currency is part of the figure. "₹20 lakh" and "$2 million" are both 2,000,000 and are NOT the same amount. A currency is read from the symbol or word just before or after the amount;
+    // none stated is its own kind ("?"), which never equals a stated one (conservative: a missed merge is a visible duplicate, a wrong merge hides a story).
+    const before = t.slice(Math.max(0, m.index - 5), m.index), after = t.slice(m.index + m[0].length, m.index + m[0].length + 14);
+    const cur = /(₹|\brs\.?|\binr)\s*$/.test(before) || /^\s*(rupees?|inr)\b/.test(after) ? 'I' : /(\$|\bus\$|\busd)\s*$/.test(before) || /^\s*(dollars?|usd)\b/.test(after) ? 'U' : '?';
+    out.add('A' + cur + Number(v.toPrecision(5)));
+  }
+  return out;
+}
+const figures = (headline, tk) => { const s = numbers(tk); for (const a of amounts(headline)) s.add(a); return s; };
 const overlap = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return { n, frac: a.size && b.size ? n / Math.min(a.size, b.size) : 0 }; };
 const DAY72 = 72 * 3600;
 /** Two reports of one company event must be this close in time to merge on a shared distinctive word alone (no figure needed). */
@@ -72,7 +89,7 @@ export function sameEvent(a, b) {
   const shared = [...ea].some((x) => eb.has(x));
   if ((ea.size || eb.size) && !shared) return false;                           // about different companies: never the same event
   const { n, frac } = overlap(a.tk, b.tk);
-  const na = numbers(a.tk), nb = numbers(b.tk);
+  const na = figures(a.headline, a.tk), nb = figures(b.headline, b.tk);
   if (na.size && nb.size && !overlap(na, nb).n) return false;                  // both state figures and none agrees: different developments ("up 5%" and "down 3%")
   if (opposite(a.headline, b.headline)) return false;                          // "profit rises" and "profit falls" are two developments even when neither states a figure
   if (a.tk.size >= 3 && b.tk.size >= 3 && normTitle(a.headline) === normTitle(b.headline)) return true;   // the same headline, carried twice
@@ -82,7 +99,7 @@ export function sameEvent(a, b) {
   const near = a.publishedSec != null && b.publishedSec != null && Math.abs(a.publishedSec - b.publishedSec) <= SAME_EVENT_SEC;
   const kind = a.eventType === b.eventType && !['Update', 'People', 'Rating'].includes(a.eventType);
   if (kind && shared && near && na.size && nb.size && overlap(na, nb).n && n >= 3) return true;   // ... stating a figure they agree on
-  if (kind && shared && near && n >= 3 && distinctiveShared(a, b).length > 0) return true;        // 12 Nov 2026: ... naming the same other party, product or place; no figure needed
+  if (kind && shared && near && n >= 2 && distinctiveShared(a, b).length > 0) return true;        // 12 Nov 2026: ... naming the same other party, product or place; no figure needed
   return n >= 4 && frac >= 0.7 || n >= 3 && frac >= 0.85;
 }
 

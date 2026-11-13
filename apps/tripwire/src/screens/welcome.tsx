@@ -63,6 +63,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
         <div className="wl-out"><button className="btn" onClick={() => { go('/markets'); leave(); }}>Explore markets</button></div>
         <ul className="lp-pills" aria-label="What to expect"><li>No account</li><li>Notes stay on this device</li><li>Paper analysis only</li></ul>
       </div>
+      {!sample && !scr.data && !scr.err && <div className="lp-card lp-card-skel" aria-hidden="true" />}
       {sample && <aside className="lp-card" aria-label={`A real example: ${sample.name}`}>
         <div className="lp-card-top"><span className="avatar" aria-hidden="true">{sample.sym.slice(0, 2)}</span><span className="grow"><b className="sym">{sample.sym}</b><span className="small dim trunc" style={{ display: 'block' }}>{sample.name}{sample.sector ? ` · ${sample.sector}` : ''}</span></span><span className="lp-live small"><i aria-hidden="true" />From the screen</span></div>
         <div className="lp-price num">{inr(sample.price)}<span className="small dim"> close of {dayWord(scr.data?.as_of)}</span></div>

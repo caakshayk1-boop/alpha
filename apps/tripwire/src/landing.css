@@ -11,6 +11,10 @@
 .lp-pills li{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:var(--fs-label);color:var(--ink-2)}
 .welcome.lp .wl-find{max-width:34rem}
 .lp-card{position:relative;display:grid;gap:14px;padding:22px;border:1px solid var(--line2);border-radius:24px;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 94%,transparent),var(--s1));box-shadow:0 36px 70px -34px rgba(0,0,0,.75)}
+/* 13 Nov 2026: the example card arrives with the company list. On a phone it stacks under the copy, and its late arrival pushed the whole page down ~650px (mobile CLS 0.197, Lighthouse). Its box is reserved from the first paint: a placeholder while the list loads, and the real card is never shorter than the placeholder. Height follows the measured card (320px: 738, 360: 653, 412: 612, 600: 598; side by side 636 to 702). */
+.lp-card,.lp-card-skel{min-height:clamp(590px,calc(612px + (412px - 100vw) * 1.35),760px)}
+.lp-card-skel{border:1px solid var(--line2);border-radius:24px;background:var(--s1);box-shadow:none}
+@media (min-width:900px){.lp-card,.lp-card-skel{min-height:640px}}
 .lp-card-top{display:flex;align-items:center;gap:12px}
 .lp-live{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
 .lp-live i{width:7px;height:7px;border-radius:50%;background:var(--up)}

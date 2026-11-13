@@ -1,5 +1,5 @@
 // @ts-nocheck  (the pipeline under test is untyped JavaScript, see src/newsjs.d.ts; the assertions are the contract)
-// 12 Nov 2026 (news-pipe-3): two days at most, and no duplicates. Fixtures are the owner's three real headlines plus negative cases. The clock is a fixed NOW, never the live one.
+// 12 Nov 2026 (news-pipe-4): two days at most, and no duplicates. Fixtures are the owner's three real headlines plus negative cases. The clock is a fixed NOW, never the live one.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sameEvent, tokens, normTitle, clusterItems } from '../news/cluster.js';
@@ -19,8 +19,8 @@ const A = 'eClerx Services Acquires RegEdge LLC to Expand Risk and Regulatory Ca
 const EC = [{ sym: 'ECLERX', name: 'eClerx Services Ltd.', confidence: 0.95, matchedOn: 'name' }];
 const cand = (headline: string, min: number, o = {}) => ({ headline, tk: tokens(headline), eventType: classify(headline).eventType, publishedSec: Math.floor((NOW - min * 60e3) / 1000), entities: EC, canonicalUrl: `https://x.com/${encodeURIComponent(headline)}`, ...o });
 
-test('the version and the window: news-pipe-3, two days, Today 48 h for both kinds', () => {
-  assert.equal(PIPELINE_VERSION, 'news-pipe-3'); assert.equal(MAX_AGE_DAYS, 2); assert.equal(TODAY_WINDOW_H.company, 48); assert.equal(TODAY_WINDOW_H.market, 48); assert.equal(TODAY_WINDOW_H.global, 36);
+test('the version and the window: news-pipe-4, two days, Today 48 h for both kinds', () => {
+  assert.equal(PIPELINE_VERSION, 'news-pipe-4'); assert.equal(MAX_AGE_DAYS, 2); assert.equal(TODAY_WINDOW_H.company, 48); assert.equal(TODAY_WINDOW_H.market, 48); assert.equal(TODAY_WINDOW_H.global, 36);
   const base = { title: 'TCS Q2 net profit rises 5% to Rs 12,300 crore', url: 'https://www.livemint.com/a/1', nowMs: NOW };
   assert.deepEqual(judge({ ...base, publishedSec: NOW / 1000 - 47 * 3600 }).reasons, []); assert.deepEqual(judge({ ...base, publishedSec: NOW / 1000 - 49 * 3600 }).reasons, ['stale']);
 });
@@ -94,4 +94,48 @@ test('clusterItems keeps an event id when a syndicated copy joins', () => {
   const mk = (h: string, id: string, min: number) => ({ ...cand(h, min), itemId: id });
   const first = clusterItems([mk(A, 'it_a', 54)], new Map()); const again = clusterItems([mk(A, 'it_a', 54), mk(B, 'it_b', 35)], new Map([['it_a', first[0].eventClusterId]]));
   assert.equal(again.length, 1); assert.equal(again[0].eventClusterId, first[0].eventClusterId);
+});
+
+// 13 Nov 2026 (news-pipe-4): the live snapshot of 13 Nov (250 events) still held four pairs the first rule missed. The headlines below are real, copied from it.
+const ITEM = (headline: string, min: number, sym: string, name: string, o = {}) => ({ headline, tk: tokens(headline), eventType: classify(headline).eventType, publishedSec: Math.floor((NOW - min * 60e3) / 1000), entities: [{ sym, name, confidence: 0.95, matchedOn: 'name' }], canonicalUrl: `https://x.com/${encodeURIComponent(headline)}`, ...o });
+test('eClerx and RegEdge, told as "acquires" and "Announces Acquisition", are one event (the live pair 4 h apart)', () => {
+  const a = ITEM('eClerx acquires RegEdge to bolster regulatory and compliance capabilities', 600, 'ECLERX', 'eClerx Services Ltd.'), b = ITEM('eClerx Announces Acquisition of RegEdge', 360, 'ECLERX', 'eClerx Services Ltd.');
+  assert.equal(sameEvent(a, b), true); assert.equal(sameEvent(b, a), true);
+});
+test('one amount in different units is one figure: Rs 20 lakh and 2 Million Rupees (Kotak fine)', () => {
+  const a = ITEM('Kotak Mahindra Bank fined ₹20 lakh over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.'), b = ITEM('Kotak Mahindra Bank Fined 2 Million Rupees By Chief Metropolitan Magistrate Court', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.');
+  assert.equal(sameEvent(a, b), true);
+});
+test('a thousands group may be a space: "24,000 Cr" and "24 000 cr" are one figure (Star Health)', () => {
+  const a = ITEM('Star Health Targets Rs 24,000 Cr GWP by FY27, Focuses on Growth', 200, 'STARHEALTH', 'Star Health and Allied Insurance Company Ltd.'), b = ITEM('Star Health expects 19 pc growth in gross written premium to Rs 24 000 cr in FY27 MD', 200, 'STARHEALTH', 'Star Health and Allied Insurance Company Ltd.');
+  assert.equal(sameEvent(a, b), true);
+});
+test('guards hold: different amounts, rupees vs dollars, and a different named party stay apart', () => {
+  const q1 = ITEM('Bajaj Finance may launch Rs 11,700-crore QIP to fund growth', 900, 'BAJFINANCE', 'Bajaj Finance Ltd.'), q2 = ITEM('Bajaj Finance proposes to raise up to ₹3,000 crore via QIP', 900, 'BAJFINANCE', 'Bajaj Finance Ltd.');
+  assert.equal(sameEvent(q1, q2), false, 'different amounts are different developments');
+  const r = ITEM('Kotak Mahindra Bank fined Rs 2 crore over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.'), k = ITEM('Kotak Mahindra Bank fined ₹20 lakh over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.');
+  assert.equal(sameEvent(r, k), false, '2 crore is 20 million, not 2 million');
+  const x = ITEM('eClerx acquires RegEdge to bolster regulatory capabilities', 600, 'ECLERX', 'eClerx Services Ltd.'), y = ITEM('eClerx acquires Northwind Analytics in an all-cash deal', 600, 'ECLERX', 'eClerx Services Ltd.');
+  assert.equal(sameEvent(x, y), false, 'a different acquired party is a different deal');
+});
+test('amounts(): lakh, crore, million, billion normalise; bare numbers and unit-less text do not', async () => {
+  const { amounts } = await import('../news/cluster.js');
+  assert.deepEqual([...amounts('fined ₹20 lakh')], [...amounts('fined 2 Million Rupees')]);
+  assert.deepEqual([...amounts('Rs 24,000 Cr')], [...amounts('Rs 24 000 cr')]);
+  assert.equal(amounts('profit up 5%').size, 0); assert.equal(amounts('Q2 FY27 results').size, 0);
+});
+test('Codex on #64: the currency is part of the figure (Rs 20 lakh is not $2 million)', async () => {
+  const { amounts } = await import('../news/cluster.js');
+  assert.notDeepEqual([...amounts('Acme fined ₹20 lakh')], [...amounts('Acme fined $2 million')]);
+  assert.deepEqual([...amounts('fined ₹20 lakh')], [...amounts('fined Rs 20 lakh')]); assert.deepEqual([...amounts('fined 2 Million Rupees')], [...amounts('fined ₹20 lakh')]);
+  const a = ITEM('Kotak Mahindra Bank fined ₹20 lakh over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.'), b = ITEM('Kotak Mahindra Bank fined $2 million over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.');
+  assert.equal(sameEvent(a, b), false, 'rupees and dollars never agree');
+});
+
+test('13 Nov 2026: local price listings and job adverts are standing pages, not events; real gold and recruitment-related company news is untouched', () => {
+  const j = (title: string) => judge({ title, url: 'https://www.example.com/news/x1', publishedSec: NOW / 1000 - 3600, nowMs: NOW }).reasons;
+  assert.ok(j('Silver Rate Today in Yavatmal 11th November, 2026 : 1 KG, Todays Silver Price in Yavatmal').includes('evergreen_title'));
+  assert.ok(j('BHEL Artisan Recruitment 2026 Notification Out – Apply Online for 660 Posts').includes('evergreen_title'));
+  assert.deepEqual(j('Gold slips as strong US inflation data bolsters dollar, Fed hike expectations'), []);
+  assert.deepEqual(j('Infosys hired 4,480 in Q2 as headcount rises across the top five IT firms'), []);
 });

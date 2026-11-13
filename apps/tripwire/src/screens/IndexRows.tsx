@@ -1,6 +1,7 @@
 import { bankLead, indexFacts, type IndexFacts } from '../indexfacts.ts';
 import { pct, tone } from '../fmt.ts';
 import { Tick } from '../live.tsx';
+import { quoteTick } from '../tickbasis.ts';
 import { tvIndexUrl } from '../tv.ts';
 import type { Quote } from '../data.ts';
 
@@ -13,7 +14,7 @@ const sgn = (v: number, d: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(
 function Row({ k, name, q, d, vix }: { k: string; name: string; q: Quote | undefined; d: number; vix?: boolean }) {
   const f: IndexFacts | null = indexFacts(q); const col = f == null ? '' : vix ? (f.ch > 0 ? 'down' : f.ch < 0 ? 'up' : '') : tone(f.ch);
   return <a role="listitem" className="ix" href={tvIndexUrl(k as 'NIFTY')} target="_blank" rel="noopener noreferrer">
-    <span className="ix-top"><span className="nm">{name}</span><span className="px num"><Tick v={f?.px}>{f ? num(f.px, d) : '—'}</Tick></span><span className={`ch num ${col}`}>{f ? `${sgn(f.pts, d)} · ${pct(f.ch)}` : '—'}</span></span>
+    <span className="ix-top"><span className="nm">{name}</span><span className="px num"><Tick v={f?.px} {...quoteTick(q?.pt, Date.now())}>{f ? num(f.px, d) : '—'}</Tick></span><span className={`ch num ${col}`}>{f ? `${sgn(f.pts, d)} · ${pct(f.ch)}` : '—'}</span></span>
     <span className="ix-mid">
       <span className="rg" role="img" aria-label={f ? `${name} day range ${num(f.lo, d)} to ${num(f.hi, d)}; now ${f.pos == null ? 'level' : `${Math.round(f.pos * 100)} percent of the way up`}` : `${name} range not available`}>
         <i className="trk" />{f?.prevPos != null && <i className="pv" style={{ left: `${f.prevPos * 100}%` }} title={`Previous close ${num(f.prev, d)}`} />}{f?.pos != null && <i className={`nw ${col}`} style={{ left: `${f.pos * 100}%` }} />}</span>

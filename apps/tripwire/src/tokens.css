@@ -18,6 +18,8 @@
   /* effects (12 Nov 2026): the price halo is ONE low-opacity tint, 10px, gone in 600 ms; the fade and rise lengths are per preset (effects3.css) */
   --halo-up:rgba(61,220,151,.26);--halo-down:rgba(255,122,122,.26);--halo-neutral:rgba(165,180,255,.2);--halo-blur:10px;--halo-dur:600ms;--fade-dur:160ms;--fade-dur-2:200ms;--rise-dur:280ms;
   --down-tint:rgba(255,122,122,.12);--up-tint:rgba(61,220,151,.12);--amber-tint:rgba(255,194,75,.12);
+  /* up/down washes that were literals in style.css (the target ladder's rail, the red tag); tokens now, so the opt-in palette below can move them with --up and --down. Values are unchanged. */
+  --rail-down:rgba(255,107,94,.55);--rail-up:rgba(61,220,151,.5);--tag-down-bg:rgba(255,122,89,.14);
   /* type: one family. Figures use tabular-nums, not a second face; --code is for formula and code blocks only; --mono is a legacy alias of --font so older rules that asked for a monospace face now read in the one family */
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --editorial:Georgia,"Times New Roman",serif;
@@ -71,6 +73,14 @@
   --series-1:var(--print-series-1);--series-2:var(--print-series-2);--series-3:var(--print-series-3);
   --halo-up:transparent;--halo-down:transparent;--halo-neutral:transparent;--chart-grid:var(--print-line);--chart-plot:none;--chart-ring:transparent;--down-tint:transparent;--up-tint:transparent;--amber-tint:transparent;--surface-grad:none;--shadow-raised:none;--glow-cta:none;--shimmer:transparent;--elev-1:none
 }}
+/* Up and down colours, opt-in (13 Nov 2026, v5; Settings, "Up and down colours"). The default stays the approved green and red and none of the values above change. html[data-updown=cb] swaps the
+   WHOLE up/down family at once (text, halo, tint, the ladder rail, the red tag), so no component edits are needed: blue for up and orange for down stay apart under protan, deutan and tritan vision.
+   Measured with the bundled dataviz validator's matrices (OKLab dE x100, Machado 2009 severity 1.0) on the page surface #10151D: protan 25.4, deutan 29.4, tritan 26.8 (the default pair is 18.7, 5.7, 34.0);
+   contrast on that surface 7.8:1 (up) and 9.0:1 (down), 6.6 and 7.6 on --surface-3. The paper pair (print is the light surface) is --print-up-cb and --print-down-cb: dE 23.1 protan, 27.7 deutan, 27.8 tritan; 6.7:1 and 5.5:1 on white.
+   Direction is never colour alone: every figure keeps its arrow, sign or word in both settings. */
+:root{--print-up-cb:#0b5cad;--print-down-cb:#b34700}
+html[data-updown=cb]{--up:#5AAEFF;--down:#FFA040;--halo-up:rgba(90,174,255,.26);--halo-down:rgba(255,160,64,.26);--up-tint:rgba(90,174,255,.12);--down-tint:rgba(255,160,64,.12);--rail-down:rgba(255,160,64,.55);--rail-up:rgba(90,174,255,.5);--tag-down-bg:rgba(255,160,64,.14)}
+@media print{html[data-updown=cb]{--up:var(--print-up-cb);--down:var(--print-down-cb);--halo-up:transparent;--halo-down:transparent;--up-tint:transparent;--down-tint:transparent}}
 @media(min-width:700px){:root{--section-gap:var(--sp-6);--card-pad:24px}}
 @media(min-width:1100px){:root{--section-gap:var(--sp-7);--gutter:48px}}
 @media(prefers-contrast:more){:root{--line:rgba(245,244,238,.3);--line-2:rgba(245,244,238,.5)}}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CAPTURE_LINE, DEFAULT_CAPTURE, captureReady, subscribe, validEmail, type CaptureConfig } from '../capture.ts';
 import { Button } from '../components/index.ts';
+import { contactView } from '../contact.ts';
 
 /** The one email-capture module. With the flag off (the default) it is a hidden, empty placeholder: no field, no text, no network.
  *  No popup, no modal, nothing that appears by itself; the address is sent only when the person presses Subscribe. `source` says which page it sat on. */
@@ -19,7 +20,8 @@ export function CaptureModule({ source, cfg = DEFAULT_CAPTURE }: { source: strin
   </section>;
 }
 
-/** The footer line: what Tripwire is, and the legal pages. It links nowhere outside Tripwire. */
+/** The footer line: what Tripwire is and is not, the real contact, and the legal pages. The address is read from contact.ts, never typed again here. */
 export function IdentityFooter() {
-  return <p className="small mute ident">Tripwire is paper-only research. Not investment advice, and no order is ever placed. <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
+  const c = contactView();
+  return <p className="small mute ident" data-ident>Tripwire is paper-only research, not investment advice, and no order is ever placed. No SEBI registration is claimed. {c.href ? <>Contact: <a href={c.href}>{c.email}</a></> : c.line} · <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
 }

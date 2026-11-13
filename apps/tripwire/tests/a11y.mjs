@@ -65,7 +65,8 @@ for (const [pct, tag] of [[150, '150%'], [200, '200%']]) {
     await pg.addStyleTag({ content: `html{font-size:${pct}% !important}` }); await pg.waitForTimeout(500);
     const over = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (over > 1) problems.push(`text ${tag} ${r}: horizontal overflow ${over}px`);
-    const clipped = await pg.evaluate(() => [...document.querySelectorAll('.btn,.chip,.seg button,.tabs a')].filter((e) => e.scrollHeight - e.clientHeight > 2 || e.scrollWidth - e.clientWidth > 2).slice(0, 2).map((e) => (e.textContent || '').trim().slice(0, 24)));
+    // 13 Nov 2026: measured on the TEXT, not on the scrollable area. A control's transparent hit-area layer (tap.css ::after) is allowed to extend past its box; its words are not.
+    const clipped = await pg.evaluate(() => [...document.querySelectorAll('.btn,.chip,.seg button,.tabs a')].filter((e) => { const b = e.getBoundingClientRect(); if (!b.width) return false; const w = document.createDocumentFragment(); const tw = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); let n, bad = false; while ((n = tw.nextNode())) { if (!n.textContent.trim()) continue; const par = n.parentElement; if (par.closest('.sr, .sr-only, .visually-hidden, [hidden], [aria-hidden=true]')) continue; const pb = par.getBoundingClientRect(); if (pb.width <= 1 || pb.height <= 1) continue; const rg = document.createRange(); rg.selectNodeContents(n); const t = rg.getBoundingClientRect(); if (!t.width) continue; if (t.right > b.right + 2 || t.left < b.left - 2 || t.bottom > b.bottom + 2 || t.top < b.top - 2) bad = true; } return bad; }).slice(0, 2).map((e) => (e.textContent || '').trim().slice(0, 24)));
     if (clipped.length) problems.push(`text ${tag} ${r}: controls clip their text: ${clipped.join(', ')}`);
   }
   await ctx.close();
