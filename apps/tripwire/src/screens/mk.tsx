@@ -5,6 +5,7 @@ import { indexFacts } from '../indexfacts.ts';
 import { pct, tone, dayWord } from '../fmt.ts';
 import { Tick, Ago } from '../live.tsx';
 import { quoteTick } from '../tickbasis.ts';
+import { tvIndexUrl } from '../tv.ts';
 import { DayChart } from '../components/DayChart.tsx';
 import { fmtMacro, MACRO, useMacro } from '../macro.ts';
 import { breadthStats, breadthWord, shortcuts, type Share } from '../breadthstats.ts';
@@ -22,13 +23,13 @@ const sgn = (v: number, d: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(
 export function IndexTile({ k, name, q, d, vix, err }: { k: string; name: string; q: Quote | undefined; d: number; vix?: boolean; err: boolean }) {
   const f = indexFacts(q); const col = f == null ? '' : vix ? (f.ch > 0 ? 'down' : f.ch < 0 ? 'up' : '') : tone(f.ch);
   const arrow = f == null ? '' : f.ch > 0 ? '▲' : f.ch < 0 ? '▼' : '–';
-  return <div role="listitem" className="mk-tile" data-index={k}>
+  return <a role="listitem" className={`mk-tile${!f && !err ? ' mk-pend' : ''}`} data-index={k} href={tvIndexUrl(k as 'NIFTY')} target="_blank" rel="noopener noreferrer">
     <span className="mk-tile-top"><span className="mk-nm">{name}</span><span className={`mk-ch num ${col}`}>{f ? <><span aria-hidden="true">{arrow} </span>{pct(f.ch)}</> : err ? 'unavailable' : '—'}</span></span>
     <span className="mk-px num"><Tick v={f?.px} {...quoteTick(q?.pt, Date.now())}>{f ? num(f.px, d) : '—'}</Tick></span>
     <span className="mk-spark">{q && q.c.length > 2 ? <DayChart q={q} size="compact" nse good={vix ? (f?.ch ?? 0) <= 0 : (f?.ch ?? 0) >= 0} label={`${name} over the session`} /> : null}</span>
     <span className="rg mk-rg" role="img" aria-label={f ? `${name} day range ${num(f.lo, d)} to ${num(f.hi, d)}; now ${f.pos == null ? 'level' : `${Math.round(f.pos * 100)} percent of the way up`}` : `${name} range not available`}>
       <i className="trk" />{f?.prevPos != null && <i className="pv" style={{ left: `${f.prevPos * 100}%` }} title={`Previous close ${num(f.prev, d)}`} />}{f?.pos != null && <i className={`nw ${col}`} style={{ left: `${f.pos * 100}%` }} />}</span>
-    <span className="mk-rg-ends num"><span>{f ? num(f.lo, d) : '—'}</span><span>{f ? `${sgn(f.pts, d)} pts` : ''}</span><span>{f ? num(f.hi, d) : '—'}</span></span></div>;
+    <span className="mk-rg-ends num"><span>{f ? num(f.lo, d) : '—'}</span><span>{f ? `${sgn(f.pts, d)} pts` : ''}</span><span>{f ? num(f.hi, d) : '—'}</span></span><span className="sr"> on TradingView, opens in a new tab</span></a>;
 }
 
 /** The trend split of liquid names: one stacked bar and the numbers. Breadth figures and the rule live on #/info. */
@@ -81,7 +82,7 @@ export function FxStrip() {
   const m = useMacro();
   return <section className="market-macro mk-fx" aria-labelledby="mk-fx"><h2 id="mk-fx" className="mk-h">Commodities, currencies, Bitcoin</h2>
     <div className="mk-fx-grid" role="list">{MACRO.filter((d) => FX.includes(d.key)).map((d) => { const q = m.data?.quotes[d.key]; const ch = q ? (q.px / q.prev - 1) * 100 : null;
-      return <a key={d.key} role="listitem" className="tile mk-fx-tile" href={`#/m/${d.key}`}><span className="mk-nm">{d.label}<span className="sr">, chart</span></span>
+      return <a key={d.key} role="listitem" className={`tile mk-fx-tile${!q && !m.err ? ' mk-pend' : ''}`} href={`#/m/${d.key}`}><span className="mk-nm">{d.label}<span className="sr">, chart</span></span>
         <b className="num mk-px"><Tick v={q?.px} {...quoteTick(q?.pt, Date.now(), false)}>{q ? fmtMacro(d, q.px) : '—'}</Tick></b>
         <span className={`small num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? (m.err ? 'unavailable' : '…') : <><span aria-hidden="true">{ch >= 0 ? '▲ ' : '▼ '}</span>{pct(ch, 2)}</>}</span>
         <span className="mk-spark">{q ? <DayChart q={q} size="compact" nse={false} good={ch == null || ch >= 0} label={`${d.label} over the last session`} /> : <span className="sk" style={{ display: 'block', height: 28 }} />}</span></a>; })}</div>

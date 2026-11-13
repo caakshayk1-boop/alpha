@@ -119,3 +119,24 @@
 .bk-empty{display:flex;margin:var(--sp-3) 0}
 .bk-about{margin:var(--sp-4) 0 0}
 .l4-status .l4-st.warn{border:1px solid var(--amber);border-radius:var(--radius-pill);padding:2px var(--sp-3);font-weight:600}
+
+/* layout-shift reservations: the chart card holds its final height while it waits, and a one-line placeholder stands in for what mounts under it */
+.mk6 .dc-card{min-height:541px}
+@media(min-width:700px){.mk6 .dc-card{min-height:591px}}
+.mk-read{min-height:calc(var(--lh-body) * 3)}
+@media(min-width:700px){.mk-read{min-height:calc(var(--lh-body) * 2)}}
+.mk-wait{height:var(--sp-9);border-radius:var(--radius-card)}
+
+/* links inside a line of text are underlined (axe link-in-text-block) */
+.mk-line a,.l4-note a,.bk-about a,.pk-intro a,.mn-about a{text-decoration:underline;text-underline-offset:2px}
+.l4-note a,.bk-about a,.pk-intro a{display:inline-flex;align-items:center;min-height:var(--hit)}
+.bk-about{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1) var(--sp-3)}
+.mk-tile{color:inherit;text-decoration:none}
+.mk-tile-top{min-height:1.6em;align-items:center}.mk-ch{line-height:1.4;min-height:1.4em}.mk6 .mk-head{min-height:3rem}.l4-note{min-height:var(--hit)}
+.mk-basis{display:grid;gap:0;align-items:start}.mk-basis [data-ix-note]{display:block;min-height:1.5em}.mk-basis [data-market-status]{min-height:1.5em;align-items:center}
+@media(max-width:480px){.mk-basis [data-ix-note]{min-height:3em}}
+.mk-ch{min-width:6.5em;text-align:right}
+@media(max-width:480px){.mk-basis [data-market-status]{min-height:3em;align-items:flex-start}}
+.mk-rg-ends{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.mk-rg-ends span:first-child{text-align:left}.mk-rg-ends span:nth-child(2){text-align:center}.mk-rg-ends span:last-child{text-align:right}
+.mk-tile.mk-pend>*,.mk-fx-tile.mk-pend>*{visibility:hidden}
+.mk-tile.mk-pend,.mk-fx-tile.mk-pend{background:var(--surface-2)}

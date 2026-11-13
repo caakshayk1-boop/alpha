@@ -29,7 +29,9 @@ export function Markets() {
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });
   const lead = bankLead(indexFacts(pulse.data?.quotes.BANKNIFTY)?.ch ?? null, indexFacts(pulse.data?.quotes.NIFTY)?.ch ?? null);
   const s = useAppState(); const paper = usePaperSyms(); const news = useNewsBoard({ follows: s.follows, paper });
-  const q = pulse.data?.quotes[dayIx]; const nm = dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX';
+  const q = pulse.data?.quotes[dayIx]; const ready = !!q && q.c.length > 2;
+  /* Everything under the chart mounts once the screen and the news have answered, so nothing already on screen is pushed down when a slower feed lands (layout shift must be 0). */
+  const settled = !scr.loading && !news.loading; const nm = dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX';
   return <div className="mk6">
     <PageBar title="Markets" onBack sub={<>{sess.label} · {sess.detail}</>} />
     <p className="mk-read" data-takeaway data-glance>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 16, width: '70%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
@@ -43,22 +45,22 @@ export function Markets() {
     </section>
     <div className="mk-cols">
       <div className="mk-main">
-        {q && q.c.length > 2 ? <section className="card mk-card dc-card" aria-labelledby="dc-h" data-day-chart>
+        {ready ? <section className="card mk-card dc-card" aria-labelledby="dc-h" data-day-chart>
           <div className="mk-head"><h2 id="dc-h" className="mk-h">Today's session</h2>
             <div className="mini-seg" role="group" aria-label="Index">{([['NIFTY', 'Nifty 50'], ['BANKNIFTY', 'Bank Nifty'], ['VIX', 'India VIX']] as const).map(([k, n]) => <button key={k} type="button" aria-pressed={dayIx === k} onClick={() => setDayIx(k)}>{n}</button>)}</div></div>
           <DayChart key={dayIx} q={q} nse lean good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={nm} />
-        </section> : null}
-        {scr.data && <BreadthCard rows={rows} map={t.map} day={day} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} />}
-        {scr.data && <SectorHeat rows={rows} day={day} compact />}
-        {scr.data && <details className="market-depth mk-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
-        {scr.loading && !scr.data && <section className="card mk-card" aria-busy="true"><div className="sk" style={{ height: 120 }} aria-label="Loading the trend map" /></section>}
+        </section> : pulse.err || (!pulse.loading && !q) ? null : <section className="card mk-card dc-card" aria-busy="true" data-day-chart-wait><div className="mk-head"><h2 className="mk-h">Today's session</h2></div><div className="sk" style={{ height: 240 }} aria-label="Reading the session" /></section>}
+        {!settled && <div className="sk mk-wait" aria-busy="true" aria-label="Reading the market" />}
+        {settled && scr.data && <BreadthCard rows={rows} map={t.map} day={day} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} />}
+        {settled && scr.data && <SectorHeat rows={rows} day={day} compact />}
+        {settled && scr.data && <details className="market-depth mk-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
       </div>
       <aside className="mk-side" aria-label="Movers and global cues">
-        {scr.data && <Movers rows={rows} day={day} />}
-        <CuesList pool={news.pool} loading={news.loading} />
+        {settled && scr.data && <Movers rows={rows} day={day} />}
+        {settled && <CuesList pool={news.pool} loading={news.loading} />}
       </aside>
     </div>
-    <FxStrip />
-    <FlowCard slim />
+    {settled && <FxStrip />}
+    {settled && <FlowCard slim />}
   </div>;
 }

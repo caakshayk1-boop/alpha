@@ -46,7 +46,7 @@ export function TotalRow({ snap, dayLabel }: { snap: Snapshot; dayLabel: string 
       <div><dt>Unrealised</dt><dd className={`num amt ${tone(t.unrealised)}`} data-unrealised>{money(t.unrealised)}</dd></div>
       <div><dt>{dayLabel}</dt><dd className={`num amt ${tone(t.day)}`} data-day>{money(t.day)}</dd></div>
     </dl>
-    <p className="l4-note small mute" data-total-note>{t.openTrade != null ? <>{OPEN_TRADE_LABEL}: {money(t.openTrade)} · </> : null}<a href="#/info?s=pnl">How these are calculated</a></p>
+    <p className="l4-note small mute" data-total-note><a href="#/info?s=pnl">How these are calculated</a>{t.openTrade != null ? <> · {OPEN_TRADE_LABEL}: {money(t.openTrade)}</> : null}</p>
   </div>;
 }
 

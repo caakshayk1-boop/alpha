@@ -56,7 +56,9 @@ for (const width of [320, 360, 390, 1280]) {
   ok(/Picks through/.test(rt) && /Outcomes through/.test(rt), `${width}: the Record shows picks-through and outcomes-through`);
   ok(await pg.locator('[data-record] .pcard').count() === 3, `${width}: each closed trade appears once, as a row`);
   ok(/Signals gate/.test(rt) && await pg.locator('[data-sec="gate"] .ds-gatecard').count() === 1, `${width}: the Signals gate is a labelled section inside the Record`);
-  ok(/One R\./.test(rt) && /One T2\./.test(rt), `${width}: one R and one T2 definition, stated once`);
+  ok(await pg.locator('[data-rec-def]').evaluate((e) => !e.open), `${width}: the Record's definitions are collapsed under "How to read this" (v6)`);
+  await pg.locator('[data-rec-def] > summary').click(); const rt2 = await pg.locator('[data-record]').innerText();
+  ok((rt2.match(/One R\./g) ?? []).length === 1 && (rt2.match(/One T2\./g) ?? []).length === 1, `${width}: one R and one T2 definition, stated once`);
   ok(!/Nothing has closed yet/.test(rt), `${width}: no empty state when trades have closed`);
   ok(await pg.locator('[data-record-attr] .rb').count() === 3, `${width}: one R bar per closed trade`);
   ok(await pg.locator('#evidence').count() === 1 && /Evidence and method/.test(rt), `${width}: the evidence and method are a section of the Record`);
