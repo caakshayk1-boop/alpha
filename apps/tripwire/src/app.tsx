@@ -5,7 +5,7 @@ import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type
 import { downloadBackup } from './backupfile.ts';
 import { prefetchWhenIdle } from './prefetch.ts';
 import { useScreen } from './data.ts';
-import { Icon, UiProvider } from './ui.tsx';
+import { Icon, UiProvider, releaseScrollLockIfIdle } from './ui.tsx';
 const Today = lazy(() => import('./screens/today.tsx').then((m) => ({ default: m.Today })));
 const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ default: m.Discover })));
 const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
@@ -160,12 +160,17 @@ export function App(): ReactNode {
   const tab = tabOf(loc.path); const tiRaw = TABS.findIndex((t) => t.id === tab); const ti = Math.max(0, tiRaw);   /* a Menu page (desk, more) highlights no tab */
   if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'more' || tab === 'signals' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
-  const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
+  // 13 Nov 2026: the scroll follows the screen that is SHOWN (vl), not the address (loc). Under a view transition the address moves first and the screen swaps up to ~300 ms later; keyed on the address,
+  // the page jumped to the top while the OLD screen was still on show (tests/scrollflow.mjs samples scrollY every frame). It is a layout effect so the jump is part of the same commit as the swap.
+  const nav = useRef(vl.raw); if (!isQuiet(vl.raw)) nav.current = vl.raw;
+  useLayoutEffect(() => {
+    releaseScrollLockIfIdle();   // a route change never leaves the page locked behind a sheet that is no longer there
+    const own = vl.path[0] === 'discover' && isRestoring(vl.raw);   // Discover puts itself back
+    if (!own && !(isRestoring(vl.raw) && restoreScroll(vl.raw))) window.scrollTo(0, 0);
+  }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const own = loc.path[0] === 'discover' && isRestoring(loc.raw);   // Discover puts itself back
-    if (!own && !(isRestoring(loc.raw) && restoreScroll(loc.raw))) window.scrollTo(0, 0);
-    document.title = `${resolveRoute(loc.path).kind === 'notfound' ? 'Not found' : TITLES[loc.path[0]] ?? (loc.path[0] === 'desk' ? 'My Desk' : TABS[ti].label)} · Tripwire`;
-  }, [nav.current, ti]); // eslint-disable-line react-hooks/exhaustive-deps
+    document.title = `${resolveRoute(vl.path).kind === 'notfound' ? 'Not found' : TITLES[vl.path[0]] ?? (vl.path[0] === 'desk' ? 'My Desk' : TABS[Math.max(0, TABS.findIndex((t) => t.id === tabOf(vl.path)))].label)} · Tripwire`;
+  }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   /** A tap on a tab. On the tab you are in: back to the top, and if you are already there, back to the tab's first screen. On another: where you left it, scroll and all. */
   const onTab = (id: string) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

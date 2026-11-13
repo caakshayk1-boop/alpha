@@ -12,3 +12,9 @@
   html .tabs{grid-template-rows:repeat(var(--n,4),50px);padding-top:calc(var(--sp-5) + 76px)}   /* the brand lives in .rail-head (outside the nav, so the nav holds only its four destinations) */
 }
 @media print{.rail-head{display:none!important}}
+
+/* ---- scrolling: the window is the only thing that scrolls up and down ---- */
+/* A box that scrolls vertically inside the page is a trap: the wheel (or a finger) is captured by it until it runs out, and `overscroll-behavior:contain` meant it never handed the rest to the page
+   (7,200 px of wheel over the Discover table moved the page 0 px), and a 360 px window over a 1,346 px financials table on a phone swallowed every swipe that began on it. Tables scroll SIDEWAYS only. */
+.disc .stbl-wrap{max-height:none;overscroll-behavior:auto;overscroll-behavior-x:contain}
+.cf-table .scroll-x{max-height:none}
