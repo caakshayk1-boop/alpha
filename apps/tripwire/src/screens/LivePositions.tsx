@@ -5,6 +5,7 @@ import { styleDef, styleOf } from '../exits.ts';
 import { inr, inr0, pct } from '../fmt.ts';
 import { Tick } from '../live.tsx';
 import { markWord } from '../stamp.ts';
+import { wordTick } from '../tickbasis.ts';
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const tone = (v: number | null | undefined) => (v == null || v === 0 ? '' : v > 0 ? 'up' : 'down');
@@ -23,7 +24,7 @@ export function LivePositions({ rows, word }: { rows: BookRow[]; /** Live / Dela
     {shown.map((r) => <a key={r.p.id} className="posrow" href={`#/c/${r.p.sym}`}>
       <span className="grow"><span className="sym">{r.p.sym}</span> <span className="tag">{styleDef(styleOf(r.p.horizon)).label}</span>{r.v.ladder?.t1Hit && <span className="tag lime" title="Target 1 has filled: half is sold and the stop is at the fill">T1 ✓</span>}
         <span className="small dim num" style={{ display: 'block' }}>{inr(r.v.mark)} · {markWord(r.v.markKind, r.markT, Date.now()).word} · in at {inr(r.v.entry)}</span>{(() => { const i = positionInsight(r.v, r.p); return i ? <span className="small mute" style={{ display: 'block' }} data-insight>{i.line}</span> : null; })()}</span>
-      <span style={{ textAlign: 'right' }}><span className={`num amt ${tone(r.v.pnl)}`} style={{ font: '600 1rem/1.2 var(--mono)', display: 'block' }}><Tick v={r.v.pnl}>{money(r.v.pnl)}</Tick></span><span className={`small num ${tone(r.v.pnl)}`}>{pct(r.v.pct)}{r.v.r != null ? ` · ${r.v.r > 0 ? '+' : r.v.r < 0 ? '−' : ''}${Math.abs(r.v.r).toFixed(2)}R` : ''}</span></span></a>)}
+      <span style={{ textAlign: 'right' }}><span className={`num amt ${tone(r.v.pnl)}`} style={{ font: '600 1rem/1.2 var(--mono)', display: 'block' }}><Tick v={r.v.pnl} {...wordTick(markWord(r.v.markKind, r.markT, Date.now()).word)}>{money(r.v.pnl)}</Tick></span><span className={`small num ${tone(r.v.pnl)}`}>{pct(r.v.pct)}{r.v.r != null ? ` · ${r.v.r > 0 ? '+' : r.v.r < 0 ? '−' : ''}${Math.abs(r.v.r).toFixed(2)}R` : ''}</span></span></a>)}
     {open.length > 5 && !all && <button className="btn sm" style={{ marginTop: 6 }} onClick={() => setAll(true)}>Show all {open.length}</button>}
     {wait.length > 0 && open.length > 0 && <div className="k" style={{ marginTop: 10 }}>Enter at the next open · {wait.length}</div>}
     {wait.slice(0, all ? wait.length : 5).map((r) => { const px = r.q?.px; const mv = px && r.p.ref > 0 ? (px / r.p.ref - 1) * 100 : null; return <a key={r.p.id} className="posrow" href={`#/c/${r.p.sym}`}>

@@ -20,6 +20,7 @@ import { levelsFor } from '../levels.ts';
 import { reprice } from '../basis.ts';
 import { useAutoPicks } from '../book.ts';
 import { Tick, TvButton, TvIcon } from '../live.tsx';
+import { wordTick } from '../tickbasis.ts';
 import { Intel } from './Intel.tsx';
 import { DecisionCard } from './DecisionCard.tsx';
 import { CompanyNews } from './News.tsx';
@@ -166,7 +167,7 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
-      <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px} basis={lp.fromQuote ? 'quote' : 'recorded'}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
+      <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px} {...wordTick(lp.fromQuote ? lp.word : 'Last traded')}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
         <div className="c-pills" role="group" aria-label="Trend and size class"><span className={`vchip hero-trend ${tchip.tone}`} data-vchip="trend" data-trend-state={tchip.state} title={tchip.basis} tabIndex={0}><span className="vk">Trend</span><span className="vv">{tchip.glyph && <span aria-hidden="true">{tchip.glyph} </span>}{tchip.word}</span></span>{row.tier && <Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill>}</div></div>
       {wideAsOf && verdict}
       {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
