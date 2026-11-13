@@ -213,18 +213,18 @@ export function App(): ReactNode {
   else if (head === 'lab') view = <Lab />;
   else if (vtab === 'discover') view = <Discover />;
   else if (vl.path[0] === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
-  else { onToday = true; view = <Today banner={staleBanner} />; }
+  else { onToday = true; view = <Today />; }
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
       <div className="rail-head" data-noprint><Brand className="rail-brand" /><small>Research workspace</small></div>
       <main className="main" id="main" tabIndex={-1}>
         <StatusBar asOf={screen.data?.as_of} />
+        {staleBanner}   {/* v6: the one slot, under the top bar, on every page (Today no longer draws its own) */}
         {!health.persisted && <div className="banner" role="alert">Tripwire could not save: {SAVE_FAILURE_WORDS[health.why ?? 'other']}. What you have written is still here, but notes, plans and paper trades will be lost when this tab closes. <button className="btn sm" onClick={() => downloadBackup(s)}>Download a backup now</button></div>}
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Settings (More) to restore your notes.</div>}
         {pwa.updateReady && <div className="banner upd" role="status"><span>Update ready.</span><button className="btn sm" onClick={() => { const r = applyUpdate(); setUpdMsg(r === 'busy' ? 'Finish what you are editing first, then reload.' : ''); }}>Reload</button>{updMsg && <span className="why small">{updMsg}</span>}</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
-        {!onToday && staleBanner}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
         <ScrollTop />
