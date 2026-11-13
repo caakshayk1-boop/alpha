@@ -1,8 +1,8 @@
 {
  "schema": "alpha-brief/1",
  "version": "swing-2.0.1",
- "generated": "2026-11-12T22:31:26Z",
- "data_through": "2026-11-12",
+ "generated": "2026-11-13T19:56:43Z",
+ "data_through": "2026-11-13",
  "stale_sessions_behind": null,
  "paper_only": true,
  "alerts": {
@@ -16,7 +16,7 @@
   "failing": [
    {
     "rule": "Nifty above its 200-day average, and that average rising over 20 sessions",
-    "value": "Nifty 25,299 · 200-day 23,992"
+    "value": "Nifty 25,144 · 200-day 23,992"
    }
   ]
  },
@@ -27,5 +27,5 @@
   "closed": 0,
   "avg_r": null
  },
- "text": "Alpha signal brief · data through 12 Nov · paper only, not advice\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (3 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 25,299 · 200-day 23,992)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
+ "text": "Alpha signal brief · data through 13 Nov · paper only, not advice\nAlerts are off. Alerts off: the holdout month-clustered t is -0.62, needs +2.0.\n\nMarket gate: OFF (3 of 4 rules pass).\n  not met: Nifty above its 200-day average, and that average rising over 20 sessions (Nifty 25,144 · 200-day 23,992)\n\nNew paper setups: none. The gate is off, so the rules file nothing.\n\nPaper record: 0 closed. No average until a trade closes.\n\nWaiting for your approval: nothing. This brief sends no order and connects no account."
 }
