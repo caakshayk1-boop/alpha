@@ -12,7 +12,7 @@ const attr = (pg) => pg.evaluate(() => document.documentElement.dataset.updown ?
 const paint = (pg) => pg.evaluate(() => {
   const host = document.createElement('div'); host.style.cssText = 'position:absolute;left:-9999px'; host.innerHTML = '<span class="up">u</span><span class="down">d</span><span class="tag peach">t</span><div class="ladder"><div class="rail" style="width:100px"></div></div>'; document.body.appendChild(host);
   const cs = (s, p) => getComputedStyle(host.querySelector(s))[p]; const out = { up: cs('.up', 'color'), down: cs('.down', 'color'), tag: cs('.tag.peach', 'backgroundColor'), tagText: cs('.tag.peach', 'color'), rail: cs('.rail', 'backgroundImage'),
-    haloUp: getComputedStyle(document.documentElement).getPropertyValue('--halo-up').trim(), tintDown: getComputedStyle(document.documentElement).getPropertyValue('--down-tint').trim() };
+    haloUp: getComputedStyle(document.documentElement).getPropertyValue('--halo-up').trim(), peachBg: getComputedStyle(document.documentElement).getPropertyValue('--peach-bg').trim(), tintDown: getComputedStyle(document.documentElement).getPropertyValue('--down-tint').trim() };
   host.remove(); return out; });
 const radio = (pg, name) => pg.locator('[role=radiogroup][aria-label="Up and down colours"]').getByRole('radio', { name, exact: true });
 const GREEN = 'rgb(61, 220, 151)', RED = 'rgb(255, 122, 122)', BLUE = 'rgb(90, 174, 255)', ORANGE = 'rgb(255, 160, 64)';
@@ -22,7 +22,7 @@ const GREEN = 'rgb(61, 220, 151)', RED = 'rgb(255, 122, 122)', BLUE = 'rgb(90, 1
   ok((await attr(pg)) === 'default', 'a saved state from before the setting reads as the default (html[data-updown=default])');
   const p0 = await paint(pg); ok(p0.up === GREEN && p0.down === RED, `default: the approved green and red are what is painted (${p0.up}, ${p0.down})`);
   ok(/rgba\(61, 220, 151, 0\.26\)/.test(p0.haloUp.replace(/\s+/g, ' ')) || /rgba\(61,220,151,\.26\)/.test(p0.haloUp), `default: the price halo is the green tint (${p0.haloUp})`);
-  ok(p0.rail.includes('rgb(255, 107, 94)') && p0.rail.includes('rgb(61, 220, 151)'), 'default: the target ladder rail keeps its own red and green');
+  ok(p0.rail.includes('rgba(255, 107, 94') && p0.rail.includes('rgba(61, 220, 151'), `default: the target ladder rail keeps its own red and green (${p0.rail.slice(0, 90)})`);
   const grp = pg.locator('[role=radiogroup][aria-label="Up and down colours"]'); ok(await grp.count() === 1 && await grp.getByRole('radio').count() === 2, 'Settings has one radiogroup "Up and down colours" with two choices');
   ok((await radio(pg, 'Green and red (default)').getAttribute('aria-checked')) === 'true' && (await radio(pg, 'Blue and orange (colour-blind safe)').getAttribute('aria-checked')) === 'false', 'the default is the checked one');
   for (const n of ['Green and red (default)', 'Blue and orange (colour-blind safe)']) ok((await radio(pg, n).boundingBox()).height >= 43.5, `"${n}" is a 44px target`);
@@ -30,7 +30,7 @@ const GREEN = 'rgb(61, 220, 151)', RED = 'rgb(255, 122, 122)', BLUE = 'rgb(90, 1
   await radio(pg, 'Blue and orange (colour-blind safe)').click(); await pg.waitForTimeout(250);
   ok((await attr(pg)) === 'cb', 'choosing Blue and orange sets html[data-updown=cb]');
   const p1 = await paint(pg); ok(p1.up === BLUE && p1.down === ORANGE && p1.up !== p0.up && p1.down !== p0.down, `a computed colour changes: up ${p0.up} to ${p1.up}, down ${p0.down} to ${p1.down}`);
-  ok(p1.tagText === ORANGE && p1.tag !== p0.tag, `the red tag follows (text ${p1.tagText}, wash ${p0.tag} to ${p1.tag})`); ok(p1.rail !== p0.rail && p1.rail.includes('rgb(255, 160, 64)') && p1.rail.includes('rgb(90, 174, 255)'), 'the ladder rail follows');
+  ok(p1.tagText === ORANGE && p1.peachBg !== p0.peachBg, `the red tag follows (text ${p1.tagText}; wash token ${p0.peachBg} to ${p1.peachBg}; the tag itself paints text only)`); ok(p1.rail !== p0.rail && p1.rail.includes('rgba(255, 160, 64') && p1.rail.includes('rgba(90, 174, 255'), 'the ladder rail follows');
   ok(p1.haloUp !== p0.haloUp && p1.tintDown !== p0.tintDown, 'the halo and the tints follow');
   ok((await radio(pg, 'Blue and orange (colour-blind safe)').getAttribute('aria-checked')) === 'true' && /Rises are blue and falls are orange/.test(await pg.locator('[data-updown-note]').innerText()) && /signs, arrows and words stay/.test(await pg.locator('[data-updown-note]').innerText()), 'the radio and the note say what is chosen, and that signs, arrows and words stay');
 
