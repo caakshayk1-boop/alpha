@@ -31,7 +31,7 @@
 .main>.banner{position:static;margin:var(--sp-3) 0 0;padding:var(--sp-2) var(--sp-3);text-align:left;font-size:var(--fs-data);font-weight:500;line-height:1.4;border-radius:var(--rad-md)}
 
 /* ---- the top bar and the width of the page ---- */
-.statusbar{height:48px}
+.statusbar{height:52px}   /* 52 so the gate pill keeps its 44px hit area inside the bar (tapsize.mjs) */
 @media(min-width:1100px){:root{--section-gap:var(--sp-6)}.main{--pad:var(--sp-6);--gut:var(--sp-6);max-width:calc(1280px + 2 * var(--sp-6))}}
 
 /* ---- the footer: one low-key row of short phrases; each wraps whole, never mid-phrase ---- */
