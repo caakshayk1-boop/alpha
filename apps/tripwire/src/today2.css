@@ -147,3 +147,14 @@ html .today.t2 .brief-fresh{flex-direction:column;align-items:flex-start}
 html .today.t2 .brief-fresh .bf-px{min-height:2lh}
 html .today.t2 .t-sess-row .livebadge{min-width:15ch;justify-content:flex-start}
 html .today.t2 .brief-top{min-height:2lh;align-items:flex-start}
+
+/* First-visit line (hero.ts) and the stale-data banner moved under the brief. Tokens only; the dismiss control is a full --hit square (hit area, not visual bloat). */
+html .today.t2>.t-heroline{display:flex;align-items:flex-start;gap:var(--sp-2);padding:var(--sp-3) var(--sp-2) var(--sp-3) var(--card-pad);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card)}
+html .today.t2 .hl-copy{flex:1 1 auto;min-width:0}
+html .today.t2 .hl-h{margin:0;font:700 var(--fs-h3)/var(--lh-h3) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+html .today.t2 .hl-p{margin:var(--sp-1) 0 0;line-height:1.5}
+html .today.t2 .hl-x{flex:0 0 auto;display:grid;place-items:center;width:var(--hit);height:var(--hit);margin:calc(var(--sp-2) * -1) 0;padding:0;background:transparent;border:0;border-radius:var(--radius-input);color:var(--ink-2);cursor:pointer}
+html .today.t2 .hl-x:hover{color:var(--ink);background:var(--surface-2)}
+html .today.t2 .hl-x:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html .today.t2>.banner{position:static;margin:0;padding:var(--sp-2) var(--sp-3);text-align:left}
+@media(min-width:1024px){html .today.t2>:is(.t-heroline,.banner){grid-column:1/-1}}

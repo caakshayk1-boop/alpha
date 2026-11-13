@@ -179,6 +179,10 @@ export function App(): ReactNode {
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   const slot = bannerSlot({ online, loading: screen.loading, hasData: !!screen.data, behind: f ? f.behind : null, hintDay: hint.current });
+  // the stale-data banner (wording and severity unchanged). On Today the page draws it itself, directly under the brief; everywhere else it stays at the top.
+  const staleBanner = slot === 'show' ? <div className="banner" role="status" data-stale-banner>The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>
+    : slot === 'reserve' ? <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div> : null;
+  let onToday = false;
   let view: ReactNode;
   const route = resolveRoute(vl.path);
   if (route.kind === 'notfound') view = <NotFound asked={route.asked} />;
@@ -202,7 +206,7 @@ export function App(): ReactNode {
   else if (head === 'lab') view = <Lab />;
   else if (vtab === 'discover') view = <Discover />;
   else if (vl.path[0] === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
-  else view = <Today />;
+  else { onToday = true; view = <Today banner={staleBanner} />; }
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
@@ -212,8 +216,7 @@ export function App(): ReactNode {
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Settings (More) to restore your notes.</div>}
         {pwa.updateReady && <div className="banner upd" role="status"><span>Update ready.</span><button className="btn sm" onClick={() => { const r = applyUpdate(); setUpdMsg(r === 'busy' ? 'Finish what you are editing first, then reload.' : ''); }}>Reload</button>{updMsg && <span className="why small">{updMsg}</span>}</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
-        {slot === 'show' && <div className="banner" role="status">The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>}
-        {slot === 'reserve' && <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div>}
+        {!onToday && staleBanner}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
         <ScrollTop />

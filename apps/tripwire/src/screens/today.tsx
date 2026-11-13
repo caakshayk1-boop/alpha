@@ -1,6 +1,8 @@
 import { HitCard, TargetLadder } from '../components/index.ts';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { HeroLine } from './herolines.tsx';
+import { heroDue } from '../hero.ts';
 import { useAppState, useSheets } from '../app.tsx';
 import { Failed, Loading, PageBar } from './common.tsx';
 import { DataStatus } from './FreshnessPill.tsx';
@@ -43,8 +45,9 @@ const TOP = 3;
 /** Today (revamp v2, 11 Nov 2026), each fact said once, in the order a person needs it: the market (a breadth gauge and one sentence, the index tape), your names (a departure
  *  board: price, change and chips per followed company, each row opening to its changes, headlines and actions), the market's own news (three stories), the paper book in one card,
  *  the last close's top picks, and one collapsed "Data status" line at the foot. How current the screen is lives in the header pill and the app banner, not again here. */
-export function Today() {
+export function Today({ banner }: { banner?: ReactNode } = {}) {
   const s = useAppState(); const { open } = useSheets();
+  const [firstVisit] = useState(() => heroDue());   // decided once at mount: dismissing the line does not fold the walkthrough under the reader's thumb
   const { scr, out } = useEngines();
   const rows = useMemo(() => scr.data?.rows ?? [], [scr.data]); const day = scr.data?.as_of ?? null; const today = istDay();
   const fresh = isNewUser(s);   // a new user gets the setup card and the brief; the book, picks, news and changes need something of theirs to be about
@@ -83,6 +86,7 @@ export function Today() {
   return <div>
     <PageBar title="Today" />
     <div className="today t2">
+      <HeroLine />
       {/* (0) targets hit in the last completed session: only when there are some, computed from the book on this page load */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
@@ -98,12 +102,15 @@ export function Today() {
         <p className="small mute brief-fresh" data-brief><span className="bf-row bf-px">Prices: <Observed sec={pulse.obs} err={pulse.err} /> · times in IST</span><span className="bf-row bf-links"><a href="#/markets">Markets, indices, trend map</a></span></p>
       </section>
 
+      {/* the stale-data banner sits directly under the brief (alarm ordering only): same words, same severity, one section lower than it was */}
+      {banner}
+
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">
         <h2 id="t-setup" className="sec">Start with one company</h2>
         <button className="btn pri" onClick={() => open({ k: 'search' })}><Icon n="search" />Find a company</button>
       </section>}
-      {fresh && <SampleWalkthrough />}
+      {fresh && <SampleWalkthrough defaultOpen={firstVisit} />}
 
       {/* (b) your names: the departure board */}
       {!fresh && s.follows.length === 0 && <NamesEmpty />}
