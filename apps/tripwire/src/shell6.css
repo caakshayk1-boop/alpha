@@ -1,0 +1,14 @@
+/* The app shell, v6 (13 Nov 2026). Loaded after every page stylesheet and before tap.css. Owns: the wordmark link, the compact page header, the one banner slot, the content width and gutters,
+   the footer line, and scrolling. Tokens only (tools/lint-tokens.mjs); nothing here moves (motion is motion.css, under html.fx). */
+
+/* ---- the wordmark is a link home ---- */
+.rail-head{display:none}
+.statusbar a.brand,.rail-brand{text-decoration:none;color:var(--ink);border-radius:var(--rad-sm)}
+.statusbar a.brand:focus-visible,.rail-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(min-width:1100px){
+  .rail-head{display:block;position:fixed;top:var(--sp-5);left:var(--sp-4);width:calc(192px - 2 * var(--sp-4));z-index:25}
+  .rail-head .rail-brand{display:block;padding:var(--sp-1) var(--sp-3)}
+  .rail-head small{display:block;margin:var(--sp-2) var(--sp-3) 0;font-size:var(--fs-label);letter-spacing:.02em;font-weight:400;color:var(--ink-3)}
+  html .tabs{grid-template-rows:repeat(var(--n,4),50px);padding-top:calc(var(--sp-5) + 76px)}   /* the brand lives in .rail-head (outside the nav, so the nav holds only its four destinations) */
+}
+@media print{.rail-head{display:none!important}}

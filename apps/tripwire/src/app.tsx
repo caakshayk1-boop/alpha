@@ -39,6 +39,7 @@ import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
 import { lastDiscoverQuery } from './discoverstate.ts';
 import { ScrollTop } from './components/ScrollTop.tsx';
+import { Brand } from './components/Brand.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
 import { pathOnly, resolveRoute } from './route.ts';
@@ -211,6 +212,7 @@ export function App(): ReactNode {
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
+      <div className="rail-head" data-noprint><Brand className="rail-brand" /><small>Research workspace</small></div>
       <main className="main" id="main" tabIndex={-1}>
         <StatusBar asOf={screen.data?.as_of} />
         {!health.persisted && <div className="banner" role="alert">Tripwire could not save: {SAVE_FAILURE_WORDS[health.why ?? 'other']}. What you have written is still here, but notes, plans and paper trades will be lost when this tab closes. <button className="btn sm" onClick={() => downloadBackup(s)}>Download a backup now</button></div>}
@@ -223,7 +225,6 @@ export function App(): ReactNode {
         <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" data-none={tiRaw < 0 ? '' : undefined} style={{ '--tc': TABS[ti].c, '--i': ti, '--n': TABS.length } as React.CSSProperties}>
-        <span className="rail-brand" aria-hidden="true"><i />Tripwire<small>Research workspace</small></span>
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}
         <span className="rail-note">Your research.<br />Your perspective.<small>Local-first · Paper-only</small></span>
