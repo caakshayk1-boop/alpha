@@ -1,6 +1,8 @@
 /* Tap targets (v5 shop, 13 Nov 2026). Loaded LAST. Every interactive control has a hit area of at least --hit (44px) in both directions, by padding / min-size where the control is a line of text,
    and by a transparent pseudo-element where growing the box would change how it looks (a pill, a chip, an icon button). Tokens only; nothing here changes a colour, a size of type or a rule.
    tests/tapsize.mjs measures what the browser really hits (elementFromPoint), at 390 and 320 wide, so a rule here that stops working fails the suite. */
+/* 13 Nov 2026: scoped to touch and phone widths. A mouse does not need a 44px hit area, and the minimums cost the desktop Discover list 24px of density (tests/discover.mjs limit 440). tapsize.mjs measures at 390 and 320. */
+@media (pointer:coarse),(max-width:760px){
 :root{--tap-grow:min(0px,calc((100% - var(--hit)) / 2))}
 
 /* ---- controls drawn smaller than --hit: the hit area is a transparent layer around them ---- */
@@ -22,3 +24,4 @@ html .today.t2 .brief-fresh .bf-links a,html .brief-fresh .bf-links a,html .asof
 html .nw-src li a{min-width:var(--hit)}
 html .ident a{display:inline-flex;align-items:center;min-height:var(--hit);padding-inline:var(--sp-2);margin-inline:calc(var(--sp-2) * -1)}
 html .l4-link{min-width:var(--hit);justify-content:flex-start}
+}

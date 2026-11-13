@@ -47,7 +47,8 @@ await pg.getByRole('radio', { name: 'PRICE', exact: true }).click(); await pg.ge
 for (const name of ['CANDLES', 'VOLUME', 'RSI 14', 'WEEKLY', 'MONTHLY']) ok(await pg.getByRole(name === 'VOLUME' ? 'checkbox' : name === 'RSI 14' ? 'checkbox' : 'radio', { name: name === 'RSI 14' ? 'RSI (14)' : name === 'VOLUME' ? 'Volume' : name, exact: true }).count() === 1, `chart: a ${name} control`);
 await pg.getByRole('radio', { name: 'CANDLES', exact: true }).click(); await pg.waitForSelector('.c-candles rect');
 ok((await pg.locator('.c-candles rect').count()) > 20 && (await pg.locator('.chart-plot path.c-line').count()) === 0, 'chart: candles replace the line');
-ok(/(week|month) bars/i.test(await pg.locator('.chart').innerText()), 'chart: when ten years of daily candles would be unreadable, it says it draws weekly or monthly bars');
+{ await pg.evaluate(() => document.querySelectorAll('.chart [data-cf-more]').forEach((d) => { d.open = true; }));   // 13 Nov 2026: a phone folds the reading notes into one disclosure
+  ok(/(week|month) bars/i.test(await pg.locator('.chart').innerText()), 'chart: when ten years of daily candles would be unreadable, it says it draws weekly or monthly bars'); }
 await pg.getByRole('checkbox', { name: 'Volume', exact: true }).click(); ok(/Volume ·/i.test(await pg.locator('.chart').innerText()) && (await pg.locator('.chart-sub svg rect').count()) > 10, 'chart: a volume panel');
 await pg.getByRole('checkbox', { name: 'RSI (14)', exact: true }).click(); await pg.waitForSelector('.chart-sub [aria-label^="RSI 14"]');
 const rsiTxt = await pg.locator('.chart').innerText(); ok(/RSI 14 · (day|week|month) closes/i.test(rsiTxt) && /D \d+ · W \d+ · M \d+/.test(rsiTxt), 'chart: RSI 14 with the daily, weekly and monthly readings beside it');
