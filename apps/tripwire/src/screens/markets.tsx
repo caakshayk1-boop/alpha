@@ -1,56 +1,59 @@
 import { useState } from 'react';
-import { SectorHeat } from './SectorHeat.tsx';
 import { useEngines } from '../useEngines.ts';
 import { FlowCard } from './FlowCard.tsx';
 import { DayChart } from '../components/DayChart.tsx';
 import { usePulse } from '../data.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { sessionNow } from '../market.ts';
-import { dayWord } from '../fmt.ts';
-import { Ago, Observed } from '../live.tsx';
+import { Observed } from '../live.tsx';
 import { useTrendSummary } from '../trendsummary.ts';
-import { MacroStrip } from './Macro.tsx';
-import { IndexRows } from './IndexRows.tsx';
-import { TrendMap } from './TrendMap.tsx';
-import { Head, PageBar } from './common.tsx';
-import { Loading } from './common.tsx';
-import { SectorBars } from './SectorBars.tsx';
+import { PageBar } from './common.tsx';
 import { marketTakeaway } from '../takeaway.ts';
 import { freshness } from '../fresh.ts';
-import { pct } from '../fmt.ts';
+import { useAppState } from '../app.tsx';
+import { useNewsBoard } from '../news.ts';
+import { usePaperSyms } from './NewsPage.tsx';
+import { BreadthCard, CuesList, FxStrip, IndexTile, Movers, SectorTiles } from './mk.tsx';
 
-/** The detail behind Today's market line: the indices, commodities and currencies, and the trend map with its sectors. Moved here from Today on 27 Oct 2026; nothing about it changed. */
+/** Markets (v6, 13 Nov 2026): a summary row of index tiles, the session chart with the trend map and sectors beside the movers and the global cues, then the commodities strip and the flows.
+ *  Every card has one job and a one-line title; what the numbers mean is on #/info. Same feeds and the same rules as before: nothing here was recalculated. */
 export function Markets() {
   const { scr } = useEngines(); const rows = scr.data?.rows ?? []; const day = scr.data?.as_of ?? null;
   const pulse = usePulse(true); const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null; const sess = sessionNow(Date.now(), anyLive); const pw = quoteWord(pulse.obs, Date.now(), { loading: pulse.loading && !pulse.err });
   const [dayIx, setDayIx] = useState<'NIFTY' | 'BANKNIFTY' | 'VIX'>('NIFTY');
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
-  const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });   // 11 Nov 2026: no gauge on this page, so the shares stay in the sentence
-  return <div>
+  const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });
+  const s = useAppState(); const paper = usePaperSyms(); const news = useNewsBoard({ follows: s.follows, paper });
+  const q = pulse.data?.quotes[dayIx]; const nm = dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX';
+  return <div className="mk6">
     <PageBar title="Markets" onBack sub={<>{sess.label} · {sess.detail}</>} />
-    <section className="card mk-glance" aria-label="Market summary" data-glance>
-      <p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
-      <p className="small mute" style={{ margin: '8px 0 0' }}>Index moves are against the previous close; breadth is the share of {t.map.n ? t.map.n.toLocaleString('en-IN') : 'counted'} liquid names. Both are measured, neither is a forecast.</p>
+    <p className="mk-read" data-takeaway data-glance>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 16, width: '70%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
+    <section className="mk-tiles" aria-label="Index summary" data-tiles>
+      <div className="mk-tiles-grid" role="list">
+        <IndexTile k="NIFTY" name="Nifty 50" q={pulse.data?.quotes.NIFTY} d={2} err={!!pulse.err} />
+        <IndexTile k="BANKNIFTY" name="Bank Nifty" q={pulse.data?.quotes.BANKNIFTY} d={0} err={!!pulse.err} />
+        <IndexTile k="VIX" name="India VIX" q={pulse.data?.quotes.VIX} d={2} vix err={!!pulse.err} />
+      </div>
+      <p className="mk-basis small mute" data-market-status>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}Against the previous close · <Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></p>
     </section>
-    {pulse.data?.quotes[dayIx] && pulse.data.quotes[dayIx].c.length > 2 && <section className="card dc-card" aria-labelledby="dc-h" data-day-chart>
-      <div className="row between"><h2 id="dc-h" className="sec" style={{ margin: 0 }}>Today's session</h2>
-        <div className="mini-seg" role="group" aria-label="Index">{([['NIFTY', 'Nifty 50'], ['BANKNIFTY', 'Bank Nifty'], ['VIX', 'India VIX']] as const).map(([k, nm]) => <button key={k} type="button" aria-pressed={dayIx === k} onClick={() => setDayIx(k)}>{nm}</button>)}</div></div>
-      <DayChart key={dayIx} q={pulse.data.quotes[dayIx]} nse good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={dayIx === 'NIFTY' ? 'Nifty 50' : dayIx === 'BANKNIFTY' ? 'Bank Nifty' : 'India VIX'} />
-    </section>}
-    {scr.data && <SectorHeat rows={rows} day={day} />}
-    <FlowCard />
-    <div className="market-grid">
-      <section className="moodhero card market-indices" aria-label="Bank Nifty and India VIX"><div className="row between small" style={{ marginBottom: 6 }}><b>Bank Nifty and India VIX</b><span className="row" style={{ gap: 8 }}>{pw === 'Live' && <i className="dot-live" aria-hidden="true" />}<span className="mute" data-market-status><Observed sec={pulse.obs} err={pulse.err} loading={pulse.loading} /></span></span></div>
-        <IndexRows nifty={pulse.data?.quotes.NIFTY} bank={pulse.data?.quotes.BANKNIFTY} vix={pulse.data?.quotes.VIX} err={!!pulse.err} /></section>
-      <section className="market-breadth">
-      {scr.loading && <Loading what="the trend map" />}
-      {scr.data && <><Head aside={<span className="small mute">{t.liveMap && sess.phase === 'open' ? <><i className="dot-live" aria-hidden="true" /> live · fetched <Ago at={t.breadth.at} /></> : t.liveMap ? <>last prices · fetched <Ago at={t.breadth.at} /></> : `close of ${dayWord(day)}`}</span>}>Trend map</Head>
-        <TrendMap rows={rows} day={day} map={t.map} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} repriced={t.liveMap ? t.liveMap.repriced : null} err={!!t.breadth.err} />
-        </>}
-      </section>
-      {scr.data && <details className="market-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
-      <section className="market-macro"><Head>Commodities, currencies, Bitcoin</Head><p className="small mute">Latest session · scroll for more markets →</p><MacroStrip /></section>
+    <div className="mk-cols">
+      <div className="mk-main">
+        {q && q.c.length > 2 ? <section className="card mk-card dc-card" aria-labelledby="dc-h" data-day-chart>
+          <div className="mk-head"><h2 id="dc-h" className="mk-h">Today's session</h2>
+            <div className="mini-seg" role="group" aria-label="Index">{([['NIFTY', 'Nifty 50'], ['BANKNIFTY', 'Bank Nifty'], ['VIX', 'India VIX']] as const).map(([k, n]) => <button key={k} type="button" aria-pressed={dayIx === k} onClick={() => setDayIx(k)}>{n}</button>)}</div></div>
+          <DayChart key={dayIx} q={q} nse lean good={dayIx === 'VIX' ? (chOf('VIX') ?? 0) <= 0 : (chOf(dayIx) ?? 0) >= 0} label={nm} />
+        </section> : null}
+        {scr.data && <BreadthCard rows={rows} map={t.map} day={day} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} />}
+        {scr.data && <SectorTiles rows={rows} day={day} />}
+        {scr.loading && !scr.data && <section className="card mk-card" aria-busy="true"><div className="sk" style={{ height: 120 }} aria-label="Loading the trend map" /></section>}
+      </div>
+      <aside className="mk-side" aria-label="Movers and global cues">
+        {scr.data && <Movers rows={rows} day={day} />}
+        <CuesList pool={news.pool} loading={news.loading} />
+      </aside>
     </div>
+    <FxStrip />
+    <FlowCard slim />
   </div>;
 }

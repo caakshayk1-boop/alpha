@@ -1,0 +1,89 @@
+/* Markets, v6 (13 Nov 2026). Tokens only. One job per card, one heading size (--fs-h3 at most), one card padding (--card-pad). Nothing here moves: motion is in motion.css under html.fx. */
+.mk6{display:grid;gap:var(--sp-4);min-width:0}
+.mk6>*{min-width:0;margin:0}
+.mk6 .card+.card{margin-top:0}
+.mk6 .mk-card{padding:var(--sp-4);border-radius:var(--radius-card)}
+@media(min-width:700px){.mk6 .mk-card{padding:var(--sp-5)}}
+.mk-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap;margin:0 0 var(--sp-3);min-height:var(--hit)}
+.mk-h{margin:0;font:600 var(--fs-body)/var(--lh-body) var(--font);letter-spacing:var(--track-tight);color:var(--ink)}
+.mk-read{margin:0;font:500 var(--fs-body)/var(--lh-body) var(--font);color:var(--ink);max-width:72ch;min-height:var(--lh-body);text-wrap:balance}
+
+/* index tiles */
+.mk-tiles-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3)}
+.mk-tile{display:grid;grid-template-rows:auto auto 36px auto auto;gap:var(--sp-1);padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);min-width:0}
+.mk-tile-top{display:flex;justify-content:space-between;gap:var(--sp-2);align-items:baseline;min-width:0}
+.mk-nm{font:600 var(--fs-label)/1.3 var(--font);color:var(--ink-3);letter-spacing:.02em;min-width:0;overflow-wrap:anywhere}
+.mk-ch{font-size:var(--fs-data);font-weight:600;white-space:nowrap}
+.mk-px{font:600 var(--fs-num-s)/1.2 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums lining-nums;overflow-wrap:anywhere}
+.mk-spark{display:block;height:36px;min-width:0}
+.mk-spark svg{display:block;width:100%;height:100%}
+.mk-tile .mk-rg{margin-top:var(--sp-2);height:6px}
+.mk-rg-ends{display:flex;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-label);color:var(--ink-3)}
+.mk-rg-ends span:nth-child(2){text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-basis{margin:0;display:flex;align-items:center;gap:var(--sp-2)}
+.mk-tiles{display:grid;gap:var(--sp-2)}
+@media(max-width:699px){
+  .mk-tiles-grid{grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}
+  .mk-tile{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:var(--sp-4);row-gap:var(--sp-1);align-items:center}
+  .mk-tile-top{grid-column:1;grid-row:1}
+  .mk-px{grid-column:1;grid-row:2}
+  .mk-spark{grid-column:2;grid-row:1/3;height:44px}
+  .mk-tile .mk-rg{grid-column:1/-1;grid-row:3;margin-top:var(--sp-1)}
+  .mk-rg-ends{grid-column:1/-1;grid-row:4}
+}
+
+/* columns */
+.mk-cols{display:grid;gap:var(--sp-4);grid-template-columns:minmax(0,1fr);align-items:start}
+.mk-main,.mk-side{display:grid;gap:var(--sp-4);min-width:0;align-content:start}
+@media(min-width:1100px){.mk-cols{grid-template-columns:minmax(0,1.75fr) minmax(300px,1fr);gap:var(--sp-5)}}
+
+/* session chart: capped height, no standing caption */
+.mk6 .dc-card{margin:0}
+.mk6 .dc-card .dc-readout{padding-block:0 var(--sp-2)}
+.mk6 .dc-card .dc-readout strong{font:600 var(--fs-num-l)/1.1 var(--font);letter-spacing:var(--track-tight)}
+.mk6 .dc-card .dc-full{height:auto;max-height:300px}
+@media(max-width:699px){.mk6 .dc-card .dc-full{max-height:220px}}
+.mk6 .dc-card .dc-facts{padding-block:var(--sp-3);margin-top:var(--sp-2);gap:var(--sp-3)}
+.mk6 .dc-card .dc-note[hidden]{display:none}
+.mk6 .dc-card .dc-table>summary{min-height:var(--hit)}
+
+/* trend map */
+.mk-split{height:12px;margin:0 0 var(--sp-3)}
+.mk-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);margin:0}
+.mk-nums dt{font-size:var(--fs-label);color:var(--ink-3)}
+.mk-nums dt.up{color:var(--up)}.mk-nums dt.down{color:var(--down)}
+.mk-nums dd{margin:0;font:600 var(--fs-num-s)/1.2 var(--font);display:flex;align-items:baseline;gap:var(--sp-2)}
+.mk-nums dd small{font:400 var(--fs-label)/1 var(--font);color:var(--ink-3)}
+.mk-line{margin:var(--sp-3) 0 0}
+.mk-go{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+.mk-chip{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:var(--hit);padding:0 var(--sp-3);border:1px solid var(--line-2);border-radius:var(--radius-pill);font-size:var(--fs-data);color:var(--ink-2);text-decoration:none}
+.mk-chip b{color:var(--ink)}
+
+/* sector tiles */
+.mk-sectors{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:var(--sp-2)}
+.mk-sec{display:flex;flex-direction:column;justify-content:space-between;gap:var(--sp-1);min-height:var(--hit);height:100%;padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--rad-md);color:var(--ink);text-decoration:none;
+  background:color-mix(in srgb,var(--tone,var(--ink-3)) calc(var(--heat,.1) * 26%),var(--surface))}
+.mk-sec-n{font-size:var(--fs-data);line-height:1.3;color:var(--ink-2);overflow-wrap:anywhere}
+.mk-sec b{font:600 var(--fs-body)/1.2 var(--font)}
+
+/* movers and cues */
+.mk-list{list-style:none;margin:0;padding:0;display:grid}
+.mk-list li+li{border-top:1px solid var(--line)}
+.mk-row{display:grid;grid-template-columns:minmax(0,1fr) auto 5.5rem;gap:var(--sp-3);align-items:center;min-height:var(--hit);padding:var(--sp-2) 0;color:inherit;text-decoration:none}
+.mk-row-n{display:grid;min-width:0}
+.mk-row-n small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-label)}
+.mk-row>b{text-align:right;font-size:var(--fs-data);white-space:nowrap}
+.mk-row-p{font-size:var(--fs-data);color:var(--ink-2)}
+.mk-foot{margin:var(--sp-3) 0 0}
+.mk-cue{display:grid;gap:var(--sp-1);min-height:var(--hit);padding:var(--sp-3) 0;color:inherit;text-decoration:none}
+.mk-cue-h{font-size:var(--fs-data);line-height:1.4;color:var(--ink)}
+
+/* commodities strip */
+.mk-fx{display:grid;gap:var(--sp-3)}
+.mk-fx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
+@media(min-width:700px){.mk-fx-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1100px){.mk-fx-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.mk6 .mk-fx .mk-fx-tile{display:grid;gap:var(--sp-1);min-width:0;max-width:none;padding:var(--sp-3);text-decoration:none;color:inherit}
+.mk-fx-tile .mk-px{font-size:var(--fs-body)}
+
+.mk-flows .row.between{min-height:var(--hit);margin-bottom:var(--sp-2)}
