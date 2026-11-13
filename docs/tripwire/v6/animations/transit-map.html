@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=720">
+<title>Tripwire — From the close to the ledger (Transit Map)</title>
+<style>
+/* Transit Map style: flat colour, one bold line, round stations, tidy labels. 720x1280 (9:16). Facts only: nothing here predicts. */
+:root{--paper:#F4F1EA;--ink:#14171C;--line:#0B84F3;--line2:#E8532B;--dim:#6C727C;--ok:#16A36B}
+*{box-sizing:border-box;margin:0}
+html,body{width:720px;height:1280px;overflow:hidden;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+.top{position:absolute;left:56px;top:64px;right:56px}
+.k{font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600}
+h1{font-size:58px;line-height:1.04;letter-spacing:-.03em;margin-top:14px;font-weight:800}
+.sub{margin-top:14px;font-size:24px;color:var(--dim);line-height:1.35;max-width:560px}
+svg{position:absolute;left:0;top:300px;width:720px;height:880px}
+.rail{fill:none;stroke:var(--line);stroke-width:14;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1900;stroke-dashoffset:1900;animation:draw 7.2s cubic-bezier(.45,.05,.2,1) .8s forwards}
+.rail2{stroke:var(--line2);stroke-dasharray:260;stroke-dashoffset:260;animation:draw2 1.4s ease-out 8.2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}@keyframes draw2{to{stroke-dashoffset:0}}
+.st{opacity:0;transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.2,1.4,.4,1) forwards}
+.st circle{fill:var(--paper);stroke:var(--ink);stroke-width:7}
+.lbl{opacity:0;animation:fade .5s ease-out forwards;font-size:30px;font-weight:700;fill:var(--ink);letter-spacing:-.01em}
+.lbl small{font-size:21px;font-weight:500;fill:var(--dim)}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+@keyframes fade{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.train{fill:var(--ink);opacity:0;animation:vis .1s linear 1s forwards}
+@keyframes vis{to{opacity:1}}
+.end{position:absolute;left:56px;right:56px;bottom:44px;opacity:0;animation:fade2 .8s ease-out 10.4s forwards}
+@keyframes fade2{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.end b{display:block;font-size:30px;letter-spacing:-.01em}.end span{display:block;margin-top:8px;font-size:21px;color:var(--dim);line-height:1.4}
+.tag{position:absolute;right:56px;top:70px;padding:8px 14px;border:2px solid var(--ink);border-radius:999px;font-size:17px;font-weight:700;letter-spacing:.08em}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style></head><body>
+<div class="tag">PAPER ONLY</div>
+<div class="top"><div class="k">Tripwire · line 1</div><h1>From the close<br>to the ledger</h1><div class="sub">One line. Six stops. Every stop leaves a dated record.</div></div>
+<svg viewBox="0 0 720 880" aria-label="A transit line with six stations: Close, Screen, Rules, Picks, Paper book, Ledger">
+  <path class="rail" d="M120 40 V190 H120 V340 Q120 400 180 400 H420 Q500 400 500 470 V560 Q500 620 440 620 H240 Q170 620 170 680 V720"/>
+  <path class="rail rail2" d="M170 720 H420"/>
+  <g id="stations"></g>
+  <circle class="train" r="15" id="train"><animateMotion dur="7.2s" begin="1s" fill="freeze" keyPoints="0;1" keyTimes="0;1" calcMode="spline" keySplines=".45 .05 .2 1"><mpath href="#route"/></animateMotion></circle>
+  <path id="route" d="M120 40 V190 V340 Q120 400 180 400 H420 Q500 400 500 470 V560 Q500 620 440 620 H240 Q170 620 170 680 V720" fill="none"/>
+</svg>
+<div class="end"><b>Close → Screen → Rules → Picks → Paper book → Ledger</b><span>Public rules. Evidence for and against. Costs counted. The ledger is append-only. Not advice.</span></div>
+<script>
+const NS='http://www.w3.org/2000/svg',g=document.getElementById('stations');
+// [x,y,title,detail,delay s]
+const S=[[120,40,'Close','NSE session ends',1.2],[120,190,'Screen','Every liquid name, scored',2.3],[120,340,'Rules','Public rules, one definition each',3.4],[420,400,'Picks','Fired, with evidence',4.6],[500,560,'Paper book','Positions, partial exits, costs',5.8],[170,720,'Ledger','Append-only',7.4]];
+for(const [x,y,t,d,s] of S){
+  const c=document.createElementNS(NS,'g');c.setAttribute('class','st');c.style.animationDelay=s+'s';
+  const k=document.createElementNS(NS,'circle');k.setAttribute('cx',x);k.setAttribute('cy',y);k.setAttribute('r',17);c.appendChild(k);g.appendChild(c);
+  const l=document.createElementNS(NS,'text');l.setAttribute('class','lbl');l.style.animationDelay=(s+.15)+'s';
+  // label side: right of the station, except Picks (below-left, clear of the curve) and Ledger (left, clear of the spur)
+  const below=t==='Picks', right=(x<300&&t!=='Ledger')&&!below; const lx=below?x+10:(right?x+42:(t==='Ledger'?x-30:x-42)), ly=below?y+54:y-2;
+  l.setAttribute('x',lx);l.setAttribute('y',ly);l.setAttribute('text-anchor',right?'start':'end');
+  l.innerHTML=t+'<tspan x="'+lx+'" dy="30" class="d" style="font-size:21px;font-weight:500;fill:#6C727C">'+d+'</tspan>';g.appendChild(l);
+}
+setTimeout(()=>{window.__done=true},12500);
+</script></body></html>

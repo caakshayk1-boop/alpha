@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=720">
+<title>Tripwire — How a rule fires (Blueprint)</title>
+<style>
+/* Blueprint style: cyan lines on deep blue, grid paper, dimension marks, drawn-on strokes, mono labels. 720x1280 (9:16). Facts only: nothing here predicts. */
+:root{--bg:#0B2A4A;--grid:rgba(160,205,255,.13);--line:#BFE3FF;--dim:#7FB3E6;--hot:#FFD166}
+*{box-sizing:border-box;margin:0}
+html,body{width:720px;height:1280px;overflow:hidden;background:var(--bg);color:var(--line);font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px),linear-gradient(rgba(160,205,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(160,205,255,.06) 1px,transparent 1px);background-size:120px 120px,120px 120px,24px 24px,24px 24px}
+.head{position:absolute;left:48px;right:48px;top:56px}
+.head .k{font-size:18px;letter-spacing:.18em;color:var(--dim)}
+.head h1{font-size:46px;line-height:1.1;margin-top:12px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.box{position:absolute;left:96px;width:528px;height:150px;border:3px solid var(--line);opacity:0;animation:in .6s ease-out forwards;padding:22px 26px}
+.box b{display:block;font-size:30px;color:#fff}.box span{display:block;margin-top:10px;font-size:19px;line-height:1.4;color:var(--dim)}
+.box .n{position:absolute;right:-3px;top:-3px;background:var(--bg);border:3px solid var(--line);padding:2px 12px;font-size:16px;color:var(--hot)}
+@keyframes in{from{opacity:0;transform:translateY(16px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:none;clip-path:inset(0 0 0 0)}}
+.a1{top:250px;animation-delay:.6s}.a2{top:470px;animation-delay:2.6s}.a3{top:690px;animation-delay:4.6s}.a4{top:910px;animation-delay:6.6s}
+svg{position:absolute;left:0;top:0;width:720px;height:1280px;pointer-events:none}
+.arrow{fill:none;stroke:var(--hot);stroke-width:3;stroke-dasharray:90;stroke-dashoffset:90;marker-end:url(#h);animation:dr .7s ease-out forwards}
+.arrow.t1{animation-delay:1.9s}.arrow.t2{animation-delay:3.9s}.arrow.t3{animation-delay:5.9s}
+@keyframes dr{to{stroke-dashoffset:0}}
+.dim{position:absolute;left:48px;width:28px;border-left:2px solid var(--dim);opacity:0;animation:fadeD .6s ease-out forwards}
+.dim i{position:absolute;left:-1px;font-style:normal;font-size:15px;color:var(--dim);transform:rotate(-90deg);transform-origin:left top;white-space:nowrap}
+.dim.d1{top:250px;height:150px;animation-delay:1s}.dim.d2{top:470px;height:150px;animation-delay:3s}.dim.d3{top:690px;height:150px;animation-delay:5s}.dim.d4{top:910px;height:150px;animation-delay:7s}
+@keyframes fadeD{to{opacity:1}}
+.stamp{position:absolute;right:48px;bottom:62px;border:3px solid var(--hot);color:var(--hot);padding:12px 20px;font-size:20px;letter-spacing:.14em;transform:rotate(-4deg) scale(1.3);opacity:0;animation:stamp .5s cubic-bezier(.2,1.3,.4,1) 9s forwards}
+@keyframes stamp{to{opacity:1;transform:rotate(-4deg) scale(1)}}
+.note{position:absolute;left:48px;bottom:150px;width:620px;font-size:17px;line-height:1.5;color:var(--dim);opacity:0;animation:fadeD .8s ease-out 9.4s forwards}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style></head><body>
+<div class="head"><div class="k">SHEET 1 / 1 · SCALE: ONE RULE</div><h1>How a rule<br>fires</h1></div>
+<div class="dim d1"><i style="top:140px">STEP 1</i></div><div class="dim d2"><i style="top:140px">STEP 2</i></div><div class="dim d3"><i style="top:140px">STEP 3</i></div><div class="dim d4"><i style="top:140px">STEP 4</i></div>
+<div class="box a1"><span class="n">01</span><b>DATA</b><span>The finished session's prices and statements, with their dates.</span></div>
+<div class="box a2"><span class="n">02</span><b>RULE TEST</b><span>A public rule, written down once. Pass, fail, or not measured.</span></div>
+<div class="box a3"><span class="n">03</span><b>EVIDENCE</b><span>What supports the name and what counts against it, side by side.</span></div>
+<div class="box a4"><span class="n">04</span><b>PAPER BOOK</b><span>A dated paper position. Exits, partial exits and costs are recorded.</span></div>
+<svg viewBox="0 0 720 1280" aria-hidden="true"><defs><marker id="h" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0 10 5 0 10z" fill="#FFD166"/></marker></defs>
+<path class="arrow t1" d="M360 400 V468"/><path class="arrow t2" d="M360 620 V688"/><path class="arrow t3" d="M360 840 V908"/></svg>
+<div class="note">Every figure keeps its date. Unknown stays unknown. Nothing here predicts.</div>
+<div class="stamp">PAPER ONLY · NOT ADVICE</div>
+<script>setTimeout(()=>{window.__done=true},11500);</script>
+</body></html>
