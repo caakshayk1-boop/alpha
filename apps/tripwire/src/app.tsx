@@ -1,6 +1,6 @@
 import { StatusBar } from './statusbar.tsx';
-import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { DEFAULTS, effectsOf, type State } from './store.ts';
+import { Suspense, lazy, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { DEFAULTS, effectsOf, updownOf, type State } from './store.ts';
 import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type SaveFailure } from './persist.ts';
 import { downloadBackup } from './backupfile.ts';
 import { prefetchWhenIdle } from './prefetch.ts';
@@ -147,6 +147,7 @@ export function App(): ReactNode {
   // look: theme, hidden amounts; a tap on a control gives a light tap (never on a link that only scrolls)
   useEffect(() => { applyTheme(s.prefs.theme); }, [s.prefs.theme]);
   useEffect(() => { document.documentElement.classList.toggle('priv', !!s.prefs.hideAmounts); }, [s.prefs.hideAmounts]);
+  useLayoutEffect(() => { document.documentElement.dataset.updown = updownOf(s.prefs); }, [s.prefs.updown]);   // 13 Nov 2026: the up/down palette is html[data-updown] in tokens.css; set before paint so a blue-and-orange reader never sees green and red first
   useEffect(() => { const h = (e: Event) => { const t = e.target as HTMLElement | null; if (t?.closest('.btn,.chip,.icon-btn,.seg button,.mini-seg button,.tabs a,.pick-row,.swatch')) haptic('tap'); }; document.addEventListener('click', h, true); return () => document.removeEventListener('click', h, true); }, []);
   // the lock: on at launch if it is set, and again after a minute in the background
   const [locked, setLocked] = useState(() => !!lockId());

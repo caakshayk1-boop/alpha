@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { replaceHash, setState, useAppState } from '../app.tsx';
 import { Icon, useUi } from '../ui.tsx';
 import { Head, PageBar } from './common.tsx';
-import { DEFAULTS, EFFECTS_MODES, checkBackup, effectsOf, exportJson, journalCsv, mergeStates, type State } from '../store.ts';
+import { DEFAULTS, EFFECTS_MODES, UPDOWN_MODES, checkBackup, effectsOf, exportJson, journalCsv, mergeStates, updownOf, type State, type UpDownMode } from '../store.ts';
 import { download, downloadBackup } from '../backupfile.ts';
 import { backupStatus, readBackup } from '../backupstatus.ts';
 import { readUnreadable, storageWorks } from '../persist.ts';
@@ -60,6 +60,13 @@ export function Settings() {
           {EFFECTS_MODES.map((m) => <button key={m} type="button" role="radio" aria-checked={effectsOf(p) === m} data-effects={m} className={effectsOf(p) === m ? 'on' : ''} onClick={() => set({ effects: m })} style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)' }}>{m === 'off' ? 'Off' : m === 'calm' ? 'Calm' : 'Lively'}</button>)}
         </div>
         <p className="small dim" style={{ margin: '8px 0 0' }} data-effects-note>{effectsOf(p) === 'off' ? 'Nothing animates: no halo on a changed price, no fades, no press feedback.' : effectsOf(p) === 'calm' ? 'A soft halo behind a price that changed, content that fades in, a gentle press. This is the default.' : 'Calm, plus a shimmer while content loads, a slightly longer rise, and charts that draw on once.'}</p>
+      </fieldset>
+      <fieldset className="set-fx set-updown" data-updown-group style={{ border: 0, margin: 0, padding: '12px 0 4px' }}>
+        <legend className="small" style={{ padding: 0, color: 'var(--ink)' }}>Up and down colours<span className="dim small" style={{ display: 'block' }}>The two colours that mark a figure going up and going down.</span></legend>
+        <div role="radiogroup" aria-label="Up and down colours" className="mini-seg fx-seg" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+          {UPDOWN_MODES.map((m: UpDownMode) => <button key={m} type="button" role="radio" aria-checked={updownOf(p) === m} data-updown={m} className={updownOf(p) === m ? 'on' : ''} onClick={() => set({ updown: m })} style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)' }}>{m === 'default' ? 'Green and red (default)' : 'Blue and orange (colour-blind safe)'}</button>)}
+        </div>
+        <p className="small dim" style={{ margin: '8px 0 0' }} data-updown-note>{updownOf(p) === 'cb' ? 'Rises are blue and falls are orange, a pair that stays distinct for the common kinds of colour-blindness.' : 'Rises are green and falls are red. This is the default.'} Only the colours change: signs, arrows and words stay.</p>
       </fieldset>
       <label className="row between set-row"><span>Haptics<span className="dim small" style={{ display: 'block' }}>{hapticsNote(support())}</span></span><input type="checkbox" role="switch" checked={p.haptics && support() !== 'none'} disabled={support() === 'none'} onChange={(e) => set({ haptics: e.target.checked })} /></label>
       <div className="set-row" style={{ display: "block" }}><span>Text size</span><span className="dim small" style={{ display: 'block' }}>Follows your device’s text-size setting where the browser supports it (Safari on iPhone does; most others follow the browser’s own font-size setting). There is no separate control here.</span></div>

@@ -16,7 +16,12 @@ export interface Snap { at: string; day: string; px: number | null; rsi: number 
 export type EffectsMode = 'off' | 'calm' | 'lively';
 export const EFFECTS_MODES: readonly EffectsMode[] = ['off', 'calm', 'lively'];
 export const effectsOf = (p: { effects?: unknown } | undefined | null): EffectsMode => (p && EFFECTS_MODES.includes(p.effects as EffectsMode) ? (p.effects as EffectsMode) : 'calm');
-export interface Prefs { motion: 'auto' | 'off'; /** Off, Calm (default) or Lively. Additive, 12 Nov 2026. */ effects?: EffectsMode; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
+/** The up and down colours (13 Nov 2026, v5): 'default' is the approved green and red; 'cb' is blue and orange, chosen to stay apart under protan, deutan and tritan vision (tokens.css, html[data-updown=cb]).
+ *  Optional and additive: a payload saved before this field, or holding anything else, reads as 'default'. Direction is also an arrow and a word everywhere, in both settings. */
+export type UpDownMode = 'default' | 'cb';
+export const UPDOWN_MODES: readonly UpDownMode[] = ['default', 'cb'];
+export const updownOf = (p: { updown?: unknown } | undefined | null): UpDownMode => (p && UPDOWN_MODES.includes(p.updown as UpDownMode) ? (p.updown as UpDownMode) : 'default');
+export interface Prefs { motion: 'auto' | 'off'; /** Off, Calm (default) or Lively. Additive, 12 Nov 2026. */ effects?: EffectsMode; /** Up and down colours: 'default' (green and red) or 'cb' (blue and orange). Additive, 13 Nov 2026. */ updown?: UpDownMode; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
   /** Entry-candidate settings on this device. Never change existing positions or the shared auto book's published settings. */
   signalAgreement?: AgreementSettings;
@@ -34,7 +39,7 @@ export interface State {
   storageNote?: boolean;
 }
 export const DEFAULTS: State = { v: VERSION, follows: [], entries: [], plans: [], compares: [], screens: [], snaps: {}, onboarded: false, reviews: [], paper: [], seen: {}, inbox: [], dismissed: {},
-  prefs: { motion: 'auto', motionV: 2, effects: 'calm', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
+  prefs: { motion: 'auto', motionV: 2, effects: 'calm', updown: 'default', haptics: true, horizon: '', experience: '', interests: [], equity: 1000000, cash: 1000000, riskPct: 0.5, maxPositionPct: 15 } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const iso = (d: Date) => d.toISOString();
@@ -184,6 +189,7 @@ function checkPrefs(raw: unknown): Prefs {
   for (const k of NUM_PREFS) if (!isNum(p[k]) || (p[k] as number) < 0) out[k] = D[k];
   if (p.motion !== 'auto' && p.motion !== 'off') out.motion = D.motion;
   out.effects = effectsOf(p);   // 12 Nov 2026: absent or unreadable reads as Calm
+  out.updown = updownOf(p);   // 13 Nov 2026: absent or unreadable reads as the default green and red
 
   if (typeof p.haptics !== 'boolean') out.haptics = D.haptics;
   if (!isStr(p.horizon)) out.horizon = D.horizon; if (!isStr(p.experience)) out.experience = D.experience;
