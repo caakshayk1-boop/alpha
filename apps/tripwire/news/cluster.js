@@ -18,7 +18,14 @@ const UNIT = { thousand: 1e3, k: 1e3, lakh: 1e5, lakhs: 1e5, lac: 1e5, lacs: 1e5
 export function amounts(headline) {
   const out = new Set(); const t = String(headline ?? '').toLowerCase();
   const re = /(\d{1,3}(?:[ ,]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(thousand|lakhs?|lacs?|crores?|cr|million|mn|billion|bn|trillion|tn|k|m|b)\b/g; let m;
-  while ((m = re.exec(t))) { const v = Number(m[1].replace(/[ ,]/g, '')) * UNIT[m[2]]; if (Number.isFinite(v) && v > 0) out.add('A' + Number(v.toPrecision(5))); }
+  while ((m = re.exec(t))) {
+    const v = Number(m[1].replace(/[ ,]/g, '')) * UNIT[m[2]]; if (!Number.isFinite(v) || v <= 0) continue;
+    // 13 Nov 2026 (Codex on #64): the currency is part of the figure. "₹20 lakh" and "$2 million" are both 2,000,000 and are NOT the same amount. A currency is read from the symbol or word just before or after the amount;
+    // none stated is its own kind ("?"), which never equals a stated one (conservative: a missed merge is a visible duplicate, a wrong merge hides a story).
+    const before = t.slice(Math.max(0, m.index - 5), m.index), after = t.slice(m.index + m[0].length, m.index + m[0].length + 14);
+    const cur = /(₹|\brs\.?|\binr)\s*$/.test(before) || /^\s*(rupees?|inr)\b/.test(after) ? 'I' : /(\$|\bus\$|\busd)\s*$/.test(before) || /^\s*(dollars?|usd)\b/.test(after) ? 'U' : '?';
+    out.add('A' + cur + Number(v.toPrecision(5)));
+  }
   return out;
 }
 const figures = (headline, tk) => { const s = numbers(tk); for (const a of amounts(headline)) s.add(a); return s; };

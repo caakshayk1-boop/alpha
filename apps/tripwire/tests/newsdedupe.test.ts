@@ -124,6 +124,13 @@ test('amounts(): lakh, crore, million, billion normalise; bare numbers and unit-
   assert.deepEqual([...amounts('Rs 24,000 Cr')], [...amounts('Rs 24 000 cr')]);
   assert.equal(amounts('profit up 5%').size, 0); assert.equal(amounts('Q2 FY27 results').size, 0);
 });
+test('Codex on #64: the currency is part of the figure (Rs 20 lakh is not $2 million)', async () => {
+  const { amounts } = await import('../news/cluster.js');
+  assert.notDeepEqual([...amounts('Acme fined ₹20 lakh')], [...amounts('Acme fined $2 million')]);
+  assert.deepEqual([...amounts('fined ₹20 lakh')], [...amounts('fined Rs 20 lakh')]); assert.deepEqual([...amounts('fined 2 Million Rupees')], [...amounts('fined ₹20 lakh')]);
+  const a = ITEM('Kotak Mahindra Bank fined ₹20 lakh over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.'), b = ITEM('Kotak Mahindra Bank fined $2 million over customer dispute', 300, 'KOTAKBANK', 'Kotak Mahindra Bank Ltd.');
+  assert.equal(sameEvent(a, b), false, 'rupees and dollars never agree');
+});
 
 test('13 Nov 2026: local price listings and job adverts are standing pages, not events; real gold and recruitment-related company news is untouched', () => {
   const j = (title: string) => judge({ title, url: 'https://www.example.com/news/x1', publishedSec: NOW / 1000 - 3600, nowMs: NOW }).reasons;
