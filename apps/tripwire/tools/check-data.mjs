@@ -51,16 +51,23 @@ export function checkDist(dist, nowMs = Date.now(), env = process.env) {
   return { errors, warnings };
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const dist = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'dist'); const now = process.env.TRIPWIRE_NOW ? Date.parse(process.env.TRIPWIRE_NOW) : Date.now();
-  const { errors, warnings } = checkDist(dist, now);
-  { const lg = checkLedgerFile(join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger', 'ledger.json'), now); errors.push(...lg.errors); warnings.push(...lg.warnings); }
+  // 13 Nov 2026: the ledger rules are a SEPARATE, report-only pass in the deploy workflow. The ledger is read live from /api/ledger and does not ship in the bundle, and it is recorded by its own job a few minutes
+  // AFTER the screen publisher dispatches this one: on 12 Nov both nightly dispatches (19:12 and 21:26 UTC) failed on "ledger one session behind" and the data deploy slipped 4 hours. So:
+  //   (default)        the screen/company-file rules AND the ledger rules, as before (local use, tests)
+  //   --no-ledger      only the rules that decide whether THIS BUILD is fresh: blocks the deploy
+  //   --ledger-only    only the ledger rules: the workflow runs it with continue-on-error, after the rules above, so a lagging ledger is a red step with one line per fault and a summary section, and never stops the deploy
+  const args = process.argv.slice(2); const flag = (f) => args.includes(f); const pos = args.filter((a) => !a.startsWith('--'));
+  const here = dirname(fileURLToPath(import.meta.url)); const dist = pos[0] ?? join(here, '..', 'dist'); const now = process.env.TRIPWIRE_NOW ? Date.parse(process.env.TRIPWIRE_NOW) : Date.now();
+  const ledgerOnly = flag('--ledger-only'); const errors = [], warnings = [];
+  if (!ledgerOnly) { const r = checkDist(dist, now); errors.push(...r.errors); warnings.push(...r.warnings); }
+  if (!flag('--no-ledger')) { const lg = checkLedgerFile(join(here, '..', 'ledger', 'ledger.json'), now); errors.push(...lg.errors); warnings.push(...lg.warnings); }
   for (const w of warnings) console.warn(`WARN  ${w}`);
   for (const e of errors) console.error(`FAIL  ${e}`);
   if (errors.length) {
-    console.error(`tripwire verify-data: ${errors.length} rule(s) broken; the build must not deploy.`);
+    console.error(ledgerOnly ? `tripwire ledger freshness: ${errors.length} fault(s). The build was NOT held back for this (the ledger is read live and recorded by its own job).` : `tripwire verify-data: ${errors.length} rule(s) broken; the build must not deploy.`);
     /* a failed or stale build must be visible on the run page itself, not only in a step log */
-    if (process.env.GITHUB_STEP_SUMMARY) { try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Tripwire freshness check FAILED\n\nExpected session: ${expectedSession(now)}. The build was not deployed.\n\n${errors.map((e) => `- ${e}`).join('\n')}\n`); } catch { /* the log above still has it */ } }
+    if (process.env.GITHUB_STEP_SUMMARY) { try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, ledgerOnly ? `## Tripwire ledger is behind the market\n\nExpected session: ${expectedSession(now)}. The site was deployed anyway: the ledger is read live and is recorded by its own job.\n\n${errors.map((e) => `- ${e}`).join('\n')}\n` : `## Tripwire freshness check FAILED\n\nExpected session: ${expectedSession(now)}. The build was not deployed.\n\n${errors.map((e) => `- ${e}`).join('\n')}\n`); } catch { /* the log above still has it */ } }
     process.exit(1);
   }
-  console.log(`tripwire verify-data: ok (expected session ${expectedSession(now)})`);
+  console.log(`tripwire verify-data${ledgerOnly ? ' (ledger)' : ''}: ok (expected session ${expectedSession(now)})`);
 }

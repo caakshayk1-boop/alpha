@@ -48,11 +48,17 @@ jobs:
       - run: npm run tripwire:build
       - name: Freshness and completeness assertions (screen = last completed NSE session, no stale or sector-less rows; see apps/tripwire/tools/check-data.mjs)
         if: ${{ github.event_name != 'pull_request' }}   # a data-freshness gate belongs to the build that publishes data; a pull request is not stopped because last night's screen build ran late
+        # 13 Nov 2026: this step decides whether THIS BUILD is fresh, so it does not read the ledger. The ledger is served live (/api/ledger) and is recorded by its own job a few minutes after the screen publisher dispatches this one;
+        # holding the deploy for it failed both nightly dispatches on 12 Nov (19:12 and 21:26 UTC) and delayed the data by four hours. The ledger rules run in the next step, which reports and never blocks.
+        run: npm run tripwire:verify-data -- --no-ledger
+      - name: Ledger freshness (reported, never blocks the deploy; a red step here means the Record is behind the market)
+        if: ${{ github.event_name != 'pull_request' }}
+        continue-on-error: true
         env:
           TRIPWIRE_SKIP_LEDGER_CHECK: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_ledger_check && '1' || '' }}
         run: |
-          if [ "$TRIPWIRE_SKIP_LEDGER_CHECK" = "1" ]; then { echo '## Ledger freshness check SKIPPED'; echo; echo 'This was a manual code-only deploy (skip_ledger_check). The Record may be a session behind the screen.'; } >> "$GITHUB_STEP_SUMMARY"; fi
-          npm run tripwire:verify-data
+          if [ "$TRIPWIRE_SKIP_LEDGER_CHECK" = "1" ]; then { echo '## Ledger freshness check SKIPPED'; echo; echo 'Manual run with skip_ledger_check. The Record may be a session behind the screen.'; } >> "$GITHUB_STEP_SUMMARY"; fi
+          node apps/tripwire/tools/check-data.mjs --ledger-only
       - name: Performance budget (initial JS <= 250 KB gzip, no render-blocking CSS, modulepreload, lazy heavy views; see apps/tripwire/tools/budget.mjs)
         run: npm run tripwire:budget
       # The browser gate drives a real page against mocks and has failed on a slow runner with nothing wrong (run 40433652756: a 15 s wait for a live dot, and an immediate read of a summary).
