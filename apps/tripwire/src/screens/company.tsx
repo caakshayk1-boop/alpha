@@ -116,7 +116,7 @@ export function Company({ sym }: { sym: string }) {
         <div className="body">{ev.criteria.map((c) => <div key={c.label} className="row small" style={{ marginBottom: 6, alignItems: 'flex-start' }}><span style={{ width: 16, color: c.pass === true ? 'var(--lime)' : c.pass === false ? 'var(--peach)' : 'var(--mute)' }}><span aria-hidden="true">{c.pass === true ? '✓' : c.pass === false ? '✗' : '?'}</span><span className="sr">{c.pass === true ? 'Passes: ' : c.pass === false ? 'Fails: ' : 'Not measured: '}</span></span><span className="grow">{c.label}<span className="mute" style={{ display: 'block' }}>{c.value}{c.pass === null ? ' · unmeasured counts as not passed' : ''}</span></span><span className="sr">{c.pass === true ? 'passed' : c.pass === false ? 'failed' : 'unmeasured'}</span></div>)}
           {ev.score != null && <p className="small dim" style={{ marginBottom: 0 }}>Score {ev.score.toFixed(0)} of 100 among eligible names. A rank, not a probability.</p>}</div></details>)}
       {!evals.length && <div className="card dim">Engine results load with the screen.</div>}
-      <p className="small" style={{ margin: '8px 0 0' }}><a href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p></Fold>
+      <p className="small" style={{ margin: '8px 0 0' }}><a className="tap" href="#/signals" style={{ textDecoration: 'underline' }}>See the rules that fired</a> <span className="dim">across all companies, and their record.</span></p></Fold>
     <Fold id="news" title="News" summary={`Headlines that name ${row.name}`}><CompanyNews name={row.name} sym={row.sym} /></Fold>
     <Fold id="calendar" title="Calendar" summary={rd.line} aside={row.stale ? <span className="tag peach">Old close</span> : undefined}>
       <div className="list">
@@ -201,7 +201,7 @@ export function Company({ sym }: { sym: string }) {
       <button className="btn" onClick={() => open({ k: 'thesis', sym })}><Icon n="note" />Thesis</button>
       <button className="btn pri" onClick={() => open({ k: 'plan', sym })}><Icon n="plan" />Paper plan</button>
     </div>
-    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><TvButton sym={sym} label="Full chart on TradingView" /> <a href={`#/report/${sym}`} data-print-report style={{ textDecoration: 'underline' }}>Print report</a> <span className="mute">(a white-paper version you can print or save as PDF)</span></p>
+    <p className="mute small" style={{ textAlign: 'center', marginTop: 10 }}><TvButton sym={sym} label="Full chart on TradingView" /> <a className="tap" href={`#/report/${sym}`} data-print-report style={{ textDecoration: 'underline' }}>Print report</a> <span className="mute">(a white-paper version you can print or save as PDF)</span></p>
   </div>;
   function FollowText({ sym }: { sym: string }) {
     const on = s.follows.includes(sym);

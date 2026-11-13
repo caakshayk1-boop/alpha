@@ -150,6 +150,6 @@ export function CompanyNews({ name, sym }: { name: string; sym?: string }) {
         : <p className="small down" style={{ margin: '12px 0 0' }}>News could not be loaded ({h?.error ?? 'no answer'}). Nothing is shown in its place.</p>}
     </div>
     <div className="nw-foot"><span className="small mute">{checkedLabel(h?.checkedAt, now, { ok: h ? h.ok : true })}</span><button className="btn sm" onClick={n.refresh} disabled={n.loading}>{n.loading ? 'Checking…' : 'Check now'}</button></div>
-    <p className="mute small" style={{ margin: '6px 0 0' }}><a href="#/news" style={{ textDecoration: 'underline' }}>How news is chosen</a></p></div>;
+    <p className="mute small" style={{ margin: '6px 0 0' }}><a className="tap" href="#/news" style={{ textDecoration: 'underline' }}>How news is chosen</a></p></div>;
 }
 export { inTab };

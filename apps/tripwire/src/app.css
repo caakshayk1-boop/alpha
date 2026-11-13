@@ -28,3 +28,4 @@
 @import "./company3.css";   /* 12 Nov 2026: company one-pager, trend in the hero */
 @import "./effects3.css";   /* 12 Nov 2026: Effects preset (Off / Calm / Lively), the price halo */
 @import "./ledger4.css";   /* 12 Nov 2026: Tripwire 2.0 ledger layout, the Book P&L hierarchy */
+@import "./tap.css";   /* 13 Nov 2026: tap targets, 44px hit areas (tests/tapsize.mjs) */
