@@ -197,6 +197,8 @@ export function coverageWords(c: Coverage, lastConfirmed: string | null): { mark
   const complete = c.historyIncomplete === 0;
   return { marks: marksAll, exitComplete: complete, exit: complete ? `Exit verification: complete${lastConfirmed ? ` through ${lastConfirmed}` : ''}` : `Exit verification: incomplete · daily history is missing or incomplete for ${c.historyIncomplete} of ${c.open} open position${c.open === 1 ? '' : 's'}${lastConfirmed ? `; last confirmed history ${lastConfirmed}` : ''}` };
 }
+/** v6: the Book prints a quote status only when it is WRONG. Live and Last traded are normal and silent; Delayed and Unavailable get one short chip. */
+export const quotesProblem = (word: string | null | undefined): string | null => (word === 'Delayed' ? 'Quotes delayed' : word === 'Unavailable' ? 'Quotes unavailable' : null);
 /* ---- Bar status (Tripwire 2.0, 2.3) ----------------------------------------------------------------------------------------------------------------------------------------------------
  *  A daily bar is CONFIRMED (its session is over and the exchange has closed it), FORMING (its session is still on, or the provider marked it so), STALE (an old confirmed bar: a newer session has finished
  *  and has no bar here) or MISSING. A forming bar is provisional: a completed-close view leaves it out, or draws it as a provisional endpoint with the time it was observed. Nothing here changes a rule. */

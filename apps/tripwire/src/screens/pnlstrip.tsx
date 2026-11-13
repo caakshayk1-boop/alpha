@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { Tick } from '../live.tsx';
 import { countsTick } from '../tickbasis.ts';
 import { inr0, inr } from '../fmt.ts';
-import { coverageWords, OPEN_TRADE_LABEL, type Snapshot, type SnapPosition } from '../ledgerview.ts';
+import { coverageWords, quotesProblem, OPEN_TRADE_LABEL, type Snapshot, type SnapPosition } from '../ledgerview.ts';
 
 export const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const tone = (v: number | null | undefined) => ((v ?? 0) > 0 ? 'up' : (v ?? 0) < 0 ? 'down' : '');
@@ -18,7 +18,6 @@ const chars = (t: string) => ({ ['--ch' as string]: Math.max(6, t.length) });
 
 /** The only status the Book prints is one that is WRONG: stale or missing quotes, an incomplete exit check, a partial subtotal. A healthy book says nothing (v6, 13 Nov 2026).
  *  What "complete" means, and the oldest print, are on #/info (Book and P&L). */
-export const quotesProblem = (word: string | null | undefined): string | null => (word === 'Delayed' ? 'Quotes delayed' : word === 'Unavailable' ? 'Quotes unavailable' : null);
 export function TrustRow({ snap, scope, onScope, hasMine, priceWord, throughWord, children }: { snap: Snapshot; scope: 'all' | 'engine' | 'mine'; onScope: (s: 'all' | 'engine' | 'mine') => void; hasMine: boolean; priceWord: string | null | undefined; throughWord: string | null; children?: ReactNode }) {
   const w = coverageWords(snap.coverage, throughWord); const c = snap.coverage; const q = quotesProblem(priceWord);
   const marksProblem = c.state === 'unavailable' || c.missing > 0 || c.closedUnpriced > 0;

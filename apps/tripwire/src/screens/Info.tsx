@@ -73,6 +73,7 @@ export function Info({ section }: { section?: string | null }) {
     <Fold id="picks" anchor="info-picks" title="How to read these picks" summary="Rank, signal close, T1 and T2, eligibility." open={section === 'picks'}>
       <div className="card small info-body">
         <p>Ranked by each engine's own rank among eligible names. "→" is the live price against the signal close. The paper book skips an entry that opens more than {GAP_SKIP_PCT}% above that close. T1 and T2 are the profit-booking prices: "at signal close" for a pick that has not entered yet (the fill sets the booked levels), "from the fill" once it has; "(ref)" means reference only, not traded. The figures on the second line are the ones this pick's own engine ranked it on. Eligibility rule version in force today: {rulesFor('9999')}.</p>
+        <p>Picks are long only. A paper entry fills at the next session's open, never at the signal close, and is skipped if that open is more than {GAP_SKIP_PCT}% above it. Levels on a pick are worked from the signal close; the fill sets the booked ones.</p>
         <p>Experimental: a rank is not a chance of winning. Paper only.</p>
       </div>
     </Fold>
