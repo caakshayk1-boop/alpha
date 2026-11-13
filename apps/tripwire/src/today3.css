@@ -90,7 +90,7 @@ html .today.t3 .pickrow .px b{font:700 1.0625rem/1.25 var(--font)}
 html .today.t3 .picks-note{margin:0;padding:var(--sp-2) 0 var(--sp-3);border-top:1px solid var(--line);font-size:var(--fs-label);line-height:1.5}
 html .today.t3 .pk-top .br-chip{flex:none}
 html .today.t3 .pk-top .sym{min-width:0;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:559px){html .today.t3 .pickrow{grid-template-columns:minmax(0,1fr) auto}html .today.t3 .pickspark{display:none}html .today.t3 .pk-b{display:none}}
+@media (max-width:559px){html .today.t3 .pickrow{grid-template-columns:minmax(0,1fr) 3rem auto}html .today.t3 .pk-top{flex-wrap:wrap}html .today.t3 .pk-b{display:none}}
 
 /* ---- the paper book: one slim row ---- */
 html .today.t3 .bookrow{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-2) var(--sp-4);color:inherit;text-decoration:none}

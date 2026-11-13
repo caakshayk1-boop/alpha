@@ -26,6 +26,7 @@ import { sessionNow } from '../market.ts';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
 import { BASIS_NOTE, targetPrices } from '../levels.ts';
 import { pickId, MIN_TRADES } from '../ledger.ts';
+import { rulesFor } from '../rules.ts';
 import { useTrendSummary } from '../trendsummary.ts';
 import { MarketNews } from '../todaynews.tsx';
 import { NamesBoard, NamesEmpty } from './todayboard.tsx';
@@ -115,7 +116,7 @@ export function Today() {
                 <span className="pk-lv small mute num trunc">stop {inr0(p.stop)}{x ? ` · T1 ${inr0(x.t1)}` : ''}{x ? <span className="pk-b"> · T2 {inr0(x.t2)} ({x.ref ? 'ref' : BASIS_NOTE[x.basis]})</span> : null}{lp?.px == null || !lp.fromQuote ? ` · signal ${inr0(p.ref)}` : ''}</span></span>
               <span className="pickspark" aria-hidden="true">{q && q.c.length > 2 ? <Spark c={q.c} up={(lp?.ch ?? 0) >= 0} refs={[{ v: q.prev, kind: 'prev' }]} h={24} label={`${p.sym} today`} /> : null}</span>
               <span className="px num"><b>{lp?.px != null ? inr0(lp.px) : inr0(p.ref)}</b><span className={tone(lp?.ch)}>{lp?.ch != null ? pct(lp.ch) : '—'}</span></span></a>; })}</div>
-            <p className="small mute picks-note">Experimental: {evHead ? `${evHead} ` : ''}A rank, not a chance of winning. Paper only.</p>
+            <p className="small mute picks-note">Experimental: {evHead ? `${evHead} ` : ''}A rank, not a chance of winning. Paper only. Rule version {rulesFor(day ?? '9999')}.</p>
           </div>
         </section>}
         {scr.data && allPicks.length === 0 && <section className="tsec tpicks" aria-labelledby="t-nopicks" data-sec="picks-empty">

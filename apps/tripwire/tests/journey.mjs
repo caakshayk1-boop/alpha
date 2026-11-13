@@ -67,7 +67,8 @@ await pg.goto(base + '/#/c/HDFCBANK'); await pg.waitForSelector('.fab-row'); awa
 await pg.goto(base + '/#/today'); await pg.waitForSelector('.mkt-tiles');
 await pg.waitForSelector('.nw-row'); ok(/Market news/.test(await text()) && /RBI keeps repo rate unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(await text()) && /Policy|Results/.test(await pg.locator('.nw-row').first().innerText()), 'Today shows What matters now with verified events, their tags, and when the news was last checked (IST)');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
-await pg.getByText('How to read these picks').click();
+// 13 Nov 2026 (v6 home): "How to read these picks" moved to the Info section; Today keeps the one-line caveat and the rule version
+ok(!(await pg.getByText('How to read these picks').count()) && await pg.locator('a[href="#/info"]').count() >= 1, 'Today carries a link to About these numbers (Info) and no long picks explainer');
 ok(/Picks from the close of/i.test(await text()) && /rule version elig-\d/i.test(await text()) && (await pg.locator('.pickrow').count()) === 3, 'Today ranks the night\'s picks, three first (11 Nov 2026: was five; All picks opens Book), each with its status (no duplicate buttons: the auto book takes them)');
 T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));   // the market may be shut by the real clock: coming back to the page asks once more
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
