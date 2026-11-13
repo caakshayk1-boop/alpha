@@ -106,3 +106,16 @@
 .mk6 .mk-depth{border:1px solid var(--line);border-radius:var(--radius-card);padding:0 var(--sp-4);background:var(--surface)}
 .mk6 .mk-depth>summary{min-height:var(--hit);display:flex;align-items:center}
 .mk6 .mk-fig>summary{min-height:var(--hit);display:flex;align-items:center}
+
+/* #/info (v6): a contents row and the sections, one body size */
+.info-toc ul{list-style:none;margin:0 0 var(--sp-4);padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.info-toc a{display:inline-flex;align-items:center;min-height:var(--hit);padding:0 var(--sp-3);border:1px solid var(--line-2);border-radius:var(--radius-pill);font-size:var(--fs-data);color:var(--ink-2);text-decoration:none}
+.info .info-body p{margin:0 0 var(--sp-3);max-width:75ch;line-height:1.6;color:var(--ink-2)}
+.info .info-body p:last-child{margin-bottom:0}
+.info .fold{scroll-margin-top:var(--sp-4)}
+
+/* Book (v6): silence when healthy; compact empty line */
+.bk-none{margin:0;padding-top:var(--sp-3);border-top:1px solid var(--line);color:var(--ink-2)}
+.bk-empty{display:flex;margin:var(--sp-3) 0}
+.bk-about{margin:var(--sp-4) 0 0}
+.l4-status .l4-st.warn{border:1px solid var(--amber);border-radius:var(--radius-pill);padding:2px var(--sp-3);font-weight:600}

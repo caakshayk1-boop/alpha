@@ -21,6 +21,7 @@ const GROUPS: { head: string; rows: Row[] }[] = [
     { id: 'news', href: '#/news', icon: 'note', title: 'News', note: 'Headlines for the market, what you follow and your paper book' },
   ] },
   { head: 'About the data', rows: [
+    { id: 'info', href: '#/info', icon: 'info', title: 'About and data', note: 'Data status, how the numbers are made, definitions, the fine print' },
     { id: 'data', href: '#/data', icon: 'clock', title: 'Data and coverage', note: 'How current each dataset is, and what it covers' },
     { id: 'methodology', href: '#/methodology', icon: 'check', title: 'Methodology', note: 'How picks and trends are worked out, and what the tests found' },
     { id: 'help', href: '#/help', icon: 'info', title: 'Help', note: 'How to use Tripwire' },
@@ -68,7 +69,6 @@ export function More() {
         <span className="mn-ic" aria-hidden="true"><Icon n={r.icon} /></span>
         <span className="mn-tx"><span className="mn-t">{r.title}</span><span className="mn-n">{r.note}</span></span><Icon n="chev" className="mn-go" /></a>)}</div></section>)}
     <InstallHint />
-    <section className="mn-about" aria-label="About" data-about><p><b>Experimental, closed research beta.</b> Tripwire shows which public rules fired at the last close and the evidence on each side. It is educational research, not investment advice. Every trade in it is a paper trade: no order is ever placed, and paper results are not real results.</p>
-      <p>No account, no tracking, no analytics. Your notes stay on this device.</p></section>
+    <p className="mn-about small mute" data-about><b>Experimental research beta.</b> Educational, not investment advice; every trade is a paper trade and no order is placed. <a href="#/info?s=legal">The fine print</a></p>
   </div>;
 }

@@ -23,21 +23,21 @@ const STATUS_WORD: Record<Status, string> = { current: 'Current', pending: 'Buil
 const STATUS_PILL: Record<Status, Tone> = { current: 'up', pending: 'neutral', stale: 'amber', unknown: 'amber', missing: 'amber' };
 interface RunStamp { id: string; when?: string; git: string; data: { first_day: string; last_day: string; sessions: number; symbols: number }; code: { hash: string }; changes: string[]; previous: string | null }
 /** What the screen holds, counted from its own rows, and where every kind of figure comes from and how old it is. Nothing here is typed in: it is all read from the data. */
-export function DataPage() {
+export function DataPage({ embedded = false }: { embedded?: boolean } = {}) {
   const runs = [['Factor study', 'factor_study'], ['Engines back-test', 'engines_backtest'], ['Momentum walk-forward', 'engines_walkforward'], ['Pairs', 'engines_pairs']] as const;
   const rs = runs.map(([, f]) => useJson<{ meta?: { when?: string; run?: RunStamp } }>(`/data/research/${f}.json`));   // eslint-disable-line react-hooks/rules-of-hooks
   const nh = useNewsHealth(); const scr = useScreen(); const led = useLedger(); const panel = useJson<{ dates: string[]; built: string }>('/data/research/lab_panel.json');
   const u = useMemo(() => (scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on) : null), [scr.data]);
   const fx = useFreshness();
-  if (scr.loading) return <div className="mp mp-data"><PageBar title="Data and coverage" onBack /><Loading what="the data" /></div>;
-  if (scr.err || !u || !scr.data) return <div className="mp mp-data"><PageBar title="Data and coverage" onBack /><Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
+  if (scr.loading) return <div className="mp mp-data">{!embedded && <PageBar title="Data and coverage" onBack />}<Loading what="the data" /></div>;
+  if (scr.err || !u || !scr.data) return <div className="mp mp-data">{!embedded && <PageBar title="Data and coverage" onBack />}<Failed what="the data" err={scr.err ?? 'no data'} retry={scr.retry} /></div>;
   const fr = freshness(u.asOf); const built = u.builtOn;
   const L = led.data?.ledger; const od = L ? overduePending(L) : null; const q = liveStatus(); const last = L?.days[L.days.length - 1];
   const ph = pipelineHealth({ screenAsOf: u.asOf, screenBuiltOn: u.builtOn, ledgerLastNight: last?.asOf ?? null, ledgerUpdated: L?.updated ?? null, ledgerRules: last ? rulesOfRecord(last.rules) : null, pendingOld: od?.old ?? 0, pendingTotal: od?.total ?? 0, quoteLastAt: q.lastAt || null, quoteErr: q.err ?? null, panelLastDay: panel.data?.dates?.[panel.data.dates.length - 1] ?? null, panelBuilt: panel.data?.built ?? null });
   const gaps = missingNights(L, Date.now()); const gapNote = missingNightsNote(gaps);
   // 11 Nov 2026 (revamp v2): the screen's size and date were stated twice (a card and the first line of At a glance); they are stated once, here.
   return <div className="mp mp-data">
-    <PageBar title="Data and coverage" onBack sub="What is in the screen, and how old each figure is" />
+    {!embedded && <PageBar title="Data and coverage" onBack sub="What is in the screen, and how old each figure is" />}
     <section className="card" aria-label="The screen">
       <p className="lead mp-lead"><b className="num">{N(u.total)}</b> companies, prices through the close of <b>{dayWord(u.asOf)}</b>; {fr.word === 'Current' ? 'that is the last finished session.' : `${fr.word.toLowerCase()} the last finished session.`}</p>
       <p className="mp-meta" data-counts>One definition, used everywhere: <b className="num">{N(u.total)}</b> companies are screened; <b className="num">{N(u.liquid)}</b> pass the liquidity filter; the trend map counts the <b className="num">{N(u.liquidWithAverages)}</b> of those that have both moving averages.</p>
