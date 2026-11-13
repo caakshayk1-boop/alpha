@@ -25,7 +25,7 @@ export function makeEvents(now) {
 }
 export function makeSnapshot(now, o = {}) {
   const events = o.events ?? makeEvents(now);
-  return { ok: true, schema: 'tripwire-news/1', snapshotVersion: o.version ?? 5, pipelineVersion: 'news-pipe-3', rankingVersion: 'news-rank-1', scheduledAt: iso(now - 12 * 60e3), startedAt: iso(now - 12 * 60e3), completedAt: iso(now - 11.5 * 60e3), checkedAt: iso(o.checkedMs ?? now - 11.5 * 60e3), lastSuccessfulAt: iso(o.goodMs ?? now - 11.5 * 60e3), nextScheduledAt: iso(now + 3 * 60e3), cadenceMin: 15,
+  return { ok: true, schema: 'tripwire-news/1', snapshotVersion: o.version ?? 5, pipelineVersion: 'news-pipe-4', rankingVersion: 'news-rank-1', scheduledAt: iso(now - 12 * 60e3), startedAt: iso(now - 12 * 60e3), completedAt: iso(now - 11.5 * 60e3), checkedAt: iso(o.checkedMs ?? now - 11.5 * 60e3), lastSuccessfulAt: iso(o.goodMs ?? now - 11.5 * 60e3), nextScheduledAt: iso(now + 3 * 60e3), cadenceMin: 15,
     status: o.status ?? 'ok', lastError: null, sources: [{ id: 'google-news', label: 'Google News (RSS search)', status: 'ok', queries: 20, ok: 20, failed: 0 }, { id: 'rbi-press', label: 'RBI press releases (RSS)', status: 'ok', queries: 1, ok: 1, failed: 0 }, { id: 'sebi-releases', label: 'SEBI press releases and orders (RSS)', status: o.status === 'partial' ? 'failed' : 'ok', queries: 1, ok: o.status === 'partial' ? 0 : 1, failed: o.status === 'partial' ? 1 : 0, error: o.status === 'partial' ? 'HTTP 503' : null }],
     coverage: { feeds: 22, answered: 21, failed: 1, unresolvedNames: [] }, rejections: { quote_page: 3, landing_page: 2, stocks_to_watch: 4, market_recap: 5, technical_commentary: 2, no_entity: 11 }, scopes: { market: 'India-wide events with no single company', global: 'headlines from outside India that match a stated cue (news/cues.js)', paper: ['TCS'], covered: ['TCS', 'INFY'] }, names: { TCS: 'Tata Consultancy Services Ltd.', INFY: 'Infosys Ltd.' }, events };
 }
@@ -43,7 +43,7 @@ export async function mockNews(ctx, opts = {}) {
     if (!q) { ctl.calls.snapshot++; if (ctl.snapshotFails) return json(r, { ok: false, reason: 'upstream', error: 'could not be read' }); return json(r, ctl.snapshot); }
     ctl.calls.query.push(q); const now = Date.now();
     const mine = ctl.queryEvents ?? (/Gretex|GCSL/i.test(q) ? makeEvents(now).filter((e) => e.eventClusterId === 'ev_gcsl') : []);
-    return json(r, { ok: true, schema: 'tripwire-news-q/1', checkedAt: iso(now), q, sym: u.searchParams.get('sym'), via: 'google-news', status: 'ok', events: mine, rejections: {}, counts: {}, rankingVersion: 'news-rank-1', pipelineVersion: 'news-pipe-3' });
+    return json(r, { ok: true, schema: 'tripwire-news-q/1', checkedAt: iso(now), q, sym: u.searchParams.get('sym'), via: 'google-news', status: 'ok', events: mine, rejections: {}, counts: {}, rankingVersion: 'news-rank-1', pipelineVersion: 'news-pipe-4' });
   });
   await ctx.route(/\/api\/news$/, (r) => { ctl.calls.snapshot++; return json(r, ctl.snapshot); });
   const t = new Date().toISOString();

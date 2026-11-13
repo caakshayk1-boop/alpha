@@ -17,8 +17,8 @@ const batch = (raws, scope) => ({ feed: FEEDS.google, rawItems: raws, fetchedAt:
 const gRun = (raws) => runPipeline({ batches: [batch(raws, 'global')], registry: REG, nowMs: NOW, paperSyms: ['TCS'] });
 const cand = (headline: string, o = {}) => ({ headline, itemId: `it_${hash(headline)}`, tk: tokens(headline), eventType: classify(headline).eventType, publishedSec: NOW / 1000 - 3600, entities: [], canonicalUrl: `https://x.com/${hash(headline)}`, ...o });
 
-test('global lane: the version is news-pipe-3 (12 Nov 2026, was news-pipe-2) and the plan carries the global searches in scope global', () => {
-  assert.equal(PIPELINE_VERSION, 'news-pipe-3'); const plan = queryPlan({ names: { paper: [], covered: [], names: {} }, tick: 0 });
+test('global lane: the version is news-pipe-4 (12 Nov 2026, was news-pipe-2) and the plan carries the global searches in scope global', () => {
+  assert.equal(PIPELINE_VERSION, 'news-pipe-4'); const plan = queryPlan({ names: { paper: [], covered: [], names: {} }, tick: 0 });
   assert.ok(plan.filter((s) => s.scope === 'global').length >= 5 && plan.filter((s) => s.scope === 'global').every((s) => s.feed === 'google' && s.query));
 });
 test('global lane: another country\'s market story is admitted when a cue rule matches, from a known tier, inside 36 h; it carries scope and cues and names no company', () => {
