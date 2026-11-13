@@ -36,15 +36,24 @@ export function UiProvider({ children, haptics }: { children: ReactNode; haptics
   return <Ui.Provider value={{ toast, tick }}>{children}<div role="status" aria-live="polite">{msg && <div className="toast">{msg}</div>}</div></Ui.Provider>;
 }
 
-/** Bottom sheet: focus moves in, Escape and the scrim close it, focus returns, and the page behind does not scroll. */
+/** The scroll lock. Sheets can overlap (Ctrl+K while "Chart options" is open), and each used to remember the body's overflow as it found it and put that back when it closed: the second one found "hidden"
+ *  (the first one's lock) and restored "hidden" after the first had restored "", so closing both left the page locked for good, with no way to scroll until a reload (13 Nov 2026, tests/scrollflow.mjs).
+ *  Now ONE count holds the lock and the original value, and the last sheet to close lets go. `releaseScrollLockIfIdle` is the safety net the app calls on every route change. */
+let lockDepth = 0; let lockSaved = '';
+const lockScroll = () => { if (lockDepth++ === 0) { lockSaved = document.body.style.overflow; document.body.style.overflow = 'hidden'; } let done = false; return () => { if (done) return; done = true; if (--lockDepth <= 0) { lockDepth = 0; document.body.style.overflow = lockSaved; } }; };
+export function releaseScrollLockIfIdle() { if (lockDepth === 0 || !document.querySelector('.sheet')) { lockDepth = 0; if (document.body.style.overflow === 'hidden') document.body.style.removeProperty('overflow'); } }
+const sheetStack: object[] = [];
+
+/** Bottom sheet: focus moves in, Escape and the scrim close it (the top-most one only), focus returns, and the page behind does not scroll. */
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null); const close = useRef(onClose); close.current = onClose;   // the latest handler, without re-running the effect (an inline arrow from a parent is new on every render, which would re-lock, re-focus and reshuffle the stack)
   useLayoutEffect(() => {
-    const prev = document.activeElement as HTMLElement | null; const y = window.scrollY;
-    const o = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const prev = document.activeElement as HTMLElement | null; const y = window.scrollY; const me = {}; sheetStack.push(me);
+    const unlock = lockScroll();
     ref.current?.focus({ preventScroll: true });   // the sheet is fixed to the screen; focusing it must never scroll the page
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (sheetStack[sheetStack.length - 1] !== me) return;   // a sheet under another one does not answer
+      if (e.key === 'Escape') close.current();
       if (e.key === 'Tab' && ref.current) {
         const f = [...ref.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input,select,textarea,[tabindex="0"]')];
         if (!f.length) return; const a = f[0], z = f[f.length - 1];
@@ -52,8 +61,8 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       }
     };
     document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = o; prev?.focus?.({ preventScroll: true }); if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); };   // the person is back where they were
-  }, [onClose]);
+    return () => { document.removeEventListener('keydown', key); const i = sheetStack.indexOf(me); if (i >= 0) sheetStack.splice(i, 1); unlock(); prev?.focus?.({ preventScroll: true }); if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); };   // the person is back where they were
+  }, []);
   // Rendered on the body, not where it is declared: the page column carries a transform while motion is on, and inside a transformed ancestor "fixed" means "fixed to that ancestor",
   // which parked the sheet at the foot of a long page and scrolled the person there (a company page: 4,100px of jump).
   return createPortal(<>

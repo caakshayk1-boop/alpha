@@ -24,4 +24,5 @@ html .today.t2 .brief-fresh .bf-links a,html .brief-fresh .bf-links a,html .asof
 html .nw-src li a{min-width:var(--hit)}
 html .ident a{display:inline-flex;align-items:center;min-height:var(--hit);padding-inline:var(--sp-2);margin-inline:calc(var(--sp-2) * -1)}
 html .l4-link{min-width:var(--hit);justify-content:flex-start}
+html .statusbar a.brand{min-height:var(--hit);padding-inline:var(--sp-2);margin-inline:calc(var(--sp-2) * -1)}   /* the wordmark is a link home (v6): the bar is 52px tall, the link fills 44 of it */
 }

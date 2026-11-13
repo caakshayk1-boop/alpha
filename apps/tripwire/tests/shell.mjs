@@ -233,5 +233,30 @@ for (const hint of [null, 'stale']) for (const font of [null, 'monospace']) {
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 }); await pg.waitForTimeout(1200);
   ok((await pg.locator('[data-banner-slot]').count()) === 0 && (await pg.locator('.banner[role=status]').count()) === 0, 'banner slot: with current data and a current answer remembered, no banner and no empty slot'); await ctx.close(); }
 
+/* ---- 13 Nov 2026 (v6): the Tripwire wordmark is a real link home, on every width, from any page ---- */
+for (const [w, h, label] of [[1280, 800, 'desktop'], [900, 800, 'tablet'], [390, 844, 'phone']]) {
+  const { ctx, pg } = await mk(w, h, {}); await go(pg, '#/today');
+  const vis = pg.locator('[data-brand]:visible');
+  ok(await vis.count() === 1, `${label}: exactly one wordmark is drawn (the sidebar's from 1100 px, the top bar's below it)`);
+  ok(await vis.getAttribute('aria-label') === 'Tripwire, home' && await vis.getAttribute('href') === '#/today' && await vis.evaluate((e) => e.tagName === 'A'), `${label}: it is a link named "Tripwire, home" to #/today`);
+  ok(await pg.locator('nav.tabs [data-brand]').count() === 0, `${label}: the wordmark is not inside the navigation, so the nav still lists exactly four destinations`);
+  { const bb = await vis.boundingBox(); ok(label !== 'phone' || (bb.height >= 44 && bb.width >= 44), `${label}: hit area ${Math.round(bb.width)}x${Math.round(bb.height)}${label === 'phone' ? ' (44 px or more on a phone)' : ''}`); }
+  // already home: a click scrolls to the top and stays on Today
+  await pg.evaluate(() => scrollTo(0, 700)); await pg.waitForTimeout(150); ok(await pg.evaluate(() => scrollY) > 300, `${label}: Today is scrolled for the test`);
+  await vis.click(); await pg.waitForFunction(() => scrollY < 2, null, { timeout: 4000 }).catch(() => {});
+  ok(await pg.evaluate(() => scrollY < 2) && await pg.evaluate(() => /^#\/today$/.test(location.hash)), `${label}: on Today a click takes the page back to the top and leaves the address alone`);
+  // from a deep route: a company page
+  await go(pg, '#/c/TCS'); await pg.waitForSelector('.c-head', { timeout: 20000 });
+  await pg.evaluate(() => scrollTo(0, 500)); await pg.waitForTimeout(120);
+  await vis.click(); await pg.waitForFunction(() => location.hash === '#/today', null, { timeout: 5000 }).catch(() => {}); await pg.waitForSelector('[data-brief]', { timeout: 20000 }); await pg.waitForTimeout(500);
+  ok(await pg.evaluate(() => location.hash === '#/today' && scrollY < 2) && /^Today$/.test(await pg.locator('main h1').first().innerText()), `${label}: from a company page it opens Today at the top`);
+  ok((await current(pg)) === 'Today', `${label}: and the Today tab is the current one`);
+  // keyboard: focus it and press Enter, from the Book
+  await go(pg, '#/signals'); await vis.focus(); ok(await pg.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Tripwire, home'), `${label}: it takes keyboard focus`);
+  await pg.keyboard.press('Enter'); await pg.waitForFunction(() => location.hash === '#/today', null, { timeout: 5000 }).catch(() => {});
+  ok(await pg.evaluate(() => location.hash) === '#/today', `${label}: Enter on it goes home from the Book`);
+  await ctx.close();
+}
+
 await b.close();
 console.log(fails ? `\n${fails} FAILED` : '\nall shell checks passed'); process.exit(fails ? 1 : 0);
