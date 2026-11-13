@@ -187,19 +187,6 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
    
     notes={<>
-      {<>
-        {bars && eff !== view && !cmp && <p className="small mute" style={{ margin: '8px 0 0' }}>{kind === 'candle' ? 'Candles' : 'Volume'} are drawn as {FRAME_WORD[eff]} bars here: {win.pts.length.toLocaleString('en-IN')} daily bars would be too thin to read, and thinning them would misstate each day.</p>}
-        {kind === 'candle' && candles && shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>{shown.filter((q) => q.o == null || q.h == null || q.l == null).length} bars have no open, high or low from the source and are drawn as a tick on the close. Up candles are hollow, down candles solid.</p>}
-        {kind === 'candle' && candles && !shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>Up candles are hollow, down candles solid.</p>}
-        {cmp?.trimmed && <p className="small mute" style={{ margin: '8px 0 0' }}>Nifty data starts {dateLabel(cmp.from.t)}, so the comparison starts there.</p>}
-        {!hasNifty && !instrument && <p className="small mute" style={{ margin: '8px 0 0' }}>The Nifty 50 could not be read for this window, so there is no benchmark line.</p>}
-        {!canLog && log && <p className="small mute" style={{ margin: '8px 0 0' }}>Log scale needs every close above zero; this window has one that is not, so it is drawn linear.</p>}
-        {st && !cmp && <div className="c-hl num"><span>LOW <b>{f(st.lo.c)}</b> <i>{dateLabel(st.lo.t, true)}</i></span><span>HIGH <b>{f(st.hi.c)}</b> <i>{dateLabel(st.hi.t, true)}</i></span></div>}
-      </>}
-      {evOn && evIn.length > 0 && <p className="small mute" style={{ margin: '6px 0 0' }}>{evIn.map((e) => `${dateLabel(e.t)}: ${e.label} (${e.basis})`).join(' · ')}. No other dated events (dividend, split, announcement) are held in this data, so none are marked.</p>}
-      {!win.covers && range !== 'Max' && <p className="small mute" style={{ margin: '6px 0 0' }}>Data starts {dateLabel(all[0].t)}: {range} shows all of it.</p>}
-      {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
-      {report && <KeyPoints pts={win.pts} f={f} stockOnly={!!cmp} />}
       {!report && optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
         <div className="c-sheet">
           <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
@@ -219,10 +206,27 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
           <button type="button" className="btn pri" onClick={() => setOptsOpen(false)}>Done</button>
         </div>
       </Sheet>}
-      <details className="ev" style={{ marginTop: 8 }}><summary>About this chart<span className="chev">▾</span></summary><div className="body small dim">
+    </>}
+    about={<>
         <p style={{ margin: '0 0 6px' }}>{logOn ? 'Log scale: equal steps are equal percentage moves, so 100 to 200 looks the same as 200 to 400. Best for long ranges.' : `Linear scale: equal steps are equal amounts of price. Best for short ranges.${st && st.hi.c / Math.max(st.lo.c, 1e-9) >= 3 ? ' This window moved more than threefold, so older moves look small; LOG shows them in proportion.' : ''}`}</p>
         <p style={{ margin: '0 0 6px' }}>{cmp ? `${BASIS.stock} ${BASIS.nifty} Both lines are indexed to 100 on ${dateLabel(cmp.from.t)} (units: index points).` : instrument ? BASIS.instrument(name ?? sym) : `${BASIS.stock}${candles ? " Candles show each bar's open, high, low and close." : ''} The live price is not drawn here and never moves this chart.`}</p>
-        <p style={{ margin: 0 }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock. A price change is the stock on its own; the relative figure is the stock minus the Nifty in percentage points. Past prices say nothing certain about future ones.'}</p></div></details>
+        <p style={{ margin: 0 }}>{instrument ? `Daily closes from Yahoo Finance for ${name ?? sym}. Futures contracts roll to the next month, which can leave a small step in the line.` : 'Daily closes from Yahoo Finance, adjusted for splits and bonuses, not for dividends. The Nifty line is the index price, without dividends, like the stock. A price change is the stock on its own; the relative figure is the stock minus the Nifty in percentage points. Past prices say nothing certain about future ones.'}</p></>} foldOnPhone={!report}
+    detail={<>
+      {<>
+        {bars && eff !== view && !cmp && <p className="small mute" style={{ margin: '8px 0 0' }}>{kind === 'candle' ? 'Candles' : 'Volume'} are drawn as {FRAME_WORD[eff]} bars here: {win.pts.length.toLocaleString('en-IN')} daily bars would be too thin to read, and thinning them would misstate each day.</p>}
+        {kind === 'candle' && candles && shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>{shown.filter((q) => q.o == null || q.h == null || q.l == null).length} bars have no open, high or low from the source and are drawn as a tick on the close. Up candles are hollow, down candles solid.</p>}
+        {kind === 'candle' && candles && !shown.some((q) => q.o == null || q.h == null || q.l == null) && <p className="small mute" style={{ margin: '8px 0 0' }}>Up candles are hollow, down candles solid.</p>}
+        {cmp?.trimmed && <p className="small mute" style={{ margin: '8px 0 0' }}>Nifty data starts {dateLabel(cmp.from.t)}, so the comparison starts there.</p>}
+        {!hasNifty && !instrument && <p className="small mute" style={{ margin: '8px 0 0' }}>The Nifty 50 could not be read for this window, so there is no benchmark line.</p>}
+        {!canLog && log && <p className="small mute" style={{ margin: '8px 0 0' }}>Log scale needs every close above zero; this window has one that is not, so it is drawn linear.</p>}
+        {st && !cmp && <div className="c-hl num"><span>LOW <b>{f(st.lo.c)}</b> <i>{dateLabel(st.lo.t, true)}</i></span><span>HIGH <b>{f(st.hi.c)}</b> <i>{dateLabel(st.hi.t, true)}</i></span></div>}
+      </>}
+      {evOn && evIn.length > 0 && <p className="small mute" style={{ margin: '6px 0 0' }}>{evIn.map((e) => `${dateLabel(e.t)}: ${e.label} (${e.basis})`).join(' · ')}. No other dated events (dividend, split, announcement) are held in this data, so none are marked.</p>}
+      {!win.covers && range !== 'Max' && <p className="small mute" style={{ margin: '6px 0 0' }}>Data starts {dateLabel(all[0].t)}: {range} shows all of it.</p>}
+      {avail.some((r) => !r.available) && <p className="small mute" style={{ margin: '8px 0 0' }}>{avail.filter((r) => !r.available).map((r) => r.note).join(' · ')}. Max shows all of it.</p>}
+      {report && <KeyPoints pts={win.pts} f={f} stockOnly={!!cmp} />}
+
+
     </>}>
       {!report && <div className="c-prim" role="group" aria-label="Chart controls">
         <Radios label="Range" value={range} onChange={chooseRange} items={avail.map((r) => ({ id: r.id, label: r.id === 'Max' ? 'MAX' : r.id, disabled: !r.available, hint: r.note ?? undefined }))} />

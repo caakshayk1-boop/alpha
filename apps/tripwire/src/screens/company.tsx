@@ -187,7 +187,9 @@ export function Company({ sym }: { sym: string }) {
       </div>}
       <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={rd.next && row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
       {!wideAsOf && <div className="co-chips">{verdict}</div>}   {/* 12 Nov 2026: on a phone the verdict follows the chart, so the plot keeps its first-screen place (charts.mjs budget; CI fonts are wider) */}
-      <section className="card co-glance" aria-labelledby="glance-h" data-glance><h2 id="glance-h" className="sec">At a glance</h2><dl className="gl-grid">{glance.map((g: GlanceCell) => <div key={g.id} className={`gl-cell ${g.tone}`} data-glance-cell={g.id}><dt className="gl-k">{g.k}</dt><dd className="gl-v num">{g.v}</dd><dd className="gl-s">{g.sub}</dd></div>)}</dl></section>
+      <section className="card co-glance" aria-labelledby="glance-h" data-glance><h2 id="glance-h" className="sec">At a glance</h2>{(() => { const cell = (g: GlanceCell) => <div key={g.id} className={`gl-cell ${g.tone}`} data-glance-cell={g.id}><dt className="gl-k">{g.k}</dt><dd className="gl-v num">{g.v}</dd><dd className="gl-s">{g.sub}</dd></div>;
+        // 13 Nov 2026 (v5): on a phone four figures show and the other four are one tap away (the same cells, in a native disclosure); wider screens show all eight in place
+        return wideAsOf || glance.length <= 4 ? <dl className="gl-grid">{glance.map(cell)}</dl> : <><dl className="gl-grid">{glance.slice(0, 4).map(cell)}</dl><details className="gl-more" data-glance-more><summary>{glance.length - 4} more figures<span className="chev" aria-hidden="true">▾</span></summary><dl className="gl-grid">{glance.slice(4).map(cell)}</dl></details></>; })()}</section>
       <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 

@@ -34,7 +34,7 @@ for (const w of [390, 1280]) {
   ok((await radio(pg, 'Range', '1Y').getAttribute('aria-checked')) === 'true', 'about 14 months of history: the chart opens on 1Y, not 10Y');
   const tenY = pg.locator('[role=radiogroup][aria-label="Range"] [role=radio]', { hasText: '10Y' });
   ok((await tenY.isDisabled()) && /^10Y: only 1[34] months of history$/.test((await tenY.getAttribute('aria-label')) ?? ''), `10Y is disabled and says why (${await tenY.getAttribute('aria-label')})`);
-  ok(/only 1[34] months of history/.test(await pg.locator('.chart').innerText()), 'the same reason is printed under the controls');
+  ok(/only 1[34] months of history/.test(await pg.locator('.chart').evaluate((e) => e.textContent)), 'the same reason is in the chart notes (13 Nov 2026: on a phone those are one closed disclosure, still in the page)');
   await radio(pg, 'Range', 'MAX').click(); await radio(pg, 'Range', 'MAX').focus(); await pg.keyboard.press('ArrowLeft'); /* 1 Nov 2026: start from MAX explicitly, the default is now 1Y */
   ok((await pg.evaluate(() => document.activeElement.textContent)) === '1Y' || (await pg.evaluate(() => document.activeElement.textContent)) === '3Y' || (await pg.evaluate(() => document.activeElement.textContent)) === '5Y', 'ArrowLeft from MAX moves to the previous enabled range, skipping the disabled ones');
   const act = await pg.evaluate(() => document.activeElement.textContent); ok((await radio(pg, 'Range', act).getAttribute('aria-checked')) === 'true', 'the arrow key also chooses it (aria-checked follows focus)');

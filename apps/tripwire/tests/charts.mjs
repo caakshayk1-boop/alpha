@@ -36,8 +36,11 @@ const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Ma
   });
   ok(axisClear, 'comparison axis ticks do not overlap endpoint return labels');
   const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
+  // 13 Nov 2026 (v5, company one-pager): on a phone the lines under the takeaway, the coverage notes, the basis and "About this chart" are ONE closed disclosure; the data-through date stays in view. Nothing is removed.
+  ok(await pg.locator('[data-cf-more]').count() === 1 && !(await pg.locator('[data-cf-more]').evaluate((d) => d.open)) && await pg.locator('.cf-through').isVisible(), 'phone: notes, scale and source are one closed disclosure and the data-through date stays visible');
+  await pg.locator('[data-cf-more] > summary').click(); await pg.waitForTimeout(150);
   const basis = await pg.locator('.cf-basis').innerText(); ok(basis.length < 110 && /split-adjusted/i.test(basis) && /dividends not included/i.test(basis), `one short basis line sits under the chart (${basis})`);
-  await pg.locator('summary', { hasText: 'About this chart' }).click(); ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in About this chart');
+  ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in the opened notes (phone: no second disclosure inside the first)');
   ok(await pg.locator('.cf-tbl > summary').count() === 1 && (await pg.locator('.cf-tbl > summary').boundingBox()).height >= 43.5, 'the table is a disclosure with a 44px summary');
   ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
   await ctx.close(); }
@@ -113,7 +116,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   await ctx.close();
   const c2 = await newCtx(b, 390, series(900, 'TCS')); const p2 = await c2.newPage(); await open(p2, '/#/c/TCS', '.chart-plot svg');
   ok(await radio(p2, 'Compare', 'PRICE').getAttribute('aria-checked') === 'true' && /rose|fell|was flat/.test((await p2.locator('[data-takeaway]').allInnerTexts()).join(' ')) && !/Nifty/.test(await p2.locator('[data-takeaway] .cf-lead').innerText()), 'with no Nifty series the chart is a plain price line and the takeaway names no benchmark');
-  ok(/Nifty 50 could not be read/.test(await p2.locator('.chart').innerText()), 'and the page says the benchmark is missing');
+  ok(/Nifty 50 could not be read/.test(await p2.locator('.chart').evaluate((e) => e.textContent)), 'and the page says the benchmark is missing (in the notes; on a phone those are one closed disclosure, still in the page)');
   await c2.close(); }
 
 /* 7. a non-positive close: log scale is refused with the reason, nothing divides by zero */
