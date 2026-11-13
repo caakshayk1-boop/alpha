@@ -30,8 +30,9 @@ const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-ro
   ok(secs.join() === 'brief,setup,sample', `a new user sees the market brief, then the setup card, then the labelled sample walkthrough, nothing else (got ${secs.join(', ')})`);
   ok(await pg.getByRole('button', { name: 'Find a company' }).count() === 1, 'exactly one setup action: Find a company');
   // 11 Nov 2026 (revamp v2): the data day is said once, in the collapsed "Data status" line at the foot (the header pill and the banner carry the headline); the brief keeps the price time in IST
-  await pg.waitForSelector('.t-status:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
-  ok(/Your market brief/i.test(t) && /Data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('.t-status .fresh-pill').innerText()) && /IST/.test(await pg.locator('[data-brief]').innerText()), 'Today states its data day (Data status) and its times in IST');
+  // 13 Nov 2026 (v6 home): the "Data status" accordion moved to Info; the strip's one basis line carries the prices' time (IST) and the data day
+  await pg.waitForSelector('.mkt-data:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
+  ok(/Market now/i.test(t) && /Data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('.mkt-data').innerText()) && /IST/.test(await pg.locator('[data-brief]').innerText()) && !(await pg.locator('.t-status, details.tfoot').count()), 'Today states its data day and its times in IST, once, in the Market now basis line (no Data status accordion)');
   ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(t.replace(/\n/g, ' ')), 'no zero-count panel, no path card, no empty section');
   ok(!(await pg.locator('.guest, .journey').count()), 'the old guest card and path card are gone');
   await pg.getByRole('button', { name: 'Find a company' }).click(); await pg.waitForSelector('[role=dialog] input'); ok(true, 'Find a company opens the search sheet'); await pg.keyboard.press('Escape');
@@ -43,7 +44,7 @@ const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-ro
 /* ---- 1b. a returning user: the market takeaway first (Phase 4, 1 Nov 2026), then changes and reviews, then the news (one heading), picks ---- */
 {
   const { ctx, pg } = await open(WITH); await pg.waitForSelector('.nw-row'); const secs = await pg.$$eval('[data-sec]', (n) => n.map((x) => x.getAttribute('data-sec')));
-  ok(secs.indexOf('brief') === 0 && secs.indexOf('changes') === 1 && secs.indexOf('news') === 2, `returning order: market takeaway (brief), changes, news (got ${secs.join(', ')})`);
+  ok(secs.indexOf('brief') === 0 && secs.indexOf('changes') === 1 && secs.indexOf('news') > secs.indexOf('changes') && secs.indexOf('picks') === 2 && secs[secs.length - 1] === 'news', `returning order (v6): Market now (brief), your names, picks, paper book, news (got ${secs.join(', ')})`);
   // 11 Nov 2026 (revamp v2): Today's news block is "Market news" (company stories sit on their own board rows)
   ok((await pg.getByRole('heading', { name: 'Market news' }).count()) === 1, 'the news block has one "Market news" heading, not two');
   ok(!(await pg.locator('.journey, [data-sec="setup"]').count()), 'no path card and no setup card for a returning user'); await ctx.close();
@@ -153,11 +154,13 @@ for (const w of [360, 390, 430, 768, 1024, 1440]) {
   ok(await pg.locator('[data-board-row]').count() === 2, 'one board row per followed company');
   const tcs = pg.locator('[data-board-row="TCS"]'); const hit = tcs.locator('.br-hit');
   ok(/TCS/.test(await tcs.locator('.br-sym').innerText()) && /Tata Consultancy/i.test(await tcs.locator('.br-name').innerText()) && /₹[\d,.]+/.test(await tcs.locator('.br-px b').innerText()), 'a row carries the symbol, the company name and the price');
-  ok(/(Crossed above 200-day|RSI above 70)/.test(await tcs.locator('.br-chips').innerText()), `the row's chips name what changed (${(await tcs.locator('.br-chips').innerText()).replace(/\n/g, ' | ')})`);
+  // v6: a collapsed row carries ONE status chip (and a "+N" count); the full list is the first thing in the opened row
+  ok(await tcs.locator('.br-chips .br-chip').count() <= 2 && /\+\d+/.test(await tcs.locator('.br-chips').innerText()), `a collapsed row shows one status chip and how many more (${(await tcs.locator('.br-chips').innerText()).replace(/\n/g, ' | ')})`);
   ok(await hit.getAttribute('aria-expanded') === 'false' && !(await tcs.locator('.br-act').isVisible()), 'a row starts closed, its panel out of view and out of the tab order');
   const hb = await hit.boundingBox(); ok(hb.height >= 44, `the row is at least a 44px target (${Math.round(hb.height)})`);
   await hit.focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(400);
   ok(await hit.getAttribute('aria-expanded') === 'true' && await tcs.getByRole('link', { name: 'Open company' }).isVisible() && await tcs.getByRole('button', { name: 'Review thesis' }).isVisible(), 'Enter opens the row: Open company and Review thesis');
+  ok(/(Crossed above 200-day|RSI above 70)/.test(await tcs.locator('.br-all').innerText()), `the opened row names everything flagged (${(await tcs.locator('.br-all').innerText()).replace(/\n/g, ' | ')})`);
   const boardNews = await tcs.locator('.br-news a').allInnerTexts(); const marketNews = await pg.locator('section.nw .nw-head').allInnerTexts();
   ok(boardNews.some((h) => /TCS Q2 net profit/.test(h)) && !marketNews.some((h) => /TCS Q2 net profit/.test(h)), `the company's headline is on its row and not repeated in Market news (row: ${boardNews.length}, market: ${marketNews.join(' | ').slice(0, 120)})`);
   ok(marketNews.length <= 3 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `Market news shows at most three stories, then All news (${marketNews.length})`);

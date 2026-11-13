@@ -16,14 +16,13 @@ export function MarketNews({ b, market, lists }: { b: ReturnType<typeof useNewsB
   // 12 Nov 2026: at most ONE global-cue row, after the market rows, deduped against them. It carries its cue chip and the measured instrument of that cue; the rest lives on the News page.
   const feed = useCueFeeds(); const g = useMemo(() => todayGlobalRow(b.pool, market, lists, b.at), [b.pool, market, lists, b.at]); const cue = g ? cueById(g.cues?.[0] ?? '') : null;
   return <section className="nw tnw" aria-labelledby="nw-title">
-    <div className="nw-bar"><h2 id="nw-title" className="nw-title">Market news</h2></div>
-    <NewsHealthLine h={b.health} />
+    <div className="nw-bar"><h2 id="nw-title" className="nw-title">Market news</h2><NewsHealthLine h={b.health} compact /></div>
     <p className="sr" data-news-view>{view}</p>
     <UpdateOffer n={b.pending} apply={b.apply} />
     {b.loading ? <div className="nw-skel" aria-hidden="true"><div className="sk" style={{ height: 18, width: '92%' }} /><div className="sk" style={{ height: 14, width: '60%' }} /><div className="sk" style={{ height: 14, width: '80%' }} /></div>
-      : market.length || (g && cue) ? <ul className="nw-list">{market.map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} />)}
-        {g && cue && <NewsRow key={g.eventClusterId} ev={g} lists={lists} seenSec={seen} nowMs={b.at} extra={<><span className="tag cue-chip" data-today-cue={cue.id} title="A headline from outside India, matched to this cue">Global cue: {cue.label}</span><InstrumentChip f={feed(cue.measure)} className="cue-inst-row" /></>} />}</ul>
+      : market.length || (g && cue) ? <ul className="nw-list">{market.map((ev) => <NewsRow key={ev.eventClusterId} ev={ev} lists={lists} seenSec={seen} nowMs={b.at} compact />)}
+        {g && cue && <NewsRow key={g.eventClusterId} ev={g} lists={lists} seenSec={seen} nowMs={b.at} compact extra={<><span className="tag cue-chip" data-today-cue={cue.id} title="A headline from outside India, matched to this cue">Global cue: {cue.label}</span><InstrumentChip f={feed(cue.measure)} className="cue-inst-row" /></>} />}</ul>
       : <EmptyTab tab="market" lists={lists} haveSnapshot={b.hasSnapshot} anyOther={false} view={view} />}
-    <div className="nw-foot"><a className="btn sm" href="#/news">All news</a><RefreshControl state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
+    <div className="nw-foot"><a className="seclink" href="#/news">All news <span aria-hidden="true">→</span></a><RefreshControl icon state={b.refreshState.state} message={b.refreshState.message} onClick={() => void b.refresh()} /></div>
   </section>;
 }
