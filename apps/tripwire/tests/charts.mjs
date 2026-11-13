@@ -198,4 +198,23 @@ for (const w of [320, 360, 390, 430]) {
   const h0 = await pg.evaluate(() => document.querySelector('section.cf')?.getBoundingClientRect().height ?? 0); await pg.waitForSelector('.chart-plot', { timeout: 20000 }); const h1 = await pg.evaluate(() => document.querySelector('section.cf').getBoundingClientRect().height);
   ok(h0 > 0 && Math.abs(h1 - h0) < 200, `the chart card holds its place while loading (${Math.round(h0)}px, then ${Math.round(h1)}px)`); await ctx.close(); }
 
+/* 13 Nov 2026 (v5, master prompt 2.3b): the last bar says what it is. A bar still forming, or older than the last finished session, is named in one line under the header; a confirmed one prints nothing extra;
+   an index, metal or coin (its own calendar) gets none. The clock is FIXED for the forming and confirmed cases, so the result does not depend on the day or the hour the suite runs. */
+const seriesEnding = (endIso, n = 300) => { const t = [], c = [], o = [], h = [], l = [], v = []; let d = Date.parse(`${endIso}T03:45:00Z`) / 1000; const rev = [];
+  while (rev.length < n) { const wd = new Date(d * 1000).getUTCDay(); if (wd !== 0 && wd !== 6) rev.push(d); d -= 86400; }
+  let px = 100; rev.reverse().forEach((x, i) => { const op = px; px *= 1 + 0.0005 + Math.sin(i / 9) * 0.01; t.push(x); c.push(+px.toFixed(2)); o.push(+op.toFixed(2)); h.push(+(Math.max(op, px) * 1.01).toFixed(2)); l.push(+(Math.min(op, px) * 0.99).toFixed(2)); v.push(100000 + i * 10); });
+  return JSON.stringify({ ok: true, sym: 'TCS', t, c, n: c.map((x, k) => 20000 + k * 3), o, h, l, v }); };
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-11')); await ctx.clock.setFixedTime(new Date('2026-11-11T05:35:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // Wed 11 Nov 2026, 11:05 IST: the session is on
+  const el = pg.locator('.cf [data-bar-status]'); ok(await el.count() === 1 && (await el.getAttribute('data-bar-status')) === 'forming', 'a last bar whose session is on is marked forming');
+  const tx = await el.innerText(); ok(/^Last bar still forming: 11 Nov 2026 is provisional until its session closes \(seen 11:05 IST\)\.$/.test(tx), `and says so in words, with the day and the time it was seen (${tx})`);
+  ok(await el.evaluate((e) => !!e.closest('.cf-meta')) && !/will|expect|likely|forecast/i.test(tx), 'the line sits in the chart header and predicts nothing');
+  ok((await overflow(pg)) <= 0, 'no horizontal overflow with the line on screen'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-11')); await ctx.clock.setFixedTime(new Date('2026-11-11T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // 16:30 IST the same day: the session has closed
+  ok(await pg.locator('.cf [data-bar-status]').count() === 0, 'after the close the same bar is confirmed and prints no extra line'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-09')); await ctx.clock.setFixedTime(new Date('2026-11-13T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // Fri 13 Nov 16:30 IST: Wed 11 and Thu 12 have finished with no bar here
+  const el = pg.locator('.cf [data-bar-status]'); ok(await el.count() === 1 && (await el.getAttribute('data-bar-status')) === 'stale', 'a series that ends before the last finished session is marked stale');
+  ok(/^Last bar is 9 Nov 2026: a newer session has finished and its bar is not in this data yet\.$/.test(await el.innerText()), 'and states its own last day'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-09')); await ctx.clock.setFixedTime(new Date('2026-11-13T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/m/GOLD', '.chart-plot svg');
+  ok(await pg.locator('.cf [data-bar-status]').count() === 0, 'an instrument on its own calendar (gold) gets no session-based caption'); await ctx.close(); }
+
 await b.close(); console.log(fails ? `\ncharts: ${fails} failed` : '\ncharts: all passed'); process.exit(fails ? 1 : 0);

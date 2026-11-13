@@ -47,3 +47,7 @@
   .co-tabs~[role=tabpanel][aria-label=Overview]>details.fold:not(.research-read):not([open]) .fold-t{font-size:var(--fs-data);line-height:1.25}
   .co-tabs~[role=tabpanel][aria-label=Overview]>details.fold:not(.research-read):not([open]) .fold-s{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
+
+/* 13 Nov 2026 (v5): the price chart's last-bar line (barline.ts). One line of text under the header; amber is the staleness colour everywhere in the product, a forming bar is plain secondary ink. */
+.cf-bar{display:block;margin-top:var(--sp-1);font-size:var(--fs-label);line-height:1.35;color:var(--ink-2)}
+.cf-bar.stale{color:var(--amber)}

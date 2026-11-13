@@ -5,6 +5,7 @@ import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailabilit
 import { inr, pct, tone } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
 import { keyPoints } from '../reportview.ts';
+import { barLine } from '../barline.ts';
 import { BASIS, ChartFrame, ChartState, ChartTable, SeriesLegend, arrowOf, buildTable, chartStart, markerPath, priceTakeaway, signedPts, spreadLabels, styleOf, windowWords } from '../charts/index.ts';
 import type { Level } from '../levels.ts';
 
@@ -91,6 +92,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const unitWord = `${FRAME_WORD[bars ? eff : view]} ${cmp ? 'points' : 'closes'}`;
   const frameNow = bars ? eff : view;   // "daily" is the default and the basis line under the chart says so; only a weekly or monthly view needs its frame named up here
   const metaBits = [`${range === 'Max' ? 'All history held' : range}`, ...(frameNow === 'daily' ? [] : [FRAME_WORD[frameNow] + ' closes']), cmp ? 'indexed to 100' : instrument ? `${name ?? sym} units` : '₹ per share', `through ${dateLabel(all[all.length - 1].t)}`];
+  /* 13 Nov 2026 (v5): the last bar says what it is. A bar still forming, or one older than the last finished session, is named in a line under the header; an index, metal or coin trades on its own calendar, so it gets none. */
+  const barNote = instrument ? null : barLine(all, Date.now());
   const endLabs = (() => { if (!pair || !cmp) return []; const ws = spreadLabels([pair.ysA[pair.ysA.length - 1] / pair.H, pair.ysB[pair.ysB.length - 1] / pair.H]); return [{ s: S, y: ws[0], t: `${arrowOf(cmp.stock)} ${pct(cmp.stock)}` }, { s: B, y: ws[1], t: `${arrowOf(cmp.nifty)} ${pct(cmp.nifty)}` }]; })();
   const tipLeft = (geo ?? pair) && i != null ? ((geo ?? pair)!.xs[i] / (geo ?? pair)!.W) * 100 : 0;
   const tip = p && i != null ? (cmp ? `${dateLabel(p.t, view === 'monthly')} · ${sym} ${pct(cmpA)} · Nifty ${pct(cmpB)} · gap ${signedPts((cmpA ?? 0) - (cmpB ?? 0))} pts` : `${dateLabel(p.t, view === 'monthly')} · ${f(p.c)}`) : null;
@@ -183,7 +186,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   </>;
 
   return <ChartFrame leadAfter label="Price history" printTableClosed={!!report}
-    title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={metaBits.join(' · ')} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
+    title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={<>{metaBits.join(' · ')}{barNote?.text && <span className={`cf-bar ${barNote.status}`} data-bar-status={barNote.status} title={barNote.detail ?? undefined}>{barNote.text}</span>}</>} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
     basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
    
     notes={<>
