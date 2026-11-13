@@ -1,0 +1,24 @@
+/* Tap targets (v5 shop, 13 Nov 2026). Loaded LAST. Every interactive control has a hit area of at least --hit (44px) in both directions, by padding / min-size where the control is a line of text,
+   and by a transparent pseudo-element where growing the box would change how it looks (a pill, a chip, an icon button). Tokens only; nothing here changes a colour, a size of type or a rule.
+   tests/tapsize.mjs measures what the browser really hits (elementFromPoint), at 390 and 320 wide, so a rule here that stops working fails the suite. */
+:root{--tap-grow:min(0px,calc((100% - var(--hit)) / 2))}
+
+/* ---- controls drawn smaller than --hit: the hit area is a transparent layer around them ---- */
+html .statusbar .ds-status,html .chip,html .icon-btn{position:relative}
+html .statusbar .ds-status::after{content:"";position:absolute;top:min(0px,calc((100% - var(--hit)) * .75));bottom:min(0px,calc((100% - var(--hit)) * .25));left:var(--tap-grow);right:var(--tap-grow)}   /* the bar clips and the banner sits just under it: grow upward more than down */
+html .icon-btn::after{content:"";position:absolute;inset:var(--tap-grow);pointer-events:auto}
+html .chip::after{content:"";position:absolute;top:var(--tap-grow);bottom:var(--tap-grow);left:0;right:0}
+
+/* ---- a segmented control (Desk views and the like): the buttons are --hit tall, as the company tabs already were ---- */
+html .seg button{min-height:var(--hit)}
+
+/* ---- disclosure rows ---- */
+html details[class]>summary,html details>summary.tap{min-height:var(--hit);align-content:center}
+html .disc .basis .inl summary,html .disc .basis a.basis-cov{display:inline-flex;align-items:center;min-height:var(--hit);min-width:var(--hit)}
+
+/* ---- text links that stand alone on a line ---- */
+html a.nw-head{min-height:var(--hit)}
+html .today.t2 .brief-fresh .bf-links a,html .brief-fresh .bf-links a,html .asof-grid dd a,html .rr-prov dd a,html .nw-src li a,html a.tap{display:inline-flex;align-items:center;min-height:var(--hit)}
+html .nw-src li a{min-width:var(--hit)}
+html .ident a{display:inline-flex;align-items:center;min-height:var(--hit);padding-inline:var(--sp-2);margin-inline:calc(var(--sp-2) * -1)}
+html .l4-link{min-width:var(--hit);justify-content:flex-start}
