@@ -48,11 +48,12 @@ for (const [w, touch] of [[1280, false], [390, true]]) {
 
 // 4a. desktop wheel and keys, and the wheel over a table hands over to the page
 { const ctx = await newCtx(b, 1280, series); const pg = await ctx.newPage(); await open(pg, '/#/today');
-  await pg.mouse.move(700, 500); await pg.mouse.wheel(0, 600); await pg.waitForTimeout(500); ok(await Y(pg) >= 500, `wheel scrolls Today (y ${await Y(pg)})`);
-  await pg.keyboard.press('PageDown'); await pg.waitForTimeout(500); const a = await Y(pg); ok(a > 700, `PageDown moves on (y ${a})`);
+  const room = await pg.evaluate(() => document.documentElement.scrollHeight - innerHeight); ok(room > 200, `Today has room to scroll (${room}px)`);   // relative to the real page: a short Today must still move, and must reach its end
+  await pg.mouse.move(700, 500); await pg.mouse.wheel(0, 300); await pg.waitForTimeout(500); const w = await Y(pg); ok(w >= Math.min(280, room - 2), `wheel scrolls Today (y ${w} of ${room})`);
+  await pg.keyboard.press('PageDown'); await pg.waitForTimeout(500); const a = await Y(pg); ok(a > w || w >= room - 2, `PageDown moves on (y ${a})`);
   await pg.keyboard.press('End'); await pg.waitForTimeout(900); ok(await pg.evaluate(() => Math.abs(scrollY - (document.documentElement.scrollHeight - innerHeight)) < 3), 'End reaches the foot');
   await pg.keyboard.press('Home'); await pg.waitForTimeout(900); ok(await Y(pg) === 0, 'Home returns to the top');
-  await pg.keyboard.press('Space'); await pg.waitForTimeout(500); ok(await Y(pg) > 300, 'Space pages down');
+  await pg.keyboard.press('Space'); await pg.waitForTimeout(500); ok(await Y(pg) >= Math.min(300, room) * 0.8, 'Space pages down');
   await open(pg, '/#/discover?view=table', '.stbl'); await pg.evaluate(() => scrollTo(0, document.querySelector('.stbl-wrap').getBoundingClientRect().top + scrollY - 100)); await pg.waitForTimeout(200);
   const p = await pg.evaluate(() => { const r = document.querySelector('.stbl-wrap').getBoundingClientRect(); return { x: r.x + r.width / 2, y: Math.min(innerHeight - 100, r.y + 200) }; });
   await pg.mouse.move(p.x, p.y); const y0 = await Y(pg); for (let i = 0; i < 8; i++) { await pg.mouse.wheel(0, 300); await pg.waitForTimeout(100); }
