@@ -76,12 +76,11 @@ export function CuesList({ pool, loading }: { pool: readonly NewsEvent[]; loadin
   </section>;
 }
 
-const FX = ['GOLD', 'SILVER', 'BRENT', 'WTI', 'USDINR', 'BTC'];
 /** Gold, silver, oil, the rupee and Bitcoin: compact tiles with the last session's shape. Each opens its own page, where the India link is. */
 export function FxStrip() {
   const m = useMacro();
   return <section className="market-macro mk-fx" aria-labelledby="mk-fx"><h2 id="mk-fx" className="mk-h">Commodities, currencies, Bitcoin</h2>
-    <div className="mk-fx-grid" role="list">{MACRO.filter((d) => FX.includes(d.key)).map((d) => { const q = m.data?.quotes[d.key]; const ch = q ? (q.px / q.prev - 1) * 100 : null;
+    <div className="mk-fx-grid" role="list">{MACRO.map((d) => { const q = m.data?.quotes[d.key]; const ch = q ? (q.px / q.prev - 1) * 100 : null;
       return <a key={d.key} role="listitem" className={`tile mk-fx-tile${!q && !m.err ? ' mk-pend' : ''}`} href={`#/m/${d.key}`}><span className="mk-nm">{d.label}<span className="sr">, chart</span></span>
         <b className="num mk-px"><Tick v={q?.px} {...quoteTick(q?.pt, Date.now(), false)}>{q ? fmtMacro(d, q.px) : '—'}</Tick></b>
         <span className={`small num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? (m.err ? 'unavailable' : '…') : <><span aria-hidden="true">{ch >= 0 ? '▲ ' : '▼ '}</span>{pct(ch, 2)}</>}</span>
