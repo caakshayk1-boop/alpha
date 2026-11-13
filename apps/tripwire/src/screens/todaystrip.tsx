@@ -29,12 +29,12 @@ export function BreadthMeter({ upPct, downPct, n }: { upPct: number | null | und
   </figure>;
 }
 
-export function MarketStrip({ tiles, take, takeLoading, breadth, live, wordLabel, obsSec, obsErr, flow, dataLine }: {
+export function MarketStrip({ tiles, take, takeLoading, breadth, live, wordLabel, session, obsSec, obsErr, flow, dataLine }: {
   tiles: Tile[]; take: string | null; takeLoading: boolean; breadth: { up: number | null | undefined; down: number | null | undefined; n: number | null | undefined };
-  live: boolean; wordLabel: string; obsSec: number | null; obsErr: string | null; flow: ReactNode; dataLine: ReactNode;
+  live: boolean; wordLabel: string; session: string; obsSec: number | null; obsErr: string | null; flow: ReactNode; dataLine: ReactNode;
 }) {
   return <section className="tsec brief mkt" aria-labelledby="t-brief" data-sec="brief">
-    <div className="row between mkt-head"><h2 id="t-brief" className="sec">Market now</h2><LiveBadge live={live} label={wordLabel} /></div>
+    <div className="row between mkt-head"><h2 id="t-brief" className="sec">Market now</h2><span className="mkt-sess small" data-session>{session}</span><LiveBadge live={live} label={wordLabel} /></div>
     <div className="mkt-tiles num" role="list" aria-label="Indices, commodities and the rupee">{tiles.map((t) => <MarketTile key={t.key} t={t} />)}</div>
     <div className="mkt-read">
       <p className="mkt-take" data-takeaway>{take ? take : takeLoading ? <span className="sk" style={{ display: 'inline-block', height: 16, width: '70%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>

@@ -42,12 +42,13 @@ test('the footer says research not advice, claims no SEBI registration, and read
   assert.ok(!FORBIDDEN.test(f.replace(/<[^>]+>/g, ' ')), 'no prediction word');
   assert.ok(!/margin ?notes/i.test(f), 'no Margin Notes link: no real URL exists in the repo');
 });
-test('Today: the hero leads, the stale-data banner sits directly after the brief, and the app no longer draws it at the top of Today', () => {
+test('Today: the hero leads, and the stale-data banner is drawn once by the shell, never inside the page body', () => {
   const t = src('screens/today.tsx');
-  const hero = t.indexOf('<HeroLine />'), brief = t.indexOf('data-sec="brief"'), ban = t.indexOf('{banner}'), setup = t.indexOf('data-sec="setup"');
-  assert.ok(hero > 0 && hero < brief && brief < ban && ban < setup, `order hero(${hero}) < brief(${brief}) < banner(${ban}) < setup(${setup})`);
+  const hero = t.indexOf('<HeroLine />'), brief = t.indexOf('<MarketStrip'), setup = t.indexOf('data-sec="setup"');
+  assert.ok(hero > 0 && hero < brief && brief < setup, `order hero(${hero}) < market strip(${brief}) < setup(${setup})`);
+  assert.ok(!t.includes('{banner}') && !/banner\??:/.test(t), 'Today takes no banner and draws none');
   const a = src('app.tsx');
-  assert.match(a, /\{!onToday && staleBanner\}/); assert.match(a, /<Today banner=\{staleBanner\} \/>/);
+  assert.match(a, /\{staleBanner\}/); assert.match(a, /<Today \/>/); assert.ok(!a.includes('onToday'));
   assert.match(a, /The data stops \{f!\.behind\} sessions before the last finished one\. Treat everything as old\./, 'the wording is unchanged');
 });
 test('the sample walkthrough opens only when the caller says it is a first visit', () => {

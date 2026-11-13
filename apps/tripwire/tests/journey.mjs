@@ -42,29 +42,29 @@ await shot('00-welcome');
 await pg.getByRole('button', { name: 'Explore markets' }).click(); await pg.goto(base + '/#/today');
 await pg.waitForSelector('nav.tabs');
 ok((await pg.locator('nav.tabs a').allTextContents()).map((s) => s.trim()).join('|') === 'Today|Research|Book|Menu', 'four destinations: Today, Research, Book, Menu (11 Nov 2026 redesign)');
-await pg.waitForSelector('.brief-ix', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
+await pg.waitForSelector('.mkt-tiles', { timeout: 15000 });   // 27 Oct 2026: Today's market card became the brief; the trend map moved to #/markets
 await pg.waitForTimeout(600); await shot('01-today');
 // 11 Nov 2026 (revamp v2): the data day is said once on Today, in the collapsed Data status line at the foot (was a line in the brief)
-await pg.waitForSelector('.t-status:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
-ok(/Data through/.test(await pg.locator('.t-status .fresh-pill').textContent()), 'Today states the data date');
-await pg.waitForSelector('.brief-ix .bix b');
-ok((await pg.locator('.brief-ix a[href="#/markets"]').count()) === 3 && /24,120/.test(await text()) && /Nifty 50/i.test(await text()) && /Bank Nifty/.test(await text()) && /India VIX/.test(await text()), 'Today shows the Nifty, Bank Nifty and VIX in the brief, each opening the Markets page');
-await pg.locator('.brief-ix a').first().click(); await pg.waitForSelector('.moodhero a[href*="tradingview.com"]');
+await pg.waitForSelector('.mkt-data:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
+ok(/Data through/.test(await pg.locator('.mkt-data').textContent()), 'Today states the data date (the Market now basis line; the Data status accordion moved to Info)');
+await pg.waitForSelector('.mkt-tiles .mt b');
+ok((await pg.locator('.mkt-tiles a[href="#/markets"]').count()) === 6 && /24,120/.test(await text()) && /Nifty 50/i.test(await text()) && /Bank Nifty/.test(await text()) && /India VIX/.test(await text()), 'Today shows the Nifty, Bank Nifty and VIX in the brief, each opening the Markets page (v6: six tiles, with gold, Brent and the rupee)');
+await pg.locator('.mkt-tiles a').first().click(); await pg.waitForSelector('.moodhero a[href*="tradingview.com"]');
 /* 12 Nov 2026 (revamp v3): the Nifty 50 is the day chart above; the Indices card lists Bank Nifty and India VIX. */
 ok(await pg.locator('.moodhero a[target=_blank][rel*=noopener]').count() >= 2 && (await pg.locator('.moodhero a[href*="tradingview.com"]').count()) === 2, 'the Markets page lists Bank Nifty and India VIX (the Nifty is the day chart), outbound links open in a new tab without handing over the window');
 await pg.waitForSelector('.rangebar', { timeout: 15000 }); ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await text()), 'the Markets page carries the trend map');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'the Markets page shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
-await pg.goBack(); await pg.waitForSelector('.brief-ix');
+await pg.goBack(); await pg.waitForSelector('.mkt-tiles');
 // 11 Nov 2026 (revamp v2): the session is said once, in the market brief (on a phone; the top bar says it on a wider screen), no longer as a second line under the page title
 ok(/Open|closed|Pre-open|No live|holiday/i.test(await pg.locator('[data-session]').textContent()) && await pg.locator('header.bar .sub').count() === 0, 'Today states the trading session once');
 // 11 Nov 2026 (revamp v2): the breadth is the gauge (its label reads the three shares); the sentence beside it says whether breadth agrees with the index
-ok(await pg.locator('.rangebar').count() === 0 && /liquid stocks, \d+% are in an uptrend/.test(await pg.locator('[data-gauge] svg').getAttribute('aria-label')), 'Today gives the breadth in one gauge; the trend map itself is on the Markets page');
+ok(await pg.locator('.rangebar').count() === 0 && /liquid stocks, \d+% are in an uptrend/.test(await pg.locator('[data-breadth] [role=img]').getAttribute('aria-label')), 'Today gives the breadth in one compact meter; the trend map itself is on the Markets page');
 ok(!/market gate|conditions pass|What is not met/i.test(await text()), 'Today shows no gate or engine-selection wording');
-ok(/Gold \$2,650\.50/.test(await pg.locator('.brief-macro').innerText().then((s) => s.replace(/\s+/g, ' '))), 'Today keeps one compact line of gold, Brent and the rupee');
+ok(/Gold \$2,650\.50/.test(await pg.locator('[data-tile=GOLD]').innerText().then((s) => s.replace(/\s+/g, ' '))) && /Brent/.test(await pg.locator('[data-tile=BRENT]').innerText()) && /USD/.test(await pg.locator('[data-tile=USDINR]').innerText()), 'Today keeps gold, Brent and the rupee as tiles in the Market now strip');
 ok(/Start with one company/.test(await text()) && !/Market news|What matters now|Picks from the close/.test(await text()), 'a new user\'s Today is the setup card and the brief: no news, picks or book until they have something of their own');
 await pg.goto(base + '/#/c/HDFCBANK'); await pg.waitForSelector('.fab-row'); await pg.locator('.fab-row button[aria-pressed]').click(); await pg.waitForTimeout(300);   // one explicit follow makes this a returning user
-await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief-ix');
+await pg.goto(base + '/#/today'); await pg.waitForSelector('.mkt-tiles');
 await pg.waitForSelector('.nw-row'); ok(/Market news/.test(await text()) && /RBI keeps repo rate unchanged/.test(await text()) && !/Sensex ends higher/.test(await text()) && /Checked (?:\w{3} \d{1,2} \w{3} )?\d\d:\d\d IST/.test(await text()) && /Policy|Results/.test(await pg.locator('.nw-row').first().innerText()), 'Today shows What matters now with verified events, their tags, and when the news was last checked (IST)');
 ok(!/delayed/i.test(await text()), 'no price on Today is described as delayed');
 await pg.getByText('How to read these picks').click();
@@ -77,14 +77,14 @@ const mapSaid = async () => (await pg.locator('.dot-live').count()) > 0 || /last
 for (let k = 0; k < 6 && !(await mapSaid()); k++) { await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
 await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 10000 });
 ok(/live ·/i.test(await text()) || /last prices · fetched/i.test(await text()), 'the trend map (Markets page) says which it is, live inside the session or last prices outside it, with how many names were re-priced');
-await pg.goBack(); await pg.waitForSelector('.brief-ix');
+await pg.goBack(); await pg.waitForSelector('.mkt-tiles');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 // 11 Nov 2026 (revamp v2): "Your names" is now the one board for followed companies (this reader follows one), so its heading is expected; the empty-state and ticker checks stand
 ok(!/Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0 && (await pg.locator('[data-board-row]').count()) === 1, 'Today carries no empty-state cards and no duplicate ticker; the followed name is one board row');
 ok((await pg.locator('section.nw .nw-list > .nw-row').count()) <= 3, 'the market news on Today is at most three lines, then All news (11 Nov 2026: was five)');
 await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }); await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
 ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
-await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.brief-ix');
+await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.mkt-tiles');
 
 // the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
 const scr = JSON.parse(SCREEN_JSON);
@@ -421,7 +421,7 @@ const erased = await pg.waitForFunction(() => /No theses yet/.test(document.body
 ok(erased, `deleting data erases the notes${erased ? '' : ` (page at ${pg.url()} said: ${(await text()).replace(/\s+/g, ' ').slice(0, 300)})`}`);
 
 // offline
-await pg.goto(base + '/#/today'); await pg.waitForSelector('.brief-ix');
+await pg.goto(base + '/#/today'); await pg.waitForSelector('.mkt-tiles');
 await ctx.setOffline(true); await pg.reload().catch(() => {}); await pg.waitForTimeout(1500);
 const offTxt = await text().catch(() => '');
 ok(/Offline|Data through|Today/.test(offTxt), 'offline reload still renders from the saved shell and data' + (offTxt ? '' : ' (nothing rendered)'));
