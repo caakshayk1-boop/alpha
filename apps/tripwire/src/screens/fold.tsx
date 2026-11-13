@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 /** A section that leads with one plain line and keeps its detail one tap away. The detail is never removed: it is the same content that used to be always open, in a native <details> (keyboard, find-in-page and
  *  screen readers all work, and the summary row is a 44px target). `open` is for the few disclosures that must be read without a tap (the trust statements). */
-export function Fold({ id, title, summary, aside, open, children }: { id: string; title: string; summary?: ReactNode; aside?: ReactNode; open?: boolean; children: ReactNode }) {
-  return <details className="fold" data-fold={id} open={open}>
+export function Fold({ id, anchor, title, summary, aside, open, children }: { id: string; anchor?: string; title: string; summary?: ReactNode; aside?: ReactNode; open?: boolean; children: ReactNode }) {
+  return <details className="fold" id={anchor} data-fold={id} open={open}>
     <summary><span className="fold-main"><h2 className="fold-t">{title}</h2>{summary ? <span className="fold-s">{summary}</span> : null}</span>{aside}<span className="chev" aria-hidden="true">▾</span></summary>
     <div className="fold-body">{children}</div>
   </details>;

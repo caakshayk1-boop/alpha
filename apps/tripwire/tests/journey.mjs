@@ -49,9 +49,9 @@ await pg.waitForSelector('.mkt-data:not([data-fresh="loading"])', { timeout: 150
 ok(/Data through/.test(await pg.locator('.mkt-data').textContent()), 'Today states the data date (the Market now basis line; the Data status accordion moved to Info)');
 await pg.waitForSelector('.mkt-tiles .mt b');
 ok((await pg.locator('.mkt-tiles a[href="#/markets"]').count()) === 6 && /24,120/.test(await text()) && /Nifty 50/i.test(await text()) && /Bank Nifty/.test(await text()) && /India VIX/.test(await text()), 'Today shows the Nifty, Bank Nifty and VIX in the brief, each opening the Markets page (v6: six tiles, with gold, Brent and the rupee)');
-await pg.locator('.mkt-tiles a').first().click(); await pg.waitForSelector('.moodhero a[href*="tradingview.com"]');
+await pg.locator('.mkt-tiles a').first().click(); await pg.waitForSelector('.mk-tiles a[href*="tradingview.com"]');
 /* 12 Nov 2026 (revamp v3): the Nifty 50 is the day chart above; the Indices card lists Bank Nifty and India VIX. */
-ok(await pg.locator('.moodhero a[target=_blank][rel*=noopener]').count() >= 2 && (await pg.locator('.moodhero a[href*="tradingview.com"]').count()) === 2, 'the Markets page lists Bank Nifty and India VIX (the Nifty is the day chart), outbound links open in a new tab without handing over the window');
+ok(await pg.locator('.mk-tiles a[target=_blank][rel*=noopener]').count() === 3 && (await pg.locator('.mk-tiles a[href*="tradingview.com"]').count()) === 3, 'the Markets page has a tile each for the Nifty 50, Bank Nifty and India VIX (v6); outbound links open in a new tab without handing over the window');
 await pg.waitForSelector('.rangebar', { timeout: 15000 }); ok(await pg.locator('.rangebar').count() === 1 && /in an uptrend/.test(await text()), 'the Markets page carries the trend map');
 await pg.waitForFunction(() => /\$2,650\.50/.test(document.body.innerText), null, { timeout: 15000 });
 ok(await pg.locator('a.tile[href^="#/m/"]').count() === 8 && /Gold/i.test(await text()) && /\$2,650\.50/.test(await text()) && /88\.50/.test(await text()) && /RM4\.3800/.test(await text()), 'the Markets page shows gold, silver, Brent, WTI, USD/INR, MYR/INR, USD/MYR and Bitcoin with live prices');
@@ -83,8 +83,8 @@ ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not 
 // 11 Nov 2026 (revamp v2): "Your names" is now the one board for followed companies (this reader follows one), so its heading is expected; the empty-state and ticker checks stand
 ok(!/Weakest sectors|You follow nothing yet/.test(await text()) && (await pg.locator('.tape').count()) === 0 && (await pg.locator('[data-board-row]').count()) === 1, 'Today carries no empty-state cards and no duplicate ticker; the followed name is one board row');
 ok((await pg.locator('section.nw .nw-list > .nw-row').count()) <= 3, 'the market news on Today is at most three lines, then All news (11 Nov 2026: was five)');
-await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }); await pg.locator('.heat a').first().click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
-ok(/Filters · 2/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the trend map opens Discover already filtered');
+await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 }); await pg.locator('[data-sectorheat] .sh-cell').first().click(); await pg.locator('a.sh-discover').click(); await pg.waitForSelector('input.field[type=search]'); await pg.waitForTimeout(300);
+ok(/Filters · 1/.test(await text()) && (await pg.locator('.li .tag').count()) > 0, 'a sector on the Markets heat map opens Discover already filtered');
 await pg.locator('nav.tabs a[href="#/today"]').click(); await pg.waitForSelector('.mkt-tiles');
 
 // the published risk grade must be a word everywhere: code that compares it with 'HIGH' gets a number backwards (a real bug, 26 Oct 2026)
@@ -326,11 +326,11 @@ await pg.locator('section[aria-label]').first().getByRole('button', { name: 'Add
 ok(/paper trade taken/i.test(await text()), 'taking a pick confirms it and says it enters at the next open');
 await ctx.clock.setFixedTime(new Date(replayNow * 1000)); now0 = replayNow;
 await pg.getByRole('tab', { name: 'Positions' }).click(); await pg.waitForSelector('.pcard[data-pos]');   // 11 Nov 2026: Mine and Auto are one Positions board; your trade is labelled You
-await pg.waitForFunction(() => /(\d\d:\d\d IST · \d+ (s|min) old|Last traded \d\d:\d\d IST)/.test(document.body.innerText), null, { timeout: 15000 });
+await pg.waitForFunction(() => /\+₹\d/.test(document.querySelector('[data-strip] [data-total]')?.innerText ?? ''), null, { timeout: 15000 });   // 13 Nov 2026: the Book no longer prints a healthy quote row; wait for the total itself
 /* 12 Nov 2026 (Tripwire 2.0, 1.2): the interim honest label for the open figure, which includes booked partials */
 ok(/Open-trade P&L, includes booked partials/i.test(await text()), 'tracker shows paper P&L');
 // 1 Nov 2026: the badge is the price word (Live inside the NSE session, Last traded outside it); the day figure is Today or Last session to match
-ok(/^(Live|Last traded|Delayed)$/i.test((await pg.locator('[data-strip] .livebadge').first().innerText()).trim()) && /today|last session/i.test(await pg.locator('[data-strip]').innerText()), 'the tracker shows a price-word badge and the day\'s P&L');
+ok(!/Quotes:/.test(await pg.locator('[data-strip]').innerText()) && (!(await pg.locator('[data-quotes]').count()) || /Quotes (delayed|unavailable)/.test(await pg.locator('[data-quotes]').innerText())) && /today|last session/i.test(await pg.locator('[data-strip]').innerText()), 'the tracker is silent about healthy quotes (a chip only for delayed or unavailable) and shows the day\'s P&L');
 ok(/^you$/i.test((await pg.locator('.pcard .own-chip').first().textContent()).trim()), 'the trade you took is labelled as yours on the board (11 Nov 2026)');
 await pg.locator('.tcard-head').first().click(); await pg.waitForSelector('.ladder');
 ok(await pg.locator('.ladder .lv').count() === 5 && await pg.locator('svg[data-daychart]').count() >= 1, 'an expanded trade shows its risk ladder and the day\'s five-minute line');
@@ -344,7 +344,7 @@ const heldText = await text();
 ok(/\blive\b/i.test(heldText) && /session 4 of/i.test(heldText), `an open trade is marked live and counts four exchange sessions (${heldText.match(/session \d+ of \d+/i)?.[0] ?? 'session count missing'})`);
 /* 12 Nov 2026 (Tripwire 2.0, 3.1): the strip's answer is Total P&L (realised + unrealised), shown with its sign; the open-trade figure is named in its note */
 ok(/\+₹\d/.test(await pg.locator('[data-strip] [data-total]').first().innerText().catch(() => '')) && /Open-trade P&L, includes booked partials: \+₹\d/.test(await pg.locator('[data-strip] [data-total-note]').innerText().catch(() => '')), 'open P&L is computed and shown with its sign');
-{ const m = await pg.locator('[data-method]').textContent(); ok(/How a trade is followed/.test(m) && /next open|first session after/i.test(m), 'tracker states its entry and exit rules (folded under How the paper book works since 11 Nov 2026)'); }
+{ ok(await pg.locator('[data-method] a[href="#/info?s=book"]').count() === 1, 'the Book links to How the paper book works on #/info'); const here = pg.url(); await pg.goto(base + '/#/info?s=book'); await pg.waitForSelector('#info-book'); const m = await pg.locator('#info-book').textContent(); ok(/How a trade is followed/.test(m) && /next open|first session after/i.test(m), 'the entry and exit rules are stated on #/info (moved from the Book on 13 Nov 2026)'); await pg.goto(here); await pg.waitForSelector('[data-strip]'); }
 // a failed price service shows an honest error, not a guess
 await pg.unroute('**/api/bars*'); await pg.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' })); await pg.route('**/api/tick*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
 await pg.reload(); await pg.waitForSelector('text=Live prices are unavailable', { timeout: 15000 });
@@ -367,17 +367,19 @@ ok(/9\s*resolved observations/.test(await pg.locator('[data-record-headline]').i
 /* 12 Nov 2026: the gate counts qualifying lifecycles (ledgerview.ts), still 30 */
 ok(/withheld until 30 qualifying lifecycles close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
+await pg.locator('[data-rec-def] > summary').click();   // 13 Nov 2026: the definitions sit under "How to read this"
 ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
 await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('[data-slots]', { timeout: 15000 });
 await pg.waitForFunction(() => /Taken: S0/.test(document.querySelector('[data-positions]')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {}); const book = async () => pg.locator('[data-positions]').textContent();   // 11 Nov 2026: the log and the method are folded under the board, so their text is read with the folds shut
 ok(await pg.locator('canvas.confetti').count() === 0 && await pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:celebrated') ?? '[]').length > 0), 'the first winning trade seen is noted once, in words, with no reward effect');
 ok(/of 50/i.test(await text()) && /Taken: S0 \(MOM\), 1000 shares, about ₹1,00,000/.test(await book()), 'the automatic book takes every pick of the record at once, sized to the ₹1,00,000 ticket');
-ok(/at most 50 positions at a time/.test(await book()) && /at most ₹1,00,000/.test(await book()) && await pg.locator('[data-slots] circle').count() === 50, 'the automatic book states and draws its 50-position limit');
+{ const here = pg.url(); await pg.goto(base + '/#/info?s=book'); await pg.waitForSelector('#info-book'); const info = await pg.locator('#info-book').textContent(); ok(/at most 50 positions at a time/.test(info) && /at most ₹1,00,000/.test(info), 'the 50-position limit and the ticket are stated on #/info (moved from the Book on 13 Nov 2026)'); await pg.goto(here); await pg.waitForSelector('[data-slots]', { timeout: 15000 }); }
+ok(await pg.locator('[data-slots] circle').count() === 50, 'the automatic book draws its 50-position limit');
 await shot('09c-autobook');
 // the look: live water, a ticker, privacy, themes, the biggest moment, the lock
-await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.moodhero .idx'); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
-ok(await pg.locator('.heat a').count() >= 3, 'the Markets page has a sector heat map (the ticker tape that repeated the strip is gone)');
+await pg.goto(base + '/#/markets'); await pg.reload(); await pg.waitForSelector('.mk-tiles .mk-tile'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 }).catch(() => {});   // the heat map lives on #/markets since 27 Oct 2026
+ok(await pg.locator('[data-sectorheat] .sh-cell').count() >= 3, 'the Markets page has a sector heat map (the ticker tape that repeated the strip is gone)');
 ok(await pg.locator('canvas').count() === 0, 'the mood card is a plain data panel: no canvas, no moving water');
 ok(await pg.locator('.tick .rd .old').count() === 0 && await pg.locator('.tick .rd').count() > 10, 'digits at rest are plain characters (the old digit exists only for the 200 ms of a roll)');
 await pg.goto(base + '/#/today'); await pg.reload(); await pg.waitForSelector('.brief'); await pg.waitForTimeout(1500); ok(await pg.locator('canvas.confetti').count() === 0, 'the note does not repeat on the next visit');

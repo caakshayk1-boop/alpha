@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { Tick } from '../live.tsx';
 import { countsTick } from '../tickbasis.ts';
 import { inr0, inr } from '../fmt.ts';
-import { coverageWords, OPEN_TRADE_LABEL, type Snapshot, type SnapPosition } from '../ledgerview.ts';
+import { coverageWords, quotesProblem, OPEN_TRADE_LABEL, type Snapshot, type SnapPosition } from '../ledgerview.ts';
 
 export const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
 const tone = (v: number | null | undefined) => ((v ?? 0) > 0 ? 'up' : (v ?? 0) < 0 ? 'down' : '');
@@ -16,20 +16,22 @@ export const istHm = (sec: number) => `${new Date((sec + 19800) * 1000).toISOStr
 /** The font size of a big number follows the width of its container and the length of its text (ledger4.css, `--ch`), so the last digit can never wrap. */
 const chars = (t: string) => ({ ['--ch' as string]: Math.max(6, t.length) });
 
-export function TrustRow({ snap, scope, onScope, hasMine, quotes, throughWord, children }: { snap: Snapshot; scope: 'all' | 'engine' | 'mine'; onScope: (s: 'all' | 'engine' | 'mine') => void; hasMine: boolean; quotes: ReactNode; throughWord: string | null; children?: ReactNode }) {
-  const w = coverageWords(snap.coverage, throughWord); const c = snap.coverage;
-  const range = c.oldestPrint != null ? (c.newestPrint !== c.oldestPrint ? `prints ${istHm(c.oldestPrint)} to ${istHm(c.newestPrint!)}` : `print ${istHm(c.oldestPrint)}`) : null;
+/** The only status the Book prints is one that is WRONG: stale or missing quotes, an incomplete exit check, a partial subtotal. A healthy book says nothing (v6, 13 Nov 2026).
+ *  What "complete" means, and the oldest print, are on #/info (Book and P&L). */
+export function TrustRow({ snap, scope, onScope, hasMine, priceWord, throughWord, children }: { snap: Snapshot; scope: 'all' | 'engine' | 'mine'; onScope: (s: 'all' | 'engine' | 'mine') => void; hasMine: boolean; priceWord: string | null | undefined; throughWord: string | null; children?: ReactNode }) {
+  const w = coverageWords(snap.coverage, throughWord); const c = snap.coverage; const q = quotesProblem(priceWord);
+  const marksProblem = c.state === 'unavailable' || c.missing > 0 || c.closedUnpriced > 0;
+  const range = c.oldestPrint != null && c.newestPrint !== c.oldestPrint ? ` (prints ${istHm(c.oldestPrint)} to ${istHm(c.newestPrint!)})` : '';
   return <div className="l4-scope" data-scope-row>
     <div className="l4-who">{hasMine
       ? <div className="l4-seg" role="group" aria-label="Whose positions"><button type="button" aria-pressed={scope === 'all'} onClick={() => onScope('all')}>Both</button><button type="button" aria-pressed={scope === 'engine'} onClick={() => onScope('engine')}>Engine paper book</button><button type="button" aria-pressed={scope === 'mine'} onClick={() => onScope('mine')}>My paper plans</button></div>
       : <b className="l4-scope-name" data-scope-name>Engine paper book</b>}
-      {hasMine && <b className="l4-scope-name" data-scope-name>{scope === 'all' ? 'Engine paper book and my paper plans' : scope === 'engine' ? 'Engine paper book' : 'My paper plans'}</b>}
-      <span className="l4-tag">Paper only · not real money</span></div>
-    <div className="l4-status" role="group" aria-label="How current and how verified">
-      <span className="l4-st" data-quotes>{quotes}</span>
-      <span className={`l4-st ${w.exitComplete ? '' : 'warn'}`} data-exit-verification>{w.exit}</span>
-    </div>
-    <p className="l4-marks small mute" data-marks>{w.marks}{c.atClose && c.live ? `; ${c.live} at a live print, ${c.atClose} at the last close` : ''}{range ? `. Oldest mark: print ${istHm(c.oldestPrint!)}${c.newestPrint !== c.oldestPrint ? ` (${range})` : ''}` : ''}.</p>
+      {hasMine && <b className="l4-scope-name" data-scope-name>{scope === 'all' ? 'Engine paper book and my paper plans' : scope === 'engine' ? 'Engine paper book' : 'My paper plans'}</b>}</div>
+    {(q || !w.exitComplete) && <div className="l4-status" role="group" aria-label="What needs attention">
+      {q && <span className="l4-st warn" data-quotes>{q}</span>}
+      {!w.exitComplete && <span className="l4-st warn" data-exit-verification title={w.exit}>Exit checks incomplete · {c.historyIncomplete} of {c.open}</span>}
+    </div>}
+    {marksProblem && <p className="l4-marks small mute" data-marks>{w.marks}{c.atClose && c.live ? `; ${c.live} at a live print, ${c.atClose} at the last close` : ''}{range}.</p>}
     {children}
   </div>;
 }
@@ -44,19 +46,22 @@ export function TotalRow({ snap, dayLabel }: { snap: Snapshot; dayLabel: string 
       <div><dt>Unrealised</dt><dd className={`num amt ${tone(t.unrealised)}`} data-unrealised>{money(t.unrealised)}</dd></div>
       <div><dt>{dayLabel}</dt><dd className={`num amt ${tone(t.day)}`} data-day>{money(t.day)}</dd></div>
     </dl>
-    <p className="l4-note small mute" data-total-note>Realised is booked exits, partial ones included, after costs. Unrealised is the shares still held, marked at the observed price. {t.openTrade != null ? `${OPEN_TRADE_LABEL}: ${money(t.openTrade)}${t.openTrade === t.unrealised ? ' (no partial exit has been booked, so it equals unrealised)' : ' (a different quantity from unrealised)'}. ` : ''}Snapshot <code className="num" data-snapshot-id>{snap.id}</code>.</p>
+    <p className="l4-note small mute" data-total-note><a href="#/info?s=pnl">How these are calculated</a>{t.openTrade != null ? <> · {OPEN_TRADE_LABEL}: {money(t.openTrade)}</> : null}</p>
   </div>;
 }
 
 export function MovedRow({ snap, onRow }: { snap: Snapshot; onRow: (id: string) => void }) {
   const link = (x: SnapPosition, v: number | null) => <button type="button" className="l4-link" onClick={() => onRow(x.id)}>{x.sym} <span className={`num amt ${tone(v)}`}>{money(v)}</span></button>;
   const g = snap.gainers[0], l = snap.losers[0]; const ex = snap.exceptions;
-  return <ul className="l4-moved" data-moved aria-label="What moved">
-    <li><span className="k">Biggest gain</span>{g ? link(g, g.split!.total) : <span className="mute">none</span>}</li>
-    <li><span className="k">Biggest loss</span>{l ? link(l, l.split!.total) : <span className="mute">none</span>}</li>
-    <li><span className="k">Largest weight</span>{snap.largest ? <span className="num">{snap.largest.sym} {snap.largest.pct.toFixed(1)}%</span> : <span className="mute">not measured</span>}</li>
-    <li><span className="k">Exceptions</span>{ex.length ? <span>{ex.slice(0, 2).map((x, i) => <span key={x.id}>{i ? ', ' : ''}<button type="button" className="l4-link" onClick={() => onRow(x.id)}>{x.sym}</button></span>)}{ex.length > 2 ? ` and ${ex.length - 2} more` : ''}: {ex.some((x) => x.split?.total == null) ? 'not measured' : 'history incomplete'}</span> : <span className="mute">none</span>}</li>
-  </ul>;
+  /* v6: a tile with nothing in it ("none", "not measured") is not drawn; the row is absent when every tile is empty */
+  const tiles = [
+    g && <li key="g"><span className="k">Biggest gain</span>{link(g, g.split!.total)}</li>,
+    l && <li key="l"><span className="k">Biggest loss</span>{link(l, l.split!.total)}</li>,
+    snap.largest && <li key="w"><span className="k">Largest weight</span><span className="num">{snap.largest.sym} {snap.largest.pct.toFixed(1)}%</span></li>,
+    ex.length > 0 && <li key="e"><span className="k">Exceptions</span><span>{ex.slice(0, 2).map((x, i) => <span key={x.id}>{i ? ', ' : ''}<button type="button" className="l4-link" onClick={() => onRow(x.id)}>{x.sym}</button></span>)}{ex.length > 2 ? ` and ${ex.length - 2} more` : ''}: {ex.some((x) => x.split?.total == null) ? 'not measured' : 'history incomplete'}</span></li>,
+  ].filter(Boolean);
+  if (!tiles.length) return null;
+  return <ul className="l4-moved" data-moved aria-label="What moved">{tiles}</ul>;
 }
 
 const STATE_WORD = { awaiting: 'Awaiting entry', open: 'Open', closed: 'Closed', skipped: 'Skipped at the open' } as const;

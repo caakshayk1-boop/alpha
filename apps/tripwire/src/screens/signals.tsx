@@ -80,7 +80,7 @@ function Picks() {
   const state = (p: Pick) => { if (!auto.plan) return { k: 'no' as const, text: 'Position record unavailable' }; const t = auto.plan.taken.some((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); if (t) return { k: 'in' as const, text: 'In the engine book' }; const r = auto.plan.refused.find((x) => x.pick.sym === p.sym && x.pick.engine === p.engine && x.pick.asOf === p.asOf); return { k: 'no' as const, text: r ? `Not taken: ${r.why}` : 'Device shortlist · nightly entries use published settings' }; };
   const total = out.runs.reduce((a, r) => a + r.picks.length, 0);
   return <div className="pk">
-    <p className="pk-intro small dim">{total} pick{total === 1 ? '' : 's'} from the close of <b>{dayWord(scr.data!.as_of)}</b>. Long only. A paper entry fills at the next session's open, never at that close, and is skipped if that open is more than 2% above it. Levels below are worked from the signal close; the fill sets the booked ones.</p>
+    <p className="pk-intro small dim">{total} pick{total === 1 ? '' : 's'} from the close of <b>{dayWord(scr.data!.as_of)}</b>. Long only, paper entries. <a href="#/info?s=picks">How to read these picks</a></p>
     {behind && <p className="note" role="status" data-stale-banner>The next build is pending; these candidates are re-checked when it lands.</p>}
     {!holdingsReady && <p className="note" role="status">The position record is refreshing or unavailable. Candidate analysis remains visible; new manual entries wait until existing holdings can be checked.</p>}
     {!auto.plan && total > 1 && <p className="note" role="status">The record could not be read, so the engine book cannot take these picks yet.</p>}

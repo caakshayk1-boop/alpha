@@ -70,3 +70,9 @@ test('a closed position with no rupee P&L makes the totals a partial subtotal an
   assert.match(coverageWords(s.coverage, null).marks, /1 closed position has an R result but no rupee figure/);
   assert.equal(snapshotOf(BOOK, 0.25).coverage.closedUnpriced, 0); assert.equal(snapshotOf(BOOK, 0.25).totals.partial, false, 'a fully priced book is not flagged');
 });
+
+test('v6: the Book is silent about quotes unless they are delayed or unavailable', async () => {
+  const { quotesProblem } = await import('../src/ledgerview.ts');
+  assert.equal(quotesProblem('Live'), null); assert.equal(quotesProblem('Last traded'), null); assert.equal(quotesProblem(null), null); assert.equal(quotesProblem(undefined), null);
+  assert.equal(quotesProblem('Delayed'), 'Quotes delayed'); assert.equal(quotesProblem('Unavailable'), 'Quotes unavailable');
+});

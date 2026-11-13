@@ -19,6 +19,7 @@ const Live = lazy(() => import('./screens/Live.tsx').then((m) => ({ default: m.L
 const NewsPage = lazy(() => import('./screens/NewsPage.tsx').then((m) => ({ default: m.NewsPage })));
 const Markets = lazy(() => import('./screens/markets.tsx').then((m) => ({ default: m.Markets })));
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
+const Info = lazy(() => import('./screens/Info.tsx').then((m) => ({ default: m.Info })));
 const Methodology = lazy(() => import('./screens/Methodology.tsx').then((m) => ({ default: m.Methodology })));
 const Help = lazy(() => import('./screens/Help.tsx').then((m) => ({ default: m.Help })));
 const Operations = lazy(() => import('./screens/ops.tsx').then((m) => ({ default: m.Operations })));
@@ -109,7 +110,7 @@ export const useSheets = () => useContext(SheetCtx);
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--accent)' }, { id: 'discover', label: 'Research', c: 'var(--accent)' }, { id: 'signals', label: 'Book', c: 'var(--accent)' }, { id: 'more', label: 'Menu', c: 'var(--accent)' }];   /* 11 Nov 2026: three daily places and a Menu (My Desk, settings, data, method, help). */
 const MORE_HEADS = ['more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' || p[0] === 'desk' ? 'more' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
-const TITLES: Record<string, string> = { signals: 'Book', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
+const TITLES: Record<string, string> = { signals: 'Book', settings: 'Settings', profile: 'Settings', info: 'About and data', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 /** Replaces the address (no extra Back step) and draws nothing. */
@@ -201,6 +202,7 @@ export function App(): ReactNode {
   else if (head === 'settings' || head === 'profile') view = <Settings />;   // #/profile is the older address of the same screen
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
+  else if (head === 'info') view = <Info section={vl.q.get('s')} />;   // 13 Nov 2026 (v6): everything a screen does not need to decide, with anchors (?s=data|pnl|book|markets|picks|method|legal|build)
   else if (head === 'help') view = <Help />;
   else if (head === 'ops') view = <Operations />;
   else if (head === 'privacy') view = <Privacy />;

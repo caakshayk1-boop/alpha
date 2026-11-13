@@ -16,11 +16,11 @@ import { Fold } from './fold.tsx';
 
 /** Methodology and evidence: the long explanations that used to sit inside cards, in one place, read from the same constants the app computes with
  *  (the engines' own rule text, the eligibility steps, the trend rule), so this page cannot drift from the screens that link to it. */
-export function Methodology() {
+export function Methodology({ embedded = false }: { embedded?: boolean } = {}) {
   const bt = useBacktest(); const rules = rulesDef(CURRENT_RULES); const scr = useJson<ScreenFeed>('/data/screen.json'); const gap = scr.data ? universeReport(scr.data.rows, scr.data.as_of, scr.data.built_on).breadthGap : null;
   // 11 Nov 2026 (revamp v2): the paper-only statement was made three times at the top (a note said "no order" twice, then the summary's first line); it is made once, below.
   return <div className="mp read meth">
-    <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />
+    {!embedded && <PageBar title="Methodology and evidence" onBack sub="How things are worked out, and what the tests found" />}
 
     <section className="card sumcard" aria-labelledby="mt-glance" data-summary="methodology">
       <h2 id="mt-glance">At a glance</h2>
