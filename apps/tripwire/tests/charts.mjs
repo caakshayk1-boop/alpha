@@ -36,8 +36,11 @@ const readHeight = (pg) => pg.locator('[data-research-read]').evaluate((e) => Ma
   });
   ok(axisClear, 'comparison axis ticks do not overlap endpoint return labels');
   const meta = await pg.locator('.cf-meta').innerText(); ok(/1Y/.test(meta) && /indexed to 100/.test(meta) && /through \d+ \w{3} \d{4}/.test(meta), `timeframe, units and data-through date are printed (${meta})`);
+  // 13 Nov 2026 (v5, company one-pager): on a phone the lines under the takeaway, the coverage notes, the basis and "About this chart" are ONE closed disclosure; the data-through date stays in view. Nothing is removed.
+  ok(await pg.locator('[data-cf-more]').count() === 1 && !(await pg.locator('[data-cf-more]').evaluate((d) => d.open)) && await pg.locator('.cf-through').isVisible(), 'phone: notes, scale and source are one closed disclosure and the data-through date stays visible');
+  await pg.locator('[data-cf-more] > summary').click(); await pg.waitForTimeout(150);
   const basis = await pg.locator('.cf-basis').innerText(); ok(basis.length < 110 && /split-adjusted/i.test(basis) && /dividends not included/i.test(basis), `one short basis line sits under the chart (${basis})`);
-  await pg.locator('summary', { hasText: 'About this chart' }).click(); ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in About this chart');
+  ok(/Yahoo/.test(await pg.locator('.chart').innerText()) && /dividends are neither reinvested nor added back/.test(await pg.locator('.chart').innerText()), 'the full source and dividend treatment are in the opened notes (phone: no second disclosure inside the first)');
   ok(await pg.locator('.cf-tbl > summary').count() === 1 && (await pg.locator('.cf-tbl > summary').boundingBox()).height >= 43.5, 'the table is a disclosure with a 44px summary');
   ok((await overflow(pg)) <= 0, 'no horizontal overflow at 390');
   await ctx.close(); }
@@ -113,7 +116,7 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   await ctx.close();
   const c2 = await newCtx(b, 390, series(900, 'TCS')); const p2 = await c2.newPage(); await open(p2, '/#/c/TCS', '.chart-plot svg');
   ok(await radio(p2, 'Compare', 'PRICE').getAttribute('aria-checked') === 'true' && /rose|fell|was flat/.test((await p2.locator('[data-takeaway]').allInnerTexts()).join(' ')) && !/Nifty/.test(await p2.locator('[data-takeaway] .cf-lead').innerText()), 'with no Nifty series the chart is a plain price line and the takeaway names no benchmark');
-  ok(/Nifty 50 could not be read/.test(await p2.locator('.chart').innerText()), 'and the page says the benchmark is missing');
+  ok(/Nifty 50 could not be read/.test(await p2.locator('.chart').evaluate((e) => e.textContent)), 'and the page says the benchmark is missing (in the notes; on a phone those are one closed disclosure, still in the page)');
   await c2.close(); }
 
 /* 7. a non-positive close: log scale is refused with the reason, nothing divides by zero */
@@ -194,5 +197,24 @@ for (const w of [320, 360, 390, 430]) {
   await pg.goto(base + '/'); await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('section.cf[aria-busy]', { timeout: 20000 }).catch(() => {});
   const h0 = await pg.evaluate(() => document.querySelector('section.cf')?.getBoundingClientRect().height ?? 0); await pg.waitForSelector('.chart-plot', { timeout: 20000 }); const h1 = await pg.evaluate(() => document.querySelector('section.cf').getBoundingClientRect().height);
   ok(h0 > 0 && Math.abs(h1 - h0) < 200, `the chart card holds its place while loading (${Math.round(h0)}px, then ${Math.round(h1)}px)`); await ctx.close(); }
+
+/* 13 Nov 2026 (v5, master prompt 2.3b): the last bar says what it is. A bar still forming, or older than the last finished session, is named in one line under the header; a confirmed one prints nothing extra;
+   an index, metal or coin (its own calendar) gets none. The clock is FIXED for the forming and confirmed cases, so the result does not depend on the day or the hour the suite runs. */
+const seriesEnding = (endIso, n = 300) => { const t = [], c = [], o = [], h = [], l = [], v = []; let d = Date.parse(`${endIso}T03:45:00Z`) / 1000; const rev = [];
+  while (rev.length < n) { const wd = new Date(d * 1000).getUTCDay(); if (wd !== 0 && wd !== 6) rev.push(d); d -= 86400; }
+  let px = 100; rev.reverse().forEach((x, i) => { const op = px; px *= 1 + 0.0005 + Math.sin(i / 9) * 0.01; t.push(x); c.push(+px.toFixed(2)); o.push(+op.toFixed(2)); h.push(+(Math.max(op, px) * 1.01).toFixed(2)); l.push(+(Math.min(op, px) * 0.99).toFixed(2)); v.push(100000 + i * 10); });
+  return JSON.stringify({ ok: true, sym: 'TCS', t, c, n: c.map((x, k) => 20000 + k * 3), o, h, l, v }); };
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-11')); await ctx.clock.setFixedTime(new Date('2026-11-11T05:35:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // Wed 11 Nov 2026, 11:05 IST: the session is on
+  const el = pg.locator('.cf [data-bar-status]'); ok(await el.count() === 1 && (await el.getAttribute('data-bar-status')) === 'forming', 'a last bar whose session is on is marked forming');
+  const tx = await el.innerText(); ok(/^Last bar still forming: 11 Nov 2026 is provisional until its session closes \(seen 11:05 IST\)\.$/.test(tx), `and says so in words, with the day and the time it was seen (${tx})`);
+  ok(await el.evaluate((e) => !!e.closest('.cf-meta')) && !/will|expect|likely|forecast/i.test(tx), 'the line sits in the chart header and predicts nothing');
+  ok((await overflow(pg)) <= 0, 'no horizontal overflow with the line on screen'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-11')); await ctx.clock.setFixedTime(new Date('2026-11-11T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // 16:30 IST the same day: the session has closed
+  ok(await pg.locator('.cf [data-bar-status]').count() === 0, 'after the close the same bar is confirmed and prints no extra line'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-09')); await ctx.clock.setFixedTime(new Date('2026-11-13T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/c/TCS', '.chart-plot svg');   // Fri 13 Nov 16:30 IST: Wed 11 and Thu 12 have finished with no bar here
+  const el = pg.locator('.cf [data-bar-status]'); ok(await el.count() === 1 && (await el.getAttribute('data-bar-status')) === 'stale', 'a series that ends before the last finished session is marked stale');
+  ok(/^Last bar is 9 Nov 2026: a newer session has finished and its bar is not in this data yet\.$/.test(await el.innerText()), 'and states its own last day'); await ctx.close(); }
+{ const ctx = await newCtx(b, 390, seriesEnding('2026-11-09')); await ctx.clock.setFixedTime(new Date('2026-11-13T11:00:00Z')); const pg = await ctx.newPage(); await open(pg, '/#/m/GOLD', '.chart-plot svg');
+  ok(await pg.locator('.cf [data-bar-status]').count() === 0, 'an instrument on its own calendar (gold) gets no session-based caption'); await ctx.close(); }
 
 await b.close(); console.log(fails ? `\ncharts: ${fails} failed` : '\ncharts: all passed'); process.exit(fails ? 1 : 0);

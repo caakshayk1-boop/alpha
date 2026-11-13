@@ -6,6 +6,7 @@
 // No performance percentage appears: no capital base or cash-flow treatment is defined for this book.
 import type { ReactNode } from 'react';
 import { Tick } from '../live.tsx';
+import { countsTick } from '../tickbasis.ts';
 import { inr0, inr } from '../fmt.ts';
 import { coverageWords, OPEN_TRADE_LABEL, type Snapshot, type SnapPosition } from '../ledgerview.ts';
 
@@ -37,7 +38,7 @@ export function TotalRow({ snap, dayLabel }: { snap: Snapshot; dayLabel: string 
   const t = snap.totals; const big = t.unavailable ? 'Unavailable' : t.total == null ? '—' : money(t.total);
   return <div className="l4-hero" data-total-pnl>
     <span className="k">Total P&L{t.partial ? ' (partial subtotal)' : ''}</span>
-    <b className={`num amt l4-big ${t.unavailable ? '' : tone(t.total)}`} style={chars(big)} data-total>{t.unavailable || t.total == null ? big : <Tick v={t.total}>{big}</Tick>}</b>
+    <b className={`num amt l4-big ${t.unavailable ? '' : tone(t.total)}`} style={chars(big)} data-total>{t.unavailable || t.total == null ? big : <Tick v={t.total} {...countsTick(snap.coverage.live, snap.coverage.atClose)}>{big}</Tick>}</b>
     <dl className="l4-parts" aria-label="What the total is made of">
       <div><dt>Realised</dt><dd className={`num amt ${tone(t.realised)}`} data-realised>{t.unavailable ? '—' : money(t.realised)}</dd></div>
       <div><dt>Unrealised</dt><dd className={`num amt ${tone(t.unrealised)}`} data-unrealised>{money(t.unrealised)}</dd></div>

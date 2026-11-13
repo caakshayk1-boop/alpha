@@ -13,9 +13,12 @@ export const BASIS = {
   statements: 'Source: annual statements from the data provider, in ₹ crore, by fiscal year ending 31 March. Figures are as reported, not adjusted; a year without a figure is left blank, not drawn as zero.',
 } as const;
 
-export function ChartFrame({ title, meta, takeaway, leadAfter = false, legend, children, table, tableOpen, notes, basis, label, tableLabel, busy, printTableClosed, className = '' }: {
+/** True on a phone-width screen, read once when the chart mounts (no reflow while reading; same rule as the company page's own wideAsOf). */
+const onPhone = () => typeof matchMedia === 'function' && matchMedia('(max-width: 480px)').matches;
+
+export function ChartFrame({ title, meta, takeaway, leadAfter = false, legend, children, table, tableOpen, notes, detail, about, basis, label, tableLabel, busy, printTableClosed, foldOnPhone = false, className = '' }: {
   title: ReactNode; meta?: ReactNode; takeaway?: { headline: string; lines: string[]; dataThrough: string } | null;
-  leadAfter?: boolean; legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; basis?: ReactNode; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
+  leadAfter?: boolean; legend?: ReactNode; children: ReactNode; table?: ReactNode; tableOpen?: boolean; notes?: ReactNode; /** reading notes (coverage, scale, source) that a phone keeps one tap away when `foldOnPhone` is set; wider screens print them in place */ detail?: ReactNode; /** the 'About this chart' paragraphs: a disclosure of their own on wider screens, plain paragraphs inside the folded notes on a phone */ about?: ReactNode; basis?: ReactNode; /** 13 Nov 2026 (company one-pager): on a phone the lines under the takeaway, the notes and the basis go into ONE closed disclosure; nothing is removed, and the data-through date stays in view */ foldOnPhone?: boolean; label: string; tableLabel?: string; busy?: boolean; /** the printed page keeps the table disclosure closed (a shorter table stands in for it) */ printTableClosed?: boolean; className?: string;
 }) {
   const id = useId().replace(/:/g, '');
   // On a phone the lead sentence is held to two lines so the plot starts on the first screen (charts.css). When the words do not fit, the whole sentence is printed again under the plot
@@ -26,6 +29,7 @@ export function ChartFrame({ title, meta, takeaway, leadAfter = false, legend, c
     const measure = () => setCut(el.scrollHeight > el.clientHeight + 1); measure();
     if (typeof ResizeObserver === 'undefined') return; const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
   }, [takeaway?.headline]);
+  const [phone] = useState(onPhone); const fold = foldOnPhone && phone;
   return <section className={`card chart cf ${className}`.trim()} aria-label={label} aria-busy={busy || undefined}>
     <div className="cf-head">
       <div className="cf-top"><div className="cf-h">{title}</div>{legend}</div>
@@ -35,9 +39,13 @@ export function ChartFrame({ title, meta, takeaway, leadAfter = false, legend, c
     {children}
     {takeaway && !leadAfter && cut && <p className="cf-full" aria-hidden="true" data-clamped-copy>{takeaway.headline}</p>}
     {takeaway && leadAfter && <div className="cf-take" id={`${id}-t`} data-takeaway><p className="cf-lead cf-lead-full">{takeaway.headline}</p></div>}
-    {takeaway && <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>}
+    {takeaway && (fold
+      ? <div className="cf-take2" data-takeaway><p className="cf-through num">{takeaway.dataThrough}</p></div>
+      : <div className="cf-take2" data-takeaway>{takeaway.lines.map((l) => <p key={l} className="cf-line">{l}</p>)}<p className="cf-through num">{takeaway.dataThrough}</p></div>)}
     {notes}
-    {basis && <p className="cf-basis small mute">{basis}</p>}
+    {fold
+      ? <details className="ev cf-more" data-cf-more><summary>Notes, scale and source<span className="chev">▾</span></summary><div className="body small dim">{takeaway?.lines.map((l) => <p key={l} className="cf-line" data-takeaway>{l}</p>)}{detail}{about && <div className="cf-about">{about}</div>}{basis && <p className="cf-basis small mute">{basis}</p>}</div></details>
+      : <>{detail}{about && <details className="ev" style={{ marginTop: 8 }}><summary>About this chart<span className="chev">▾</span></summary><div className="body small dim">{about}</div></details>}{basis && <p className="cf-basis small mute">{basis}</p>}</>}
     {table && <details className="ev cf-tbl" open={tableOpen} data-print-closed={printTableClosed ? '' : undefined}><summary>{tableLabel ?? 'The same chart as a table'}<span className="chev">▾</span></summary><div className="body">{table}</div></details>}
   </section>;
 }

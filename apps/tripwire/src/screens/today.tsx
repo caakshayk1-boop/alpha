@@ -17,6 +17,7 @@ import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
 import { buildFeed } from '../alertsfeed.ts';
 import { useMacro, MACRO, fmtMacro } from '../macro.ts';
 import { LiveBadge, Observed, Spark, Tick } from '../live.tsx';
+import { marksTick, quoteTick } from '../tickbasis.ts';
 import { FlowLine } from './FlowCard.tsx';
 import { avatarStyle } from '../widgets.tsx';
 import { initials } from '../fmt.ts';
@@ -91,7 +92,7 @@ export function Today() {
         <div className="row between brief-top"><h2 id="t-brief" className="sec">Your market brief</h2><span className="row small t-sess-row"><span className={`t-sess ${sess.phase}`} data-session>{sess.label} · {sess.detail}</span><LiveBadge live={pw === 'Live'} label={pw ?? 'Checking prices'} /></span></div>
         <div className="pulse"><BreadthGauge upPct={t.upPct} downPct={t.downPct} n={t.map.n} /><p className="t-take" data-takeaway>{take ? take.text : scr.loading || pulse.loading ? <span className="sk" style={{ display: 'inline-block', height: 18, width: '85%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p></div>
         <div className="brief-ix num" role="list" aria-label="Indices">
-          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
+          {([['Nifty 50', 'NIFTY', 2], ['Bank Nifty', 'BANKNIFTY', 0], ['India VIX', 'VIX', 2]] as const).map(([nm, k, d]) => { const q = pulse.data?.quotes[k]; const ch = chOf(k); return <a role="listitem" key={k} href="#/markets" className="bix"><span className="small dim">{nm}</span><b><Tick v={q?.px} {...quoteTick(q?.pt, Date.now())}>{q ? q.px.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'}</Tick></b><span className={`small ${k === 'VIX' ? (ch == null ? '' : ch > 0 ? 'down' : 'up') : tone(ch)}`}>{ch == null ? '—' : pct(ch, 2)}</span></a>; })}
         </div>
         <FlowLine />
         <div className="small dim brief-macro num" aria-label="Commodities and the rupee">{(macroLine.length ? macroLine : [{ k: 'Gold', v: '—', ch: null }, { k: 'Brent oil', v: '—', ch: null }, { k: 'USD / INR', v: '—', ch: null }]).map((m) => <span key={m.k}><span>{m.k}</span><b className="tx">{m.v}</b><span className={tone(m.ch)}>{m.ch == null ? '—' : pct(m.ch, 1)}</span></span>)}</div>
@@ -121,7 +122,7 @@ export function Today() {
         <div className="row between sechead"><h2 id="t-book" className="sec">Paper book</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
         <div className="card bookcard">
           <dl className="bk-stats num">
-            <div><dt>Open-trade P&amp;L</dt><dd className={`amt bigpnl ${tone(pnl)}`} title="Booked partial exits plus the remaining shares marked at the observed price"><Tick v={openN ? pnl : null}>{openN ? money(pnl) : '—'}</Tick></dd></div>
+            <div><dt>Open-trade P&amp;L</dt><dd className={`amt bigpnl ${tone(pnl)}`} title="Booked partial exits plus the remaining shares marked at the observed price"><Tick v={openN ? pnl : null} {...marksTick([...(showAuto ? auto.rows.filter((r) => r.v.status === 'open') : []), ...ownOpen].map((r) => r.v.markKind))}>{openN ? money(pnl) : '—'}</Tick></dd></div>
             <div><dt>Open</dt><dd>{openN}{showAuto && auto.sum.waiting ? <small> +{auto.sum.waiting} waiting</small> : null}</dd></div>
             <div><dt>Closed</dt><dd>{showAuto ? auto.sum.closed : 0}<small> of {MIN_TRADES}</small></dd></div>
           </dl>

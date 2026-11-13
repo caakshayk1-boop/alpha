@@ -20,6 +20,7 @@ import { levelsFor } from '../levels.ts';
 import { reprice } from '../basis.ts';
 import { useAutoPicks } from '../book.ts';
 import { Tick, TvButton, TvIcon } from '../live.tsx';
+import { wordTick } from '../tickbasis.ts';
 import { Intel } from './Intel.tsx';
 import { DecisionCard } from './DecisionCard.tsx';
 import { CompanyNews } from './News.tsx';
@@ -166,7 +167,7 @@ export function Company({ sym }: { sym: string }) {
   return <div>
     <PageBar title={row.name} onBack right={<><TvIcon sym={sym} /><FollowButton sym={sym} name={row.name} /></>} sub={<>{sym} · NSE · {row.sector ?? 'sector not stated'}</>} />
     <section className="card glass c-head">
-      <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px} basis={lp.fromQuote ? 'quote' : 'recorded'}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
+      <div className="row between co-hero"><div className="co-px"><div className="num co-price"><Tick v={px} {...wordTick(lp.fromQuote ? lp.word : 'Last traded')}>{inr(px)}</Tick></div><div className={`num co-ch ${tone(lp.ch)}`}>{pct(lp.ch)} <span className="co-chw">{lp.fromQuote ? (lp.live ? 'today' : 'last session') : 'on the day'}</span></div></div>
         <div className="c-pills" role="group" aria-label="Trend and size class"><span className={`vchip hero-trend ${tchip.tone}`} data-vchip="trend" data-trend-state={tchip.state} title={tchip.basis} tabIndex={0}><span className="vk">Trend</span><span className="vv">{tchip.glyph && <span aria-hidden="true">{tchip.glyph} </span>}{tchip.word}</span></span>{row.tier && <Pill>{row.tier[0].toUpperCase() + row.tier.slice(1)} cap</Pill>}</div></div>
       {wideAsOf && verdict}
       {(() => { const ai = { quote: lp.fromQuote && lp.t ? { word: lp.word, t: lp.t } : null, screenClose: row.last_date ?? null, chartThrough: hist.loading ? undefined : hist.data?.t.length ? hist.data.t[hist.data.t.length - 1] : null, fy: row.fy ?? null, stale: !!row.stale || fr.tone === 'peach' };
@@ -187,7 +188,9 @@ export function Company({ sym }: { sym: string }) {
       </div>}
       <div className="co-chart"><PriceChart sym={sym} levels={levelsFor(sym, picks)} events={rd.next && row.next_earnings ? [{ t: Date.parse(`${row.next_earnings}T00:00:00+05:30`) / 1000, label: 'Results date', basis: 'as listed by the data provider; an estimate until reported' }] : []} /></div>
       {!wideAsOf && <div className="co-chips">{verdict}</div>}   {/* 12 Nov 2026: on a phone the verdict follows the chart, so the plot keeps its first-screen place (charts.mjs budget; CI fonts are wider) */}
-      <section className="card co-glance" aria-labelledby="glance-h" data-glance><h2 id="glance-h" className="sec">At a glance</h2><dl className="gl-grid">{glance.map((g: GlanceCell) => <div key={g.id} className={`gl-cell ${g.tone}`} data-glance-cell={g.id}><dt className="gl-k">{g.k}</dt><dd className="gl-v num">{g.v}</dd><dd className="gl-s">{g.sub}</dd></div>)}</dl></section>
+      <section className="card co-glance" aria-labelledby="glance-h" data-glance><h2 id="glance-h" className="sec">At a glance</h2>{(() => { const cell = (g: GlanceCell) => <div key={g.id} className={`gl-cell ${g.tone}`} data-glance-cell={g.id}><dt className="gl-k">{g.k}</dt><dd className="gl-v num">{g.v}</dd><dd className="gl-s">{g.sub}</dd></div>;
+        // 13 Nov 2026 (v5): on a phone four figures show and the other four are one tap away (the same cells, in a native disclosure); wider screens show all eight in place
+        return wideAsOf || glance.length <= 4 ? <dl className="gl-grid">{glance.map(cell)}</dl> : <><dl className="gl-grid">{glance.slice(0, 4).map(cell)}</dl><details className="gl-more" data-glance-more><summary>{glance.length - 4} more figures<span className="chev" aria-hidden="true">▾</span></summary><dl className="gl-grid">{glance.slice(4).map(cell)}</dl></details></>; })()}</section>
       <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 

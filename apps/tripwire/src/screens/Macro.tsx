@@ -5,6 +5,7 @@ import { trendOfCloses, TREND_WORD } from '../screen.ts';
 import { LiveBadge, Observed, Tick } from '../live.tsx';
 import { DayChart } from '../components/DayChart.tsx';
 import { isLiveQuote, quoteWord } from '../stamp.ts';
+import { quoteTick } from '../tickbasis.ts';
 import { Icon, Empty } from '../ui.tsx';
 import { PageBar, Failed } from './common.tsx';
 import { PriceChart } from './PriceChart.tsx';
@@ -19,7 +20,7 @@ export function MacroStrip() {
       {MACRO.map((d) => { const q = m.data?.quotes[d.key]; const ch = q ? (q.px / q.prev - 1) * 100 : null; const lk = indiaLink(d.key);
         return <a key={d.key} role="listitem" className="tile" style={{ '--tt': d.tint } as CSSProperties} href={`#/m/${d.key}`}>
           <div className="nm">{d.label}<span className="sr">, chart</span></div>
-          <div className="vv num"><Tick v={q?.px}>{q ? fmtMacro(d, q.px) : '—'}</Tick></div>
+          <div className="vv num"><Tick v={q?.px} {...quoteTick(q?.pt, Date.now(), false)}>{q ? fmtMacro(d, q.px) : '—'}</Tick></div>
           <div className={`small num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? (m.err ? 'unavailable' : '…') : pct(ch, 2)}</div>
           <div style={{ marginTop: 4 }} className="mc-spark">{q ? <DayChart q={q} size="compact" nse={false} good={ch == null || ch >= 0} label={`${d.label} over the last session`} /> : <div className="sk" style={{ height: 22 }} />}</div>
           {lk && <div className="il" data-india-link={lk.id}><span className="il-k">India link · {lk.label}</span><span className="il-t">{lk.exposed}</span><span className="il-chips" aria-hidden="true">{lk.sectors.slice(0, 3).map((x) => <span key={x} className="il-chip">{x}</span>)}</span></div>}</a>; })}
@@ -38,7 +39,7 @@ export function MacroPage({ k }: { k: string }) {
     <section className="card glass">
       <div className="row between"><LiveBadge live={isLiveQuote(q, Date.now(), false)} label={quoteWord(q?.pt, Date.now(), { nse: false, loading: m.loading }) ?? 'Checking prices'} /><span className="small mute"><Observed sec={q?.pt ?? null} err={m.err} nse={false} /></span></div>
       <div className="row between" style={{ alignItems: 'flex-end', marginTop: 8 }}>
-        <div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={q?.px}>{q ? fmt(q.px) : '—'}</Tick></div>
+        <div className="num" style={{ font: '600 1.875rem/1 var(--sans)', letterSpacing: '-.8px' }}><Tick v={q?.px} {...quoteTick(q?.pt, Date.now(), false)}>{q ? fmt(q.px) : '—'}</Tick></div>
         <div className={`num ${ch == null ? 'dim' : ch >= 0 ? 'up' : 'down'}`}>{ch == null ? '' : pct(ch, 2)} <span className="small dim">{isLiveQuote(q, Date.now(), false) ? 'today' : 'last session'}</span></div></div>
       {q && <div style={{ marginTop: 10 }}><DayChart q={q} nse={false} good={ch == null || ch >= 0} fmt={(x) => fmtMacro(d, x)} label={`${d.label} over the last session`} /></div>}
       {m.err && !q && <Failed what={d.label} err={m.err} retry={() => location.reload()} />}
