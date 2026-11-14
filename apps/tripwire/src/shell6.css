@@ -11,7 +11,7 @@
   .rail-head small{display:block;margin:var(--sp-2) var(--sp-3) 0;font-size:var(--fs-label);letter-spacing:.02em;font-weight:400;color:var(--ink-3)}
   html .tabs{grid-template-rows:repeat(var(--n,4),50px);padding-top:calc(var(--sp-5) + 76px)}   /* the brand lives in .rail-head (outside the nav, so the nav holds only its four destinations) */
 }
-@media print{.rail-head{display:none!important}}
+@media print{.rail-head{display:none!important}.nw-foot .icon-btn,.nw-refresh{display:none!important}}   /* a refresh button means nothing on paper, and its 40px box pushed the Today news footer 3px past the A4 column */
 
 /* ---- scrolling: the window is the only thing that scrolls up and down ---- */
 /* A box that scrolls vertically inside the page is a trap: the wheel (or a finger) is captured by it until it runs out, and `overscroll-behavior:contain` meant it never handed the rest to the page

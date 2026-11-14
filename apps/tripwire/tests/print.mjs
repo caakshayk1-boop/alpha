@@ -117,7 +117,7 @@ for (const route of PAGES) {
     total: document.querySelectorAll('details').length,
     nav: [...document.querySelectorAll('.tabs, .fab-row, .statusbar, .sheet, .scrim, .banner')].filter((e) => getComputedStyle(e).display !== 'none').length,
     over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    wide: [...document.querySelectorAll('main *')].filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5).slice(0, 4).map((e) => e.tagName + '.' + String(e.className).slice(0, 30)).join(' '),
+    wide: [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5 || e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX === 'visible' && e.clientWidth > 0).slice(-4).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' r' + Math.round(e.getBoundingClientRect().right) + ' sw' + e.scrollWidth + '/' + e.clientWidth).join(' '),
     bg: getComputedStyle(document.body).backgroundColor,
     sticky: [...document.querySelectorAll('main *')].filter((e) => (getComputedStyle(e).position === 'sticky' || getComputedStyle(e).position === 'fixed') && e.getClientRects().length > 0).length,
     cardSplit: [...document.querySelectorAll('.card, .cf')].filter((e) => getComputedStyle(e).breakInside !== 'avoid').length,
