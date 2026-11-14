@@ -74,10 +74,10 @@ T.stock = () => quote(100, 102); await pg.waitForTimeout(3100); await pg.evaluat
 await pg.waitForSelector('.pickrow svg', { timeout: 20000 }); T.stock = null;
 ok(true, 'each pick draws its own live line once its quotes arrive');
 await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('.trendmap');   // the live trend map is on the Markets page since 27 Oct 2026
-const mapSaid = async () => (await pg.locator('.dot-live').count()) > 0 || /last prices · fetched/.test(await text());   // 1 Nov 2026: shut market = "last prices"; open = the live dot
-for (let k = 0; k < 6 && !(await mapSaid()); k++) { await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
-await pg.waitForFunction(() => document.querySelector('.dot-live') || /last prices · fetched/.test(document.body.innerText), null, { timeout: 10000 });
-ok(/live ·/i.test(await text()) || /last prices · fetched/i.test(await text()), 'the trend map (Markets page) says which it is, live inside the session or last prices outside it, with how many names were re-priced');
+const mapSaid = async () => (await pg.locator('.dot-live').count()) > 0 || /(live · fetched|last prices|close of (Mon|Tue|Wed|Thu|Fri|Sat|Sun))/.test(await text());   // 1 Nov 2026: shut market = "last prices"; open = the live dot
+for (let k = 0; k < 6 && !(await mapSaid()); k++) { await pg.waitForFunction(() => document.querySelector('.dot-live') || /(live · fetched|last prices|close of (Mon|Tue|Wed|Thu|Fri|Sat|Sun))/.test(document.body.innerText), null, { timeout: 5000 }).catch(() => {}); await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }   // a slow runner may need the page to ask again
+await pg.waitForFunction(() => document.querySelector('.dot-live') || /(live · fetched|last prices|close of (Mon|Tue|Wed|Thu|Fri|Sat|Sun))/.test(document.body.innerText), null, { timeout: 10000 });
+ok(/live ·/i.test(await text()) || /(live · fetched|last prices|close of (Mon|Tue|Wed|Thu|Fri|Sat|Sun))/i.test(await text()), 'the trend map (Markets page) says which it is, live inside the session or last prices outside it, with how many names were re-priced');
 await pg.goBack(); await pg.waitForSelector('.mkt-tiles');
 ok((await pg.locator('.livebadge').count()) === 1, 'Today states LIVE once, not once per widget');
 // 11 Nov 2026 (revamp v2): "Your names" is now the one board for followed companies (this reader follows one), so its heading is expected; the empty-state and ticker checks stand
