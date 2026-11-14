@@ -40,7 +40,7 @@ export function MarketStrip({ tiles, take, takeLoading, breadth, live, wordLabel
       <p className="mkt-take" data-takeaway>{take ? take : takeLoading ? <span className="sk" style={{ display: 'inline-block', height: 16, width: '70%' }} aria-label="Reading the market" /> : 'No market figures are available right now.'}</p>
       <BreadthMeter upPct={breadth.up} downPct={breadth.down} n={breadth.n} />
     </div>
-    {flow}
+    <div className="mkt-flow">{flow}</div>
     <p className="small mute mkt-basis" data-brief><span className="mkt-px">Prices: <Observed sec={obsSec} err={obsErr} /> · times in IST</span>{dataLine}</p>
   </section>;
 }
