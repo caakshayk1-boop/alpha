@@ -87,7 +87,7 @@ export function Today() {
 
       {/* (1) Market now: six tiles, the one-sentence read, the breadth meter, and the basis said once */}
       <MarketStrip tiles={tiles} take={take ? take.text : null} takeLoading={scr.loading || pulse.loading} breadth={{ up: t.upPct, down: t.downPct, n: t.map.n }} live={pw === 'Live'} wordLabel={pw ?? 'Checking prices'} session={`${sess.label} · ${sess.detail}`} obsSec={pulse.obs} obsErr={pulse.err}
-        flow={<FlowLine />} dataLine={<span className="mkt-data" data-datastatus data-fresh={pill?.tone ?? 'loading'}>{pill ? pill.text : 'Checking how current the data is…'}</span>} />
+        flow={<FlowLine />} dataLine={<span className="mkt-data" data-datastatus data-fresh={pill?.tone ?? 'loading'}>{pill ? (pill.tone === 'stale' && pill.detail ? `${pill.text} · ${pill.detail}` : pill.text) : 'Checking how current the data is…'}</span>} />
 
       {/* a new user: one action. Nothing here is a count of something that does not exist yet. */}
       {fresh && <section className="tsec card setup" aria-labelledby="t-setup" data-sec="setup">

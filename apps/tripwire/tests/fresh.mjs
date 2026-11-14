@@ -22,7 +22,7 @@ const open = async (route, { ledgerDay, rsiDay, factorsDay, breadthDay }) => {
 const same = { ledgerDay: DAY, rsiDay: DAY, factorsDay: DAY };
 {
   const { ctx, pg, errs } = await open('/#/today', same); await pg.waitForSelector('[data-fresh="ok"], [data-fresh="stale"], [data-fresh="pending"]', { timeout: 15000 });
-  const p = pg.locator('.fresh-pill').first(); const t = await p.innerText(); const tone = await p.getAttribute('data-fresh');
+  const p = pg.locator('.mkt-data').first(); const t = await p.innerText(); const tone = await p.getAttribute('data-fresh');   // v6 (14 Nov 2026): the data day is the Market now strip's basis line (the Data status line moved to #/info)
   ok(/^Data through (Mon|Tue|Wed|Thu|Fri) \d+ \w{3}( · built \d\d:\d\d IST)?/.test(t), `the pill names the data day (and the build time when the feed has it): "${t}"`);
   ok(!/\blive\b/i.test(t), 'a close is never called live');
   ok(tone !== 'stale', `with every file on ${DAY} the pill is not amber (got ${tone})`);
@@ -30,10 +30,10 @@ const same = { ledgerDay: DAY, rsiDay: DAY, factorsDay: DAY };
 }
 {
   const { ctx, pg } = await open('/#/today', { ledgerDay: prevSession(prevSession(DAY)), rsiDay: prevSession(prevSession(DAY)), factorsDay: DAY }); await pg.waitForSelector('[data-fresh="stale"]', { timeout: 15000 });
-  // 11 Nov 2026 (revamp v2): on Today the file-by-file detail is folded into one collapsed "Data status" line at the foot; open it to read which files are behind
-  await pg.locator('.t-status > summary').click(); const t = await pg.locator('.t-status').innerText();
+  // v6 (14 Nov 2026): when a file is behind, the Market now strip's basis line says so in words, file by file (healthy stays one short line); the full table is on #/data and #/info
+  const t = await pg.locator('.mkt-data').first().innerText();
   ok(/Forward record 2 sessions behind/.test(t) && /RSI sheet 2 sessions behind/.test(t), `amber, and in words which files: "${t.slice(0, 160)}"`);
-  const colour = await pg.locator('.fresh-pill').first().evaluate((e) => getComputedStyle(e).color); ok(colour !== 'rgb(184, 239, 67)', 'the stale pill is not the lime of a healthy one'); await ctx.close();
+  const colour = await pg.locator('.mkt-data').first().evaluate((e) => getComputedStyle(e).color); ok(colour !== 'rgb(184, 239, 67)', 'the stale line is not the lime of a healthy one'); await ctx.close();
 }
 {
   const { ctx, pg } = await open('/#/data', { ledgerDay: prevSession(prevSession(DAY)), rsiDay: DAY, factorsDay: DAY }); await pg.waitForSelector('[data-fresh-table] tbody tr[data-file]', { timeout: 15000 });
