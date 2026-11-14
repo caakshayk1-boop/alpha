@@ -117,6 +117,7 @@ for (const route of PAGES) {
     total: document.querySelectorAll('details').length,
     nav: [...document.querySelectorAll('.tabs, .fab-row, .statusbar, .sheet, .scrim, .banner')].filter((e) => getComputedStyle(e).display !== 'none').length,
     over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    wide: [...document.querySelectorAll('main *')].filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5).slice(0, 4).map((e) => e.tagName + '.' + String(e.className).slice(0, 30)).join(' '),
     bg: getComputedStyle(document.body).backgroundColor,
     sticky: [...document.querySelectorAll('main *')].filter((e) => (getComputedStyle(e).position === 'sticky' || getComputedStyle(e).position === 'fixed') && e.getClientRects().length > 0).length,
     cardSplit: [...document.querySelectorAll('.card, .cf')].filter((e) => getComputedStyle(e).breakInside !== 'avoid').length,
@@ -124,7 +125,7 @@ for (const route of PAGES) {
   }));
   ok(r.shut === 0, `${route}: every disclosure is open in print (${r.total} on the page, ${before} were closed on screen)`);
   ok(r.nav === 0, `${route}: tab bar, action bar, status bar, sheets and banners are hidden`);
-  ok(r.over <= 1, `${route}: no horizontal clipping at the A4 column (${r.over}px)`);
+  ok(r.over <= 1, `${route}: no horizontal clipping at the A4 column (${r.over}px ${r.over > 1 ? r.wide : ''})`);
   ok(r.bg === 'rgb(255, 255, 255)', `${route}: white paper`);
   ok(r.sticky === 0, `${route}: nothing is sticky or fixed on paper (${r.sticky})`);
   ok(r.cardSplit === 0, `${route}: no card or chart may split across pages (${r.cardSplit} may)`);
