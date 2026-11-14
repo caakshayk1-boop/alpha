@@ -108,7 +108,8 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   const { ctx, pg } = await mk({ serviceWorkers: 'block' }); await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE);   // no service worker: it would answer the data requests itself, past the delay set below
   await ctx.route('**/data/research/engines_backtest.json', async (r) => { await new Promise((x) => setTimeout(x, 2500)); r.continue(); });
   await ctx.route('**/api/ledger*', async (r) => { await new Promise((x) => setTimeout(x, 2500)); r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false}' }); });
-  await pg.goto(base + '/#/signals'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(500);
+  // 13 Nov 2026 (v6): the Book opens on Positions; the evidence chip (and its skeleton) sits beside the picks, on the Picks tab
+  await pg.goto(base + '/#/signals?v=picks'); await pg.waitForSelector('nav.tabs'); await pg.waitForTimeout(500);
   const t0 = await text(pg);
   ok(!/has not been published|None of the engines|Not yet tested|has not started/i.test(t0), 'while the study loads, no claim about it is made');
   ok((await pg.locator('.sk').count()) >= 1, 'a neutral skeleton stands in for what is loading');
@@ -161,7 +162,7 @@ for (const [w, h] of [[360, 740], [390, 844], [430, 932], [768, 1024], [1440, 90
   ok(bad.length === 0, `${w}px: no sideways scroll on Today, Discover, a company, Signals and Data${bad.length ? ' (' + bad.join(', ') + ')' : ''}`);
   if (w === 1440) {
     await pg.goto(base + '/#/today'); await pg.waitForSelector('.today .tnews'); await pg.waitForTimeout(800);   // 27 Oct 2026: Today's two columns are a grid (news beside changes), no longer .split
-    const cols = await pg.evaluate(() => { const a = document.querySelector('.today > .tnews'), c = document.querySelector('.today > .board'); /* 11 Nov 2026 (revamp v2): the changes are the "Your names" board (.board), was .tchg */ /* 2 Nov 2026: layout positions (offsetTop/offsetWidth), not transformed rects: with motion on, a section below the fold sits mid scroll-reveal (translate + scale .985), which moves a rect by a few px without moving the layout */ return Math.abs(a.offsetTop - c.offsetTop) < 4 ? [a.offsetWidth, c.offsetWidth] : []; });
+    const cols = await pg.evaluate(() => { const a = document.querySelector('.today > .t-side'), c = document.querySelector('.today > .t-main'); /* 13 Nov 2026 (v6 home): the two columns are .t-main (names, picks) and .t-side (book row, news) */ /* 11 Nov 2026 (revamp v2): the changes are the "Your names" board (.board), was .tchg */ /* 2 Nov 2026: layout positions (offsetTop/offsetWidth), not transformed rects: with motion on, a section below the fold sits mid scroll-reveal (translate + scale .985), which moves a rect by a few px without moving the layout */ return Math.abs(a.offsetTop - c.offsetTop) < 4 ? [a.offsetWidth, c.offsetWidth] : []; });
     ok(cols.length === 2 && cols[0] >= 340 && cols[1] >= 340, `1440px: Today is a two-column workspace (${cols.join(' + ')} px)`);
     await pg.goto(base + '/#/discover'); await pg.waitForSelector('.adv summary'); await pg.locator('.adv summary').click(); await pg.waitForSelector('.lens'); const lensW = await pg.locator('.lens').evaluateAll((e) => e.map((x) => Math.round(x.getBoundingClientRect().width)));
     ok(lensW.length === 5 && lensW.every((x) => x > 150) && (await pg.locator('.li .wide').first().isVisible()), '1440px: Discover shows its five lenses side by side and a figure table on each row');

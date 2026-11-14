@@ -37,7 +37,7 @@ import { useNewsBoard } from '../news.ts';
 import { todayList } from '../newsview.ts';
 
 const money = (v: number | null | undefined) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${inr0(Math.abs(v))}`);
-const TOP = 3; const NEWS_TOP = 4;
+const TOP = 3; const NEWS_TOP = 3;
 
 /** Today (v6 home, 13 Nov 2026), in the order a person needs it, each fact said once: "Market now" (six tiles, one sentence, a breadth meter, the basis once), then your names, the last
  *  close's picks, the paper book as one slim row and the market's own news. Definitions, the data-status table and "how to read these picks" live in Info (#/info). How current the
