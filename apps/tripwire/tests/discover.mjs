@@ -53,6 +53,8 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
   const y0 = await pg.evaluate(() => Math.round(scrollY)); ok(y0 > 800, `scrolled well down (${y0}px)`);
   await target.locator('a').first().click();
   await pg.waitForSelector(COMPANY_PAGE, { timeout: 15000 }).catch(async (e) => { console.log(`DIAG discover: opened ${sym}; url ${pg.url()}; scrollY ${await pg.evaluate(() => scrollY).catch(() => '?')}; page said: ${(await pg.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400)}`); throw e; });
+  // v6: the page now keeps its scroll until the new screen is SHOWN (route transition), and COMPANY_PAGE's words (Price, Trend) also occur on Discover: wait for the company header itself, then the top
+  await pg.waitForSelector('.c-head', { timeout: 15000 }); await pg.waitForFunction(() => scrollY < 50, null, { timeout: 5000 }).catch(() => {});
   ok((await pg.evaluate(() => scrollY)) < 50, 'the company page starts at the top');
   await pg.goBack(); await ready(pg); await pg.waitForTimeout(500); const y1 = await pg.evaluate(() => Math.round(scrollY));
   ok(Math.abs(y1 - y0) <= 6, `Back: the scroll position is restored (${y0} then ${y1})`); ok((await pg.locator('[data-sym]').count()) === shown, 'Back: the same rows are revealed'); ok((await pg.locator(`.li.sel[data-sym="${sym}"]`).count()) === 1, `Back: ${sym} is the marked row`);
