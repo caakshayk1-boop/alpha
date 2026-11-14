@@ -30,8 +30,8 @@ const same = { ledgerDay: DAY, rsiDay: DAY, factorsDay: DAY };
 }
 {
   const { ctx, pg } = await open('/#/today', { ledgerDay: prevSession(prevSession(DAY)), rsiDay: prevSession(prevSession(DAY)), factorsDay: DAY }); await pg.waitForSelector('[data-fresh="stale"]', { timeout: 15000 });
-  // v6 (14 Nov 2026): when a file is behind, the Market now strip's basis line says so in words, file by file (healthy stays one short line); the full table is on #/data and #/info
-  const t = await pg.locator('.mkt-data').first().innerText();
+  // v6 (14 Nov 2026): when a file is behind, the Market now strip's basis line opens to say so in words, file by file (healthy stays one short line); the full table is on #/data and #/info
+  await pg.locator('.mkt-data .mkt-why > summary').click(); const t = await pg.locator('.mkt-data').first().innerText();   // closed it says only the data day (the banner says the lag once); open it names the files
   ok(/Forward record 2 sessions behind/.test(t) && /RSI sheet 2 sessions behind/.test(t), `amber, and in words which files: "${t.slice(0, 160)}"`);
   const colour = await pg.locator('.mkt-data').first().evaluate((e) => getComputedStyle(e).color); ok(colour !== 'rgb(184, 239, 67)', 'the stale line is not the lime of a healthy one'); await ctx.close();
 }

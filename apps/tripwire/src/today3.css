@@ -128,3 +128,6 @@ html .today.t3 .t-about a{text-decoration:underline;display:inline-flex;align-it
 html.fx .today.t3 :is(.mt,.bookrow):active{transform:scale(.98)}
 html.fx .today.t3 :is(.mt,.bookrow){transition:transform var(--dur-1) var(--ease),background-color var(--dur-1) var(--ease)}
 @media (prefers-reduced-motion:reduce){html .today.t3 :is(.mt,.bookrow){transition:none;transform:none}}
+/* 14 Nov 2026: when a file is behind, the data-day line opens to name the files (the banner says the lag once; this is the detail, closed by default) */
+html .today.t3 .mkt-why>summary{cursor:pointer;color:inherit}
+html .today.t3 .mkt-why>.small{display:block;margin-top:var(--sp-1)}
