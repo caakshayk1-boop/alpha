@@ -1,0 +1,42 @@
+/* The app shell, v6 (13 Nov 2026). Loaded after every page stylesheet and before tap.css. Owns: the wordmark link, the compact page header, the one banner slot, the content width and gutters,
+   the footer line, and scrolling. Tokens only (tools/lint-tokens.mjs); nothing here moves (motion is motion.css, under html.fx). */
+
+/* ---- the wordmark is a link home ---- */
+.rail-head{display:none}
+.statusbar a.brand,.rail-brand{text-decoration:none;color:var(--ink);border-radius:var(--rad-sm)}
+.statusbar a.brand:focus-visible,.rail-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(min-width:1100px){
+  .rail-head{display:block;position:fixed;top:var(--sp-5);left:var(--sp-4);width:calc(192px - 2 * var(--sp-4));z-index:25}
+  .rail-head .rail-brand{display:block;padding:var(--sp-1) var(--sp-3)}
+  .rail-head small{display:block;margin:var(--sp-2) var(--sp-3) 0;font-size:var(--fs-label);letter-spacing:.02em;font-weight:400;color:var(--ink-3)}
+  html .tabs{grid-template-rows:repeat(var(--n,4),50px);padding-top:calc(var(--sp-5) + 76px)}   /* the brand lives in .rail-head (outside the nav, so the nav holds only its four destinations) */
+}
+@media print{.rail-head{display:none!important}.nw-foot .icon-btn,.nw-refresh{display:none!important}}   /* a refresh button means nothing on paper, and its 40px box pushed the Today news footer 3px past the A4 column */
+
+/* ---- scrolling: the window is the only thing that scrolls up and down ---- */
+/* A box that scrolls vertically inside the page is a trap: the wheel (or a finger) is captured by it until it runs out, and `overscroll-behavior:contain` meant it never handed the rest to the page
+   (7,200 px of wheel over the Discover table moved the page 0 px), and a 360 px window over a 1,346 px financials table on a phone swallowed every swipe that began on it. Tables scroll SIDEWAYS only. */
+.disc .stbl-wrap{max-height:none;overscroll-behavior:auto;overscroll-behavior-x:contain}
+.cf-table .scroll-x{max-height:none}
+
+/* ---- the page header: compact. Title 28 to 32px, subtitle on the same line, actions at the right, 16px below ---- */
+.bar{padding-block:var(--sp-4) var(--sp-2);margin-bottom:var(--sp-4);gap:var(--sp-3)}
+.bar h1{font-size:clamp(1.75rem,1.45rem + .9vw,2rem);line-height:1.2;margin:0;flex:none;max-width:100%;font-weight:600;letter-spacing:var(--track-tight)}
+.bar .grow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:var(--sp-3);row-gap:0}
+.bar .sub{margin:0;font-size:var(--fs-data);line-height:1.4}
+.bar .workspace-kicker{display:none}   /* the line above the title repeated what the title and the tab already say */
+@media(max-width:699px){.bar,.bar.has-actions{padding-block:var(--sp-2);margin-bottom:var(--sp-3)}.bar h1,.bar.has-actions h1{font-size:1.5rem}}
+
+/* ---- the stale-data banner: ONE slot, directly under the top bar, in the content column, compact, the same on every page ---- */
+.main>.banner{position:static;margin:var(--sp-3) 0 0;padding:var(--sp-2) var(--sp-3);text-align:left;font-size:var(--fs-data);font-weight:500;line-height:1.4;border-radius:var(--rad-md)}
+
+/* ---- the top bar and the width of the page ---- */
+.statusbar{height:52px}   /* 52 so the gate pill keeps its 44px hit area inside the bar (tapsize.mjs) */
+@media(min-width:1100px){:root{--section-gap:var(--sp-6)}.main{--pad:var(--sp-6);--gut:var(--sp-6);max-width:calc(1280px + 2 * var(--sp-6))}}
+
+/* ---- the footer: one low-key row of short phrases; each wraps whole, never mid-phrase ---- */
+.ident{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--sp-4);margin:var(--sp-6) 0 0;padding-top:var(--sp-4);border-top:1px solid var(--line);font-size:var(--fs-label);line-height:1.6;color:var(--ink-3)}
+.today>.ident{grid-column:1/-1}
+.ident{max-width:none}   /* the footer spans the whole page, whatever columns Today draws above it */
+.ident>span{display:inline}
+.ident a{display:inline;min-height:0;line-height:inherit;color:var(--ink-2);text-decoration:underline}

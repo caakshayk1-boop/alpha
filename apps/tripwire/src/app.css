@@ -29,4 +29,7 @@
 @import "./effects3.css";   /* 12 Nov 2026: Effects preset (Off / Calm / Lively), the price halo */
 @import "./ledger4.css";   /* 12 Nov 2026: Tripwire 2.0 ledger layout, the Book P&L hierarchy */
 @import "./company5.css";   /* 13 Nov 2026 (v5): the company page on a phone, and the opt-in up/down palette */
+@import "./shell6.css";   /* 13 Nov 2026 (v6): the app shell: wordmark link, compact page header, one banner slot, widths, footer line, scrolling */
+@import "./markets6.css";   /* 13 Nov 2026 (v6): Markets summary row, two columns, compact cards */
 @import "./tap.css";   /* 13 Nov 2026: tap targets, 44px hit areas (tests/tapsize.mjs) */
+@import "./today3.css";   /* 13 Nov 2026 (v6): the home page, Market now strip and a balanced two-column decision area */

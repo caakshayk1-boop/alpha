@@ -46,7 +46,7 @@ export function UpdateOffer({ n, apply }: { n: number; apply: () => void }) {
 /** One event. `lead` draws the first row larger and gives its summary room; every row carries the same facts: headline (a link), source and publication age, one event tag, the company, an optional one-line summary, and a drawer. */
 /** `board` (the News page, revamp v2): the section heading says why the row is listed, so no list labels; the row carries a source-count chip and, under Your names, an "In paper book" chip
  *  instead of a second copy of the headline under Paper book. */
-export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym, board = false, inPaper = false, also = [], extra }: { also?: { id: string; label: string }[]; extra?: ReactNode; ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string; board?: boolean; inPaper?: boolean }) {
+export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = false, companySym, board = false, inPaper = false, compact = false, also = [], extra }: { compact?: boolean; also?: { id: string; label: string }[]; extra?: ReactNode; ev: NewsEvent; lists: Lists; lead?: boolean; seenSec: number; nowMs: number; label?: boolean; summaries?: boolean; companySym?: string; board?: boolean; inPaper?: boolean }) {
   const t = storyTime(ev.publishedAt, nowMs); const href = safeHref(ev.canonicalUrl); const fresh = isNewStory(ev, seenSec); const tags = label ? labelsOf(ev, lists) : [];
   const first = storyTime(ev.firstSeenAt, nowMs); const unknownDate = !t.known; const clk = timeLabels(ev, nowMs);
   const nSrc = Math.max(ev.sources.length, ev.moreSources + 1, 1);
@@ -65,7 +65,7 @@ export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = fa
       {tags.map((x) => <span key={x} className="nw-label">{x}</span>)}
     </span>
     {summaries && ev.summary && <p className="nw-summary" title={`Publisher description: ${ev.summary.provenance.feedId}; retrieved ${ev.summary.provenance.retrievedAt ?? 'at an unknown time'}`}>{ev.summary.text}</p>}
-    <details className="nw-more"><summary>{!board && ev.moreSources > 0 ? `${plural(ev.moreSources + 1, 'source')} · ` : ''}Evidence &amp; context</summary><div className="nw-body">
+    {!compact && <details className="nw-more"><summary>{!board && ev.moreSources > 0 ? `${plural(ev.moreSources + 1, 'source')} · ` : ''}Evidence &amp; context</summary><div className="nw-body">
       {!summaries && ev.summary && <p className="nw-summary">{ev.summary.text}<span className="mute"> — {ev.summary.provenance.feedId}, publisher description</span></p>}
       <p><b>{ev.sources.length > 1 ? `${plural(ev.sources.length, 'outlet')} carried this` : '1 outlet'}</b>{ev.sources.length > 1 ? '; the first listed is the primary source.' : '.'}</p>
       <ul className="nw-src" data-cover>{ev.sources.map((s) => { const h = safeHref(s.canonicalUrl); const st = storyTime(s.publishedAt, nowMs); return <li key={s.sourceId}>{h ? <a href={h} target="_blank" rel="noopener noreferrer">{s.sourceTitle}<span className="sr"> (opens in a new tab)</span></a> : s.sourceTitle} <span className="mute">· {s.tier} · {st.known ? st.ist : 'publication time unknown'}</span></li>; })}</ul>
@@ -74,7 +74,7 @@ export function NewsRow({ ev, lists, lead, seenSec, nowMs, label, summaries = fa
       <p className="mute small">{t.known ? 'Headline age uses the publication time. Collection is when Tripwire first found it.' : 'The feed gave no usable publication time, so none is shown (the collection time is not a substitute) and the story is kept off Today.'}</p>
       {ev.rank && <><p><b>Why it ranks here.</b> {ev.rank.reason}.</p><table className="nw-factors"><caption className="sr">Ranking factors</caption><thead><tr><th scope="col">Factor</th><th scope="col">Value</th><th scope="col">Weight</th><th scope="col">Points</th></tr></thead><tbody>{ev.rank.factors.map((f) => <tr key={f.k}><th scope="row">{f.k}</th><td className="num">{f.value.toFixed(2)}</td><td className="num">{f.weight.toFixed(2)}</td><td className="num">{f.points.toFixed(1)}</td></tr>)}</tbody></table><p className="mute small">Ranking {ev.rankingVersion}. A keyword rule typed this as {ev.eventType}; it says what the story is about, never whether it is good news.</p></>}
       {ev.qualityFlags.length > 0 && <p className="small">{ev.qualityFlags.map((f) => FLAG_WORD[f] ?? f).join(' · ')}</p>}
-    </div></details>
+    </div></details>}
   </li>;
 }
 

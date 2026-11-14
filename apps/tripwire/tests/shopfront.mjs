@@ -59,16 +59,15 @@ for (const w of [390, 320]) {
   ok(errs.length === 0, 'storage denied: no page errors'); await ctx.close();
 }
 
-/* ---- 4. the stale-data banner: under the brief on Today, same words, still at the top elsewhere ---- */
+/* ---- 4. the stale-data banner: drawn once by the shell, at the top, same words ---- */
 for (const w of [390, 320]) {
   const { ctx, pg } = await mk({ state: STATE, width: w, stale: true, preDismissed: true });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-stale-banner]', { timeout: 15000 }); await settle(pg);
-  const r = await pg.evaluate(() => { const br = document.querySelector('[data-sec=brief]').getBoundingClientRect(), bn = document.querySelector('[data-stale-banner]'), b = bn.getBoundingClientRect(); const main = document.querySelector('.main').getBoundingClientRect();
-    return { briefBottom: br.bottom + scrollY, banTop: b.top + scrollY, banBottom: b.bottom + scrollY, text: bn.innerText, role: bn.getAttribute('role'), inToday: !!bn.closest('.today'), main: main.top, vh: innerHeight, siblingsBetween: [...document.querySelector('.today').children].indexOf(bn) - [...document.querySelector('.today').children].indexOf(document.querySelector('[data-sec=brief]')) }; });
-  ok(r.inToday && r.siblingsBetween === 1, `${w}: the banner is the very next block after the brief (offset ${r.siblingsBetween})`);
-  ok(r.banTop >= r.briefBottom - 1 && r.banTop - r.briefBottom < 40, `${w}: it sits directly under the brief (${Math.round(r.banTop - r.briefBottom)}px gap)`);
+  // 13 Nov 2026 (v6 home): the shell draws the banner ONCE, above the page, on Today too; the page body holds no copy of it
+  const r = await pg.evaluate(() => { const all = document.querySelectorAll('[data-stale-banner]'); const bn = all[0]; return { n: all.length, text: bn.innerText, role: bn.getAttribute('role'), inToday: !!bn.closest('.today'), beforeView: !!(bn.compareDocumentPosition(document.querySelector('.view')) & Node.DOCUMENT_POSITION_FOLLOWING), copies: document.querySelectorAll('.today .banner').length }; });
+  ok(r.n === 1 && !r.inToday && r.copies === 0, `${w}: the banner is drawn once, outside Today's body (${r.n} copies, ${r.copies} inside Today)`);
+  ok(r.beforeView, `${w}: it sits at the top, before the page`);
   ok(/The data stops \d+ sessions before the last finished one\. Treat everything as old\./.test(r.text) && r.role === 'status', `${w}: wording and role unchanged: "${r.text}"`);
-  ok(r.banBottom <= r.vh * 2, `${w}: it is reached by scrolling past the brief only (bottom at ${Math.round(r.banBottom)})`);
   await pg.goto(base + '/#/markets'); await settle(pg);
   const m = await pg.evaluate(() => { const bn = document.querySelector('.banner[role=status]'); return bn ? { top: bn.getBoundingClientRect().top, beforeView: !!(bn.compareDocumentPosition(document.querySelector('.view')) & Node.DOCUMENT_POSITION_FOLLOWING) } : null; });
   ok(!!m && m.beforeView, `${w}: on other pages the banner stays at the top, before the page`);

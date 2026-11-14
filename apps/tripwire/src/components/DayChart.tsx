@@ -7,7 +7,7 @@ import type { Quote } from '../data.ts';
  *  touch, mouse or arrow keys; `compact` is the line and its previous-close baseline, for a row or a tile, with no text. Direction is carried by an arrow and a sign as well as colour. */
 export interface DayRef { v: number; kind: 'entry' | 'stop' | 'target'; text: string }
 const FULL = { w: 320, h: 210 }, COMPACT = { w: 100, h: 40 };
-export function DayChart({ q, label, size = 'full', refs = [], nse = true, fmt, good }: { q: Quote; label: string; size?: 'compact' | 'full'; refs?: DayRef[]; nse?: boolean; fmt?: (v: number) => string; /** the colour follows this instead of up/down (a rising VIX is not good news) */ good?: boolean }) {
+export function DayChart({ q, label, size = 'full', refs = [], nse = true, fmt, good, lean = false }: { q: Quote; label: string; size?: 'compact' | 'full'; refs?: DayRef[]; nse?: boolean; fmt?: (v: number) => string; /** the colour follows this instead of up/down (a rising VIX is not good news) */ good?: boolean ; /** v6 (Markets): no standing caption under the chart; it is scrubbing text only, and the explanation is on #/info */ lean?: boolean}) {
   const gid = useId().replace(/:/g, ''); const [cur, setCur] = useState<number | null>(null);
   const wrap = useRef<HTMLDivElement>(null); const [full, setFull] = useState(FULL);
   const dims = size === 'full' ? full : COMPACT;
@@ -61,7 +61,7 @@ export function DayChart({ q, label, size = 'full', refs = [], nse = true, fmt, 
     </svg>
     <div className="dc-facts num" aria-label="Session price range">{[['Open', g.open.c], ['High', g.high.c], ['Low', g.low.c], ['Prev close', q.prev]].map(([label, value]) => <span key={String(label)}><small>{label}</small><b>{f(Number(value))}</b></span>)}</div>
     {edges.filter((r) => r.at !== 'in').length > 0 && <ul className="dc-edge small num" aria-label="Your levels outside today's range">{edges.filter((r) => r.at !== 'in').map((r) => <li key={r.kind + r.text} className={r.kind}><span aria-hidden="true">{r.at === 'above' ? '▲' : '▼'}</span> {r.text} <span className="mute">· {r.at === 'above' ? 'above' : 'below'} today's range</span></li>)}</ul>}
-    <p className="small mute dc-note" aria-live="polite">{scrubbing ? `${hhmm(p.t)} · ${f(p.c)} · ${sgn(chg(p.c))}` : `${Math.round(g.elapsed * 100)}% of the session shown · 5-minute closes · scale is today's range, not your entry or stop`}</p>
+    <p className="small mute dc-note" aria-live="polite" hidden={lean && !scrubbing}>{scrubbing ? `${hhmm(p.t)} · ${f(p.c)} · ${sgn(chg(p.c))}` : `${Math.round(g.elapsed * 100)}% of the session shown · 5-minute closes · scale is today's range, not your entry or stop`}</p>
     <details className="more dc-table"><summary>Day chart as a table</summary>
       <table className="num"><thead><tr><th scope="col">Time (IST)</th><th scope="col">Price</th><th scope="col">Change</th></tr></thead>
         <tbody>{[...g.pts].reverse().map((r) => <tr key={r.t}><th scope="row">{hhmm(r.t)}</th><td>{f(r.c)}</td><td className={r.c >= q.prev ? 'up' : 'down'}>{arrow(r.c)} {sgn(chg(r.c))}</td></tr>)}</tbody></table>

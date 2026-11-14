@@ -13,10 +13,10 @@ const direction = (change: number) => change > 0 ? 'up' : change < 0 ? 'down' : 
 /** Equal readable tiles; area does not encode a figure. The activity share is printed.
  * Colour uses the existing turnover-weighted, dated calculation. Drill-down leads with
  * non-overlapping leaders/laggards; the complete universe stays one disclosure away. */
-export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
+export function SectorHeat({ rows, day, compact = false }: { rows: Row[]; day: string | null; /** v6 (Markets): no kicker and no method note (it is on #/info), tiles sorted by the day's change */ compact?: boolean }) {
   const [win, setWin] = useState<HeatWindow>('r1d');
   const [sector, setSector] = useState<string | null>(null);
-  const [sort, setSort] = useState<'activity' | 'strongest' | 'weakest'>('activity');
+  const [sort, setSort] = useState<'activity' | 'strongest' | 'weakest'>(compact ? 'strongest' : 'activity');
   const heading = useRef<HTMLHeadingElement>(null); const previousSector = useRef(sector);
   useEffect(() => { if (previousSector.current !== sector) { heading.current?.focus({ preventScroll: true }); previousSector.current = sector; } }, [sector]);
   const sectors = useMemo(() => sectorHeat(rows, win), [rows, win]);
@@ -30,8 +30,8 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
   const strongest = [...sectors].sort((a, b) => b.chg - a.chg)[0];
   const weakest = [...sectors].sort((a, b) => a.chg - b.chg)[0];
   if (!sectors.length) return <section className="card sh" data-sectorheat><h2 className="sec">Sector heat map</h2><p className="small dim">Not enough liquid names with a price change and a traded value to draw it.</p></section>;
-  return <section className="card sh" data-sectorheat aria-labelledby="sh-h">
-    <div className="sh-top"><div><span className="workspace-kicker">Market map</span><h2 ref={heading} tabIndex={-1} id="sh-h">{cur ? cur.sector : 'Sector heat map'}</h2></div>
+  return <section className={`card sh${compact ? ' sh-compact mk-card' : ''}`} data-sectorheat aria-labelledby="sh-h">
+    <div className="sh-top"><div>{!compact && <span className="workspace-kicker">Market map</span>}<h2 ref={heading} tabIndex={-1} id="sh-h">{cur ? cur.sector : 'Sector heat map'}</h2></div>
       <div className="mini-seg" role="group" aria-label="Change over">{(['r1d', 'r1w', 'r1m'] as HeatWindow[]).map((w) => <button key={w} type="button" aria-pressed={win === w} onClick={() => setWin(w)}>{w === 'r1d' ? '1D' : w === 'r1w' ? '1W' : '1M'}</button>)}</div></div>
     <p className="sh-sub small dim">Close of {dayWord(day)} · {WINDOW_LABEL[win]} change · {cur ? cur.n : counted} liquid companies</p>
     {cur ? <>
@@ -58,7 +58,7 @@ export function SectorHeat({ rows, day }: { rows: Row[]; day: string | null }) {
       </button>)}</div>
       <div className="sh-legend"><span>−{HEAT_SCALE[win]}%</span><i aria-hidden="true" /><span>+{HEAT_SCALE[win]}%</span><span>Colour scale</span></div>
     </>}
-    <details className="more sh-method"><summary>How this map is calculated</summary><p>Source: published company screen, close of {dayWord(day)}. Sector changes are weighted by the last session’s traded value, not market capitalisation. Activity is the share of traded value across the sectors shown. Tiles have equal size for readability. Participation counts companies rising, falling or unchanged over the selected window. Stale, illiquid and missing-data names are excluded; sectors need at least three qualifying names. Colour saturates at ±{HEAT_SCALE[win]}%; the printed number remains exact to two decimals. These are dated changes, not live prices or forecasts.</p></details>
+    {!compact && <details className="more sh-method"><summary>How this map is calculated</summary><p>Source: published company screen, close of {dayWord(day)}. Sector changes are weighted by the last session’s traded value, not market capitalisation. Activity is the share of traded value across the sectors shown. Tiles have equal size for readability. Participation counts companies rising, falling or unchanged over the selected window. Stale, illiquid and missing-data names are excluded; sectors need at least three qualifying names. Colour saturates at ±{HEAT_SCALE[win]}%; the printed number remains exact to two decimals. These are dated changes, not live prices or forecasts.</p></details>}
     <details className="more sh-table"><summary>{cur ? `${cur.sector} as a table` : 'Heat map as a table'}</summary>
       <table className="num"><thead><tr><th scope="col">{cur ? 'Name' : 'Sector'}</th><th scope="col">{cur ? 'Symbol' : 'Names'}</th><th scope="col">Share of traded value</th><th scope="col">Change, {WINDOW_LABEL[win]}</th></tr></thead><tbody>{cur
         ? names.map((n) => <tr key={n.sym}><th scope="row"><a href={`#/c/${encodeURIComponent(n.sym)}`}>{n.name}</a></th><td>{n.sym}</td><td>{((n.weight / cur.weight) * 100).toFixed(1)}%</td><td className={direction(n.chg)}>{signed(n.chg, 2)}</td></tr>)

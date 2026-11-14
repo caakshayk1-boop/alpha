@@ -65,10 +65,11 @@ export function NamesBoard({ rows, day, today, newsBySym, inBook }: { rows: Row[
           <button type="button" className="br-hit" aria-expanded={isOpen} aria-controls={pid} onClick={() => setOpened(isOpen ? null : sym)}>
             <span className="br-id"><b className="br-sym">{sym}</b><span className="br-name">{r?.name ?? 'Not in the screen'}</span></span>
             <span className="br-px num"><b>{lp?.px != null ? inr(lp.px) : '—'}</b><span className={`br-ch ${tone(ch)}`}>{ch == null ? '—' : <><span aria-hidden="true">{ch > 0 ? '▲' : ch < 0 ? '▼' : '■'}</span> {pct(ch)}</>}</span></span>
-            {chips.length > 0 && <span className="br-chips">{chips.map((c) => <span key={c.id} className={`br-chip ${c.tone}`}>{c.text}</span>)}</span>}
+            {chips.length > 0 && <span className="br-chips"><span className={`br-chip ${chips[0].tone}`}>{chips[0].text}</span>{chips.length > 1 && <span className="br-chip br-more" title={chips.slice(1).map((c) => c.text).join(', ')}>+{chips.length - 1}</span>}</span>}
             <span className="br-chev" aria-hidden="true"><Icon n="chev" /></span>
           </button>
           <div className="br-panel" id={pid} role="region" aria-label={`${sym}: changes, headlines and actions`}><div className="br-inner">
+            {chips.length > 1 && <ul className="br-all" aria-label={`Everything flagged on ${sym}`}>{chips.map((c) => <li key={c.id} className={`br-chip ${c.tone}`}>{c.text}</li>)}</ul>}
             {mine.length > 0 && <><p className="br-k" aria-hidden="true">Since your last visit</p><ul className="svevents" aria-label={`What changed in ${sym}`}>{mine.map((c) => item(c))}</ul></>}
             {news.length > 0 && <p className="br-k" aria-hidden="true">Headlines</p>}
             {news.length > 0 ? <ul className="br-news" aria-label={`Headlines naming ${sym}`}>{news.map((ev) => { const h = safeHref(ev.canonicalUrl); const t = storyTime(ev.publishedAt, nowMs); return <li key={ev.eventClusterId}>
@@ -79,9 +80,9 @@ export function NamesBoard({ rows, day, today, newsBySym, inBook }: { rows: Row[
           </div></div>
         </li>; })}
     </ul>
-    {sv.first ? <p className="small dim board-note" role="status" data-sv="first"><b>Tracking starts today.</b> From your next visit, meaningful changes in {s.follows.length === 1 ? 'this company' : `these ${s.follows.length} companies`} show on their rows, with the figures before and after.</p>
-      : changes.length ? <p className="small mute board-note" data-sv="basis">Changes are against what you were last shown{sv.dayFrom ? <>: screen data {dayWord(sv.dayFrom)} to {dayWord(sv.dayTo)}.</> : <>, screen data {dayWord(day)} (no newer screen yet).</>}</p>
-        : <p className="small mute board-note" data-sv="none">Nothing meaningful changed in the {sv.compared === 1 ? 'company' : `${sv.compared} companies`} you follow since you last looked.</p>}
+    {sv.first ? <p className="small dim board-note" role="status" data-sv="first"><b>Tracking starts today.</b> Changes since this visit show on each row.</p>
+      : changes.length ? <p className="small mute board-note" data-sv="basis">Changes since you were last shown{sv.dayFrom ? <> (screen data {dayWord(sv.dayFrom)} to {dayWord(sv.dayTo)}).</> : <> (screen data {dayWord(day)}, no newer screen yet).</>}</p>
+        : <p className="small mute board-note" data-sv="none">Nothing meaningful changed in {sv.compared === 1 ? 'the company' : `the ${sv.compared} companies`} you follow since you last looked.</p>}
     {sv.starting.length > 0 && !sv.first && <p className="small mute board-note" data-sv="starting">Tracking starts today for {sv.starting.join(', ')}.</p>}
     <div role="status" className="svmsg">{msg && <span className="small">{msg} {last && <button className="linkbtn" onClick={undo}>Undo</button>}</span>}</div>
     {sv.dismissed.length > 0 && <><button className="linkbtn" onClick={() => setShowDis(!showDis)} aria-expanded={showDis}>{showDis ? 'Hide dismissed' : `Show dismissed (${sv.dismissed.length})`}</button>
@@ -94,6 +95,6 @@ export function NamesEmpty() {
   const { open } = useSheets();
   return <section className="tsec board board-empty" aria-labelledby="bd-h" data-sec="changes">
     <h2 id="bd-h" className="sec">Your names</h2>
-    <div className="card board-empty-card"><p className="small dim">Follow a company and its price, changes and headlines line up here.</p><button className="btn pri" onClick={() => open({ k: 'search' })}><Icon n="search" />Find a company</button></div>
+    <div className="card board-empty-card"><p className="small dim"><b>Follow a company</b> and its price, changes and headlines line up here.</p><button className="btn pri" onClick={() => open({ k: 'search' })}><Icon n="search" />Find a company</button></div>
   </section>;
 }

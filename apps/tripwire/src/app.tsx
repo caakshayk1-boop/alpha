@@ -5,7 +5,7 @@ import { SAVE_FAILURE_WORDS, loadState, saveState, shouldAdoptStorageEvent, type
 import { downloadBackup } from './backupfile.ts';
 import { prefetchWhenIdle } from './prefetch.ts';
 import { useScreen } from './data.ts';
-import { Icon, UiProvider } from './ui.tsx';
+import { Icon, UiProvider, releaseScrollLockIfIdle } from './ui.tsx';
 const Today = lazy(() => import('./screens/today.tsx').then((m) => ({ default: m.Today })));
 const Discover = lazy(() => import('./screens/discover.tsx').then((m) => ({ default: m.Discover })));
 const Signals = lazy(() => import('./screens/signals.tsx').then((m) => ({ default: m.Signals })));
@@ -19,6 +19,7 @@ const Live = lazy(() => import('./screens/Live.tsx').then((m) => ({ default: m.L
 const NewsPage = lazy(() => import('./screens/NewsPage.tsx').then((m) => ({ default: m.NewsPage })));
 const Markets = lazy(() => import('./screens/markets.tsx').then((m) => ({ default: m.Markets })));
 const Lab = lazy(() => import('./screens/Lab.tsx').then((m) => ({ default: m.Lab })));
+const Info = lazy(() => import('./screens/Info.tsx').then((m) => ({ default: m.Info })));
 const Methodology = lazy(() => import('./screens/Methodology.tsx').then((m) => ({ default: m.Methodology })));
 const Help = lazy(() => import('./screens/Help.tsx').then((m) => ({ default: m.Help })));
 const Operations = lazy(() => import('./screens/ops.tsx').then((m) => ({ default: m.Operations })));
@@ -39,6 +40,7 @@ import { haptic } from './haptic.ts';
 import { lockId } from './lock.ts';
 import { lastDiscoverQuery } from './discoverstate.ts';
 import { ScrollTop } from './components/ScrollTop.tsx';
+import { Brand } from './components/Brand.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
 import { pathOnly, resolveRoute } from './route.ts';
@@ -108,7 +110,7 @@ export const useSheets = () => useContext(SheetCtx);
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--accent)' }, { id: 'discover', label: 'Research', c: 'var(--accent)' }, { id: 'signals', label: 'Book', c: 'var(--accent)' }, { id: 'more', label: 'Menu', c: 'var(--accent)' }];   /* 11 Nov 2026: three daily places and a Menu (My Desk, settings, data, method, help). */
 const MORE_HEADS = ['more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
 export const tabOf = (p: string[]) => (p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' || p[0] === 'desk' ? 'more' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
-const TITLES: Record<string, string> = { signals: 'Book', settings: 'Settings', profile: 'Settings', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
+const TITLES: Record<string, string> = { signals: 'Book', settings: 'Settings', profile: 'Settings', info: 'About and data', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 /** Replaces the address (no extra Back step) and draws nothing. */
@@ -159,12 +161,17 @@ export function App(): ReactNode {
   const tab = tabOf(loc.path); const tiRaw = TABS.findIndex((t) => t.id === tab); const ti = Math.max(0, tiRaw);   /* a Menu page (desk, more) highlights no tab */
   if (!isQuiet(loc.raw) && resolveRoute(loc.path).kind === 'ok' && (tab === 'more' || tab === 'signals' || loc.path[0] === 'today' || !loc.path[0])) tabLast[tab] = loc.raw;   // Today remembers only Today itself: Markets and News are pages opened FROM it, not places it lives
   // a quiet URL rewrite (Discover keeping its link current) is not a navigation; a return to Discover scrolls itself
-  const nav = useRef(loc.raw); if (!isQuiet(loc.raw)) nav.current = loc.raw;
+  // 13 Nov 2026: the scroll follows the screen that is SHOWN (vl), not the address (loc). Under a view transition the address moves first and the screen swaps up to ~300 ms later; keyed on the address,
+  // the page jumped to the top while the OLD screen was still on show (tests/scrollflow.mjs samples scrollY every frame). It is a layout effect so the jump is part of the same commit as the swap.
+  const nav = useRef(vl.raw); if (!isQuiet(vl.raw)) nav.current = vl.raw;
+  useLayoutEffect(() => {
+    releaseScrollLockIfIdle();   // a route change never leaves the page locked behind a sheet that is no longer there
+    const own = vl.path[0] === 'discover' && isRestoring(vl.raw);   // Discover puts itself back
+    if (!own && !(isRestoring(vl.raw) && restoreScroll(vl.raw))) window.scrollTo(0, 0);
+  }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const own = loc.path[0] === 'discover' && isRestoring(loc.raw);   // Discover puts itself back
-    if (!own && !(isRestoring(loc.raw) && restoreScroll(loc.raw))) window.scrollTo(0, 0);
-    document.title = `${resolveRoute(loc.path).kind === 'notfound' ? 'Not found' : TITLES[loc.path[0]] ?? (loc.path[0] === 'desk' ? 'My Desk' : TABS[ti].label)} · Tripwire`;
-  }, [nav.current, ti]); // eslint-disable-line react-hooks/exhaustive-deps
+    document.title = `${resolveRoute(vl.path).kind === 'notfound' ? 'Not found' : TITLES[vl.path[0]] ?? (vl.path[0] === 'desk' ? 'My Desk' : TABS[Math.max(0, TABS.findIndex((t) => t.id === tabOf(vl.path)))].label)} · Tripwire`;
+  }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   /** A tap on a tab. On the tab you are in: back to the top, and if you are already there, back to the tab's first screen. On another: where you left it, scroll and all. */
   const onTab = (id: string) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -180,10 +187,9 @@ export function App(): ReactNode {
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
   const slot = bannerSlot({ online, loading: screen.loading, hasData: !!screen.data, behind: f ? f.behind : null, hintDay: hint.current });
-  // the stale-data banner (wording and severity unchanged). On Today the page draws it itself, directly under the brief; everywhere else it stays at the top.
+  // the stale-data banner (wording and severity unchanged). Drawn once, at the top of every page (Today included).
   const staleBanner = slot === 'show' ? <div className="banner" role="status" data-stale-banner>The data stops {f!.behind} sessions before the last finished one. Treat everything as old.</div>
     : slot === 'reserve' ? <div className="banner banner-ghost" aria-hidden="true" data-banner-slot>The data stops 2 sessions before the last finished one. Treat everything as old.</div> : null;
-  let onToday = false;
   let view: ReactNode;
   const route = resolveRoute(vl.path);
   if (route.kind === 'notfound') view = <NotFound asked={route.asked} />;
@@ -196,6 +202,7 @@ export function App(): ReactNode {
   else if (head === 'settings' || head === 'profile') view = <Settings />;   // #/profile is the older address of the same screen
   else if (head === 'data') view = <DataPage />;
   else if (head === 'methodology') view = <Methodology />;
+  else if (head === 'info') view = <Info section={vl.q.get('s')} />;   // 13 Nov 2026 (v6): everything a screen does not need to decide, with anchors (?s=data|pnl|book|markets|picks|method|legal|build)
   else if (head === 'help') view = <Help />;
   else if (head === 'ops') view = <Operations />;
   else if (head === 'privacy') view = <Privacy />;
@@ -207,23 +214,23 @@ export function App(): ReactNode {
   else if (head === 'lab') view = <Lab />;
   else if (vtab === 'discover') view = <Discover />;
   else if (vl.path[0] === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
-  else { onToday = true; view = <Today banner={staleBanner} />; }
+  else view = <Today />;
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
+      <div className="rail-head" data-noprint><Brand className="rail-brand" /><small>Research workspace</small></div>
       <main className="main" id="main" tabIndex={-1}>
         <StatusBar asOf={screen.data?.as_of} />
+        {staleBanner}   {/* v6: the one slot, under the top bar, on every page (Today no longer draws its own) */}
         {!health.persisted && <div className="banner" role="alert">Tripwire could not save: {SAVE_FAILURE_WORDS[health.why ?? 'other']}. What you have written is still here, but notes, plans and paper trades will be lost when this tab closes. <button className="btn sm" onClick={() => downloadBackup(s)}>Download a backup now</button></div>}
         {health.unreadable && <div className="banner" role="alert">Saved data on this device could not be read. A copy was kept, and nothing was erased. Import a backup from Settings (More) to restore your notes.</div>}
         {pwa.updateReady && <div className="banner upd" role="status"><span>Update ready.</span><button className="btn sm" onClick={() => { const r = applyUpdate(); setUpdMsg(r === 'busy' ? 'Finish what you are editing first, then reload.' : ''); }}>Reload</button>{updMsg && <span className="why small">{updMsg}</span>}</div>}
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
-        {!onToday && staleBanner}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
         <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" data-none={tiRaw < 0 ? '' : undefined} style={{ '--tc': TABS[ti].c, '--i': ti, '--n': TABS.length } as React.CSSProperties}>
-        <span className="rail-brand" aria-hidden="true"><i />Tripwire<small>Research workspace</small></span>
         <span className="pill" aria-hidden="true" />
         {TABS.map((t) => <a key={t.id} href={`#/${t.id}`} style={{ '--c': t.c } as React.CSSProperties} aria-current={t.id === tab ? 'page' : undefined} onClick={onTab(t.id)}><Icon n={t.id} /><span>{t.label}</span></a>)}
         <span className="rail-note">Your research.<br />Your perspective.<small>Local-first · Paper-only</small></span>

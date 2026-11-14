@@ -82,7 +82,7 @@ export function Live() {
       <section className="live-value l4-live" aria-label="Paper portfolio snapshot" data-snapshot={snap.id}>
         {/* 12 Nov 2026 (Tripwire 2.0, 2.1 and 3.1): the heading names the scope; the answer is Total P&L; the remaining value is supporting; quote freshness and exit verification are two statuses */}
         <h2 data-scope-name>{hasOwn ? 'Engine paper book and my paper plans' : 'Engine paper book'}</h2>
-        <TrustRow snap={snap} scope="engine" onScope={() => {}} hasMine={false} throughWord={null} quotes={<>Quotes: <LiveBadge live={word === 'Live'} label={word ?? 'Checking prices'} /> <span className="mute"><Observed sec={auto.intra.obs} err={auto.intra.err} loading={auto.intra.loading} /></span></>} />
+        <TrustRow snap={snap} scope="engine" onScope={() => {}} hasMine={false} throughWord={null} priceWord={word} />
         <TotalRow snap={snap} dayLabel={live ? 'Today' : 'Last session'} />
         <dl><div><dt>{OPEN_TRADE_LABEL}</dt><dd className={`amt ${tone(tot.pnl)}`}>{ls.length ? money(tot.pnl) : '—'}</dd></div>
           <div><dt>Open position value</dt><dd className="amt">{ls.length ? inr0(tot.value) : '—'}</dd></div>

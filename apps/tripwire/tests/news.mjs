@@ -101,12 +101,13 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
   // 11 Nov 2026 (revamp v2): Today shows at most three market stories, never more, and sends the rest to All news (was: five, then "Show N more")
   ok(after.length === 4 && await pg.locator('section.nw a[href="#/news"]', { hasText: 'All news' }).count() === 1, `five qualify: three show, then All news (${after.length})`);
   /* refresh feedback */
-  const btn = pg.locator('.nw-refresh button'); ok(/Check for updates/.test(await btn.innerText()), 'the refresh control says what it does');
-  await btn.click(); await pg.waitForFunction(() => /No new stories/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); ok(true, 'refresh with nothing new says "No new stories"');
+  // 13 Nov 2026 (v6 home): Today's refresh is the icon button; its name and title carry the same words the text button had
+  const btn = pg.locator('.nw-refresh button'); ok(/Check for updates/.test(await btn.getAttribute('aria-label')), 'the refresh control says what it does');
+  await btn.click(); await pg.waitForFunction(() => /No new stories/.test(document.querySelector('.nw-refresh button')?.getAttribute('aria-label') ?? ''), null, { timeout: 8000 }); ok(true, 'refresh with nothing new says "No new stories"');
   await pg.clock.fastForward(35_000); ctl.publish({ version: 7, events: [...makeEvents(t), fresh('n4', 'RBI announces new norms for digital lending', 0.2)] });
-  await btn.click(); await pg.waitForFunction(() => /Updated/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); await pg.waitForTimeout(300);
+  await btn.click(); await pg.waitForFunction(() => /Updated/.test(document.querySelector('.nw-refresh button')?.getAttribute('aria-label') ?? ''), null, { timeout: 8000 }); await pg.waitForTimeout(300);
   ok((await heads(pg)).some((x) => /digital lending/.test(x)), 'refresh with something new says "Updated" and applies it, because the reader asked');
-  await pg.clock.fastForward(35_000); ctl.versionFails = true; await btn.click(); await pg.waitForFunction(() => /Failed/.test(document.querySelector('.nw-refresh button')?.textContent ?? ''), null, { timeout: 8000 }); ok(true, 'refresh while the service is down says "Failed"; the stories stay');
+  await pg.clock.fastForward(35_000); ctl.versionFails = true; await btn.click(); await pg.waitForFunction(() => /Failed/.test(document.querySelector('.nw-refresh button')?.getAttribute('aria-label') ?? ''), null, { timeout: 8000 }); ok(true, 'refresh while the service is down says "Failed"; the stories stay');
   ok((await rows(pg).count()) >= 2, 'cached stories stay on screen after a failed refresh');
   await ctx.close();
 }

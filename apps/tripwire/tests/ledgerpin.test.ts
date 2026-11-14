@@ -18,7 +18,7 @@ test('the single definition of R and T2 is stated once, in one place', () => {
   const d = definitionLines(); assert.match(d.r, /fill \(the next open plus slippage\) minus the stop/); assert.match(d.targets, /T1 is the fill plus/);
 });
 test('the pick view says "at signal close" for its levels, and the Book never prints a signal-close level beside an entered position', () => {
-  const src = readFileSync(new URL('../src/screens/signals.tsx', import.meta.url), 'utf8'); assert.match(src, /Levels below are worked from the signal close/);
+  const src = readFileSync(new URL('../src/screens/signals.tsx', import.meta.url), 'utf8'); assert.match(src, /href="#\/info\?s=picks"/); const info = readFileSync(new URL('../src/screens/Info.tsx', import.meta.url), 'utf8'); assert.match(info, /Levels on a pick are worked from the signal close/);   // 13 Nov 2026: the sentence moved from the Picks caption to #/info; the Picks page links to it
 });
 test('one universe definition is published on the Data page: screened, pass the liquidity filter, counted by the trend map; counts nest', () => {
   const rows = [{ sym: 'A', liquid: true, tier: 'large', sma50: 1, sma200: 1 }, { sym: 'B', liquid: true, tier: null, sma50: 1, sma200: null }, { sym: 'C', liquid: false, tier: 'micro', sma50: 1, sma200: 1 }] as never[];

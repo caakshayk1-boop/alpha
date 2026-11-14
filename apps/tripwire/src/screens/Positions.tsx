@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { go, setState, useAppState, useSheets } from '../app.tsx';
 import { useAutoBook, useLiveBook, type BookRow } from '../book.ts';
-import { summarize, SLIPPAGE_PCT } from '../tracker.ts';
+import { summarize } from '../tracker.ts';
 import { archivePaper } from '../store.ts';
 import { ENGINES } from '../quant.ts';
 import { figuresOf } from '../recordview.ts';
@@ -13,8 +13,8 @@ import { splitOfRow, snapshotOf, HISTORY_WARNING, buildLedgerView, bookClosedCou
 import { throughOf } from '../recordview.ts';
 import { ladderInputFor } from '../ladder.ts';
 import { byAttention, attention, nearWord, type AttnInput } from '../bookview.ts';
-import { LiveBadge, Observed } from '../live.tsx';
-import { Empty, useUi } from '../ui.tsx';
+import { setCurrentSnapshotId } from '../snapid.ts';
+import { useUi } from '../ui.tsx';
 import { Loading } from './common.tsx';
 import { TradeCard, engineName, shortEngine } from './Tracker.tsx';
 import { PnlAttribution } from './attribution.tsx';
@@ -76,6 +76,7 @@ export function Positions() {
   const led = auto.ledger.data?.ledger ?? null; const fig = led ? figuresOf(led) : null;
   const lv = led && auto.plan ? buildLedgerView(led, auto.plan, myRows) : null;   // 12 Nov 2026: every count on this page reads this one view (ledgerview.ts)
   const snap = snapshotOf(items.map((x) => ({ p: x.r.p, v: x.r.v, dayPnl: x.r.dayPnl, markT: x.r.markT, owner: x.owner })), scope === 'mine' ? mine.cost : auto.cost, led?.updated ?? null);   // ONE snapshot: the strip, the table and the moved row read it
+  setCurrentSnapshotId(snap.id);
   const through = led && scope !== 'mine' ? throughOf(led, Date.now()) : null;
   /* 12 Nov 2026 (Codex on #62): the quote status and session follow the SELECTED scope, never the engine book by default. "My paper plans" reads its own quotes; "Both" shows the least fresh of the two words. */
   const WORD_ORDER = ['Live', 'Delayed', 'Last traded', 'Unavailable']; const worse = (a: string | null | undefined, b: string | null | undefined) => (a == null ? b ?? null : b == null ? a : WORD_ORDER.indexOf(b) > WORD_ORDER.indexOf(a) ? b : a);
@@ -101,25 +102,21 @@ export function Positions() {
     {auto.rows.some((r) => r.v.dataNote) && <p className="note" role="status" data-history-warning>{HISTORY_WARNING} Marks shown are last recorded values where the history is incomplete.</p>}
 
     <section className="bk-strip l4" aria-label="The paper book now" data-strip data-snapshot={snap.id}>
-      <TrustRow snap={snap} scope={scope} onScope={setScope} hasMine={hasMine} throughWord={through?.outcomes.day ? through.outcomes.word : null}
-        quotes={<>Quotes: <LiveBadge live={priceWord === 'Live'} label={priceWord ?? (items.length ? 'Checking prices' : 'No positions')} /> <span className="mute"><Observed sec={intra.obs} err={intra.err} loading={intra.loading} /></span></>} />
+      <TrustRow snap={snap} scope={scope} onScope={setScope} hasMine={hasMine} throughWord={through?.outcomes.day ? through.outcomes.word : null} priceWord={items.length ? priceWord : null} />
       <TotalRow snap={snap} dayLabel={live ? 'Today' : 'Last session'} />
       <MovedRow snap={snap} onRow={focusRow} />
-      <div className="l4-support">
+      {openRows.length > 0 || auto.slots > 0 ? <div className="l4-support">
         <SlotGauge used={auto.slots} max={auto.cfg.maxOpen} />
-        <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b><span className="bk-note">{waiting ? `${waiting} awaiting entry, at the next open` : '0 awaiting entry'}{snap.positions.some((x) => x.value != null) ? ` · value ${inr0(snap.positions.reduce((a, x) => a + (x.value ?? 0), 0))}` : ''}</span></div>
-        <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv && auto.ledger.loading ? <><span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /><span className="sk" style={{ display: 'block', height: 14, width: '80%' }} /></>
-          : <><b className="num" data-book-closed>{lv ? bookClosedCount(lv) : '—'}</b><span className="bk-note">{lv ? `${resolvedObservationCount(lv)} resolved observations are in the Record, a different count` : 'record unavailable'}</span></>}</div>
-      </div>
+        <div className="bk-fig bk-open"><span className="k">Open positions</span><b className="num">{openRows.length}</b>{waiting ? <span className="bk-note">{waiting} awaiting entry, at the next open</span> : null}</div>
+        {(lv || auto.ledger.loading) && <div className="bk-fig bk-closed"><span className="k">Closed book positions</span>{!lv ? <span className="sk" style={{ display: 'block', height: 36, width: '60%' }} aria-label="Loading the record" /> : <b className="num" data-book-closed>{bookClosedCount(lv)}</b>}</div>}
+      </div> : <p className="bk-none small" data-no-open>No open positions yet{waiting ? ` · ${waiting} awaiting entry, at the next open` : ''}{lv && bookClosedCount(lv) > 0 ? ` · ${bookClosedCount(lv)} closed` : ''}</p>}
       {intra.err && <p className="small down bk-err">Live prices are unavailable: {intra.err}. {bars.data ? 'Showing the last daily bars.' : 'Nothing is estimated in their place.'}</p>}
     </section>
     <ThroughPills through={led ? throughOf(led, Date.now()) : null} />
     <HitCard hits={auto.hits} />
 
-    {!active.length ? <Empty title={auto.plan ? 'No open position' : 'Position record unavailable'} action={<button className="btn pri" onClick={() => go('/signals?v=picks')}>See the picks</button>}>
-      {auto.plan ? 'Picks are written into the record each night after the market closes and taken by the engine book at once; one you add yourself fills at the next open. Nothing is real money.' : 'Your own paper trades are listed here when you take one.'}</Empty> : <>
+    {!active.length ? (auto.ledger.err && !auto.plan ? null : <div className="bk-empty"><a className="btn" href="#/signals?v=picks">See the picks</a></div>) : <>
       <div className="bk-filters" role="group" aria-label="Show positions">{chips.map((c) => <button key={c.id} type="button" className="chip bk-chip" aria-pressed={f === c.id} onClick={() => setF(c.id)} disabled={c.n === 0 && c.id !== 'all'}>{c.label} <span className="num">{c.n}</span></button>)}</div>
-      <p className="bk-order small mute">Nearest its stop first, then nearest a target. Tap a row for its details.</p>
       <div className="bk-board ds-stagger" role="list" aria-label="Positions">{shown.map((x) => <div role="listitem" key={x.r.p.id}>{card(x)}</div>)}</div>
       {!shown.length && <p className="small dim">No position matches this filter.</p>}
     </>}
@@ -138,11 +135,6 @@ export function Positions() {
         <span className={`tag ${e.kind === 'closed' ? 'lime' : e.kind === 'refused' || e.kind === 'skipped' ? 'peach' : ''}`} style={{ flex: 'none', minWidth: 60, justifyContent: 'center' }}>{dayWord(e.day).replace(/^\w+ /, '')}</span>
         <span className="grow small">{e.text}</span></div>)}
         {log.length > 25 && !allLog && <button className="btn sm" onClick={() => setAllLog(true)}>Show all {log.length} entries</button>}</div> : <p className="small dim">Nothing has happened yet.</p>}</details>
-    <details className="more bk-fold" data-method><summary>How the paper book works</summary>
-      <p className="small"><b>How a trade is followed.</b> Entry: the open of the first session after it was taken, plus {SLIPPAGE_PCT}% slippage; skipped if it opens more than 2% above the signal close or at the stop. Exit: the stop (a gap exits at the open; a bar spanning the stop counts as stopped), a target, or the close of the last session of the horizon. Costs {auto.cost}% round trip plus {SLIPPAGE_PCT}% slippage each side. Real fills differ.</p>
-      <p className="small"><b>The engine book.</b> Every pick the active engines write into the nightly record is taken the same night, best score first, with fixed limits: at most {auto.cfg.maxOpen} positions at a time (30 for nights before 3 Nov 2026, so no earlier night is re-planned) and at most {inr0(auto.cfg.ticket)} in any one (quantity = ticket ÷ signal close, rounded down). Rules are versioned by the night of the pick. Book-1, nights before 27 Oct 2026: the full ticket for every pick. Book-2, from the 27 Oct night: the ticket is scaled by the engine's back-test standing on that day (Momentum, not supported by the back-test, a quarter; Quality, on forward test because it cannot be back-tested, a half) and no more than four positions run in one sector. Results are kept in R, which does not depend on ticket size. A pick is refused, and the log says why, if the name is already held, one share costs more than its ticket, its sector is full, or {auto.cfg.maxOpen} positions are running. It is built from the record, not from anything you press, and it does not choose between engines.</p>
-      <p className="small"><b>Yours.</b> A pick you add is followed with the same rules at the size the position sizer gives it. A pick the engine book already holds is not added twice.</p>
-      <button className="btn" style={{ width: '100%' }} onClick={() => open({ k: 'plan' })}>Open the position sizer</button>
-    </details>
+    <p className="small mute bk-about" data-method><a href="#/info?s=book">How the paper book works</a> · <button type="button" className="linkbtn" onClick={() => open({ k: 'plan' })}>Open the position sizer</button></p>
   </div>;
 }

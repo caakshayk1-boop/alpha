@@ -43,7 +43,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   const rows = await pg.locator('[data-more-row]').evaluateAll((r) => r.map((x) => [x.getAttribute('data-more-row'), x.getAttribute('href'), x.getBoundingClientRect().height]));
   const want = { markets: '#/markets', news: '#/news', data: '#/data', methodology: '#/methodology', help: '#/help', settings: '#/settings' };   // Operations is builder plumbing: its page stays at #/ops, the visitor menu no longer lists it
   // 11 Nov 2026 (revamp v2): Signals left the Menu (it is the Book tab), so 9 rows in five groups: Yours, Research, About the data, Settings, Legal.
-  ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 9 && rows.some((r) => r[0] === 'desk') && !rows.some((r) => r[0] === 'ops') && !rows.some((r) => r[0] === 'signals') && rows.some((r) => r[0] === "privacy") && rows.some((r) => r[0] === "terms"), `Menu lists My Desk, Markets, News, Data and coverage, Methodology, Help, Settings, Privacy, Terms (9; Signals is the Book tab) (${rows.map((r) => r[0]).join(', ')})`);
+  ok(Object.entries(want).every(([k, v]) => rows.some((r) => r[0] === k && r[1] === v)) && rows.length === 10 && rows.some((r) => r[0] === "info" && r[1] === "#/info") && rows.some((r) => r[0] === 'desk') && !rows.some((r) => r[0] === 'ops') && !rows.some((r) => r[0] === 'signals') && rows.some((r) => r[0] === "privacy") && rows.some((r) => r[0] === "terms"), `Menu lists My Desk, Markets, News, About and data, Data and coverage, Methodology, Help, Settings, Privacy, Terms (10; Signals is the Book tab) (${rows.map((r) => r[0]).join(', ')})`);
   ok(JSON.stringify(await pg.locator('.mn-h').allInnerTexts()).toLowerCase() === JSON.stringify(['Yours', 'Research', 'About the data', 'Settings', 'Legal']).toLowerCase(), 'the rows are grouped: Yours, Research, About the data, Settings, Legal');
   ok(await pg.locator('[data-more-row] .mn-ic svg').count() === rows.length && (await pg.locator('[data-more-row] .mn-n').allInnerTexts()).every((t) => t.trim().length > 0), 'every row has an icon, a title and a one-line note');
   { const st = (await pg.locator('[data-menu-state]').innerText()).replace(/\s+/g, ' '); ok(/Data through \w{3} \d{1,2} \w{3}/.test(st) && /Prices (live|delayed|last traded|not traded yet|unavailable|checking)/.test(st), `the app's state is one line at the top: ${st}`); }
@@ -113,7 +113,7 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   const y2 = await pg.evaluate(() => Math.round(scrollY));
   ok((await current(pg)) === 'Menu' && Math.abs(y2 - ym) < 40, `Menu: back inside Methodology at the same place (${ym} then ${y2})`);
   await tab(pg, 'Menu'); await pg.waitForTimeout(300); ok((await pg.evaluate(() => scrollY)) < 4 && (await pg.evaluate(() => location.hash)) === '#/methodology', 'a tap on the tab you are in scrolls to the top and stays on the page');
-  await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]'); await pg.locator('a[href="#/markets"]').first().click(); await pg.locator('.sector-alternate').evaluate(el => { el.open = true; }); await pg.waitForSelector('.heat a'); await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]');
+  await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]'); await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('[data-sectorheat] .sh-cell'); await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]');
   ok(await pg.evaluate(() => location.hash) === '#/today', 'the Today tab opens Today, not the Markets page that was opened from it');
   await ctx.close(); }
 
@@ -210,16 +210,16 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
 for (const hint of [null, 'stale']) for (const font of [null, 'monospace']) {
   const { ctx, pg } = await mk(390, 844);
   // Widen only the market read to exercise the six lines seen with Linux system fonts.
-  if (font) await pg.addInitScript((f) => document.addEventListener('DOMContentLoaded', () => { const style = document.createElement('style'); style.textContent = `.brief .t-take { font-family: ${f}; }`; document.head.append(style); }), font);
+  if (font) await pg.addInitScript((f) => document.addEventListener('DOMContentLoaded', () => { const style = document.createElement('style'); style.textContent = `.brief .mkt-take { font-family: ${f}; }`; document.head.append(style); }), font);
   await ctx.route('**/data/screen.json', async (r) => { await new Promise((x) => setTimeout(x, 1500)); const res = await r.fetch(); const j = JSON.parse(await res.text()); j.as_of = '2026-10-26'; /* 2 Nov 2026: pin the day to an old one so the banner test is about the banner, not about how fresh the screen the server happens to hold is (CI serves the real build, which was current on a Monday morning) */ await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) }); });
   await pg.addInitScript(() => { window.__cls = 0; window.__shifts = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__cls += e.value; window.__shifts.push({ value: e.value, sources: e.sources.map((s) => s.node?.className ?? s.node?.nodeName ?? 'removed') }); } }).observe({ type: 'layout-shift', buffered: true }); });
   if (hint) await pg.addInitScript(() => { try { localStorage.setItem('tripwire:banner-hint', '2026-10-26'); } catch { /* none */ } });
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 });
   const y1 = await pg.evaluate(() => document.querySelector('.view').offsetTop); const ghost = await pg.locator('[data-banner-slot]').count();
-  const indicesBefore = await pg.locator('.brief-ix').evaluate((e) => e.offsetTop);
+  const indicesBefore = await pg.locator('.mkt-tiles').evaluate((e) => e.offsetTop);
   await pg.waitForSelector('.banner[role=status]', { timeout: 15000 }); await pg.waitForTimeout(400);
   const y2 = await pg.evaluate(() => document.querySelector('.view').offsetTop);
-  const indicesAfter = await pg.locator('.brief-ix').evaluate((e) => e.offsetTop);
+  const indicesAfter = await pg.locator('.mkt-tiles').evaluate((e) => e.offsetTop);
   ok(Math.abs(indicesBefore - indicesAfter) < 1, `market read (${font ?? 'system font'}): arriving breadth keeps the index cards in place (${indicesBefore} to ${indicesAfter})`);
   ok(ghost === 1 && Math.abs(y1 - y2) < 1, `banner slot (${hint ? 'remembered stale' : 'nothing remembered'}): reserved while the answer is pending, the view did not move (${y1} to ${y2})`);
   ok(/The data stops \d+ sessions before the last finished one/.test(await pg.locator('.banner[role=status]').innerText()) && (await pg.locator('[data-banner-slot]').count()) === 0, 'banner slot: the real banner is shown to the person, and the placeholder is gone');
@@ -232,6 +232,31 @@ for (const hint of [null, 'stale']) for (const font of [null, 'monospace']) {
   await pg.addInitScript((d) => { try { localStorage.setItem('tripwire:banner-hint', d); } catch { /* none */ } }, day);
   await pg.goto(base + '/#/today'); await pg.waitForSelector('[data-brief]', { timeout: 20000 }); await pg.waitForTimeout(1200);
   ok((await pg.locator('[data-banner-slot]').count()) === 0 && (await pg.locator('.banner[role=status]').count()) === 0, 'banner slot: with current data and a current answer remembered, no banner and no empty slot'); await ctx.close(); }
+
+/* ---- 13 Nov 2026 (v6): the Tripwire wordmark is a real link home, on every width, from any page ---- */
+for (const [w, h, label] of [[1280, 800, 'desktop'], [900, 800, 'tablet'], [390, 844, 'phone']]) {
+  const { ctx, pg } = await mk(w, h, {}); await go(pg, '#/today');
+  const vis = pg.locator('[data-brand]:visible');
+  ok(await vis.count() === 1, `${label}: exactly one wordmark is drawn (the sidebar's from 1100 px, the top bar's below it)`);
+  ok(await vis.getAttribute('aria-label') === 'Tripwire, home' && await vis.getAttribute('href') === '#/today' && await vis.evaluate((e) => e.tagName === 'A'), `${label}: it is a link named "Tripwire, home" to #/today`);
+  ok(await pg.locator('nav.tabs [data-brand]').count() === 0, `${label}: the wordmark is not inside the navigation, so the nav still lists exactly four destinations`);
+  { const bb = await vis.boundingBox(); ok(label !== 'phone' || (bb.height >= 44 && bb.width >= 44), `${label}: hit area ${Math.round(bb.width)}x${Math.round(bb.height)}${label === 'phone' ? ' (44 px or more on a phone)' : ''}`); }
+  // already home: a click scrolls to the top and stays on Today
+  await pg.evaluate(() => scrollTo(0, 700)); await pg.waitForTimeout(150); ok(await pg.evaluate(() => scrollY) > 300, `${label}: Today is scrolled for the test`);
+  await vis.click(); await pg.waitForFunction(() => scrollY < 2, null, { timeout: 4000 }).catch(() => {});
+  ok(await pg.evaluate(() => scrollY < 2) && await pg.evaluate(() => /^#\/today$/.test(location.hash)), `${label}: on Today a click takes the page back to the top and leaves the address alone`);
+  // from a deep route: a company page
+  await go(pg, '#/c/TCS'); await pg.waitForSelector('.c-head', { timeout: 20000 });
+  await pg.evaluate(() => scrollTo(0, 500)); await pg.waitForTimeout(120);
+  await vis.click(); await pg.waitForFunction(() => location.hash === '#/today', null, { timeout: 5000 }).catch(() => {}); await pg.waitForSelector('[data-brief]', { timeout: 20000 }); await pg.waitForTimeout(500);
+  ok(await pg.evaluate(() => location.hash === '#/today' && scrollY < 2) && /^Today$/.test(await pg.locator('main h1').first().innerText()), `${label}: from a company page it opens Today at the top`);
+  ok((await current(pg)) === 'Today', `${label}: and the Today tab is the current one`);
+  // keyboard: focus it and press Enter, from the Book
+  await go(pg, '#/signals'); await vis.focus(); ok(await pg.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Tripwire, home'), `${label}: it takes keyboard focus`);
+  await pg.keyboard.press('Enter'); await pg.waitForFunction(() => location.hash === '#/today', null, { timeout: 5000 }).catch(() => {});
+  ok(await pg.evaluate(() => location.hash) === '#/today', `${label}: Enter on it goes home from the Book`);
+  await ctx.close();
+}
 
 await b.close();
 console.log(fails ? `\n${fails} FAILED` : '\nall shell checks passed'); process.exit(fails ? 1 : 0);

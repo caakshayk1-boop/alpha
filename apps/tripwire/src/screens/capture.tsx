@@ -23,5 +23,11 @@ export function CaptureModule({ source, cfg = DEFAULT_CAPTURE }: { source: strin
 /** The footer line: what Tripwire is and is not, the real contact, and the legal pages. The address is read from contact.ts, never typed again here. */
 export function IdentityFooter() {
   const c = contactView();
-  return <p className="small mute ident" data-ident>Tripwire is paper-only research, not investment advice, and no order is ever placed. No SEBI registration is claimed. {c.href ? <>Contact: <a href={c.href}>{c.email}</a></> : c.line} · <a href="#/privacy">Privacy</a> · <a href="#/terms">Terms</a></p>;
+  return <p className="small mute ident" data-ident>   {/* 13 Nov 2026: one tidy row of short phrases; each is a unit that wraps whole, never mid-phrase */}
+    <span>Tripwire is paper-only research, not investment advice, and no order is ever placed.</span>{' '}
+    <span>No SEBI registration is claimed.</span>{' '}
+    <span>{c.href ? <>Contact: <a href={c.href}>{c.email}</a></> : c.line}</span>{' '}
+    <span><a href="#/privacy">Privacy</a></span>{' '}
+    <span><a href="#/terms">Terms</a></span>
+  </p>;
 }

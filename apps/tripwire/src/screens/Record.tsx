@@ -121,7 +121,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
     </section>
 
     <section className="rec-sec" aria-labelledby="rec-def">
-      <SectionHeader id="rec-def" title="How to read this" />
+      <details className="more rec-def" data-rec-def><summary id="rec-def">How to read this</summary>
       <p className="rec-line"><b>One R.</b> {def.r}</p>
       <p className="rec-line"><b>One T2.</b> {def.targets} The same levels are drawn on every row in the Book and here.</p>
       <p className="rec-line">It is a forward record: nothing before the first night counts. Each night's picks are replayed with the same rules as your own paper trades (next-open fill, stop first, time exit, costs {l.cost}% round trip), and a closed outcome is never rewritten. {inr0(book.cfg.ticket)} is the most the paper book puts in any one position, so a rupee figure depends on size and R does not. Thirty trades is a minimum, not proof.</p>
@@ -129,6 +129,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
       <p className="rec-line">Eligibility rule by night: {Object.entries(by).map(([v, ds]) => `${v} (${ds.length} ${ds.length === 1 ? 'night' : 'nights'}, ${dayWord(ds[0])}${ds.length > 1 ? ` to ${dayWord(ds[ds.length - 1])}` : ''})`).join(' · ')}. A night keeps the version it was written under.</p>
       {voided > 0 && <p className="rec-line"><b>{voided} pick{voided === 1 ? '' : 's'} voided.</b> They are kept in the record, left out of every total, and the reason is stated: {[...new Set(Object.values(l.voided!))][0]}</p>}
       {RETIRED.size > 0 && <p className="rec-line">Retired engines stay in the stored record and are left out of every figure above.</p>}
+      </details>
     </section>
   </div>;
 }
