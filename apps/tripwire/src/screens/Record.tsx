@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBacktest, useLedger, useSignals } from '../data.ts';
 import { useAutoBook } from '../book.ts';
 import { TradeCard } from './Tracker.tsx';
-import { rulesOfRecord } from '../rules.ts';
 import { ACTIVE, ENGINES } from '../quant.ts';
-import { RETIRED, summarizeLedger, MIN_TRADES } from '../ledger.ts';
-import { closedItems, definitionLines, figuresOf, throughOf, viewOfClosed } from '../recordview.ts';
+import { summarizeLedger, MIN_TRADES } from '../ledger.ts';
+import { closedItems, figuresOf, throughOf, viewOfClosed } from '../recordview.ts';
 import { missingNights, missingNightsLine, rBars } from '../bookview.ts';
 import { evidenceHeadline } from '../evidence.ts';
 import { buildLedgerView, bookClosedCount, resolvedObservationCount, validationClosedCount, validationLines, partitionWord } from '../ledgerview.ts';
@@ -60,11 +59,9 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
   if (feed.loading && !l) return <Loading what="the record" />;
   if (!l || !fig || !sum) { const notStarted = feed.err === 'the first nightly run has not happened yet' || feed.err === 'not published';
     return <><Empty title={notStarted ? 'The record has not started' : 'Position record unavailable'} action={<button className="btn" onClick={feed.retry}>Check again</button>}>{notStarted ? 'It starts with the first nightly run, which writes down every pick after each trading day. Nothing before that night counts.' : `The record could not be read (${feed.err ?? 'no data'}). This does not mean positions have exited or history has been erased.`}</Empty>{evidence}</>; }
-  const through = throughOf(l, Date.now()); const def = definitionLines(); const g = gateLine(sig.data);
+  const through = throughOf(l, Date.now()); const g = gateLine(sig.data);
   const bookRow = (id: string): BookRow | undefined => book.rows.find((r) => r.p.id === id);
   const shown = all ? items : items.slice(0, SHOWN);
-  const voided = l.voided ? Object.keys(l.voided).length : 0;
-  const by: Record<string, string[]> = {}; for (const d of l.days) (by[rulesOfRecord(d.rules)] ??= []).push(d.asOf);
   const gapLine = missingNightsLine(gaps);
   return <div className="rec" data-record>
     {feed.err && <p className="note" role="status">{feed.err} <button className="btn sm" onClick={feed.retry}>Refresh record</button></p>}
@@ -120,16 +117,7 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
         : <p className="rec-line">The gate has not been published yet.</p>}
     </section>
 
-    <section className="rec-sec" aria-labelledby="rec-def">
-      <details className="more rec-def" data-rec-def><summary id="rec-def">How to read this</summary>
-      <p className="rec-line"><b>One R.</b> {def.r}</p>
-      <p className="rec-line"><b>One T2.</b> {def.targets} The same levels are drawn on every row in the Book and here.</p>
-      <p className="rec-line">It is a forward record: nothing before the first night counts. Each night's picks are replayed with the same rules as your own paper trades (next-open fill, stop first, time exit, costs {l.cost}% round trip), and a closed outcome is never rewritten. {inr0(book.cfg.ticket)} is the most the paper book puts in any one position, so a rupee figure depends on size and R does not. Thirty trades is a minimum, not proof.</p>
-      <p className="rec-line"><b>Original and restated.</b> A result is labelled by the rule it was produced under: <i>As filed</i> (written on or after 27 Oct 2026, under the profit-booking ladder from the start), <i>Original rule</i> (written earlier and finished under stop-and-time only, never re-evaluated) or <i>Restated rule</i> (written earlier, still open on 1 Nov 2026, so the ladder was applied to it from its entry bar). A restated position's earlier figure was never stored, so it is labelled, not shown beside an invented one.</p>
-      <p className="rec-line">Eligibility rule by night: {Object.entries(by).map(([v, ds]) => `${v} (${ds.length} ${ds.length === 1 ? 'night' : 'nights'}, ${dayWord(ds[0])}${ds.length > 1 ? ` to ${dayWord(ds[ds.length - 1])}` : ''})`).join(' · ')}. A night keeps the version it was written under.</p>
-      {voided > 0 && <p className="rec-line"><b>{voided} pick{voided === 1 ? '' : 's'} voided.</b> They are kept in the record, left out of every total, and the reason is stated: {[...new Set(Object.values(l.voided!))][0]}</p>}
-      {RETIRED.size > 0 && <p className="rec-line">Retired engines stay in the stored record and are left out of every figure above.</p>}
-      </details>
-    </section>
+    {/* 15 Nov 2026 (v6 polish): the definitions moved to #/info?s=record (screens/recordhowto.tsx); the Record keeps one line that opens them */}
+    <p className="rec-line rec-def" data-rec-def><a href="#/info?s=record">How to read this</a></p>
   </div>;
 }
