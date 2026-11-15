@@ -1,0 +1,28 @@
+name: backup
+# Weekly off-platform-style safety copy: a full git bundle (every branch and tag, including the orphan tripwire-data branch) kept as a run artifact for 90 days.
+# Restore: download the artifact, then `git clone alpha.bundle alpha-restored`. It needs no secret and writes nothing to the repository.
+on:
+  schedule:
+    - cron: '37 4 * * 0'   # Sunday 10:07 IST
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Fetch every branch
+        run: git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Bundle and verify
+        run: |
+          git bundle create alpha.bundle --all
+          git bundle verify alpha.bundle
+          ls -l alpha.bundle >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-bundle-${{ github.run_id }}
+          path: alpha.bundle
+          retention-days: 90
