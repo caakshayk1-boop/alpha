@@ -2,7 +2,7 @@
 
 Rule applied to every screen: it keeps (i) the data a decision needs, (ii) a state or warning when something is wrong, (iii) one-line labels.
 Everything else is relocated, never deleted; the honesty statements are all still true and all still printed, under a heading with an anchor on `#/info`.
-Anchors are opened with `#/info?s=<id>`: `data`, `pnl`, `book`, `markets`, `picks`, `method`, `legal`, `build`.
+Anchors are opened with `#/info?s=<id>`: `data`, `pnl`, `book`, `markets`, `picks`, `record`, `method`, `legal`, `build`.
 
 | Item | Was on | Now at |
 |---|---|---|
@@ -33,7 +33,7 @@ Anchors are opened with `#/info?s=<id>`: `data`, `pnl`, `book`, `markets`, `pick
 | "Experimental, closed research beta… No account, no tracking…" paragraph | Menu | One line stays on the Menu with a link; the full text is at `#/info?s=legal`, beside Privacy, Terms and Contact |
 | Menu "About the data" group | Menu | A new first row "About and data" → `#/info`; Data, Methodology and Help rows remain |
 | "Long only. A paper entry fills at the next session's open… the fill sets the booked ones." | Picks (Book > Picks) | `#/info?s=picks`; the page keeps a link "How to read these picks" |
-| "How to read this" (R, T2, forward record, original and restated, rule by night, voided) | Record | Collapsed by default under the same heading (it needs the record's per-night data, so it was folded, not relocated) |
+| "How to read this" (One R, One T2, forward record, original and restated, rule by night, voided) | Record | `#/info?s=record` (15 Nov 2026, v6 polish; before that it was a collapsed fold on the Record). The Record keeps one line, "How to read this", that links there. The text is unchanged except that "above" and "here" now say "in the Record". The three sentences that quote the stored record (round-trip cost, rule version by night, voided picks) are read from it on the Info page with the same ledger hook, and are left out while it loads or when it is unavailable, never guessed |
 | "How to read these picks" fold | Today | Copied to `#/info?s=picks`. Today belongs to the v6-home lane and was not edited here: its fold can be replaced by the link once that lane merges |
 | Build stamp | (none was shown) | `#/info?s=build` |
 
@@ -43,3 +43,7 @@ Anchors are opened with `#/info?s=<id>`: `data`, `pnl`, `book`, `markets`, `pick
 - **News**: the one-line "Headlines from outside India…" note is pinned by `newsgroupsv2.test.ts`; the per-cue "channel" text is the content of the item. They stay.
 - **Company, Research (Discover), Desk**: no standing paragraph over 70 characters is visible on first load at 390 px (the long text is already in closed disclosures).
 - **Today**: not edited here (owned by v6-home).
+
+## v6 polish (15 Nov 2026)
+
+- Today (right column on a desktop, the phone data strip) and Discover (sticky search and toolbar) changed layout only: no text moved to this page and none was removed. The one move is the Record row above.

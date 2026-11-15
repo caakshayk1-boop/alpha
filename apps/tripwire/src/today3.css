@@ -50,9 +50,10 @@ html .today.t3 .bm figcaption{font-size:var(--fs-label);line-height:1.4;min-heig
 html .today.t3 .mkt-flow{margin:var(--sp-2) 0 0;min-height:2.8em}
 @media (min-width:1100px){html .today.t3 .mkt-flow{min-height:1.4em}}
 html .today.t3 .brief-flow{margin:0}
-html .today.t3 .mkt-basis{margin:var(--sp-2) 0 0;display:grid;grid-template-columns:minmax(0,1fr);gap:0;font-size:var(--fs-label);line-height:1.5}
-html .today.t3 .mkt-px,html .today.t3 .mkt-data{display:block;min-height:2lh}
-@media (min-width:1100px){html .today.t3 .mkt-basis{display:flex;flex-wrap:wrap;gap:0 var(--sp-3)}html .today.t3 .mkt-px,html .today.t3 .mkt-data{min-height:1lh}}
+/* 15 Nov 2026 (v6 polish): the two facts flow side by side and wrap as whole lines. They were two stacked blocks that each reserved two lines (80px for two lines of text); a live price line wrapped to two and made it three. Now: at most two lines, 2lh reserved. */
+html .today.t3 .mkt-basis{margin:var(--sp-2) 0 0;display:flex;flex-wrap:wrap;gap:0 var(--sp-3);font-size:var(--fs-label);line-height:1.5}
+html .today.t3 .mkt-px,html .today.t3 .mkt-data{display:block;min-height:1lh}
+@media (max-width:1099px){html .today.t3 .mkt-basis{min-height:2lh}}
 @media (min-width:1100px){html .today.t3 .mkt-px{min-width:25rem}}
 html .today.t3 .mkt-data[data-fresh="stale"]{color:var(--amber)}
 
@@ -131,3 +132,25 @@ html.fx .today.t3 :is(.mt,.bookrow){transition:transform var(--dur-1) var(--ease
 /* 14 Nov 2026: when a file is behind, the data-day line opens to name the files (the banner says the lag once; this is the detail, closed by default) */
 html .today.t3 .mkt-why>summary{cursor:pointer;color:inherit}
 html .today.t3 .mkt-why>.small{display:block;margin-top:var(--sp-1)}
+
+/* ---- 15 Nov 2026, v6 polish: a tidy right column on a desktop. Adds no content.
+   Before: the paper book was a card but Market news was bare rows, the book card wrapped to two lines at 1100px (82px against 56px), and the right stack ended 100-150px above the left one. Now both
+   are cards on the same radius, border and padding, the book row never wraps, and the last card of each stack stretches so the two columns end on the same line. Phone and tablet are unchanged. ---- */
+@media (min-width:1100px){
+  html .today.t3>.t-main,html .today.t3>.t-side{align-self:stretch;display:flex;flex-direction:column}
+  html .today.t3>.t-main>.tpicks:last-child,html .today.t3>.t-side>.tnews:last-child{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  html .today.t3 .tpicks:last-child>.list-card{flex:1 1 auto;display:flex;flex-direction:column}
+  html .today.t3 .tpicks:last-child .picks-note{margin-top:auto}
+  html .today.t3 .tnews:last-child>.newsslot{flex:1 1 auto;display:flex;flex-direction:column}
+  html .today.t3 .tnews .tnw{flex:1 1 auto;display:flex;flex-direction:column;padding:var(--sp-3) var(--sp-4);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card)}
+  html .today.t3 .tnews .tnw .nw-foot{margin-top:auto;padding-top:var(--sp-2)}
+  html .today.t3 :is(.bookrow,.list-card,.board-list,.tnw){border-radius:var(--radius-card)}   /* one radius for all four cards (the .card layer says 16px, the board said 20px) */
+  html .today.t3 .bookrow{flex-wrap:nowrap;gap:var(--sp-2)}
+  html .today.t3 .bookrow .bk-stats{flex-wrap:nowrap;gap:var(--sp-1) var(--sp-3)}
+}
+/* between 1100 and 1279 the side column is ~340px: the label is dropped to screen readers only, as it already is on a phone, so the three figures keep one line */
+@media (min-width:1100px) and (max-width:1279px){
+  html .today.t3 .bookrow .bk-k{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+}
+/* 15 Nov 2026 (v6 polish): the "data is behind" disclosure keeps its 44px tap target but no longer takes 44px of layout. The target reaches 13px above and below its text line (over the prices line, which is not interactive), so the strip is two lines tall, not three. */
+@media (max-width:1099px){html .today.t3 .mkt-why>summary{display:block;min-height:0;padding:13px 0;margin:-13px 0;position:relative}}

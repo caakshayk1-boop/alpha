@@ -1,0 +1,28 @@
+/* Discover, v6 polish (15 Nov 2026): the search and the toolbar (Filters, sort, List/Table) are ONE sticky bar that stays in view while the list scrolls.
+   Loaded last. Tokens only; no motion.
+   Why it is safe: the bar is a direct child of .disc and no ancestor has an overflow, so `position:sticky` follows the WINDOW (the only vertical scroller, pinned by scrollflow.mjs). Nothing here sets overflow,
+   height or a transform on an ancestor, and nothing is position:fixed, so there is no second scroller and no scroll lock. Its height is published as --dbar (discover.tsx) and rows, links and focus
+   scroll to just beneath it, so it never covers the content you are going to. Phone: one 44px row for the search and one for the controls (two controls rows under 340px). */
+.disc .dsticky{position:sticky;top:0;z-index:12;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-2);margin:0 calc(var(--pad,var(--gut)) * -1) var(--sp-2);padding:var(--sp-1) var(--pad,var(--gut));background:var(--bg);border-bottom:1px solid var(--line)}
+.disc .dsticky>.dtool{min-width:0;margin:0;display:flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-2)}
+.disc .dsticky>.dtool>*{order:0}
+.disc .dsticky>.dtool>.dbtn{flex:0 0 auto}
+.disc .dsticky .dsort{flex:1 1 0;min-width:0;grid-column:auto}
+.disc .dsticky .dseg{flex:0 0 auto}
+@media (max-width:899px){
+  .disc .dsticky .rs-search .field{min-height:44px}
+  .disc .dsticky .rs-search .ic{top:13px}
+  .disc .dsticky .dseg button{min-width:48px;padding:0 10px}
+}
+@media (max-width:339px){
+  .disc .dsticky>.dtool{flex-wrap:wrap}
+  .disc .dsticky>.dtool>.dbtn{flex:1 1 0}
+  .disc .dsticky .dsort{flex:1 1 100%;order:3}
+}
+@media (min-width:900px){
+  .disc .dsticky{grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:var(--sp-3)}
+  .disc .dsticky .dsort{flex:0 1 auto}
+}
+/* rows, links and focus stop beneath the bar, never under it */
+.disc :is(.list,.stbl,.dl-card) :is(.li,.discover-row,tr,a,button,[tabindex]),.disc .dcount,.disc .stbl-wrap{scroll-margin-top:calc(var(--dbar,0px) + var(--sp-2))}
+@media print{.disc .dsticky{position:static}}

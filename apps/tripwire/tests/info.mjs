@@ -7,7 +7,7 @@ import { ledger, openCtx } from './bookfixture.mjs';
 const base = process.argv[2] ?? 'http://localhost:8971';
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
 const b = await chromium.launch();
-const SECTIONS = ['data', 'pnl', 'book', 'markets', 'picks', 'method', 'legal', 'build'];
+const SECTIONS = ['data', 'pnl', 'book', 'markets', 'picks', 'record', 'method', 'legal', 'build'];   // 15 Nov 2026: 'record' added (How to read the Record moved here from the Record screen)
 
 for (const width of [390, 1440]) {
   const ctx = await newCtx(b, width); const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e)));
@@ -19,7 +19,7 @@ for (const width of [390, 1440]) {
   ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}: no sideways scroll`);
   ok(errs.length === 0, `${width}: no page errors${errs[0] ? ': ' + errs[0] : ''}`);
   /* a section opens from its address and says what moved there */
-  const want = { pnl: /Total P&L[\s\S]*Realised[\s\S]*Unrealised[\s\S]*One R[\s\S]*T2[\s\S]*Awaiting entry[\s\S]*Exit verification[\s\S]*Snapshot id/, book: /How a trade is followed[\s\S]*The engine book/, markets: /Trend map[\s\S]*Sector heat[\s\S]*FII and DII flows[\s\S]*Provisional figures as published by NSE/, picks: /Ranked by each engine's own rank[\s\S]*signal close/, legal: /not investment advice[\s\S]*no order is ever placed[\s\S]*Privacy/, build: /Build\s+\S+/ };
+  const want = { pnl: /Total P&L[\s\S]*Realised[\s\S]*Unrealised[\s\S]*One R[\s\S]*T2[\s\S]*Awaiting entry[\s\S]*Exit verification[\s\S]*Snapshot id/, book: /How a trade is followed[\s\S]*The engine book/, markets: /Trend map[\s\S]*Sector heat[\s\S]*FII and DII flows[\s\S]*Provisional figures as published by NSE/, picks: /Ranked by each engine's own rank[\s\S]*signal close/, legal: /not investment advice[\s\S]*no order is ever placed[\s\S]*Privacy/, record: /One R\.[\s\S]*One T2\.[\s\S]*forward record[\s\S]*nothing before the first night counts[\s\S]*Original and restated\.[\s\S]*Restated rule/, build: /Build\s+\S+/ };
   for (const [id, re] of Object.entries(want)) {
     await pg.goto(`${base}/#/info?s=${id}`); await pg.waitForSelector(`#info-${id}`); await pg.waitForTimeout(150);
     ok(await pg.locator(`#info-${id}`).evaluate((e) => e.open === true) && re.test(await pg.locator(`#info-${id}`).innerText()), `${width}: #/info?s=${id} opens its section with the moved text`);
@@ -43,6 +43,10 @@ for (const width of [390, 1265]) {
   const id = await pg.locator('[data-strip]').getAttribute('data-snapshot'); const strip = await pg.locator('[data-strip]').innerText();
   ok(!!id && !strip.includes(id), `${width}: the snapshot id is not printed in the Book's main view`);
   ok(await pg.locator('[data-total-note] a[href="#/info?s=pnl"]').count() === 1 && await pg.locator('[data-method] a[href="#/info?s=book"]').count() === 1, `${width}: the Book links to P&L definitions and to how the paper book works`);
+  /* 15 Nov 2026: How to read the Record lives here; the sentences that quote the stored record (round-trip cost, rule version by night) read it and are present when it loaded */
+  await pg.goto(`${base}/#/info?s=record`); await pg.waitForSelector('#info-record'); await pg.waitForFunction(() => /Eligibility rule by night/.test(document.querySelector('#info-record')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {});
+  const rec = await pg.locator('#info-record').innerText(); ok(/Eligibility rule by night: \S+ \(\d+ nights?, /.test(rec) && /costs 0\.25% round trip/.test(rec), `${width}: How to read the Record shows the rule version by night and the cost from the stored record`);
+  await pg.goto(`${base}/#/signals?v=positions`, { waitUntil: 'networkidle' }); await pg.waitForSelector('[data-strip]', { timeout: 20000 });
   await pg.locator('[data-total-note] a').click(); await pg.waitForSelector('#info-pnl'); await pg.waitForTimeout(150);
   ok((await pg.locator('#info-pnl [data-snapshot-id]').innerText()).trim() === id, `${width}: #/info shows the same snapshot id the Book drew (${id})`);
   await ctx.close();

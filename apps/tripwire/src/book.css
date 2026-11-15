@@ -86,6 +86,7 @@
 .rec-through{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .rec-line{margin:0;font-size:var(--fs-data);color:var(--ink-2);line-height:1.5}
 .rec-line b{color:var(--ink)}
+.rec-def a{display:inline-flex;align-items:center;min-height:var(--hit)}   /* 15 Nov 2026: the one-line link to How to read the Record */
 .rec-sec{display:grid;gap:var(--sp-3)}
 .rec-eng{display:grid;gap:var(--sp-1);padding:var(--card-pad);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);margin:0 0 var(--sp-3)}
 .rec-eng .top{display:flex;justify-content:space-between;gap:var(--sp-3);align-items:center}

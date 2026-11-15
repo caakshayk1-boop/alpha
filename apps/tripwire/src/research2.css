@@ -20,12 +20,10 @@
 .disc .rs-name:hover{border-color:var(--line-2)}
 .rs-arrow{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;font-size:.8125rem;font-weight:700;background:var(--surface-3);color:var(--ink-2)}
 .rs-arrow.up{background:var(--up-tint);color:var(--up)}.rs-arrow.down{background:var(--down-tint);color:var(--down)}
-/* desktop: the search and the toolbar share one row; the active filters, the presets and your names share the next, each part scrolling sideways on its own */
+/* desktop (15 Nov 2026: the search and the toolbar are now the sticky bar, discover6.css): the search and the toolbar share one row; the active filters, the presets and your names share the next, each part scrolling sideways on its own */
 @media (min-width:900px){
-  .disc .rs-hero{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search tool" "rows rows";column-gap:var(--sp-3);row-gap:var(--sp-2);align-items:center}
-  .disc .rs-hero>.rs-search{grid-area:search}
-  .disc .rs-hero>.dtool{grid-area:tool;display:flex;flex-wrap:nowrap;margin:0;gap:var(--sp-2)}
-  .disc .rs-hero>.rs-rows{grid-area:rows;display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+  .disc .rs-hero{grid-template-columns:minmax(0,1fr)}
+  .disc .rs-hero>.rs-rows{display:flex;align-items:center;gap:var(--sp-3);min-width:0}
   .disc .rs-rows>.dfilterbar{flex:0 1 auto;min-width:0;max-width:45%;display:block}
   .disc .rs-rows>.dfilterbar .dchips{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0;padding:2px 0}
   .disc .rs-rows>.dfilterbar .dchips>*{flex:0 0 auto}
@@ -35,7 +33,6 @@
   .disc .rs-search .ic{top:14px}
 }
 @media (max-width:899px){
-  .disc .rs-hero>.dtool{margin:var(--sp-1) 0 0}
   .disc .rs-rows>.dfilterbar .dchips{margin:0}
 }
 @media (max-width:699px){

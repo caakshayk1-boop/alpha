@@ -367,8 +367,10 @@ ok(/9\s*resolved observations/.test(await pg.locator('[data-record-headline]').i
 /* 12 Nov 2026: the gate counts qualifying lifecycles (ledgerview.ts), still 30 */
 ok(/withheld until 30 qualifying lifecycles close/.test(await text()) && !/Average R \+|\d+% won/.test(await text()), 'average R and win rate are withheld below thirty trades');
 ok(/1 of 1 night with no pick/.test(await text()), 'a night with no pick for an engine is counted');
-await pg.locator('[data-rec-def] > summary').click();   // 13 Nov 2026: the definitions sit under "How to read this"
-ok(/forward record/i.test(await text()) && /nothing before the first night counts/i.test(await text()), 'the record says it is forward-only');
+// 15 Nov 2026 (v6 polish): the definitions moved from a "How to read this" fold on the Record to #/info?s=record; the Record keeps one line that opens them
+ok(await pg.locator('[data-rec-def] a[href="#/info?s=record"]').count() === 1 && !/nothing before the first night counts/i.test(await text()), 'the Record keeps one line linking to How to read the Record, and the definitions are not repeated on it');
+await pg.locator('[data-rec-def] a').click(); await pg.waitForSelector('#info-record');
+ok(await pg.locator('#info-record').evaluate((e) => e.open) && /forward record/i.test(await pg.locator('#info-record').innerText()) && /nothing before the first night counts/i.test(await pg.locator('#info-record').innerText()), 'the record says it is forward-only (on #/info?s=record)');
 // the automatic book follows the same record: every pick taken that night, 30 at a time and ₹1,00,000 each at most
 await pg.goto(base + '/#/signals?v=auto'); await pg.reload(); await pg.waitForSelector('[data-slots]', { timeout: 15000 });
 await pg.waitForFunction(() => /Taken: S0/.test(document.querySelector('[data-positions]')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {}); const book = async () => pg.locator('[data-positions]').textContent();   // 11 Nov 2026: the log and the method are folded under the board, so their text is read with the folds shut

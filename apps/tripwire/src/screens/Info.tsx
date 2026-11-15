@@ -7,6 +7,7 @@ import { DataPage } from './Data.tsx';
 import { Methodology } from './Methodology.tsx';
 import { ContactLine } from './legal.tsx';
 import { Fold } from './fold.tsx';
+import { RecordHowTo } from './recordhowto.tsx';
 import { currentSnapshotId } from '../snapid.ts';
 import { DEFAULT_COST, SLIPPAGE_PCT, GAP_SKIP_PCT } from '../tracker.ts';
 import { DEFAULT_CFG } from '../autobook.ts';
@@ -22,6 +23,7 @@ export const INFO_SECTIONS: { id: string; title: string }[] = [
   { id: 'book', title: 'How the paper book works' },
   { id: 'markets', title: 'Markets' },
   { id: 'picks', title: 'How to read these picks' },
+  { id: 'record', title: 'How to read the Record' },
   { id: 'method', title: 'Methodology and evidence' },
   { id: 'legal', title: 'Disclaimers, privacy and contact' },
   { id: 'build', title: 'Build' },
@@ -76,6 +78,10 @@ export function Info({ section }: { section?: string | null }) {
         <p>Picks are long only. A paper entry fills at the next session's open, never at the signal close, and is skipped if that open is more than {GAP_SKIP_PCT}% above it. Levels on a pick are worked from the signal close; the fill sets the booked ones.</p>
         <p>Experimental: a rank is not a chance of winning. Paper only.</p>
       </div>
+    </Fold>
+
+    <Fold id="record" anchor="info-record" title="How to read the Record" summary="One R, T2, the forward record, original and restated, the rule by night, voided picks." open={section === 'record'}>
+      <RecordHowTo />
     </Fold>
 
     <Fold id="method" anchor="info-method" title="Methodology and evidence" summary="How picks and trends are worked out, and what the tests found." open={section === 'method'}><Methodology embedded /></Fold>
