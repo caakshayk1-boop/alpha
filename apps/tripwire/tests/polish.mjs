@@ -29,4 +29,21 @@ for (const w of [1100, 1280, 1440, 1920]) {
   await ctx.close();
 }
 
+/* ---- 2. Today, phone: the Market now basis is two lines, every fact still there ---- */
+for (const w of [320, 360, 375, 390, 412, 430]) {
+  const ctx = await newCtx(b, w, series, { isMobile: true, hasTouch: true }); const pg = await ctx.newPage(); await open(pg, '/#/today', '.mkt-basis .mkt-data');
+  const lines = (live) => pg.evaluate((liveText) => {
+    const basis = document.querySelector('.mkt-basis'); if (liveText) basis.querySelector('.mkt-px').innerHTML = liveText;   // the longest everyday wording: a live print with its age
+    const lh = parseFloat(getComputedStyle(basis).lineHeight); const sum = basis.querySelector('summary');
+    return { h: basis.getBoundingClientRect().height, lh, text: basis.innerText.replace(/\s+/g, ' '), tap: sum ? Math.round(sum.getBoundingClientRect().height) : null, over: document.documentElement.scrollWidth > innerWidth };
+  }, live);
+  const a = await lines(null);
+  ok(a.h <= a.lh * 2 + 1, `${w}: the prices and data-day basis is at most two lines (${Math.round(a.h)}px at ${a.lh}px a line)`);
+  ok(/Prices: .*IST.*times in IST/.test(a.text) && /Data through \w{3} \d+ \w{3}/.test(a.text) && /built \d\d:\d\d IST/.test(a.text), `${w}: and keeps every fact: the price time, "times in IST", the data day and the build time (${a.text})`);
+  ok(a.tap === null || a.tap >= 44, `${w}: the "behind" disclosure is still a 44px target (${a.tap})`);
+  if (w >= 360) { const l = await lines('Prices: <span>Live · 15:59:03 IST · 12 s old</span> · times in IST'); ok(l.h <= l.lh * 2 + 1, `${w}: a live print with its age (the longest everyday wording) also fits two lines (${Math.round(l.h)}px)`); }
+  ok(!a.over, `${w}: no horizontal overflow`);
+  await ctx.close();
+}
+
 await b.close(); console.log(fails ? `\npolish: ${fails} failed` : '\npolish: all passed'); process.exit(fails ? 1 : 0);
