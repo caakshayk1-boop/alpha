@@ -75,6 +75,11 @@ export function Discover() {
 
   /* ---- coming back: the scroll position and the company last opened ---- */
   const wrapRef = useRef<HTMLDivElement>(null); const restored = useRef(false);
+  // the sticky bar's height, published as --dbar on the screen root: the table header sticks beneath it and focus or anchors never land under it
+  const barRef = useRef<HTMLDivElement>(null); const discRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { const bar = barRef.current, root = discRef.current; if (!bar || !root) return; const set = () => root.style.setProperty('--dbar', `${Math.ceil(bar.getBoundingClientRect().height)}px`); set();
+    if (typeof ResizeObserver === 'undefined') { window.addEventListener('resize', set); return () => window.removeEventListener('resize', set); }
+    const ro = new ResizeObserver(set); ro.observe(bar); return () => ro.disconnect(); }, []);
   useLayoutEffect(() => {
     if (!scr.data || restored.current) return; restored.current = true; const p = place.current; if (!p) return;
     window.scrollTo(0, p.y); const w = wrapRef.current; if (w) { w.scrollLeft = p.tx ?? 0; w.scrollTop = p.ty ?? 0; }
@@ -118,13 +123,29 @@ export function Discover() {
   const sortLine = `Sorted by ${sortWords(st.sort)}${isDefaultSort(st.sort) ? ' (the default)' : ''}`;
   const noFig = run.unmeasured + run.notApplicable;
 
-  return <div className="disc" onClickCapture={onOpen}>
+  return <div className="disc" ref={discRef} onClickCapture={onOpen}>
     {/* revamp v2 (11 Nov 2026): Research leads with the search, the research presets as chips and the reader's own names; the toolbar and the results follow. The company count is stated once, in the count line below. */}
     <PageBar title="Research" sub={scr.data && rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <>Weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : undefined} />
     {ignored.length > 0 && <p className="small mute" role="status" style={{ margin: '0 0 6px' }}>Left out of the link, not understood: {ignored.slice(0, 4).join(', ')}.</p>}
 
+    {/* 15 Nov 2026 (v6 polish): the search and the toolbar are ONE sticky bar, a direct child of .disc so it stays while the whole list scrolls. The window is still the only scroller (no ancestor has overflow; scrollflow.mjs). Its height is published as --dbar so the table header, focus and anchors clear it. */}
+    <div className="dsticky" ref={barRef}>
+        <div className="search dsearch rs-search"><Icon n="search" /><input className="field" type="search" placeholder={scr.data ? `Search ${scr.data.count.toLocaleString('en-IN')} companies` : 'Company or symbol'} value={st.q} onChange={(e) => patch({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
+        <div className="dtool" role="group" aria-label="Filters, sort, columns and view">
+          <button className="chip dbtn" onClick={() => setSheet('filters')} aria-haspopup="dialog"><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
+          <div className="dsort">
+            <label className="sr" htmlFor="d-sort">Sort by</label>
+            <select id="d-sort" className="field" value={st.sort.key} onChange={(e) => patch({ sort: nextSort({ key: 'x' as SortId, dir: 'asc' }, e.target.value as SortId) })} aria-label="Sort by">
+              <optgroup label="Common">{QUICK_SORTS.map((k) => <option key={k} value={k}>{sortName(k)}</option>)}</optgroup>
+              <optgroup label="More figures">{METRICS.filter((m) => !QUICK_SORTS.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</optgroup>
+            </select>
+            <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
+          </div>
+  
+          <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
+        </div>
+    </div>
     <div className="rs-hero">
-      <div className="search dsearch rs-search"><Icon n="search" /><input className="field" type="search" placeholder={scr.data ? `Search ${scr.data.count.toLocaleString('en-IN')} companies` : 'Company or symbol'} value={st.q} onChange={(e) => patch({ q: e.target.value })} aria-label="Search companies" autoComplete="off" /></div>
       <div className="rs-rows">
         {hasAnyFilter(st) && <div className="dfilterbar">
         <div className="chips chosen dchips" role="group" aria-label="Active filters">
@@ -138,19 +159,6 @@ export function Discover() {
         <div className="quick-research rs-chiprow" role="group" aria-label="Quick research screens">{PRESETS.map((p) => <button key={p.id} className="chip rs-preset" aria-pressed={preset?.id === p.id} title={presetCriteria(p).join('; ')} onClick={() => { setSt((x) => preset?.id === p.id ? clearPreset(x) : applyPreset(x, p)); tick(); }}>{p.title}</button>)}</div>
         {mine.length > 0 && <nav className="rs-mine rs-chiprow" aria-label="Your names"><span className="rs-mine-k" aria-hidden="true">Your names</span>{mine.map((r) => { const dc = cellOf(r, disp(r), 'r1d'); const tr = trendOf(r).trend;
           return <a key={r.sym} className="rs-name" href={`#/c/${encodeURIComponent(r.sym)}`} title={r.name}><b>{r.sym}</b><span className="sr">{r.name}, on the day</span><span className={`num ${tone(dc.v)}`}>{dc.v === null ? '—' : pct(dc.v)}</span>{tr && <span className={`rs-arrow ${tr}`} aria-hidden="true">{tr === 'up' ? '↑' : tr === 'down' ? '↓' : '→'}</span>}</a>; })}</nav>}
-      </div>
-      <div className="dtool" role="group" aria-label="Filters, sort, columns and view">
-        <button className="chip dbtn" onClick={() => setSheet('filters')} aria-haspopup="dialog"><Icon n="filter" className="" />Filters{active.length ? ` · ${active.length}` : ''}</button>
-        <div className="dsort">
-          <label className="sr" htmlFor="d-sort">Sort by</label>
-          <select id="d-sort" className="field" value={st.sort.key} onChange={(e) => patch({ sort: nextSort({ key: 'x' as SortId, dir: 'asc' }, e.target.value as SortId) })} aria-label="Sort by">
-            <optgroup label="Common">{QUICK_SORTS.map((k) => <option key={k} value={k}>{sortName(k)}</option>)}</optgroup>
-            <optgroup label="More figures">{METRICS.filter((m) => !QUICK_SORTS.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</optgroup>
-          </select>
-          <button className="chip dir" onClick={() => patch({ sort: { key: st.sort.key, dir: st.sort.dir === 'asc' ? 'desc' : 'asc' } })}><span aria-hidden="true">{st.sort.key === 'name' || st.sort.key === 'sym' ? (st.sort.dir === 'asc' ? 'A–Z' : 'Z–A') : st.sort.dir === 'asc' ? '↑ Low' : '↓ High'}</span><span className="sr">{`Sort direction: ${sortWords(st.sort)}. Tap to reverse.`}</span></button>
-        </div>
-
-        <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
       </div>
     </div>
 
