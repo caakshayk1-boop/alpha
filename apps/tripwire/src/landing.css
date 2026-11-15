@@ -59,3 +59,7 @@ html.fx .lp-rv:not(.in){opacity:0;transform:translateY(18px)}
 .lp-card-top .lp-live{flex:none}
 .lp-steps li{align-content:start}
 .lp-foot{width:100%;align-self:stretch}
+.how-video{margin:0;display:grid;gap:8px}
+.how-video-el{width:100%;height:auto;aspect-ratio:16/9;display:block;border-radius:12px;background:var(--surface-2,var(--surface));border:1px solid var(--line)}
+.how-video-tx summary{display:inline;cursor:pointer;text-decoration:underline}
+.how-video-tx p{margin:6px 0 0;max-width:62ch}

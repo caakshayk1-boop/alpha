@@ -104,6 +104,10 @@ if (contact.email) {
 mkdirSync(join(DIST, '.well-known'), { recursive: true }); cpSync(join(HERE, 'static', 'ard.json'), join(DIST, '.well-known', 'ard.json')); cpSync(join(HERE, 'static', 'agent-skills'), join(DIST, '.well-known', 'agent-skills'), { recursive: true });
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
+// The explainer video is served as a plain file and is NOT in the service worker's precache (it is fetched only when a visitor plays it). Size guards keep it from growing unnoticed.
+mkdirSync(join(DIST, 'media'), { recursive: true }); cpSync(join(HERE, 'static', 'media'), join(DIST, 'media'), { recursive: true });
+if (statSync(join(DIST, 'media', 'how-it-works.mp4')).size >= 1024 * 1024) throw new Error('static/media/how-it-works.mp4 is 1 MB or more');
+if (statSync(join(DIST, 'media', 'how-it-works-poster.jpg')).size >= 120 * 1024) throw new Error('static/media/how-it-works-poster.jpg is 120 KB or more');
 // every hashed script and style (the lazy screens are separate chunks) and the fonts go into the worker's precache list, so the shell opens offline
 const precache = [...readdirSync(DIST).filter((f) => /^app\..+\.(js|css)$/.test(f)).map((f) => `/${f}`), ...readdirSync(join(DIST, 'fonts')).filter((f) => f.endsWith('.woff2')).map((f) => `/fonts/${f}`)].sort();
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp).replace('__ASSETS__', JSON.stringify(precache));
