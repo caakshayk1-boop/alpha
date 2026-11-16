@@ -1,0 +1,999 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 3,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"scene-0\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene-0",
+        "dataAttributes": {},
+        "sourceFile": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"scene-0\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"scene-1\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene-1",
+        "dataAttributes": {},
+        "sourceFile": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"scene-1\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"scene-2\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene-2",
+        "dataAttributes": {},
+        "sourceFile": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"scene-2\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      }
+    ],
+    "filesScanned": 1
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 20,
+    "infoCount": 0,
+    "findings": [
+      {
+        "selector": "#scene-0 > div:nth-of-type(1) > div:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 240,
+          "width": 146.84,
+          "height": 29
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 240,
+          "right": 256.84,
+          "bottom": 269,
+          "width": 146.84,
+          "height": 29
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "The evidence",
+        "message": "<div> \"The evidence\" is outside the safe area: TikTok (left edge), Instagram Reels (top edge), YouTube Shorts (top edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 5.556,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556
+        ]
+      },
+      {
+        "selector": "#scene-0 > div:nth-of-type(1) > h1:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 300,
+          "width": 404.08,
+          "height": 96
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 300,
+          "right": 514.08,
+          "bottom": 396,
+          "width": 404.08,
+          "height": 96
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Infosys Ltd.",
+        "message": "<h1> \"Infosys Ltd.\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 5.556,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556
+        ]
+      },
+      {
+        "selector": "#scene-0 > div:nth-of-type(1) > p:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 451.36,
+          "width": 180.34,
+          "height": 36
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 451.36,
+          "right": 290.34,
+          "bottom": 487.36,
+          "width": 180.34,
+          "height": 36
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "INFY · ₹1,141.5",
+        "message": "<p> \"INFY · ₹1,141.5\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 5.556,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556
+        ]
+      },
+      {
+        "selector": "#scene-0 > div:nth-of-type(1) > h2:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 529.36,
+          "width": 169.48,
+          "height": 54
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 529.36,
+          "right": 279.48,
+          "bottom": 583.36,
+          "width": 169.48,
+          "height": 54
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "WATCH",
+        "message": "<h2> \"WATCH\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 5.556,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556
+        ]
+      },
+      {
+        "selector": "#scene-0 > div:nth-of-type(1) > p:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 615.16,
+          "width": 846.31,
+          "height": 81
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 615.16,
+          "right": 956.31,
+          "bottom": 696.16,
+          "width": 846.31,
+          "height": 81
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Closest to a long term case, held back by revenu",
+        "message": "<p> \"Closest to a long term case, held back by revenu\" is outside the safe area: TikTok (left edge), YouTube Shorts (right edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 5.556,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556
+        ]
+      },
+      {
+        "selector": "#watermark",
+        "dataAttributes": {
+          "data-start": "0",
+          "data-duration": "20",
+          "data-track-index": "4"
+        },
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 1785,
+          "width": 438.03,
+          "height": 26
+        },
+        "time": 1.111,
+        "rect": {
+          "left": 110,
+          "top": 1785,
+          "right": 548.03,
+          "bottom": 1811,
+          "width": 438.03,
+          "height": 26
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "ApexPro · paper research · as of 2026-11-13",
+        "message": "<div> \"ApexPro · paper research · as of 2026-11-13\" is outside the safe area: TikTok (bottom edge), Instagram Reels (bottom edge), YouTube Shorts (bottom edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 1.111,
+        "lastSeen": 18.889,
+        "occurrences": 9,
+        "heldMs": 0,
+        "times": [
+          1.111,
+          3.333,
+          5.556,
+          7.778,
+          10,
+          12.222,
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > div:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 240,
+          "width": 113.47,
+          "height": 29
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 240,
+          "right": 223.47,
+          "bottom": 269,
+          "width": 113.47,
+          "height": 29
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Both sides",
+        "message": "<div> \"Both sides\" is outside the safe area: TikTok (left edge), Instagram Reels (top edge), YouTube Shorts (top edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > h2:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 310,
+          "width": 424.95,
+          "height": 54
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 310,
+          "right": 534.95,
+          "bottom": 364,
+          "width": 424.95,
+          "height": 54
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Supporting evidence",
+        "message": "<h2> \"Supporting evidence\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > p:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 395.8,
+          "width": 846.25,
+          "height": 81
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 395.8,
+          "right": 956.25,
+          "bottom": 476.8,
+          "width": 846.25,
+          "height": 81
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Earns 44% on capital employed, well above any pl",
+        "message": "<p> \"Earns 44% on capital employed, well above any pl\" is outside the safe area: TikTok (left edge), YouTube Shorts (right edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > p:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 513.8,
+          "width": 267.17,
+          "height": 36
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 513.8,
+          "right": 377.17,
+          "bottom": 549.8,
+          "width": 267.17,
+          "height": 36
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Effectively debt-free",
+        "message": "<p> \"Effectively debt-free\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > p:nth-of-type(3)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 586.8,
+          "width": 673.89,
+          "height": 36
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 586.8,
+          "right": 783.89,
+          "bottom": 622.8,
+          "width": 673.89,
+          "height": 36
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Converts 111% of reported profit into operating ",
+        "message": "<p> \"Converts 111% of reported profit into operating \" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "div.content > h2:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 664.8,
+          "width": 408.64,
+          "height": 54
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 664.8,
+          "right": 518.64,
+          "bottom": 718.8,
+          "width": 408.64,
+          "height": 54
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Reasons for caution",
+        "message": "<h2> \"Reasons for caution\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-1 > div:nth-of-type(1) > p:nth-of-type(4)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 750.59,
+          "width": 763.22,
+          "height": 81
+        },
+        "time": 7.778,
+        "rect": {
+          "left": 110,
+          "top": 750.59,
+          "right": 873.22,
+          "bottom": 831.59,
+          "width": 763.22,
+          "height": 81
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Share count moved structurally, so per-share his",
+        "message": "<p> \"Share count moved structurally, so per-share his\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 7.778,
+        "lastSeen": 12.222,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          7.778,
+          10,
+          12.222
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > div:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 240,
+          "width": 173.88,
+          "height": 29
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 240,
+          "right": 283.88,
+          "bottom": 269,
+          "width": 173.88,
+          "height": 29
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Published levels",
+        "message": "<div> \"Published levels\" is outside the safe area: TikTok (left edge), Instagram Reels (top edge), YouTube Shorts (top edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > h1:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 300,
+          "width": 507.81,
+          "height": 183.36
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 300,
+          "right": 617.81,
+          "bottom": 483.36,
+          "width": 507.81,
+          "height": 183.36
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Reference,not prediction.",
+        "message": "<h1> \"Reference,not prediction.\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > p:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 538.72,
+          "width": 379.81,
+          "height": 36
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 538.72,
+          "right": 489.81,
+          "bottom": 574.72,
+          "width": 379.81,
+          "height": 36
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Entry ₹1,141.5 · Stop ₹1,090.15",
+        "message": "<p> \"Entry ₹1,141.5 · Stop ₹1,090.15\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > p:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 611.72,
+          "width": 317.89,
+          "height": 80
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 611.72,
+          "right": 427.89,
+          "bottom": 691.72,
+          "width": 317.89,
+          "height": 80
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Level 1 · 2.83R ₹1,286.61 prior swing high, test",
+        "message": "<p> \"Level 1 · 2.83R ₹1,286.61 prior swing high, test\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > p:nth-of-type(3)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 729.72,
+          "width": 304.36,
+          "height": 80
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 729.72,
+          "right": 414.36,
+          "bottom": 809.72,
+          "width": 304.36,
+          "height": 80
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Level 2 · 3.7R ₹1,331.47 prior swing high, teste",
+        "message": "<p> \"Level 2 · 3.7R ₹1,331.47 prior swing high, teste\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "#scene-2 > div:nth-of-type(1) > p:nth-of-type(4)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 847.72,
+          "width": 312.23,
+          "height": 80
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 847.72,
+          "right": 422.23,
+          "bottom": 927.72,
+          "width": 312.23,
+          "height": 80
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Level 3 · 4.4R ₹1,367.42 prior swing high, teste",
+        "message": "<p> \"Level 3 · 4.4R ₹1,367.42 prior swing high, teste\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      },
+      {
+        "selector": "div.content > p:nth-of-type(5)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 965.72,
+          "width": 532.84,
+          "height": 81
+        },
+        "time": 14.444,
+        "rect": {
+          "left": 110,
+          "top": 965.72,
+          "right": 642.84,
+          "bottom": 1046.72,
+          "width": 532.84,
+          "height": 81
+        },
+        "code": "outside_safe_zone",
+        "severity": "warning",
+        "text": "Fundamentals FY26Educational only · Not investme",
+        "message": "<p> \"Fundamentals FY26Educational only · Not investme\" is outside the safe area: TikTok (left edge).",
+        "fixHint": "Move the text inside the safe area, or mark text meant to sit there with data-layout-allow-safe-zone.",
+        "firstSeen": 14.444,
+        "lastSeen": 18.889,
+        "occurrences": 3,
+        "heldMs": 0,
+        "times": [
+          14.444,
+          16.667,
+          18.889
+        ]
+      }
+    ],
+    "duration": 20,
+    "samples": [
+      1.111,
+      3.333,
+      5.556,
+      7.778,
+      10,
+      12.222,
+      14.444,
+      16.667,
+      18.889
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 20,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      1.111,
+      5.556,
+      10,
+      14.444,
+      18.889
+    ],
+    "checked": 42,
+    "passed": 42
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 4,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 7 text elements stay under it for 0.5 s or more, the smallest \"ApexPro · paper research · as of 2026...\" at 22 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "ApexPro · paper research · as of 2026-11-13",
+        "selector": "#watermark",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 110,
+          "y": 1785,
+          "width": 438.03,
+          "height": 26
+        },
+        "time": 0,
+        "times": [
+          0,
+          0.125,
+          6.125,
+          14.125,
+          14.125,
+          14.125,
+          14.125
+        ],
+        "fontPx": 22,
+        "floorPx": 28,
+        "seconds": 20,
+        "elements": [
+          {
+            "selector": "#watermark",
+            "text": "ApexPro · paper research · as of 2026-11-13",
+            "fontPx": 22,
+            "time": 0,
+            "seconds": 20
+          },
+          {
+            "selector": "#scene-0 > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "The evidence",
+            "fontPx": 24,
+            "time": 0.125,
+            "seconds": 5.875
+          },
+          {
+            "selector": "#scene-1 > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "Both sides",
+            "fontPx": 24,
+            "time": 6.125,
+            "seconds": 7.875
+          },
+          {
+            "selector": "#scene-2 > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "Published levels",
+            "fontPx": 24,
+            "time": 14.125,
+            "seconds": 5.875
+          },
+          {
+            "selector": "div.content > p:nth-of-type(2) > small:nth-of-type(1)",
+            "text": "prior swing high, tested 4x",
+            "fontPx": 25,
+            "time": 14.125,
+            "seconds": 5.875
+          },
+          {
+            "selector": "div.content > p:nth-of-type(3) > small:nth-of-type(1)",
+            "text": "prior swing high, tested 4x",
+            "fontPx": 25,
+            "time": 14.125,
+            "seconds": 5.875
+          },
+          {
+            "selector": "div.content > p:nth-of-type(4) > small:nth-of-type(1)",
+            "text": "prior swing high, tested 2x",
+            "fontPx": 25,
+            "time": 14.125,
+            "seconds": 5.875
+          }
+        ]
+      },
+      {
+        "code": "film_silent",
+        "severity": "warning",
+        "message": "This 20 s film has no sound source (no <audio>, no <video> with sound): add a music bed and sounds on the visible actions unless the person asked for silence; see references/sound.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 5.50 s (0.38–5.88 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0.375,
+        "seconds": 5.5,
+        "floorSeconds": 3,
+        "until": 5.875
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 7.50 s (6.38–13.88 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 6.375,
+        "seconds": 7.5,
+        "floorSeconds": 3,
+        "until": 13.875
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 160
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 1,
+    "findings": [
+      {
+        "code": "audio_none",
+        "severity": "info",
+        "message": "The film has no sound: no clip in it plays audio.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0
+      }
+    ]
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  },
+  "saved": {
+    "id": "e9a8cac8-6cdb-4225-94f3-e82c87c79976",
+    "revision": null,
+    "report": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/checks/e9a8cac8-6cdb-4225-94f3-e82c87c79976.json",
+    "attribution": "unversioned"
+  },
+  "_meta": {
+    "version": "0.9.55",
+    "latestVersion": "0.9.55",
+    "updateAvailable": false,
+    "checkedAt": "2026-11-16T02:21:59.073Z",
+    "skillsOutdated": 6,
+    "skillsMissing": 3,
+    "updateNotice": "For the user: 6 installed HyperFrames skills are out of date and 3 core skills are missing (this run is HyperFrames CLI 0.9.55). To update them, run: npx hyperframes update"
+  }
+}

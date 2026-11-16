@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "historyId": "427b78b3-5756-4e34-9390-4ad35a0f4c86",
+  "currentRevision": "fd1df233-6cd2-4381-b177-8a8c78287b27",
+  "pendingChanges": false,
+  "files": {
+    "assets/fraunces.woff2": {
+      "hash": "88e17be075f1be50ab67b057b99e3701b828f44ed28f9452df6c02645bb0cba9",
+      "content": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/88/88e17be075f1be50ab67b057b99e3701b828f44ed28f9452df6c02645bb0cba9"
+    },
+    "assets/gsap.min.js": {
+      "hash": "96c01b81f44a3290e2b4532f55e2c9534b2adc43273a19f3756b2cb41f0fd0b6",
+      "content": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/96/96c01b81f44a3290e2b4532f55e2c9534b2adc43273a19f3756b2cb41f0fd0b6"
+    },
+    "assets/inter.woff2": {
+      "hash": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3",
+      "content": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/69/693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+    },
+    "index.html": {
+      "hash": "00652d2f9b86dae3ed08c72f1c80afa8db45da7bc9d166ece2ccd5480dd53a52",
+      "content": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/00/00652d2f9b86dae3ed08c72f1c80afa8db45da7bc9d166ece2ccd5480dd53a52"
+    }
+  },
+  "revisions": {
+    "fd1df233-6cd2-4381-b177-8a8c78287b27": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1794795821097,
+      "endedAt": 1794795821103,
+      "files": {
+        "index.html": {
+          "before": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/d2/d252497ded3f9cc9335bfc0b2af68cff8f3d8e0bc424c5f26104038375c60c00",
+          "after": "/Users/akshaykumarkothari/.cache/hyperframes/history/427b78b3-5756-4e34-9390-4ad35a0f4c86/blobs/00/00652d2f9b86dae3ed08c72f1c80afa8db45da7bc9d166ece2ccd5480dd53a52"
+        }
+      }
+    }
+  },
+  "checks": {
+    "latest": {
+      "revision": null,
+      "id": "e9a8cac8-6cdb-4225-94f3-e82c87c79976"
+    },
+    "revisions": {},
+    "unversioned": [
+      {
+        "id": "e9a8cac8-6cdb-4225-94f3-e82c87c79976",
+        "scope": "project",
+        "report": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/checks/e9a8cac8-6cdb-4225-94f3-e82c87c79976.json",
+        "metadata": {
+          "ok": true,
+          "browserSkipped": false,
+          "options": {
+            "samples": 9,
+            "atTransitions": false,
+            "maxIssues": 80,
+            "collapseStatic": true,
+            "tolerance": 2,
+            "timeout": 45000,
+            "budget": {
+              "ms": 60000,
+              "stopAt": 1794795768760
+            },
+            "cache": true,
+            "contrast": true,
+            "craft": true,
+            "strict": false,
+            "snapshots": false,
+            "safeZones": [
+              "tiktok",
+              "reels",
+              "shorts"
+            ],
+            "browserGpuMode": "auto",
+            "includeUnmounted": false
+          }
+        },
+        "createdAt": 1794795724599,
+        "contentHash": "4de13877296ae14cd2cee803880e6b826e45bd4cd2eb6446624835b9ac585fa6",
+        "revision": null,
+        "inputFingerprint": "86345a48c0dee6fbd3dd655e09355af9471b979737bb6ecba959a7b3c89afc9c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      }
+    ]
+  },
+  "snapshots": {
+    "latest": {
+      "revision": null,
+      "id": "aee328be-b880-4d8d-b82c-ab12cc8590d0-3"
+    },
+    "revisions": {},
+    "unversioned": [
+      {
+        "scope": "full",
+        "id": "aee328be-b880-4d8d-b82c-ab12cc8590d0-0",
+        "image": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/snapshots/7dc13f59-a7fe-45c1-bea6-187f093b3b5f/frame-00-at-3s.png",
+        "time": 3,
+        "metadata": {
+          "width": 1080,
+          "height": 1920,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794795765094,
+        "contentHash": "a1cdfe4851753bcc242c5578ea4c7129940b5ec5ee6208844a7796e51c909948",
+        "revision": null,
+        "inputFingerprint": "86345a48c0dee6fbd3dd655e09355af9471b979737bb6ecba959a7b3c89afc9c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      },
+      {
+        "scope": "full",
+        "id": "aee328be-b880-4d8d-b82c-ab12cc8590d0-1",
+        "image": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/snapshots/7dc13f59-a7fe-45c1-bea6-187f093b3b5f/frame-01-at-10s.png",
+        "time": 10,
+        "metadata": {
+          "width": 1080,
+          "height": 1920,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794795765094,
+        "contentHash": "8328ef6725e707bb6489f165539a6ecbe99b3da587fd84ee02168bec03ef8f3b",
+        "revision": null,
+        "inputFingerprint": "86345a48c0dee6fbd3dd655e09355af9471b979737bb6ecba959a7b3c89afc9c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      },
+      {
+        "scope": "full",
+        "id": "aee328be-b880-4d8d-b82c-ab12cc8590d0-2",
+        "image": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/snapshots/7dc13f59-a7fe-45c1-bea6-187f093b3b5f/frame-02-at-17s.png",
+        "time": 17,
+        "metadata": {
+          "width": 1080,
+          "height": 1920,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794795765094,
+        "contentHash": "a94ede9b4a61efcdebd640a3513671e887cedfdcf0e81aa215fd671595cdc433",
+        "revision": null,
+        "inputFingerprint": "86345a48c0dee6fbd3dd655e09355af9471b979737bb6ecba959a7b3c89afc9c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      },
+      {
+        "scope": "full",
+        "id": "aee328be-b880-4d8d-b82c-ab12cc8590d0-3",
+        "image": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/reel-INFY/.hyperframes/artifacts/snapshots/7dc13f59-a7fe-45c1-bea6-187f093b3b5f/frame-03-at-19.75s.png",
+        "time": 19.75,
+        "metadata": {
+          "width": 1080,
+          "height": 1920,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794795765094,
+        "contentHash": "a94ede9b4a61efcdebd640a3513671e887cedfdcf0e81aa215fd671595cdc433",
+        "revision": null,
+        "inputFingerprint": "86345a48c0dee6fbd3dd655e09355af9471b979737bb6ecba959a7b3c89afc9c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      }
+    ]
+  },
+  "renders": {
+    "latest": {
+      "id": "62b2b5f2-3b4a-4ac1-a498-92fd3ac9719a",
+      "completedAt": 1794795829782,
+      "output": "/Users/akshaykumarkothari/alpha/docs/apexpro/ultimatum/proof/INFY-evidence.mp4",
+      "status": "completed",
+      "revision": "fd1df233-6cd2-4381-b177-8a8c78287b27"
+    },
+    "retainedRevisions": [
+      "fd1df233-6cd2-4381-b177-8a8c78287b27"
+    ]
+  },
+  "pendingArtifactCleanup": []
+}

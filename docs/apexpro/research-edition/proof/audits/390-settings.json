@@ -1,0 +1,57 @@
+[
+  {
+    "antipattern": "tiny-text",
+    "name": "Tiny body text",
+    "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "http://localhost:8810/#/settings",
+    "line": 0,
+    "snippet": "11px body text",
+    "selector": "section.panel.settings-panel:nth-of-type(1) > div.setting-row:nth-of-type(2) > div:nth-of-type(1) > p"
+  },
+  {
+    "antipattern": "tiny-text",
+    "name": "Tiny body text",
+    "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "http://localhost:8810/#/settings",
+    "line": 0,
+    "snippet": "11px body text",
+    "selector": "section.panel.settings-panel:nth-of-type(1) > div.setting-row:nth-of-type(3) > div > p"
+  },
+  {
+    "antipattern": "tiny-text",
+    "name": "Tiny body text",
+    "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "http://localhost:8810/#/settings",
+    "line": 0,
+    "snippet": "11px body text",
+    "selector": "section.panel.settings-panel:nth-of-type(2) > div.setting-row:nth-of-type(2) > div > p"
+  },
+  {
+    "antipattern": "tiny-text",
+    "name": "Tiny body text",
+    "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "http://localhost:8810/#/settings",
+    "line": 0,
+    "snippet": "11px body text",
+    "selector": "section.panel.settings-panel:nth-of-type(2) > div.setting-row:nth-of-type(3) > div > p"
+  },
+  {
+    "antipattern": "overused-font",
+    "name": "Overused font",
+    "description": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive. Each new wave of AI-generated UIs converges on the same handful of faces. Choose a face that gives your interface personality.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "http://localhost:8810/#/settings",
+    "line": 0,
+    "snippet": "Primary font: inter (88% of text)",
+    "selector": "body"
+  }
+]

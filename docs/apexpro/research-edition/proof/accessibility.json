@@ -1,0 +1,170 @@
+[
+  {
+    "width": 1440,
+    "route": "",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "discover",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "discover",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "company/INFY",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "company/INFY",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "compare",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "compare",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "desk",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "desk",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "settings",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "settings",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "about",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "about",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "discover",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "discover",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "company/INFY",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "company/INFY",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "compare",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "compare",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "desk",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "desk",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "settings",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "settings",
+    "colorblind": true,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "about",
+    "colorblind": false,
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "about",
+    "colorblind": true,
+    "violations": []
+  }
+]

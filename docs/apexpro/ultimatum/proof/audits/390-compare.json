@@ -1,0 +1,36 @@
+[
+  {
+    "antipattern": "unbalanced-heading",
+    "name": "Unbalanced heading",
+    "description": "This heading wraps with its last line far shorter than the line above, often one word alone. Set text-wrap: balance on headings so the lines come out near even, or rewrite it to fit. Keep it if the break carries weight on purpose.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "http://localhost:8810/#/compare",
+    "line": 0,
+    "snippet": "last of 2 lines is 16% as wide as the line above",
+    "advisory": true,
+    "selector": "h3"
+  },
+  {
+    "antipattern": "overused-font",
+    "name": "Overused font",
+    "description": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive. Each new wave of AI-generated UIs converges on the same handful of faces. Choose a face that gives your interface personality.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "http://localhost:8810/#/compare",
+    "line": 0,
+    "snippet": "Primary font: inter (97% of text)",
+    "selector": "body"
+  },
+  {
+    "antipattern": "skipped-heading",
+    "name": "Skipped heading level",
+    "description": "Heading levels should not skip (e.g. h1 then h3 with no h2). Screen readers use heading hierarchy for navigation. Skipping levels breaks the document outline.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "http://localhost:8810/#/compare",
+    "line": 0,
+    "snippet": "<h1> \"Compare the evidence\" followed by <h3> \"A clearer comparison starts here\" (missing h2)",
+    "selector": "body"
+  }
+]

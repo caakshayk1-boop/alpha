@@ -1,0 +1,158 @@
+apps/apexpro/public/app.css
+  REFLEX 24b :7 padding: 28px 18px (off the 4px scale) on #sidebar | fix: Use the 4px spacing scale
+  REFLEX 24b :7 gap: 10px (off the 4px scale) on .brand
+  REFLEX 24b :7 margin-top: 3px (off the 4px scale) on .brand small
+  REFLEX 24b :7 margin: 36px 10px 14px (off the 4px scale) on .nav-label
+  REFLEX 24b :7 gap: 6px (off the 4px scale) on #sidebar nav
+  REFLEX 24b :7 padding: 10px 12px (off the 4px scale) on #sidebar nav a
+  REFLEX 24b :7 padding: 18px 10px (off the 4px scale) on .research-note
+  REFLEX 24b :7 margin: 22px 0 12px (off the 4px scale) on .research-note
+  REFLEX 24b :7 gap: 10px (off the 4px scale) on .sidebar-action
+  REFLEX 24b :7 padding: 8px 10px (off the 4px scale) on .sidebar-action
+  REFLEX 24b :7 gap: 10px (off the 4px scale) on .byline
+  REFLEX 24b :7 margin-left: 218px (off the 4px scale) on .workspace
+  REFLEX 24b :7 gap: 10px (off the 4px scale) on .search-trigger
+  REFLEX 24b :7 padding: 0 5px (off the 4px scale) on kbd
+  REFLEX 24b :7 margin-top: 14px (off the 4px scale) on .page-heading p
+  REFLEX 24b :7 padding: 10px 16px (off the 4px scale) on .button
+  REFLEX 24b :8 gap: 18px (off the 4px scale) on .panel-heading,.section-heading
+  REFLEX 24b :8 padding: 24px 24px 18px (off the 4px scale) on .panel-heading
+  REFLEX 24b :8 margin: 38px 0 20px (off the 4px scale) on .section-heading
+  REFLEX 24b :8 gap: 6px (off the 4px scale) on .pill
+  REFLEX 24b :9 padding: 14px 0 (off the 4px scale) on .session-pulse
+  REFLEX 24b :9 gap: 6px 18px (off the 4px scale) on .session-pulse>div:first-of-type
+  REFLEX 24b :9 padding: 7px (off the 4px scale) on .pulse-controls select
+  REFLEX 24b :9 padding: 15px 0 (off the 4px scale) on .session-context
+  REFLEX 24b :9 gap: 6px 10px (off the 4px scale) on .session-context>span
+  REFLEX 24b :9 gap: 18px 30px (off the 4px scale) on .observatory-hero
+  REFLEX 24b :9 margin: 22px 0 (off the 4px scale) on .observatory-copy p
+  REFLEX 24b :9 gap: 18px (off the 4px scale) on .hero-actions
+  REFLEX 24b :9 margin-right: 7px (off the 4px scale) on .instrument-key i
+  REFLEX 24b :9 padding: 18px (off the 4px scale) on .weather-cell
+  REFLEX 24b :9 gap: 10px (off the 4px scale) on .radar-key
+  REFLEX 24b :9 margin-bottom: 14px (off the 4px scale) on .visit-brief h2
+  REFLEX 24b :9 padding-left: 18px (off the 4px scale) on .visit-brief ul
+  REFLEX 24b :10 padding: 9px 14px (off the 4px scale) on .preset
+  REFLEX 24b :10 gap: 10px (off the 4px scale) on .input-icon
+  REFLEX 24b :10 padding: 11px 12px (off the 4px scale) on input,select,textarea
+  REFLEX 24b :10 padding: 14px 18px (off the 4px scale) on th
+  REFLEX 24b :10 padding: 18px (off the 4px scale) on td
+  REFLEX 24b :10 gap: 10px (off the 4px scale) on .company-cell
+  REFLEX 24b :10 padding: 6px 0 12px (off the 4px scale) on .row-reason p
+  REFLEX 24b :10 padding: 3px (off the 4px scale) on .segmented
+  REFLEX 24b :10 padding: 8px 11px (off the 4px scale) on .segmented button
+  REFLEX 24b :10 margin: 14px 0 10px (off the 4px scale) on .verdict-line h2
+  REFLEX 24b :10 margin: 18px 0 10px (off the 4px scale) on .score-track
+  REFLEX 24b :10 padding-bottom: 14px (off the 4px scale) on .evidence h3
+  REFLEX 24b :10 gap: 30px (off the 4px scale) on .ladder-origin
+  REFLEX 24b :10 gap: 18px (off the 4px scale) on .notes-panel form
+  REFLEX 24b :11 gap: 6px (off the 4px scale) on .chart-toggle
+  REFLEX 24b :11 gap: 14px (off the 4px scale) on .chart-readout
+  REFLEX 24b :11 padding: 0 24px 18px (off the 4px scale) on .chart-readout
+  REFLEX 24b :11 padding: 18px 12px (off the 4px scale) on .chart-stat-grid>div
+  REFLEX 24b :11 margin-bottom: 10px (off the 4px scale) on .chart-stat-grid span
+  REFLEX 24b :11 padding: 10px 24px (off the 4px scale) on .chart-method
+  REFLEX 24b :11 padding: 10px 0 (off the 4px scale) on summary
+  REFLEX 24b :11 padding: 6px 0 (off the 4px scale) on .divergence-details p
+  REFLEX 24b :11 margin: 8px 0 14px (off the 4px scale) on #time-scrubber
+  REFLEX 24b :11 margin-bottom: 6px (off the 4px scale) on .time-values span
+  REFLEX 24b :11 gap: 14px (off the 4px scale) on .duel-row
+  REFLEX 24b :12 gap: 10px (off the 4px scale) on .change-card-title
+  REFLEX 24b :12 margin: 18px 0 (off the 4px scale) on .change-items
+  REFLEX 24b :12 gap: 10px (off the 4px scale) on .change-items>div
+  REFLEX 24b :12 margin: 14px 0 (off the 4px scale) on .settings-panel>p
+  REFLEX 24b :12 padding: 5px (off the 4px scale) on .switch
+  REFLEX 24b :12 margin-right: 5px (off the 4px scale) on .status-dot
+  REFLEX 24b :12 padding: 10px 20px (off the 4px scale) on .search-head
+  REFLEX 24b :12 padding: 14px 20px (off the 4px scale) on #toast
+  REFLEX 24b :12 padding: 50px (off the 4px scale) on .noscript
+  REFLEX 24b :13 padding: 10px (off the 4px scale) on [data-sidebar=collapsed] #sidebar nav a
+  REFLEX 24b :15 margin-left: 190px (off the 4px scale) on .workspace
+  REFLEX 24b :16 padding: 0 18px (off the 4px scale) on #topbar
+  REFLEX 24b :16 padding: 18px 18px 40px (off the 4px scale) on main
+  REFLEX 24b :16 margin: 18px 0 26px (off the 4px scale) on .page-heading
+  REFLEX 24b :16 padding: 10px 12px (off the 4px scale) on .heading-actions .button
+  REFLEX 24b :16 padding: 20px 18px 16px (off the 4px scale) on .panel-heading
+  REFLEX 24b :16 padding: 0 18px 18px (off the 4px scale) on .panel-subtitle
+  REFLEX 24b :16 padding: 14px 18px (off the 4px scale) on .panel-foot
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .section-heading
+  REFLEX 24b :16 margin-top: 30px (off the 4px scale) on .section-heading
+  REFLEX 24b :16 margin-top: 5px (off the 4px scale) on .session-pulse>div:first-of-type>span,.session-pulse>div:first-of-type>small
+  REFLEX 24b :16 margin-top: 7px (off the 4px scale) on .pulse-dot
+  REFLEX 24b :16 padding: 6px (off the 4px scale) on .pulse-controls select
+  REFLEX 24b :16 gap: 22px (off the 4px scale) on .observatory-hero
+  REFLEX 24b :16 margin: 18px 0 (off the 4px scale) on .observatory-copy p
+  REFLEX 24b :16 gap: 8px 18px (off the 4px scale) on .hero-actions
+  REFLEX 24b :16 gap: 7px (off the 4px scale) on .weather-grid
+  REFLEX 24b :16 padding: 15px (off the 4px scale) on .weather-cell
+  REFLEX 24b :16 padding: 0 12px 18px (off the 4px scale) on .radar-layout
+  REFLEX 24b :16 padding: 16px 18px (off the 4px scale) on .followed-row
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .followed-row
+  REFLEX 24b :16 padding-bottom: 6px (off the 4px scale) on .preset-grid
+  REFLEX 24b :16 padding: 9px 12px (off the 4px scale) on .preset
+  REFLEX 24b :16 padding: 18px (off the 4px scale) on .filter-bar
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .filter-bar
+  REFLEX 24b :16 padding: 0 18px 18px (off the 4px scale) on .results-meta
+  REFLEX 24b :16 padding: 18px (off the 4px scale) on .research-mobile-card
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .mobile-card-head
+  REFLEX 24b :16 margin-top: 14px (off the 4px scale) on .mobile-card-price
+  REFLEX 24b :16 gap: 14px (off the 4px scale) on .mobile-card-facts
+  REFLEX 24b :16 padding: 16px 18px (off the 4px scale) on .pagination
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .company-price
+  REFLEX 24b :16 padding: 22px 18px (off the 4px scale) on .verdict-line
+  REFLEX 24b :16 padding: 22px 18px (off the 4px scale) on .score-grid
+  REFLEX 24b :16 margin-top: 10px (off the 4px scale) on .score-item strong
+  REFLEX 24b :16 padding: 20px 18px (off the 4px scale) on .evidence
+  REFLEX 24b :16 padding: 0 18px 20px (off the 4px scale) on .ladder-origin
+  REFLEX 24b :16 padding: 16px 18px (off the 4px scale) on .ladder-levels>div
+  REFLEX 24b :16 padding: 22px 18px (off the 4px scale) on .notes-panel
+  REFLEX 24b :16 padding: 0 14px 14px (off the 4px scale) on .timeframe-toolbar,.chart-toolbar
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .timeframe-toolbar,.chart-toolbar
+  REFLEX 24b :16 gap: 6px (off the 4px scale) on .indicator-controls
+  REFLEX 24b :16 gap: 3px (off the 4px scale) on .chart-toggles
+  REFLEX 24b :16 padding: 5px (off the 4px scale) on .chart-toggle
+  REFLEX 24b :16 padding: 8px 10px (off the 4px scale) on .segmented button
+  REFLEX 24b :16 padding: 0 18px 16px (off the 4px scale) on .chart-readout
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .chart-readout
+  REFLEX 24b :16 margin: 10px 18px (off the 4px scale) on .chart-stat-grid
+  REFLEX 24b :16 padding: 10px 18px (off the 4px scale) on .chart-method
+  REFLEX 24b :16 padding: 18px (off the 4px scale) on .time-machine
+  REFLEX 24b :16 margin: 18px (off the 4px scale) on .time-machine
+  REFLEX 24b :16 gap: 18px (off the 4px scale) on .time-values
+  REFLEX 24b :16 padding: 18px (off the 4px scale) on .compare-card
+  REFLEX 24b :16 padding: 20px 18px (off the 4px scale) on .duel-ratio
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on .duel-row
+  REFLEX 24b :16 padding: 0 18px 20px (off the 4px scale) on .duel-warning
+  REFLEX 24b :16 padding: 22px 18px (off the 4px scale) on .change-card,.journal-card,.settings-panel,.prose
+  REFLEX 24b :16 gap: 14px (off the 4px scale) on .setting-row
+  REFLEX 24b :16 padding: 20px 18px (off the 4px scale) on .condition-form,.condition-builder,.condition-queue
+  REFLEX 24b :16 padding: 22px 18px 100px (off the 4px scale) on footer
+  REFLEX 24b :16 gap: 10px (off the 4px scale) on footer
+  REFLEX 24b :16 padding: 10px (off the 4px scale) on .search-result
+  REFLEX 24b :19 padding: 0 24px 18px (off the 4px scale) on .visit-list
+  REFLEX 24b :19 gap: 18px (off the 4px scale) on .visit-list>a
+  REFLEX 24b :19 margin: 12px 0 22px (off the 4px scale) on .condition-builder>div>p
+  REFLEX 24b :19 gap: 18px (off the 4px scale) on .condition-saved,.checkpoint
+  REFLEX 24b :19 margin-top: 18px (off the 4px scale) on .condition-saved,.checkpoint
+  REFLEX 24b :19 padding-top: 18px (off the 4px scale) on .condition-saved,.checkpoint
+  REFLEX 24b :19 padding: 0 0 18px (off the 4px scale) on .condition-queue .panel-heading
+  REFLEX 24b :19 padding: 0 0 18px (off the 4px scale) on .condition-queue .panel-subtitle
+  REFLEX 24b :19 padding: 18px 0 0 (off the 4px scale) on .condition-queue .panel-foot
+  REFLEX 24b :20 padding: 0 18px 18px (off the 4px scale) on .visit-stats
+  REFLEX 24b :20 padding: 0 18px 18px (off the 4px scale) on .visit-list
+  REFLEX 24b :20 gap: 10px (off the 4px scale) on .checkpoint
+  REFLEX 24b :25 gap: 10px (off the 4px scale) on .weather-cell
+  REFLEX 24b :26 gap: 6px (off the 4px scale) on .weather-cell
+  REFLEX 38iii :22 accented word inside a heading (.radar-panel h2 em) | fix: Set the whole head one way: a line break, a second line at a second size, or the whole head in the accent. Guard: the theme names the coloured word as its signature and it appears once on the page, in the hero
+  WARN 25 :9 measure 42ch on .observatory-copy p (45-75ch range) | fix: Set prose measure between 45 and 75ch; a one-sentence lede or caption from 28ch
+  WARN F6 :10 numeric selector .company-price>strong at display size without tabular figures | fix: Add font-variant-numeric: tabular-nums
+  WARN F6 :16 numeric selector .desk-stats strong at display size without tabular figures
+  WARN F6 :20 numeric selector .visit-stats strong at display size without tabular figures
+http://localhost:8810/#/
+  REFLEX 39b :1 [1440px] control height outside 32 to 52px: button.weather-cell 244px, button.weather-cell 356px, button.weather-cell 3… | fix: Marketing controls stand 44 to 52px; app UI 32 to 40px with a 44px hit target
+  REFLEX 49b :1 [768px] link "Sources & methodology" wraps to 2 lines (a.sidebar-action) | fix: Shorten the label or set nowrap
+  REFLEX 75 :1 [1440px] text that strains the eye: p.dial-method at 11px | fix: Running text 12px or more (16px for body), functional text 11px or more, multi-line prose leaded 1.3 or more
+  REFLEX 80 :1 [1440px] drawn illustration: div.observatory-instrument (340x340, 43 shapes) | fix: A photograph (theme.mjs photos), the product built, or type at scale; SVG is for icons, logos and labelled charts or diagrams (imagery.md § 7)
+  WARN F25 :1 [375px] 66 words shown at 1440 are hidden on a phone (first: "The market picture and the company s") | fix: If it matters, make it work on a phone; if it does not, cut it everywhere
+sloplint: 0 FAIL, 149 REFLEX, 5 WARN across 2 file(s) and 1 URL(s).
+render tier: 5 screenshots in /Users/akshaykumarkothari/alpha/.hallmark/shots (1280x800, 1440x900, 1920x1080 folds; 1440 and 375 full pages)

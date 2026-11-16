@@ -1,0 +1,15 @@
+{
+  definitions: { bg: 1, accent: 1, radius: 1 },
+  payload: {
+    css_raw: 40766,
+    application_js_raw: 106560,
+    application_js_gzip: 38085,
+    vendor_js_raw: 236133,
+    vendor_js_gzip: 89088
+  },
+  unchanged: {
+    'apps/apexpro/worker.mjs': '022d81ec40d241964b4cccf246713be0cba18487fab2a2804e92a52f1238db61',
+    'apps/apexpro/src/model.js': 'ece36ec6492f9eef5f26c6786d14eb3075b0bdcf1e37bf7f6cc0613977c7f4e2',
+    'apps/apexpro/src/technical.js': 'f74f2fbae6cf48d38e70e933cb4d855398646de60a63a69bd95b53fc9917233f'
+  }
+}

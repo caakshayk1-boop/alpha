@@ -1,0 +1,28 @@
+:root{
+  color-scheme:dark;
+  /* Terminal Modern: graphite surfaces, Apple-grade neutrals, one terminal amber. */
+  --bg:#0B0C0E;
+  --sidebar:#08090B;
+  --surface:#121317;
+  --surface-2:#191B20;
+  --line:#24262C;
+  --line-strong:#3A3D46;
+  --ink:#F5F5F7;
+  --muted:#B6BAC3;
+  --caption:#8F949E;
+  --accent:#FFA800;          /* terminal amber: brand, selection, focus, primary action */
+  --accent-ink:#1B1200;
+  --up:#3DDC97;              /* signed gains, always paired with + sign and value */
+  --down:#FF6B6B;            /* signed losses, always paired with - sign and value */
+  --amber:#FFD166;           /* caution, stale, held */
+  --compare:#5AA9FF;         /* comparison series and links of record */
+  --selection:#FFA800;--selection-ink:#1B1200;--matrix-up:rgba(61,220,151,.12);--matrix-down:rgba(255,107,107,.12);--gold:#EFC47A;
+  --radius:8px; --radius-s:4px;
+  --dur-1:120ms; --dur-2:200ms; --dur-3:320ms; --dur-page:420ms;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --ease-morph:cubic-bezier(.32,.72,0,1);
+  --shadow:0 8px 32px rgba(0,0,0,.53);
+}
+:root[data-colorblind="true"]{ --up:#5AAEFF; --down:#FFC933; }
+
+:root{--print-paper:#fff;--print-ink:#000;--print-muted:#333;--print-line:#777;--font-ui:Geist,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--font-display:Geist,ui-sans-serif,system-ui,sans-serif;--font-data:Mono,ui-monospace,monospace;--font:var(--font-ui);--text:var(--ink);--surface2:var(--surface-2);--green:var(--up);--red:var(--down);--comparison:var(--compare);--coral:var(--down);--studio-violet:var(--compare)}

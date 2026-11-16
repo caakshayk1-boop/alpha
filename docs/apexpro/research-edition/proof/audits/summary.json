@@ -1,0 +1,692 @@
+[
+  {
+    "label": "1440-home",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "italic-serif-display",
+        "selector": "h1",
+        "snippet": "italic serif h1 (fraunces) at 68px \"The research edition.\"",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.edition-issue > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.session-pulse.is-open > div:nth-of-type(1) > span",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(1) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(2) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(3) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.session-context > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.census-summary > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.census-summary > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (77% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-discover",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (61% of text)",
+        "advisory": false
+      },
+      {
+        "rule": "nested-cards",
+        "selector": "div.density-control.segmented",
+        "snippet": "Card inside card",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-company-INFY",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.company-price > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence-stack > p.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence:nth-of-type(1) > p:nth-of-type(1) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p:nth-of-type(3) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence:nth-of-type(2) > p > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-levels > div:nth-of-type(1) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-levels > div:nth-of-type(2) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div:nth-of-type(3) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "line-length",
+        "selector": "section.panel.ladder-panel > p.panel-foot",
+        "snippet": "~99 chars on 3 of 4 rendered lines (aim for <80)",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.ladder-panel > p.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#financial-chapter > div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#chart-readout > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.chart-hint",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.chart-stat-grid > div:nth-of-type(3) > span",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.chart-method:nth-of-type(1)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.chart-method:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.quiet",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#chart-chapter > div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "selector": "section.panel.notes-panel",
+        "snippet": "border-top: 2px + border-radius: 10px",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#note-form > span.quiet",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (82% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-compare",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (97% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-desk",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "line-length",
+        "selector": "p.source-note",
+        "snippet": "~93 chars on 2 of 2 rendered lines (aim for <80)",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (91% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-settings",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (88% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "1440-about",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.byline > div",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "italic-serif-display",
+        "selector": "h1",
+        "snippet": "italic serif h1 (fraunces) at 48px \"Good research startswith better questions.\"",
+        "advisory": false
+      },
+      {
+        "rule": "line-length",
+        "selector": "div.about-grid > section.panel.prose > p:nth-of-type(1)",
+        "snippet": "~94 chars on 2 of 3 rendered lines (aim for <80)",
+        "advisory": false
+      },
+      {
+        "rule": "line-length",
+        "selector": "div.about-grid > section.panel.prose > p:nth-of-type(2)",
+        "snippet": "~91 chars on 3 of 4 rendered lines (aim for <80)",
+        "advisory": false
+      },
+      {
+        "rule": "line-length",
+        "selector": "div.about-grid > section.panel.prose > p:nth-of-type(3)",
+        "snippet": "~93 chars on 3 of 4 rendered lines (aim for <80)",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (94% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-home",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "span.edition-ident",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.edition-issue > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.session-pulse.is-open > div:nth-of-type(1) > span",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(1) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(2) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "span:nth-of-type(3) > small:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.session-context > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.census-summary > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.visit-stats > div:nth-of-type(1) > span",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (77% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-discover",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (61% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-company-INFY",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.company-price > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence-stack > p.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence:nth-of-type(1) > p:nth-of-type(1) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p:nth-of-type(3) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.evidence:nth-of-type(2) > p > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-origin > span:nth-of-type(1)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-origin > span:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-levels > div:nth-of-type(1) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.ladder-levels > div:nth-of-type(2) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div:nth-of-type(3) > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.ladder-panel > p.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#financial-chapter > div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#chart-readout > small",
+        "snippet": "11px body text",
+        "advisory": true
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.chart-hint",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "div.chart-stat-grid > div:nth-of-type(3) > span",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.chart-method:nth-of-type(1)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.chart-method:nth-of-type(2)",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "p.quiet",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#chart-chapter > div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "selector": "section.panel.notes-panel",
+        "snippet": "border-top: 2px + border-radius: 10px",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "#note-form > span.quiet",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (82% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-compare",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (97% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-desk",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "div.panel-foot",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (91% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-settings",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.settings-panel:nth-of-type(1) > div.setting-row:nth-of-type(2) > div:nth-of-type(1) > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.settings-panel:nth-of-type(1) > div.setting-row:nth-of-type(3) > div > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.settings-panel:nth-of-type(2) > div.setting-row:nth-of-type(2) > div > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "tiny-text",
+        "selector": "section.panel.settings-panel:nth-of-type(2) > div.setting-row:nth-of-type(3) > div > p",
+        "snippet": "11px body text",
+        "advisory": false
+      },
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (88% of text)",
+        "advisory": false
+      }
+    ]
+  },
+  {
+    "label": "390-about",
+    "exit": 2,
+    "findings": [
+      {
+        "rule": "overused-font",
+        "selector": "body",
+        "snippet": "Primary font: inter (94% of text)",
+        "advisory": false
+      }
+    ]
+  }
+]
