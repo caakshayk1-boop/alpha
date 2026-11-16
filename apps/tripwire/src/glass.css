@@ -43,3 +43,14 @@
 /* tap targets: the two Book links are block-level, 44px high */
 .gb-linkrow{display:flex;flex-wrap:wrap;gap:0 var(--sp-4)}
 .gb-linkrow a{display:inline-flex;align-items:center;min-height:var(--hit)}
+
+/* 3.0 Phase B (16 Nov 2026): the 52-week range bar in Research rows, and the compact density. Tokens only. */
+.rbar{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.rbar-track{position:relative;display:inline-block;width:72px;height:4px;border-radius:var(--radius-pill);background:var(--line-2)}
+.rbar-track i{position:absolute;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--ink)}
+.rbar-n{font-weight:600;font-size:var(--fs-data);color:var(--ink-2);min-width:2.4em;text-align:right}
+.disc.disc-dense .dl-card .discover-row:not(.dl-head){padding:4px 0}
+.disc.disc-dense .dl-card .discover-identity .company-name{display:none}
+.disc.disc-dense .dl-card .discover-identity .sym{font-size:var(--fs-body)}
+.dens{display:none}
+@media (min-width:1100px){.dens{display:inline-block}}

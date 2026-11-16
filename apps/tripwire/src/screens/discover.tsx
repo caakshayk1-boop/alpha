@@ -37,6 +37,7 @@ const FIGURES: { title: string; ids: MetricKey[] }[] = [
   { title: 'Balance sheet and cash', ids: ['de', 'icover', 'cfo_pat', 'fcf_margin'] },
 ];
 const QUICK_SORTS: SortId[] = ['name', 'sym', 'r1d', 'rs3m', 'roce_med', 'pe', 'from_high', 'turnover_cr'];
+import { rangePos, rangeWords } from '../rangebar.ts';
 const FIN = 'Financial Services';
 const KIND_C: Record<string, string> = { sector: 'var(--a6)', tier: 'var(--a6)', value: 'var(--a2)', quality: 'var(--a3)', trend: 'var(--up)', momentum: 'var(--a4)', c: 'var(--lime)' };
 const symSel = (s: string) => `[data-sym="${s.replace(/["\\]/g, '')}"]`;
@@ -46,6 +47,8 @@ export function Discover() {
   const [init] = useState(() => parseDiscover(loc.q));
   const [st, setSt] = useState<DiscoverState>(init.state); const [ignored, setIgnored] = useState<string[]>(init.ignored);
   const stRef = useRef(st); stRef.current = st;
+  const [dense, setDense] = useState<boolean>(() => { try { return localStorage.getItem('tw.density') === 'compact'; } catch { return false; } });
+  const setDensity = (v: string) => { const d = v === 'compact'; setDense(d); try { localStorage.setItem('tw.density', d ? 'compact' : 'comfortable'); } catch { /* storage may be blocked; the choice then lasts for this visit */ } };
   const [restore] = useState(() => wantsRestore(loc.raw)); const place = useRef(restore ? loadPlace(serialiseDiscover(init.state)) : null);
   const [selected, setSelected] = useState(place.current?.at ?? ''); const selRef = useRef(selected); selRef.current = selected;
   const patch = useCallback((p: Partial<DiscoverState>, keepPage = false) => setSt((x) => ({ ...x, ...(keepPage ? {} : { show: PAGE }), ...p })), []);
@@ -123,7 +126,7 @@ export function Discover() {
   const sortLine = `Sorted by ${sortWords(st.sort)}${isDefaultSort(st.sort) ? ' (the default)' : ''}`;
   const noFig = run.unmeasured + run.notApplicable;
 
-  return <div className="disc" ref={discRef} onClickCapture={onOpen}>
+  return <div className={`disc${dense ? ' disc-dense' : ''}`} ref={discRef} onClickCapture={onOpen}>
     {/* revamp v2 (11 Nov 2026): Research leads with the search, the research presets as chips and the reader's own names; the toolbar and the results follow. The company count is stated once, in the count line below. */}
     <PageBar title="Research" sub={scr.data && rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <>Weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : undefined} />
     {ignored.length > 0 && <p className="small mute" role="status" style={{ margin: '0 0 6px' }}>Left out of the link, not understood: {ignored.slice(0, 4).join(', ')}.</p>}
@@ -143,6 +146,7 @@ export function Discover() {
           </div>
   
           <Radios label="View" value={st.view} onChange={(v) => patch({ view: v as View }, true)} items={[{ id: 'list', label: 'List' }, { id: 'table', label: 'Table' }]} />
+          <span className="dens"><Radios label="Row density" value={dense ? 'compact' : 'comfortable'} onChange={setDensity} items={[{ id: 'comfortable', label: 'Roomy' }, { id: 'compact', label: 'Compact' }]} /></span>
         </div>
     </div>
     <div className="rs-hero">
@@ -281,9 +285,15 @@ function FigCell({ r, d, id, pm }: { r: Row; d: { row: Row; live: boolean }; id:
 const LIST_COLS: [MetricKey, string][] = [['pe', 'PE'], ['roce_med', 'ROCE'], ['rs3m', 'vs Nifty 3m'], ['from_high', 'From high'], ['price', 'Price']];
 const keyOf = (sort: SortId): MetricKey | null => (sort === 'name' || sort === 'sym' || sort === 'price' || sort === 'r1d' ? null : (sort as MetricKey));
 const wideCols = (sort: SortId) => LIST_COLS.filter(([id]) => id !== keyOf(sort) && !(id === 'price' && keyOf(sort) === null));
+/** The 52-week range as a small bar: the dot is where the close sits between the low and the high. Text beside it says the same in words, so it is not colour- or shape-only. */
+function RangeBar({ r }: { r: Row }) {
+  const pos = rangePos(r.price, r.low52, r.high52);
+  if (pos == null) return <span title={rangeWords(null)} aria-label={rangeWords(null)}>—</span>;
+  return <span className="rbar" role="img" aria-label={rangeWords(pos)} title={rangeWords(pos)}><span className="rbar-track"><i style={{ left: `${pos}%` }} /></span><b className="rbar-n">{pos}%</b></span>;
+}
 function ListHead({ sort }: { sort: SortId }) {
   const k = keyOf(sort); const km = k ? metricOf(k) : null;
-  return <div className="discover-row dl-head" aria-hidden="true"><div className="row grow discover-main"><span className="avatar dl-ph" /><span className="grow discover-identity">Company</span><span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small></span>)}</span><span className="px num"><b>{km ? km.short : 'Price · day'}</b></span></div><div className="discover-actions"><span className="dl-ph icon-btn" /><span className="dl-ph icon-btn" /></div></div>;
+  return <div className="discover-row dl-head" aria-hidden="true"><div className="row grow discover-main"><span className="avatar dl-ph" /><span className="grow discover-identity">Company</span><span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small></span>)}<span><small>52w range</small></span></span><span className="px num"><b>{km ? km.short : 'Price · day'}</b></span></div><div className="discover-actions"><span className="dl-ph icon-btn" /><span className="dl-ph icon-btn" /></div></div>;
 }
 function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d: { row: Row; live: boolean }; pm: Set<MetricKey>; sort: SortId; picked: boolean; full: boolean; onPick: () => void; selected: boolean }) {
   const q = cellOf(r, d, 'price'); const dc = cellOf(r, d, 'r1d'); const k = keyOf(sort); const km = k ? metricOf(k) : null;
@@ -292,7 +302,7 @@ function ListRow({ r, d, pm, sort, picked, full, onPick, selected }: { r: Row; d
     <a className="row grow discover-main" href={`#/c/${encodeURIComponent(r.sym)}`} style={{ minWidth: 0 }} aria-current={selected ? 'true' : undefined}>
       <span className="avatar" style={avatarStyle(r.sym)} aria-hidden="true">{initials(r.sym)}</span>
       <span className="grow discover-identity" style={{ minWidth: 0 }}><span className="row" style={{ gap: 6, minWidth: 0 }}><span className="sym trunc">{r.sym}</span><TrendTag r={r} compact /></span><span className="dim small company-name trunc">{r.name}</span></span>
-      <span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}</span>
+      <span className="wide num">{wideCols(sort).map(([id, l]) => <span key={id}><small>{l}</small><FigCell r={r} d={d} id={id} pm={pm} /></span>)}<span><small>52-week range</small><RangeBar r={r} /></span></span>
       {km && kc ? <span className={`px num key${signed ? (kc.v! > 0 ? ' up' : kc.v! < 0 ? ' down' : '') : ''}`} style={{ flex: 'none' }}><b><FigCell r={r} d={d} id={k!} pm={pm} /></b><span className="kl">{km.short}</span></span>
         : <span className="px num key" style={{ flex: 'none' }}><b>{q.v === null ? '—' : inr(q.v)}{q.live && <i className="ldot" aria-label="price print" title="Latest price print: live while the market is open, otherwise the last traded price" />}</b><span className={`kd ${tone(dc.v)}`}>{pct(dc.v)}{dc.live && <i className="ldot" aria-hidden="true" />}</span></span>}
     </a>

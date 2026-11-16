@@ -83,6 +83,7 @@ let html = readFileSync(join(HERE, 'static/index.html'), 'utf8').replaceAll('__S
 // in parallel with the entry instead of one level down. tools/budget.mjs fails the build above the owner's budgets.
 const critical = criticalCss(readFileSync(join(DIST, `app.${stamp}.css`), 'utf8'), JSON.parse(readFileSync(join(HERE, 'static/critical-classes.json'), 'utf8')));
 const link = `<link rel="stylesheet" href="/app.${stamp}.css">`; if (!html.includes(link)) throw new Error('static/index.html lost its stylesheet link');
+html = html.replaceAll('__COUNT__', String(rows.length)).replaceAll('__ASOF__', String(uni.as_of ?? ''));
 html = html.replace(link, `<style data-critical>${critical}</style>\n<link rel="preload" href="/app.${stamp}.css" as="style">\n<link rel="stylesheet" href="/app.${stamp}.css" media="print" data-full-css>\n<noscript>${link}</noscript>`);
 const preload = staticClosure(DIST, `app.${stamp}.js`).filter((f) => f !== `app.${stamp}.js`).map((f) => `<link rel="modulepreload" href="/${f}">`).join('\n');
 html = html.replace('</head>', `${preload}\n</head>`);

@@ -39,8 +39,9 @@ Three pinned tests were updated to the new palette, each with a dated comment (`
 | F7 | Watchlist Trips | built, tested, seen | `src/trips.ts`, `screens/tripscard.tsx` on Today |
 | F8 | Ladder share cards | built, tested, PNG viewed | `src/sharecard.ts`, `tools/sharecards.mjs` (build step), `screens/sharerow.tsx`; `/share/<SYM>/` and `/share/book/` |
 
-## Step 5: public face: NOT done
-No Pro/waitlist page, no Beehiiv CTA (no subscribe endpoint exists in the repo), no landing rebuild, no copy pass. The prompt's gate says Step 5 follows a green Step 3; Step 3 is partial.
+## Step 5: public face: PARTLY done (16 Nov 2026, 5.0 run)
+Built: a crawlable no-JS landing in `static/index.html` (what it is, company count and data day filled at build, honesty strip, paper-only line) and a schema.org `WebApplication` JSON-LD block. Both are build-time facts, so they cannot drift from the data.
+Not built: email capture / Pro-waitlist page (no subscribe endpoint exists in the repo and I will not invent one; send the Beehiiv form URL or endpoint), a hero that embeds the live product, a copy pass. Step 3 Phases B-C and the 232px frame also remain.
 
 ## Step 6: proof gate (this run)
 See the evidence block at the foot of this file, written after the final run.
@@ -56,3 +57,10 @@ See the evidence block at the foot of this file, written after the final run.
   5. Two browser tests pinned the old red; updated with a dated comment.
 - Seen in the browser on real ledger data: `#/glass`, a company page (HONASA), Today (weather line, watchlist card), PNG share card.
 - Not run: real iPhone, Lighthouse, a deliberate missed-build watchdog test.
+
+## 5.0 run (16 Nov 2026): what changed
+- Declared `sharp` 0.35.5 as a devDependency (was a transitive dependency of Next; share-card PNGs depended on it silently). Lock file updated.
+- Landing / SEO block above. `tripwire:build` fills `__COUNT__` and `__ASOF__`.
+- Step 2 gate: the 2.0 fixture (buy 100 @100, stop 90, sell 50 @120, mark 50 @110: realised 1,000, unrealised 500, total 1,500, 1.5R) already passes in `tests/pnlsplit.test.ts` section 5.3, with the 0.25% charge split across both halves. The ledger model has one partial (Target 1 = half) then the rest; a second partial is not a ledger concept, so no test was invented for it.
+- The 5.0 file's Part A is stale for this checkout: Glass Book, Sit-Out Log, Scoreboard, Why-this-stock, Weather, Trips and Share Cards were committed in `fe9dac52` but not yet live. This run deploys them.
+- Still blocked / not built: F6 (W2 file), Inter + Fraunces fonts (downloads need approval), frame widths and Phases B-C, email capture, the 12 extra skills (the 5.0 Step 0 installs; none installed, none scanned: installing 12 third-party skills unreviewed is the risk SkillSpector exists for).
