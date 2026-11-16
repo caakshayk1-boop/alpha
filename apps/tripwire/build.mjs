@@ -66,6 +66,9 @@ for (const f of ['signals.json', 'engines_v3.json']) if (existsSync(join(PUB, f)
 // it is computed from the clock by src/freshness.ts in the browser and in tools/check-data.mjs, so a file cannot keep saying "current" after the day has moved on.
 const lastDates = rows.map((r) => r.last_date).filter(Boolean).sort();
 const sig = existsSync(join(PUB, 'signals.json')) ? JSON.parse(readFileSync(join(PUB, 'signals.json'), 'utf8')) : null;
+// 16 Nov 2026: the facts a status reader (the Status page, a Telegram summary) needs, with paper:true and the as-of days. Facts only: the STATUS of each file is computed from the clock by the reader.
+import { statusFacts } from './src/statusboard.ts';
+writeFileSync(join(DIST, 'data', 'status.json'), JSON.stringify(statusFacts({ as_of: uni.as_of, built_at: uni.built_at ?? null, rows }, sig, new Date().toISOString())));
 writeFileSync(join(DIST, 'data', 'freshness.json'), JSON.stringify({ schema: 'tripwire-freshness/1', files: [
   { id: 'screen', asOf: uni.as_of, built: uni.built_at ?? built, rows: rows.length },
   { id: 'companies', asOf: lastDates.length ? lastDates[lastDates.length - 1] : null, oldest: lastDates[0] ?? null, built: uni.built_at ?? built, rows: files.length },

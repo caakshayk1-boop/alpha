@@ -56,6 +56,8 @@ export function DataPage({ embedded = false }: { embedded?: boolean } = {}) {
       <p className="small mute" style={{ margin: 0 }}>The sections below keep every table, source and limitation. Open any heading for its detail; nothing has been removed.</p>
     </section>
 
+    <p className="small mute" style={{ margin: '0 0 8px' }} data-status-link>The same facts, with the gate, book risk and the nightly job in one place: <a className="tap" href="#/status" style={{ textDecoration: 'underline' }}>Status</a>.</p>
+
     <Head aside={<span className={`tag ${fx.worst === 'current' ? 'lime' : fx.worst === 'pending' ? '' : 'amber'}`}>{fx.loading ? 'Checking' : fx.worst === 'current' ? 'All current' : fx.worst === 'pending' ? 'Build due' : 'Something is behind'}</span>}>Every data file, and how current it is</Head>
     <div className="card" style={{ padding: '2px 14px' }}><div className="scroll-x" tabIndex={0} role="region" aria-label="Every data file, scrolls sideways"><table className="tbl fresh-tbl" data-fresh-table style={{ width: '100%' }}><caption className="sr">Each published data file: the session it carries, when it was built, its rows and its status against the last finished session</caption>
       <thead><tr><th scope="col">File</th><th scope="col">As of</th><th scope="col">Built</th><th scope="col" style={{ textAlign: 'right' }}>Rows</th><th scope="col">Status</th></tr></thead><tbody>
