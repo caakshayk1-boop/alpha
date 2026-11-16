@@ -1,0 +1,4 @@
+# 0006 F8: share pages and the PNG dependency
+The app is hash-routed, so a crawler cannot read a pick from its address. The build writes static pages /share/<SYM>/index.html (Open Graph and Twitter tags, noindex, then a redirect into the app) and /share/book/, plus card.png, card.svg and /share/manifest.json. The share buttons (X, WhatsApp, copy link) appear only when the manifest lists the card, so there are no dead links.
+PNG is made with sharp, imported dynamically. sharp is in node_modules only as a transitive dependency of Next; it is NOT declared in package.json. The build degrades to SVG-only pages (no og:image) and says so if it is missing. Recommended follow-up: declare it as a devDependency at the version already locked (no install change, replaces nothing).
+Colours are read from tokens.css at build time. Card fonts are generic sans and mono because Inter is not shipped.

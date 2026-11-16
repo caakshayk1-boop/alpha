@@ -1,0 +1,3 @@
+# 0003 F4 is a template at render time, not build time
+The prompt says the text is generated at build time. Its inputs (the live screen row, the factor sheet, the ledger pick) are loaded by the page at run time, so the template runs there. It is still a pure function of real values (tests/whystock.test.ts), uses no model, and omits any sentence whose value is missing. Only the two factors the rules use are ranked (momentum, nearness to high); the other ten are not named.
+The card sits between the chart block and the section tabs, visible without a click. The existing lead layout was not restructured (that is 3.0 Phase B).

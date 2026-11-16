@@ -1,0 +1,2 @@
+# 0004 F5 leaves out what the data cannot give
+The screen file holds one day. So there is no "distance from the 60-day high" (the row carries the 52-week high, and that is what is shown, labelled) and no breadth delta "since the previous session". The line states the day instead: the share of liquid names that rose on the day, labelled as the day. The regime word is the existing breadth word (broad strength / mixed / broad weakness) with its rule on hover. A stale screen shows its date and the word "stale" (tested).

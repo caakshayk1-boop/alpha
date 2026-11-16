@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { WhyCard } from './whycard.tsx';
 import { go, useAppState, useLoc, useSheets, setState } from '../app.tsx';
 import { useChart, useCompany, useScreen } from '../data.ts';
 import { asOfRows, asOfWhy } from '../asof.ts';
@@ -194,6 +195,7 @@ export function Company({ sym }: { sym: string }) {
       <div className="co-side co-dec"><DecisionCard c={c.data} lp={lp} /></div>
     </div>
 
+    <WhyCard sym={sym} row={row} evals={evals} picks={picks} />
     <div className="co-tabs"><Seg label="Company sections" value={tab} onChange={setTab} items={TABS} /></div>
     <div role="tabpanel" aria-label={TABS.find((x) => x.id === tab)!.label}>
       {tab === 'overview' && overview}{tab === 'financials' && financials}{tab === 'ownership' && ownership}{tab === 'risks' && risks}{tab === 'thesis' && thesis}

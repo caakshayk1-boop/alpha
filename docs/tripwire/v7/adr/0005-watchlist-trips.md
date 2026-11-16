@@ -1,0 +1,4 @@
+# 0005 F7: the watchlist is the follow list; "in base" is defined
+The watchlist is the existing local follow list (this device only; clearing site data clears it, stated on the card). The new code is offline and pure (a test checks it names no network or storage API).
+FLAG FOR THE OWNER: the pre-existing "Your names" board calls the live-quotes API with the followed symbols (useLiveSymbols). So acceptance item 9 holds for the new card, not for the product as a whole. Left unchanged; decide whether that is acceptable.
+"in base" has no engine definition. Display definition used, which creates no signal: trend tag sideways AND price above its 200-day average. Priority: stopped, at T1, tripped entry, in base, no signal. A position that stopped AFTER filling T1 is a managed exit, not "stopped".

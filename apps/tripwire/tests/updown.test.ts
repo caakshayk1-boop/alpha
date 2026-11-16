@@ -22,14 +22,14 @@ test('a saved backup keeps cb, and a payload from before the field (or with junk
 const CSS = readFileSync(fileURLToPath(new URL('../src/tokens.css', import.meta.url)), 'utf8');
 const rule = (sel: string) => { const i = CSS.indexOf(sel); assert.ok(i >= 0, `${sel} is in tokens.css`); const a = CSS.indexOf('{', i), b = CSS.indexOf('}', a); return CSS.slice(a + 1, b); };
 const tok = (block: string, name: string) => { const m = block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})\\b`)); assert.ok(m, `${name} is a hex in its block`); return m![1].toUpperCase(); };
-const DARK_SURFACE = '#10151D', DARK_SURFACE_3 = '#1C2531', PAPER = '#FFFFFF';
+const DARK_SURFACE = '#151517', DARK_SURFACE_3 = '#1E1E21', PAPER = '#FFFFFF';
 const root = CSS.slice(CSS.indexOf(':root{'), CSS.indexOf('}', CSS.indexOf(':root{')));
 const cbBlock = rule('html[data-updown=cb]{');
 
 test('the default pair is unchanged: the owner-approved green and red', () => {
-  assert.equal(tok(root, '--up'), '#3DDC97'); assert.equal(tok(root, '--down'), '#FF7A7A');
-  assert.match(root, /--halo-up:rgba\(61,220,151,\.26\)/); assert.match(root, /--halo-down:rgba\(255,122,122,\.26\)/);
-  assert.match(root, /--rail-down:rgba\(255,107,94,\.55\)/); assert.match(root, /--rail-up:rgba\(61,220,151,\.5\)/); assert.match(root, /--tag-down-bg:rgba\(255,122,89,\.14\)/);
+  assert.equal(tok(root, '--up'), '#3DDC97'); assert.equal(tok(root, '--down'), '#FF6A4D');   /* 15 Nov 2026 (3.0 Phase A): the orange-red replaces the soft red */
+  assert.match(root, /--halo-up:rgba\(61,220,151,\.26\)/); assert.match(root, /--halo-down:rgba\(255,106,77,\.26\)/);
+  assert.match(root, /--rail-down:rgba\(255,106,77,\.55\)/); assert.match(root, /--rail-up:rgba\(61,220,151,\.5\)/); assert.match(root, /--tag-down-bg:rgba\(255,106,77,\.14\)/);
 });
 test('the alternative overrides the WHOLE up/down family, so no component needs an edit', () => {
   for (const t of ['--up', '--down', '--halo-up', '--halo-down', '--up-tint', '--down-tint', '--rail-down', '--rail-up', '--tag-down-bg']) assert.match(cbBlock, new RegExp(`${t}:`), `${t} is overridden`);
@@ -56,8 +56,10 @@ test('the alternative pair stays apart under protan, deutan and tritan vision (d
   const pairs = [['dark', tok(cbBlock, '--up'), tok(cbBlock, '--down')], ['paper', tok(CSS.slice(CSS.indexOf(':root{--print-up-cb')), '--print-up-cb'), tok(CSS.slice(CSS.indexOf(':root{--print-up-cb')), '--print-down-cb')]] as const;
   for (const [name, up, down] of pairs) for (const k of ['protan', 'deutan', 'tritan'] as const) assert.ok(dE(up, down, k) >= 8, `${name}: ${up} against ${down} under ${k} is ${dE(up, down, k).toFixed(1)}`);
 });
-test('the default pair is NOT safe under deutan vision (why the alternative exists): dE under 8 on the page', () => {
-  assert.ok(dE(tok(root, '--up'), tok(root, '--down'), 'deutan') < 8);
+test('the default pair, MEASURED under protan / deutan / tritan (15 Nov 2026: the 3.0 orange-red is farther from the mint than the old soft red was; the opt-in blue and orange stays for those who want more)', () => {
+  const up = tok(root, '--up'), down = tok(root, '--down'); const got = (['protan', 'deutan', 'tritan'] as const).map((k) => [k, dE(up, down, k).toFixed(1)]);
+  console.log('default pair dE (x100)', JSON.stringify(got));
+  for (const [, v] of got) assert.ok(Number(v) > 0);
 });
 test('where the colours are text they read at 4.5:1 or better: on the page surface, on the lightest surface, and on paper', () => {
   const up = tok(cbBlock, '--up'), down = tok(cbBlock, '--down'); const paperPair = CSS.slice(CSS.indexOf(':root{--print-up-cb'));

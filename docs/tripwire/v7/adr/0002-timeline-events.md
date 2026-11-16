@@ -1,0 +1,3 @@
+# 0002 What an event is in the F1 timeline
+Decision: signal (pick written), taken (a selection, labelled as not a fill), awaiting entry (no date, never invented), skipped, entry, T1, T2, exit. Dates and prices come only from the ledger pick and its outcome (entryDay, t1Day/t1Px, t2Day/t2Px, exitDay/exit). Each event states its source and whether it is recorded, a selection, or a fill simulated from completed daily bars.
+The ledger holds no per-event share quantities, so a trace recomputes from the outcome's own pct, the entry and the book's share count (rupees), or from its r (R). Headlines traced: closed count, open count, total R, realised rupees. Each trace shows the headline beside the rows re-added; they must agree (tested).

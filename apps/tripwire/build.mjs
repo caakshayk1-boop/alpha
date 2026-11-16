@@ -117,6 +117,9 @@ writeFileSync(join(DIST, 'sw.js'), sw);
 writeFileSync(join(DIST, 'sitemap.xml'), readFileSync(join(HERE, 'static/sitemap.xml'), 'utf8').replaceAll('__LASTMOD__', uni.as_of ?? new Date().toISOString().slice(0, 10)));
 writeFileSync(join(DIST, 'robots.txt'), 'User-agent: *\nAllow: /$\nAllow: /sitemap.xml\nDisallow: /api/\nDisallow: /data/\n\nSitemap: https://tripwire.askakshay.com/sitemap.xml\n');
 writeFileSync(join(DIST, 'llms.txt'), readFileSync(join(HERE, 'static/llms.txt'), 'utf8'));
+// 15 Nov 2026 (4.0, F8): the Ladder Share Cards, from the committed ledger and tokens.css. A failure to draw one is loud, never a silent missing card.
+import { writeShareCards } from './tools/sharecards.mjs';
+const shared = await writeShareCards(DIST); console.log(`share cards: ${shared.cards} written, ${shared.listed ?? 0} with a PNG${shared.png ? '' : ' (sharp is not installed: SVG and pages only, no og:image)'}`);
 const size = (p) => statSync(p).size;
 console.log(`tripwire: ${rows.length} companies, data through ${uni.as_of}, js ${(size(join(DIST, `app.${stamp}.js`)) / 1024).toFixed(0)} kB, css ${(size(join(DIST, `app.${stamp}.css`)) / 1024).toFixed(0)} kB`);
 writeFileSync(join(DIST, 'build.json'), JSON.stringify({ stamp, built: new Date().toISOString(), data_built_on: built, data_as_of: uni.as_of, data_built_at: uni.built_at ?? null, companies: rows.length }));

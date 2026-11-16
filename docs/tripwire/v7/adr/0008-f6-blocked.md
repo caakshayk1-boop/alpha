@@ -1,0 +1,2 @@
+# 0008 F6 Sector Pressure Map is blocked, not skipped
+It needs the W2 impact map rules R01 to R12 and the 12-sector taxonomy. The file is in none of: this repo, docs, Downloads, or a filesystem name search. The prompt forbids fabricating data, and the rules are the content. To unblock, supply tripwire-w2-impact-map-2026-11-07.md; the macro-input file and the recompute test then follow the same pure-module pattern as F5.

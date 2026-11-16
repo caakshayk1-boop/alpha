@@ -15,14 +15,14 @@ const paint = (pg) => pg.evaluate(() => {
     haloUp: getComputedStyle(document.documentElement).getPropertyValue('--halo-up').trim(), peachBg: getComputedStyle(document.documentElement).getPropertyValue('--peach-bg').trim(), tintDown: getComputedStyle(document.documentElement).getPropertyValue('--down-tint').trim() };
   host.remove(); return out; });
 const radio = (pg, name) => pg.locator('[role=radiogroup][aria-label="Up and down colours"]').getByRole('radio', { name, exact: true });
-const GREEN = 'rgb(61, 220, 151)', RED = 'rgb(255, 122, 122)', BLUE = 'rgb(90, 174, 255)', ORANGE = 'rgb(255, 160, 64)';
+const GREEN = 'rgb(61, 220, 151)', RED = 'rgb(255, 106, 77)'   /* 15 Nov 2026 (3.0): the orange-red */, BLUE = 'rgb(90, 174, 255)', ORANGE = 'rgb(255, 160, 64)';
 
 { // an existing user (no updown in the saved prefs): nothing changes
   const ctx = await newCtx(b, 390); const pg = await ctx.newPage(); await open(pg, '/#/settings', '[data-updown-group]');
   ok((await attr(pg)) === 'default', 'a saved state from before the setting reads as the default (html[data-updown=default])');
   const p0 = await paint(pg); ok(p0.up === GREEN && p0.down === RED, `default: the approved green and red are what is painted (${p0.up}, ${p0.down})`);
   ok(/rgba\(61, 220, 151, 0\.26\)/.test(p0.haloUp.replace(/\s+/g, ' ')) || /rgba\(61,220,151,\.26\)/.test(p0.haloUp), `default: the price halo is the green tint (${p0.haloUp})`);
-  ok(p0.rail.includes('rgba(255, 107, 94') && p0.rail.includes('rgba(61, 220, 151'), `default: the target ladder rail keeps its own red and green (${p0.rail.slice(0, 90)})`);
+  ok(p0.rail.includes('rgba(255, 106, 77') && p0.rail.includes('rgba(61, 220, 151'), `default: the target ladder rail keeps its own red and green (${p0.rail.slice(0, 90)})`);
   const grp = pg.locator('[role=radiogroup][aria-label="Up and down colours"]'); ok(await grp.count() === 1 && await grp.getByRole('radio').count() === 2, 'Settings has one radiogroup "Up and down colours" with two choices');
   ok((await radio(pg, 'Green and red (default)').getAttribute('aria-checked')) === 'true' && (await radio(pg, 'Blue and orange (colour-blind safe)').getAttribute('aria-checked')) === 'false', 'the default is the checked one');
   for (const n of ['Green and red (default)', 'Blue and orange (colour-blind safe)']) ok((await radio(pg, n).boundingBox()).height >= 43.5, `"${n}" is a 44px target`);

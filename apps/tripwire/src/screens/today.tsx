@@ -1,4 +1,6 @@
 import { HitCard } from '../components/index.ts';
+import { WeatherLine } from './weatherline.tsx';
+import { TripsCard } from './tripscard.tsx';
 import { CaptureModule, IdentityFooter } from './capture.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { HeroLine } from './herolines.tsx';
@@ -97,6 +99,8 @@ export function Today() {
       {fresh && <SampleWalkthrough defaultOpen={firstVisit} />}
 
       {!fresh && <div className="t-main">
+        {scr.data && <WeatherLine rows={rows} day={day} />}
+        {scr.data && s.follows.length > 0 && <TripsCard rows={rows} day={day} follows={s.follows} />}
         {/* (2a) your names */}
         {s.follows.length === 0 && <NamesEmpty />}
         {s.follows.length > 0 && <>

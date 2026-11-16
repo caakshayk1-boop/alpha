@@ -1,0 +1,11 @@
+# Glossary (4.0)
+- Observation: one engine naming one company on one night. Research history, not a trade.
+- Resolved observation: an observation whose replay closed with an R.
+- Selected / taken: a pick the paper book accepted that night. A selection, not a fill.
+- Lifecycle: one book position from selection to close, id lc:<pick id>. The same company can have several.
+- Closed (book): the whole position is gone under a confirmed exit. A partial exit leaves it open.
+- Sit-out: a resolved observation the book did not take.
+- Simulated fill: an entry or exit replayed from completed daily bars. A quote is never a fill.
+- Trace: the lifecycle rows that add up to a headline number, shown beside the headline.
+- Snapshot: the one ledger view every screen reads (snapid.ts).
+- Trip state: a display word (stopped, at T1, tripped entry, in base, no signal) over existing facts.
