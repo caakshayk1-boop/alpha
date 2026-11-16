@@ -78,3 +78,4 @@ html.fx-lively .moodhero .idx .rg .nw{animation:c3-fade 360ms var(--ease) both}
 .c-divergence-notes ul{padding-left:18px;line-height:1.8;font-size:12px}.c-divergence-notes>p{max-width:80ch}.c-divergence{pointer-events:none}
 @media(max-width:600px){.c-workbench-main{gap:6px}.c-workbench-main>.btn{flex:1;font-size:11px;padding:8px}.c-workbench-main>.mini-seg{flex-shrink:0}.c-history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.c-history-lens header>strong{font-size:20px}}
 @media print{.c-workbench,.c-history-lens,.c-divergence-notes{display:none}}
+.c-workbench .mini-seg button{min-width:var(--hit);min-height:var(--hit)}
