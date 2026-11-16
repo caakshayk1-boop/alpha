@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Keyb
 import { setState, useAppState } from '../app.tsx';
 import { SLOW_DOWN, useChart } from '../data.ts';
 import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
+import { confirmedDivergences, evidenceAt } from '../chartEvidence.ts';
 import { inr, pct, tone } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
 import { keyPoints } from '../reportview.ts';
@@ -22,6 +23,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const [rangeSel, setRange] = useState<RangeId | null>(null); const [vsSel, setVs] = useState<boolean | null>(null); const [view, setView] = useState<Frame>('daily'); const [log, setLog] = useState(false); const [ma, setMa] = useState(false); const [dd, setDd] = useState(false);
   const [lvOn, setLvOn] = useState(false); const [evOn, setEvOn] = useState(false); /* the clean line first: no overlay is drawn until it is asked for */ const [kind, setKind] = useState<'line' | 'candle'>('line'); const [vol, setVol] = useState(false); const [rsi, setRsi] = useState(false);
   const [optsOpen, setOptsOpen] = useState(false);
+  const [rsiPeriod, setRsiPeriod] = useState(14), [divOn, setDivOn] = useState(false), [inspect, setInspect] = useState(false);
   const [cur, setCur] = useState<number | null>(null); const box = useRef<HTMLDivElement>(null);
   const all: Pt[] = useMemo(() => (feed.data ? feed.data.t.map((t, i) => ({ t, c: feed.data!.c[i], n: feed.data!.n ? feed.data!.n[i] : null, o: feed.data!.o?.[i] ?? null, h: feed.data!.h?.[i] ?? null, l: feed.data!.l?.[i] ?? null, v: feed.data!.v?.[i] ?? null })) : []), [feed.data]);
   const start = useMemo(() => chartStart(all, savedPref as { range?: RangeId; vs?: boolean } | undefined, instrument), [all, savedPref, instrument]);
@@ -54,12 +56,16 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const pair = useMemo(() => (cmp ? geometryPair(cmp.a, cmp.b, logOn, 1000, 300, 12, pairGut) : null), [cmp, logOn, pairGut]);
   const st = useMemo(() => stats(win.pts), [win]);
   const smaMap = useMemo(() => { if (!ma || !all.length) return null; const a50 = smaSeries(all, 50), a200 = smaSeries(all, 200); const m = new Map<number, { a: number | null; b: number | null }>(); all.forEach((q, k) => m.set(q.t, { a: a50[k], b: a200[k] })); return m; }, [ma, all]);
-  const rsiFull = useMemo(() => { if (!rsi) return null; const m = new Map<number, number | null>(); const a = aggregate(all, eff); rsiSeries(a.map((q) => q.c)).forEach((v, k) => m.set(a[k].t, v)); return m; }, [rsi, all, eff]);
-  const rsiNow = useMemo(() => (['daily', 'weekly', 'monthly'] as Frame[]).map((fr) => { const a = aggregate(all, fr); const r = rsiSeries(a.map((q) => q.c)); return { fr, v: r.length ? r[r.length - 1] : null }; }), [all]);
+  const rsiFull = useMemo(() => { if (!rsi) return null; const m = new Map<number, number | null>(); const a = aggregate(all, eff); rsiSeries(a.map((q) => q.c), rsiPeriod).forEach((v, k) => m.set(a[k].t, v)); return m; }, [rsi, all, eff, rsiPeriod]);
+  const rsiNow = useMemo(() => (['daily', 'weekly', 'monthly'] as Frame[]).map((fr) => { const a = aggregate(all, fr); const r = rsiSeries(a.map((q) => q.c), rsiPeriod); return { fr, v: r.length ? r[r.length - 1] : null }; }), [all, rsiPeriod]);
   const ddv = useMemo(() => (dd && !cmp ? drawdownSeries(shown) : null), [dd, cmp, shown]);
   const evIn = events.filter((e) => plot.length > 1 && e.t >= plot[0].t && e.t <= plot[plot.length - 1].t);
   const S = styleOf(0, sym), B = styleOf(-1, 'Nifty 50'); const color = S.color;
   const i = cur == null ? null : Math.min(cur, plot.length - 1); const p = i == null ? null : shown[(cmp ? shown.length - plot.length : 0) + i];
+  const asOf = p?.t ?? all.at(-1)?.t ?? 0;
+  const historical = useMemo(() => inspect ? evidenceAt(all, asOf, rsiPeriod) : null, [inspect, all, asOf, rsiPeriod]);
+  const divergences = useMemo(() => divOn && rsi ? confirmedDivergences(aggregate(all, eff).slice(0, -1), rsiPeriod) : [], [divOn, rsi, all, eff, rsiPeriod]);
+  const visibleDiv = divergences.filter(d => shown.length && d.from >= shown[0].t && d.confirmed <= asOf).slice(-6);
   const fromStart = p && st ? (p.c / st.first.c - 1) * 100 : null;
   const cmpA = cmp && i != null ? cmp.a[i].c - 100 : null, cmpB = cmp && i != null ? cmp.b[i].c - 100 : null;
   const text = p ? (cmp ? `${dateLabel(p.t, view === 'monthly')}, ${sym} ${pct(cmpA)}, Nifty ${pct(cmpB)} since the start` : `${dateLabel(p.t, view === 'monthly')}, ${f(p.c)}, ${pct(fromStart)} from the start of the window`) : '';
@@ -105,8 +111,8 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     return ([{ nm: 'High', k: hi, tn: 'up' }, { nm: 'Low', k: lo, tn: 'down' }] as const).filter((m) => m.k !== last && shown[m.k].c !== shown[last].c).map((m) => ({ ...m }));
   })();
   const chart = <>
-    <div ref={box} className={`chart-plot pc-plot${cmp ? ' pair' : ''}`} tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${view}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
-      onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCur(null); }} onKeyDown={key} onBlur={() => setCur(null)} style={{ touchAction: 'pan-y' }}>
+    <div ref={box} className={`chart-plot pc-plot${cmp ? ' pair' : ''}`} tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${eff}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
+      onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse' && !inspect) setCur(null); }} onKeyDown={key} onBlur={() => { if (!inspect) setCur(null); }} style={{ touchAction: 'pan-y' }}>
       {(geo || pair) && (() => {
         const W = (geo ?? pair)!.W, H = (geo ?? pair)!.H;
         const lo = geo ? geo.min : Math.min(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c)), hi = geo ? geo.max : Math.max(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c));
@@ -130,6 +136,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
           {geo && <line x1="0" x2={W} y1={geo.ys[geo.ys.length - 1]} y2={geo.ys[geo.ys.length - 1]} stroke={color} strokeOpacity=".55" strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
           {geo && smaMap && (['a', 'b'] as const).map((k) => <path key={k} className="c-ma" d={pathThrough(geo.xs, shown.map((q) => { const v = smaMap.get(q.t)?.[k]; return v == null ? null : geo.yOf(v); }))} fill="none" stroke={k === 'a' ? 'var(--a4)' : 'var(--a2)'} strokeWidth="1" strokeOpacity=".9" strokeDasharray={k === 'b' ? '3 3' : undefined} vectorEffect="non-scaling-stroke" />)}
           {geo && lvOn && levels.filter((lv) => lv.v >= geo.min && lv.v <= geo.max).map((lv) => <line key={lv.label} x1="0" x2={W} y1={geo.yOf(lv.v)} y2={geo.yOf(lv.v)} stroke={lv.kind === 'stop' ? 'var(--down)' : lv.kind === 'target' ? 'var(--up)' : 'var(--mute)'} strokeWidth="1" strokeDasharray="5 3" vectorEffect="non-scaling-stroke" />)}
+          {geo && divOn && visibleDiv.map(d => <path key={d.kind + d.to} className="c-divergence" d={`M${geo.xOf(d.from)} ${geo.yOf(d.priceFrom)}L${geo.xOf(d.to)} ${geo.yOf(d.priceTo)}`} fill="none" stroke={d.kind === 'bullish' ? 'var(--up)' : 'var(--down)'} strokeWidth="2" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />)}
           {i != null && <line x1={(geo ?? pair)!.xs[i]} x2={(geo ?? pair)!.xs[i]} y1="0" y2={H} stroke="var(--tx)" strokeOpacity=".4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
           {i != null && geo && <line className="c-hair" x1="0" x2={W} y1={geo.ys[i]} y2={geo.ys[i]} stroke="var(--tx)" strokeOpacity=".28" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
         </svg>;
@@ -171,13 +178,14 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     </div>
     {ma && geo && <div className="small num" style={{ display: 'flex', gap: 14, marginTop: 4 }}><span><span className="c-key" style={{ background: 'var(--a4)' }} />50-day (solid)</span><span><span className="c-key dashed" style={{ background: 'repeating-linear-gradient(90deg,var(--a2) 0 3px,transparent 3px 6px)' }} />200-day (dotted)</span></div>}
     {vol && hasVol && geo && !cmp && (() => { const H3 = 70; const vs2 = shown.map((q) => q.v ?? 0); const mx = Math.max(1, ...vs2); const bw = geo.barW;
-      return <div className="chart-sub"><div className="k">Volume · {FRAME_WORD[eff]} bars{i != null && shown[i]?.v != null ? ` · ${compact(shown[i].v!)}` : ''}</div><div className="chart-plot sub" style={{ height: 56, cursor: 'default' }} role="img" aria-label={`Volume per ${FRAME_WORD[eff]}, highest ${compact(mx)}`}>
+      return <div className="chart-sub"><div className="k">Volume · {FRAME_WORD[eff]} bars{i != null && shown[i]?.v != null ? ` · ${compact(shown[i].v!)}` : ''}</div><div className="chart-plot sub" style={{ height: 56, width: wpx, maxWidth: '100%', cursor: 'crosshair' }} onPointerMove={at} onPointerDown={at} role="img" aria-label={`Volume per ${FRAME_WORD[eff]}, highest ${compact(mx)}`}>
         <svg viewBox={`0 0 ${geo.W} ${H3}`} preserveAspectRatio="none" aria-hidden="true" shapeRendering="crispEdges">{shown.map((q, k) => { if (q.v == null) return null; const upBar = q.o != null ? q.c >= q.o : k > 0 ? q.c >= shown[k - 1].c : true; const col = upBar ? 'var(--up)' : 'var(--down)'; return <rect key={k} x={geo.xs[k] - bw / 2} y={H3 - (q.v / mx) * (H3 - 4)} width={bw} height={(q.v / mx) * (H3 - 4)} fill={upBar ? 'var(--bg)' : col} stroke={col} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity={i === k ? 1 : 0.7} />; })}</svg></div><p className="small mute" style={{ margin: '4px 0 0' }}>Hollow bars: the {FRAME_WORD[eff]} closed at or above its open (or the previous close). Solid bars: it closed lower.</p></div>; })()}
     {rsi && geo && !cmp && rsiFull && (() => { const H4 = 90; const y = (v: number) => 6 + (1 - v / 100) * (H4 - 12); const vals = shown.map((q) => rsiFull.get(q.t) ?? null); const d = pathThrough(geo.xs, vals.map((v) => (v == null ? null : y(v)))); const last = [...vals].reverse().find((v) => v != null) ?? null; const curv = i != null ? vals[i] : last;
-      return <div className="chart-sub"><div className="row between"><span className="k">RSI 14 · {FRAME_WORD[eff]} closes{curv != null ? ` · ${curv.toFixed(1)}` : ''}</span><span className="small num dim">{rsiNow.map((x) => `${x.fr === 'daily' ? 'D' : x.fr === 'weekly' ? 'W' : 'M'} ${x.v == null ? '—' : x.v.toFixed(0)}`).join(' · ')}</span></div>
-        <div className="chart-plot sub" style={{ height: 76, cursor: 'default' }} role="img" aria-label={`RSI 14 on ${FRAME_WORD[eff]} closes${curv != null ? `, ${curv.toFixed(1)}` : ''}. Daily ${rsiNow[0].v?.toFixed(0) ?? 'n/a'}, weekly ${rsiNow[1].v?.toFixed(0) ?? 'n/a'}, monthly ${rsiNow[2].v?.toFixed(0) ?? 'n/a'}.`}>
+      return <div className="chart-sub"><div className="row between"><span className="k">RSI {rsiPeriod} · {FRAME_WORD[eff]} closes{curv != null ? ` · ${curv.toFixed(1)}` : ''}</span><span className="small num dim">{rsiNow.map((x) => `${x.fr === 'daily' ? 'D' : x.fr === 'weekly' ? 'W' : 'M'} ${x.v == null ? '—' : x.v.toFixed(0)}`).join(' · ')}</span></div>
+        <div className="chart-plot sub" style={{ height: 110, width: wpx, maxWidth: '100%', cursor: 'crosshair' }} onPointerMove={at} onPointerDown={at} role="img" aria-label={`RSI ${rsiPeriod} on ${FRAME_WORD[eff]} closes${curv != null ? `, ${curv.toFixed(1)}` : ''}. Daily ${rsiNow[0].v?.toFixed(0) ?? 'n/a'}, weekly ${rsiNow[1].v?.toFixed(0) ?? 'n/a'}, monthly ${rsiNow[2].v?.toFixed(0) ?? 'n/a'}.`}>
           <svg viewBox={`0 0 ${geo.W} ${H4}`} preserveAspectRatio="none" aria-hidden="true"><rect x="0" y={y(100)} width={geo.W} height={y(70) - y(100)} fill="var(--down)" opacity=".07" /><rect x="0" y={y(30)} width={geo.W} height={y(0) - y(30)} fill="var(--up)" opacity=".07" />
             {[30, 50, 70].map((v) => <line key={v} x1="0" x2={geo.W} y1={y(v)} y2={y(v)} stroke="var(--line2)" strokeWidth="1" strokeDasharray={v === 50 ? '1 4' : '4 3'} vectorEffect="non-scaling-stroke" />)}
+            {divOn && visibleDiv.map(v => <path key={v.kind + v.to} d={`M${geo.xOf(v.from)} ${y(v.rsiFrom)}L${geo.xOf(v.to)} ${y(v.rsiTo)}`} fill="none" stroke={v.kind === 'bullish' ? 'var(--up)' : 'var(--down)'} strokeWidth="2" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />)}
             <path d={d} fill="none" stroke="var(--a4)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />{i != null && <line x1={geo.xs[i]} x2={geo.xs[i]} y1="0" y2={H4} stroke="var(--tx)" strokeOpacity=".4" vectorEffect="non-scaling-stroke" />}</svg>
           <span className="c-ylab" style={{ top: `${(y(70) / H4) * 100}%` }}>70</span><span className="c-ylab" style={{ top: `${(y(30) / H4) * 100}%` }}>30</span></div></div>; })()}
     {ddv && geo && (() => { const mn = Math.min(0, ...ddv); const H2 = 90; const y = (v: number) => 6 + (v / (mn || -1)) * (H2 - 12); const d = ddv.map((v, k) => `${k ? 'L' : 'M'}${geo.xs[k].toFixed(1)} ${y(v).toFixed(1)}`).join('');
@@ -199,7 +207,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
             {[
               ['ma', '50 and 200-day averages', ma, () => setMa(!ma), false, undefined],
               ['vol', 'Volume', vol, () => solo(() => setVol(!vol)), !hasVol, !hasVol ? 'This series carries no volume' : undefined],
-              ['rsi', 'RSI (14)', rsi, () => solo(() => setRsi(!rsi)), false, undefined],
+              ['rsi', `RSI (${rsiPeriod})`, rsi, () => solo(() => { setRsi(!rsi); if (rsi) setDivOn(false); }), false, undefined],
               ['dd', 'Drawdown from the running peak', dd, () => solo(() => setDd(!dd)), false, undefined],
               ...(levels.length > 0 ? [['lv', 'Entry, stop and targets', lvOn, () => setLvOn(!lvOn), !!cmp, 'Drawn only where they fall inside the price range shown'] as const] : []),
               ...(events.length > 0 ? [['ev', 'Dated events', evOn, () => setEvOn(!evOn), evIn.length === 0, evIn.length === 0 ? 'No dated event falls inside this window' : undefined] as const] : []),
@@ -239,6 +247,23 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         </div>
       </div>}
     {chart}
+    {!report && <div className="c-workbench" aria-label="Research chart tools">
+      <div className="c-workbench-main">
+        <Radios label="Chart interval" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'D' }, { id: 'weekly', label: 'W' }, { id: 'monthly', label: 'M' }] as { id: Frame; label: string }[]} />
+        {hasOhlc && <button className="btn sm" aria-pressed={kind === 'candle'} onClick={() => solo(() => setKind(kind === 'line' ? 'candle' : 'line'))}>Candles</button>}
+        <button className="btn sm" aria-pressed={rsi} onClick={() => solo(() => { setRsi(!rsi); if (rsi) setDivOn(false); })}>RSI</button>
+        <button className="btn sm" aria-pressed={inspect} onClick={() => { setInspect(!inspect); if (inspect) setCur(null); }}>History lens</button>
+      </div>
+      {bars && eff !== view && <p className="small mute c-auto-frame">Auto {eff} bars: this range has too many daily bars to draw intact.</p>}
+      {rsi && <div className="c-indicator-tools"><label>RSI period <select aria-label="RSI period" value={rsiPeriod} onChange={e => setRsiPeriod(Number(e.target.value))}>{[7, 14, 21].map(n => <option key={n} value={n}>{n}</option>)}</select></label><button className="btn sm" aria-pressed={divOn} onClick={() => solo(() => setDivOn(!divOn))}>Divergences</button><span className="small mute">{FRAME_WORD[eff]} closes · Wilder smoothing</span></div>}
+    </div>}
+    {!report && divOn && !cmp && <div className="c-divergence-notes" aria-label="Confirmed RSI divergences"><strong>Price / momentum divergence</strong>{visibleDiv.length ? <ul>{visibleDiv.slice(-3).reverse().map(d => <li key={d.kind + d.to}><span className={d.kind === 'bullish' ? 'up' : 'down'}>{d.kind === 'bullish' ? 'Bullish' : 'Bearish'}</span> · pivot {dateLabel(d.to)} · confirmed {dateLabel(d.confirmed)}</li>)}</ul> : <p>No confirmed divergence in this window as of {dateLabel(asOf)}.</p>}<p className="small mute">Close pivots require three bars on either side. The latest bar is excluded to avoid unfinished-period confirmation. Lines connect price pivots and their RSI values; confirmation comes later. Up to three recent patterns listed. Patterns are observations, not price forecasts.</p></div>}
+    {!report && inspect && historical && <section className="c-history-lens" aria-label="Historical evidence inspector">
+      <header><div><h3>Read this moment</h3><p>{dateLabel(historical.at)} · {historical.trend}</p></div><strong className="num">{f(historical.close)}</strong></header>
+      <label className="c-history-scrubber">Observation date<input aria-label="Historical observation" type="range" min={0} max={Math.max(0, plot.length - 1)} value={i ?? plot.length - 1} onChange={e => setCur(Number(e.target.value))} /></label>
+      <div className="c-history-grid">{[['20-day average', historical.ma20], ['50-day average', historical.ma50], ['200-day average', historical.ma200]].map(([label, value]) => <div key={String(label)}><span>{label}</span><b className="num">{value == null ? '—' : f(value as number)}</b></div>)}<div><span>From trailing-year high close</span><b className="num">{pct(historical.fromHigh)}</b></div>{historical.momentum.map(m => <div key={m.frame}><span>{m.frame} RSI {rsiPeriod}</span><b className="num">{m.value == null ? '—' : m.value.toFixed(1)}</b></div>)}</div>
+      <p className="small mute">Price-derived evidence uses observations through this date only. Week/month bars include days available then; insufficient history stays unmeasured. Fundamental figures elsewhere retain their published fiscal year.</p>
+    </section>}
   </ChartFrame>;
 }
 

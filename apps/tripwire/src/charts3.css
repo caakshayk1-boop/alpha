@@ -64,3 +64,17 @@ html.fx-lively .moodhero .idx .rg .nw{animation:c3-fade 360ms var(--ease) both}
 .sb-fill.neg,.contrib .bar2 i.neg{border-radius:var(--bar-r) 0 0 var(--bar-r)}
 .cf-chip{border-radius:var(--rad-md)}
 @media print{.c-now{box-shadow:none}.cf .chart-plot:not(.sub){background:none}}
+
+/* Research workbench: direct controls, aligned indicator panes and an opt-in historical lens. */
+.c-workbench{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin:0 0 16px}
+.c-workbench-main,.c-indicator-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.c-workbench .btn{min-height:44px}.c-workbench .btn[aria-pressed=true]{background:var(--tx);color:var(--bg)}
+.c-indicator-tools{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.c-indicator-tools label{display:flex;align-items:center;gap:10px;font-size:12px}.c-indicator-tools select{min-height:44px;min-width:64px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:8px}
+.c-history-lens,.c-divergence-notes{border-top:1px solid var(--line);padding:20px 0;margin-top:20px}
+.c-history-lens header{display:flex;justify-content:space-between;gap:16px;align-items:start}.c-history-lens h3{font-size:20px;margin:0}.c-history-lens header p{margin:8px 0;color:var(--mute)}.c-history-lens header>strong{font-size:24px}
+.c-history-scrubber{display:block;font-size:12px;margin:12px 0 20px}.c-history-scrubber input{display:block;width:100%;min-height:44px;accent-color:var(--tx)}
+.c-history-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 16px}.c-history-grid span{display:block;color:var(--mute);font-size:12px;line-height:1.5}.c-history-grid b{display:block;margin-top:8px;font-size:16px}.c-history-lens>p{margin:20px 0 0;max-width:80ch}
+.c-divergence-notes ul{padding-left:18px;line-height:1.8;font-size:12px}.c-divergence-notes>p{max-width:80ch}.c-divergence{pointer-events:none}
+@media(max-width:600px){.c-workbench-main{gap:6px}.c-workbench-main>.btn{flex:1;font-size:11px;padding:8px}.c-workbench-main>.mini-seg{flex-shrink:0}.c-history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.c-history-lens header>strong{font-size:20px}}
+@media print{.c-workbench,.c-history-lens,.c-divergence-notes{display:none}}
