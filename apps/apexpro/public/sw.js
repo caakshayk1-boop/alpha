@@ -1,4 +1,4 @@
-const VERSION = 'apexpro-v13-terminal';
+const VERSION = 'apexpro-v14-terminal';
 const SHELL = ["/","/index.html","/tokens.css","/app.css","/app.js","/reel.js","/share-card.js","/vendor/motion.js","/vendor/gsap.min.js","/fonts/geist-var.woff2","/fonts/fraunces.woff2","/fonts/fraunces-ext.woff2","/icons.svg","/icon.svg","/icon-192.png","/icon-512.png","/mono.woff2","/manifest.webmanifest","/shared-Z4D75UNL.js"];
 self.addEventListener('install', event => { event.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('apexpro-') && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
