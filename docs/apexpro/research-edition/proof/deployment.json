@@ -1,0 +1,14 @@
+{
+  "url": "https://apexpro.askakshay.com",
+  "version": "488885b0-1b6e-4d13-999e-8870f03097e8",
+  "verified": "2026-11-16T08:43:11.883Z",
+  "hashes": {
+    "app.js": "94b28532ae882d7544e07e8ae6999267bb98630bbf681e098a69cdb3e4141ff1",
+    "app.css": "f60c0f8a024a63224351c9d518a93c2192cf3104e3bd192f563e240d81403103",
+    "tokens.css": "b0268e4a299786252d63d9eeeaade83cc10947197c3d2b3f17f6769baa31cb1f",
+    "sw.js": "fc4165085e89f6aedb14f7a27c7c710b629c5ff95cd77a06a84c3537884846aa",
+    "share-card.js": "231f9d85b64c68cd62a26d093cbe5967734bc92be1a8cb09586aebe59c8ceb69",
+    "reel.js": "f2c24a94b55b18b3e874078ad3a2820b808e688f0fe98d0014ee146493d63c82",
+    "shared-Z4D75UNL.js": "0c1369eb307983ce227aec6d5101c83f3d3aa584ad36baf78258f159890bd97a"
+  }
+}

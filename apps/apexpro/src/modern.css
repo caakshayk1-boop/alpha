@@ -1,0 +1,147 @@
+/* Terminal Modern: final presentation layer, compiled after app.css and canvas.css.
+   Tokens live in public/tokens.css only. Dense on precise pointers; touch targets stay 44px on coarse pointers.
+   References: Bloomberg Terminal density and amber-on-graphite, Apple type precision, Kokonut UI mono index codes. */
+
+/* ---- Type ---- */
+body{font:13px/1.5 var(--font-ui);font-feature-settings:"ss01","cv11";letter-spacing:-.003em}
+h1,h2{font-family:var(--font-ui);font-weight:600}
+h1{font-size:clamp(30px,3.4vw,52px);line-height:1.04;letter-spacing:-.045em}
+h2{font-size:18px;line-height:1.25;letter-spacing:-.025em}
+h3{font-size:13px;letter-spacing:-.01em}
+.page-heading h1,.canvas-topline h1,.company-context h2{letter-spacing:-.045em}
+.page-heading h1{font-size:clamp(28px,3vw,40px)}
+.canvas-topline h1{font-size:clamp(28px,3.2vw,44px);font-weight:600}
+.canvas-topline p,.page-heading p{font-size:13px;color:var(--muted);margin-top:6px}
+.eyebrow{display:block;font:500 11px/1.4 var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption);margin-bottom:6px}
+.numeric,.change,.metric strong,.company-price>strong,.search-price,.matrix-value,td,.session-pulse strong,.nav-count,kbd{font-variant-numeric:tabular-nums}
+.company-price>strong{font:600 clamp(28px,3.2vw,40px)/1 var(--font-data);letter-spacing:-.04em}
+.change{font-family:var(--font-data);font-size:12px}
+
+/* ---- Shape and rhythm: 4px grid, hairlines, tight radii ---- */
+.panel,.settings-panel,.compare-card,.journal-card{border-radius:var(--radius);margin-bottom:12px;background:var(--surface);border-color:var(--line)}
+.panel-heading{padding:12px 14px 10px}.panel-subtitle{padding:0 14px 12px}.panel-foot{padding:10px 14px}
+.section-heading{margin:24px 0 12px}
+.pill{border-radius:4px;padding:2px 7px;font:500 11px/1.5 var(--font-data);letter-spacing:.02em;border-color:var(--line-strong)}
+.button,.preset,.search-trigger,.icon-button,.lens-tabs button,input,select,textarea{border-radius:var(--radius-s)}
+.panel-heading h2::before,.canvas-heading h2::before{counter-increment:sec;content:counter(sec,decimal-leading-zero);font:500 11px var(--font-data);color:var(--accent);margin-right:10px;vertical-align:2px;letter-spacing:.04em}
+main{counter-reset:sec}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+::selection{background:var(--accent);color:var(--accent-ink)}
+*{scrollbar-color:var(--line-strong) transparent}
+
+/* ---- Shell: slim rail, frosted command bar, Bloomberg-style status bar ---- */
+#sidebar{width:176px;padding:14px 10px;background:var(--sidebar);border-right:1px solid var(--line)}
+.workspace{margin-left:176px}
+#sidebar .brand{font-size:21px;min-height:36px}
+#sidebar .brand small{font:500 11px/1 var(--font-data);letter-spacing:.02em;margin-top:5px;color:var(--caption);white-space:nowrap;text-transform:uppercase}
+#sidebar .nav-label{font:500 11px var(--font-data);letter-spacing:.03em;text-transform:uppercase;margin:20px 8px 8px;color:var(--caption);white-space:nowrap}
+#sidebar nav{gap:2px}
+#sidebar nav a{min-height:36px;padding:6px 10px;gap:10px;border-radius:var(--radius-s);font-size:13px;font-weight:500;position:relative}
+#sidebar nav a .icon{width:18px;height:18px}
+#sidebar nav a[aria-current]{background:var(--surface-2);color:var(--ink)}
+#sidebar nav a[aria-current]::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:2px;border-radius:2px;background:var(--accent)}
+#sidebar nav a[aria-current] .icon{color:var(--accent)}
+#sidebar nav a kbd{margin-left:auto;opacity:.0;transition:opacity var(--dur-1)}
+#sidebar nav a:hover kbd,#sidebar nav a:focus-visible kbd{opacity:1}
+.research-note{padding:12px 8px;margin:14px 0 8px;font-size:12px;border-bottom:1px solid var(--line)}
+.research-note p{color:var(--muted);margin:6px 0;line-height:1.45}
+.sidebar-action{min-height:32px;padding:4px 8px;font-size:12px}
+.byline{padding-top:12px;margin-top:8px}
+.collapse-control{top:62px;right:6px;width:28px;height:28px}
+[data-sidebar=collapsed] #sidebar{width:56px;padding:14px 6px}[data-sidebar=collapsed] .workspace{margin-left:56px}
+#topbar{height:44px;padding:0 16px;position:sticky;top:0;z-index:25;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
+.breadcrumb{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption)}
+.breadcrumb strong{color:var(--ink);font-weight:500}
+.search-trigger{min-width:320px;min-height:30px;padding:4px 10px;background:var(--surface);font-size:12px}
+.search-trigger kbd{font:500 11px var(--font-data);border-color:var(--line-strong);color:var(--muted)}
+.icon-button{min-width:32px;height:32px}
+main{padding:14px 20px 56px;max-width:1760px}
+.canvas-topline{margin-bottom:14px}
+footer{position:fixed;left:176px;right:0;bottom:0;z-index:20;height:26px;display:flex;align-items:center;gap:20px;padding:0 16px;background:var(--sidebar);border-top:1px solid var(--line);font:500 11px var(--font-data);letter-spacing:.02em;color:var(--caption);white-space:nowrap;overflow:hidden}
+footer span:last-child{margin-left:auto}
+footer a{color:var(--muted);min-height:0}
+[data-sidebar=collapsed] footer{left:56px}
+
+/* ---- Controls: dense on fine pointers, 44px on touch ---- */
+.button{min-height:32px;padding:5px 12px;font-size:12px;font-weight:600;border-radius:var(--radius-s)}
+.button.secondary{background:transparent;border-color:var(--line-strong)}
+.text-button{min-height:32px}
+.back-link{min-height:32px;font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption)}
+.back-link .icon{width:16px;height:16px}
+.chart-toggle,[data-action=range],.preset,.lens-tabs button,.chart-toolbar button,.chart-toggles button,.indicator-controls button,.timeframe-toolbar button{min-height:32px;min-width:44px;padding:4px 12px;font-size:12px}
+.lens-tabs button[aria-selected=true],.lens-tabs button.active,.preset.active,[aria-pressed=true]{color:var(--accent)}
+.company-chapters{top:44px;padding:0 12px;gap:6px 18px;flex-wrap:wrap}
+.company-chapters a{min-height:36px;font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase}
+
+/* ---- Density: tables, matrix, rows ---- */
+table{font-size:12px}th{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption);padding:6px 10px;border-bottom:1px solid var(--line-strong)}
+td{padding:6px 10px;border-bottom:1px solid var(--line)}
+tbody tr{transition:background-color var(--dur-1)}
+.matrix-head{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase}
+.matrix-head button{min-height:32px;font:inherit}
+.matrix-row{min-height:40px;gap:3px}
+.matrix-name{font-size:12px;font-weight:500;padding:4px 8px}
+.matrix-name small{font:11px var(--font-data);color:var(--caption)}
+.matrix-value{font:500 12px var(--font-data);border-radius:3px}
+.matrix-value small{font-size:11px}
+.candidate-row{min-height:40px}
+.canvas-layout{gap:14px}.canvas-workbench{padding:14px}.canvas-review{gap:12px;margin-top:14px}
+.canvas-heading{min-height:36px}.canvas-heading h2{font-size:15px}
+.session-pulse{padding:8px 0;gap:10px}
+.session-pulse strong,.session-context strong{font-family:var(--font-data)}
+.score-grid{gap:12px}.evidence-stack{padding:14px}
+.desk-stats{gap:12px}.desk-stats .panel{padding:14px}
+.visit-stats{gap:28px}
+
+/* Selection marker: amber edge, like a terminal cursor row */
+@media(hover:hover){
+ tbody tr:hover,.candidate-row:hover,.matrix-name:hover{background:var(--surface-2)}
+ .candidate-row:hover,.matrix-name:hover{box-shadow:inset 2px 0 0 var(--accent)}
+ button:hover,a:hover{color:var(--ink)}
+ .text-button:hover,.back-link:hover{color:var(--accent)}
+ .button:hover{color:var(--accent-ink);filter:brightness(1.08);opacity:1}
+ .button.secondary:hover{color:var(--ink);background:var(--surface-2);border-color:var(--caption)}
+}
+.candidate-row[aria-selected=true],.candidate-row.selected,.matrix-row.selected .matrix-name{box-shadow:inset 2px 0 0 var(--accent);background:var(--surface-2)}
+
+/* ---- Motion: three one-shot moments plus feedback, nothing loops ---- */
+@media(prefers-reduced-motion:no-preference){
+ html:not([data-motion=reduce]) main>*{animation:tm-rise var(--dur-3) var(--ease) both}
+ html:not([data-motion=reduce]) main>*:nth-child(2){animation-delay:30ms}
+ html:not([data-motion=reduce]) main>*:nth-child(3){animation-delay:60ms}
+ html:not([data-motion=reduce]) main>*:nth-child(n+4){animation-delay:90ms}
+ html:not([data-motion=reduce]) #sidebar nav a[aria-current]::before{animation:tm-grow var(--dur-3) var(--ease-morph) both}
+ html:not([data-motion=reduce]) .matrix-value{transition:filter var(--dur-1),transform var(--dur-1)}
+ html:not([data-motion=reduce]) .matrix-value:hover{filter:brightness(1.25)}
+}
+@keyframes tm-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes tm-grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+/* ---- Coarse pointers keep the 44px floor ---- */
+@media(pointer:coarse){
+ .chart-toggle,[data-action=range],.button,.preset,.lens-tabs button,.chart-toolbar button,.chart-toggles button,.indicator-controls button,.timeframe-toolbar button,.text-button,.back-link,.icon-button,.sidebar-action{min-height:44px;min-width:44px}
+}
+
+/* ---- Tablet and mobile ---- */
+@media(max-width:1100px){#sidebar{width:152px}.workspace{margin-left:152px}footer{left:152px}.search-trigger{min-width:240px}}
+@media(max-width:760px){
+ .workspace,[data-sidebar=collapsed] .workspace{margin-left:0}
+ .search-trigger{min-width:44px;min-height:44px}
+ body{font-size:14px}
+ #topbar{height:52px;padding:0 14px}
+ main{padding:12px 14px 112px}
+ footer{left:0;bottom:58px;height:auto;min-height:24px;padding:4px 14px;white-space:normal;gap:8px 14px;flex-wrap:wrap;position:static;border-top:1px solid var(--line);margin-bottom:64px}
+ #mobile-nav{background:color-mix(in srgb,var(--sidebar) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+ #mobile-nav a{font:500 11px var(--font-ui)}
+ #mobile-nav a[aria-current]{color:var(--accent)}
+ #mobile-nav kbd{display:none}
+ .research-canvas .session-context>span{font-size:11px}.research-canvas .session-context>span>small:last-child{font-size:11px}
+ .matrix-head{font-size:11px}.matrix-name small{font-size:11px}.matrix-value{font-size:11px}.matrix-value small{font-size:11px}
+ .lens-tabs button{font-size:11px}
+ .canvas-topline h1{font-size:30px}
+}
+
+/* ---- Floors: no text under 11px; coarse pointers get 44px for matrix sort and chapter links ---- */
+#sidebar .brand small,.matrix-value small,.candidate-head,.candidate-row small,.preview-price small,.range-widget>div:first-child,.range-widget>div:last-child,.preview-scores small,.review-items>a>small,.research-canvas .session-context>span,.research-canvas .session-context>span>small:last-child,.matrix-head,.matrix-name small,.matrix-value,.lens-tabs button{font-size:11px}
+@media(pointer:coarse){.matrix-head button,.company-chapters a{min-height:44px;min-width:48px}}
+.canvas-workbench .lens-tabs button small{font:11px var(--font-data)}

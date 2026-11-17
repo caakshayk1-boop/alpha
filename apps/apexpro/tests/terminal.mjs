@@ -1,0 +1,41 @@
+import { chromium, webkit } from 'playwright';
+import assert from 'node:assert/strict';
+import { screen, chart, company, pulse } from './fixtures.mjs';
+const base=process.env.APEX_BASE||'http://localhost:8810';
+const expanded={...screen,rows:[...screen.rows,...Array.from({length:40},(_,i)=>({...screen.rows[0],sym:'TEST'+i,name:'Test company '+i,comp:40-i}))]};
+for (const [name,engine] of [['chromium',chromium],['webkit',webkit]]) {
+ const browser=await engine.launch(),context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'}),page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ let inflight=0,maximum=0;
+ await page.route('**/api/**',async r=>{const path=new URL(r.request().url()).pathname;const data={'/api/screen':expanded,'/api/chart':chart,'/api/company':company,'/api/market':pulse,'/api/spark':{t:chart.t.slice(-60),c:chart.c.slice(-60)}}[path];if(path==='/api/spark'){inflight++;maximum=Math.max(maximum,inflight);await new Promise(resolve=>setTimeout(resolve,30));}await r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data||{})});if(path==='/api/spark')inflight--;});
+ await page.goto(base+'/#/discover');await page.getByRole('heading',{name:'Company research',exact:true}).waitFor();
+ await page.locator('tbody .row-spark svg').first().waitFor();
+ assert.ok(maximum<=3,'Sparkline loading must be bounded');
+ const comfortable=await page.locator('tbody tr').first().evaluate(e=>e.getBoundingClientRect().height);
+ await page.getByRole('button',{name:'Compact',exact:true}).click();
+ const compact=await page.locator('tbody tr').first().evaluate(e=>e.getBoundingClientRect().height);
+ assert.ok(compact<comfortable,`Density must change row height (${compact} < ${comfortable})`);
+ await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();
+ assert.equal(await page.locator('#sidebar').evaluate(e=>e.getBoundingClientRect().width),64);
+ await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();
+ await page.evaluate(()=>window.scrollTo(0,650));const scroll=await page.evaluate(()=>scrollY);
+ await page.evaluate(()=>document.querySelector('tbody .company-cell').click());await page.locator('.interactive-chart').waitFor();await page.goBack();await page.getByRole('heading',{name:'Company research',exact:true}).waitFor();
+ assert.ok(Math.abs(await page.evaluate(()=>scrollY)-scroll)<3,'Screener scroll position should be restored');
+ await page.keyboard.press('Control+k');await page.locator('#global-search').fill('Settings');await page.locator('#global-search').press('Enter');await page.getByRole('heading',{name:'Make the workspace yours.'}).waitFor();
+ await page.getByRole('switch',{name:'Colourblind palette'}).click();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--green').trim()),'#5aaeff');
+ await page.getByRole('switch',{name:'Reduce motion'}).click();
+ assert.equal(await page.evaluate(()=>document.getAnimations().length),0);
+ await page.reload();await page.getByRole('heading',{name:'Make the workspace yours.'}).waitFor();
+ assert.equal(await page.getByRole('switch',{name:'Reduce motion'}).getAttribute('aria-checked'),'true');
+ assert.equal(await page.getByRole('switch',{name:'Colourblind palette'}).getAttribute('aria-checked'),'true');
+ await page.keyboard.press('Control+k');await page.locator('#global-search').fill('Quality compounders');await page.locator('#global-search').press('Enter');await page.getByRole('heading',{name:'Company research',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Quality compounders',exact:true}).getAttribute('aria-pressed'),'true');
+ for (const width of [1920,1440,960,390,320]) {await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow at '+width);}
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('.research-cards').isVisible());assert.ok(!await page.locator('.research-table').isVisible());await page.locator('.research-cards .row-spark svg').first().waitFor();
+ await page.screenshot({path:`/tmp/apexpro-checks/${name}-terminal-research-mobile.png`,fullPage:true,animations:'disabled'});
+ await page.locator('.research-cards .company-cell').first().click();await page.locator('.interactive-chart').waitFor();assert.equal(await page.locator('.detail-bento .factor-widget').count(),4);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
+ console.log(name+': bounded sparklines, real density, collapsible frame, back navigation, page/screen commands, persistent accessibility preferences, mobile cards, detail widgets, 320–1920px widths passed');
+ await browser.close();
+}

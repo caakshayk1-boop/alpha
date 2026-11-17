@@ -1,0 +1,10 @@
+{
+  "name": "apexpro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/model.test.mjs",
+    "dev": "wrangler dev --config ../../wrangler.apexpro.jsonc --port 8810",
+    "deploy": "wrangler deploy --config ../../wrangler.apexpro.jsonc"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "definitions": {
+    "bg": 1,
+    "accent": 1,
+    "radius": 1
+  },
+  "unchanged": {
+    "apps/apexpro/worker.mjs": "022d81ec40d241964b4cccf246713be0cba18487fab2a2804e92a52f1238db61",
+    "apps/apexpro/src/model.js": "ece36ec6492f9eef5f26c6786d14eb3075b0bdcf1e37bf7f6cc0613977c7f4e2",
+    "apps/apexpro/src/technical.js": "f74f2fbae6cf48d38e70e933cb4d855398646de60a63a69bd95b53fc9917233f"
+  },
+  "shell": [
+    "/",
+    "/index.html",
+    "/tokens.css",
+    "/app.css",
+    "/app.js",
+    "/reel.js",
+    "/vendor/motion.js",
+    "/vendor/gsap.min.js",
+    "/fonts/inter-var.woff2",
+    "/fonts/fraunces.woff2",
+    "/fonts/fraunces-ext.woff2",
+    "/icons.svg",
+    "/icon.svg",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/mono.woff2",
+    "/manifest.webmanifest"
+  ]
+}

@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {chromium,webkit} from 'playwright';
+import {quoteChange,sessionStatus,marketSummary,createQuotePoller} from '../src/session.js';
+import {screen,pulse,chart,company} from './fixtures.mjs';
+assert.equal(quoteChange({px:10,prev:0}),null);assert.equal(quoteChange({px:null,prev:10}),null);
+assert.match(sessionStatus({},Date.parse('2026-11-15T04:00:00Z')),/Outside/);
+assert.match(sessionStatus({NIFTY:{px:100,live:true,pt:100}},Date.parse('2026-11-16T05:00:00Z')),/Awaiting/);
+const now=Date.parse('2026-11-16T05:00:00Z');assert.match(sessionStatus({NIFTY:{px:100,live:true,pt:now/1000}},now),/Recent/);
+const summary=marketSummary({quotes:{NIFTY:{px:99,prev:100,pt:2},BANKNIFTY:{px:98,prev:100,pt:2},VIX:{px:15,prev:20}}},{quotes:{NIFTY:{px:98,pt:1}}});assert.ok(Math.abs(summary.spread+1)<1e-9);assert.equal(summary.delta,1);assert.match(summary.headline,/lower/);assert.equal(marketSummary({quotes:{NIFTY:{px:100,prev:99,pt:100},BANKNIFTY:{px:100,prev:99,pt:90000}}}).spread,null);
+let scheduled,delay,enabled=true,calls=0,resolve;const poll=createQuotePoller({refresh:async()=>{calls++;await new Promise(r=>resolve=r);},enabled:()=>enabled,delay:()=>120000,setTimer:(f,d)=>{scheduled=f;delay=d;return 1;},clearTimer:()=>{scheduled=null;}});poll.restart();assert.equal(delay,120000);const task=scheduled;scheduled=null;const pending=task();assert.equal(calls,1);poll.restart(true);assert.equal(calls,1);poll.stop();resolve();await pending;assert.equal(scheduled,null);enabled=false;poll.restart(true);await Promise.resolve();assert.equal(calls,1);poll.stop();
+for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
+ const browser=await engine.launch();try{const page=await browser.newPage({viewport:{width:1440,height:1000},serviceWorkers:'block'}),errors=[];page.on('pageerror',e=>errors.push(e.message));let ticks=0,fail=false;
+ await page.clock.install();
+ await page.route('**/api/**',r=>{const path=new URL(r.request().url()).pathname;if(path==='/api/market'){ticks++;if(fail)return r.fulfill({status:502,body:'{}'});const d=structuredClone(pulse);d.quotes.NIFTY.px=25000+ticks;d.quotes.NIFTY.pt=Date.now()/1000+ticks;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(d)});}const macro={quotes:Object.fromEntries(['GOLD','USDINR','BRENT','BTC'].map(k=>[k,{px:100,prev:99,pt:1794564000,live:false}]))};return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({'/api/macro':macro,'/api/screen':screen,'/api/chart':chart,'/api/spark':chart,'/api/company':company}[path]||{})});});
+ await page.goto('http://localhost:8810');await page.locator('.observatory-hero').waitFor();assert.equal(await page.locator('.dial-arc').count(),1);assert.equal(await page.locator('.market-panel').count(),0);
+ await page.locator('#market-cadence').selectOption('60');await page.clock.runFor(61000);await page.waitForFunction(()=>document.querySelector('.session-context').textContent.includes('25,002'));assert.equal(ticks,2);
+ fail=true;await page.getByRole('button',{name:'Refresh market quotes',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.session-pulse').classList.contains('is-stale'));assert.match(await page.locator('.session-context').innerText(),/25,002/);fail=false;
+ const before=ticks;await page.goto('http://localhost:8810/#/desk');await page.getByRole('heading',{name:'Your research desk'}).waitFor();await page.clock.runFor(180000);assert.equal(ticks,before);
+ await page.goto('http://localhost:8810/#/');await page.locator('.observatory-hero').waitFor();await page.reload();await page.locator('.observatory-hero').waitFor();assert.equal(await page.locator('#market-cadence').inputValue(),'60');
+ for(const width of [1920,1440,960,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+width);}await page.screenshot({path:'/tmp/apexpro-checks/'+name+'-session-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'/tmp/apexpro-checks/'+name+'-session.png',fullPage:true});assert.deepEqual(errors,[]);console.log(name+': one dial, scheduled refresh, preference persistence, failure retention, off-page pause and responsive layouts passed');
+ }finally{await browser.close();}
+}

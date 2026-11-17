@@ -1,0 +1,27 @@
+:root{
+  color-scheme:dark;
+  --bg:#0A0A0B;            /* warm near-black — from terminal.css, the strongest generation */
+  --sidebar:#101012;
+  --surface:#151517;
+  --surface-2:#1C1C1F;
+  --line:#29292E;
+  --line-strong:#3B3C42;
+  --ink:#F4F6FA;
+  --muted:#A7AFBC;
+  --caption:#929AA7;
+  --accent:#CCFF43;        /* brand lime — brand ONLY, never a data colour */
+  --accent-ink:#131503;
+  --up:#3DDC97;            /* mint — gains, positive evidence */
+  --down:#FF6A4D;          /* orange-red — losses, negative evidence (never pure red) */
+  --amber:#FFC24B;         /* caution / held / stale */
+  --compare:#77C9E5;        /* comparison series — from session.css, its one good idea */
+  --gold:#EFC47A;          /* session gold, demoted: premium/print accents only */
+  --radius:16px; --radius-s:10px;
+  --dur-1:120ms; --dur-2:200ms; --dur-3:320ms; --dur-page:420ms;
+  --ease:cubic-bezier(.22,1,.36,1);          /* easeOutQuint family — Emil Kowalski standard */
+  --ease-morph:cubic-bezier(.32,.72,0,1);    /* shared-element morphs */
+  --shadow:0 8px 32px rgba(0,0,0,.53);
+}
+:root[data-colorblind="true"]{ --up:#5AAEFF; --down:#FFA040; }   /* existing behaviour, preserved */
+
+:root{--print-paper:#fff;--print-ink:#000;--print-muted:#333;--print-line:#777;--font-ui:Inter,sans-serif;--font-display:Fraunces,serif;--font-data:Mono,monospace;--font:var(--font-ui);--text:var(--ink);--surface2:var(--surface-2);--green:var(--up);--red:var(--down);--comparison:var(--compare);--coral:var(--down);--studio-violet:var(--compare)}

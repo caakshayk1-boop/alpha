@@ -1,0 +1,10 @@
+{
+  "oldVersion": "apexpro-v10-focus",
+  "newVersion": "apexpro-v11-canvas",
+  "normalReload": true,
+  "deskRetained": true,
+  "keys": [
+    "apexpro-v10-focus",
+    "apexpro-v11-canvas"
+  ]
+}

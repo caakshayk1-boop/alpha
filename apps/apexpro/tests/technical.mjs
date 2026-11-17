@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {aggregate,wilderRSI,divergences,technicalSeries} from '../src/technical.js';
+const t=s=>Date.parse(s+'T10:00:00Z')/1000;
+const d={t:['2025-12-29','2025-12-30','2026-01-02','2026-01-05'].map(t),o:[10,12,13,15],h:[13,15,16,19],l:[9,11,12,14],c:[12,13,15,18],v:[100,200,300,400],n:[100,101,102,103]};
+const w=aggregate(d,'weekly');assert.equal(w.length,2);assert.deepEqual([w[0].o,w[0].h,w[0].l,w[0].c,w[0].v,w[0].t],[10,16,9,15,600,t('2026-01-02')]);
+const m=aggregate(d,'monthly');assert.equal(m.length,2);assert.deepEqual([m[1].o,m[1].h,m[1].l,m[1].c,m[1].v],[13,19,12,18,700]);
+assert.equal(aggregate({...d,v:[100,null,300,400]},'weekly')[0].v,null);
+assert.equal(aggregate({...d,h:[13,null,16,19]},'weekly')[0].h,null);
+const known=[44.34,44.09,44.15,43.61,44.33,44.83,45.1,45.42,45.84,46.08,45.89,46.03,45.61,46.28,46.28,46,46.03,46.41,46.22,45.64];
+const rsi=wilderRSI(known,14);assert.equal(rsi[13],null);assert.ok(Math.abs(rsi[14]-70.464135)<.00001);assert.ok(Math.abs(rsi[15]-66.249619)<.00001);
+assert.equal(wilderRSI(Array.from({length:20},(_,i)=>i+1)).at(-1),100);assert.equal(wilderRSI(Array(20).fill(10)).at(-1),50);assert.equal(wilderRSI(Array.from({length:20},(_,i)=>30-i)).at(-1),0);
+const points=[12,11,10,11,12,13,11,10,9,10,11,12].map((c,i)=>({c,rsi:i===2?30:i===8?40:50,t:i}));assert.equal(divergences(points)[0].kind,'bullish');assert.equal(divergences(points)[0].confirmed,10);assert.deepEqual(divergences(points.slice(0,11)),[]);assert.equal(divergences(points.map(p=>({...p,c:30-p.c,rsi:100-p.rsi})))[0].kind,'bearish');
+const long={t:Array.from({length:1400},(_,i)=>t('2021-01-01')+i*86400),c:Array.from({length:1400},(_,i)=>100+i*.01+Math.sin(i)*2)};
+const short=technicalSeries(long,{interval:'monthly',range:126,rsiPeriod:14});assert.ok(short.points.length>=4&&short.points.length<=6);assert.ok(short.points.every(p=>Number.isFinite(p.rsi)));assert.ok(short.points[0].ma20>0);assert.deepEqual(short.points.map(p=>p.rsi),technicalSeries(long,{interval:'monthly',range:50000,rsiPeriod:14}).points.slice(-short.points.length).map(p=>p.rsi));
+const paired=technicalSeries({...d,n:[100,null,102,103]},{interval:'weekly',range:50000,benchmark:true});assert.equal(paired.points[0].y,100);assert.equal(paired.points[0].benchmark,100);
+console.log('Technical calculations passed: calendar aggregation, OHLCV gaps, Wilder reference values, flat/up/down RSI, confirmed divergence without latest-bar confirmation, full-history warmup and benchmark alignment.');
