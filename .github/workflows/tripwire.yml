@@ -40,7 +40,7 @@ jobs:
         run: |
           python apps/tripwire/research/test_research.py
           python apps/tripwire/ledger/test_bars.py
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && ' webkit' || '' }}
       - run: npm run tripwire:types
       - run: npm run tripwire:test
       - name: Fetch the published company data (the same step the website's build runs)
@@ -70,6 +70,10 @@ jobs:
       - name: Browser gate, second attempt (scheduled runs only)
         if: ${{ github.event_name == 'schedule' && steps.gate.outcome == 'failure' }}
         run: npm run tripwire:check
+      # 17 Nov 2026: four suites were never in the gate (chart workbench, trust pages, self book, watch conditions). They run on pull requests and manual runs, in Chromium and WebKit; the nightly data deploy does not wait for them.
+      - name: Browser suites outside the nightly gate (pull requests and manual runs)
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        run: npm run tripwire:check:extra
       - name: Is this data day already on the site? (the retry slot only)
         id: already
         if: ${{ github.event_name == 'schedule' && github.event.schedule == '45 3 * * 2-6' }}

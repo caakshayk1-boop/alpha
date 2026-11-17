@@ -25,6 +25,7 @@
     "tripwire:lint": "node apps/tripwire/tools/lint-tokens.mjs",
     "tripwire:types": "tsc -p apps/tripwire/tsconfig.json",
     "tripwire:check": "node apps/tripwire/tests/check.mjs",
+    "tripwire:check:extra": "node apps/tripwire/tests/extra.mjs",
     "tripwire:dev": "wrangler dev --config wrangler.tripwire.jsonc --local --port 8801"
   },
   "dependencies": {

@@ -10,7 +10,7 @@ for (const [name,engine] of [['chromium',chromium],['webkit',webkit]]) {
  await page.route('**/api/**',r=>{const path=new URL(r.request().url()).pathname;const next=structuredClone(screen);if(updated){next.rows[0].price=2640;next.rows[0].last_date='2026-11-13';}const data={'/api/screen':next,'/api/chart':chart,'/api/spark':{t:chart.t.slice(-60),c:chart.c.slice(-60)},'/api/company':company,'/api/market':pulse}[path];return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});});
  await page.goto(base+'/#/company/TCS');
  await page.locator('.interactive-chart').waitFor();
- assert.equal(await page.locator('.health-check').count(),4);
+ // 17 Nov 2026: the four-check business-health panel was retired with the Canvas home (healthPanel() is imported in app.js but never rendered); this assertion tested a removed feature.
  await page.getByRole('button',{name:'Volume',exact:true}).click();
  assert.equal(await page.locator('.volume-bar').count(),0);
  await page.getByRole('button',{name:'Volume',exact:true}).click();

@@ -1,0 +1,66 @@
+name: apexpro
+# ApexPro (apexpro.askakshay.com) was deployed by hand with wrangler, from whatever tree the builder had open. This workflow replaces that:
+# every change under apps/apexpro is built, checked and, on main only, deployed from the committed source.
+on:
+  pull_request:
+    paths: ['apps/apexpro/**', 'wrangler.apexpro.jsonc', '.github/workflows/apexpro.yml']
+  push:
+    branches: [main]
+    paths: ['apps/apexpro/**', 'wrangler.apexpro.jsonc', '.github/workflows/apexpro.yml']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy ApexPro from main after the checks pass'
+        type: boolean
+        default: false
+concurrency:
+  group: apexpro-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apexpro:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Build, then require the committed public/ to equal the build (what is deployed is what is reviewed)
+        run: |
+          node apps/apexpro/tools/build.mjs
+          if ! git diff --exit-code --stat -- apps/apexpro/public; then
+            echo "::error::apps/apexpro/public differs from a fresh build. Run 'node apps/apexpro/tools/build.mjs' and commit the result."
+            exit 1
+          fi
+      - name: Model tests (scores, ladder, vet rules are read-only here; these pin them)
+        run: node --test apps/apexpro/tests/model.test.mjs
+      - name: Browser suites (Chromium and WebKit, against wrangler dev on 8810)
+        # Not run, on purpose: accessibility, browser, studio, cockpit, terminal. They wait for headings and a density control from retired designs (see docs/apexpro/TESTS.md).
+        run: |
+          npx wrangler dev --config wrangler.apexpro.jsonc --local --port 8810 > "$RUNNER_TEMP/apex-dev.log" 2>&1 &
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:8810/ && break; sleep 1; done
+          curl -fsS -o /dev/null http://localhost:8810/ || { cat "$RUNNER_TEMP/apex-dev.log"; echo "::error::the ApexPro Worker did not start"; exit 1; }
+          bad=0
+          for t in session features canvas chart-intervals resilience research-edition ultimatum ultimatum-accessibility; do
+            if node "apps/apexpro/tests/$t.mjs"; then echo "PASS  $t"; else echo "::error::FAIL  $t"; bad=1; fi
+          done
+          exit $bad
+      - name: Deploy (main only, after every check above)
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main') }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::Cloudflare secrets missing. Nothing was deployed."; exit 1; fi
+          npx wrangler deploy --config wrangler.apexpro.jsonc
+      - name: Live check (the service worker version served equals the one built)
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main') }}
+        run: |
+          want=$(grep -o "VERSION *= *'[^']*'" apps/apexpro/public/sw.js | head -1)
+          sleep 15
+          got=$(curl -fsS --max-time 30 "https://apexpro.askakshay.com/sw.js?ci=$GITHUB_SHA" | grep -o "VERSION *= *'[^']*'" | head -1)
+          echo "built: $want"; echo "live:  $got"
+          [ -n "$want" ] && [ "$want" = "$got" ] || { echo "::error::live service worker does not match the build"; exit 1; }
