@@ -65,6 +65,11 @@ test('assertScreen: a stale as_of, an old row, a null sector and too many null t
   assert.match(assertScreen({ ...good, rows: [row('ARTEMISMED', { sector: null }), row('B')] }, now)[0], /no sector: ARTEMISMED/);
   assert.deepEqual(assertScreen({ ...good, rows: [row('ARTEMISMED', { sector: null })] }, now, { knownNullSector: ['ARTEMISMED'] }), []);
   assert.match(assertScreen({ ...good, rows: [row('A', { tier: null }), row('B', { tier: null }), row('C')] }, now)[0], /2 of 3 rows .* have no size class/);
+  // 17 Nov 2026: 'Unclassified' (a labelled source omission) is allowed up to 5 rows and fails above that
+  const unclass = (n: number) => Array.from({ length: n }, (_, k) => row(`U${k}`, { sector: 'Unclassified' }));
+  assert.deepEqual(assertScreen({ ...good, rows: [...unclass(5), row('B')] }, now), []);
+  assert.match(assertScreen({ ...good, rows: [...unclass(6), row('B')] }, now)[0], /6 row\(s\) are Unclassified, above the 5 allowed.*U0/);
+  assert.deepEqual(assertScreen({ ...good, rows: [...unclass(9)] }, now, { maxUnclassified: 9 }), []);
 });
 test('check-data: a good build passes; a deliberately staled build FAILS with a clear line', () => {
   const dir = mkdtempSync(join(tmpdir(), 'tw-dist-')); mkdirSync(join(dir, 'data'));

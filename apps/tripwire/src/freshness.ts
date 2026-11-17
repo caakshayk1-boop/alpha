@@ -80,6 +80,8 @@ export interface Policy {
   knownNullSector?: readonly string[];
   /** the largest share of rows that may carry no size class (the feed publishes one for index-sized names only; see rules.ts elig-2 D1) */
   maxNullTierShare?: number;
+  /** the most rows that may carry the build's explicit 'Unclassified' sector (17 Nov 2026: the build labels a source omission instead of leaving it null, so a feed outage that blanks many sectors must still fail the deploy; 4 names were unclassified at the time) */
+  maxUnclassified?: number;
 }
 export function assertScreen(screen: { as_of?: string | null; rows: readonly ScreenRowLike[] }, nowMs = Date.now(), policy: Policy = {}): string[] {
   const bad: string[] = []; const exp = expectedSession(nowMs); const s = statusOf(screen.as_of ?? null, nowMs);
@@ -89,6 +91,7 @@ export function assertScreen(screen: { as_of?: string | null; rows: readonly Scr
   if (old.length) bad.push(`${old.length} row(s) older than as_of ${asOf} by more than one session and not flagged stale: ${old.slice(0, 8).map((r) => `${r.sym} ${r.last_date}`).join(', ')}`);
   const nolast = screen.rows.filter((r) => !r.last_date && !r.stale); if (nolast.length) bad.push(`${nolast.length} row(s) with no last_date and not flagged stale: ${nolast.slice(0, 8).map((r) => r.sym).join(', ')}`);
   const nosec = screen.rows.filter((r) => !r.sector && !(policy.knownNullSector ?? []).includes(r.sym)); if (nosec.length) bad.push(`${nosec.length} row(s) with no sector: ${nosec.slice(0, 8).map((r) => r.sym).join(', ')}`);
+  const unc = screen.rows.filter((r) => r.sector === 'Unclassified'), uncMax = policy.maxUnclassified ?? 5; if (unc.length > uncMax) bad.push(`${unc.length} row(s) are Unclassified, above the ${uncMax} allowed for names the feed publishes no sector for: ${unc.slice(0, 8).map((r) => r.sym).join(', ')}`);
   const cap = policy.maxNullTierShare ?? 0.35; const notier = screen.rows.filter((r) => !r.tier).length;
   if (screen.rows.length && notier / screen.rows.length > cap) bad.push(`${notier} of ${screen.rows.length} rows (${((notier / screen.rows.length) * 100).toFixed(1)}%) have no size class, above the ${(cap * 100).toFixed(0)}% the published rule allows for`);
   return bad;

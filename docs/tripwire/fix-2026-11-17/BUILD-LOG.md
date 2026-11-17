@@ -50,3 +50,6 @@ Live check: asset hash equals the local build; `/`, `/methodology/`, `/record/`,
 - This release was deployed from an uncommitted working tree on branch `apexpro-terminal-modern`. **Nothing is committed.** The scheduled/dispatch deploy in `.github/workflows/tripwire.yml` only deploys from `main`, so until this work is merged to `main` the next scheduled data deploy will replace it with `main`'s older code.
 - `chart-workbench`, `trust-browser`, `selfbook-browser`, `watch-browser` are not in `tests/check.mjs`, so CI does not run them (the first, second and third also need WebKit, which the workflow does not install).
 - Physical iPhone verification, W2 sector-impact specification, email/waitlist and the paid-account security clearance remain as listed above.
+
+## Gate follow-up — 17 November 2026 (owner-approved)
+`assertScreen` now fails the deploy when more than 5 rows carry the build's explicit `Unclassified` sector (`Policy.maxUnclassified`, default 5). Reason: #70 labels source omissions instead of leaving them null, which made the "no sector" rule unable to fail; a feed outage blanking many sectors would have passed. Currently 4 names are unclassified (AONESTEELS, IZMO, JASH, SSRETAIL), so today's data passes. Tests: boundary at 5 passes, 6 fails and names rows, override works. No engine, rule, gate threshold elsewhere, or cost model changed.
