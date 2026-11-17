@@ -15,7 +15,7 @@ export function CaptureModule({ source, cfg = DEFAULT_CAPTURE }: { source: strin
       <label className="sr" htmlFor={`cap-e-${source}`}>Email address</label>
       <div className="capture-row"><input id={`cap-e-${source}`} className="field" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); if (state !== 'idle') setState('idle'); }} aria-invalid={state === 'bad' || undefined} aria-describedby={`cap-m-${source}`} />
         <Button variant="primary" type="submit" busy={state === 'busy'}>Subscribe</Button></div>
-      <p id={`cap-m-${source}`} className="small mute capture-p" role="status">{state === 'bad' ? 'That does not look like an email address.' : state === 'failed' ? 'It did not go through. Nothing was saved; try again.' : 'Free. Research notes only, never advice. Unsubscribe in one tap.'}</p>
+      <p id={`cap-m-${source}`} className="small mute capture-p" role="status">{state === 'bad' ? 'That does not look like an email address.' : state === 'failed' ? 'It did not go through. Nothing was saved; try again.' : 'Gate and Pro updates only. Unsubscribe in one tap.'}</p>
     </form>}
   </section>;
 }

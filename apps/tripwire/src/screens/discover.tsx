@@ -1,7 +1,7 @@
+import { IndicatorDates } from './trust.tsx';
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKey } from 'react';
 import { go, isQuiet, replaceHash, setState, useAppState, useLoc, wantsRestore } from '../app.tsx';
 import { useScreen, useJson, type RsiSheet } from '../data.ts';
-import { throughWord } from '../freshness.ts';
 import { Icon, useUi, Empty } from '../ui.tsx';
 import { FilterSheet } from '../components/index.ts';
 import { FollowButton, Head, Failed, Loading, PageBar, TrendTag } from './common.tsx';
@@ -128,7 +128,7 @@ export function Discover() {
 
   return <div className={`disc${dense ? ' disc-dense' : ''}`} ref={discRef} onClickCapture={onOpen}>
     {/* revamp v2 (11 Nov 2026): Research leads with the search, the research presets as chips and the reader's own names; the toolbar and the results follow. The company count is stated once, in the count line below. */}
-    <PageBar title="Research" sub={scr.data && rsiSheet.data?.ok && rsiSheet.data.as_of !== scr.data.as_of ? <>Weekly and monthly RSI through {throughWord(rsiSheet.data.as_of)}</> : undefined} />
+    <PageBar title="Research" sub={<IndicatorDates inline />} />
     {ignored.length > 0 && <p className="small mute" role="status" style={{ margin: '0 0 6px' }}>Left out of the link, not understood: {ignored.slice(0, 4).join(', ')}.</p>}
 
     {/* 15 Nov 2026 (v6 polish): the search and the toolbar are ONE sticky bar, a direct child of .disc so it stays while the whole list scrolls. The window is still the only scroller (no ancestor has overflow; scrollflow.mjs). Its height is published as --dbar so the table header, focus and anchors clear it. */}

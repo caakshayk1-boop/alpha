@@ -36,7 +36,7 @@ export function Settings() {
     let text = ''; try { text = await f.text(); } catch { setResult({ ok: false, text: 'The file could not be read. Nothing was changed.' }); return; }
     const c = checkBackup(text);
     if (!c.ok) { setResult({ ok: false, text: `${c.reason} Nothing was changed.` }); toast('Not imported. Nothing was changed.'); return; }
-    setState((x) => mergeStates(x, c.state)); setResult({ ok: true, text: `Imported and merged: ${contents(c.state)}. Nothing was overwritten.` }); toast('Imported and merged. Nothing was overwritten.');
+    try { setState((x) => mergeStates(x, c.state)); } catch(e) {setResult({ok:false,text:(e as Error).message+' Nothing was imported.'});return;} setResult({ ok: true, text: `Imported and merged: ${contents(c.state)}. Nothing was overwritten.` }); toast('Imported and merged. Nothing was overwritten.');
   };
   return <div className="mp mp-settings">
     <PageBar title="Settings" onBack />

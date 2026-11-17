@@ -54,7 +54,7 @@ export function Company({ sym }: { sym: string }) {
   const [barOverChart, setBarOverChart] = useState(false);
   useEffect(() => {
     const t0 = Date.now(); let armed = false; let raf = 0;
-    const check = () => { raf = 0; const plot = document.querySelector('.chart-plot'); const bar = document.querySelector('.fab-row');
+    const check = () => { raf = 0; const plot = document.querySelector('.co-chart'); const bar = document.querySelector('.fab-row');
       // Keep the opener focusable while a sheet owns focus, including its closing frame.
       if (!armed || !plot || !bar || bar.contains(document.activeElement) || document.querySelector('[role="dialog"]')) { setBarOverChart(false); return; } const a = plot.getBoundingClientRect(), b = bar.getBoundingClientRect(); setBarOverChart(a.bottom > b.top && a.top < b.bottom); };
     const queue = () => { if (!raf) raf = requestAnimationFrame(check); };

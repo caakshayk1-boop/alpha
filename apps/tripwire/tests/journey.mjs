@@ -226,7 +226,7 @@ await pg.locator('.chart-plot').scrollIntoViewIfNeeded();
 const box = await pg.locator('.chart-plot').boundingBox();
 await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2); await pg.waitForTimeout(150);
 const mid = await pg.locator('.chart-head').innerText();
-ok(/since the start of this window/.test(mid) && await pg.locator('.c-dot').count() === 1, 'hovering reads out the date, price and move since the start');
+ok(/From window start/.test(mid) && await pg.locator('.c-dot').count() === 1, 'hovering reads out the date, price and move since the start');
 await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home');
 const homeTxt = await pg.locator('.chart-head').innerText(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight');
 ok(homeTxt !== (await pg.locator('.chart-head').innerText()) && Number(await pg.locator('.chart-plot').getAttribute('aria-valuenow')) === 2, 'the arrow keys move along the line');

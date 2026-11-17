@@ -1,3 +1,4 @@
+import {LedgerPopulations,GateSummary} from './trust.tsx';
 import { useRef, type KeyboardEvent as ReactKeyEvent } from 'react';
 import { go, setState, useAppState } from '../app.tsx';
 import { RecordScreen } from './Record.tsx';
@@ -37,12 +38,14 @@ export function Signals({ seg }: { seg: string | null }) {
   const pick = (to: number) => { const n = (to + VIEWS.length) % VIEWS.length; refs.current[n]?.focus(); go(`/signals?v=${VIEWS[n].id}`); };
   const key = (e: ReactKeyEvent) => { const k = e.key; if (k === 'ArrowRight') { e.preventDefault(); pick(i + 1); } else if (k === 'ArrowLeft') { e.preventDefault(); pick(i - 1); } else if (k === 'Home') { e.preventDefault(); pick(0); } else if (k === 'End') { e.preventDefault(); pick(VIEWS.length - 1); } };
   return <div className="bk-page">
-    <PageBar title="Book" sub="Paper only. Not advice." />
+    <PageBar title="Book" sub="Paper only. Not advice." right={<a className="btn" href="#/pro">Personal Pro book</a>} />
+    <LedgerPopulations />
     <div className="seg bk-tabs" role="tablist" aria-label="Book view" onKeyDown={key}>
       <span className="thumb" style={{ width: `calc((100% - 8px) / ${VIEWS.length})`, transform: `translateX(${i * 100}%)` }} aria-hidden="true" />
       {VIEWS.map((x, n) => <button key={x.id} ref={(el) => { refs.current[n] = el; }} id={`bk-tab-${x.id}`} role="tab" aria-selected={x.id === view} aria-controls="bk-panel" tabIndex={x.id === view ? 0 : -1} onClick={() => go(`/signals?v=${x.id}`)}>{x.label}</button>)}
     </div>
     <div id="bk-panel" role="tabpanel" aria-labelledby={`bk-tab-${view}`} data-book-view={view}>
+      {view === 'picks' && <GateSummary />}
       {view === 'positions' ? <Positions /> : view === 'picks' ? <Picks /> : <RecordScreen anchor={anchor} />}
     </div>
   </div>;

@@ -27,4 +27,4 @@ export async function subscribe(email: string, source: string, cfg: CaptureConfi
     return r.ok ? { ok: true } : { ok: false, why: 'failed' };
   } catch { return { ok: false, why: 'failed' }; }
 }
-export const CAPTURE_LINE = 'One email a week. The rules that fired, the evidence, the record.';
+export const CAPTURE_LINE = 'One email when the gate changes or Pro opens. Nothing else.';

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { go, setState, useAppState, useSheets } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
-import { useScreen, useSignals, useJson, type Company } from './data.ts';
+import { useScreen, useSignals, useJson, useLedger, type Company } from './data.ts';
 import { sizePlan } from './planner.ts';
 import { planCaveats, planFigures } from './planview.ts';
 import { useEngines } from './useEngines.ts';
@@ -120,19 +120,21 @@ export function ExplainSheet({ onClose, id, sym }: { onClose: () => void; id?: s
 }
 
 export function SearchSheet({ onClose }: { onClose: () => void }) {
-  const scr = useScreen(); const st = useAppState(); const [q, setQ] = useState('');
+  const scr = useScreen(); const ledger = useLedger(); const st = useAppState(); const [q, setQ] = useState('');
   const t = q.trim().toLowerCase();
   const co = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 8)), [t, scr.data]);
+  const ledgerHits = t.length < 2 ? [] : (ledger.data?.ledger.picks ?? []).filter(p => (p.id+' '+p.sym+' '+p.engine).toLowerCase().includes(t)).slice(-6).reverse();
   const notes = t.length < 2 ? [] : st.entries.filter((e) => (e.sym + JSON.stringify(current(e))).toLowerCase().includes(t)).slice(0, 4);
-  const PAGES = [{ l: 'Today', h: '/today' }, { l: 'Discover', h: '/discover' }, { l: 'Book: positions', h: '/signals?v=positions' }, { l: 'Book: engine picks', h: '/signals?v=picks' }, { l: 'Book: record', h: '/signals?v=record' }, { l: 'My Desk: journal', h: '/desk?v=journal' }, { l: 'My Desk: plans', h: '/desk?v=plans' }, { l: 'Profile and data', h: '/profile' }].filter((p) => t && p.l.toLowerCase().includes(t));
+  const PAGES = [{ l: 'Today', h: '/today' }, { l: 'Research', h: '/discover' }, {l:'Honest scoreboard and timelines',h:'/glass'}, {l:'Sit-out log',h:'/sitout'}, {l:'Gate and backtest',h:'/gate'}, {l:'Personal Pro book',h:'/pro'}, {l:'About the builder',h:'/about'}, {l:'Public changelog',h:'/changelog'}, {l:'Public data API',h:'/api-guide'}, { l: 'Book: positions', h: '/signals?v=positions' }, { l: 'Book: engine picks', h: '/signals?v=picks' }, { l: 'Book: record', h: '/signals?v=record' }, { l: 'My Desk: journal', h: '/desk?v=journal' }, { l: 'My Desk: plans', h: '/desk?v=plans' }, { l: 'Profile and data', h: '/profile' }].filter((p) => t && p.l.toLowerCase().includes(t));
   const TOOLS = [{ l: 'Position size planner', f: 'plan' }, { l: 'Explain a figure', f: 'explain' }].filter((p) => t && p.l.toLowerCase().includes(t));
   const terms = glossarySearch(q).slice(0, 4);
   const to = (h: string) => { onClose(); go(h); };
-  const none = t && !co.length && !notes.length && !PAGES.length && !terms.length && !TOOLS.length;
+  const none = t && !co.length && !notes.length && !PAGES.length && !terms.length && !TOOLS.length && !ledgerHits.length;
   return <Sheet title="Search" onClose={onClose}>
     <div className="search"><Icon n="search" /><input className="field" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Company, note, tool or term" aria-label="Search" autoComplete="off" /></div>
     {!t && <p className="dim small">Try a symbol, a company name, “thesis”, “planner” or “ROCE”.</p>}
     {co.length > 0 && <><h2 className="h">Companies<span className="rule" /></h2><div className="list">{co.map((r) => <button key={r.sym} className="li" style={{ textAlign: 'left' }} onClick={() => to(`/c/${r.sym}`)}><span className="avatar">{r.sym.slice(0, 2)}</span><span className="grow"><b>{r.sym}</b><span className="dim small trunc" style={{ display: 'block' }}>{r.name}</span></span></button>)}</div></>}
+    {ledgerHits.length > 0 && <><h2 className="h">Ledger entries</h2><div className="list">{ledgerHits.map(p=><button key={p.id} className="li" onClick={()=>to(`/glass?pick=${encodeURIComponent(p.id)}`)}>{p.sym} · {p.engine} · {p.asOf}</button>)}</div></>}
     {notes.length > 0 && <><h2 className="h">Your notes<span className="rule" /></h2><div className="list">{notes.map((e) => <button key={e.id} className="li" style={{ textAlign: 'left' }} onClick={() => to(`/desk?v=journal`)}><span className="sym">{e.sym}</span><span className="grow dim trunc">{current(e).thesis}</span></button>)}</div></>}
     {TOOLS.length > 0 && <><h2 className="h">Tools<span className="rule" /></h2><div className="list">{TOOLS.map((p) => <button key={p.l} className="li" style={{ textAlign: 'left' }} onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new CustomEvent('tw-sheet', { detail: p.f })), 0); }}>{p.l}</button>)}</div></>}
     {PAGES.length > 0 && <><h2 className="h">Pages<span className="rule" /></h2><div className="list">{PAGES.map((p) => <button key={p.l} className="li" style={{ textAlign: 'left' }} onClick={() => to(p.h)}>{p.l}</button>)}</div></>}
