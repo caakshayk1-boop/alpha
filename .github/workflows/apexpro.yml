@@ -38,7 +38,7 @@ jobs:
       - name: Model tests (scores, ladder, vet rules are read-only here; these pin them)
         run: node --test apps/apexpro/tests/model.test.mjs
       - name: Browser suites (Chromium and WebKit, against wrangler dev on 8810)
-        # Not run, on purpose: accessibility, browser, studio, cockpit, terminal. They wait for headings and a density control from retired designs (see docs/apexpro/TESTS.md).
+        # production.mjs is not run here (it targets the live site). Retired suites were deleted on 17 Nov 2026; see docs/apexpro/TESTS.md.
         run: |
           npx wrangler dev --config wrangler.apexpro.jsonc --local --port 8810 > "$RUNNER_TEMP/apex-dev.log" 2>&1 &
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:8810/ && break; sleep 1; done

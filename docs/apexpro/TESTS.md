@@ -14,14 +14,8 @@ CI (`.github/workflows/apexpro.yml`) builds, requires the committed `apps/apexpr
 | `ultimatum.mjs` | Chromium + WebKit | navigation, motion, reduced motion |
 | `ultimatum-accessibility.mjs` | Chromium | axe, seven routes, both widths and palettes |
 
-## Not run in CI, and why
-These wait for headings or controls from designs that were retired, so they fail on the live app for reasons that are not app bugs. They were left in place, not deleted, because deleting tests is the owner's call.
-
-- `accessibility.mjs`, `browser.mjs`: wait for the heading "Your market workspace" (old shell).
-- `studio.mjs`: waits for "Patterns worth investigating" (retired Studio).
-- `cockpit.mjs`: waits for "Since your last visit" (retired Cockpit).
-- `terminal.mjs`: clicks the Comfortable/Compact density buttons, which `.density-control{display:none}` hides since the Canvas rebuild.
-- `production.mjs`: runs against the live site, not a local Worker.
+## Deleted on 17 Nov 2026 (owner's decision)
+`accessibility.mjs`, `browser.mjs`, `studio.mjs`, `cockpit.mjs` and `terminal.mjs` were removed. They waited for headings and controls from designs that no longer exist ("Your market workspace", "Patterns worth investigating", "Since your last visit", the Comfortable/Compact density buttons that `.density-control{display:none}` hides) and failed on the live app for reasons that were not app bugs. Accessibility is covered by `ultimatum-accessibility.mjs`. They stay in git history. `production.mjs` is kept: it targets the live site, not a local Worker, so CI does not run it.
 
 ## Fixed on 17 Nov 2026
 - `session.mjs` waited for `.observatory-hero` to be visible; it now lives inside the collapsed "Advanced research" panel, so it waits for the element to be attached.
