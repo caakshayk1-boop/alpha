@@ -1,4 +1,5 @@
 import { HowVideo } from '../components/HowVideo';
+import { Films } from '../components/Films';
 import { QuestionOrb } from '../components/QuestionOrb.tsx';
 import { prefetchScreens } from '../prefetch.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -87,6 +88,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
     <section className="lp-sec lp-rv" aria-labelledby="lp-how">
       <h2 id="lp-how" className="lp-h2">How it works</h2>
       <HowVideo />
+      <Films />
       <ol className="lp-steps">
         <li><b>Find a company.</b><span>Search any of the {scr.data ? scr.data.count.toLocaleString('en-IN') : 'listed'} companies in the screen, or open a market view.</span></li>
         <li><b>Read the evidence.</b><span>Trend, quality, valuation and ownership, each stated with its rule and its date. Compare two companies side by side.</span></li>

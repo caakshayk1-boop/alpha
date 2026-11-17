@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=720">
+<title>Tripwire — Rules that fire (Dark Keynote)</title>
+<style>
+/* Dark Keynote style: near-black stage, one soft light, huge type, one idea per beat, slow ease-out. 720x1280 (9:16). Facts only: nothing here predicts. */
+:root{--bg:#06070A;--ink:#F5F6F8;--dim:#8B919C;--glow:#6D8BFF;--ok:#3DDC97}
+*{box-sizing:border-box;margin:0}
+html,body{width:720px;height:1280px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+.stage{position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 38%,rgba(109,139,255,.22),transparent 70%),radial-gradient(50% 30% at 50% 100%,rgba(61,220,151,.10),transparent 70%);animation:breath 9s ease-in-out infinite alternate}
+@keyframes breath{from{opacity:.75;transform:scale(1)}to{opacity:1;transform:scale(1.06)}}
+.beat{position:absolute;left:56px;right:56px;top:50%;transform:translateY(-50%);text-align:center;opacity:0}
+.beat h1{font-size:96px;line-height:1.02;letter-spacing:-.045em;font-weight:800}
+.beat p{margin-top:26px;font-size:28px;line-height:1.4;color:var(--dim)}
+.beat em{font-style:normal;background:linear-gradient(90deg,var(--glow),var(--ok));-webkit-background-clip:text;background-clip:text;color:transparent}
+.b1{animation:beat 2.8s cubic-bezier(.2,.7,.2,1) .5s forwards}
+.b2{animation:beat 2.8s cubic-bezier(.2,.7,.2,1) 3.2s forwards}
+.b3{animation:beat 2.8s cubic-bezier(.2,.7,.2,1) 5.9s forwards}
+.b4{animation:beat 2.8s cubic-bezier(.2,.7,.2,1) 8.6s forwards}
+.b5{animation:last 1.6s cubic-bezier(.2,.7,.2,1) 11.3s forwards}
+@keyframes beat{0%{opacity:0;transform:translateY(-44%) scale(.96);filter:blur(10px)}18%{opacity:1;transform:translateY(-50%) scale(1);filter:blur(0)}82%{opacity:1;transform:translateY(-50%) scale(1.02);filter:blur(0)}100%{opacity:0;transform:translateY(-56%) scale(1.04);filter:blur(8px)}}
+@keyframes last{from{opacity:0;transform:translateY(-44%) scale(.96);filter:blur(10px)}to{opacity:1;transform:translateY(-50%) scale(1);filter:blur(0)}}
+.chip{display:inline-block;margin-top:38px;padding:10px 20px;border:1.5px solid rgba(255,255,255,.28);border-radius:999px;font-size:22px;letter-spacing:.06em;color:var(--ink)}
+.mark{position:absolute;left:0;right:0;top:64px;text-align:center;font-size:26px;font-weight:700;letter-spacing:-.02em;opacity:.9}
+.mark i{display:inline-block;width:12px;height:22px;margin-right:10px;background:var(--glow);transform:skew(-12deg);border-radius:3px;vertical-align:-3px}
+.foot{position:absolute;left:0;right:0;bottom:60px;text-align:center;font-size:20px;color:var(--dim);letter-spacing:.04em}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.beat{opacity:0}.b5{opacity:1}}
+</style></head><body>
+<div class="stage"></div>
+<div class="mark"><i></i>Tripwire</div>
+<div class="beat b1"><h1>Rules<br>that <em>fire.</em></h1><p>Public, written down, one definition each.</p></div>
+<div class="beat b2"><h1>Evidence<br>you can <em>check.</em></h1><p>For a name, and against it. With the date of every figure.</p></div>
+<div class="beat b3"><h1>A book<br>that <em>keeps score.</em></h1><p>Paper positions. Partial exits. Costs counted. Nothing hidden.</p></div>
+<div class="beat b4"><h1>Missing data<br>stays <em>missing.</em></h1><p>No zero where a number is unknown. No forecasts, ever.</p></div>
+<div class="beat b5"><h1>Tripwire</h1><p>Paper-only research for Indian stocks.<br>By Akshay, CA.</p><span class="chip">tripwire.askakshay.com</span></div>
+<div class="foot">Research, not advice. No SEBI registration is claimed.</div>
+<script>setTimeout(()=>{window.__done=true},13500);</script>
+</body></html>
