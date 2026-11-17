@@ -35,3 +35,7 @@
 @import "./tap.css";   /* 13 Nov 2026: tap targets, 44px hit areas (tests/tapsize.mjs) */
 @import "./today3.css";   /* 13 Nov 2026 (v6): the home page, Market now strip and a balanced two-column decision area */
 @import "./discover6.css";   /* 15 Nov 2026 (v6 polish): Research keeps its search and toolbar in view while the list scrolls */
+
+@import "./pro.css";
+
+@import "./chart-clean.css";

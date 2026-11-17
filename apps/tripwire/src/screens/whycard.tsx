@@ -20,6 +20,6 @@ export function WhyCard({ sym, row, evals, picks }: { sym: string; row: Row; eva
     <h2 id="why-h" className="sec">Why this stock?</h2>
     <ul className="why-list">{lines.map((l) => <li key={l.id} data-why-line={l.id}>{l.text}</li>)}</ul>
     {pick && <ShareRow sym={sym} />}
-    <p className="small mute">Written from the screen and the ledger, not by a model. A missing figure is left out. Paper research, not advice.</p>
+    <p className="small mute">Screen close {row.last_date || 'date unavailable'} · Factors {fac.data?.as_of || 'date unavailable'}. Written from the screen and the ledger, not by a model. A missing figure is left out. Paper research, not advice.</p>
   </section>;
 }

@@ -46,7 +46,7 @@ export function useScreen(): Loaded<ScreenFeed> {
   const s = useJson<ScreenFeed>('/data/screen.json'); const r = useJson<RsiSheet>('/api/rsi');
   const data = useMemo(() => {
     if (!s.data || !r.data?.ok || !r.data.rows) return s.data; const w = r.data.order.indexOf('weekly'), m = r.data.order.indexOf('monthly'); const rows = r.data.rows;
-    return { ...s.data, rows: s.data.rows.map((x) => { const v = rows[x.sym]; return v ? { ...x, rsi_w: w >= 0 ? v[w] ?? null : null, rsi_m: m >= 0 ? v[m] ?? null : null } : x; }) };
+    return { ...s.data, rows: s.data.rows.map((x) => { const v = rows[x.sym]; return v ? { ...x, rsi_as_of: r.data!.as_of, rsi_w: w >= 0 ? v[w] ?? null : null, rsi_m: m >= 0 ? v[m] ?? null : null } : x; }) };
   }, [s.data, r.data]);
   return { ...s, data };
 }

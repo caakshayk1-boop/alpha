@@ -1,0 +1,55 @@
+/* Price workspace: the plot owns the space; controls and readings remain quiet. */
+@font-face{font-family:Fraunces;src:url('/fonts/fraunces-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap}
+.price-workspace .c-workbench{margin:var(--sp-2) 0 var(--sp-4);padding:0;border:0}
+.price-workspace .c-workbench-main{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.price-workspace .c-workbench-main>.btn{flex:none;white-space:nowrap;font-size:var(--fs-label);padding:var(--sp-2)}
+.price-workspace .c-prim{gap:var(--sp-2);margin:var(--sp-2) 0!important;padding:0!important;border:0!important}
+.price-workspace .mini-seg{background:transparent;border:0;border-radius:var(--rad-sm);padding:0}
+.price-workspace .mini-seg button{border-radius:var(--rad-sm);padding-inline:var(--sp-3);font-size:var(--fs-label);border:0;box-shadow:none}
+.price-workspace .mini-seg button.on,.price-workspace .mini-seg button[aria-checked=true]{background:var(--surface-3);color:var(--ink);box-shadow:inset 0 -2px var(--accent)}
+.price-workspace .c-prim2{gap:var(--sp-2)}
+.price-workspace .chart-plot.pc-plot{background:none;border-radius:0;margin-right:max(var(--sp-9),calc(var(--fs-label)*5.6))}
+.price-workspace .pc-plot~.c-xaxis{margin-right:max(var(--sp-9),calc(var(--fs-label)*5.6))}
+.price-workspace .pc-plot .c-now{display:none}
+.price-workspace .pc-plot .c-last{background:var(--surface-3)!important;color:var(--ink);border:1px solid var(--line-2);font-size:var(--fs-label);padding:var(--sp-1)}
+/* the readings row reserves the height of its hover state (date + figure + change), so scrubbing never moves what sits below the plot */
+.price-workspace .cf-chips{min-height:66px;margin:var(--sp-4) 0;gap:var(--sp-2)}.price-workspace .cf-chips.tall{min-height:74px}
+.price-workspace .cf-chip{border:0;border-radius:0;box-shadow:none;background:none;padding:0}
+.price-workspace .cf-chip b{font-size:var(--fs-num-s);line-height:1.5;font-weight:600}
+.price-workspace .cf-cl{font-size:var(--fs-label);line-height:1.5}
+.price-workspace .cf-ohlc{font-size:var(--fs-label);line-height:1.5;grid-column:1/-1}
+.price-workspace .c-auto-frame{margin:var(--sp-2) 0;color:var(--ink-3);font-size:var(--fs-label)}
+@media(max-width:600px){
+ .co-sticky{display:none}
+ .price-workspace .c-prim{display:block}
+ .price-workspace .c-prim>.mini-seg{display:flex;width:100%}
+ .price-workspace .c-prim>.mini-seg button{flex:1;min-width:0;padding-inline:var(--sp-2)}
+ .price-workspace .c-prim2{justify-content:space-between;margin-top:var(--sp-2)}
+ .price-workspace .c-workbench-main{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .price-workspace .c-workbench-main>.mini-seg{grid-column:1/-1;justify-self:start}
+ .price-workspace .c-workbench-main>.btn{width:100%;font-size:var(--fs-label);padding:var(--sp-2) var(--sp-1)}
+ .price-workspace .c-tip,.price-workspace .c-ycur,.price-workspace .c-xcur{display:none}
+ .price-workspace .pc-plot .c-ylab{font-size:var(--fs-label)}
+ .price-workspace .c-extreme b{display:none}
+ .price-workspace .c-xaxis{font-size:var(--fs-label)}
+ .price-workspace .cf-lead{font-size:var(--fs-body)}
+}
+.trust-page section{margin-block:var(--sp-6);padding-block:var(--sp-4);border-top:1px solid var(--line)}
+.trust-page h2,.trust-pop h2,.trust-gate h2{font-size:var(--fs-h3);margin-block:var(--sp-3)}
+.trust-page p{max-width:70ch;line-height:1.6}.trust-page pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-label)}
+.trust-page article{padding-block:var(--sp-3);border-bottom:1px solid var(--line)}
+.trust-page table small,.trust-checks small{display:block;color:var(--ink-3)}
+.trust-checks{list-style:none;padding:0}.trust-checks li{display:flex;gap:var(--sp-4);padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+.trust-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(12px,1fr));gap:var(--sp-1);margin-block:var(--sp-4)}
+.trust-days i{height:var(--sp-5);background:var(--surface-3);border:1px solid var(--line-2)}.trust-days i[data-on=true]{background:var(--accent)}
+.trust-pop dl{display:flex;flex-wrap:wrap;gap:var(--sp-5)}.trust-pop dt{text-transform:capitalize;color:var(--ink-2)}.trust-pop dd{margin:0;font-size:var(--fs-num-s);font-variant-numeric:tabular-nums}
+/* a fixed grid, not wrapping flex: the strip's rows must not re-wrap when its figures arrive (page CLS < 0.01) */
+.trust-strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:var(--sp-3) var(--sp-5);padding:var(--sp-3) 0;border-block:1px solid var(--line);font-size:var(--fs-data)}
+.trust-strip>span{min-width:0;overflow-wrap:anywhere}@media(min-width:900px){.trust-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}.trust-strip>span:nth-child(4) small{min-height:3em}.trust-strip>a{display:inline-flex;align-items:center;min-height:var(--hit)}.trust-strip small{display:block;color:var(--ink-3);min-height:1.5em;line-height:1.5}.trust-strip p{grid-column:1/-1;margin:0;font-size:var(--fs-label);color:var(--ink-2)}
+.decision-cmp a{display:inline-flex;align-items:center;min-height:var(--hit)}.source-dates{font-size:var(--fs-label);margin-block:var(--sp-2)}
+.trust-page th,.trust-page td{overflow-wrap:anywhere}.trust-page .btn{margin:var(--sp-1)}
+.price-workspace .cf-chip:has(b.up),.price-workspace .cf-chip:has(b.down){box-shadow:none}
+@media(max-width:600px){.price-workspace .c-workbench-main{grid-template-columns:auto auto auto}.price-workspace .c-workbench-main>.mini-seg{grid-column:auto}.price-workspace .c-workbench-main>.btn:last-child{grid-column:1/-1;justify-self:start;width:auto;border-color:transparent;background:transparent;color:var(--ink-2)}}
+.watch-conditions form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-3);align-items:end}.watch-conditions label{display:grid;gap:var(--sp-1);font-size:var(--fs-label)}.watch-conditions ul{padding:0;list-style:none}.watch-conditions li{padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+.bk-page>.trust-pop{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);margin-bottom:var(--sp-4)}.bk-page>.trust-pop h2{font-size:var(--fs-data)}.bk-page>.trust-pop dl{gap:var(--sp-3) var(--sp-5);margin:var(--sp-2) 0}.bk-page>.trust-pop dt{font-size:var(--fs-label)}.bk-page>.trust-pop dd{font-size:var(--fs-data)}.public-changes{grid-column:1/-1}.public-changes p{font-size:var(--fs-data)}
+.hl-h{font-family:var(--editorial);font-weight:500}

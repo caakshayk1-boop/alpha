@@ -1,3 +1,4 @@
+import {LedgerPopulations} from './trust.tsx';
 import { useMemo, useState } from 'react';
 import { useLedger } from '../data.ts';
 import { useAutoBook } from '../book.ts';
@@ -26,13 +27,15 @@ export function GlassBook() {
   if (feed.loading && !l) return <Loading what="the Glass Book" />;
   if (!l || !plan || !lv || !sb || !log) return <EmptyState>The Glass Book has nothing to show yet: the nightly ledger has not been published, so there is nothing to trace. Missing is shown as missing.</EmptyState>;
   const snap = currentSnapshotId(); const max = Math.max(1, ...sb.bins.map((b) => b.n));
-  const taken = lv.lifecycles.filter((x) => x.state !== 'skipped').slice().sort((a, b) => b.asOf.localeCompare(a.asOf));
+  const selectedPick = new URLSearchParams(location.hash.split('?')[1]??'').get('pick');
+  const taken = lv.lifecycles.filter((x) => x.state !== 'skipped').slice().sort((a, b) => Number(b.pickId===selectedPick)-Number(a.pickId===selectedPick)||b.asOf.localeCompare(a.asOf));
   return <div className="gb-page" data-glass>
     <header className="gb-head">
-      <p className="eyebrow">The Glass Book · paper only</p>
+
       <h1>Every number, traced to the event behind it.</h1>
       <p className="dim">Closed book positions, open positions and the picks the book did not take, each from the same ledger. Simulated paper trades, not investment advice. {snap ? <>Snapshot <span className="num">{snap}</span>.</> : null}</p>
     <ShareRow sym={null} />
+    <LedgerPopulations /><a className="btn" href="#/sitout">Daily sit-out log</a>
     </header>
 
     <section className="rec-sec card" aria-labelledby="gb-sb" data-glass-scoreboard>
@@ -49,8 +52,8 @@ export function GlassBook() {
         <div className="gb-hist" role="img" aria-label={`Closed book positions by result in R: ${sb.bins.map((b) => `${b.label} ${b.n}`).join(', ')}`}>
           {sb.bins.map((b) => <div key={b.label} className="gb-bin"><span className="gb-bar"><i style={{ height: `${(b.n / max) * 100}%` }} /></span><b className="num">{b.n}</b><small>{b.label}</small></div>)}
         </div>
-        <table className="tbl"><caption className="sr">By engine</caption><thead><tr><th scope="col">Engine</th><th scope="col">Closed</th><th scope="col">Avg R</th><th scope="col">Win rate</th><th scope="col">Total R</th></tr></thead>
-          <tbody>{sb.engines.map((e) => <tr key={e.engine}><th scope="row">{e.engine}</th><td className="num">{e.n}</td><td className="num">{fmtR(e.avgR)}</td><td className="num">{e.winRate == null ? '—' : `${e.winRate}%`}</td><td className={`num ${tone(e.totalR)}`}>{fmtR(e.totalR)}</td></tr>)}</tbody></table>
+        <table className="tbl"><caption className="sr">By engine</caption><thead><tr><th scope="col">Engine</th><th scope="col">Closed</th><th scope="col">Avg R</th><th scope="col">Win rate</th><th scope="col">Total R</th><th scope="col">Nifty excess (pp)</th></tr></thead>
+          <tbody>{sb.engines.map((e) => <tr key={e.engine}><th scope="row">{e.engine}</th><td className="num">{e.n}</td><td className="num">{fmtR(e.avgR)}</td><td className="num">{e.winRate == null ? '—' : `${e.winRate}%`}</td><td className={`num ${tone(e.totalR)}`}>{fmtR(e.totalR)}</td><td>{(() => { const xs=lv.lifecycles.filter(x=>x.engine===e.engine&&x.state==='closed').map(x=>l.outcomes[x.pickId]).filter(o=>typeof o?.pct==='number'&&typeof o.niftyPct==='number'); return xs.length?`${(xs.reduce((n,o)=>n+o.pct!-o.niftyPct!,0)/xs.length).toFixed(2)} · n=${xs.length}`:'Unavailable'; })()}</td></tr>)}</tbody></table>
         <p className="small dim">{sb.drawdownBasis} A win is a result above 0R and a loss one below it; a flat result is in neither average.</p>
       </>}
     </section>
@@ -67,7 +70,7 @@ export function GlassBook() {
 
     <section className="rec-sec card" aria-labelledby="gb-tl" data-glass-timelines>
       <SectionHeader id="gb-tl" title="Position timelines" description="Signal, selection, entry, targets and exit, each with its date and where the fact comes from. A selection is not a fill; a fill here is simulated from completed daily bars." />
-      {taken.length === 0 ? <p className="dim">The book has taken no position yet.</p> : taken.map((x) => { const t = lifecycleTimeline(l, plan, x.id, lv); if (!t) return null; return <details key={x.id} className="more gb-tl">
+      {taken.length === 0 ? <p className="dim">The book has taken no position yet.</p> : taken.map((x) => { const t = lifecycleTimeline(l, plan, x.id, lv); if (!t) return null; return <details key={x.id} className="more gb-tl" open={x.pickId===selectedPick||undefined}>
         <summary><b>{x.sym}</b> <small className="dim">{x.engine} · {x.state === 'closed' ? 'closed' : x.state === 'open' ? 'open' : 'awaiting entry'}</small>{x.r != null && <span className={`num ${tone(x.r)}`}> {fmtR(x.r)}</span>}</summary>
         <ol className="gb-events">{t.events.map((e, i) => <li key={`${e.kind}-${i}`} data-kind={e.kind}><span className="num gb-day">{e.day ? dayWord(e.day) : 'not yet'}</span><div><b>{e.title}</b><p className="small">{e.detail}</p><p className="small dim">{e.basis} · {e.source}</p></div></li>)}</ol>
         <p className="small dim">Position <span className="num">{x.id}</span></p>

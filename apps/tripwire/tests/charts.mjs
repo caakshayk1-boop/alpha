@@ -58,10 +58,10 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   ok(await pg.locator('.cf-legend').count() === 1 && await pg.locator('.cf-legend li').count() === 2, `${w}: the legend is still there, with both lines`);
   ok(await pg.locator('.cf-lead').innerText().then((t) => /^TCS (rose|fell|was flat)/.test(t) && /percentage points|level with it|Nifty/.test(t)), `${w}: the takeaway text is whole in the page`);
   ok(await pg.locator('.cf-tbl > summary').count() === 1, `${w}: the table alternative is still there`);
-  await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home'); const before = await pg.locator('.chart-plot').boundingBox(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight'); await pg.waitForTimeout(80);
+  const hd0 = await pg.locator('.chart-head').boundingBox(); await pg.locator('.chart-plot').focus(); await pg.keyboard.press('Home'); const before = await pg.locator('.chart-plot').boundingBox(); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight'); await pg.waitForTimeout(80);
   const after = await pg.locator('.chart-plot').boundingBox(); const hd = await pg.locator('.chart-head').boundingBox();
   ok(Number(await pg.locator('.chart-plot').getAttribute('aria-valuenow')) === 2 && Math.abs(after.y - before.y) < 0.5 && Math.abs(after.height - before.height) < 0.5, `${w}: the keyboard still moves along the line, and the plot does not move while it does`);
-  ok(hd.height >= 70, `${w}: the figures row holds its height while the hover wording changes (${Math.round(hd.height)}px)`);
+  ok(Math.abs(hd.height - hd0.height) < 0.5, `${w}: the figures row holds its height while the hover wording changes (${Math.round(hd0.height)}px at rest, ${Math.round(hd.height)}px reading)`);
   ok((await overflow(pg)) <= 0, `${w}: no horizontal overflow`);
   await ctx.close(); }
 { const ctx = await newCtx(b, 320, series(900, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage(); await pg.setViewportSize({ width: 320, height: 640 }); await open(pg, '/#/c/TCS', '.chart-plot svg');
@@ -87,8 +87,12 @@ for (const [w, h] of [[390, 844], [360, 800]]) {
   ok((await plot.getAttribute('aria-valuetext')) !== v0 && /TCS [+−]?[\d.]+%, Nifty [+−]?[\d.]+%/.test((await plot.getAttribute('aria-valuetext')) ?? ''), 'arrow keys move along the line and speak both values');
   ok(await pg.locator('.c-tip').count() === 1 && /Nifty/.test(await pg.locator('.c-tip').innerText()) && (await pg.locator('.c-tip').getAttribute('aria-hidden')) === 'true', 'a tooltip follows the position (hidden from assistive tech: the slider speaks it)');
   await pg.keyboard.press('Escape'); ok(await pg.locator('.c-tip').count() === 0, 'Escape clears it');
-  const bx = await plot.boundingBox(); await pg.touchscreen.tap(bx.x + bx.width * 0.5, bx.y + bx.height / 2); await pg.waitForTimeout(150);
-  ok(await pg.locator('.c-tip').count() === 1, 'a tap on the chart shows the tooltip (touch)');
+  // 17 Nov 2026 (chart fix): a touch reading lasts only while the finger is on the plot; lifting it clears the reading (a tooltip left behind by a finger was the owner's chart complaint). History lens keeps one reading in place.
+  const bx = await plot.boundingBox(); const at = { pointerType: 'touch', isPrimary: true, bubbles: true, clientX: bx.x + bx.width * 0.5, clientY: bx.y + bx.height / 2 };
+  await plot.dispatchEvent('pointerdown', at); await pg.waitForTimeout(150);
+  ok(await pg.locator('.c-tip').count() === 1, 'a touch on the chart shows the tooltip while the finger is down');
+  await plot.dispatchEvent('pointerup', at); await pg.waitForTimeout(150);
+  ok(await pg.locator('.c-tip').count() === 0, 'lifting the finger clears the touch reading (nothing is left stuck on the chart)');
   ok(await plot.evaluate((e) => getComputedStyle(e).touchAction) === 'pan-y', 'vertical scrolling over the chart still works on touch');
   await ctx.close(); }
 

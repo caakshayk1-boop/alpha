@@ -1,3 +1,5 @@
+import {WatchConditions} from './watchrules.tsx';
+import {DecisionComparison} from './trust.tsx';
 import { recentDecisions } from '../decisions.ts';
 import { useState } from 'react';
 import { go, setState, useAppState, useLoc, useSheets } from '../app.tsx';
@@ -22,7 +24,7 @@ export function Desk({ seg }: { seg: string }) {
   // a view is offered when it holds something, or when the person has opened it on purpose (its link always works)
   const items = [{ id: 'desk', label: 'Desk' }, ...([['follow', 'Following'], ['journal', 'Journal'], ['plans', 'Plans'], ['saved', 'Saved']] as const).filter(([id]) => has[id] || v === id).map(([id, label]) => ({ id, label }))];
   return <div className="mp mp-desk">
-    <PageBar title="My Desk" onBack sub="Kept on this device" />
+    <PageBar title="My Desk" onBack sub="Kept on this device" />{v === 'desk' && <><DecisionComparison /><WatchConditions /></>}
     {items.length > 1 && <Seg label="Desk view" value={v as 'desk'} onChange={(x) => go(x === 'desk' ? '/desk' : `/desk?v=${x}`)} items={items} />}
     {v === 'desk' ? (has.any ? <Workspace /> : <NewDesk />) : v === 'follow' ? <Following /> : v === 'journal' ? <Journal /> : v === 'plans' ? <Plans /> : <Saved />}
   </div>;
