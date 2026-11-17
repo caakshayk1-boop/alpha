@@ -43,8 +43,9 @@
 .trust-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(12px,1fr));gap:var(--sp-1);margin-block:var(--sp-4)}
 .trust-days i{height:var(--sp-5);background:var(--surface-3);border:1px solid var(--line-2)}.trust-days i[data-on=true]{background:var(--accent)}
 .trust-pop dl{display:flex;flex-wrap:wrap;gap:var(--sp-5)}.trust-pop dt{text-transform:capitalize;color:var(--ink-2)}.trust-pop dd{margin:0;font-size:var(--fs-num-s);font-variant-numeric:tabular-nums}
-.trust-strip{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);padding:var(--sp-3) 0;border-block:1px solid var(--line);font-size:var(--fs-data)}
-.trust-strip a{display:inline-flex;align-items:center;min-height:var(--hit)}.trust-strip small{display:block;color:var(--ink-3);min-height:1.5em;line-height:1.5}.trust-strip p{flex-basis:100%;margin:0;font-size:var(--fs-label);color:var(--ink-2)}
+/* a fixed grid, not wrapping flex: the strip's rows must not re-wrap when its figures arrive (page CLS < 0.01) */
+.trust-strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:var(--sp-3) var(--sp-5);padding:var(--sp-3) 0;border-block:1px solid var(--line);font-size:var(--fs-data)}
+.trust-strip>span{min-width:0;overflow-wrap:anywhere}@media(min-width:900px){.trust-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}.trust-strip>span:nth-child(4) small{min-height:3em}.trust-strip>a{display:inline-flex;align-items:center;min-height:var(--hit)}.trust-strip small{display:block;color:var(--ink-3);min-height:1.5em;line-height:1.5}.trust-strip p{grid-column:1/-1;margin:0;font-size:var(--fs-label);color:var(--ink-2)}
 .decision-cmp a{display:inline-flex;align-items:center;min-height:var(--hit)}.source-dates{font-size:var(--fs-label);margin-block:var(--sp-2)}
 .trust-page th,.trust-page td{overflow-wrap:anywhere}.trust-page .btn{margin:var(--sp-1)}
 .price-workspace .cf-chip:has(b.up),.price-workspace .cf-chip:has(b.down){box-shadow:none}
