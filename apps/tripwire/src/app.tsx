@@ -29,6 +29,7 @@ const Report = lazy(() => import('./screens/report.tsx').then((m) => ({ default:
 const Privacy = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./screens/legal.tsx').then((m) => ({ default: m.Terms })));
 const Status = lazy(() => import('./screens/status.tsx').then((m) => ({ default: m.Status })));
+const EditionPage = lazy(() => import('./screens/edition.tsx').then((m) => ({ default: m.EditionPage })));
 const GlassBook = lazy(() => import('./screens/glass.tsx').then((m) => ({ default: m.GlassBook })));
 const NotFound = lazy(() => import('./screens/notfound.tsx').then((m) => ({ default: m.NotFound })));
 const MacroPage = lazy(() => import('./screens/Macro.tsx').then((m) => ({ default: m.MacroPage })));
@@ -114,7 +115,7 @@ export const useSheets = () => useContext(SheetCtx);
 export const TABS = [{ id: 'today', label: 'Today', c: 'var(--accent)' }, { id: 'discover', label: 'Research', c: 'var(--accent)' }, { id: 'signals', label: 'Book', c: 'var(--accent)' }, { id: 'more', label: 'Menu', c: 'var(--accent)' }];   /* 11 Nov 2026: three daily places and a Menu (My Desk, settings, data, method, help). */
 const MORE_HEADS = ['pro', 'more', 'settings', 'profile', 'data', 'methodology', 'help', 'ops', 'privacy', 'terms'];
 export const tabOf = (p: string[]) => (p[0] === 'glass' ? 'signals' : p[0] === 'c' || p[0] === 'compare' || p[0] === 'lab' ? 'discover' : p[0] === 'm' || p[0] === 'news' || p[0] === 'markets' || p[0] === 'live' ? 'today' : p[0] === 'report' || p[0] === 'desk' ? 'more' : MORE_HEADS.includes(p[0]) ? 'more' : TABS.some((t) => t.id === p[0]) ? p[0] : p[0] ? 'more' : 'today');
-const TITLES: Record<string, string> = { gate:'Gate & backtest',sitout:'Sit-out log',about:'About Tripwire',changelog:'Public changelog','api-guide':'Public data API', pro: 'Personal Pro book', status: 'Status', signals: 'Book', settings: 'Settings', profile: 'Settings', info: 'About and data', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use', glass: 'The Glass Book' };
+const TITLES: Record<string, string> = { edition:'Daily edition',gate:'Gate & backtest',sitout:'Sit-out log',about:'About Tripwire',changelog:'Public changelog','api-guide':'Public data API', pro: 'Personal Pro book', status: 'Status', signals: 'Book', settings: 'Settings', profile: 'Settings', info: 'About and data', data: 'Data and coverage', methodology: 'Methodology and evidence', help: 'Help', ops: 'Operations', news: 'News', markets: 'Markets', live: 'Paper P&L', paper: 'Paper P&L', book: 'Paper P&L', lab: 'Lab', c: 'Company', compare: 'Compare', report: 'Report', m: 'Macro', privacy: 'Privacy', terms: 'Terms of use', glass: 'The Glass Book' };
 /** The last place each tab was left, so a tap on another tab and back returns to it. Discover keeps its own (discoverstate), which also knows its scroll and revealed rows. */
 const tabLast: Record<string, string> = {};
 /** Replaces the address (no extra Back step) and draws nothing. */
@@ -202,6 +203,7 @@ export function App(): ReactNode {
   else if (head === 'compare') view = <Compare syms={(vl.q.get('s') ?? '').split(',').filter(Boolean).slice(0, 3)} />;
   else if (head === 'report' && vl.path[1]) view = <Report sym={decodeURIComponent(vl.path[1])} />;
   else if ((head === 'gate' || head === 'sitout' || head === 'about' || head === 'changelog' || head === 'api-guide')) view = <TrustPage page={head} />;
+  else if (head === 'edition') view = <EditionPage day={vl.q.get('d')} />;
   else if (head === 'pro') view = <PersonalPro />;
   else if (head === 'more') view = <More />;
   else if (head === 'signals') view = <Signals seg={vl.q.get('v')} />;   // 11 Nov 2026: the Book opens on Positions; every older ?v= still lands (bookview.ts)

@@ -53,3 +53,18 @@
 .watch-conditions form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-3);align-items:end}.watch-conditions label{display:grid;gap:var(--sp-1);font-size:var(--fs-label)}.watch-conditions ul{padding:0;list-style:none}.watch-conditions li{padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
 .bk-page>.trust-pop{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);margin-bottom:var(--sp-4)}.bk-page>.trust-pop h2{font-size:var(--fs-data)}.bk-page>.trust-pop dl{gap:var(--sp-3) var(--sp-5);margin:var(--sp-2) 0}.bk-page>.trust-pop dt{font-size:var(--fs-label)}.bk-page>.trust-pop dd{font-size:var(--fs-data)}.public-changes{grid-column:1/-1}.public-changes p{font-size:var(--fs-data)}
 .hl-h{font-family:var(--editorial);font-weight:500}
+/* 18 Nov 2026 (vision phase 1): the gate as the centrepiece of its page, and the daily edition. */
+.gate-hero{border-top:0!important;padding-block:var(--sp-4)}
+.gate-hero h1{font-size:var(--fs-h1);line-height:1.15;margin:var(--sp-2) 0}
+.gh-count{font-size:var(--fs-lg);margin:0 0 var(--sp-3)}
+.gh-checks{list-style:none;padding:0;margin:var(--sp-3) 0;display:grid;gap:var(--sp-2)}
+.gh-checks li{display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-input);background:var(--surface-2)}
+.gh-checks li small{display:block;color:var(--ink-3)}
+.gh-mark{font-weight:700;min-width:1.25em;color:var(--down)}.gh-checks li[data-ok=true] .gh-mark{color:var(--up)}
+.gh-near{padding:var(--sp-3);border-left:3px solid var(--accent);background:var(--surface-2)}
+.ed-head h1{font-size:var(--fs-h1);line-height:1.2;margin:var(--sp-2) 0}
+.ed-nav{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center;margin-block:var(--sp-3)}.ed-nav .btn{min-height:44px;display:inline-flex;align-items:center}
+.ed-picks,.ed-days{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.ed-picks li{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill)}
+.ed-picks a,.ed-days a{min-height:44px;display:inline-flex;align-items:center;gap:var(--sp-2);color:var(--ink)}
+.ed-days li{padding:0 var(--sp-3)}

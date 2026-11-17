@@ -1,5 +1,6 @@
 import { HowVideo } from '../components/HowVideo';
 import { Films } from '../components/Films';
+import { LedgerLine } from './edition.tsx';
 import { QuestionOrb } from '../components/QuestionOrb.tsx';
 import { prefetchScreens } from '../prefetch.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -52,6 +53,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
         <div className="k lp-eyebrow"><span className="lp-mark" aria-hidden="true" />Tripwire · research for Indian stocks · by Akshay, CA</div>
         <h1 id="lp-h">Start with one company.</h1>
         <p className="lp-sub">Understand an Indian company. See the evidence for it, the risks against it, and build your own view.</p>
+        <LedgerLine />
         <form className="wl-find" role="search" onSubmit={(e) => { e.preventDefault(); if (hits[0]) choose(hits[0].sym); }}>
           <label className="l" htmlFor="wl-q">Company name or symbol</label>
           <div className="search"><Icon n="search" /><input id="wl-q" className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="For example TCS or Infosys" autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
