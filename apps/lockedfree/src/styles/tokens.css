@@ -1,0 +1,14 @@
+/* The only place tokens are defined. Values mirror DESIGN.md front matter; tests/design.test.ts fails if they drift. */
+:root {
+  color-scheme: light;
+  --paper: #FAF7F0; --card: #FFFDF8; --ink: #16211B; --ink-muted: #5C665E; --hairline: #E4DED0;
+  --brand: #0E5E42; --up: #0F6B4A; --down: #C8481F; --down-ink: #A8321F; --warn: #C77F0A; --warn-ink: #8A5600; --halo: #0E5E42;
+  --font-display: "Fraunces Variable", "Fraunces Variable fallback", Georgia, serif;
+  --font-ui: "Inter Variable", "Inter Variable fallback", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "IBM Plex Mono fallback", ui-monospace, monospace;
+  --r-card: 10px; --r-control: 6px; --r-full: 999px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
+  --d1: 120ms; --d2: 200ms; --d3: 320ms; --d4: 420ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --icon-stroke: 1.5;
+}

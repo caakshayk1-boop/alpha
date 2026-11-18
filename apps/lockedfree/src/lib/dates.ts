@@ -1,0 +1,1 @@
+export const nextSaturday = (iso: string) => { let m = Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)); do { m += 86400000; } while (new Date(m).getUTCDay() !== 6); return new Date(m).toISOString().slice(0, 10); };

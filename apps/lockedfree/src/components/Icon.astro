@@ -1,0 +1,13 @@
+---
+// One family (Lucide), one stroke weight (var(--icon-stroke)). Imported individually. Decorative unless a label is given.
+import arrowUp from 'lucide-static/icons/arrow-up-right.svg?raw'; import arrowDown from 'lucide-static/icons/arrow-down-right.svg?raw';
+import check from 'lucide-static/icons/circle-check.svg?raw'; import x from 'lucide-static/icons/circle-x.svg?raw'; import minus from 'lucide-static/icons/circle-help.svg?raw';
+import lock from 'lucide-static/icons/lock.svg?raw'; import filter from 'lucide-static/icons/list-filter.svg?raw'; import gate from 'lucide-static/icons/door-closed.svg?raw';
+import plan from 'lucide-static/icons/calendar-check.svg?raw'; import ledger from 'lucide-static/icons/book-open-check.svg?raw'; import book from 'lucide-static/icons/book-marked.svg?raw';
+import shield from 'lucide-static/icons/shield-check.svg?raw'; import clock from 'lucide-static/icons/clock.svg?raw'; import info from 'lucide-static/icons/info.svg?raw';
+import compass from 'lucide-static/icons/compass.svg?raw'; import mail from 'lucide-static/icons/mail.svg?raw'; import ruler from 'lucide-static/icons/ruler.svg?raw'; import pause from 'lucide-static/icons/circle-pause.svg?raw';
+const M: Record<string, string> = { 'arrow-up-right': arrowUp, 'arrow-down-right': arrowDown, check, x, help: minus, lock, filter, gate, plan, ledger, book, shield, clock, info, compass, mail, ruler, pause };
+const { name, size = 20, label, class: cls = '' } = Astro.props;
+const raw = (M[name] ?? '').replace(/<svg[^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${size < 18 ? 1.75 : 1.5}" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true" focusable="false"'} class="${cls}">`);
+---
+<Fragment set:html={raw} />

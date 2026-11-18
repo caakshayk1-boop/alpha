@@ -1,0 +1,10 @@
+---
+import Base from '../../../layouts/Base.astro'; import { SCREENS } from '../../../lib/screens.ts'; import { ledger } from '../../../lib/data.ts'; import { dmy } from '../../../lib/view.ts';
+export function getStaticPaths() { return SCREENS.map((s) => ({ params: { id: s.id }, props: { s } })); }
+const { s } = Astro.props; const L = ledger(); const runs = L.runs.filter((r) => r.screen_id === s.id).sort((a, b) => b.run_date.localeCompare(a.run_date)); const tr = new Map(L.transitions.filter((t) => t.screen_id === s.id).map((t) => [t.run_date, t]));
+---
+<Base title={`${s.name}: archive`} description={`Every list the ${s.name} screen has published, newest first. Nothing is removed.`}>
+<div class="wrap hero"><span class="label eyebrow">Archive</span><h1>{s.name}: every list</h1><p class="lede">Every run is kept, including the weeks nothing passed.</p></div>
+<div class="wrap">{runs.length === 0 ? <div class="sit"><div class="big">No runs yet.</div><p class="muted">The archive starts with the first run.</p></div> :
+<table class="cards"><thead><tr><th>Run</th><th class="num">Passed</th><th>Names</th><th>Entered</th><th>Exited</th></tr></thead><tbody>{runs.map((r) => { const t = tr.get(r.run_date); return <tr><td data-label="Run">{dmy(r.run_date)}</td><td class="num" data-label="Passed">{r.passed.length}</td><td data-label="Names">{r.passed.length ? r.passed.join(', ') : '0 pass: cash is a position'}</td><td data-label="Entered">{t?.entered.join(', ') || '—'}</td><td data-label="Exited">{t?.exited.join(', ') || '—'}</td></tr>; })}</tbody></table>}
+<p class="stamp">as of {dmy(L.as_of)}</p><p><a class="btn ghost" href={`/screens/${s.id}/`}>Back to {s.name}</a></p></div></Base>

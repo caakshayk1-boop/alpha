@@ -1,0 +1,32 @@
+name: lockedfree-ledger
+# Nightly ledger for Rulebook (lockedfree.askakshay.com). Fetches end-of-day bars, appends one book day, validates, commits [skip ci].
+# A night that fails a gate (stale benchmark, <85% fresh bars, history rewrite, schema) writes nothing and goes red; the site keeps the last good ledger.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 11 * * 1-5'      # 17:00 IST, after the 15:30 close and Yahoo's daily bars settle
+concurrency:
+  group: lockedfree-ledger
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  ledger:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test apps/lockedfree/tests/*.test.ts
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install yfinance pandas
+      - run: python apps/lockedfree/tools/fetch_bars.py
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning apps/lockedfree/tools/build-ledger.ts
+      - name: Commit the ledger
+        run: |
+          git config user.name "rulebook-ledger" && git config user.email "actions@users.noreply.github.com"
+          git add apps/lockedfree/ledger
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "ledger: rulebook $(date -u +%F) [skip ci]" && git push

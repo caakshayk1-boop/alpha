@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro'; import EquityCard from '../components/EquityCard.astro'; import Icon from '../components/Icon.astro'; import StatBlock from '../components/StatBlock.astro';
+import { ledger, benchmarkLast } from '../lib/data.ts'; import { agg, dmy, signed, lastDay } from '../lib/view.ts'; import { SCREENS } from '../lib/screens.ts';
+const L = ledger(); const all = agg(L, 'all'); const day = lastDay(L, 'all');
+const probs = [['“I have money sitting there. I put it in when I feel brave, and then I stop.”', 'No system for the money', '/plan/', 'The Plan', 'plan', 'A written one-page plan, goal buckets, and a monthly paper deployment that already knows what to do when markets fall.'],
+  ['“I know my rules. I still size too big, move my stop, and trade to win it back.”', 'Trading without discipline', '/gate/', 'The Gate', 'gate', 'A paper terminal that will not take a trade until the checklist, the size and the stop exist, and that locks when your own limits are hit.'],
+  ['“I can\'t find good stocks. I follow whatever is loudest this week.”', 'No method for finding them', '/screens/', 'The Screens', 'filter', 'Published, rules-based screens. The rules are the product. When nothing passes, the answer is no list.']];
+---
+<Base title="Rulebook" reading charts>
+<script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
+<div class="wrap hero" data-hero><span class="label eyebrow">Educational · paper-only · every loss kept</span>
+<h1 class="display-xl">Rules first. <em>Results</em> in public, with every loss.</h1>
+<p class="lede">Rulebook publishes rules-based stock screens, a paper-trading terminal that enforces your own limits, and a written plan for your money. Everything feeds one public record. Nothing is real money, and nothing is advice.</p></div>
+<div class="wrap"><EquityCard />
+<div class="grid g4 card" data-u="mt4">
+  <StatBlock label="Closed trades" value={all ? String(all.n_closed) : '0'} n={all?.n_closed ?? 0} asOf={L.as_of} perf={false} />
+  <StatBlock label="Expectancy (R)" value={all?.expectancy_r == null ? '—' : signed(all.expectancy_r, 2, ' R')} n={all?.n_closed ?? 0} asOf={L.as_of} />
+  <StatBlock label="Max drawdown" value={all ? signed(all.max_drawdown, 0) === '0' ? '₹0' : '−₹' + Math.abs(all.max_drawdown).toLocaleString('en-IN') : '—'} n={all?.n_closed ?? 0} asOf={L.as_of} />
+  <StatBlock label="Open positions" value={String(day?.open_n ?? 0)} n={day?.open_n ?? 0} asOf={L.as_of} perf={false} /></div></div>
+<section class="block"><div class="wrap"><span class="label eyebrow">Three problems, three rooms</span><h2>Which of these is yours?</h2>
+<div class="grid g3 three" data-u="mt5">{probs.map(([q, h, href, name, icon, body]) => <article class="card"><p class="quote-in">{q}</p><div class="label">{h}</div><p class="small" data-u="mt3">{body}</p><a class="btn ghost" href={href}><Icon name={icon} size={18} />{name}</a></article>)}</div></div></section>
+<section class="block"><div class="wrap"><span class="label eyebrow">The Ledger, highlights</span><h2>What the record shows so far</h2>
+<p class="muted" data-u="mt3">{L.picks.length === 0 ? `No picks have been recorded yet. The first weekly run starts the record. Until there are at least 30 closed trades per screen, every statistic here will say it is too small to conclude anything.` : `${L.picks.length} picks recorded, ${all?.n_closed ?? 0} closed, ${all?.n_void ?? 0} voided. Voided and losing trades stay on the record.`}</p>
+<div class="grid g2" data-u="mt4">{SCREENS.map((s) => { const a = agg(L, s.id); return <a class="card" data-vt={`screen-${s.id}`} href={`/screens/${s.id}/`} data-u="plain"><h3>{s.name}</h3><p class="small muted">{s.short}</p><span class="pill">n = {a?.n_closed ?? 0} closed</span> <span class="stamp">{a?.honesty ?? ''}</span></a>; })}</div>
+<p data-u="mt4"><a class="btn ghost" href="/ledger/">Open the full Ledger</a></p></div></section>
+<section class="block"><div class="wrap prose"><span class="label eyebrow">Methodology</span><h2>How every number is made</h2>
+<p data-u="mt3">Each screen has a permanent page with its exact rules, thresholds, data sources, refresh cadence and known weaknesses. One accounting method turns picks and trades into the figures you see, and it counts every charge once. Rules do not change quietly: a change makes a new version of the screen with its own record.</p>
+<p><a class="btn ghost" href="/methodology/">Read the methodology</a></p></div></section>
+<section class="block" id="join"><div class="wrap prose"><span class="label eyebrow">Stay in the loop</span><h2>The weekly note, when there is one</h2><p class="muted" data-u="mt3">One email when a screen is re-run and the list changes, or when it does not. No urgency, no tips. We store your email and the date you agreed, nothing else. Ask and it is deleted.</p>
+<form class="card" method="post" action="/api/subscribe" data-subscribe><div class="field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="email" required></div>
+<div class="field" aria-hidden="true" hidden><label for="hp">Leave empty</label><input id="hp" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+<p class="hint">By subscribing you agree that Rulebook may email you the weekly note. You can unsubscribe at any time by replying. See <a href="/about/">About</a>.</p>
+<input type="hidden" name="consent" value="weekly-note-v1"><button class="btn" type="submit">Join the list</button> <span class="small" role="status" data-subscribe-msg></span></form></div></section>
+<section class="block"><div class="wrap prose"><span class="label eyebrow">About</span><h2>Who this is, and what it is not</h2><p data-u="mt3">Rulebook is an educational project run by an individual. It is not investment advice, not a broker and not a tip service. <a href="/about/">Read the About page</a>.</p></div></section>
+<script src="../scripts/subscribe.ts"></script><script src="../scripts/panic.ts"></script>
+</Base>
