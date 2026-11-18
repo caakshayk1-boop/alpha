@@ -9,12 +9,15 @@ BENCH = "^CRSLDX"
 
 def needed() -> list[str]:
     syms: set[str] = set()
-    f = ROOT / "ledger.json"
+    f = ROOT / "ledger.json"; seen: set[tuple[str, str]] = set()
     if f.exists():
-        for p in json.loads(f.read_text()).get("picks", []):
+        L = json.loads(f.read_text())
+        seen = {(r["screen_id"], r["run_date"]) for r in L.get("runs", [])}
+        for p in L.get("picks", []):
             if p["status"] in ("pending", "open"): syms.add(p["symbol"])
     for r in (ROOT / "runs").glob("*.json") if (ROOT / "runs").exists() else []:
-        syms.update(json.loads(r.read_text()).get("passed", []))
+        j = json.loads(r.read_text())
+        if (j.get("screen_id"), j.get("run_date")) not in seen: syms.update(j.get("taken", j.get("passed", [])))   # new this run; older runs are already in the ledger
     det = ROOT / "detail"
     if det.exists():
         latest = {}

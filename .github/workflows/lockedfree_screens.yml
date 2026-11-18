@@ -1,10 +1,11 @@
 name: lockedfree-screens
-# Weekly: fetch fundamentals, run the four screens, fetch bars, rebuild the ledger, commit. Friday 18:30 IST, after the close.
+# Weekly: download the owner's feed, run the four screens, apply the book (30 calls, 4 per sector), fetch bars for the new calls, rebuild the ledger, commit.
+# Saturday 07:30 IST: the feed (built about 05:45 IST) then holds Friday's close, so the run date is Friday and the list is published on Saturday.
 # Any gate failing (too few usable statements, a screen mostly not scorable, stale benchmark, history rewrite) writes nothing and goes red. A blind week is never published as a sit-out.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 13 * * 5'
+    - cron: '0 2 * * 6'
 concurrency:
   group: lockedfree-ledger
   cancel-in-progress: false
@@ -19,12 +20,15 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test apps/lockedfree/tests/*.test.ts
+      - name: Download and validate the daily feed
+        run: node apps/lockedfree/tools/fetch-feed.mjs
+        working-directory: apps/lockedfree
+      - name: Run the four screens on the feed (writes this week's run files)
+        run: node --experimental-strip-types --disable-warning=ExperimentalWarning tools/run-screens-feed.ts
+        working-directory: apps/lockedfree
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
       - run: pip install yfinance pandas
-      - run: python apps/lockedfree/tools/fetch_fundamentals.py
-      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning apps/lockedfree/tools/run-screens.ts
-        working-directory: apps/lockedfree
       - run: python apps/lockedfree/tools/fetch_bars.py
       - run: node --experimental-strip-types --disable-warning=ExperimentalWarning apps/lockedfree/tools/build-ledger.ts
       - name: Commit the week
