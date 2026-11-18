@@ -12,3 +12,6 @@ test('parseQuote: reads price, previous close and time; a missing price is null,
 test('parseChart: India dates, gaps dropped not filled', () => {
   const p = mod.parseChart({ chart: { result: [{ timestamp: [1763339400, 1763425800, 1763512200, 1763598600], indicators: { quote: [{ open: [99, 100, 101, null], high: [103, 104, 105, 106], low: [98, 99, 100, 101], close: [100.123, null, 102, 103] }] } }] } }); assert.equal(p.length, 2); assert.deepEqual(p[0], { t: p[0].t, o: 99, h: 103, l: 98, c: 100.12, v: null }); assert.match(p[0].t, /^\d{4}-\d{2}-\d{2}$/); assert.deepEqual(mod.parseChart({}), []);
 });
+test('sector index symbols for the home board map to Yahoo tickers; unknown or malformed symbols are refused', () => {
+  assert.equal(mod.yahooSymbol('NIFTYAUTO'), '^CNXAUTO'); assert.equal(mod.yahooSymbol('NIFTYREALTY'), '^CNXREALTY'); assert.equal(mod.yahooSymbol('INFY'), 'INFY.NS'); assert.equal(mod.yahooSymbol('bad symbol'), null);
+});

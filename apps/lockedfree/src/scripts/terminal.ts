@@ -1,9 +1,7 @@
 // Shell behaviour: IST clock, market state, command palette (⌘K or /), staged reveal. Everything respects reduced motion.
 import { isSession } from '../lib/calendar.ts';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-export const istNow = () => new Date(Date.now() + 19800000); const pad = (n: number) => String(n).padStart(2, '0');
-export function marketState(d = istNow()): { state: 'open' | 'closed'; text: string } { const iso = d.toISOString().slice(0, 10), m = d.getUTCHours() * 60 + d.getUTCMinutes();
-  if (isSession(iso) && m >= 555 && m < 930) return { state: 'open', text: 'NSE open' }; return { state: 'closed', text: isSession(iso) && m < 555 ? 'NSE opens 09:15' : 'NSE closed' }; }
+import { istNow, marketState } from './market.ts'; export { istNow, marketState }; const pad = (n: number) => String(n).padStart(2, '0');
 const clock = document.querySelector<HTMLElement>('[data-clock]'), mk = document.querySelector<HTMLElement>('[data-market]'), mt = document.querySelector('[data-market-text]');
 const tick = () => { const d = istNow(); if (clock) clock.textContent = `IST ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; const s = marketState(d); if (mk) mk.dataset.state = s.state; if (mt) mt.textContent = s.text; }; tick(); setInterval(tick, 1000);
 // staged reveal: panels rise 6px over 320ms, 40ms apart. Without JS they are simply visible (the class is added here).
