@@ -1,4 +1,5 @@
 import { haptic, kindOf, setHaptics } from './haptic.ts';
+import { toastMs } from './toastms.ts';
 import { createPortal } from 'react-dom';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyEvent, type ReactNode } from 'react';
 
@@ -30,7 +31,7 @@ export const useUi = () => useContext(Ui);
 export function UiProvider({ children, haptics }: { children: ReactNode; haptics: boolean }) {
   const [msg, setMsg] = useState<string | null>(null);
   const t = useRef<number | undefined>(undefined);
-  const toast = useCallback((m: string) => { haptic(kindOf(m)); setMsg(m); window.clearTimeout(t.current); t.current = window.setTimeout(() => setMsg(null), 2600); }, []);
+  const toast = useCallback((m: string) => { haptic(kindOf(m)); setMsg(m); window.clearTimeout(t.current); t.current = window.setTimeout(() => setMsg(null), toastMs(m)); }, []);
   useEffect(() => { setHaptics(haptics); }, [haptics]);
   const tick = useCallback(() => { haptic('select'); }, []);
   return <Ui.Provider value={{ toast, tick }}>{children}<div role="status" aria-live="polite">{msg && <div className="toast">{msg}</div>}</div></Ui.Provider>;

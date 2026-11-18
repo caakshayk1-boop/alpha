@@ -200,6 +200,7 @@ export function Discover() {
         <div className="chips wrap" style={{ marginTop: 8 }}>
           <button className="chip" onClick={() => { try { sessionStorage.setItem('tripwire:lab:seed', JSON.stringify(st.cond)); } catch { /* the Lab then opens on its own starting rule */ } go('/lab'); }}>Test in the Lab</button>
           <button className="chip" onClick={exportCsv} disabled={!run.ordered.length}>Export CSV</button>
+          <button className="chip" data-copy-view onClick={() => { const url = location.href; try { void navigator.clipboard.writeText(url).then(() => toast('Link to this view copied. It reopens these filters.'), () => toast('Could not copy. Copy the address from the browser bar instead.')); } catch { toast('Could not copy. Copy the address from the browser bar instead.'); } }}>Copy link to this view</button>
         </div>
         {app.screens.length > 0 && <div className="chips wrap" aria-label="Saved screens" style={{ marginTop: 6 }}>{app.screens.map((x) => <button key={x.name} className="chip" onClick={() => { setSt((s) => withFilters(s, x.f)); toast(`Screen “${x.name}” applied`); }}><Icon n="star" />{x.name}</button>)}</div>}
         {active.length > 0 || st.cond.length > 0 ? <SaveScreen f={filtersOf(st)} labels={active} /> : <p className="small mute" style={{ margin: '8px 0 0' }}>Set a filter and it can be saved here as a screen.</p>}

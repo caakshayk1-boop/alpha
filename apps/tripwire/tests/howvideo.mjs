@@ -40,4 +40,15 @@ for (const [name, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { 
   const fs_ = await pg.evaluate(() => [...document.querySelectorAll('.film-el')].map((e) => ({ paused: e.paused, preload: e.preload })));
   ok(fs_.length === 2 && fs_.every((x) => x.paused && x.preload === 'none'), `reduced motion: both portrait films stay paused and preload nothing (${JSON.stringify(fs_)})`); await ctx.close();
 }
+// 18 Nov 2026: reduced motion is followed live. Turning it on after the page is open stops the films from loading or playing (they used to read it once, at mount).
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', reducedMotion: 'no-preference' }); await mockApi(ctx);
+  const pg = await ctx.newPage(); await pg.goto(base + '/'); await pg.waitForSelector('.how-video-el', { state: 'attached' });
+  const pre = () => pg.evaluate(() => [...document.querySelectorAll('.how-video-el, .film-el')].map((e) => e.getAttribute('preload')));
+  const before = await pre(); ok(before.length === 3 && before.every((x) => x === 'metadata'), `motion allowed: all three films preload metadata (${before.join(', ')})`);
+  await pg.emulateMedia({ reducedMotion: 'reduce' }); await pg.waitForFunction(() => [...document.querySelectorAll('.how-video-el, .film-el')].every((e) => e.getAttribute('preload') === 'none'), null, { timeout: 5000 }).catch(() => {});
+  const after = await pre(); ok(after.every((x) => x === 'none') && await pg.evaluate(() => [...document.querySelectorAll('video')].every((v) => v.paused)), `reduced motion turned on mid-session: all three stop preloading and are paused (${after.join(', ')})`);
+  await pg.emulateMedia({ reducedMotion: 'no-preference' }); await pg.waitForFunction(() => [...document.querySelectorAll('.how-video-el, .film-el')].every((e) => e.getAttribute('preload') === 'metadata'), null, { timeout: 5000 }).catch(() => {});
+  ok((await pre()).every((x) => x === 'metadata'), 'and turning it off again restores the normal behaviour'); await ctx.close();
+}
 await b.close(); if (fails) { console.log(`${fails} failed`); process.exit(1); } console.log('howvideo: ok');

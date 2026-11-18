@@ -118,6 +118,17 @@ const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-ro
   await ctx.close();
 }
 
+/* ---- 6a. review dates to a calendar file (18 Nov 2026): local, names the company only ---- */
+{
+  const day = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10); const st = { ...WITH, entries: [{ ...STATE.entries[0], versions: [{ ...STATE.entries[0].versions[0], thesis: 'PRIVATE-NOTE-XYZ', reviewOn: day }] }] };
+  const { ctx, pg } = await open(st, '/#/desk'); await pg.waitForSelector('[data-ics]');
+  const [dl] = await Promise.all([pg.waitForEvent('download'), pg.locator('[data-ics]').click()]);
+  const txt = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+  ok(/^tripwire-reviews-\d{4}-\d{2}-\d{2}\.ics$/.test(dl.suggestedFilename()) && txt.startsWith('BEGIN:VCALENDAR\r\n') && txt.includes(`DTSTART;VALUE=DATE:${day.replace(/-/g, '')}`) && txt.includes('SUMMARY:Review your thesis on TCS'), 'the calendar file carries the review date and names the company');
+  ok(!txt.includes('PRIVATE-NOTE-XYZ'), 'the thesis text is not written into the calendar file');
+  await ctx.close();
+}
+
 /* ---- 6. my desk workspace ---- */
 {
   const st = { ...WITH, entries: [{ ...STATE.entries[0], versions: [{ ...STATE.entries[0].versions[0], reviewOn: '2026-10-30' }] }] };
