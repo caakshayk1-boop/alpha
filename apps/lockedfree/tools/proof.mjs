@@ -11,13 +11,13 @@ try { const out = execFileSync('node', ['--experimental-strip-types', '--disable
 
 // 2 traceability: static (no page imports the accounting module) + dynamic (page figures equal the ledger's aggregates)
 { const bad = []; const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/\.(astro|ts|tsx)$/.test(f)) { const t = readFileSync(p, 'utf8'); if (/lib\/accounting/.test(t) && !/lib\/(view|gate|ledger)\.ts$/.test(p) && !p.includes('/app/')) bad.push(p); } } }; walk(join(root, 'src/pages')); walk(join(root, 'src/components'));
-  const { p } = await ctx(); await p.goto(DEMO + '/', { waitUntil: 'networkidle' }); const all = ledgerDemo.aggregates.find((a) => a.screen_id === 'all'); const txt = await p.locator('.stat').first().innerText();
-  rec('2 every number traces to the ledger', bad.length === 0 && txt.includes(String(all.n_closed)), `pages importing accounting directly: ${bad.length}; home "closed trades" shows ${txt.split('\n')[1]} vs ledger ${all.n_closed}`); }
+  const { p } = await ctx(); await p.goto(DEMO + '/', { waitUntil: 'networkidle' }); const all = ledgerDemo.aggregates.find((a) => a.screen_id === 'all'); const txt = await p.locator('.stats').innerText(); const closedFig = (txt.match(/(\d[\d,]*)\s+CLOSED PAPER TRADES/i) || [])[1];
+  rec('2 every number traces to the ledger', bad.length === 0 && closedFig === String(all.n_closed), `pages importing accounting directly: ${bad.length}; home "closed paper trades" shows ${closedFig} vs ledger ${all.n_closed}`); }
 
 // 3 n + as-of + small-n label (production build has n = 0)
-{ const { p } = await ctx(); await p.goto(PROD + '/ledger/', { waitUntil: 'networkidle' }); const t = await p.innerText('main'); const home = await (async () => { await p.goto(PROD + '/', { waitUntil: 'networkidle' }); return p.innerText('main'); })();
+{ const { p } = await ctx(); await p.goto(PROD + '/ledger/', { waitUntil: 'networkidle' }); const t = await p.innerText('main'); const home = await (async () => { await p.goto(PROD + '/screens/magic-formula/', { waitUntil: 'networkidle' }); return p.innerText('main'); })();
   const stats = await p.$$eval('.stat', (els) => els.map((e) => ({ n: !!e.querySelector('.n'), asof: !!e.querySelector('.stamp'), sim: !!e.querySelector('.sim') })));
-  const ok = /too few to conclude anything/.test(home + t) && stats.every((s) => s.n && s.asof) && /Simulated — not real returns/.test(home); rec('3 n, as-of and small-n label', ok, `${stats.length} stat blocks on home all carry n and as-of; honesty label present: ${/too few to conclude anything/.test(home + t)}`); }
+  const ok = /too few to conclude anything/.test(home + t) && stats.every((s) => s.n && s.asof) && /Simulated — not real returns/.test(home); rec('3 n, as-of and small-n label', ok, `${stats.length} stat blocks on a screen page all carry n and as-of; honesty label present: ${/too few to conclude anything/.test(home + t)}`); }
 
 // 4 sit-out
 { const { p } = await ctx(); const empty = ledgerDemo.screens.map((s) => s.id).filter((id) => ledgerDemo.runs.filter((r) => r.screen_id === id).pop()?.passed.length === 0); let ok = false, ev = 'no empty run in demo';

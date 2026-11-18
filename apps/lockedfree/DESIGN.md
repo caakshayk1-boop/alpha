@@ -1,79 +1,80 @@
 ---
 name: Rulebook — The Paper Ledger, Alive
 colors:
-  paper: "#FAF7F0"
-  card: "#FFFDF8"
-  ink: "#16211B"
-  ink-muted: "#5C665E"
-  hairline: "#E4DED0"
-  brand: "#0E5E42"
-  up: "#0F6B4A"
-  down: "#C8481F"
-  down-ink: "#A8321F"
-  warn: "#C77F0A"
-  warn-ink: "#8A5600"
-  halo: "#0E5E42"
+  paper: "#08090A"
+  card: "#101113"
+  ink: "#F0F0F0"
+  ink-muted: "#9EA3AB"
+  hairline: "#26282B"
+  brand: "#B8EF43"
+  brand-ink: "#0A0C05"
+  up: "#3DDC97"
+  down: "#FF6B6B"
+  down-ink: "#FF8F8F"
+  warn: "#FFD166"
+  warn-ink: "#FFD166"
+  halo: "#B8EF43"
 typography:
   display-xl:
-    fontFamily: Fraunces
+    fontFamily: Fira Sans
     fontSize: 3.5rem
     fontWeight: 560
     lineHeight: 1.04
   display-l:
-    fontFamily: Fraunces
+    fontFamily: Fira Sans
     fontSize: 2.25rem
     fontWeight: 560
     lineHeight: 1.1
   display-m:
-    fontFamily: Fraunces
+    fontFamily: Fira Sans
     fontSize: 1.5rem
     fontWeight: 600
     lineHeight: 1.2
   body:
-    fontFamily: Inter
+    fontFamily: Fira Sans
     fontSize: 1rem
     fontWeight: 400
     lineHeight: 1.55
   body-s:
-    fontFamily: Inter
+    fontFamily: Fira Sans
     fontSize: 0.875rem
     fontWeight: 400
     lineHeight: 1.5
   lede:
-    fontFamily: Inter
+    fontFamily: Fira Sans
     fontSize: 1.125rem
     fontWeight: 400
     lineHeight: 1.5
   display-xl-mobile:
-    fontFamily: Fraunces
+    fontFamily: Fira Sans
     fontSize: 2.375rem
     fontWeight: 560
     lineHeight: 1.04
   label:
-    fontFamily: Inter
+    fontFamily: Fira Sans
     fontSize: 0.75rem
     fontWeight: 560
     lineHeight: 1.3
     letterSpacing: 0.04em
   figure:
-    fontFamily: IBM Plex Mono
+    fontFamily: JetBrains Mono
     fontSize: 0.9375rem
     fontWeight: 500
     lineHeight: 1.35
   figure-xl:
-    fontFamily: IBM Plex Mono
+    fontFamily: JetBrains Mono
     fontSize: 2rem
     fontWeight: 500
     lineHeight: 1.1
   stamp:
-    fontFamily: IBM Plex Mono
+    fontFamily: JetBrains Mono
     fontSize: 0.75rem
     fontWeight: 400
     lineHeight: 1.3
     letterSpacing: 0.02em
 rounded:
   control: 6px
-  card: 10px
+  card: 12px
   full: 999px
 spacing:
   1: 4px
@@ -258,3 +259,8 @@ A second surface for data work, scoped to `[data-surface="terminal"]`: /terminal
 - **Density**: 14px body, 13px tables, mono figures, 4px grid, 56px icon rail (bottom bar under 700px), 40px frosted status bar with market state, IST clock and data stamp, ⌘K / `/` command palette, keys 1–5 switch rooms.
 - **Motion** (same durations and easing as §6): panes rise 6px over 320ms staggered 40ms, big numbers count up over 420ms once, meters and split bars grow over 420ms, screener rows re-order with GSAP Flip (320ms), a screener row morphs into the stock header through a named view transition, live quote cells flash green or red for 700ms when a value changes. Nothing loops (no ticker marquee). Reduced motion turns all of it off.
 - **Honesty rules carried over**: every number has an owner section and appears once per page (build fails otherwise); a missing value is a dash with a tooltip; quotes show their age and turn amber when stale; the source's verdict and trade ladder are never shown.
+
+## 14. Editorial surface re-themed to askakshay.com (ADR-011, owner decision)
+The paper theme (§1–§12 above describe it) is superseded for the editorial site by the owner's own site theme, read from askakshay.com on 18 Nov 2026: background `#08090A`, text `#F0F0F0`, accent lime `#B8EF43` (text on lime `#0A0C05`), Fira Sans for headings and body, JetBrains Mono for figures and labels, 12px cards, pill (999px) buttons and inputs, numbered "§ 01 —" section markers, italic lime emphasis words in headlines. The tokens in the front matter above are the current values; §2's paper values and contrast table are historical. The Terminal surface keeps its own graphite and amber palette and its Fraunces/Inter/Plex fonts (§13).
+Contrast (measured): text 17.5:1, muted 7.9:1, lime 14.7:1, black on lime 14.5:1, up 11.3:1, down 7.2:1 on `#08090A`.
+Motion on this surface is richer than §6 allowed: staggered headline reveal, scroll-reveal sections, pointer glow, magnetic buttons, card tilt, count-up figures, one slow marquee of facts, page-transition slide, scroll progress. Everything runs on CSS plus about 3 KB of script (no GSAP, no smooth-scroll library on these pages) and all of it turns off under `prefers-reduced-motion`.

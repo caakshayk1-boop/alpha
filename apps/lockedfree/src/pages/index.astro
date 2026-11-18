@@ -1,36 +1,53 @@
 ---
-import Base from '../layouts/Base.astro'; import EquityCard from '../components/EquityCard.astro'; import Icon from '../components/Icon.astro'; import StatBlock from '../components/StatBlock.astro';
-import { ledger, benchmarkLast } from '../lib/data.ts'; import { agg, dmy, signed, lastDay } from '../lib/view.ts'; import { SCREENS } from '../lib/screens.ts';
-const L = ledger(); const all = agg(L, 'all'); const day = lastDay(L, 'all');
-const probs = [['“I have money sitting there. I put it in when I feel brave, and then I stop.”', 'No system for the money', '/plan/', 'The Plan', 'plan', 'A written one-page plan, goal buckets, and a monthly paper deployment that already knows what to do when markets fall.'],
-  ['“I know my rules. I still size too big, move my stop, and trade to win it back.”', 'Trading without discipline', '/gate/', 'The Gate', 'gate', 'A paper terminal that will not take a trade until the checklist, the size and the stop exist, and that locks when your own limits are hit.'],
-  ['“I can\'t find good stocks. I follow whatever is loudest this week.”', 'No method for finding them', '/screens/', 'The Screens', 'filter', 'Published, rules-based screens. The rules are the product. When nothing passes, the answer is no list.']];
+import Base from '../layouts/Base.astro'; import EquityCard from '../components/EquityCard.astro'; import Icon from '../components/Icon.astro';
+import { ledger, benchmarkLast } from '../lib/data.ts'; import { agg, dmy } from '../lib/view.ts'; import { SCREENS } from '../lib/screens.ts'; import { feedAvailable, loadFeed, cohorts, num, spct, f0 } from '../lib/feed.ts'; import { sectors } from '../lib/stats.ts'; import { facts } from '../lib/insight.ts';
+const L = ledger(); const all = agg(L, 'all'); const F = feedAvailable() ? loadFeed() : null; const b = F?.meta.breadth; const sec = F ? sectors(F.rows) : []; const co = F ? cohorts() : null;
+const top = F ? [...F.rows].filter((r) => num(r, 'comp') != null && r.liquid).sort((a, c) => c.comp - a.comp || a.sym.localeCompare(c.sym)).slice(0, 5) : [];
+const tone = (v: number | null) => (v == null ? '' : v >= 2 ? 'u2' : v > 0 ? 'u1' : v <= -2 ? 'd2' : v < 0 ? 'd1' : '');
+const rooms = [['01', 'No system for the money', 'I have money sitting there. I put it in when I feel brave, <em>then I stop.</em>', 'A written one-page plan, goal buckets, and a monthly paper deployment that already knows what to do when markets fall.', '/plan/', 'The Plan'],
+  ['02', 'Trading without discipline', 'I know my rules. I still size too big and <em>move my stop.</em>', 'A paper terminal that will not take a trade until the checklist, the size and the stop exist, and that locks when your own limits are hit.', '/gate/', 'The Gate'],
+  ['03', 'No method for finding stocks', 'I follow whatever is <em>loudest</em> this week.', 'Published, rules-based screens. The rules are the product. When nothing passes, the answer is no list.', '/screens/', 'The Screens']];
+const marquee = [F ? `${F.rows.length} stocks tracked daily` : 'Stocks tracked daily', `${SCREENS.length} rules-based screens`, 'Every loss stays on the record', 'Cash is a position', 'Missing data stays missing', 'Paper-only, always', 'Delayed quotes, always labelled', 'No tips. No targets.'];
+const words = ['Discipline', 'you', 'can'];
 ---
-<Base title="Rulebook" reading charts>
+<Base title="Rulebook" charts og="/og/default.png">
+<div class="home">
 <script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
-<div class="wrap hero" data-hero><span class="label eyebrow">Educational · paper-only · every loss kept</span>
-<h1 class="display-xl">Rules first. <em>Results</em> in public, with every loss.</h1>
-<p class="lede">Rulebook publishes rules-based stock screens, a paper-trading terminal that enforces your own limits, and a written plan for your money. Everything feeds one public record. Nothing is real money, and nothing is advice.</p><p class="row mt4"><a class="btn" href="/terminal/"><Icon name="dash" size={18} />Open the terminal</a><a class="btn ghost" href="/screener/"><Icon name="table" size={18} />Screen 999 stocks</a></p></div>
-<div class="wrap"><EquityCard />
-<div class="grid g4 card" data-u="mt4">
-  <StatBlock label="Closed trades" value={all ? String(all.n_closed) : '0'} n={all?.n_closed ?? 0} asOf={L.as_of} perf={false} />
-  <StatBlock label="Expectancy (R)" value={all?.expectancy_r == null ? '—' : signed(all.expectancy_r, 2, ' R')} n={all?.n_closed ?? 0} asOf={L.as_of} />
-  <StatBlock label="Max drawdown" value={all ? signed(all.max_drawdown, 0) === '0' ? '₹0' : '−₹' + Math.abs(all.max_drawdown).toLocaleString('en-IN') : '—'} n={all?.n_closed ?? 0} asOf={L.as_of} />
-  <StatBlock label="Open positions" value={String(day?.open_n ?? 0)} n={day?.open_n ?? 0} asOf={L.as_of} perf={false} /></div></div>
-<section class="block"><div class="wrap"><span class="label eyebrow">Three problems, three rooms</span><h2>Which of these is yours?</h2>
-<div class="grid g3 three" data-u="mt5">{probs.map(([q, h, href, name, icon, body]) => <article class="card"><p class="quote-in">{q}</p><div class="label">{h}</div><p class="small" data-u="mt3">{body}</p><a class="btn ghost" href={href}><Icon name={icon} size={18} />{name}</a></article>)}</div></div></section>
-<section class="block"><div class="wrap"><span class="label eyebrow">The Ledger, highlights</span><h2>What the record shows so far</h2>
-<p class="muted" data-u="mt3">{L.picks.length === 0 ? `No picks have been recorded yet. The first weekly run starts the record. Until there are at least 30 closed trades per screen, every statistic here will say it is too small to conclude anything.` : `${L.picks.length} picks recorded, ${all?.n_closed ?? 0} closed, ${all?.n_void ?? 0} voided. Voided and losing trades stay on the record.`}</p>
-<div class="grid g2" data-u="mt4">{SCREENS.map((s) => { const a = agg(L, s.id); return <a class="card" data-vt={`screen-${s.id}`} href={`/screens/${s.id}/`} data-u="plain"><h3>{s.name}</h3><p class="small muted">{s.short}</p><span class="pill">n = {a?.n_closed ?? 0} closed</span> <span class="stamp">{a?.honesty ?? ''}</span></a>; })}</div>
-<p data-u="mt4"><a class="btn ghost" href="/ledger/">Open the full Ledger</a></p></div></section>
-<section class="block"><div class="wrap prose"><span class="label eyebrow">Methodology</span><h2>How every number is made</h2>
-<p data-u="mt3">Each screen has a permanent page with its exact rules, thresholds, data sources, refresh cadence and known weaknesses. One accounting method turns picks and trades into the figures you see, and it counts every charge once. Rules do not change quietly: a change makes a new version of the screen with its own record.</p>
-<p><a class="btn ghost" href="/methodology/">Read the methodology</a></p></div></section>
-<section class="block" id="join"><div class="wrap prose"><span class="label eyebrow">Stay in the loop</span><h2>The weekly note, when there is one</h2><p class="muted" data-u="mt3">One email when a screen is re-run and the list changes, or when it does not. No urgency, no tips. We store your email and the date you agreed, nothing else. Ask and it is deleted.</p>
-<form class="card" method="post" action="/api/subscribe" data-subscribe><div class="field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="email" required></div>
-<div class="field" aria-hidden="true" hidden><label for="hp">Leave empty</label><input id="hp" name="website" type="text" tabindex="-1" autocomplete="off"></div>
-<p class="hint">By subscribing you agree that Rulebook may email you the weekly note. You can unsubscribe at any time by replying. See <a href="/about/">About</a>.</p>
-<input type="hidden" name="consent" value="weekly-note-v1"><button class="btn" type="submit">Join the list</button> <span class="small" role="status" data-subscribe-msg></span></form></div></section>
-<section class="block"><div class="wrap prose"><span class="label eyebrow">About</span><h2>Who this is, and what it is not</h2><p data-u="mt3">Rulebook is an educational project run by an individual. It is not investment advice, not a broker and not a tip service. <a href="/about/">Read the About page</a>.</p></div></section>
-<script src="../scripts/subscribe.ts"></script><script src="../scripts/panic.ts"></script>
-</Base>
+<div class="hero-wrap" data-glow data-hero><div class="wrap">
+  <span class="kicker"><i></i>Rulebook · paper-only · every loss kept</span>
+  <h1 class="display-xl hero-h" aria-label="Discipline you can audit">{words.map((w) => <span class="w" aria-hidden="true">{w}&nbsp;</span>)}<span class="w" aria-hidden="true"><em>audit<span class="cur">_</span></em></span></h1>
+  <p class="lede">Rules-based stock screens, a paper terminal that enforces your own limits, and a public record that never deletes a loss. Educational. Nothing here is advice, and none of it is real money.</p>
+  <div class="cta-row"><a class="btn mag" href="/terminal/">Open the terminal <Icon name="arrow-up-right" size={18} /></a><a class="btn ghost" href="#rooms">Which room is yours →</a></div>
+  <div class="stats"><div><div class="v"><span data-count={F?.rows.length ?? 0}>{F?.rows.length ?? 0}</span></div><div class="l">Stocks tracked</div></div><div><div class="v"><span data-count={SCREENS.length}>{SCREENS.length}</span></div><div class="l">Published screens</div></div><div><div class="v"><span data-count={all?.n_closed ?? 0}>{all?.n_closed ?? 0}</span></div><div class="l">Closed paper trades</div></div><div><div class="v" data-track="home-asof">{F ? dmy(F.asOf).slice(0, -5) : '—'}<small>{F ? dmy(F.asOf).slice(-4) : ''}</small></div><div class="l">Data as of</div></div></div>
+</div></div>
+<div class="marquee" aria-hidden="true"><div class="track">{[0, 1].map(() => marquee.map((m) => <span>{m}</span>))}</div></div>
+
+<section class="sec" id="rooms"><div class="wrap"><div class="sec-k" data-r>§ 01 — Three problems</div><h2 class="sec-h" data-r>Which one is <em>yours?</em></h2><p class="sec-p" data-r>Each room answers one problem with structure, not advice.</p>
+<div class="rooms">{rooms.map(([n, h, q, body, href, name], i) => <a class="room" href={href} data-r={String(i + 1)}><span class="no">{n} / 03 · {h}</span><span class="q" set:html={q}></span><p>{body}</p><span class="go">{name} <Icon name="arrow-up-right" size={16} /></span></a>)}</div></div></section>
+
+{F && b && <section class="sec"><div class="wrap split-2"><div data-r><div class="sec-k">§ 02 — The Terminal</div><h2 class="sec-h">Know what is <em>unusual.</em></h2><p class="sec-p">Every stock gets a one-page profile that says only what sets it apart from its peers. Nothing generic, nothing repeated.</p>
+<ul class="bullets"><li><Icon name="check" size={20} /><span><b>{F.rows.length} one-pagers</b> written from the data, each different</span></li><li><Icon name="check" size={20} /><span><b>Screener, snapshot and daily brief</b> on one dark terminal</span></li><li><Icon name="check" size={20} /><span><b>Delayed quotes and paper P&amp;L</b>, every number age-stamped</span></li></ul>
+<a class="btn mag" href="/terminal/">Open the terminal <Icon name="arrow-up-right" size={18} /></a></div>
+<div class="mock" data-r="2" aria-label="Preview of the terminal using today's data"><div class="mock-bar"><i></i><i></i><i></i><span>Terminal · {dmy(F.asOf)}</span></div><div class="mock-b">
+<div class="mock-n"><div><div class="l">Advancing</div><div class="v up">{b.advancing}</div></div><div><div class="l">Declining</div><div class="v down">{b.declining}</div></div><div><div class="l">Above 200-day</div><div class="v">{Math.round(b.above200)}%</div></div></div>
+<div class="mock-split"><b class="a" data-grow></b><b class="d"></b></div>
+<div class="mock-heat">{sec.map((s) => <div class={tone(s.r1m)}><span class="n">{s.sector}</span><span class="v">{spct(s.r1m)}</span></div>)}</div>
+<table><thead><tr><th>Highest composite</th><th>Score</th><th>Stands out on</th></tr></thead><tbody>{top.map((r) => { const fl = facts(r, co!); const f = fl.find((x) => x.good === true) ?? fl[0]; return <tr><td><a href={`/stock/${r.sym}/`}>{r.sym}</a></td><td>{f0(r.comp)}</td><td class="s">{f ? f.label : '—'}</td></tr>; })}</tbody></table></div></div></div></section>}
+
+<section class="sec"><div class="wrap"><div class="sec-k" data-r>§ {F ? '03' : '02'} — The Screens</div><h2 class="sec-h" data-r>Four rule-sets. <em>Published in full.</em></h2><p class="sec-p" data-r>A short weekly list, or no list at all. Every run is archived and every outcome is on the record.</p>
+<div class="screens">{SCREENS.map((s, i) => { const a = agg(L, s.id); const run = L.runs.filter((r) => r.screen_id === s.id).pop(); return <a class="screen-c" href={`/screens/${s.id}/`} data-vt={`screen-${s.id}`} data-r={String((i % 4) + 1)}><span class="label">Screen v{s.version}</span><h3>{s.name}</h3><p>{s.short}</p><div class="st"><span class="pill">{run ? `${run.passed.length} on the list` : 'no run yet'}</span><span class="pill">n = {a?.n_closed ?? 0} closed</span></div></a>; })}</div></div></section>
+
+<section class="sec"><div class="wrap"><div class="sec-k" data-r>§ {F ? '04' : '03'} — The Ledger</div><h2 class="sec-h" data-r>Proof, with the <em>losses in it.</em></h2><p class="sec-p" data-r>Every pick, trade and void, with sample size beside any return. Nothing can be deleted.</p><div data-r><EquityCard /></div>
+<p data-r><a class="btn ghost" href="/ledger/">Open the full Ledger →</a></p></div></section>
+
+<section class="sec"><div class="wrap"><div class="sec-k" data-r>§ {F ? '05' : '04'} — Method</div><h2 class="sec-h" data-r>How every number is <em>made.</em></h2>
+<div class="method"><div data-r><span class="no">01</span><span><h3>One ledger</h3><p>A single record is the source of every public figure. Pages format it; none computes its own version.</p></span></div><div data-r="2"><span class="no">02</span><span><h3>Append-only history</h3><p>New nights add rows and never rewrite old ones. A test fails the build if they try.</p></span></div><div data-r="3"><span class="no">03</span><span><h3>Missing stays missing</h3><p>A value the source does not have is shown as missing, never guessed, never filled with zero.</p></span></div></div>
+<p class="mt4" data-r><a class="btn ghost" href="/methodology/">Read the methodology →</a></p></div></section>
+
+<section class="sec" id="join"><div class="wrap join"><div class="sec-k" data-r>§ {F ? '06' : '05'} — Stay in the loop</div><h2 class="sec-h" data-r>The weekly note, <em>when there is one.</em></h2><p class="sec-p" data-r>One email when a screen is re-run and the list changes, or when it does not. No urgency, no tips. We store your email and the date you agreed, nothing else.</p>
+<form data-r method="post" action="/api/subscribe" data-subscribe><div class="row2"><label class="sr" for="em" hidden>Email</label><input id="em" name="email" type="email" autocomplete="email" placeholder="you@example.com" required><button class="btn mag" type="submit">Join the list</button></div>
+<div hidden aria-hidden="true"><label for="hp">Leave empty</label><input id="hp" name="website" type="text" tabindex="-1" autocomplete="off"></div><input type="hidden" name="consent" value="weekly-note-v1"><p class="hint">By subscribing you agree that Rulebook may email you the weekly note. Reply to any note to be removed. <span role="status" data-subscribe-msg></span></p></form></div></section>
+
+<section class="sec"><div class="wrap"><div class="sec-k" data-r>About</div><h2 class="sec-h" data-r>Who this is, and what it <em>is not.</em></h2><p class="sec-p" data-r>Rulebook is an educational project run by an individual. It is not investment advice, not a broker and not a tip service. <a href="/about/">Read the About page</a>.</p></div></section>
+</div>
+<script src="../scripts/subscribe.ts"></script><script src="../scripts/panic.ts"></script></Base>
