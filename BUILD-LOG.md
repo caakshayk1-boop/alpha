@@ -139,3 +139,6 @@ Follow-up (same day): the first CI run failed `ultimatum` on a real page error, 
 
 ## 2026-11-17 — Retired ApexPro suites deleted
 Owner approved deleting `accessibility`, `browser`, `studio`, `cockpit` and `terminal` tests (they targeted retired UI and failed for that reason only). No code, workflow test list, package script or other file referenced them. `docs/apexpro/TESTS.md` updated. Untouched: app source, worker, deployed build (v14), all other suites.
+
+## 2026-11-18 — ApexPro layout audit and colour alignment (v15)
+Added `tools/overlap-audit.mjs` (text-on-text and text-on-control overlap, horizontal overflow and page errors; 7 routes x 1440/1024/390): none at rest. A real mobile defect found by eye and fixed: the company page's section links wrapped to two rows and laid a tall dark block under the topbar; they are now one scrolling row at 52px, and the footer lines are left-aligned. Tokens aligned with Tripwire (down #FF6A4D, caution #FFC24B, comparison cyan #4DE1FF, shared neon tokens); SW VERSION v15-terminal. Eight browser suites and 14 model tests pass locally. Untouched: worker, rules, CSP, storage keys.

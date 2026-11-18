@@ -13,10 +13,11 @@
   --accent:#FFA800;          /* terminal amber: brand, selection, focus, primary action */
   --accent-ink:#1B1200;
   --up:#3DDC97;              /* signed gains, always paired with + sign and value */
-  --down:#FF6B6B;            /* signed losses, always paired with - sign and value */
-  --amber:#FFD166;           /* caution, stale, held */
-  --compare:#5AA9FF;         /* comparison series and links of record */
-  --selection:#FFA800;--selection-ink:#1B1200;--matrix-up:rgba(61,220,151,.12);--matrix-down:rgba(255,107,107,.12);--gold:#EFC47A;
+  --down:#FF6A4D;            /* signed losses, always paired with - sign and value */
+  --amber:#FFC24B;           /* caution, stale, held */
+  --compare:#4DE1FF;         /* comparison series and links of record */
+  --selection:#FFA800;--selection-ink:#1B1200;--matrix-up:rgba(61,220,151,.12);--matrix-down:rgba(255,106,77,.12);--gold:#EFC47A;
+  --neon:#CCFF43;--neon-cyan:#4DE1FF; /* shared with Tripwire: the same up, down, caution and two neon touches on both sites; only the brand accent differs (Tripwire lime, ApexPro amber) */
   --radius:8px; --radius-s:4px;
   --dur-1:120ms; --dur-2:200ms; --dur-3:320ms; --dur-page:420ms;
   --ease:cubic-bezier(.22,1,.36,1);

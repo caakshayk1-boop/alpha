@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { setState, useAppState } from '../app.tsx';
 import { SLOW_DOWN, useChart } from '../data.ts';
-import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
+import { aggregate, compareSeries, drawdownSeries, pathThrough, rangeAvailability, rsiSeries, smaSeries, dateLabel, downsample, geometry, geometryPair, nearestX, sliceRange, spanWord, SHORT_RANGES, stats, xTicks, yTicks, type Frame, type Pt, type RangeId } from '../chart.ts';
 import { confirmedDivergences, evidenceAt } from '../chartEvidence.ts';
 import { inr, pct, tone } from '../fmt.ts';
 import { Radios, Sheet } from '../ui.tsx';
@@ -38,6 +38,10 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const [wpx, setWpx] = useState(340);
   const bars = !vs && ((kind === 'candle' && hasOhlc) || (vol && hasVol));
   const eff: Frame = useMemo(() => { if (!bars) return view; const n = (fr: Frame) => aggregate(win.pts, fr).length; const cap = Math.max(60, Math.floor(wpx / 5)); if (view === 'daily') return win.pts.length <= cap ? 'daily' : n('weekly') <= cap ? 'weekly' : 'monthly'; if (view === 'weekly') return n('weekly') <= cap ? 'weekly' : 'monthly'; return 'monthly'; }, [bars, view, win, wpx]);
+  /* 18 Nov 2026: turning Candles on over a year of daily bars used to swap the frame to weekly on a phone while the D button stayed lit. Daily candles are the point, so Candles now narrows the range to the longest short one whose days fit
+     (6M, 3M or 1M) and says so; only a person who then picks a longer range gets the weekly fallback, which names itself. */
+  const candleCap = Math.max(60, Math.floor(wpx / 5));
+  const fitDaily = () => { if (view !== 'daily') return; const need = (r: RangeId) => sliceRange(all, r).pts.length; if (range !== '1Y' || need(range) <= candleCap) return; const r = (['6M', '3M', '1M'] as RangeId[]).find((x) => need(x) <= candleCap && sliceRange(all, x).covers); if (r) { setRange(r); setCur(null); } };
   const shown = useMemo(() => {
     if (bars) return aggregate(win.pts, eff);
     return view === 'daily' ? downsample(win.pts, 700) : (win.pts.length ? [win.pts[0], ...aggregate(win.pts, view).filter((p) => p.t > win.pts[0].t)] : []);
@@ -178,7 +182,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
       {p && cmp ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')} · {sym}</span><b className="num">{arrowOf(cmpA)} {pct(cmpA)}</b></div><div className="cf-chip"><span className="cf-cl">Nifty 50 over the same days</span><b className="num">{arrowOf(cmpB)} {pct(cmpB)}</b></div></>
         : p ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')}</span><b className="num">{f(p.c)}</b></div><div className="cf-chip"><span className="cf-cl">From window start</span><b className="num">{arrowOf(fromStart)} {pct(fromStart)}</b></div>{(p.o != null || p.v != null) && <div className="cf-ohlc small num dim">{[p.o != null && p.h != null && p.l != null ? `O ${f(p.o)} · H ${f(p.h)} · L ${f(p.l)}` : '', p.v != null ? `volume ${compact(p.v)}` : ''].filter(Boolean).join(' · ')}</div>}</>
         : cmp ? <><div className="cf-chip"><span className="cf-cl">Absolute change</span><b className={`num ${tone(cmp.stock)}`}>{arrowOf(cmp.stock)} {pct(cmp.stock)}</b></div><div className="cf-chip"><span className="cf-cl">Relative to the Nifty 50</span><b className={`num ${tone(cmp.diff)}`}>{arrowOf(cmp.diff)} {signedPts(cmp.diff)} pts</b></div></>
-        : st ? <><div className="cf-chip"><span className="cf-cl">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`}</span><b className={`num ${tone(st.ret)}`}>{arrowOf(st.ret)} {pct(st.ret, 1)}</b></div>{st.cagr != null && <div className="cf-chip"><span className="cf-cl">{yrs}, compounded</span><b className="num">{pct(st.cagr, 1)} a year</b></div>}</> : null}
+        : st ? <><div className="cf-chip"><span className="cf-cl">{range === 'Max' || !win.covers ? 'Since listing in this data' : (range.endsWith('M') ? `Last ${range === '1M' ? 'month' : range.replace('M', ' months')}` : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`)}</span><b className={`num ${tone(st.ret)}`}>{arrowOf(st.ret)} {pct(st.ret, 1)}</b></div>{st.cagr != null && <div className="cf-chip"><span className="cf-cl">{yrs}, compounded</span><b className="num">{pct(st.cagr, 1)} a year</b></div>}</> : null}
     </div>
     {ma && geo && <div className="small num" style={{ display: 'flex', gap: 14, marginTop: 4 }}><span><span className="c-key" style={{ background: 'var(--a4)' }} />50-day (solid)</span><span><span className="c-key dashed" style={{ background: 'repeating-linear-gradient(90deg,var(--a2) 0 3px,transparent 3px 6px)' }} />200-day (dotted)</span></div>}
     {vol && hasVol && geo && !cmp && (() => { const H3 = 70; const vs2 = shown.map((q) => q.v ?? 0); const mx = Math.max(1, ...vs2); const bw = geo.barW;
@@ -204,8 +208,9 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     notes={<>
       {!report && optsOpen && <Sheet title="Chart options" onClose={() => setOptsOpen(false)}>
         <div className="c-sheet">
+          <Radios label="Recent window" value={range} onChange={(r) => { setRange(r); setCur(null); }} items={SHORT_RANGES.map((r) => ({ id: r.id, label: r.id, disabled: !sliceRange(all, r.id).covers, hint: sliceRange(all, r.id).covers ? undefined : `${r.id}: not enough history` }))} />
           <Radios label="Detail" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'DAILY' }, { id: 'weekly', label: 'WEEKLY' }, { id: 'monthly', label: 'MONTHLY' }] as { id: Frame; label: string }[]} />
-          {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => solo(() => setKind(v))} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', hint: vs ? 'Candles are drawn for the stock alone: this switches off the Nifty comparison' : undefined }] as { id: 'line' | 'candle'; label: string; hint?: string }[]} /> : null}
+          {hasOhlc && !instrument ? <Radios label="Style" value={kind} onChange={(v) => solo(() => { setKind(v); if (v === 'candle') fitDaily(); })} items={[{ id: 'line', label: 'LINE' }, { id: 'candle', label: 'CANDLES', hint: vs ? 'Candles are drawn for the stock alone: this switches off the Nifty comparison' : undefined }] as { id: 'line' | 'candle'; label: string; hint?: string }[]} /> : null}
           <Radios label="Scale" value={logOn ? 'log' : 'linear'} onChange={(v) => setLog(v === 'log')} items={[{ id: 'linear', label: 'LINEAR' }, { id: 'log', label: 'LOG', disabled: !canLog, hint: !canLog ? 'Log scale needs every close above zero' : undefined }]} />
           <fieldset className="c-checks"><legend>Overlays</legend>
             {[
@@ -253,7 +258,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     {!report && <div className="c-workbench" aria-label="Research chart tools">
       <div className="c-workbench-main">
         <Radios label="Chart interval" value={bars ? eff : view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'D' }, { id: 'weekly', label: 'W' }, { id: 'monthly', label: 'M' }] as { id: Frame; label: string }[]} />
-        {hasOhlc && <button className="btn sm" aria-pressed={kind === 'candle'} onClick={() => solo(() => setKind(kind === 'line' ? 'candle' : 'line'))}>Candles</button>}
+        {hasOhlc && <button className="btn sm" aria-pressed={kind === 'candle'} onClick={() => solo(() => { const k = kind === 'line' ? 'candle' : 'line'; setKind(k); if (k === 'candle') fitDaily(); })}>Candles</button>}
         <button className="btn sm" aria-pressed={rsi} onClick={() => solo(() => { setRsi(!rsi); if (rsi) setDivOn(false); })}>RSI</button>
         <button className="btn sm" aria-pressed={inspect} onClick={() => { setInspect(!inspect); if (inspect) setCur(null); }}>History lens</button>
       </div>

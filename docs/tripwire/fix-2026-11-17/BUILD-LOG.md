@@ -74,3 +74,13 @@ Approved by the owner ("Yes, phase 1"). Three pieces, no engine, rule, gate, cos
 - Not built from the plan yet: a static, crawlable per-day edition page and the weekly letter (email capture is deferred by the owner).
 - Checks: `tests/edition.test.ts` 4 unit tests; `tests/edition.mjs` browser suite at 390 and 1280 px (added to `check.mjs`).
 - Untouched: ApexPro, all rules and gate logic, every localStorage key.
+
+## Nightly deploy reliability, chart ranges, near-stop colour (18 Nov 2026)
+**Changed.**
+- *Why the nightly deploy failed so often* (run histories 16–18 Nov): (1) rows with no sector (fixed 17 Nov by the Unclassified cap); (2) the build running a few minutes before the nightly screen published ("1 session behind"); (3) the browser gate reading the lazy day-line chart before it had loaded (`journey.mjs`, failed 17 Nov 15:33 and 18 Nov 00:12 UTC). Fixes: `tripwire.yml` waits (up to 4 tries, 8 minutes apart) when and only when the build is exactly a session behind, then checks again; any other data fault still fails at once. The nightly dispatch now gets the same second browser-gate attempt a scheduled run had. The timeout is 90 minutes. The journey test waits for the day line.
+- *Charts:* ranges 1M, 3M and 6M added (the shortest was 1Y). Turning Candles on over a window too long for daily bars now narrows to the longest short range that fits (6M, 3M, 1M) instead of silently switching to weekly while D stayed lit; a longer range still falls back to weekly and says so.
+- *Near stop in green:* "near the stop" measures distance to the stop in force, which after T1 is the entry price, so a profitable position can sit near it. Such a row now reads amber, "above its protected stop" / "Close to its profit-protecting stop", not red. A losing position is unchanged (red).
+- *Colour:* both sites now share up #3DDC97, down #FF6A4D, caution #FFC24B and two neon tokens (lime #CCFF43, cyan #4DE1FF); only the brand accent differs (Tripwire lime, ApexPro amber). ApexPro's down, caution and comparison colours moved to these values; its SW is v15.
+**Verified.** Types, token lint, 978 unit tests (one workflow test updated for the intended change, one added for the short ranges), ApexPro 14 model tests and 8 browser suites, ApexPro overlap/overflow audit (7 routes x 3 widths, none). The full Tripwire browser gate result is appended below.
+**Untouched.** Engines, gate, scoring, ledger, cost model; ApexPro endpoints and rules; localStorage keys.
+**Full browser gate on the final build:** exit 0, 2,326 PASS, 0 FAIL (an earlier run failed 9 checks when the short ranges sat in the main range row: 44px targets and the compare page at 320 to 390px; they moved to Chart options).

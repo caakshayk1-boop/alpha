@@ -64,11 +64,12 @@
 .pr-sub{font-size:var(--fs-data);color:var(--ink-3);overflow-wrap:anywhere}
 .pr-state{color:var(--ink-2);font-weight:600}
 .pr-state.up{color:var(--up)}.pr-state.down{color:var(--down)}
-.pr-near.down{color:var(--down)}.pr-near.up{color:var(--up)}
+.pr-near.down{color:var(--down)}.pr-near.up{color:var(--up)}.pr-near.locked{color:var(--amber)}
 .pr-pnl{display:grid;justify-items:end;text-align:right;gap:2px;min-width:0}
 .pc-row .pc-big{font:800 1.375rem/1.1 var(--font);letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
 .pc-row .pc-r{font-size:var(--fs-data);white-space:nowrap}
 .pc-row.near-stop{box-shadow:inset 3px 0 0 var(--down),var(--shadow-raised)}
+.pc-row.near-stop.near-locked{box-shadow:inset 3px 0 0 var(--amber),var(--shadow-raised)}
 .pc-row.near-target{box-shadow:inset 3px 0 0 var(--up),var(--shadow-raised)}
 .pc-row .tl{padding:0 var(--sp-4) var(--sp-3)}
 .pc-row .tl-notes li{font-size:var(--fs-label);color:var(--ink-3)}

@@ -3,15 +3,18 @@
 /** `n` is the Nifty 50 close on the same day, or null/absent when it is not held for that day. */
 /** `o`, `h`, `l`, `v` are the day's open, high, low and volume where Yahoo printed them; absent or null otherwise, never filled from the close. */
 export interface Pt { t: number; c: number; n?: number | null; o?: number | null; h?: number | null; l?: number | null; v?: number | null }
-export type RangeId = '1Y' | '3Y' | '5Y' | '10Y' | 'Max';
+export type RangeId = '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y' | 'Max';
 export const RANGES: { id: RangeId; years: number | null }[] = [{ id: '1Y', years: 1 }, { id: '3Y', years: 3 }, { id: '5Y', years: 5 }, { id: '10Y', years: 10 }, { id: 'Max', years: null }];
+/** Recent windows, offered in the chart options only (the primary range row and the comparison keep the five long ranges): they are what makes daily candles readable. */
+export const SHORT_RANGES: { id: RangeId; years: number }[] = [{ id: '1M', years: 1 / 12 }, { id: '3M', years: 0.25 }, { id: '6M', years: 0.5 }];
+const yearsOf = (id: RangeId) => [...SHORT_RANGES, ...RANGES].find((r) => r.id === id)!.years;
 const DAY = 86400;
 const ist = (t: number) => new Date((t + 19800) * 1000);
 
 /** The window ending at the last point. A range longer than the history is the whole history, and says so (see `covers`). */
 export function sliceRange(pts: readonly Pt[], id: RangeId): { pts: Pt[]; covers: boolean } {
   if (!pts.length) return { pts: [], covers: false };
-  const years = RANGES.find((r) => r.id === id)!.years;
+  const years = yearsOf(id);
   if (years === null) return { pts: [...pts], covers: true };
   const end = pts[pts.length - 1].t; const from = end - years * 365.25 * DAY;
   const out = pts.filter((p) => p.t >= from);

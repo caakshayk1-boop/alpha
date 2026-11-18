@@ -10,6 +10,7 @@
   /* colour: meaning. Accent is for actions and highlights only; up/down are data semantics; amber is staleness and warnings */
   --accent:#CCFF43;--accent-press:#A8E02E;--accent-tint:rgba(204,255,67,.12);--on-accent:#131503;
   --up:#3DDC97;--down:#FF6A4D;--amber:#FFC24B;
+  --neon:#CCFF43;--neon-cyan:#4DE1FF;   /* shared with ApexPro (same up, down, caution; ApexPro's brand accent is amber, Tripwire's is this lime) */
   /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
   --series-1:#C9CED8;--series-2:#B98A00;--series-3:#D2508F;   /* 12 Nov 2026: moved into the validated dark band (OKLCH L .48 to .67; dataviz validate_palette: CVD worst adjacent dE 14.8 deutan, normal 22.7, contrast on surface >= 3:1) */
   /* chart look (12 Nov 2026): one hairline grid, a plot surface, thin round-capped lines, a soft area under them, a current-value dot with a ring */

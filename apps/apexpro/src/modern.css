@@ -139,6 +139,11 @@ tbody tr{transition:background-color var(--dur-1)}
  .matrix-head{font-size:11px}.matrix-name small{font-size:11px}.matrix-value{font-size:11px}.matrix-value small{font-size:11px}
  .lens-tabs button{font-size:11px}
  .canvas-topline h1{font-size:30px}
+ /* 18 Nov 2026: the company's section links wrapped to two rows and laid a tall dark block over the page under the topbar; one scrolling row, directly under the 52px topbar */
+ .company-chapters{top:52px;flex-wrap:nowrap;overflow-x:auto;gap:0 18px;scrollbar-width:none;overscroll-behavior-x:contain}
+ .company-chapters::-webkit-scrollbar{display:none}
+ .company-chapters a{flex:0 0 auto;white-space:nowrap}
+ footer span:last-child{margin-left:0}
 }
 
 /* ---- Floors: no text under 11px; coarse pointers get 44px for matrix sort and chapter links ---- */
