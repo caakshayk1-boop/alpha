@@ -1,8 +1,9 @@
 // Draws equity cards (lightweight-charts) and sparklines (uPlot). Reads JSON from the page; never computes a figure.
-import { createChart, LineSeries, BaselineSeries, ColorType, type Time } from 'lightweight-charts';
-import { gsap } from 'gsap';
+type LW = typeof import('lightweight-charts');
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+async function init() {
+  const { createChart, LineSeries, BaselineSeries, ColorType } = await import('lightweight-charts') as LW; type Time = import('lightweight-charts').Time;
 for (const card of document.querySelectorAll<HTMLElement>('[data-equity]')) {
   const el = card.querySelector<HTMLElement>('[data-chart="equity"]'), raw = card.querySelector('script[data-series]')?.textContent; if (!el || !raw) continue;
   const pts = JSON.parse(raw) as { date: string; ret: number | null; bench: number | null; dd: number }[];
@@ -18,7 +19,7 @@ for (const card of document.querySelectorAll<HTMLElement>('[data-equity]')) {
   chart.timeScale().fitContent();
   // draw-in once per session, first view only; skipped under reduced motion
   let seen = false; try { seen = sessionStorage.getItem('rb-curve') === '1'; sessionStorage.setItem('rb-curve', '1'); } catch { /* storage unavailable: just draw */ }
-  if (!reduce && !seen) gsap.fromTo(el, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 0.42, ease: 'power3.out', clearProps: 'clipPath' });
+  if (!reduce && !seen) { el.classList.add('draw-in'); setTimeout(() => el.classList.remove('draw-in'), 600); }
 }
 // Price chart on stock pages: one line, no indicators, no trade markers.
 for (const el of document.querySelectorAll<HTMLElement>('[data-chart="price"]')) {
@@ -26,3 +27,6 @@ for (const el of document.querySelectorAll<HTMLElement>('[data-chart="price"]'))
   const chart = createChart(el, { autoSize: true, layout: { attributionLogo: false, background: { type: ColorType.Solid, color: css('--card') }, textColor: css('--ink-muted'), fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 }, grid: { vertLines: { visible: false }, horzLines: { color: css('--hairline') } }, rightPriceScale: { borderColor: css('--hairline') }, timeScale: { borderColor: css('--hairline') }, handleScroll: false, handleScale: false });
   chart.addSeries(LineSeries, { color: css('--ink'), lineWidth: 2, priceLineVisible: false }).setData(pts.map((p) => ({ time: p.date as Time, value: p.c }))); chart.timeScale().fitContent();
 }
+}
+// the 160 KB charting library is fetched only when a chart scrolls near the viewport; a page without chart data never loads it
+const hosts = [...document.querySelectorAll<HTMLElement>('[data-chart]')]; if (hosts.length) { const io = new IntersectionObserver((es, o) => { if (es.some((e) => e.isIntersecting)) { o.disconnect(); init(); } }, { rootMargin: '300px' }); hosts.forEach((h) => io.observe(h)); }
