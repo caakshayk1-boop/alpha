@@ -28,8 +28,9 @@ export function Markets() {
   const [dayIx, setDayIx] = useState<'NIFTY' | 'BANKNIFTY' | 'VIX'>('NIFTY');
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
   // 18 Nov 2026: the sector heat map's live view. The sample (top names per sector) is asked for only while the session is on; the shared live feed carries the request.
-  const sample = useMemo(() => (live ? liveSample(rows) : []), [rows, live]); const hf = useLiveSymbols(sample, sample.length > 0);
-  const heatLive = useMemo(() => { const h = liveHeat(rows, sample, hf.data?.quotes ?? null, Date.now()); return liveUsable(h) ? h : null; }, [rows, sample, hf.data, hf.tick]);
+  const shut = sess.phase === 'closed';   // after the close the day's last prints are used (dated today only); before the open nothing is asked
+  const sample = useMemo(() => (live || shut ? liveSample(rows) : []), [rows, live, shut]); const hf = useLiveSymbols(sample, sample.length > 0);
+  const heatLive = useMemo(() => { const h = liveHeat(rows, sample, hf.data?.quotes ?? null, Date.now(), !live); return liveUsable(h) ? h : null; }, [rows, sample, hf.data, hf.tick, live]);
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });
   const lead = bankLead(indexFacts(pulse.data?.quotes.BANKNIFTY)?.ch ?? null, indexFacts(pulse.data?.quotes.NIFTY)?.ch ?? null);
