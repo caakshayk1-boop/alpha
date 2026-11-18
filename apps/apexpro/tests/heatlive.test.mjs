@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {liveSample,liveChanges,liveUsable,chunk,nseRegular,istTime} from '../src/heatlive.js';
+import {sectorStats} from '../src/canvas.js';
+
+const OPEN=Date.parse('2026-11-16T05:30:00Z'),SHUT=Date.parse('2026-11-16T17:30:00Z'),SAT=Date.parse('2026-11-14T05:30:00Z');
+const R=(sym,sector,t,x={})=>({sym,sector,liquid:true,turnover_cr:t,r1d:.5,...x});
+const rows=[R('A1','Tech',500),R('A2','Tech',400),R('A3','Tech',300),R('A4','Tech',10),R('B1','Bank',900),R('B2','Bank',100),R('B3','Bank',50),R('Z1','Tech',9999,{liquid:false}),R('Z2','Tech',9999,{stale:true}),R('Z3','Tech',9999,{sector:null}),R('Z4','Tech',0)];
+const Q=(px,prev,age=60,x={})=>({px,prev,pt:OPEN/1000-age,live:true,...x});
+
+test('the sample is the top names by traded value in each sector; illiquid, stale, sector-less and zero-turnover rows are never in it',()=>{
+  assert.deepEqual(liveSample(rows,2),['A1','A2','B1','B2']);assert.deepEqual(liveSample(rows,6).sort(),['A1','A2','A3','A4','B1','B2','B3']);
+});
+test('the session clock: Monday 11:00 IST is on; 23:00 IST and a Saturday are not',()=>{assert.equal(nseRegular(OPEN),true);assert.equal(nseRegular(SHUT),false);assert.equal(nseRegular(SAT),false);});
+test('the live change is price over previous close; a missing, stale, malformed or not-live quote leaves the name out',()=>{
+  const h=liveChanges(['A1','A2','A3','B1','B2','B3'],{A1:Q(102,100),A2:Q(99,100),A3:Q(101,100,3600),B1:Q(NaN,100),B2:Q(100,100,60,{live:false}),B3:null},OPEN);
+  assert.deepEqual(Object.keys(h.changes),['A1','A2']);assert.ok(Math.abs(h.changes.A1-2)<1e-9&&Math.abs(h.changes.A2+1)<1e-9);assert.equal(h.measured,2);assert.equal(h.asked,6);assert.equal(h.obs,OPEN/1000-60);
+  assert.equal(liveChanges(['A1'],{A1:Q(100,0)},OPEN).measured,0);assert.equal(liveChanges(['A1'],{A1:Q(-1,100)},OPEN).measured,0);
+});
+test('a shut market or a weekend measures nothing, whatever the quote says',()=>{assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:SHUT/1000-30}},SHUT).measured,0);assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:SAT/1000-30}},SAT).measured,0);});
+test('the live view is offered only when most of the sample answered, and at least 12 names',()=>{const mk=(a,m)=>({asked:a,measured:m});assert.equal(liveUsable(mk(66,39)),false);assert.equal(liveUsable(mk(66,40)),true);assert.equal(liveUsable(mk(10,10)),false);assert.equal(liveUsable(null),false);});
+test('the sector 1D value is the MEDIAN of the live changes (equal weight, as the close column); under 3 names it is missing, never estimated',()=>{
+  const live={changes:{A1:2,A2:-1,A3:1,B1:3,B2:0}};const s=sectorStats(rows,live);
+  assert.deepEqual(s.find(x=>x.name==='Tech').returns.r1d,{value:1,count:3,live:true});assert.deepEqual(s.find(x=>x.name==='Bank').returns.r1d,{value:null,count:2,live:true});
+  assert.equal(sectorStats(rows).find(x=>x.name==='Tech').returns.r1d.live,undefined,'without live the close column is untouched');
+});
+test('chunking and IST time',()=>{assert.deepEqual(chunk([1,2,3,4,5],2),[[1,2],[3,4],[5]]);assert.deepEqual(chunk([],30),[]);assert.equal(istTime(OPEN/1000),'11:00 IST');});
