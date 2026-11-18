@@ -8,8 +8,6 @@ const clock = document.querySelector<HTMLElement>('[data-clock]'), mk = document
 const tick = () => { const d = istNow(); if (clock) clock.textContent = `IST ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; const s = marketState(d); if (mk) mk.dataset.state = s.state; if (mt) mt.textContent = s.text; }; tick(); setInterval(tick, 1000);
 // staged reveal: panels rise 6px over 320ms, 40ms apart. Without JS they are simply visible (the class is added here).
 const els = [...document.querySelectorAll<HTMLElement>('.pane, .tape')]; if (!reduce) { els.forEach((e) => e.classList.add('reveal')); requestAnimationFrame(() => els.forEach((e, i) => setTimeout(() => e.classList.add('in'), Math.min(i, 10) * 40))); }
-// count-up on big numbers, once
-if (!reduce) import('gsap').then(({ gsap }) => { for (const el of document.querySelectorAll<HTMLElement>('[data-count]')) { const to = parseFloat(el.dataset.count!), dec = +(el.dataset.dec ?? 0), o = { v: 0 }; gsap.to(o, { v: to, duration: 0.42, ease: 'power3.out', onUpdate: () => (el.textContent = o.v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec })), onComplete: () => (el.textContent = to.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec })) }); } });
 // command palette
 const box = document.querySelector<HTMLElement>('[data-cmdk]')!, input = document.querySelector<HTMLInputElement>('[data-cmdk-input]')!, list = document.querySelector<HTMLElement>('[data-cmdk-list]')!;
 type Item = { s: string; m: string; href: string }; let all: Item[] = []; let sel = 0; let shown: Item[] = [];

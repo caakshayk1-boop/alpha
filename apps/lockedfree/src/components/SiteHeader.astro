@@ -1,0 +1,10 @@
+---
+// One header for the whole product: the editorial site and every terminal room share it.
+import Icon from './Icon.astro';
+const { path = '/' } = Astro.props;
+const terminal = ['/terminal/', '/screener/', '/snapshot/', '/brief/', '/pnl/', '/stock/'];
+const nav = [['/terminal/', 'Terminal', 'dash'], ['/screens/', 'Screens', 'filter'], ['/gate/', 'The Gate', 'gate'], ['/plan/', 'The Plan', 'plan'], ['/ledger/', 'The Ledger', 'ledger'], ['/about/', 'About', 'info']];
+const on = (h: string) => (h === '/terminal/' ? terminal.some((t) => path.startsWith(t)) : path.startsWith(h));
+---
+<header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook</a>
+<nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? 'page' : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>

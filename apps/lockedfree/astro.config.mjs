@@ -9,6 +9,6 @@ export default defineConfig({
   devToolbar: { enabled: false },
   vite: {
     build: { assetsInlineLimit: 0 },
-    plugins: [FontaineTransform.vite({ fallbacks: { 'Fraunces Variable': ['Georgia'], 'Inter Variable': ['Arial'], 'IBM Plex Mono': ['Courier New'], 'Fira Sans': ['Arial'], 'JetBrains Mono Variable': ['Courier New'] }, resolvePath: (id) => new URL('file://' + fileURLToPath(new URL('./node_modules/', import.meta.url)) + id.replace(/^\//, '')) })],
+    plugins: [FontaineTransform.vite({ fallbacks: { 'Fira Sans': ['Arial'], 'JetBrains Mono Variable': ['Courier New'] }, resolvePath: (id) => new URL('file://' + fileURLToPath(new URL('./node_modules/', import.meta.url)) + id.replace(/^\//, '')) })],
   },
 });
