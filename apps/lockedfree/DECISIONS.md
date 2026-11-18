@@ -31,3 +31,10 @@ Not Astro islands: islands inject inline bootstrap scripts that a strict CSP for
 
 ## ADR-009 — Strict CSP kept; chart attribution is a footer link (2026-11-18)
 `style-src 'self'` with no inline anything. lightweight-charts injects an inline `<style>` for its attribution logo, which the CSP blocked. The logo is switched off (`attributionLogo: false`) and the library's required attribution is a text link to tradingview.com in the footer of every page.
+
+## ADR-010 — Terminal surfaces override the light-only, end-of-day-only rules (owner decision, 2026-11-18)
+The owner asked for a Bloomberg/Apple-style terminal (dashboard, screener, snapshot, daily brief, live P&L, a one-pager for each of the 999 tracked stocks) with motion and delayed live quotes, and chose to override Rulebook's design law for it. Scope of the override, so the rest stays intact:
+- A dark graphite theme applies ONLY under `[data-surface="terminal"]` (/terminal/, /screener/, /snapshot/, /brief/, /pnl/, /stock/). The editorial site (home, screens, ledger, gate, plan, about) stays the paper theme. There is still no theme toggle.
+- Quotes may be delayed-live (polled from the Worker, every number age-stamped) on those surfaces. The Ledger remains end-of-day and append-only.
+- Kept regardless: no recommendations, no verdicts, no entry/stop/target ladders from the source feed, no return promises, no gamification, "missing stays missing", sign+arrow beside every colour. The feed's `vd` verdict and `lad` trade ladder are deliberately NOT shown (they read as advice; BUILD-PLAN R1).
+- Source: the owner's own daily feed (trading-dashboard/docs/*.json via raw.githubusercontent.com), refreshed about 05:42 IST. Quotes are the only intraday data and come from Yahoo through the Worker (unofficial, delayed).

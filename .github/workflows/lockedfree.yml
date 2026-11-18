@@ -11,6 +11,10 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # the owner's daily feed lands about 05:45 IST; rebuild after it, with a retry. Mon-Sat covers each trading day's data.
+    - cron: '30 1 * * 1-6'      # 07:00 IST
+    - cron: '30 3 * * 1-6'      # 09:00 IST, retry
 concurrency:
   group: lockedfree-deploy
   cancel-in-progress: false
@@ -31,6 +35,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci
+      - name: Download and validate the daily feed (fails the run, and so blocks the deploy, if it is stale or incomplete)
+        run: node tools/fetch-feed.mjs
       - run: npm test
       - run: npx astro build
       - run: node tools/assert-no-demo.mjs dist
@@ -49,3 +55,6 @@ jobs:
           curl -fsS https://lockedfree.askakshay.com/ | grep -q "Rulebook"
           curl -fsSI https://lockedfree.askakshay.com/ | grep -qi "content-security-policy"
           curl -fsS https://lockedfree.askakshay.com/api/health | grep -q '"ok":true'
+          curl -fsS https://lockedfree.askakshay.com/terminal/ | grep -q "Terminal"
+          curl -fsS https://lockedfree.askakshay.com/stock/TCS/ | grep -q "Tata Consultancy"
+          curl -fsS https://lockedfree.askakshay.com/data/universe.json | grep -q '"cols"'
