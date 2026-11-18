@@ -3,7 +3,7 @@
  *  next open after the first run where it no longer passes; initial risk (R) is measured to a fixed STOP_PCT below entry; a daily low at or under
  *  the stop exits at the stop, or at the open if it gapped through. Bars missing for a session leave the pick pending/open: nothing is invented. */
 import { evaluate, type Fill, r2 } from './accounting.ts';
-import { chargesFor, CHARGES_VERSION } from './charges.ts'; import { CAPITAL, MAX_OPEN, SECTOR_CAP, TICKET } from './book.ts';
+import { chargesFor, CHARGES_VERSION } from './charges.ts'; import { ruleFor, timeLimit, type ExitRule } from './exitrules.ts'; import { CAPITAL, MAX_OPEN, SECTOR_CAP, TICKET } from './book.ts';
 export const SCHEMA = 'rulebook-ledger/1';
 export const NOTIONAL = 100000, STOP_PCT = 20, SMALL_N = 30;   // NOTIONAL is the legacy position size, used only when a ledger's config has no ticket
 /** 'signal-close' (ADR-013, owner request): a pick fills at the CLOSE of the day it is listed, and a dropped pick exits at the close of the run that drops it. 'next-open' (ADR-006): the next session's open. */
@@ -12,7 +12,7 @@ export interface Bar { o: number; h: number; l: number; c: number }
 export type Bars = Record<string, Record<string, Bar>>;       // symbol -> date -> bar (a missing date is missing)
 export interface RunIn { screen_id: string; run_date: string; passed: string[]; /** the passers the book took as calls (ADR-014); absent = every passer is taken */ taken?: string[]; /** the screen's own list (its best passers); v2 */ listed?: string[]; skipped?: { symbol: string; why: string }[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
 export interface Pick { id: string; screen_id: string; symbol: string; first_listed_run: string; status: 'pending' | 'open' | 'closed' | 'voided';
-  fills: Fill[]; stop: number | null; exit_after: string | null; exit_reason: 'dropped' | 'stop' | 'gap-stop' | null; voided: { date: string; reason: string } | null }
+  fills: Fill[]; stop: number | null; exit_after: string | null; exit_reason: 'dropped' | 'stop' | 'gap-stop' | 'target' | 'gap-target' | 'time' | null; /** the exit rule in force (ADR-017); added to a pick when it is entered */ rule?: ExitRule; voided: { date: string; reason: string } | null }
 export interface BookDay { date: string; screen_id: string; equity: number; committed: number; realised: number; unrealised: number; open_n: number; benchmark_close: number | null }
 export interface Aggregate { screen_id: string; as_of: string; n_picks: number; n_open: number; n_closed: number; n_void: number; win_rate: number | null; expectancy_r: number | null;
   avg_win: number | null; avg_loss: number | null; max_drawdown: number; longest_losing_streak: number; honesty: string | null }
@@ -41,15 +41,22 @@ function advance(p: Pick, bars: Record<string, Bar> | undefined, asOf: string, b
   if (p.status === 'closed' || p.status === 'voided') return;
   const close = basis === 'signal-close';
   if (p.status === 'pending') {
-    if (close) { const d = p.first_listed_run, b = bars?.[d]; if (!b || d > asOf || !(b.c > 0)) return; if (unaffordable(p, b.c, d, ticket)) return; p.fills.push(buyFill(d, b.c, ticket)); p.stop = r2(b.c * (1 - STOP_PCT / 100)); p.status = 'open'; }
-    else { const d = dates(bars, p.first_listed_run)[0]; if (!d || d > asOf) return; const px = bars![d].o; if (!(px > 0)) return; if (unaffordable(p, px, d, ticket)) return; p.fills.push(buyFill(d, px, ticket)); p.stop = r2(px * (1 - STOP_PCT / 100)); p.status = 'open'; }
+    if (close) { const d = p.first_listed_run, b = bars?.[d]; if (!b || d > asOf || !(b.c > 0)) return; if (unaffordable(p, b.c, d, ticket)) return; p.fills.push(buyFill(d, b.c, ticket)); p.rule = ruleFor(p.screen_id); p.stop = r2(b.c * (1 - p.rule.stop_pct / 100)); p.status = 'open'; }
+    else { const d = dates(bars, p.first_listed_run)[0]; if (!d || d > asOf) return; const px = bars![d].o; if (!(px > 0)) return; if (unaffordable(p, px, d, ticket)) return; p.fills.push(buyFill(d, px, ticket)); p.rule = ruleFor(p.screen_id); p.stop = r2(px * (1 - p.rule.stop_pct / 100)); p.status = 'open'; }
   }
-  const entryDate = p.fills[0].date; const qty = p.fills.reduce((a, f) => a + (f.side === 'buy' ? f.qty : -f.qty), 0);
+  const entryDate = p.fills[0].date; const qty = p.fills.reduce((a, f) => a + (f.side === 'buy' ? f.qty : -f.qty), 0); const entryPx = p.fills[0].price;
+  // Calls entered before ADR-017 get the rule of their screen once, before any of them had exited (n closed was 0); the fills are untouched
+  if (!p.rule) { p.rule = ruleFor(p.screen_id); p.stop = r2(entryPx * (1 - p.rule.stop_pct / 100)); }
+  const rule = p.rule, target = r2(entryPx * (1 + rule.target_pct / 100)), limit = timeLimit(entryDate); let peak = entryPx;
   // signal-close: the entry day itself cannot hit the stop (filled at its close); next-open: from the entry day (filled at its open, so its low can breach)
   for (const d of Object.keys(bars ?? {}).filter((x) => (close ? x > entryDate : x >= entryDate)).sort()) {
     if (d > asOf) break; const b = bars![d];
-    if (p.stop != null && b.l <= p.stop) { p.fills.push(sellFill(d, qty, Math.min(p.stop, b.o))); p.status = 'closed'; p.exit_reason = b.o <= p.stop ? 'gap-stop' : 'stop'; return; }
+    const level = rule.trailing ? Math.max(p.stop!, r2(peak * (1 - rule.stop_pct / 100))) : p.stop!;     // trailing: from the highest close up to the PREVIOUS session
+    if (b.l <= level) { p.fills.push(sellFill(d, qty, Math.min(level, b.o))); p.status = 'closed'; p.exit_reason = b.o <= level ? 'gap-stop' : 'stop'; return; }
+    if (b.h >= target) { p.fills.push(sellFill(d, qty, Math.max(target, b.o))); p.status = 'closed'; p.exit_reason = b.o >= target ? 'gap-target' : 'target'; return; }
     if (p.exit_after && (close ? d >= p.exit_after : d > p.exit_after)) { p.fills.push(sellFill(d, qty, close ? b.c : b.o)); p.status = 'closed'; p.exit_reason = 'dropped'; return; }
+    if (d >= limit) { p.fills.push(sellFill(d, qty, b.c)); p.status = 'closed'; p.exit_reason = 'time'; return; }
+    peak = Math.max(peak, b.c);
   }
 }
 /** The bar the position is marked on: its latest close on or before as_of; null if none. */
@@ -71,7 +78,7 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
     }
     for (const p of L.picks) if (p.screen_id === run.screen_id && (p.status === 'open' || p.status === 'pending') && !now.has(p.symbol) && !p.exit_after) {
       if (p.status === 'pending') { p.status = 'voided'; p.voided = { date: run.run_date, reason: 'dropped from the list before the entry fill' }; L.voids.push({ pick_id: p.id, date: run.run_date, reason: p.voided.reason }); }
-      else p.exit_after = run.run_date;
+      else if (p.rule?.exit_on_drop ?? ruleFor(p.screen_id).exit_on_drop) p.exit_after = run.run_date;
     }
     for (const sym of run.refused ?? []) L.refusals.push({ screen_id: run.screen_id, symbol: sym, refused_on: run.run_date, price_at_refusal: inp.bars[sym]?.[run.run_date]?.c ?? null });
   }

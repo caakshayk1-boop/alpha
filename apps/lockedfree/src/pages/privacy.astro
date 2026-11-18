@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro'; import { CONTACT, LEGAL_DATE } from '../lib/site.ts';
+---
+<Base title="Privacy" description="What Rulebook collects, what stays in your browser, who else touches your data, and how to have it removed.">
+<div class="wrap hero prose"><span class="label eyebrow">Privacy · {LEGAL_DATE}</span><h1>What we collect, in full.</h1></div>
+<div class="wrap prose"><h2>Collected and stored on our side</h2><p>One thing only: if you join the email list, we store your email address, the date and time you joined, and the version of the consent text you agreed to (<code>weekly-note-v1</code>). It lives in a database on Cloudflare, our host. We use it to send the weekly note and for nothing else. We do not sell or share it.</p>
+<h2 data-u="mt6">Stays in your browser</h2><p>Your Gate trades and rules, your plan, your watchlist, your widget choices and a short cache of delayed quotes are saved in your browser's own storage on your device. They are not sent to us and we cannot see or recover them. Clearing site data removes them, so use the download buttons first.</p>
+<h2 data-u="mt6">Not collected</h2><p>No accounts, no passwords, no payments, no cookies, no advertising or analytics trackers, no fingerprinting. Fonts and scripts are served from this site; the page makes no requests to third-party hosts.</p>
+<h2 data-u="mt6">Who else is involved</h2><ul><li><strong>Cloudflare</strong> hosts the site and runs its server code. It processes each request (including your IP address, the page asked for and the time) and keeps operational logs, and its rate limiter uses your IP address briefly to stop abuse.</li><li><strong>Yahoo Finance</strong> is the source of delayed quotes and price history. Our server fetches them; the stock symbol is sent to Yahoo, your browser is not.</li></ul>
+<h2 data-u="mt6">Your choices</h2><p>To be removed from the email list, or to ask what is held about you, write to <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a> from the address concerned. We will delete it on request.</p>
+<p class="src">If this page and the site ever disagree, the site is wrong and we will fix it: tell us at the address above.</p></div></Base>

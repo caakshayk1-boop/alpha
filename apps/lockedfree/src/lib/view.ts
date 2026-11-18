@@ -1,6 +1,6 @@
 /** Selectors over the ledger. Pages call these and format; nothing else derives a performance number (check 2). */
 import type { Ledger, Aggregate, Pick, BookDay } from './ledger.ts';
-import { tradeResult } from './gate.ts';
+import { tradeResult } from './gate.ts'; import { timeLimit, ruleText } from './exitrules.ts';
 export const inr = (x: number | null | undefined, d = 0) => (x == null ? '—' : (x < 0 ? '−' : '') + '₹' + Math.abs(x).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }));
 export const signed = (x: number | null | undefined, d = 0, suffix = '') => (x == null ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) + suffix);
 export const dmy = (iso: string | null | undefined) => { if (!iso) return 'not yet'; const [y, m, d] = iso.split('-'); return `${+d} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1]} ${y}`; };
@@ -14,14 +14,19 @@ export function heroSeries(L: Ledger, screen = 'all'): HeroPoint[] {
 export const agg = (L: Ledger, id: string): Aggregate | undefined => L.aggregates.find((a) => a.screen_id === id);
 export const lastDay = (L: Ledger, id = 'all'): BookDay | undefined => L.book_days.filter((b) => b.screen_id === id).sort((a, b) => a.date.localeCompare(b.date)).pop();
 export const recordStarted = (L: Ledger) => L.book_days.length > 0;
-export interface TradeRow { id: string; symbol: string; screen_id: string; status: Pick['status']; entry: string | null; entry_px: number | null; exit: string | null; exit_px: number | null; reason: string; pnl: number | null; r: number | null }
+export interface TradeRow { id: string; symbol: string; screen_id: string; status: Pick['status']; entry: string | null; entry_px: number | null; exit: string | null; exit_px: number | null; reason: string; pnl: number | null; r: number | null;
+  /** shares, rupees put in, the price it is marked on (latest close, or the exit), result as % of the rupees put in, the stop and target prices, and the last day it may be held */
+  qty: number | null; invested: number | null; last: number | null; pct: number | null; stop: number | null; target: number | null; exit_by: string | null; rule: string }
+export const REASON: Record<string, string> = { dropped: 'Left the list', stop: 'Stop hit', 'gap-stop': 'Gapped through the stop', target: 'Target reached', 'gap-target': 'Gapped above the target', time: 'One month is up' };
 export function tradeRows(L: Ledger, mark: (s: string) => number | null): TradeRow[] {
-  return L.picks.map((p) => { const base = { id: p.id, symbol: p.symbol, screen_id: p.screen_id, status: p.status, entry: p.fills[0]?.date ?? null, entry_px: p.fills[0]?.price ?? null, exit: p.fills.find((f) => f.side === 'sell')?.date ?? null, exit_px: p.fills.find((f) => f.side === 'sell')?.price ?? null };
+  return L.picks.map((p) => { const f0 = p.fills[0], inv = f0 ? Math.round(f0.qty * f0.price * 100) / 100 : null, tgt = f0 && p.rule ? Math.round(f0.price * (1 + p.rule.target_pct / 100) * 100) / 100 : null;
+    const ext = { qty: f0?.qty ?? null, invested: inv, stop: p.stop, target: tgt, exit_by: f0 ? timeLimit(f0.date) : null, rule: ruleText(p.screen_id) };
+    const base = { ...ext, last: null as number | null, pct: null as number | null, id: p.id, symbol: p.symbol, screen_id: p.screen_id, status: p.status, entry: p.fills[0]?.date ?? null, entry_px: p.fills[0]?.price ?? null, exit: p.fills.find((f) => f.side === 'sell')?.date ?? null, exit_px: p.fills.find((f) => f.side === 'sell')?.price ?? null };
     if (p.status === 'pending') return { ...base, reason: 'Waiting for the next session open', pnl: null, r: null };
     if (p.status === 'voided') return { ...base, reason: p.voided?.reason ?? 'voided', pnl: null, r: null };
     const open = p.status === 'open', m = open ? mark(p.symbol) : null; if (open && m == null) return { ...base, reason: 'No price for this name — shown as missing', pnl: null, r: null };
     const res = tradeResult({ id: p.id, symbol: p.symbol, setup: '', trigger: '', stop: p.stop!, target: 0, riskPct: 0, qty: p.fills[0].qty, qtyOverrideReason: null, entry: { date: p.fills[0].date, price: p.fills[0].price }, exit: p.fills[1] ? { date: p.fills[1].date, price: p.fills[1].price } : null, ruleBreak: false, review: null, reviewSkipped: false }, m);
-    return { ...base, reason: open ? 'Open' : p.exit_reason === 'dropped' ? 'Left the list' : p.exit_reason === 'stop' ? 'Stop hit' : 'Gapped through the stop', pnl: res.total, r: res.r }; });
+    return { ...base, last: open ? m : base.exit_px, pct: inv ? Math.round((res.total / inv) * 1e4) / 100 : null, reason: open ? 'Open' : REASON[p.exit_reason ?? ''] ?? 'Closed', pnl: res.total, r: res.r }; });
 }
 
 export interface BookState { capital: number; ticket: number; maxOpen: number; sectorCap: number; open: number; deployed: number; cash: number; equity: number; charges: number }
