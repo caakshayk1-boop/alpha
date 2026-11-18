@@ -1,0 +1,1 @@
+{"schema":"tripwire-book-snapshots/1","started":"2026-11-18","days":[{"day":"2026-11-17","open":150,"t1":25,"openR":35.49,"closed":15,"closedR":-2.97,"unmarked":0,"engines":{"MOM":{"open":64,"openR":27.4,"t1":15,"closed":3,"closedR":1.87},"QLT":{"open":62,"openR":9.7,"t1":6,"closed":6,"closedR":-6.21},"ST":{"open":24,"openR":-1.61,"t1":4,"closed":6,"closedR":1.37}}}]}

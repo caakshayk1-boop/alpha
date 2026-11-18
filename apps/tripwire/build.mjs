@@ -94,7 +94,7 @@ const preload = staticClosure(DIST, `app.${stamp}.js`).filter((f) => f !== `app.
 html = html.replace('</head>', `${preload}\n</head>`);
 writeFileSync(join(DIST, 'index.html'), html);
 writeFileSync(join(DIST, '404.html'), html);
-for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
+for (const f of ['manifest.webmanifest', 'icon.svg', 'favicon.ico', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
 // The link-preview image is copied by the .png loop above; the build refuses to ship without it, or with one over the 120 KB the share previews allow (tools/make-og.mjs draws it).
 if (!existsSync(join(DIST, 'og.png'))) throw new Error('static/og.png is missing: run node apps/tripwire/tools/make-og.mjs');

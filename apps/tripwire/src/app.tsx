@@ -127,6 +127,7 @@ export function App(): ReactNode {
   /** The screen follows the address one render later, so a tap on a tab keeps the last screen until the next one has arrived: no blank frame, no spinner. The tab bar uses `loc` and answers at once. */
   const vl = useRouteView(loc, tabOf, isQuiet);   // 12 Nov 2026: through a View Transition under html.fx (routevt.ts); otherwise the deferred address, as before
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [said, setSaid] = useState(''); const firstRoute = useRef(true);   // 18 Nov 2026: the page name, said once politely when the screen changes (a hash navigation does not move a screen reader on its own)
   const [online, setOnline] = useState(navigator.onLine);
   const screen = useScreen();
   const hint = useRef<string | null>(null); if (hint.current === null) hint.current = readHint() ?? '';   // read once, before the screen answers; '' = nothing remembered
@@ -176,6 +177,7 @@ export function App(): ReactNode {
   }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     document.title = `${resolveRoute(vl.path).kind === 'notfound' ? 'Not found' : TITLES[vl.path[0]] ?? (vl.path[0] === 'desk' ? 'My Desk' : TABS[Math.max(0, TABS.findIndex((t) => t.id === tabOf(vl.path)))].label)} · Tripwire`;
+    if (firstRoute.current) firstRoute.current = false; else setSaid(document.title.replace(/ · Tripwire$/, ''));
   }, [nav.current]); // eslint-disable-line react-hooks/exhaustive-deps
   /** A tap on a tab. On the tab you are in: back to the top, and if you are already there, back to the tab's first screen. On another: where you left it, scroll and all. */
   const onTab = (id: string) => (e: React.MouseEvent) => {
@@ -226,6 +228,7 @@ export function App(): ReactNode {
   else if (vl.path[0] === 'desk') view = <Desk seg={vl.q.get('v') ?? 'follow'} />;
   else view = <Today />;
   return <UiProvider haptics={s.prefs.haptics}><SheetCtx.Provider value={ctx}>
+    <div className="sr" role="status" aria-live="polite" data-route-announce>{said}</div>
     <a className="sr skip" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus({ preventScroll: true }); m?.scrollIntoView(); }}>Skip to main content</a>
     <div className="app">
       <div className="rail-head" data-noprint><Brand className="rail-brand" /><small>Research workspace</small></div>

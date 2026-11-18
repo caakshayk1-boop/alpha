@@ -30,7 +30,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 export const LIMITS = { quote: [90, 60], history: [40, 60], news: [20, 60], file: [60, 60], health: [20, 60] };
 /** The route -> allowance class table. A route that calls an upstream is listed here or it is not served. */
 export const ROUTE_CLASS = { '/api/tick': 'quote', '/api/intraday': 'quote', '/api/pulse': 'quote', '/api/macro': 'quote', '/api/breadth': 'quote', '/api/news/catchup': 'quote',
-  '/api/chart': 'history', '/api/bars': 'history', '/api/news': 'news', '/api/news/version': 'file', '/api/ledger': 'file', '/api/factors': 'file', '/api/rsi': 'file', '/api/fiidii': 'file', '/api/health': 'health' };
+  '/api/chart': 'history', '/api/bars': 'history', '/api/news': 'news', '/api/news/version': 'file', '/api/ledger': 'file', '/api/factors': 'file', '/api/rsi': 'file', '/api/fiidii': 'file', '/api/snapshots': 'file', '/api/health': 'health' };
 const MAX_RAW_LIST = 1400;           // characters of a symbol list: sixty 20-character symbols and their commas, so a hundred-thousand-comma list is refused before it is split
 const MAX_SEARCH = 2000;             // characters of any /api query string
 /** Pure. A symbol list from its raw query value: upper-cased, trimmed, de-duplicated and SORTED (so `B,A` and `A,B` are one cache entry). null when it is too long, too many, or any symbol is not
@@ -355,6 +355,23 @@ async function fiidii(ctx) {
   } catch { return json({ ok: false, error: 'the FII/DII file could not be read' }, 502); }
 }
 
+// GET /api/snapshots -> the daily book snapshots (one row per session: open book R, closed R, per engine), read from the repository like the ledger: { schema, started, days: [{ day, open, t1, openR, closed, closedR, unmarked, engines }] }
+const SNAPSHOTS = 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/main/apps/tripwire/ledger/book-snapshots.json';
+async function snapshots(ctx) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null; const key = new Request('https://tripwire.internal/__snapshots_v1');
+  try {
+    const hit = cache && await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...H, 'cache-control': 'public, max-age=300, s-maxage=600' } });
+    const r = await fetch(SNAPSHOTS, { signal: AbortSignal.timeout(12000) });
+    if (r.status === 404) return json({ ok: false, error: 'the first book snapshot has not been written yet' }, 404);
+    if (!r.ok) return json({ ok: false, error: 'the book snapshots could not be read' }, 502);
+    const d = await r.json();
+    if (d?.schema !== 'tripwire-book-snapshots/1' || !Array.isArray(d.days)) return json({ ok: false, error: 'the book snapshots are not in the expected shape' }, 502);
+    const res = json({ ok: true, ...d }, 200, { 'cache-control': 'public, max-age=300, s-maxage=600' });
+    if (cache && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
+  } catch { return json({ ok: false, error: 'the book snapshots could not be read' }, 502); }
+}
+
 // ---- News -------------------------------------------------------------------------------------------------------------------------
 // THREE routes, one pipeline (apps/tripwire/news/*, shared with the scheduled job):
 //   GET /api/news/version  -> the tiny status document the job writes every run: { ok, snapshotVersion, status, checkedAt, lastSuccessfulAt, nextScheduledAt, ... }  (edge copy 60 s)
@@ -598,6 +615,10 @@ export default {
     if (url.pathname === '/api/factors' || url.pathname === '/api/factors/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       return factors(ctx);
+    }
+    if (url.pathname === '/api/snapshots' || url.pathname === '/api/snapshots/') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      return snapshots(ctx);
     }
     if (url.pathname === '/api/fiidii' || url.pathname === '/api/fiidii/') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
