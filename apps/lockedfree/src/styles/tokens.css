@@ -11,14 +11,5 @@
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
   --d1: 120ms; --d2: 200ms; --d3: 320ms; --d4: 420ms;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --icon-stroke: 1.5;
-}
-
-/* Terminal surfaces only (ADR-010): the same token names, remapped, so shared components adapt. No toggle; the editorial site stays paper. */
-[data-surface="terminal"] {
-  color-scheme: dark;
-  --paper: #0B0C0E; --card: #121317; --ink: #F5F5F7; --ink-muted: #A3A8B3; --hairline: #262932;
-  --brand: #F5A524; --brand-ink: #0B0C0E; --up: #3DDC97; --down: #FF6B6B; --down-ink: #FF8F8F; --warn: #FFD166; --warn-ink: #FFD166; --halo: #F5A524;
-  --font-display: "Fraunces Variable", "Fraunces Variable fallback", Georgia, serif; --font-ui: "Inter Variable", "Inter Variable fallback", system-ui, sans-serif; --font-mono: "IBM Plex Mono", "IBM Plex Mono fallback", ui-monospace, monospace; --r-card: 10px;
-  --panel-2: #181A20; --blue: #6AB0FF; --glow: rgba(245, 165, 36, 0.16);
+  --icon-stroke: 1.5; --panel-2: #15171A; --glow: rgba(184, 239, 67, 0.12);
 }
