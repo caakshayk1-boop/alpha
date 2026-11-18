@@ -44,6 +44,8 @@ for (const w of [320, 360]) {
 /* ---- Markets: the sector heat map zooms into a sector, and lists its leaders and laggards ---- */
 for (const w of [320, 390, 1280]) {
   const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 });
+  /* 18 Nov 2026: during real market hours the map opens on its live view (heatlive.mjs tests that, on a fixed clock); this check is about the published close, so it asks for it */
+  if (await pg.locator('[data-heat-mode]').count()) { await pg.getByRole('button', { name: 'Close', exact: true }).click(); }
   const cells = pg.locator('[data-sectorheat] .sh-cell'); const n = await cells.count(); const labels = await cells.evaluateAll((e) => e.map((x) => x.textContent));
   ok(n >= 6 && labels.every((l) => /percent of traded value/.test(l ?? '') && /over 1 day/.test(l ?? '')), `${w}: the heat map has ${n} sector cells, each named with its change, window and share of traded value`);
   ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: the heat map causes no sideways scroll`);
