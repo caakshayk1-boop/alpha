@@ -107,7 +107,7 @@ details.table-alt summary { cursor: pointer; min-height: 44px; display: flex; al
 @media print { .top, .foot, .btn, .skip { display: none !important; } body { background: var(--card); } }
 
 .legend i.bm { background: var(--ink-muted); height: 2px; }
-@media (max-width: 719px) { .nav { width: 100%; justify-content: space-between; } .nav a { padding: 0 6px; font-size: .875rem; } .nav a svg { display: none; } .top .wrap { padding-block: 4px; } }
+@media (max-width: 719px) { .nav { width: 100%; justify-content: space-between; } .nav a { padding: 0 4px; font-size: .8125rem; } .nav a svg { display: none; } .top .wrap { padding-block: 4px; } }
 .swatch { height: 48px; border: 1px solid var(--hairline); border-radius: var(--r-control); margin-bottom: var(--s2); }
 .swatch[data-sw="paper"] { background: var(--paper); } .swatch[data-sw="card"] { background: var(--card); } .swatch[data-sw="ink"] { background: var(--ink); } .swatch[data-sw="ink-muted"] { background: var(--ink-muted); } .swatch[data-sw="hairline"] { background: var(--hairline); }
 .swatch[data-sw="brand"] { background: var(--brand); } .swatch[data-sw="up"] { background: var(--up); } .swatch[data-sw="down"] { background: var(--down); } .swatch[data-sw="down-ink"] { background: var(--down-ink); } .swatch[data-sw="warn"] { background: var(--warn); } .swatch[data-sw="warn-ink"] { background: var(--warn-ink); }
