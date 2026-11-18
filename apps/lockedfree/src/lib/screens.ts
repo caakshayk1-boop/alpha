@@ -7,7 +7,7 @@ export interface Company { symbol: string; name?: string; sector?: string; mcap_
   close?: number; ma200?: number; mom_12_1?: number /* % */ }
 export interface RuleResult { id: string; label: string; pass: boolean | null; value: string; threshold: string }
 export interface StockResult { symbol: string; rules: RuleResult[]; scorable: boolean; passes: boolean; failed: RuleResult[]; score?: number }
-export interface ScreenRun { screen_id: string; passed: string[]; near_miss: { symbol: string; failed_rule: string; gap: string }[]; refused: string[]; not_scorable: string[]; universe_n: number; detail: Record<string, StockResult> }
+export interface ScreenRun { screen_id: string; passed: string[]; /** v2: the screen's list, its best passers by score, at most 5 */ listed?: string[]; near_miss: { symbol: string; failed_rule: string; gap: string }[]; refused: string[]; not_scorable: string[]; universe_n: number; detail: Record<string, StockResult> }
 export interface ScreenDef { id: string; name: string; version: number; short: string; run(universe: Company[]): ScreenRun }
 
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
@@ -51,7 +51,7 @@ export function piotroski(c: Company): StockResult {
   ];
   return finish(c.symbol, rules, (rs) => rs.filter((r) => r.pass).length >= 8);
 }
-export const PIOTROSKI: ScreenDef = { id: 'piotroski', name: 'Piotroski F-Score', version: 1, short: 'Nine yes/no tests of improving financial health. A stock needs 8 or 9.',
+export const PIOTROSKI: ScreenDef = { id: 'piotroski', name: 'Piotroski F-Score', version: 2, short: 'Nine yes/no tests of improving financial health. All nine must pass, on a liquid stock in an uptrend.',
   run: (u) => { const per = u.map(piotroski); return summarise('piotroski', u, per, (s) => s.scorable && s.score === 7, () => true); } };
 
 // ---- 2. Magic Formula: rank by earnings yield + return on capital, top 15 ----
@@ -83,7 +83,7 @@ export function magic(universe: Company[]): ScreenRun {
   const run = summarise('magic-formula', universe, per, (s) => { const p = pos.get(s.symbol); return !!p && p > TOP && p <= TOP + 5; }, (s) => s.rules.every((x) => x.pass !== null));
   return run;
 }
-export const MAGIC: ScreenDef = { id: 'magic-formula', name: 'Magic Formula', version: 1, short: 'Cheap and productive: ranks stocks by earnings yield plus return on capital. The top 15 make the list.', run: magic };
+export const MAGIC: ScreenDef = { id: 'magic-formula', name: 'Magic Formula', version: 2, short: 'Cheap and productive: ranks large, liquid stocks by earnings yield plus return on capital. The best 10 pass.', run: magic };
 
 // ---- 3. Quality + momentum composite ----
 export function qualityMomentum(universe: Company[]): ScreenRun {
@@ -97,7 +97,7 @@ export function qualityMomentum(universe: Company[]): ScreenRun {
     ]; return finish(c.symbol, rules, (rs) => rs.every((r) => r.pass)); });
   return summarise('quality-momentum', universe, per, (s) => s.scorable && s.failed.length === 1, () => true);
 }
-export const QUALITY_MOMENTUM: ScreenDef = { id: 'quality-momentum', name: 'Quality + Momentum', version: 1, short: 'Profitable, growing companies whose price is already rising. All four rules must hold.', run: qualityMomentum };
+export const QUALITY_MOMENTUM: ScreenDef = { id: 'quality-momentum', name: 'Quality + Momentum', version: 2, short: 'High-return, fast-growing companies whose price is already in the top tenth for momentum. All five rules must hold.', run: qualityMomentum };
 
 // ---- 4. Conservative quality ----
 export function conservative(universe: Company[]): ScreenRun {
@@ -111,5 +111,5 @@ export function conservative(universe: Company[]): ScreenRun {
     ]; return finish(c.symbol, rules, (rs) => rs.every((r) => r.pass)); });
   return summarise('conservative-quality', universe, per, (s) => s.scorable && s.failed.length === 1, () => true);
 }
-export const CONSERVATIVE: ScreenDef = { id: 'conservative-quality', name: 'Conservative Quality', version: 1, short: 'Low debt, steady returns, real cash. Often returns very few names, and sometimes none.', run: conservative };
+export const CONSERVATIVE: ScreenDef = { id: 'conservative-quality', name: 'Conservative Quality', version: 2, short: 'Almost no debt, three years of 30%+ returns, profit fully backed by cash. Often very few names, sometimes none.', run: conservative };
 export const SCREENS: ScreenDef[] = [PIOTROSKI, MAGIC, QUALITY_MOMENTUM, CONSERVATIVE];

@@ -1,4 +1,0 @@
----
-const { title, lede, current } = Astro.props; const tabs = [['/gate/', 'Terminal'], ['/gate/journal/', 'Journal'], ['/gate/rules/', 'Rules']];
----
-<div class="wrap hero"><span class="label eyebrow">The Gate · paper-only</span><h1>{title}</h1><p class="lede">{lede}</p><nav class="row" aria-label="Gate sections">{tabs.map(([h, t]) => <a class="chip" href={h} aria-current={current === h ? 'page' : undefined}>{t}</a>)}</nav></div>

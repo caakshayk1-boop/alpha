@@ -65,3 +65,18 @@ Owner instruction: "make rules tighter for selection, total available balance Rs
 - Display: screens pages lead with the calls and keep the rest behind "All that passed"; the Ledger gains a book panel (account, open of 30, deployed, cash after charges, sector spread); the refusals page lists passed-but-not-taken names. The hero curve is return on the Rs 1 crore account.
 - Not copied from Tripwire: per-engine ticket weights (no back-test here to justify them) and its time exit (calls here exit when their screen drops them).
 Consequences: with 30 slots and weekly runs, the book will turn over slowly, so closed-trade sample sizes (n) will take many months to reach 30. Selecting by the feed's composite is a second criterion beyond the screens' own rules; it is stated on the methodology page.
+
+## ADR-015 — Screens v2: stricter rules, top-5 lists, v1 archived (owner decision, 2026-11-18)
+Owner: "Why so many calls from all the engines; the new ones other than Tripwire should have stricter rules." v1 passed 404 stocks on day one and the 30-call cap hid that; the screens themselves were too loose.
+- Universe: market cap of Rs 2,000 cr or more and traded value of Rs 10 cr a day or more (Magic Formula: Rs 5,000 cr). Every screen also needs the price above its 200-day average.
+- Piotroski: all nine tests plus the two filters. Magic Formula: ranked pool, earnings yield and return on capital positive, only the feed's top 10. Quality+Momentum: ROCE 20% or more, profit at least 1.25x two years ago, momentum in the top 10%. Conservative: debt-to-equity 0.1 or less, ROCE 30% or more and operating cash flow positive in three years, cash flow at least equal to profit.
+- Each screen lists at most 5 names, ordered by the composite score; the book then applies ADR-014. 17 calls opened on 17 Nov (was 30 of 404 passers); cash is a position and is recorded as one.
+- v1 ledger and runs are kept under ledger/archive/v1-2026-11-17/ (append-only: nothing deleted). The legacy engines in screens.ts are retained for their tests but are not used in production.
+Consequences: fewer calls means closed-trade samples stay below n = 30 for longer; every figure keeps its n. Thresholds are a judgement, not a back-tested optimum.
+
+## ADR-016 — Site consolidation to seven pages and a widget terminal (owner decision, 2026-11-18)
+Owner: minimise pages and sections, make the site more powerful with widgets. Measured: about 140 hand-written pages removed; 1,007 pages built (7 core + 999 stock pages).
+- Pages: Home, Terminal (widget board), Calls (open calls / the four screens / the record), Screener, The Gate (Trade / Journal / Rules tabs), The Plan, About (method merged), plus stock pages. Old URLs 301 to their new home via _redirects.
+- Terminal widgets: market pulse, the book, daily brief, score leaders, movers, watchlist, live paper P&L, position-size calculator, data health. Each can be hidden; the choice is kept in this browser only (rb-widgets-hidden).
+- Closed trades, voids and not-taken names stay visible on Calls > The record (no losing trade is hidden by the merge).
+Consequences: bookmarks to retired pages rely on the redirects, verified in a browser under wrangler dev (proof-book B6).

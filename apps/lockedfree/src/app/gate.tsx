@@ -20,7 +20,7 @@ function Entry({ book, set }: { book: Book; set: (b: Book) => void }) {
   const c = checkEntry(input, book.rules); const locked = lockState(book, today).locked; const [err, setErr] = useState('');
   const seed = (document.getElementById('shortlist-data')?.textContent ?? '[]'); const names: string[] = useMemo(() => { try { return JSON.parse(seed); } catch { return []; } }, [seed]);
   const k = (key: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [key]: v }));
-  if (!book.rules) return (<div className="card"><h2>Set your rules first</h2><p>The Gate needs your account size, risk per trade, daily loss limit and trade limit before it opens. Set them while calm.</p><a className="btn" href="/gate/rules/">Set my rules</a></div>);
+  if (!book.rules) return (<div className="card"><h2>Set your rules first</h2><p>The Gate needs your account size, risk per trade, daily loss limit and trade limit before it opens. Set them while calm.</p><a className="btn" href="#rules">Set my rules</a></div>);
   if (locked) return <Lock book={book} />;
   return (<form className="card" onSubmit={(e) => { e.preventDefault(); const r = openTrade(book, input, today); if (r.error) { setErr(r.error); return; } setErr(''); set(r.book); setF({ ...f, symbol: '', setup: '', trigger: '', stop: '', target: '', entry: '', over: false, qty: '', reason: '' }); }} aria-describedby="gate-missing" noValidate>
     <div className="card-head"><h2>New paper trade</h2><span className="stamp">Dated {today} · simulated</span></div>
@@ -96,9 +96,13 @@ function Backup({ book, set }: { book: Book; set: (b: Book) => void }) {
   return (<div className="card"><h3>Your book is stored only in this browser</h3><p className="small muted">{storageWorks() ? 'Clearing site data removes it. Download a copy now and then.' : 'This browser blocked storage: nothing you enter will be kept. Download a copy before leaving.'}</p><div className="row"><button className="btn ghost" onClick={() => download(`rulebook-book-${today}.json`, book)}>Download my book</button>
     <label className="btn ghost">Load a saved book<input type="file" accept="application/json" hidden onChange={async (e) => { const t = await e.target.files?.[0]?.text(); try { const b = JSON.parse(t ?? ''); if (b?.schema === 'rulebook-book/1' && Array.isArray(b.trades)) set(b); } catch { /* ignore a bad file */ } }} /></label></div></div>);
 }
-function App({ view }: { view: string }) {
-  const [book, set] = useBook();
-  return (<div className="grid">{SEBI}{view === 'entry' && <><Entry book={book} set={set} /><Positions book={book} set={set} /></>}{view === 'journal' && <Journal book={book} />}{view === 'rules' && <RulesView book={book} set={set} />}<Backup book={book} set={set} /></div>);
+const VIEWS: [string, string][] = [['entry', 'Trade'], ['journal', 'Journal'], ['rules', 'Rules']];
+const fromHash = () => { const h = location.hash.slice(1); return h === 'journal' || h === 'rules' ? h : 'entry'; };
+function App() {
+  const [book, set] = useBook(); const [view, setView] = useState(fromHash()); useEffect(() => { const f = () => setView(fromHash()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  const go = (v: string) => { setView(v); history.replaceState(null, '', v === 'entry' ? location.pathname : '#' + v); };
+  return (<div className="grid">{SEBI}<div className="tabbar" role="tablist" aria-label="The Gate">{VIEWS.map(([id, label]) => <button key={id} role="tab" aria-selected={view === id} onClick={() => go(id)} onKeyDown={(e) => { const i = VIEWS.findIndex(([x]) => x === view); if (e.key === 'ArrowRight') go(VIEWS[(i + 1) % 3][0]); if (e.key === 'ArrowLeft') go(VIEWS[(i + 2) % 3][0]); }}>{label}</button>)}</div>
+    {view === 'entry' && <><Entry book={book} set={set} /><Positions book={book} set={set} /></>}{view === 'journal' && <Journal book={book} />}{view === 'rules' && <RulesView book={book} set={set} />}<Backup book={book} set={set} /></div>);
 }
-const el = document.getElementById('gate-root'); if (el) createRoot(el).render(<App view={el.dataset.view ?? 'entry'} />);
+const el = document.getElementById('gate-root'); if (el) createRoot(el).render(<App />);
 export { emptyBook };
