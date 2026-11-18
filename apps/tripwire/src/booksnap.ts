@@ -42,4 +42,5 @@ export function appendSnapshot(file: SnapFile | null, snap: BookSnap, now: strin
 
 /** The line the Record draws: closed R plus the open positions' marks, per session. Needs two sessions to be a line. */
 export interface BookPoint { day: string; closedR: number; openR: number; total: number }
-export const bookSeries = (f: Pick<SnapFile, 'days'> | null | undefined): BookPoint[] => (f?.days ?? []).map((d) => ({ day: d.day, closedR: d.closedR, openR: d.openR, total: r2(d.closedR + d.openR) }));
+/** A reply with no `days` (an error envelope, a changed shape) is an empty series, never an exception. */
+export const bookSeries = (f: Partial<Pick<SnapFile, 'days'>> | null | undefined): BookPoint[] => (Array.isArray(f?.days) ? f!.days : []).map((d) => ({ day: d.day, closedR: d.closedR, openR: d.openR, total: r2(d.closedR + d.openR) }));

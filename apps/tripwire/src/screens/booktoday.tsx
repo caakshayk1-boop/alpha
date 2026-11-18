@@ -20,7 +20,7 @@ export function BookToday({ l }: { l: Ledger }) {
   const W = 300, H = 90, pad = 8; const ys = [0, ...pts.map((p) => p.total)]; const lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
   const x = (i: number) => pad + (i / Math.max(1, pts.length - 1)) * (W - 2 * pad); const y = (v: number) => H - pad - ((v - lo) / span) * (H - 2 * pad);
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.total).toFixed(1)}`).join(' ');
-  const first = feed.data?.days[0]?.day ?? null;
+  const first = pts[0]?.day ?? null;
   return <section className="rec-sec card book-today" aria-labelledby="rec-book" data-book-today>
     <SectionHeader id="rec-book" title="The open book, beside the closed record" description="Closed trades have already met a stop, Target 2 or the horizon. Open positions have not, and their R is a mark that changes every night. Both are shown so neither is read alone; they are not added into one claim." />
     <div className="scroll-x" tabIndex={0} role="region" aria-label="Closed and open book by engine, scrolls sideways"><table className="tbl">

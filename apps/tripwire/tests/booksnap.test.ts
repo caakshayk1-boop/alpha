@@ -45,6 +45,7 @@ test('the series is closed R plus open R, per session', () => {
   const s = snapshotOf(ledger())!; const pts = bookSeries(appendSnapshot(emptySnapFile('2026-11-18'), s, 'x').file);
   assert.deepEqual(pts, [{ day: '2026-11-17', closedR: 1.16, openR: 1.25, total: 2.41 }]);
   assert.deepEqual(bookSeries(null), []);
+  assert.deepEqual(bookSeries({ ok: false, error: 'x' } as never), [], 'an error envelope with no days is an empty series, not an exception');
 });
 test('on the real ledger the snapshot agrees with summarizeLedger, the figure the Record already prints', () => {
   const l = JSON.parse(readFileSync(new URL('../ledger/ledger.json', import.meta.url), 'utf8')) as Ledger; const s = snapshotOf(l)!; const all = summarizeLedger(l).all;
