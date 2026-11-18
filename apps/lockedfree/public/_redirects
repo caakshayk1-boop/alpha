@@ -1,0 +1,21 @@
+# Consolidated site (ADR-016): old addresses keep working.
+/screens /calls/ 301
+/screens/ /calls/ 301
+/screens/* /calls/ 301
+/ledger /calls/ 301
+/ledger/ /calls/ 301
+/ledger/* /calls/ 301
+/methodology /about/ 301
+/methodology/ /about/ 301
+/style /about/ 301
+/style/ /about/ 301
+/snapshot /terminal/ 301
+/snapshot/ /terminal/ 301
+/brief /terminal/ 301
+/brief/ /terminal/ 301
+/pnl /terminal/ 301
+/pnl/ /terminal/ 301
+/gate/journal /gate/ 301
+/gate/journal/ /gate/ 301
+/gate/rules /gate/ 301
+/gate/rules/ /gate/ 301

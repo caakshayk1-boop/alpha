@@ -1,8 +1,0 @@
----
-import Terminal from '../layouts/Terminal.astro';
----
-<Terminal title="Live P&L" description="Your open paper trades from The Gate, marked to delayed quotes with the same accounting the public Ledger uses. Stored only in your browser." >
-<div class="t-title"><h1>Live paper P&amp;L</h1><span class="stamp" data-q-age>waiting for first quote…</span></div>
-<section class="pane"><div class="pane-h"><span><span class="idx">01</span>Open positions</span><span>from The Gate · this browser only</span></div><div class="pane-b flush" data-pnl><p class="pane-b gap">Loading…</p></div></section>
-<p class="src">P&amp;L is entry cost against a delayed quote, after buy-side charges, using the same accounting module as the public Ledger. Exit charges are not yet incurred. Quotes are delayed and unofficial; if they stop, the age stamp turns amber and no stale number is passed off as live. Simulated — not real returns. Educational; not advice.</p>
-<script src="../scripts/pnl.ts"></script></Terminal>

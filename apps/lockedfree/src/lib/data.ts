@@ -16,7 +16,7 @@ export function markFn(): (s: string) => number | null { const m = read<Record<s
 /** Latest published list per screen: what the Plan deploys into and the Gate suggests. Empty list stays empty. */
 export function latestLists(): Record<string, { name: string; symbols: string[]; asOf: string | null }> {
   const L = ledger(), out: Record<string, { name: string; symbols: string[]; asOf: string | null }> = {};
-  for (const s of SCREENS) { const r = L.runs.filter((x) => x.screen_id === s.id).pop(); out[s.id] = { name: s.name, symbols: r?.passed ?? [], asOf: r?.run_date ?? null }; } return out;
+  for (const s of SCREENS) { const r = L.runs.filter((x) => x.screen_id === s.id).pop(); out[s.id] = { name: s.name, symbols: r?.listed ?? r?.passed ?? [], asOf: r?.run_date ?? null }; } return out;
 }
 export function benchmarkLast(): { prev: number | null; last: number | null; asOf: string | null } {
   const d = ledger().book_days.filter((b) => b.screen_id === 'all' && b.benchmark_close).sort((a, b) => a.date.localeCompare(b.date)); const l = d.at(-1), p = d.at(-2);

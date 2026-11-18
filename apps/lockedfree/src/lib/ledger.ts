@@ -10,7 +10,7 @@ export const NOTIONAL = 100000, STOP_PCT = 20, SMALL_N = 30;   // NOTIONAL is th
 export type EntryBasis = 'signal-close' | 'next-open';
 export interface Bar { o: number; h: number; l: number; c: number }
 export type Bars = Record<string, Record<string, Bar>>;       // symbol -> date -> bar (a missing date is missing)
-export interface RunIn { screen_id: string; run_date: string; passed: string[]; /** the passers the book took as calls (ADR-014); absent = every passer is taken */ taken?: string[]; skipped?: { symbol: string; why: string }[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
+export interface RunIn { screen_id: string; run_date: string; passed: string[]; /** the passers the book took as calls (ADR-014); absent = every passer is taken */ taken?: string[]; /** the screen's own list (its best passers); v2 */ listed?: string[]; skipped?: { symbol: string; why: string }[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
 export interface Pick { id: string; screen_id: string; symbol: string; first_listed_run: string; status: 'pending' | 'open' | 'closed' | 'voided';
   fills: Fill[]; stop: number | null; exit_after: string | null; exit_reason: 'dropped' | 'stop' | 'gap-stop' | null; voided: { date: string; reason: string } | null }
 export interface BookDay { date: string; screen_id: string; equity: number; committed: number; realised: number; unrealised: number; open_n: number; benchmark_close: number | null }

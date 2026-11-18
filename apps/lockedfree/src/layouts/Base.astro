@@ -14,7 +14,7 @@ const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rul
 <SiteHeader path={path} />
 <main id="main"><slot /></main>
 <footer class="foot"><div class="wrap cols"><div class="disclaimer small"><p><strong>Educational and paper-only.</strong> Rulebook does not give investment advice, is not a broker, and does not sell tips. Nothing here is a recommendation to buy or sell anything. Every figure is simulated — not real returns.</p><p class="stamp">Charts: <a href="https://www.tradingview.com/" rel="noopener">TradingView Lightweight Charts™</a> and uPlot.</p><p class="stamp">Ledger as of {dmy(L.as_of)} · built {L.built_on ? dmy(L.built_on.slice(0, 10)) : 'not yet'}</p></div>
-<div class="small"><div class="label">Rooms</div><p><a href="/terminal/">Terminal</a><br><a href="/screener/">Screener</a><br><a href="/screens/">Screens</a><br><a href="/gate/">The Gate</a><br><a href="/plan/">The Plan</a><br><a href="/ledger/">The Ledger</a></p></div>
-<div class="small"><div class="label">Read</div><p><a href="/methodology/">Methodology</a><br><a href="/about/">About</a><br><a href="/ledger/voids/">Voided picks</a></p></div></div></footer>
+<div class="small"><div class="label">Rooms</div><p><a href="/terminal/">Terminal</a><br><a href="/calls/">Calls</a><br><a href="/screener/">Screener</a><br><a href="/gate/">The Gate</a><br><a href="/plan/">The Plan</a></p></div>
+<div class="small"><div class="label">Read</div><p><a href="/about/">About and method</a><br><a href="/calls/#record">The record</a></p></div></div></footer>
 {charts && <script src="../scripts/charts.ts"></script>}{flip && <script src="../scripts/flip.ts"></script>}<script src="../scripts/halo.ts"></script><script src="../scripts/site.ts"></script>
 </body></html>
