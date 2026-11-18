@@ -3,7 +3,7 @@ import '../styles/global.css'; import Icon from '../components/Icon.astro'; impo
 const { title, description = 'A rules-based, paper-only investing site. Published screens, a disciplined paper terminal, a written plan, and a public record that keeps every loss.', reading = false, path = Astro.url.pathname, og = '/og/default.png', charts = false, flip = false } = Astro.props;
 import fr from '@fontsource-variable/fraunces/files/fraunces-latin-full-normal.woff2?url'; import it from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url'; import m4 from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2?url'; import m5 from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2?url';
 const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rulebook`; const canonical = new URL(path, Astro.site).href;
-const nav = [['/screens/', 'Screens', 'filter'], ['/gate/', 'The Gate', 'gate'], ['/plan/', 'The Plan', 'plan'], ['/ledger/', 'The Ledger', 'ledger'], ['/about/', 'About', 'info']];
+const nav = [['/terminal/', 'Terminal', 'dash'], ['/screens/', 'Screens', 'filter'], ['/gate/', 'The Gate', 'gate'], ['/plan/', 'The Plan', 'plan'], ['/ledger/', 'The Ledger', 'ledger'], ['/about/', 'About', 'info']];
 ---
 <!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{full}</title><meta name="description" content={description}>
 <link rel="canonical" href={canonical}><meta name="theme-color" content="#FAF7F0"><meta name="color-scheme" content="light">
@@ -16,7 +16,7 @@ const nav = [['/screens/', 'Screens', 'filter'], ['/gate/', 'The Gate', 'gate'],
 <nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={path.startsWith(h) ? 'page' : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>
 <main id="main"><slot /></main>
 <footer class="foot"><div class="wrap cols"><div class="disclaimer small"><p><strong>Educational and paper-only.</strong> Rulebook does not give investment advice, is not a broker, and does not sell tips. Nothing here is a recommendation to buy or sell anything. Every figure is simulated — not real returns.</p><p class="stamp">Charts: <a href="https://www.tradingview.com/" rel="noopener">TradingView Lightweight Charts™</a> and uPlot.</p><p class="stamp">Ledger as of {dmy(L.as_of)} · built {L.built_on ? dmy(L.built_on.slice(0, 10)) : 'not yet'}</p></div>
-<div class="small"><div class="label">Rooms</div><p><a href="/screens/">Screens</a><br><a href="/gate/">The Gate</a><br><a href="/plan/">The Plan</a><br><a href="/ledger/">The Ledger</a></p></div>
+<div class="small"><div class="label">Rooms</div><p><a href="/terminal/">Terminal</a><br><a href="/screener/">Screener</a><br><a href="/screens/">Screens</a><br><a href="/gate/">The Gate</a><br><a href="/plan/">The Plan</a><br><a href="/ledger/">The Ledger</a></p></div>
 <div class="small"><div class="label">Read</div><p><a href="/methodology/">Methodology</a><br><a href="/about/">About</a><br><a href="/ledger/voids/">Voided picks</a></p></div></div></footer>
 {reading && <Reading />}{charts && <script src="../scripts/charts.ts"></script>}{flip && <script src="../scripts/flip.ts"></script>}<script src="../scripts/halo.ts"></script>
 </body></html>

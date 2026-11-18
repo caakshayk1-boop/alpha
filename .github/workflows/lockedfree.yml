@@ -55,6 +55,7 @@ jobs:
           curl -fsS https://lockedfree.askakshay.com/ | grep -q "Rulebook"
           curl -fsSI https://lockedfree.askakshay.com/ | grep -qi "content-security-policy"
           curl -fsS https://lockedfree.askakshay.com/api/health | grep -q '"ok":true'
+          curl -fsS https://lockedfree.askakshay.com/ | grep -q 'href="/terminal/"'
           curl -fsS https://lockedfree.askakshay.com/terminal/ | grep -q "Terminal"
           curl -fsS https://lockedfree.askakshay.com/stock/TCS/ | grep -q "Tata Consultancy"
           curl -fsS https://lockedfree.askakshay.com/data/universe.json | grep -q '"cols"'
