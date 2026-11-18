@@ -241,3 +241,10 @@ Changed: screens v2 (ADR-015): universe filters, 200-day trend, top-5 lists, Mag
 Verified: 77 unit tests; Chromium against real wrangler dev Workers with CSP enforced; 1,007 pages build; copy audit; no-demo assert; redirects and calculator math (500000 x 1% / 10 = 500) in a browser.
 NOT verified: real Yahoo quotes/charts (mocked); Safari and real devices (emulated only); the nightly and weekly workflows on real prices (the first Saturday run is the test); the live domain from this sandbox (the deploy run's live check is the evidence); charge rates are unverified starting values; the legal/SEBI opinion (BUILD-PLAN R1) is still outstanding before named-stock calls are promoted. Fundamentals have no date in the feed, so the lag guard cannot be applied.
 Untouched: Tripwire, Alpha, ApexPro, and every other product.
+
+## 2026-11-18 — Stock chart: candles, full history, daily/weekly/monthly, trend stated
+Owner: no moving-average lines or RSI; keep labels; candles by default with maximum history; daily, weekly, monthly; show the trend; make viewing better.
+Changed: Worker /api/chart now returns daily OHLC and volume for the whole listing history (range max; a day missing any of open, high, low, close is dropped, never filled). The stock chart is candles with a volume strip, 52-week high/low labels kept, Daily/Weekly/Monthly buttons (weekly and monthly built in the browser from the same daily candles), a "Full history" reset, drag and pinch to move and zoom, an OHLC + change + volume legend that follows the crosshair, and a one-line trend statement (price against its 50 and 200-day averages plus the 1-year change; the averages are not drawn).
+Verified: unit tests; stock proof 7/7 in Chromium with MOCKED candles (Daily default, switching, legend, trend line, no average controls, phone view).
+NOT verified: real Yahoo max-range data (size, gaps, splits adjustment), Safari, real devices.
+Untouched: Tripwire, Alpha, ApexPro.
