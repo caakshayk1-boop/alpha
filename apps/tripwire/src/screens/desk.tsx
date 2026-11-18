@@ -12,6 +12,7 @@ import { followFacts } from '../followfacts.ts';
 import { deskHas } from '../home.ts';
 import { dayWord, inr, pct, tone } from '../fmt.ts';
 import { download } from '../backupfile.ts';
+import { reviewIcs, icsName } from '../ics.ts';
 import { Fold, Workflow } from './fold.tsx';
 import { planFigures } from '../planview.ts';
 import { FollowReview } from './FollowReview.tsx';
@@ -57,7 +58,8 @@ function Workspace() {
     {(left || right) && <div className={`dsk-grid${left && right ? '' : ' one'}`}>
       {left && <div className="dsk">
         {upcoming.length > 0 && <section aria-labelledby="dsk-rev"><h2 id="dsk-rev" className="sec" style={{ marginBottom: 8 }}>Upcoming reviews</h2>
-          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{upcoming.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow dim small">{current(e).trigger || current(e).thesis.slice(0, 80)}</span>{reviewTag(e)}</button>)}</div></div></section>}
+          <div className="card" style={{ padding: '2px 14px' }}><div className="list">{upcoming.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow dim small">{current(e).trigger || current(e).thesis.slice(0, 80)}</span>{reviewTag(e)}</button>)}</div></div>
+          <button className="btn sm" style={{ marginTop: 8 }} data-ics onClick={() => { const r = reviewIcs(s.entries, today, Date.now()); if (!r.count) { toast('No review dates from today onward.'); return; } download(icsName(today), r.text, 'text/calendar'); toast(`${r.count} review date${r.count === 1 ? '' : 's'} saved as a calendar file. It names the company only; your notes stay here.`); }}>Add review dates to my calendar (.ics)</button></section>}
         {withQ.length > 0 && <section aria-labelledby="dsk-q"><h2 id="dsk-q" className="sec" style={{ marginBottom: 8 }}>Open questions</h2>
           <div className="card" style={{ padding: '2px 14px' }}><div className="list">{withQ.map((e) => <button key={e.id} className="dsk-row" onClick={() => open({ k: 'thesis', sym: e.sym, id: e.id })}><span className="sym">{e.sym}</span><span className="grow">{current(e).question}</span></button>)}</div></div></section>}
         {decisions.length > 0 && <section aria-labelledby="dsk-dec"><h2 id="dsk-dec" className="sec" style={{ marginBottom: 8 }}>Recent decisions</h2>

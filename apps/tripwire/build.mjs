@@ -109,6 +109,7 @@ if (contact.email) {
 // The discovery manifest for AI agents (Agentic Resource Discovery) and the one skill it lists. They are served as real files: without it the SPA fallback answers /.well-known/ard.json with the app's HTML, which is not a manifest.
 mkdirSync(join(DIST, '.well-known'), { recursive: true }); cpSync(join(HERE, 'static', 'ard.json'), join(DIST, '.well-known', 'ard.json')); cpSync(join(HERE, 'static', 'agent-skills'), join(DIST, '.well-known', 'agent-skills'), { recursive: true });
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
+cpSync(join(HERE, 'static', 'screenshots'), join(DIST, 'screenshots'), { recursive: true });   // install-prompt screenshots named in the manifest (18 Nov 2026)
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 // The explainer video is served as a plain file and is NOT in the service worker's precache (it is fetched only when a visitor plays it). Size guards keep it from growing unnoticed.
 mkdirSync(join(DIST, 'media'), { recursive: true }); cpSync(join(HERE, 'static', 'media'), join(DIST, 'media'), { recursive: true });

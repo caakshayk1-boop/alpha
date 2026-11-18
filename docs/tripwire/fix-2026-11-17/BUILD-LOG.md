@@ -109,3 +109,18 @@ Approved by the owner ("Yes, phase 1"). Three pieces, no engine, rule, gate, cos
 **Untouched.** Engines, rules, gate, costs, ledger contents, localStorage keys, ApexPro.
 
 **Deployed 18 Nov 2026** (PR #71, squash `8b9929f`, CI deploy run 44248741425, Cloudflare version `29295817-5964-4861-94d4-96f96a70be72`). Checked on production: unknown path 404, `/privacy/` `/favicon.ico` `/feed.xml` `/api/snapshots` 200; fonts `immutable`; manifest `#0A0A0B`; landing search combobox (ArrowDown names `wl-hit-TCS`, Enter opens `#/c/TCS`); Record shows the open book by engine with a totals row of 15 closed -2.97R and 150 open +35.49R; one service worker registered, no page errors at 390 px. The first nightly snapshot write by the ledger job is not yet observed (the seed row, 17 Nov, is what is live). Two CI failures on the PR were my own (a Record crash on an error reply from `/api/snapshots`, and a test that looked for the search results as buttons); both fixed before merge. A local gate run earlier missed a crashed suite because I searched the log for FAIL lines only; crashes are now counted too.
+
+## Audit follow-through (18 Nov 2026, second pass)
+**Built.**
+- *Review dates to a calendar* (`src/ics.ts`, button in Desk > Upcoming reviews): an RFC 5545 file, one all-day event per active thesis with a review date from today, built on the device. The file names the company only; the thesis text is deliberately not written into it, because calendar files are often synced to a cloud calendar and notes were promised to stay on the device (unit test and a browser test assert the thesis text is absent). CSV exports of the screen, the journal and the paper book already existed and were not duplicated.
+- *Films follow reduced motion and Data Saver live* (`src/calm.ts`): the three films read the setting once at mount; turning reduced motion on mid-session now pauses them and sets `preload="none"`, and turning it off restores it (browser test flips the emulated setting).
+- *Copy link to this view* in Discover's Research tools (the address already carries every filter).
+- *Manifest screenshots* (wide 1280x720, narrow 390x844, 50 KB and 23 KB) so the install prompt shows the app. They are of the landing page as of 18 Nov (the record line reads 15 nights, 190 picks) and will date; retake when that line changes materially.
+- *Toast length*: a toast stays 2.6 s if short and longer in proportion to its length, up to 9 s (`src/toastms.ts`).
+**Deliberately not built, with the reason.**
+- *Open-tab watch checks every five minutes (audit P1-9):* a watch rule is judged on the published close (price at the screen's last close, RSI on closes). Checking it against a live quote would change what the rule means and could fire a condition the close never met. That is a rule-semantics decision for the owner, not a plumbing change.
+- *Replacing the 1.5 s mount timer (P0-4):* the first viewport's rules are inline, so mounting before the full stylesheet arrives does not show an unstyled hero. The audit's flash claim was not reproduced; left alone.
+- *Splitting `screen.json` into a search index:* with the file now at 173 KB on the wire the saving left is small, and every route after the first needs the full file. Measure real-user landing weight first.
+- *Poster re-encode:* at most ~40 KB saved, loaded only as a poster.
+**Verified.** See the PR for the gate result.
+

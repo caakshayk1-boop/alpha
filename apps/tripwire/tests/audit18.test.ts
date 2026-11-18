@@ -26,6 +26,11 @@ test('one colour for the installed app and the page; no leftover periwinkle', ()
   const j = JSON.parse(m); assert.equal(j.theme_color.toUpperCase(), theme); assert.equal(j.background_color.toUpperCase(), theme);
   assert.ok(!/07090D/i.test(m + i) && !/A5B4FF/i.test(i)); assert.deepEqual(j.display_override, ['standalone', 'minimal-ui']);
 });
+test('manifest screenshots exist, are real PNGs of the stated size, and stay small', () => {
+  const j = JSON.parse(T('static/manifest.webmanifest')); assert.deepEqual(j.screenshots.map((x: { form_factor: string }) => x.form_factor).sort(), ['narrow', 'wide']);
+  for (const x of j.screenshots) { const f = new URL(`../static${x.src}`, import.meta.url); const b = readFileSync(f); const [w, h] = x.sizes.split('x').map(Number);
+    assert.equal(b.subarray(1, 4).toString(), 'PNG'); assert.equal(b.readUInt32BE(16), w); assert.equal(b.readUInt32BE(20), h); assert.ok(b.length < 120 * 1024, `${x.src} is ${b.length} bytes`); }
+});
 test('service worker: one missing file does not cancel the install; the page and entry script are required; navigation preload; slow data falls back to the last copy', () => {
   const s = T('static/sw.js');
   assert.ok(!/addAll\(SHELL\)/.test(s) && /allSettled\(SHELL\.map/.test(s), 'no all-or-nothing addAll');

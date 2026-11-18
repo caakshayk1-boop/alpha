@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useCalm } from '../calm.ts';
 
 /** The 16-second "from the close to the ledger" explainer. Never autoplays with sound (there is none), never loads until near the screen, and respects reduced motion and Data Saver. */
 export function HowVideo() {
   const ref = useRef<HTMLVideoElement>(null);
-  const [calm] = useState(() => {
-    try { return matchMedia('(prefers-reduced-motion: reduce)').matches || !!(navigator as unknown as { connection?: { saveData?: boolean } }).connection?.saveData; } catch { return false; }
-  });
+  const calm = useCalm();   // 18 Nov 2026: live, not read once at mount
   useEffect(() => {
-    const v = ref.current; if (!v || calm || typeof IntersectionObserver === 'undefined') return;
+    const v = ref.current; if (!v) return; if (calm) { v.pause(); return; } if (typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && e.intersectionRatio >= 0.6) { void v.play().catch(() => {}); } else v.pause(); }, { threshold: [0, 0.6] });
     io.observe(v); return () => io.disconnect();
   }, [calm]);

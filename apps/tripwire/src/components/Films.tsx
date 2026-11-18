@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useCalm } from '../calm.ts';
 
 interface FilmSpec { id: string; title: string; seconds: number; label: string; text: string }
 /** The two portrait films that sit beside the wide "from the close to the ledger" one (HowVideo). Facts only; the same words are in the transcripts. */
@@ -12,7 +13,7 @@ export const FILMS: readonly FilmSpec[] = [
 function Film({ f, calm }: { f: FilmSpec; calm: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
-    const v = ref.current; if (!v || calm || typeof IntersectionObserver === 'undefined') return;
+    const v = ref.current; if (!v) return; if (calm) { v.pause(); return; } if (typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && e.intersectionRatio >= 0.6) { void v.play().catch(() => {}); } else v.pause(); }, { threshold: [0, 0.6] });
     io.observe(v); return () => io.disconnect();
   }, [calm]);
@@ -26,8 +27,6 @@ function Film({ f, calm }: { f: FilmSpec; calm: boolean }) {
 
 /** Same rules as HowVideo: no sound, nothing loads until near the screen, nothing autoplays under reduced motion or Data Saver, and a text alternative for each. */
 export function Films() {
-  const [calm] = useState(() => {
-    try { return matchMedia('(prefers-reduced-motion: reduce)').matches || !!(navigator as unknown as { connection?: { saveData?: boolean } }).connection?.saveData; } catch { return false; }
-  });
+  const calm = useCalm();   // 18 Nov 2026: live, not read once at mount
   return <div className="films" data-films>{FILMS.map((f) => <Film key={f.id} f={f} calm={calm} />)}</div>;
 }
