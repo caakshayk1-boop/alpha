@@ -28,3 +28,6 @@ The animated icon set is built on React + the `motion` package; adding that to e
 
 ## ADR-008 — React only on the Gate and Plan pages, mounted by our own script (2026-11-18)
 Not Astro islands: islands inject inline bootstrap scripts that a strict CSP forbids. Gate and Plan are React apps built on `@base-ui/react`, loaded as external module scripts. Every other page ships no React.
+
+## ADR-009 — Strict CSP kept; chart attribution is a footer link (2026-11-18)
+`style-src 'self'` with no inline anything. lightweight-charts injects an inline `<style>` for its attribution logo, which the CSP blocked. The logo is switched off (`attributionLogo: false`) and the library's required attribution is a text link to tradingview.com in the footer of every page.

@@ -27,6 +27,6 @@ jobs:
       - name: Commit the ledger
         run: |
           git config user.name "rulebook-ledger" && git config user.email "actions@users.noreply.github.com"
-          git add apps/lockedfree/ledger/ledger.json apps/lockedfree/ledger/snapshots
+          git add apps/lockedfree/ledger
           git diff --cached --quiet && { echo "no change"; exit 0; }
           git commit -m "ledger: rulebook $(date -u +%F) [skip ci]" && git push

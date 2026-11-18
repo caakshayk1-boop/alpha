@@ -1,0 +1,1 @@
+{ "extends": "astro/tsconfigs/strict", "compilerOptions": { "jsx": "react-jsx", "allowImportingTsExtensions": true, "types": ["node"] }, "include": ["src", "tools", "tests"] }

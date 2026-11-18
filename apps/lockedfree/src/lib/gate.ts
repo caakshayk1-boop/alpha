@@ -97,3 +97,5 @@ export function processBadges(book: Book, today: string): string[] {
   if (lockState(book, today).locked) out.push('Sat out a locked day');
   return out;
 }
+/** Largest fall of a cumulative-P&L curve from its running peak (rupees, <= 0). Shown beside every curve: no return without its drawdown. */
+export function maxDrawdown(curve: { v: number }[]): number { let peak = 0, dd = 0; for (const p of curve) { peak = Math.max(peak, p.v); dd = Math.min(dd, p.v - peak); } return Math.round(dd * 100) / 100; }

@@ -1,6 +1,6 @@
 /** The Plan: pure arithmetic on what the visitor wrote. No return assumptions, no projected corpus. */
 import { nextSession, isSession } from './calendar.ts';
-export interface Plan { createdOn: string; goal: string; horizonYears: number; monthly: number; maxFallPct: number; stopReason: string; escalationPct: number; escalationOptedOutOn: string | null;
+export interface Plan { panicPct?: number; createdOn: string; goal: string; horizonYears: number; monthly: number; maxFallPct: number; stopReason: string; escalationPct: number; escalationOptedOutOn: string | null;
   tradingCapPct: number; screenId: string; buckets: Bucket[] }
 export interface Bucket { id: string; name: string; target: number; byDate: string; saved: number; trading?: boolean }
 const DAY = 86400000, ms = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));

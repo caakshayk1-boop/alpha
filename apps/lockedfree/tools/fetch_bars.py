@@ -15,6 +15,11 @@ def needed() -> list[str]:
             if p["status"] in ("pending", "open"): syms.add(p["symbol"])
     for r in (ROOT / "runs").glob("*.json") if (ROOT / "runs").exists() else []:
         syms.update(json.loads(r.read_text()).get("passed", []))
+    det = ROOT / "detail"
+    if det.exists():
+        latest = {}
+        for f in sorted(det.glob("*.json")): latest[f.name.split("__")[0]] = f
+        for f in latest.values(): syms.update(json.loads(f.read_text()).get("stocks", {}).keys())
     return sorted(syms)
 
 def series(df, sym):

@@ -1,0 +1,13 @@
+---
+import Base from '../../../layouts/Base.astro'; import RuleList from '../../../components/RuleList.astro'; import Icon from '../../../components/Icon.astro';
+import { SCREENS } from '../../../lib/screens.ts'; import { details, prices, ledger } from '../../../lib/data.ts'; import { dmy } from '../../../lib/view.ts';
+export function getStaticPaths() { const out: any[] = []; for (const s of SCREENS) { const d = details(s.id).pop(); if (!d) continue; for (const [sym, st] of Object.entries(d.stocks)) out.push({ params: { id: s.id, symbol: sym }, props: { s, d, st, sym } }); } return out; }
+const { s, d, st, sym } = Astro.props; const L = ledger(); const px = prices(sym); const passN = st.rules.filter((r: any) => r.pass).length; const total = st.rules.length;
+const verdict = st.passes ? `Passed ${passN} of ${total} rules` : st.scorable ? `Failed ${total - passN} of ${total} rules` : 'Not scorable: an input is missing';
+---
+<Base title={`${sym}: ${s.name}`} description={`${sym} against the ${s.name} screen: ${verdict.toLowerCase()}. Paper-only, educational.`} charts og={`/og/stock-${s.id}-${sym}.png`}>
+<div class="wrap hero"><div class="card" data-vt={`stock-${sym}`}><span class="label eyebrow">{s.name} · run of {dmy(d.run_date)}</span><h1>{sym}{st.name ? <span class="muted"> · {st.name}</span> : ''}</h1><p class="lede">{verdict}.</p><p class="stamp">Rule results as of {dmy(d.run_date)}. This is the output of fixed rules, not a recommendation. Simulated, paper-only.</p></div></div>
+<section class="wrap block"><span class="label eyebrow">The reasoning</span><h2>Rule by rule</h2><RuleList rules={st.rules} /><p class="small muted">A tick means the rule passed. A cross means it failed. A question mark means an input was missing, and the rule is neither passed nor failed.</p></section>
+<section class="wrap block"><span class="label eyebrow">The price, second</span><h2>Closing price</h2>
+{px && px.length > 1 ? <><div class="chart-frame"><div class="chart" data-chart="price" role="img" aria-label={`Closing price of ${sym}`}></div></div><script type="application/json" data-series set:html={JSON.stringify(px)}></script><p class="stamp">Daily closes to {dmy(px.at(-1)!.date)}. Split-adjusted, dividends not included.</p></> : <div class="chart-empty"><p>Price history for {sym} is missing. It is not filled in.</p></div>}
+<p><a class="btn ghost" href={`/screens/${s.id}/`}>Back to {s.name}</a> <a class="btn ghost" href={`/screens/${s.id}/methodology/`}>Methodology</a></p></section></Base>

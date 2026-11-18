@@ -40,7 +40,7 @@ export function piotroski(c: Company): StockResult {
   const a = c.years[0], b = c.years[1], A = (x?: Year) => x ?? ({} as Year);
   const rules = [
     cmp('f1', 'Return on assets is positive', '> 0', roa(A(a)), 0, (x, y) => x > y, (x) => `${f(x * 100)}%`),
-    cmp('f2', 'Operating cash flow is positive', '> 0', a?.cfo, 0, (x, y) => x > y, (x) => `₹${f(x, 0)} cr`),
+    cmp('f2', 'Operating cash flow is positive', '> 0', a?.cfo, 0, (x, y) => x > y, (x) => `₹${Math.round(x).toLocaleString('en-IN')} cr`),
     cmp('f3', 'Return on assets improved', 'above last year', roa(A(a)), roa(A(b)), (x, y) => x > y, (x, y) => `${f(x * 100)}% vs ${f(y * 100)}%`),
     cmp('f4', 'Cash flow exceeds net income', 'CFO > net income', a?.cfo, a?.net_income, (x, y) => x > y, (x, y) => `${f(x, 0)} vs ${f(y, 0)} cr`),
     cmp('f5', 'Long-term debt ratio did not rise', 'not above last year', lev(A(a)), lev(A(b)), (x, y) => x <= y, (x, y) => `${f(x * 100)}% vs ${f(y * 100)}%`),
@@ -66,7 +66,7 @@ export function magic(universe: Company[]): ScreenRun {
     const sector = c.sector ?? '';
     return { c, ey, roc, elig: [
       R('m1', 'Not a financial or utility company', 'excluded sectors', c.sector ? !(FIN.test(sector) || UTIL.test(sector)) : null, sector),
-      cmp('m2', 'Market cap is large enough', `≥ ₹${MIN_MCAP} cr`, c.mcap_cr, MIN_MCAP, (x, t) => x >= t, (x) => `₹${f(x, 0)} cr`),
+      cmp('m2', 'Market cap is large enough', `≥ ₹${MIN_MCAP.toLocaleString('en-IN')} cr`, c.mcap_cr, MIN_MCAP, (x, t) => x >= t, (x) => `₹${Math.round(x).toLocaleString('en-IN')} cr`),
       R('m3', 'Earnings yield is positive', '> 0', num(ey) ? ey > 0 : null, num(ey) ? `${f(ey * 100)}%` : ''),
       R('m4', 'Return on capital is positive', '> 0', num(roc) ? roc > 0 : null, num(roc) ? `${f(roc * 100)}%` : ''),
     ] };

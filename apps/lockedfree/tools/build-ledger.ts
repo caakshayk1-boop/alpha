@@ -27,4 +27,8 @@ if (problems.length) fail(problems.join('; '));
 writeFileSync(join(dir, 'ledger.json'), JSON.stringify(next, null, 1) + '\n');
 mkdirSync(join(dir, 'snapshots'), { recursive: true });
 writeFileSync(join(dir, 'snapshots', `${asOf}.json`), JSON.stringify(next) + '\n');
+// marks for open/pending picks and one-year closes for names on the pages (stock charts); a missing name simply has no file
+const marks: Record<string, number> = {}; mkdirSync(join(dir, 'prices'), { recursive: true });
+for (const [sym, b] of Object.entries(raw!.bars)) { const ds = Object.keys(b).filter((x) => x <= asOf).sort(); if (!ds.length) continue; marks[sym] = b[ds.at(-1)!].c; writeFileSync(join(dir, 'prices', `${sym}.json`), JSON.stringify(ds.map((x) => ({ date: x, c: b[x].c })))); }
+writeFileSync(join(dir, 'marks.json'), JSON.stringify(marks));
 console.log(`ledger as of ${asOf}: ${next.picks.length} picks, ${next.book_days.length} book days, ${runs.length} new runs`);

@@ -1,0 +1,9 @@
+---
+import Base from '../../layouts/Base.astro'; import { ledger } from '../../lib/data.ts'; import { dmy } from '../../lib/view.ts'; import { SCREENS } from '../../lib/screens.ts';
+const L = ledger(); const v = L.voids.map((x) => ({ ...x, p: L.picks.find((p) => p.id === x.pick_id) }));
+---
+<Base title="Voided picks" description="Every pick that was voided, with the reason. Voids are never deleted.">
+<div class="wrap hero"><span class="label eyebrow">The Ledger</span><h1>Voided picks</h1><p class="lede">A pick is voided when it cannot be traded as the rules say, for example when it left the list before the entry price existed, or the data proved wrong. It stays here, with its reason.</p></div>
+<div class="wrap">{v.length === 0 ? <div class="sit"><div class="big">No voids so far.</div><p class="muted">That is a fact about {L.picks.length} picks as of {dmy(L.as_of)}, not a promise.</p></div> :
+<table class="cards"><thead><tr><th>Date</th><th>Stock</th><th>Screen</th><th>Reason</th></tr></thead><tbody>{v.map((x) => <tr><td data-label="Date">{dmy(x.date)}</td><td data-label="Stock">{x.p?.symbol}</td><td data-label="Screen">{SCREENS.find((s) => s.id === x.p?.screen_id)?.name}</td><td data-label="Reason">{x.reason}</td></tr>)}</tbody></table>}
+<p class="stamp">as of {dmy(L.as_of)}</p></div></Base>

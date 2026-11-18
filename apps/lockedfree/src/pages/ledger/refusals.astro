@@ -1,0 +1,9 @@
+---
+import Base from '../../layouts/Base.astro'; import { ledger } from '../../lib/data.ts'; import { dmy } from '../../lib/view.ts'; import { SCREENS } from '../../lib/screens.ts';
+const L = ledger();
+---
+<Base title="Refusals" description="Stocks the screens rejected, and what they did afterwards: the filter's counterfactual record.">
+<div class="wrap hero"><span class="label eyebrow">The Ledger</span><h1>What the filters turned away</h1><p class="lede">A screen is only useful if the stocks it refuses do worse than the ones it keeps. This page records the refused names and their price at the time, so the comparison can be made as history builds.</p></div>
+<div class="wrap">{L.refusals.length === 0 ? <div class="sit"><div class="big">No refusals recorded yet.</div><p class="muted">Refused names are tracked from the first weekly run. Names that could not be scored are listed separately, because "could not be scored" is not the same as "refused".</p></div> :
+<table class="cards"><thead><tr><th>Refused on</th><th>Stock</th><th>Screen</th><th class="num">Price then</th></tr></thead><tbody>{L.refusals.slice(-500).reverse().map((x) => <tr><td data-label="Refused on">{dmy(x.refused_on)}</td><td data-label="Stock">{x.symbol}</td><td data-label="Screen">{SCREENS.find((s) => s.id === x.screen_id)?.name}</td><td class="num" data-label="Price then">{x.price_at_refusal ?? 'missing'}</td></tr>)}</tbody></table>}
+<p class="stamp">as of {dmy(L.as_of)}. Later price paths are added as they happen; none is back-filled.</p></div></Base>

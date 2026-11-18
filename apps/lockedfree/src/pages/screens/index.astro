@@ -1,0 +1,11 @@
+---
+import Base from '../../layouts/Base.astro'; import StatBlock from '../../components/StatBlock.astro';
+import { SCREENS } from '../../lib/screens.ts'; import { ledger } from '../../lib/data.ts'; import { agg, signed, dmy } from '../../lib/view.ts';
+const L = ledger();
+---
+<Base title="Screens" description="Four named, rules-based stock screens with permanent methodology pages and public track records. Paper-only and educational.">
+<div class="wrap hero"><span class="label eyebrow">The Screens</span><h1>The rules are the product.</h1><p class="lede">Each screen is a fixed set of rules, published in full. It produces a short weekly list, or no list at all. Every list is archived and every outcome is on the record.</p></div>
+<div class="wrap grid g2">{SCREENS.map((s) => { const a = agg(L, s.id); const run = L.runs.filter((r) => r.screen_id === s.id).pop(); return <article class="card" data-vt={`screen-${s.id}`}><div class="card-head"><h2>{s.name}</h2><span class="pill">v{s.version}</span></div><p class="muted">{s.short}</p>
+<p class="small">{run ? (run.passed.length ? `${run.passed.length} on the list, run of ${dmy(run.run_date)}.` : `0 pass this week (run of ${dmy(run.run_date)}). Cash is a position.`) : 'No run yet.'}</p>
+<div class="grid g3"><StatBlock label="Closed" value={String(a?.n_closed ?? 0)} n={a?.n_closed ?? 0} asOf={L.as_of} perf={false} /><StatBlock label="Expectancy" value={a?.expectancy_r == null ? '—' : signed(a.expectancy_r, 2, ' R')} n={a?.n_closed ?? 0} asOf={L.as_of} /></div>
+<p class="row"><a class="btn" href={`/screens/${s.id}/`}>Open the list</a><a class="btn ghost" href={`/screens/${s.id}/methodology/`}>Methodology</a></p></article>; })}</div></Base>

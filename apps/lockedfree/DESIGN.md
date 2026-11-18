@@ -39,6 +39,16 @@ typography:
     fontSize: 0.875rem
     fontWeight: 400
     lineHeight: 1.5
+  lede:
+    fontFamily: Inter
+    fontSize: 1.125rem
+    fontWeight: 400
+    lineHeight: 1.5
+  display-xl-mobile:
+    fontFamily: Fraunces
+    fontSize: 2.375rem
+    fontWeight: 560
+    lineHeight: 1.04
   label:
     fontFamily: Inter
     fontSize: 0.75rem
@@ -64,6 +74,7 @@ typography:
 rounded:
   control: 6px
   card: 10px
+  full: 999px
 spacing:
   1: 4px
   2: 8px
@@ -148,7 +159,7 @@ Hairlines are 1px. Surfaces are never tinted with the semantic colours.
 
 - 4px base unit. Scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 72.
 - Page gutter 16px (mobile) / 32px (desktop). Content column 1120px; prose column 680px.
-- Cards: 10px radius, 1px hairline border, **no drop shadows**. Depth comes from rules and paper tone. Controls: 6px radius, 44px minimum touch height.
+- Cards: 10px radius, 1px hairline border, **no drop shadows**. Depth comes from rules and paper tone. Controls: 6px radius, 44px minimum touch height. The switch alone is fully round (999px).
 - Ledger rules: tables use only horizontal hairlines, never zebra stripes or vertical lines. Totals sit under a double rule.
 - Tables below 720px become stacked cards. **Every card keeps its as-of stamp.** Nothing is dropped to fit.
 
