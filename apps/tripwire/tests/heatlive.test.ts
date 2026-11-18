@@ -30,16 +30,23 @@ test('a missing, stale, malformed or non-positive quote leaves the name out; it 
   assert.deepEqual(h.rows.map((r) => r.sym), ['A1']); assert.equal(h.measured, 1);
   assert.equal(liveHeat(rows, ['A1'], { A1: Q(100, 0) }, NOW).measured, 0); assert.equal(liveHeat(rows, ['A1'], { A1: Q(-1, 100) }, NOW).measured, 0);
 });
-test('a shut market has no live print, whatever the quote says', () => {
-  const shut = Date.parse('2026-11-16T17:30:00Z');   // 23:00 IST
-  assert.equal(liveHeat(rows, ['A1'], { A1: { ...Q(102, 100), pt: shut / 1000 - 30 } }, shut).measured, 0);
+test('a shut market has no LIVE print; with shut=true only prints dated today count, and the basis says so', () => {
+  const shut = Date.parse('2026-11-16T17:30:00Z');   // 23:00 IST Monday
+  assert.equal(liveHeat(rows, ['A1'], { A1: { ...Q(102, 100), pt: shut / 1000 - 30 } }, shut).measured, 0, 'not live');
+  const t = liveHeat(rows, ['A1', 'B1'], { A1: { ...Q(102, 100), pt: Date.parse('2026-11-16T09:59:00Z') / 1000 }, B1: { ...Q(103, 100), pt: Date.parse('2026-11-16T10:02:00Z') / 1000 } }, shut, true);
+  assert.equal(t.measured, 2); assert.equal(t.basis, 'today'); assert.equal(t.obs, Date.parse('2026-11-16T10:02:00Z') / 1000);
+  const old = liveHeat(rows, ['A1'], { A1: { ...Q(102, 100), pt: Date.parse('2026-11-13T09:59:00Z') / 1000 } }, shut, true);
+  assert.equal(old.measured, 0, "Friday's print is not today's");
+  const morning = Date.parse('2026-11-16T02:00:00Z');   // 07:30 IST, before the open: yesterday's prints are not today's
+  assert.equal(liveHeat(rows, ['A1'], { A1: { ...Q(102, 100), pt: Date.parse('2026-11-13T09:59:00Z') / 1000 } }, morning, true).measured, 0);
+  assert.equal(liveHeat(rows, ['A1'], { A1: Q(102, 100) }, NOW).basis, 'live');
 });
 test('share is the measured names\' part of ALL liquid traded value (stale and illiquid rows excluded from both sides)', () => {
   const h = liveHeat(rows, ['A1', 'B1'], { A1: Q(101, 100), B1: Q(101, 100) }, NOW);
   assert.equal(h.share, (500 + 900) / (500 + 400 + 300 + 10 + 900 + 100 + 50));
 });
 test('the live view is offered only when most of the sample answered', () => {
-  const mk = (asked: number, measured: number) => ({ rows: [], asked, measured, share: 0, obs: null });
+  const mk = (asked: number, measured: number) => ({ rows: [], asked, measured, share: 0, obs: null, basis: 'live' as const });
   assert.equal(liveUsable(mk(66, 39)), false); assert.equal(liveUsable(mk(66, 40)), true); assert.equal(liveUsable(mk(10, 10)), false, 'at least 12 names'); assert.equal(liveUsable(mk(0, 0)), false);
 });
 test('print time is shown on the Indian clock', () => { assert.equal(istTime(Date.parse('2026-11-16T05:30:00Z') / 1000), '11:00 IST'); assert.equal(istTime(Date.parse('2026-11-16T20:00:00Z') / 1000), '01:30 IST'); });
