@@ -17,6 +17,10 @@ export function upstream(url) {
     '/api/signals': ['https://alpha.askakshay.com/signals.json', 300],
   };
   if (routes[url.pathname]) return routes[url.pathname];
+  if (url.pathname === '/api/quotes') { // 18 Nov 2026: live quotes for the sector map's sample (up to 30 names a call); the same upstream the index strip uses, 30 s at the edge
+    const list = symbol.split(',');
+    return list.length >= 1 && list.length <= 30 && list.every(x => /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(x)) ? [`https://tripwire.askakshay.com/api/tick?s=${list.map(encodeURIComponent).join(',')}`, 30] : null;
+  }
   if (url.pathname === '/api/company' && valid) return [`https://alpha.askakshay.com/c/${encodeURIComponent(symbol)}.json`, 300];
   if (['/api/chart','/api/spark'].includes(url.pathname) && valid) return [`https://tripwire.askakshay.com/api/chart?s=${encodeURIComponent(symbol)}`, 1800];
   return null;
@@ -26,7 +30,7 @@ export default {
     const url = new URL(request.url);
     if (!['GET', 'HEAD'].includes(request.method)) return response({ error: 'Method not allowed' }, 405);
     if (url.pathname.startsWith('/api/')) {
-      if (url.search.length > 100) return response({ error: 'Request too long' }, 400);
+      if (url.search.length > (url.pathname === '/api/quotes' ? 600 : 100)) return response({ error: 'Request too long' }, 400);
       const route = upstream(url);
       if (!route) return response({ error: 'Unknown endpoint or invalid symbol' }, 400);
       const key = new Request(url.origin + url.pathname + (url.searchParams.has('s') ? '?s=' + encodeURIComponent(url.searchParams.get('s')) : ''));
@@ -47,7 +51,8 @@ export default {
     const asset = await env.ASSETS.fetch(request);
     const out = new Response(asset.body, asset);
     for (const [k, v] of Object.entries(HEADERS)) out.headers.set(k, v);
-    out.headers.set('cache-control', /\.(woff2|png|svg)$/.test(url.pathname) ? 'public, max-age=86400' : 'no-cache');
+    // 18 Nov 2026: font files are never edited in place (a new face gets a new file), so they are cached for a year and not asked about again; images keep a day; code and pages are always revalidated.
+    out.headers.set('cache-control', /\.woff2$/.test(url.pathname) ? 'public, max-age=31536000, immutable' : /\.(png|svg)$/.test(url.pathname) ? 'public, max-age=86400' : 'no-cache');
     return out;
   }
 };

@@ -150,3 +150,11 @@ tbody tr{transition:background-color var(--dur-1)}
 #sidebar .brand small,.matrix-value small,.candidate-head,.candidate-row small,.preview-price small,.range-widget>div:first-child,.range-widget>div:last-child,.preview-scores small,.review-items>a>small,.research-canvas .session-context>span,.research-canvas .session-context>span>small:last-child,.matrix-head,.matrix-name small,.matrix-value,.lens-tabs button{font-size:11px}
 @media(pointer:coarse){.matrix-head button,.company-chapters a{min-height:44px;min-width:48px}}
 .canvas-workbench .lens-tabs button small{font:11px var(--font-data)}
+/* 18 Nov 2026: rows per page (25, 50, 100), and a list that scrolls inside its own panel so 100 rows do not push the page down */
+.canvas-results{max-height:min(70vh,760px);overflow:auto;overscroll-behavior:contain}
+.canvas-pagination{position:sticky;bottom:0;background:var(--surface);display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:8px}
+.page-size{display:inline-flex;gap:2px;align-items:center;margin-left:auto}
+.page-size button{min-width:44px;min-height:44px}
+.page-size button[aria-pressed=true]{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.live-note{margin-top:8px}.live-note .text-button{min-height:44px;margin-left:6px}
+

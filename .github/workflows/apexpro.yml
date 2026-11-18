@@ -36,7 +36,7 @@ jobs:
             exit 1
           fi
       - name: Model tests (scores, ladder, vet rules are read-only here; these pin them)
-        run: node --test apps/apexpro/tests/model.test.mjs
+        run: node --test apps/apexpro/tests/model.test.mjs apps/apexpro/tests/heatlive.test.mjs apps/apexpro/tests/worker.test.mjs
       - name: Browser suites (Chromium and WebKit, against wrangler dev on 8810)
         # production.mjs is not run here (it targets the live site). Retired suites were deleted on 17 Nov 2026; see docs/apexpro/TESTS.md.
         run: |
@@ -44,7 +44,7 @@ jobs:
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:8810/ && break; sleep 1; done
           curl -fsS -o /dev/null http://localhost:8810/ || { cat "$RUNNER_TEMP/apex-dev.log"; echo "::error::the ApexPro Worker did not start"; exit 1; }
           bad=0
-          for t in session features canvas chart-intervals resilience research-edition ultimatum ultimatum-accessibility; do
+          for t in session features canvas chart-intervals resilience research-edition heat-live ultimatum ultimatum-accessibility; do
             if node "apps/apexpro/tests/$t.mjs"; then echo "PASS  $t"; else echo "::error::FAIL  $t"; bad=1; fi
           done
           exit $bad
