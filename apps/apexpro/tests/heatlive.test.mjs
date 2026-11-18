@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {liveSample,liveChanges,liveUsable,chunk,nseRegular,istTime} from '../src/heatlive.js';
+import {liveSample,liveChanges,liveUsable,chunk,nseRegular,afterClose,istTime} from '../src/heatlive.js';
 import {sectorStats} from '../src/canvas.js';
 
 const OPEN=Date.parse('2026-11-16T05:30:00Z'),SHUT=Date.parse('2026-11-16T17:30:00Z'),SAT=Date.parse('2026-11-14T05:30:00Z');
@@ -17,7 +17,15 @@ test('the live change is price over previous close; a missing, stale, malformed 
   assert.deepEqual(Object.keys(h.changes),['A1','A2']);assert.ok(Math.abs(h.changes.A1-2)<1e-9&&Math.abs(h.changes.A2+1)<1e-9);assert.equal(h.measured,2);assert.equal(h.asked,6);assert.equal(h.obs,OPEN/1000-60);
   assert.equal(liveChanges(['A1'],{A1:Q(100,0)},OPEN).measured,0);assert.equal(liveChanges(['A1'],{A1:Q(-1,100)},OPEN).measured,0);
 });
-test('a shut market or a weekend measures nothing, whatever the quote says',()=>{assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:SHUT/1000-30}},SHUT).measured,0);assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:SAT/1000-30}},SAT).measured,0);});
+test('after the close only prints dated today count, as basis "today"; a weekend, a holiday-style gap or the morning before the open measure nothing',()=>{
+  const at=(iso,age=30)=>({A1:{...Q(102,100),pt:Date.parse(iso)/1000-age,live:false}});
+  assert.equal(afterClose(SHUT),true);assert.equal(afterClose(OPEN),false);assert.equal(afterClose(SAT),false);
+  const t=liveChanges(['A1'],at('2026-11-16T17:30:00Z'),SHUT);assert.equal(t.measured,1);assert.equal(t.basis,'today');
+  assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:Date.parse('2026-11-13T09:59:00Z')/1000}},SHUT).measured,0,"Friday's print is not today's");
+  assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:Date.parse('2026-11-14T09:59:00Z')/1000}},SAT).measured,0,'a Saturday has no session');
+  const morning=Date.parse('2026-11-16T02:00:00Z');assert.equal(liveChanges(['A1'],{A1:{...Q(102,100),pt:Date.parse('2026-11-13T09:59:00Z')/1000}},morning).measured,0,'07:30 IST: nothing from today yet');
+  assert.equal(liveChanges(['A1'],{A1:Q(102,100)},OPEN).basis,'live');
+});
 test('the live view is offered only when most of the sample answered, and at least 12 names',()=>{const mk=(a,m)=>({asked:a,measured:m});assert.equal(liveUsable(mk(66,39)),false);assert.equal(liveUsable(mk(66,40)),true);assert.equal(liveUsable(mk(10,10)),false);assert.equal(liveUsable(null),false);});
 test('the sector 1D value is the MEDIAN of the live changes (equal weight, as the close column); under 3 names it is missing, never estimated',()=>{
   const live={changes:{A1:2,A2:-1,A3:1,B1:3,B2:0}};const s=sectorStats(rows,live);
