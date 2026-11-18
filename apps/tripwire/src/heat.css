@@ -62,3 +62,6 @@
 @media print{.sh-box{grid-template-columns:repeat(3,minmax(0,1fr))}.sh-cell{break-inside:avoid;background:var(--surface);border-color:var(--line)}.sh-all:not([open]){display:none}}
 
 @container(max-width:18rem){.sh-read{grid-template-columns:1fr 1fr}.sh-read>div{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}.sh-read>button:nth-child(2){border:0;padding-left:0}}
+
+/* 18 Nov 2026: the Live / Close switch sits with the window switch */
+.sh-mode{margin:var(--sp-1) 0 var(--sp-2)}
