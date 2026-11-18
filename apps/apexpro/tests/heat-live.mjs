@@ -13,14 +13,14 @@ const SAMPLE=sectors.flatMap(sec=>rows.filter(r=>r.sector===sec).slice(0,6).map(
 const median=v=>{const a=[...v].sort((x,y)=>x-y);return a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2;};
 const expectLive=Object.fromEntries(sectors.map(sec=>[sec,median(rows.filter(r=>r.sector===sec&&SAMPLE.includes(r.sym)).map(r=>chg(r.sym)))]));
 const b=await chromium.launch();
-async function open(at){
+async function open(at,age=20){
   const ctx=await b.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block',reducedMotion:'reduce'});
   await ctx.clock.install({time:at});const nowS=Math.floor(at.getTime()/1000);
   await ctx.route('**/api/screen',r=>r.fulfill({json:{ok:true,as_of:'2026-11-13',built_on:'2026-11-14',price_date:'2026-11-13',rows}}));
   await ctx.route('**/api/market',r=>r.fulfill({json:{ok:true,quotes:Object.fromEntries(Object.entries(pulse.quotes).map(([k,q])=>[k,{...q,pt:nowS-20,live:true}]))}}));
   await ctx.route('**/api/macro',r=>r.fulfill({json:{ok:true,quotes:{}}}));
   const asked=[];await ctx.route('**/api/quotes*',r=>{const u=new URL(r.request().url());const list=(u.searchParams.get('s')||'').split(',').filter(Boolean);asked.push(list);
-    r.fulfill({json:{ok:true,quotes:Object.fromEntries(list.map(s=>[s,{px:100*(1+chg(s)/100),prev:100,pt:nowS-20,live:true,t:[],c:[]}])),missing:[]}});});
+    r.fulfill({json:{ok:true,quotes:Object.fromEntries(list.map(s=>[s,{px:100*(1+chg(s)/100),prev:100,pt:nowS-age,live:true,t:[],c:[]}])),missing:[]}});});
   const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e).slice(0,160)));
   await p.goto(base+'/');await p.waitForSelector('.sector-matrix');await p.clock.runFor(5000);await p.waitForTimeout(400);return {ctx,p,errs,asked};
 }
@@ -38,9 +38,21 @@ async function open(at){
   console.log('PASS  live view: sample, medians, coverage, switch to the close and back, no overflow');
 }
 {
+  // after the close (23:00 IST, prints dated today): today's last prints, labelled as such, not "live"
   const {ctx,p,asked}=await open(SHUT);
-  assert.equal(await p.locator('[data-heat-live-note]').count(),0);assert.equal(asked.length,0,'shut: no live quotes are even requested');assert.doesNotMatch(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/live/);await ctx.close();
-  console.log('PASS  market shut: no live request, no live label, the close stays');
+  assert.equal(await p.locator('[data-heat-live-note]').count(),1);assert.match(await p.locator('[data-heat-live-note]').innerText(),/1D is today's session, market closed · last prints \d\d:\d\d IST/);
+  assert.match(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/1D today/);assert.doesNotMatch(await p.locator('[data-heat-live-note]').innerText(),/is live/);
+  assert.deepEqual([...new Set(asked.flat())].sort(),[...SAMPLE].sort());
+  const cells=await p.locator('.matrix-row').evaluateAll(r=>r.map(x=>[x.querySelector('.matrix-name').childNodes[0].textContent,x.querySelectorAll('.matrix-value')[0].textContent]));
+  for(const [name,txt] of cells){const v=parseFloat(txt.replace('−','-').replace('+',''));assert.ok(Math.abs(v-expectLive[name])<.06,`${name}: ${v} vs ${expectLive[name]}`);}
+  await p.locator('[data-action="canvas-live"]').click();assert.match(await p.locator('[data-heat-live-note]').innerText(),/published close/);assert.doesNotMatch(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/today|live/);await ctx.close();
+  console.log('PASS  after the close: today\'s last prints, labelled, switchable');
+}
+{
+  // a Saturday: prints are from Friday, so nothing is measured, nothing is requested, the published close stays
+  const {ctx,p,asked}=await open(new Date('2026-11-14T05:30:00Z'),86400);
+  assert.equal(await p.locator('[data-heat-live-note]').count(),0);assert.equal(asked.length,0,'no quotes requested on a weekend');assert.doesNotMatch(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/live|today/);await ctx.close();
+  console.log('PASS  weekend: no live or today view');
 }
 {
   // rows per page (18 Nov 2026): 25 by default, 50 and 100 on request, back to page 1 when it changes (30 synthetic companies)

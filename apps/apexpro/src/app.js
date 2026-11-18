@@ -3,7 +3,7 @@ import {scoreKeys,anatomy,evidenceField,bindField,censusPanel,gapsPanel,cohortRo
 import {normalizeTrail,appendTrail,observationEvents,mergeTrail} from './trail.js';
 import {sectorWeather,observatoryDial,sessionPulse,scoreStack,vetPanel,ladderPanel,timeMachine,bindTimeMachine,compareDuel,printBrief,briefData} from './observatory.js';
 import {mountMotion,routeTransition,prepareShared,compareFlip,retainList} from './motion.js';
-import { liveSample, chunk, liveChanges, liveUsable, nseRegular } from './heatlive.js';
+import { liveSample, chunk, liveChanges, liveUsable, nseRegular, afterClose } from './heatlive.js';
 import { marketHero, marketBrief, indexStrip, macroPanel, createQuotePoller, indexNames } from './session.js';
 import { divergenceContext, divergenceBadge } from './technical.js';
 import { scanner, scanModes, conditionForm, conditionQueue, effectsSettings, bindStudio } from './studio.js';
@@ -304,7 +304,8 @@ function paintQuoteRegions(){
 /* 18 Nov 2026: live quotes for the sector map's sample while the session is on (3 calls of up to 30 names, 30 s at the edge). Off the session, or on any failure, the map stays on the published close. */
 async function refreshHeat(){
  if(heatBusy||!state.rows.length)return;
- if(!nseRegular()){if(heatLive){heatLive=null;paintHeat();}return;}
+ if(!nseRegular()&&!afterClose()){if(heatLive){heatLive=null;paintHeat();}return;}
+ if(!nseRegular()&&heatLive?.basis==='today')return;   // the session is over: today's last prints do not change
  heatBusy=true;
  try{
   const sample=liveSample(state.rows),parts=await Promise.allSettled(chunk(sample,30).map(c=>api('quotes?s='+c.map(encodeURIComponent).join(','))));
