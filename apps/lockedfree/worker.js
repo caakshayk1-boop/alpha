@@ -9,10 +9,11 @@ export function parseQuote(j) {
   const m = j?.chart?.result?.[0]?.meta; if (!m || typeof m.regularMarketPrice !== 'number') return null; const n = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
   return { px: m.regularMarketPrice, prev: n(m.chartPreviousClose) ?? n(m.previousClose), t: n(m.regularMarketTime), hi: n(m.regularMarketDayHigh), lo: n(m.regularMarketDayLow) };
 }
-/** Pure. Daily closes as [{t: 'YYYY-MM-DD' (India date), c}], dropping any day without a close. */
+/** Pure. Daily candles as [{t: 'YYYY-MM-DD' (India date), o, h, l, c, v (volume or null)}]. A day missing any of the four prices is dropped, never filled. */
 export function parseChart(j) {
-  const r = j?.chart?.result?.[0]; const ts = r?.timestamp, cl = r?.indicators?.quote?.[0]?.close; if (!Array.isArray(ts) || !Array.isArray(cl)) return [];
-  const out = []; for (let i = 0; i < ts.length; i++) { const c = cl[i]; if (typeof c === 'number' && Number.isFinite(c)) out.push({ t: new Date((ts[i] + 19800) * 1000).toISOString().slice(0, 10), c: Math.round(c * 100) / 100 }); } return out;
+  const r = j?.chart?.result?.[0]; const ts = r?.timestamp, q = r?.indicators?.quote?.[0]; if (!Array.isArray(ts) || !q || !Array.isArray(q.close)) return [];
+  const ok = (x) => typeof x === 'number' && Number.isFinite(x); const rd = (x) => Math.round(x * 100) / 100; const out = [];
+  for (let i = 0; i < ts.length; i++) { const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close[i]; if (ok(o) && ok(h) && ok(l) && ok(c)) out.push({ t: new Date((ts[i] + 19800) * 1000).toISOString().slice(0, 10), o: rd(o), h: rd(h), l: rd(l), c: rd(c), v: ok(q.volume?.[i]) ? Math.round(q.volume[i]) : null }); } return out;
 }
 async function yahoo(ysym, range, interval, ttl) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?range=${range}&interval=${interval}&includePrePost=false`; const cache = caches.default, key = new Request(url);
@@ -52,7 +53,7 @@ export default {
     if (url.pathname === '/api/quotes' || url.pathname === '/api/chart') {
       if (env.QUOTE_LIMIT) { const ip = req.headers.get('cf-connecting-ip') || 'x'; const { success } = await env.QUOTE_LIMIT.limit({ key: ip }); if (!success) return json({ error: 'Too many requests.' }, 429); }
       const q = url.searchParams.get('s') || ''; if (q.length > 800) return json({ error: 'Too long.' }, 400);
-      if (url.pathname === '/api/chart') { const y = yahooSymbol(q.toUpperCase()); if (!y) return json({ error: 'Bad symbol.' }, 400); try { return json({ ok: true, source: 'Yahoo Finance, delayed and unofficial', points: parseChart(await yahoo(y, '1y', '1d', 900)) }); } catch (e) { return json({ ok: false, error: 'Upstream unavailable.' }, 502); } }
+      if (url.pathname === '/api/chart') { const y = yahooSymbol(q.toUpperCase()); if (!y) return json({ error: 'Bad symbol.' }, 400); try { return json({ ok: true, source: 'Yahoo Finance, delayed and unofficial', points: parseChart(await yahoo(y, 'max', '1d', 900)) }); } catch (e) { return json({ ok: false, error: 'Upstream unavailable.' }, 502); } }
       const syms = [...new Set(q.toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))]; if (!syms.length || syms.length > 40 || syms.some((x) => !yahooSymbol(x))) return json({ error: 'Between 1 and 40 valid symbols.' }, 400);
       const got = await Promise.allSettled(syms.map(async (x) => [x, parseQuote(await yahoo(yahooSymbol(x), '1d', '1m', 10))])); const quotes = {}, missing = [];
       got.forEach((g, i) => { if (g.status === 'fulfilled' && g.value[1]) quotes[syms[i]] = g.value[1]; else missing.push(syms[i]); });
