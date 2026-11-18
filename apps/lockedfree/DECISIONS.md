@@ -19,3 +19,6 @@ Measured: the prompt's Up/Down differ in luminance by 0.003 (1.19:1 under simula
 
 ## ADR-006 — Pick mechanics and R definition (proposed, needs owner decision D2)
 Entry next session open after first appearing; exit next open after first failing run; R measured against a fixed 20% initial stop, declared on each methodology page.
+
+## ADR-006 addendum (Step 2, 2026-11-18)
+Pick status gains `pending` (listed, entry fill not yet possible). A pick dropped while pending is voided with a reason. Stop is checked from the entry day's own low. A repeated run is a no-op. Charges version `in-delivery-1`: rates are starting values and must be verified against the NSE/SEBI/government schedules before launch.

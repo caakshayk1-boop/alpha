@@ -1,0 +1,9 @@
+{
+  "name": "rulebook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test tests/*.test.ts",
+    "ledger:build": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/build-ledger.ts"
+  }
+}
