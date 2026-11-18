@@ -18,6 +18,9 @@ export async function openCtx(b, width, led = ledger, bypassCSP = false) {
   const ctx = await b.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, serviceWorkers: 'block', bypassCSP });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, { ...STATE, paper: [] });
   await mockApi(ctx);
+  await ctx.route('**/api/snapshots*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-book-snapshots/1', started: '2026-11-02', days: [
+    { day: '2026-11-02', open: 3, t1: 0, openR: 0.4, closed: 0, closedR: 0, unmarked: 0, engines: {} },
+    { day: '2026-11-03', open: 3, t1: 1, openR: 1.1, closed: 1, closedR: -1.04, unmarked: 0, engines: {} }] }) }));
   await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ledger: led }) }));
   await ctx.route('**/data/signals.json', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(signals) }));
   return ctx;

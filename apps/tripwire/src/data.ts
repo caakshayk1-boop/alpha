@@ -108,6 +108,8 @@ export const useFactors = () => useJson<FactorSheet>('/api/factors');
 /** The nightly FII/DII figures (NSE, provisional). Absent until the first nightly run; the card that shows it hides itself then. */
 export interface FlowFeed { ok: boolean; schema: string; updated: string; source: string; rows: import('./fiidii.ts').FlowDay[] }
 export const useFiiDii = () => useJson<FlowFeed>('/api/fiidii');
+/** The daily book snapshots (booksnap.ts). Absent until the first nightly snapshot; the line that reads it says so then. */
+export const useSnapshots = () => useJson<import('./booksnap.ts').SnapFile & { ok: boolean }>('/api/snapshots');
 
 /** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
 export function usePoll<T extends { ok: boolean }>(url: string | null, every: number, nseOnly = false): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {

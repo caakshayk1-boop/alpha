@@ -70,6 +70,7 @@ jobs:
           [ -f apps/tripwire/ledger/factors.json ] && git add apps/tripwire/ledger/factors.json
           [ -f apps/tripwire/ledger/rsi.json ] && git add apps/tripwire/ledger/rsi.json
           [ -f apps/tripwire/ledger/fiidii.json ] && git add apps/tripwire/ledger/fiidii.json
+          [ -f apps/tripwire/ledger/book-snapshots.json ] && git add apps/tripwire/ledger/book-snapshots.json
           git diff --cached --quiet && echo unchanged && exit 0
           git commit -m "paper: tripwire ledger $(date -u +%Y-%m-%d) [skip ci]"
           for i in 1 2 3; do git push origin HEAD:main && break; git pull --rebase origin main; [ "$i" = 3 ] && exit 1; done

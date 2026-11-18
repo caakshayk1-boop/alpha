@@ -14,6 +14,7 @@ import { Loading } from './common.tsx';
 import { ObservationNote } from './obsnote.tsx';
 import { RealisedCurve, RecordReading } from './attribution.tsx';
 import { Evidence } from './Evidence.tsx';
+import { BookToday } from './booktoday.tsx';
 import { basisCounts, basisLine } from '../provenance.ts';
 import { EmptyState, SectionHeader, StatusPill, ThroughPills, Button } from '../components/index.ts';
 import { gateLine } from '../components/gate.ts';
@@ -81,6 +82,8 @@ export function RecordScreen({ anchor = null }: { anchor?: string | null }) {
       {gapLine && <p className="rec-line rec-gaps" data-missing-nights>{gapLine}</p>}
       <details className="more"><summary>What is counted</summary><ObservationNote />{basisLine(basisCounts(l)) && <p className="rec-line" data-basis-line>{basisLine(basisCounts(l))}</p>}</details>
     </section>
+
+    <BookToday l={l} />
 
     {items.length > 0 && <RBars items={items.map((x) => ({ id: x.pick.id, label: x.pick.sym, r: x.outcome.r as number, day: x.outcome.exitDay }))} />}
 
