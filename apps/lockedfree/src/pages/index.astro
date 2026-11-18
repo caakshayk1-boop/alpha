@@ -10,7 +10,7 @@ const probs = [['“I have money sitting there. I put it in when I feel brave, a
 <script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
 <div class="wrap hero" data-hero><span class="label eyebrow">Educational · paper-only · every loss kept</span>
 <h1 class="display-xl">Rules first. <em>Results</em> in public, with every loss.</h1>
-<p class="lede">Rulebook publishes rules-based stock screens, a paper-trading terminal that enforces your own limits, and a written plan for your money. Everything feeds one public record. Nothing is real money, and nothing is advice.</p></div>
+<p class="lede">Rulebook publishes rules-based stock screens, a paper-trading terminal that enforces your own limits, and a written plan for your money. Everything feeds one public record. Nothing is real money, and nothing is advice.</p><p class="row mt4"><a class="btn" href="/terminal/"><Icon name="dash" size={18} />Open the terminal</a><a class="btn ghost" href="/screener/"><Icon name="table" size={18} />Screen 999 stocks</a></p></div>
 <div class="wrap"><EquityCard />
 <div class="grid g4 card" data-u="mt4">
   <StatBlock label="Closed trades" value={all ? String(all.n_closed) : '0'} n={all?.n_closed ?? 0} asOf={L.as_of} perf={false} />
