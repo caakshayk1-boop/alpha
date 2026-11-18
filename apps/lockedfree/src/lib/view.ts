@@ -8,7 +8,7 @@ export interface HeroPoint { date: string; ret: number | null; bench: number | n
 /** Return on notional committed (%), benchmark change since the first book day (%), and drawdown in percentage points from the running peak. Gaps stay gaps. */
 export function heroSeries(L: Ledger, screen = 'all'): HeroPoint[] {
   const days = L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date)); const b0 = days.find((d) => d.benchmark_close)?.benchmark_close ?? null;
-  let peak = -Infinity; return days.map((d) => { const ret = d.committed > 0 ? (d.equity / d.committed) * 100 : null; if (ret != null) peak = Math.max(peak, ret);
+  const base = (d: BookDay) => (L.config.capital && screen === 'all' ? L.config.capital : d.committed); let peak = -Infinity; return days.map((d) => { const ret = base(d) > 0 ? (d.equity / base(d)) * 100 : null; if (ret != null) peak = Math.max(peak, ret);
     return { date: d.date, ret: ret == null ? null : Math.round(ret * 100) / 100, bench: b0 && d.benchmark_close ? Math.round((d.benchmark_close / b0 - 1) * 1e4) / 100 : null, dd: ret != null && peak > -Infinity ? Math.round((ret - peak) * 100) / 100 : 0 }; });
 }
 export const agg = (L: Ledger, id: string): Aggregate | undefined => L.aggregates.find((a) => a.screen_id === id);
@@ -22,4 +22,13 @@ export function tradeRows(L: Ledger, mark: (s: string) => number | null): TradeR
     const open = p.status === 'open', m = open ? mark(p.symbol) : null; if (open && m == null) return { ...base, reason: 'No price for this name — shown as missing', pnl: null, r: null };
     const res = tradeResult({ id: p.id, symbol: p.symbol, setup: '', trigger: '', stop: p.stop!, target: 0, riskPct: 0, qty: p.fills[0].qty, qtyOverrideReason: null, entry: { date: p.fills[0].date, price: p.fills[0].price }, exit: p.fills[1] ? { date: p.fills[1].date, price: p.fills[1].price } : null, ruleBreak: false, review: null, reviewSkipped: false }, m);
     return { ...base, reason: open ? 'Open' : p.exit_reason === 'dropped' ? 'Left the list' : p.exit_reason === 'stop' ? 'Stop hit' : 'Gapped through the stop', pnl: res.total, r: res.r }; });
+}
+
+export interface BookState { capital: number; ticket: number; maxOpen: number; sectorCap: number; open: number; deployed: number; cash: number; equity: number; charges: number }
+/** The account in rupees from the ledger's own fills: cost of open positions, cash left after costs and booked results, and equity. Uses the shared accounting, nothing else. */
+export function bookState(L: Ledger, mark: (s: string) => number | null): BookState | null {
+  const capital = L.config.capital; if (!capital) return null; let deployed = 0, openN = 0, realised = 0, charges = 0, unreal = 0;
+  for (const p of L.picks) { if (p.status === 'voided' || p.status === 'pending' || !p.fills.length) continue; const r = tradeResult({ id: p.id, symbol: p.symbol, setup: '', trigger: '', stop: p.stop!, target: 0, riskPct: 0, qty: p.fills[0].qty, qtyOverrideReason: null, entry: { date: p.fills[0].date, price: p.fills[0].price }, exit: p.fills[1] ? { date: p.fills[1].date, price: p.fills[1].price } : null, ruleBreak: false, review: null, reviewSkipped: false }, mark(p.symbol) ?? p.fills[0].price);
+    charges += r.chargesTotal; realised += r.realised; unreal += r.unrealised; if (p.status === 'open') { deployed += r.qtyOpen * r.avgCost; openN++; } }
+  return { capital, ticket: L.config.ticket ?? 0, maxOpen: L.config.max_open ?? 0, sectorCap: L.config.sector_cap ?? 0, open: openN, deployed: Math.round(deployed), cash: Math.round(capital + realised - deployed - (charges - (realised ? 0 : 0))), equity: Math.round(capital + realised + unreal), charges: Math.round(charges) };
 }

@@ -3,25 +3,27 @@
  *  next open after the first run where it no longer passes; initial risk (R) is measured to a fixed STOP_PCT below entry; a daily low at or under
  *  the stop exits at the stop, or at the open if it gapped through. Bars missing for a session leave the pick pending/open: nothing is invented. */
 import { evaluate, type Fill, r2 } from './accounting.ts';
-import { chargesFor, CHARGES_VERSION } from './charges.ts';
+import { chargesFor, CHARGES_VERSION } from './charges.ts'; import { CAPITAL, MAX_OPEN, SECTOR_CAP, TICKET } from './book.ts';
 export const SCHEMA = 'rulebook-ledger/1';
-export const NOTIONAL = 100000, STOP_PCT = 20, SMALL_N = 30;
+export const NOTIONAL = 100000, STOP_PCT = 20, SMALL_N = 30;   // NOTIONAL is the legacy position size, used only when a ledger's config has no ticket
+/** 'signal-close' (ADR-013, owner request): a pick fills at the CLOSE of the day it is listed, and a dropped pick exits at the close of the run that drops it. 'next-open' (ADR-006): the next session's open. */
+export type EntryBasis = 'signal-close' | 'next-open';
 export interface Bar { o: number; h: number; l: number; c: number }
 export type Bars = Record<string, Record<string, Bar>>;       // symbol -> date -> bar (a missing date is missing)
-export interface RunIn { screen_id: string; run_date: string; passed: string[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
+export interface RunIn { screen_id: string; run_date: string; passed: string[]; /** the passers the book took as calls (ADR-014); absent = every passer is taken */ taken?: string[]; skipped?: { symbol: string; why: string }[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
 export interface Pick { id: string; screen_id: string; symbol: string; first_listed_run: string; status: 'pending' | 'open' | 'closed' | 'voided';
   fills: Fill[]; stop: number | null; exit_after: string | null; exit_reason: 'dropped' | 'stop' | 'gap-stop' | null; voided: { date: string; reason: string } | null }
 export interface BookDay { date: string; screen_id: string; equity: number; committed: number; realised: number; unrealised: number; open_n: number; benchmark_close: number | null }
 export interface Aggregate { screen_id: string; as_of: string; n_picks: number; n_open: number; n_closed: number; n_void: number; win_rate: number | null; expectancy_r: number | null;
   avg_win: number | null; avg_loss: number | null; max_drawdown: number; longest_losing_streak: number; honesty: string | null }
 export interface Ledger { schema: string; as_of: string | null; built_on: string | null;
-  config: { charges_version: string; stop_pct: number; notional: number; benchmark: string };
+  config: { charges_version: string; stop_pct: number; notional: number; benchmark: string; entry_basis?: EntryBasis; capital?: number; ticket?: number; max_open?: number; sector_cap?: number };
   screens: { id: string; name: string; version: number; started_on: string }[]; runs: RunIn[]; picks: Pick[];
   voids: { pick_id: string; date: string; reason: string }[]; transitions: { screen_id: string; run_date: string; entered: string[]; exited: string[]; still_in: string[] }[];
   refusals: { screen_id: string; symbol: string; refused_on: string; price_at_refusal: number | null }[]; book_days: BookDay[]; aggregates: Aggregate[] }
 export interface Inputs { as_of: string; built_on: string; runs: RunIn[]; bars: Bars; benchmark_close: number | null; screens?: Ledger['screens'] }
 
-export const emptyLedger = (): Ledger => ({ schema: SCHEMA, as_of: null, built_on: null, config: { charges_version: CHARGES_VERSION, stop_pct: STOP_PCT, notional: NOTIONAL, benchmark: '^CRSLDX (Nifty 500 price index, no dividends)' },
+export const emptyLedger = (basis: EntryBasis = 'signal-close', ticket: number = TICKET): Ledger => ({ schema: SCHEMA, as_of: null, built_on: null, config: { charges_version: CHARGES_VERSION, stop_pct: STOP_PCT, notional: ticket, benchmark: '^CRSLDX (Nifty 500 price index, no dividends)', entry_basis: basis, capital: CAPITAL, ticket, max_open: MAX_OPEN, sector_cap: SECTOR_CAP },
   screens: [], runs: [], picks: [], voids: [], transitions: [], refusals: [], book_days: [], aggregates: [] });
 
 /** Honesty label for any statistic. */
@@ -29,25 +31,25 @@ export const honesty = (n: number): string | null => (n < SMALL_N ? `n = ${n} �
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 const dates = (b: Record<string, Bar> | undefined, after: string) => Object.keys(b ?? {}).filter((d) => d > after).sort();
-const buyFill = (date: string, px: number): Fill => { const qty = Math.floor(NOTIONAL / px); return { date, side: 'buy', qty, price: px, charges: chargesFor('buy', qty, px) }; };
+const buyFill = (date: string, px: number, ticket: number): Fill => { const qty = Math.floor(ticket / px); return { date, side: 'buy', qty, price: px, charges: chargesFor('buy', qty, px) }; };
 const sellFill = (date: string, qty: number, px: number): Fill => ({ date, side: 'sell', qty, price: px, charges: chargesFor('sell', qty, px) });
 
+/** One share costs more than the position size: the pick is voided with its reason (it stays on the record), never bought as an oversized single share. */
+function unaffordable(p: Pick, px: number, date: string, ticket: number): boolean { if (Math.floor(ticket / px) >= 1) return false; p.status = 'voided'; p.voided = { date, reason: `one share costs ₹${px.toLocaleString('en-IN')}, more than the ₹${ticket.toLocaleString('en-IN')} position size, so no whole share could be bought` }; return true; }
 /** Advance one pick through every bar it has not yet seen. Deterministic: depends only on the pick and the bars. */
-function advance(p: Pick, bars: Record<string, Bar> | undefined, asOf: string): void {
+function advance(p: Pick, bars: Record<string, Bar> | undefined, asOf: string, basis: EntryBasis, ticket: number): void {
   if (p.status === 'closed' || p.status === 'voided') return;
+  const close = basis === 'signal-close';
   if (p.status === 'pending') {
-    const d = dates(bars, p.first_listed_run)[0];
-    if (!d || d > asOf) return;
-    const px = bars![d].o; if (!(px > 0)) return;
-    p.fills.push(buyFill(d, px)); p.stop = r2(px * (1 - STOP_PCT / 100)); p.status = 'open';
+    if (close) { const d = p.first_listed_run, b = bars?.[d]; if (!b || d > asOf || !(b.c > 0)) return; if (unaffordable(p, b.c, d, ticket)) return; p.fills.push(buyFill(d, b.c, ticket)); p.stop = r2(b.c * (1 - STOP_PCT / 100)); p.status = 'open'; }
+    else { const d = dates(bars, p.first_listed_run)[0]; if (!d || d > asOf) return; const px = bars![d].o; if (!(px > 0)) return; if (unaffordable(p, px, d, ticket)) return; p.fills.push(buyFill(d, px, ticket)); p.stop = r2(px * (1 - STOP_PCT / 100)); p.status = 'open'; }
   }
-  const entryDate = p.fills[0].date;
-  const qty = p.fills.reduce((a, f) => a + (f.side === 'buy' ? f.qty : -f.qty), 0);
-  for (const d of Object.keys(bars ?? {}).filter((x) => x >= entryDate).sort()) {
+  const entryDate = p.fills[0].date; const qty = p.fills.reduce((a, f) => a + (f.side === 'buy' ? f.qty : -f.qty), 0);
+  // signal-close: the entry day itself cannot hit the stop (filled at its close); next-open: from the entry day (filled at its open, so its low can breach)
+  for (const d of Object.keys(bars ?? {}).filter((x) => (close ? x > entryDate : x >= entryDate)).sort()) {
     if (d > asOf) break; const b = bars![d];
-    // from the entry day itself (filled at the open, so that day's low can breach the stop); replaying seen days is harmless: an open pick passed them
     if (p.stop != null && b.l <= p.stop) { p.fills.push(sellFill(d, qty, Math.min(p.stop, b.o))); p.status = 'closed'; p.exit_reason = b.o <= p.stop ? 'gap-stop' : 'stop'; return; }
-    if (p.exit_after && d > p.exit_after) { p.fills.push(sellFill(d, qty, b.o)); p.status = 'closed'; p.exit_reason = 'dropped'; return; }
+    if (p.exit_after && (close ? d >= p.exit_after : d > p.exit_after)) { p.fills.push(sellFill(d, qty, close ? b.c : b.o)); p.status = 'closed'; p.exit_reason = 'dropped'; return; }
   }
 }
 /** The bar the position is marked on: its latest close on or before as_of; null if none. */
@@ -62,7 +64,7 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
     const priorRun = L.runs.filter((r) => r.screen_id === run.screen_id && r.run_date < run.run_date).pop();
     const before = new Set(priorRun?.passed ?? []), now = new Set(run.passed);
     L.transitions.push({ screen_id: run.screen_id, run_date: run.run_date, entered: [...now].filter((s) => !before.has(s)).sort(), exited: [...before].filter((s) => !now.has(s)).sort(), still_in: [...now].filter((s) => before.has(s)).sort() });
-    for (const sym of run.passed) {
+    for (const sym of run.taken ?? run.passed) {
       const live = L.picks.find((p) => p.screen_id === run.screen_id && p.symbol === sym && (p.status === 'pending' || p.status === 'open'));
       if (live) { live.exit_after = null; continue; }
       L.picks.push({ id: `${run.screen_id}:${sym}:${run.run_date}`, screen_id: run.screen_id, symbol: sym, first_listed_run: run.run_date, status: 'pending', fills: [], stop: null, exit_after: null, exit_reason: null, voided: null });
@@ -73,7 +75,7 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
     }
     for (const sym of run.refused ?? []) L.refusals.push({ screen_id: run.screen_id, symbol: sym, refused_on: run.run_date, price_at_refusal: inp.bars[sym]?.[run.run_date]?.c ?? null });
   }
-  for (const p of L.picks) advance(p, inp.bars[p.symbol], inp.as_of);
+  const basis = L.config.entry_basis ?? 'next-open', ticket = L.config.ticket ?? NOTIONAL; for (const p of L.picks) { advance(p, inp.bars[p.symbol], inp.as_of, basis, ticket); if (p.status === 'voided' && p.voided && !L.voids.find((v) => v.pick_id === p.id)) L.voids.push({ pick_id: p.id, date: p.voided.date, reason: p.voided.reason }); }
   // book day: one append-only row per screen and for "all", for this as_of only; never replaced
   const ids = [...new Set(L.picks.map((p) => p.screen_id).concat(L.screens.map((s) => s.id)))].sort();
   const rows = (sid: string): BookDay => {

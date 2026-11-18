@@ -9,6 +9,8 @@ const { s } = Astro.props; const m = METHOD[s.id];
 <h2 data-u="mt6">Data</h2><p>{COMMON.sources}</p><p>{COMMON.lag}</p><p>{COMMON.missing}</p>
 <h2 data-u="mt6">Refresh</h2><p>{COMMON.cadence}</p>
 <h2 data-u="mt6">How a listed name becomes a simulated trade</h2><p>{COMMON.mechanics}</p>
+<h2 data-u="mt6">The book: which passers become calls</h2><p>{COMMON.book}</p>
+<h2 data-u="mt6">What the simulation leaves out</h2><p>{COMMON.basis}</p><p>{COMMON.size}</p>
 <h2 data-u="mt6">Known weaknesses</h2><ul>{m.weaknesses.map((w) => <li>{w}</li>)}<li>{COMMON.trail}</li></ul>
 <h2 data-u="mt6">Changing the rules</h2><p>These rules are frozen. A change would create a new version of this screen with its own record. The old record is never rewritten.</p>
 <p><a class="btn" href={`/screens/${s.id}/`}>Back to the list</a></p></div></Base>
