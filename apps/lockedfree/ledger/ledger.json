@@ -798,10 +798,17 @@
      ]
     }
    ],
-   "stop": 595.2,
+   "stop": 610.08,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 18,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "conservative-quality:GILLETTE:2026-11-17",
@@ -843,10 +850,17 @@
      ]
     }
    ],
-   "stop": 5678.8,
+   "stop": 5820.77,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 18,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "conservative-quality:HYUNDAI:2026-11-17",
@@ -888,10 +902,17 @@
      ]
     }
    ],
-   "stop": 1697.04,
+   "stop": 1739.47,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 18,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "conservative-quality:TENNIND:2026-11-17",
@@ -933,10 +954,17 @@
      ]
     }
    ],
-   "stop": 352.92,
+   "stop": 361.74,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 18,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "magic-formula:CHENNPETRO:2026-11-17",
@@ -978,10 +1006,17 @@
      ]
     }
    ],
-   "stop": 1127.12,
+   "stop": 1197.57,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 15,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": false,
+    "max_months": 1
+   }
   },
   {
    "id": "magic-formula:COALINDIA:2026-11-17",
@@ -1023,10 +1058,17 @@
      ]
     }
    ],
-   "stop": 313.24,
+   "stop": 332.82,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 15,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": false,
+    "max_months": 1
+   }
   },
   {
    "id": "magic-formula:INFY:2026-11-17",
@@ -1068,10 +1110,17 @@
      ]
     }
    ],
-   "stop": 904,
+   "stop": 960.5,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 15,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": false,
+    "max_months": 1
+   }
   },
   {
    "id": "magic-formula:NATIONALUM:2026-11-17",
@@ -1113,10 +1162,17 @@
      ]
     }
    ],
-   "stop": 256.72,
+   "stop": 272.77,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 15,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": false,
+    "max_months": 1
+   }
   },
   {
    "id": "piotroski:ASTRAMICRO:2026-11-17",
@@ -1161,7 +1217,14 @@
    "stop": 1332,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 20,
+    "trailing": false,
+    "target_pct": 20,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "piotroski:GLAND:2026-11-17",
@@ -1206,7 +1269,14 @@
    "stop": 2590.4,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 20,
+    "trailing": false,
+    "target_pct": 20,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "piotroski:PVRINOX:2026-11-17",
@@ -1251,7 +1321,14 @@
    "stop": 1341.68,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 20,
+    "trailing": false,
+    "target_pct": 20,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "piotroski:SHAILY:2026-11-17",
@@ -1296,7 +1373,14 @@
    "stop": 2469.12,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 20,
+    "trailing": false,
+    "target_pct": 20,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "quality-momentum:ACUTAAS:2026-11-17",
@@ -1338,10 +1422,17 @@
      ]
     }
    ],
-   "stop": 3152,
+   "stop": 2955,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "quality-momentum:CPPLUS:2026-11-17",
@@ -1383,10 +1474,17 @@
      ]
     }
    ],
-   "stop": 3191.36,
+   "stop": 2991.9,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "quality-momentum:CUPID:2026-11-17",
@@ -1428,10 +1526,17 @@
      ]
     }
    ],
-   "stop": 292.68,
+   "stop": 274.39,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "quality-momentum:RPEL:2026-11-17",
@@ -1473,10 +1578,17 @@
      ]
     }
    ],
-   "stop": 1577.2,
+   "stop": 1478.63,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   },
   {
    "id": "quality-momentum:SMLMAH:2026-11-17",
@@ -1518,10 +1630,17 @@
      ]
     }
    ],
-   "stop": 4277.92,
+   "stop": 4010.55,
    "exit_after": null,
    "exit_reason": null,
-   "voided": null
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   }
  ],
  "voids": [],

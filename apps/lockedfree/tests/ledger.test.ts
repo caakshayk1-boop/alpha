@@ -64,7 +64,7 @@ test('append-only guard catches rewritten history, deleted picks, changed voids'
 });
 test('aggregates: n beside every statistic, honesty label under 30, drawdown and losing streak', () => {
   assert.equal(honesty(13), 'n = 13 — too few to conclude anything'); assert.equal(honesty(30), null);
-  const mk = (s: string, win: boolean) => ({ [s]: { '2026-11-20': bar(1, 1, 1, 100), '2026-11-23': bar(100, 100, 100, 100), '2026-11-30': bar(win ? 120 : 99, 125, win ? 118 : 97, win ? 120 : 99) } });
+  const mk = (s: string, win: boolean) => ({ [s]: { '2026-11-20': bar(1, 1, 1, 100), '2026-11-23': bar(100, 100, 100, 100), '2026-11-30': bar(win ? 120 : 99, win ? 125 : 100, win ? 118 : 97, win ? 120 : 99) } });
   const bars: Bars = { ...mk('W', true), ...mk('L1', false), ...mk('L2', false) };
   let L = step(emptyLedger('next-open', 100000), '2026-11-23', [run('2026-11-20', ['W', 'L1', 'L2'])], bars);
   L = step(L, '2026-11-27', [run('2026-11-27', [])], bars); L = step(L, '2026-11-30', [], bars);

@@ -41,6 +41,7 @@ jobs:
       - run: npx astro build
       - run: node tools/assert-no-demo.mjs dist
       - run: node tools/copy-audit.mjs dist
+      - run: node tools/assert-launch.mjs dist
       - name: Deploy
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' || github.event_name == 'workflow_run'
         working-directory: .
@@ -59,3 +60,19 @@ jobs:
           curl -fsS https://lockedfree.askakshay.com/terminal/ | grep -q "Terminal"
           curl -fsS https://lockedfree.askakshay.com/stock/TCS/ | grep -q "Tata Consultancy"
           curl -fsS https://lockedfree.askakshay.com/data/universe.json | grep -q '"cols"'
+
+  alert:
+    # A failed job must not be silent (audit: no failure alerts): open one issue per problem; repository watchers and the owner are notified by GitHub.
+    needs: [build]
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Rulebook: lockedfree deploy failed"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (event: $GITHUB_EVENT_NAME). The site keeps serving the last good build and ledger. See apps/lockedfree/RUNBOOK.md."
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi

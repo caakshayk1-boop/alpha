@@ -6,5 +6,5 @@ const terminal = ['/terminal/', '/stock/'];
 const nav = [['/terminal/', 'Terminal', 'dash'], ['/calls/', 'Calls', 'ledger'], ['/screener/', 'Screener', 'table'], ['/gate/', 'The Gate', 'gate'], ['/plan/', 'The Plan', 'plan'], ['/about/', 'About', 'info']];
 const on = (h: string) => (h === '/terminal/' ? terminal.some((t) => path.startsWith(t)) : path.startsWith(h));
 ---
-<header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook</a>
+<header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook<span class="paperpill">Paper only</span></a>
 <nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? 'page' : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>

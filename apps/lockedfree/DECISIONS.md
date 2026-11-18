@@ -80,3 +80,15 @@ Owner: minimise pages and sections, make the site more powerful with widgets. Me
 - Terminal widgets: market pulse, the book, daily brief, score leaders, movers, watchlist, live paper P&L, position-size calculator, data health. Each can be hidden; the choice is kept in this browser only (rb-widgets-hidden).
 - Closed trades, voids and not-taken names stay visible on Calls > The record (no losing trade is hidden by the merge).
 Consequences: bookmarks to retired pages rely on the redirects, verified in a browser under wrangler dev (proof-book B6).
+
+## ADR-017 — Exit rules per engine, one-month cap (owner decision, 2026-11-19)
+Owner: "use your proposed exit rules, with no holding greater than 1 month for all engines." A call leaves on the FIRST of its stop, its profit target, the screen dropping it (where the rule says so) or the end of one calendar month (the last trading session on or before the same day next month).
+- Piotroski: 20% stop, +20% target, leaves if the screen drops it. Magic Formula: 15% stop, +15% target, held even if dropped (a rank-based list churns weekly; the month cap governs). Quality + Momentum: 25% trailing stop below the highest close (previous sessions only), +30% target, leaves if dropped. Conservative Quality: 18% stop, +15% target, leaves if dropped.
+- Same-session ambiguity: daily bars cannot show whether the high or the low came first, so the STOP is assumed first. A gap through the stop or above the target fills at the open.
+- R is measured to each call's own initial stop. Existing open calls (entered 17 Nov, none closed) were given their engine's rule once by tools/migrate-rules.ts; fills were not touched and the migration refuses to run once any call has closed.
+- These are judgements, not back-tested. A 25% stop or a 20% target will rarely be reached in one month, so most exits will be the time limit; review after 30 closed calls per engine.
+Consequences: closed-trade counts grow faster (every call is gone within a month), so n reaches 30 per engine sooner, but results are dominated by one-month price moves.
+
+## ADR-018 — Launch hardening from the pre-launch audit (2026-11-19)
+Fixed from the audit: translucent sticky bars let text show through (now opaque, higher z-index, scroll padding); stale universe text (now tied to the screen constants by a test); disclaimer with SEBI wording on every decision page and the footer; Privacy and Terms pages dated and matching what is collected; contact (email and askakshay.com) in every footer; icon set, manifest and Twitter cards; sort and filter on every Calls table; Calls shows quantity, invested, last price, P&L in rupees and percent, stop, target and exit-by; failure alerts on every job (GitHub issue) plus a 30-minute live probe; RUNBOOK.md with build, rollback, backup and restore. The charting library credit stays as text without a link.
+Not done here (needs the owner): the legal/SEBI opinion; ADMIN_TOKEN secret for the email-list backup; a real staging site; real-device and Safari checks.

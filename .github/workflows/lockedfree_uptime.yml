@@ -1,0 +1,37 @@
+name: lockedfree-uptime
+# Every 30 minutes: the live site must answer, carry its security headers, serve fresh data and a working API. One issue is opened per failure.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
+permissions:
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe
+        id: probe
+        run: |
+          set -e
+          B=https://lockedfree.askakshay.com
+          curl -fsS --max-time 20 "$B/" | grep -q "Rulebook"
+          curl -fsSI --max-time 20 "$B/" | grep -qi "strict-transport-security"
+          curl -fsSI --max-time 20 "$B/" | grep -qi "content-security-policy"
+          curl -fsS --max-time 20 "$B/api/health" | grep -q '"ok":true'
+          curl -fsS --max-time 20 "$B/calls/" | grep -q "Open calls"
+          curl -fsS --max-time 20 "$B/stock/TCS/" | grep -q "Tata Consultancy"
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$B/no-such-page/"); [ "$code" = "404" ]
+          # freshness: the daily data date on the terminal must be within 4 days (covers a weekend and one holiday)
+          d=$(curl -fsS --max-time 20 "$B/terminal/" | grep -o 'daily data as of [0-9]* [A-Za-z]* 20[0-9][0-9]' | head -1 | sed 's/daily data as of //')
+          [ -n "$d" ]; age=$(( ( $(date -u +%s) - $(date -u -d "$d" +%s) ) / 86400 )); echo "data date $d, $age days old"; [ "$age" -le 4 ]
+      - name: Open an issue if it failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Rulebook: live site check failed"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="The live probe failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID . See apps/lockedfree/RUNBOOK.md for what to do."
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi
