@@ -195,3 +195,9 @@ Verified: 60 unit tests pass (59 + worker parsing); terminal proof 10/10 in Chro
 Data gaps surfaced, not hidden: 35 stocks (including TCS and Reliance) have no market cap in the source, so no size rank or size tier is shown for them and the page says so; 304 have no tier; 3 have no sector.
 NOT verified: live quotes and the one-year price chart against Yahoo (blocked in this sandbox; only parsing and the failure path are tested, plus mocked success); Safari/WebKit; screen readers; the deploy and its live check (first real run is the merge). "Live" here means delayed quotes polled every 15 s while NSE is open; the daily feed itself refreshes once a day (about 05:45 IST). Not built: per-stock OG images (pages use the default card); a dated brief archive (one brief, rebuilt daily); the source's swot, news and updates fields (they overlap the facts shown, and updates carried a stale earnings date).
 Owner items: the terminal names and ranks 999 stocks with strengths and cautions, which sits close to research-analyst territory under SEBI rules; get the legal opinion from BUILD-PLAN R1 before promoting it. The feed's own verdict and entry/stop/target ladder were deliberately left out for the same reason.
+
+## 2026-11-18 (evening) — ApexPro sector map after the close (v17)
+Changed: after 15:30 IST on a trading weekday the 1D column uses the day's last prints for the same sample (only prints dated today in India), headed "1D today", with a note and a "Show the published close" switch; a weekend, holiday or pre-open morning measures nothing and the published close stays. Why: the live view only exists during the session, so after hours the map looked unchanged. Service worker `apexpro-v17-terminal`.
+Verified: 25 unit tests; `heat-live` (23:00 IST today view, Saturday) and the eight CI suites exit 0 against `wrangler dev`.
+Untouched: scores, ladder, vet and technical rules, all existing routes, CSP and headers, localStorage keys, Desk data.
+
