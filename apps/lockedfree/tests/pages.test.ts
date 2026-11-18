@@ -7,11 +7,11 @@ T('all 999 stock models build; no metric has two owners; prose carries no raw st
   const F = loadFeed(), co = buildCohorts(F.rows); assert.ok(F.rows.length >= 900);
   for (const r of F.rows) { const m = stockModel(F, co, r); const prose = [m.write.position, m.write.profile, m.write.trend, ...m.facts.map((f) => f.sentence)].join(' ');
     assert.doesNotMatch((m.write.trend + m.write.profile).replace(/20, 50 and 200-day|200-day|52-week|14-day|three months/g, ''), /\d/, `${r.sym}: the trend and profile prose must not repeat numbers owned by the stats`); assert.doesNotMatch(m.facts.map((f) => f.sentence).join(' '), /₹|\d+\.\d+/, r.sym);
-    assert.equal(new Set(m.sections.flatMap((s) => s.stats.map((x) => x.key))).size, m.sections.flatMap((s) => s.stats).length, r.sym + ' duplicate key'); void prose; }
+    const all = [...m.glance, ...m.sections.flatMap((s) => s.stats)]; assert.equal(new Set(all.map((x) => x.key)).size, all.length, r.sym + ' duplicate key'); assert.ok(m.read.facts.length <= 3); const shown = [...m.read.facts, ...m.moreFacts].map((f) => f.sentence); assert.equal(new Set(shown).size, shown.length, r.sym + ' a fact appears in both the read and the detail'); if (m.read.caution) assert.ok(!m.moreCautions.some((c) => c.t === m.read.caution!.t), r.sym + ' caution repeated'); void prose; }
 });
 T('every displayed stat equals the feed value; an absent value renders as a dash, never 0', () => {
   const F = loadFeed(), co = buildCohorts(F.rows);
-  for (const r of F.rows) { const m = stockModel(F, co, r); for (const s of m.sections.flatMap((x) => x.stats)) { assert.equal(s.raw, num(r, s.key), `${r.sym}.${s.key}`); if (s.raw == null) assert.equal(s.value, '—', `${r.sym}.${s.key} missing must show a dash`); else assert.notEqual(s.value, '—'); } }
+  for (const r of F.rows) { const m = stockModel(F, co, r); for (const s of [...m.glance, ...m.sections.flatMap((x) => x.stats)]) { assert.equal(s.raw, num(r, s.key), `${r.sym}.${s.key}`); if (s.raw == null) assert.equal(s.value, '—', `${r.sym}.${s.key} missing must show a dash`); else assert.notEqual(s.value, '—'); } }
 });
 T('peers and cautions come only from this stock; pages for two different stocks never have the same cautions+facts', () => {
   const F = loadFeed(), co = buildCohorts(F.rows); const sig = new Set<string>(); for (const r of F.rows) { const m = stockModel(F, co, r); sig.add(m.write.position + '|' + m.facts.map((f) => f.metric).join(',') + '|' + m.cautions.map((c) => c.t).join(',')); }
