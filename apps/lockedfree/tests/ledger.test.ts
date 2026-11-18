@@ -75,3 +75,8 @@ test('validate refuses a void with no reason and a closed pick with no exit', ()
   const L = emptyLedger(); L.picks.push({ id: 'x', screen_id: 's', symbol: 'A', first_listed_run: 'd', status: 'voided', fills: [], stop: null, exit_after: null, exit_reason: null, voided: null });
   assert.ok(validate(L).some((x) => /without a reason/.test(x)));
 });
+test('book day carries committed notional so a return can be shown against what was put to work', () => {
+  const bars: Bars = { A: { '2026-11-20': bar(1, 1, 1, 100), '2026-11-23': bar(100, 100, 100, 110) } };
+  const L = step(emptyLedger(), '2026-11-23', [run('2026-11-20', ['A'])], bars); const d = L.book_days.find((b) => b.date === '2026-11-23' && b.screen_id === 'all')!;
+  assert.equal(d.committed, 100000); assert.ok(d.equity > 9000 && d.equity < 10000, String(d.equity));
+});

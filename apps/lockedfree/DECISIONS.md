@@ -22,3 +22,9 @@ Entry next session open after first appearing; exit next open after first failin
 
 ## ADR-006 addendum (Step 2, 2026-11-18)
 Pick status gains `pending` (listed, entry fill not yet possible). A pick dropped while pending is voided with a reason. Stop is checked from the entry day's own low. A repeated run is a no-op. Charges version `in-delivery-1`: rates are starting values and must be verified against the NSE/SEBI/government schedules before launch.
+
+## ADR-007 — pqoqubbw animated icons declined; book days carry `committed` (2026-11-18)
+The animated icon set is built on React + the `motion` package; adding that to every page for hover effects costs more than it earns. Nav and feature icons are plain Lucide with a CSS hover transform (120ms, reduced-motion aware). `committed` was added to `book_days` before any real row existed, so charts can show return against notional put to work.
+
+## ADR-008 — React only on the Gate and Plan pages, mounted by our own script (2026-11-18)
+Not Astro islands: islands inject inline bootstrap scripts that a strict CSP forbids. Gate and Plan are React apps built on `@base-ui/react`, loaded as external module scripts. Every other page ships no React.

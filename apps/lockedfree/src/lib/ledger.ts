@@ -11,7 +11,7 @@ export type Bars = Record<string, Record<string, Bar>>;       // symbol -> date 
 export interface RunIn { screen_id: string; run_date: string; passed: string[]; near_miss?: { symbol: string; failed_rule: string; gap: string }[]; refused?: string[]; universe_n: number; not_scorable_n: number }
 export interface Pick { id: string; screen_id: string; symbol: string; first_listed_run: string; status: 'pending' | 'open' | 'closed' | 'voided';
   fills: Fill[]; stop: number | null; exit_after: string | null; exit_reason: 'dropped' | 'stop' | 'gap-stop' | null; voided: { date: string; reason: string } | null }
-export interface BookDay { date: string; screen_id: string; equity: number; realised: number; unrealised: number; open_n: number; benchmark_close: number | null }
+export interface BookDay { date: string; screen_id: string; equity: number; committed: number; realised: number; unrealised: number; open_n: number; benchmark_close: number | null }
 export interface Aggregate { screen_id: string; as_of: string; n_picks: number; n_open: number; n_closed: number; n_void: number; win_rate: number | null; expectancy_r: number | null;
   avg_win: number | null; avg_loss: number | null; max_drawdown: number; longest_losing_streak: number; honesty: string | null }
 export interface Ledger { schema: string; as_of: string | null; built_on: string | null;
@@ -77,11 +77,11 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
   // book day: one append-only row per screen and for "all", for this as_of only; never replaced
   const ids = [...new Set(L.picks.map((p) => p.screen_id).concat(L.screens.map((s) => s.id)))].sort();
   const rows = (sid: string): BookDay => {
-    let realised = 0, unrealised = 0, open = 0;
+    let realised = 0, unrealised = 0, open = 0, committed = 0;
     for (const p of L.picks) { if (p.status === 'voided' || p.status === 'pending' || (sid !== 'all' && p.screen_id !== sid)) continue;
       const m = markOf(inp.bars[p.symbol], inp.as_of); const r = evaluate(p.fills, p.stop!, p.status === 'open' ? m : null);
-      realised += r.realised; unrealised += r.unrealised; if (p.status === 'open') open++; }
-    return { date: inp.as_of, screen_id: sid, equity: r2(realised + unrealised), realised: r2(realised), unrealised: r2(unrealised), open_n: open, benchmark_close: inp.benchmark_close };
+      realised += r.realised; unrealised += r.unrealised; committed += p.fills[0].qty * p.fills[0].price; if (p.status === 'open') open++; }
+    return { date: inp.as_of, screen_id: sid, equity: r2(realised + unrealised), committed: r2(committed), realised: r2(realised), unrealised: r2(unrealised), open_n: open, benchmark_close: inp.benchmark_close };
   };
   for (const sid of [...ids, 'all']) if (!L.book_days.find((b) => b.date === inp.as_of && b.screen_id === sid)) L.book_days.push(rows(sid));
   L.aggregates = [...ids, 'all'].map((sid) => aggregate(L, sid, inp));
