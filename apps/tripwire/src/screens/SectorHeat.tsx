@@ -3,6 +3,7 @@ import { Icon } from '../ui.tsx';
 import { dayWord, inr } from '../fmt.ts';
 import { heatStrength, leadersLaggards, sectorHeat, signed, HEAT_SCALE, WINDOW_LABEL, type HeatName, type HeatWindow } from '../sectorheat.ts';
 import type { Row } from '../screen.ts';
+import { istTime, type LiveHeat } from '../heatlive.ts';
 
 const heatStyle = (change: number, win: HeatWindow): CSSProperties => ({
   ['--heat' as string]: Math.max(.12, heatStrength(change, win)),
@@ -13,17 +14,18 @@ const direction = (change: number) => change > 0 ? 'up' : change < 0 ? 'down' : 
 /** Equal readable tiles; area does not encode a figure. The activity share is printed.
  * Colour uses the existing turnover-weighted, dated calculation. Drill-down leads with
  * non-overlapping leaders/laggards; the complete universe stays one disclosure away. */
-export function SectorHeat({ rows, day, compact = false }: { rows: Row[]; day: string | null; /** v6 (Markets): no kicker and no method note (it is on #/info), tiles sorted by the day's change */ compact?: boolean }) {
-  const [win, setWin] = useState<HeatWindow>('r1d');
+export function SectorHeat({ rows, day, compact = false, live = null }: { rows: Row[]; day: string | null; /** v6 (Markets): no kicker and no method note (it is on #/info), tiles sorted by the day's change */ compact?: boolean; /** 18 Nov 2026: live 1-day change for the most traded names (heatlive.ts); null when the market is shut or too few prints answered */ live?: LiveHeat | null }) {
+  const [win, setWin] = useState<HeatWindow>('r1d'); const [mode, setMode] = useState<'live' | 'close'>('live');
+  const isLive = !!live && win === 'r1d' && mode === 'live';
   const [sector, setSector] = useState<string | null>(null);
   const [sort, setSort] = useState<'activity' | 'strongest' | 'weakest'>(compact ? 'strongest' : 'activity');
   const heading = useRef<HTMLHeadingElement>(null); const previousSector = useRef(sector);
   useEffect(() => { if (previousSector.current !== sector) { heading.current?.focus({ preventScroll: true }); previousSector.current = sector; } }, [sector]);
-  const sectors = useMemo(() => sectorHeat(rows, win), [rows, win]);
+  const sectors = useMemo(() => sectorHeat(isLive ? live!.rows : rows, win), [rows, win, isLive, live]);
   const ordered = useMemo(() => [...sectors].sort((a, b) => sort === 'activity' ? b.weight - a.weight : (sort === 'strongest' ? b.chg - a.chg : a.chg - b.chg) || b.weight - a.weight), [sectors, sort]);
   const cur = sectors.find((s) => s.sector === sector) ?? null;
   const names = useMemo(() => [...(cur?.names ?? [])].sort((a, b) => b.weight - a.weight), [cur]);
-  const ll = useMemo(() => leadersLaggards(names, 5), [names]);
+  const ll = useMemo(() => leadersLaggards(names, isLive ? Math.min(5, Math.floor(names.length / 2)) : 5), [names, isLive]);   // a live sector has at most 6 measured names: leaders and laggards must not overlap
   const total = sectors.reduce((a, s) => a + s.weight, 0);
   const counted = sectors.reduce((a, s) => a + s.n, 0);
   const rising = sectors.filter((s) => s.chg > 0).length;
@@ -33,7 +35,10 @@ export function SectorHeat({ rows, day, compact = false }: { rows: Row[]; day: s
   return <section className={`card sh${compact ? ' sh-compact mk-card' : ''}`} data-sectorheat aria-labelledby="sh-h">
     <div className="sh-top"><div>{!compact && <span className="workspace-kicker">Market map</span>}<h2 ref={heading} tabIndex={-1} id="sh-h">{cur ? cur.sector : 'Sector heat map'}</h2></div>
       <div className="mini-seg" role="group" aria-label="Change over">{(['r1d', 'r1w', 'r1m'] as HeatWindow[]).map((w) => <button key={w} type="button" aria-pressed={win === w} onClick={() => setWin(w)}>{w === 'r1d' ? '1D' : w === 'r1w' ? '1W' : '1M'}</button>)}</div></div>
-    <p className="sh-sub small dim">Close of {dayWord(day)} · {WINDOW_LABEL[win]} change · {cur ? cur.n : counted} liquid companies</p>
+    {live && win === 'r1d' && <div className="mini-seg sh-mode" role="group" aria-label="Live or close" data-heat-mode>{(['live', 'close'] as const).map((m) => <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>{m === 'live' ? 'Live' : 'Close'}</button>)}</div>}
+    {isLive
+      ? <p className="sh-sub small dim" data-heat-live>Live{live!.obs ? ` · ${istTime(live!.obs)}` : ''} · 1 day change against the previous close · the {live!.measured} most traded names, {Math.round(live!.share * 100)}% of liquid traded value. Names with no live print are left out, not counted as zero.</p>
+      : <p className="sh-sub small dim">Close of {dayWord(day)} · {WINDOW_LABEL[win]} change · {cur ? cur.n : counted} liquid companies</p>}
     {cur ? <>
       <div className="sh-crumb"><button type="button" className="btn sm" onClick={() => setSector(null)}><Icon n="back" /> All sectors</button><span className="small dim">{cur.n} names · {((cur.weight / total) * 100).toFixed(1)}% of counted traded value</span></div>
       <div className="sh-focus" style={heatStyle(cur.chg, win)}>
