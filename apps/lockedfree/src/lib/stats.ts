@@ -1,0 +1,7 @@
+import { type Row, num, sectorOf } from './feed.ts';
+export const median = (a: number[]) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+export const vals = (rows: Row[], k: string) => rows.map((r) => num(r, k)).filter((x): x is number => x != null);
+export const hist = (a: number[], edges: number[]) => { const out = new Array(edges.length + 1).fill(0); for (const v of a) { let i = 0; while (i < edges.length && v >= edges[i]) i++; out[i]++; } return out; };
+export interface SectorRow { sector: string; n: number; r1d: number | null; r1m: number | null; r3m: number | null; pe: number | null; roce: number | null; above200: number | null }
+export function sectors(rows: Row[]): SectorRow[] { const m = new Map<string, Row[]>(); for (const r of rows) (m.get(sectorOf(r)) ?? m.set(sectorOf(r), []).get(sectorOf(r))!).push(r);
+  return [...m].filter(([s]) => s !== 'Unclassified').map(([sector, rs]) => { const w = rs.filter((r) => num(r, 'price') != null && num(r, 'sma200') != null); return { sector, n: rs.length, r1d: median(vals(rs, 'r1d')), r1m: median(vals(rs, 'r1m')), r3m: median(vals(rs, 'r3m')), pe: median(vals(rs, 'pe')), roce: median(vals(rs, 'roce')), above200: w.length ? (w.filter((r) => r.price > r.sma200).length / w.length) * 100 : null }; }).sort((a, b) => (b.r1m ?? -1e9) - (a.r1m ?? -1e9)); }

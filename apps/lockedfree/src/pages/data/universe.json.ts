@@ -1,0 +1,5 @@
+// The screener's table, one compact array per stock. Missing value = null (rendered as a dash, never zero). No verdicts, no trade ladder.
+import { loadFeed, num, tierOf } from '../../lib/feed.ts';
+export const COLS = ['sym', 'name', 'sector', 'tier', 'mcap_cr', 'price', 'r1d', 'r1w', 'r1m', 'r3m', 'r1y', 'rs3m', 'pe', 'pb', 'div_yield', 'roce', 'roe', 'ebit_margin', 'rev_cagr', 'eps_cagr', 'de', 'cfo_pat', 'fcf_margin', 'piotroski', 'q', 'g', 'v', 'tech', 'comp', 'rsi', 'from_high', 'sd1y', 'turnover_cr', 'checks', 'mf_rank', 'risk'];
+export const GET = () => { const F = loadFeed(); const rows = F.rows.map((r) => COLS.map((c) => c === 'sym' ? r.sym : c === 'name' ? r.name : c === 'sector' ? (r.sector ?? null) : c === 'tier' ? tierOf(r) : c === 'checks' ? (r.vet ? `${r.vet.p}/${r.vet.n}` : null) : c === 'mf_rank' ? (r.mf?.rank ?? null) : c === 'risk' ? (r.risk?.level ?? null) : num(r, c)));
+  return new Response(JSON.stringify({ asOf: F.asOf, builtOn: F.builtOn, cols: COLS, rows }), { headers: { 'content-type': 'application/json' } }); };

@@ -251,3 +251,10 @@ Calm, plain, short sentences. Numbers carry dates. Rules are structure, never ju
 ## 12. Banned (design level)
 
 Top-gainers/most-active/most-bought rails under any name; return leaderboards; winners-only strips; confetti; trade-count or P&L badges; price-move notifications; dark theme or toggle; chatbot; social feed; urgency timers; drop shadows as hierarchy; gradient text; glassmorphism; decorative looping animation.
+
+## 13. Terminal surfaces (ADR-010, owner decision)
+A second surface for data work, scoped to `[data-surface="terminal"]`: /terminal/, /screener/, /snapshot/, /brief/, /pnl/, /stock/*. The editorial site above stays paper-only; there is no theme toggle.
+- **Palette** (same token names, remapped in tokens.css): graphite `#0B0C0E`, panel `#121317`, hairline `#262932`, text `#F5F5F7` / `#A3A8B3`, terminal amber `#F5A524` for focus, selection and brand, up mint `#3DDC97`, down coral `#FF6B6B`. Direction still never rides on colour alone: sign plus arrow always.
+- **Density**: 14px body, 13px tables, mono figures, 4px grid, 56px icon rail (bottom bar under 700px), 40px frosted status bar with market state, IST clock and data stamp, ⌘K / `/` command palette, keys 1–5 switch rooms.
+- **Motion** (same durations and easing as §6): panes rise 6px over 320ms staggered 40ms, big numbers count up over 420ms once, meters and split bars grow over 420ms, screener rows re-order with GSAP Flip (320ms), a screener row morphs into the stock header through a named view transition, live quote cells flash green or red for 700ms when a value changes. Nothing loops (no ticker marquee). Reduced motion turns all of it off.
+- **Honesty rules carried over**: every number has an owner section and appears once per page (build fails otherwise); a missing value is a dash with a tooltip; quotes show their age and turn amber when stale; the source's verdict and trade ladder are never shown.

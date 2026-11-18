@@ -1,6 +1,26 @@
 // Rulebook Worker: static assets plus two routes. POST /api/subscribe stores an email and consent in a SQLite Durable Object; GET /api/health.
 // No prices, no accounts, no tracking. Nothing is sent by email from here. Admin export needs the ADMIN_TOKEN secret and is off without it.
 import { DurableObject } from 'cloudflare:workers';
+const SYM = /^[A-Z0-9&-]{1,20}$/;
+export const INDEX = { NIFTY: '^NSEI', BANKNIFTY: '^NSEBANK', SENSEX: '^BSESN', NIFTYIT: '^CNXIT', NIFTYPHARMA: '^CNXPHARMA', INDIAVIX: '^INDIAVIX' };
+export const yahooSymbol = (s) => (INDEX[s] ?? (SYM.test(s) ? `${s}.NS` : null));
+/** Pure. One quote from Yahoo's chart payload; null when any required field is missing (a missing price is never replaced by a guess). */
+export function parseQuote(j) {
+  const m = j?.chart?.result?.[0]?.meta; if (!m || typeof m.regularMarketPrice !== 'number') return null; const n = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+  return { px: m.regularMarketPrice, prev: n(m.chartPreviousClose) ?? n(m.previousClose), t: n(m.regularMarketTime), hi: n(m.regularMarketDayHigh), lo: n(m.regularMarketDayLow) };
+}
+/** Pure. Daily closes as [{t: 'YYYY-MM-DD' (India date), c}], dropping any day without a close. */
+export function parseChart(j) {
+  const r = j?.chart?.result?.[0]; const ts = r?.timestamp, cl = r?.indicators?.quote?.[0]?.close; if (!Array.isArray(ts) || !Array.isArray(cl)) return [];
+  const out = []; for (let i = 0; i < ts.length; i++) { const c = cl[i]; if (typeof c === 'number' && Number.isFinite(c)) out.push({ t: new Date((ts[i] + 19800) * 1000).toISOString().slice(0, 10), c: Math.round(c * 100) / 100 }); } return out;
+}
+async function yahoo(ysym, range, interval, ttl) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?range=${range}&interval=${interval}&includePrePost=false`; const cache = caches.default, key = new Request(url);
+  const hit = await cache.match(key); if (hit) return hit.json();
+  // a hard deadline: the abort signal alone is not trusted to end a stalled connection, and an endpoint that hangs is worse than one that fails
+  const res = await Promise.race([fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; rulebook-quotes/1.0)', accept: 'application/json' }, signal: AbortSignal.timeout(5000) }), new Promise((_, rej) => setTimeout(() => rej(new Error('upstream timeout')), 5500))]); if (!res.ok) throw new Error(`upstream ${res.status}`);
+  const body = await res.text(); await cache.put(key, new Response(body, { headers: { 'cache-control': `public, max-age=${ttl}` } })); return JSON.parse(body);
+}
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/, CONSENT = 'weekly-note-v1';
 const SEC = { 'x-content-type-options': 'nosniff', 'strict-transport-security': 'max-age=31536000; includeSubDomains', 'cross-origin-opener-policy': 'same-origin', 'cache-control': 'no-store' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...SEC } });
@@ -28,6 +48,16 @@ export default {
     if (url.pathname === '/api/subscribers' && env.ADMIN_TOKEN) {                           // owner export and deletion on request; off unless the secret is set
       const given = req.headers.get('authorization') || ''; if (given.length !== env.ADMIN_TOKEN.length + 7 || given !== 'Bearer ' + env.ADMIN_TOKEN) return json({ error: 'No.' }, 401);
       const stub = env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main')); if (req.method === 'DELETE') { await stub.remove(url.searchParams.get('email') || ''); return json({ ok: true }); } return json({ rows: await stub.all() });
+    }
+    if (url.pathname === '/api/quotes' || url.pathname === '/api/chart') {
+      if (env.QUOTE_LIMIT) { const ip = req.headers.get('cf-connecting-ip') || 'x'; const { success } = await env.QUOTE_LIMIT.limit({ key: ip }); if (!success) return json({ error: 'Too many requests.' }, 429); }
+      const q = url.searchParams.get('s') || ''; if (q.length > 800) return json({ error: 'Too long.' }, 400);
+      if (url.pathname === '/api/chart') { const y = yahooSymbol(q.toUpperCase()); if (!y) return json({ error: 'Bad symbol.' }, 400); try { return json({ ok: true, source: 'Yahoo Finance, delayed and unofficial', points: parseChart(await yahoo(y, '1y', '1d', 900)) }); } catch (e) { return json({ ok: false, error: 'Upstream unavailable.' }, 502); } }
+      const syms = [...new Set(q.toUpperCase().split(',').map((x) => x.trim()).filter(Boolean))]; if (!syms.length || syms.length > 40 || syms.some((x) => !yahooSymbol(x))) return json({ error: 'Between 1 and 40 valid symbols.' }, 400);
+      const got = await Promise.allSettled(syms.map(async (x) => [x, parseQuote(await yahoo(yahooSymbol(x), '1d', '1m', 10))])); const quotes = {}, missing = [];
+      got.forEach((g, i) => { if (g.status === 'fulfilled' && g.value[1]) quotes[syms[i]] = g.value[1]; else missing.push(syms[i]); });
+      if (!Object.keys(quotes).length) return json({ ok: false, error: 'No quotes available from the upstream source.', missing }, 502);
+      return json({ ok: true, fetched_at: new Date().toISOString(), source: 'Yahoo Finance, delayed and unofficial', quotes, missing });
     }
     if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     return env.ASSETS.fetch(req);
