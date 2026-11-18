@@ -1,6 +1,6 @@
 // Delayed-live quotes. Every [data-q="SYM"] element is filled from /api/quotes: poll every 15 s while NSE is open, once when closed.
 // Quotes are delayed and unofficial (Yahoo via the Worker); every figure carries its age, and a failure shows as a stale stamp, never as an old number passed off as fresh.
-import { marketState } from './terminal.ts';
+import { marketState } from './market.ts';
 export interface Quote { px: number; prev: number | null; t: number | null; hi: number | null; lo: number | null }
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; const last = new Map<string, Quote>(); let lastOk = 0, failures = 0;
 const svgArrow = (up: boolean) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('width', '12'); s.setAttribute('height', '12'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2.25'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.setAttribute('aria-hidden', 'true');

@@ -256,3 +256,9 @@ Verified: 89 unit tests; Chromium proofs against real Workers: main 12/12, termi
 NOT verified: the live domain and deployed headers (sandbox cannot reach it; the uptime probe will); live quotes on real Yahoo; Safari and real devices; nightly and weekly jobs on real prices; Lighthouse on the live site. Still owed by the owner: legal/SEBI opinion; set the ADMIN_TOKEN secret and take the first email-list backup.
 Not built (outside P0+P1): the new opening page with motion effects, live sector/pricing movement board, header strengthening beyond the Paper-only tag.
 Untouched: Tripwire, Alpha, ApexPro.
+
+## 2026-11-19 — Rulebook: opening page v3 with motion and the live board
+Owner instruction: build the opening page with motion effects and live board.
+Changed: new home: aurora hero, floating live "Market now" card, market chip, Live board (ten sector tiles with live day change and the feed's 1M, the 17 paper calls vs entry with open paper P&L, daily brief, breadth), exit-rule bars per engine, rooms, newsletter. New home.ts (board logic), market.ts (shared market state), board.css; Worker maps ten sector index tickers; the old static book mock removed. Tests: 90 unit; new proof-board 11/11 with mocked quotes (tone from live change, P&L equals quantity x (live - entry) recomputed from the ledger file, symbols within the 40 limit, refresh updates and fires the sweep, failure shows dashes and last-close figures, reduced motion, no overflow at 360/390/768/1440); home 6/6; main 12/12; terminal 11/11; launch 8/8. Lighthouse home (local, simulated mobile): performance 95, accessibility 100, SEO 100, layout shift 0.006.
+NOT verified: real Yahoo quotes and the sector index tickers (a wrong ticker shows a dash); behaviour during live market hours (tested with mocked quotes only); Safari and real devices.
+Untouched: Tripwire, Alpha, ApexPro.

@@ -2,7 +2,9 @@
 // No prices, no accounts, no tracking. Nothing is sent by email from here. Admin export needs the ADMIN_TOKEN secret and is off without it.
 import { DurableObject } from 'cloudflare:workers';
 const SYM = /^[A-Z0-9&-]{1,20}$/;
-export const INDEX = { NIFTY: '^NSEI', BANKNIFTY: '^NSEBANK', SENSEX: '^BSESN', NIFTYIT: '^CNXIT', NIFTYPHARMA: '^CNXPHARMA', INDIAVIX: '^INDIAVIX' };
+export const INDEX = { NIFTY: '^NSEI', BANKNIFTY: '^NSEBANK', SENSEX: '^BSESN', NIFTYIT: '^CNXIT', NIFTYPHARMA: '^CNXPHARMA', INDIAVIX: '^INDIAVIX',
+  /* sector indices for the home live board; an unrecognised ticker simply comes back missing and its tile shows a dash */
+  NIFTYFIN: '^CNXFIN', NIFTYAUTO: '^CNXAUTO', NIFTYFMCG: '^CNXFMCG', NIFTYMETAL: '^CNXMETAL', NIFTYENERGY: '^CNXENERGY', NIFTYREALTY: '^CNXREALTY', NIFTYINFRA: '^CNXINFRA' };
 export const yahooSymbol = (s) => (INDEX[s] ?? (SYM.test(s) ? `${s}.NS` : null));
 /** Pure. One quote from Yahoo's chart payload; null when any required field is missing (a missing price is never replaced by a guess). */
 export function parseQuote(j) {

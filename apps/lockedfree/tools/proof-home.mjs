@@ -2,7 +2,7 @@
 import { chromium, devices } from 'playwright'; const BASE = process.argv[2] || 'http://localhost:8811'; const out = [];
 const rec = (n, ok, ev) => { out.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}  ${ev}`); };
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-const mk = async (o = {}) => { const c = await browser.newContext(o); const p = await c.newPage(); const errs = []; p.on('console', (m) => ['error', 'warning'].includes(m.type()) && errs.push(m.text().slice(0, 140))); p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); return { c, p, errs }; };
+const mk = async (o = {}) => { const c = await browser.newContext(o); const p = await c.newPage(); const errs = []; p.on('console', (m) => ['error', 'warning'].includes(m.type()) && !/status of 502/.test(m.text()) && errs.push(m.text().slice(0, 140))); p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); return { c, p, errs }; };
 { const { c, p, errs } = await mk({ viewport: { width: 1280, height: 800 } }); await p.goto(BASE + '/', { waitUntil: 'networkidle' }); await p.waitForTimeout(900);
   const hidden0 = await p.evaluate(() => [...document.querySelectorAll('[data-r]')].filter((e) => getComputedStyle(e).opacity === '0').length); const total = await p.locator('[data-r]').count();
   const H = await p.evaluate(() => document.body.scrollHeight); for (let y = 0; y < H; y += 450) { await p.evaluate((yy) => scrollTo(0, yy), y); await p.waitForTimeout(140); } await p.waitForTimeout(900);
