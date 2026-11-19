@@ -15,6 +15,7 @@ public/universe.json
 .claude/*
 !.claude/commands/
 public/build.json
+public/v1/
 public/c.next/
 
 tests/visual/diff/
