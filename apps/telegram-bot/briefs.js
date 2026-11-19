@@ -156,7 +156,7 @@ export function pickCandidates(events, nowMs, st) {
 
 // Some feed links are 500+ characters (Google News). Past 300 the headline is shown without a link, so a message never grows past Telegram's 4096 limit mid-tag.
 const safeUrl = (u) => (/^https?:\/\//i.test(u || '') && String(u).length <= 300 ? String(u).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') : null);
-const newsLines = (items) => items.map((e, i) => {
+export const newsLines = (items) => items.map((e, i) => {
   const u = safeUrl(e.canonicalUrl);
   const h = esc(e.headline);
   return `${i + 1}. ${e.mine ? '★ ' : ''}${u ? `<a href="${u}">${h}</a>` : h} <i>(${esc(e.sourceTitle || 'source n/a')})</i>`;
