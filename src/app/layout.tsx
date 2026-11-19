@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'alpha', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
 };
-export const viewport: Viewport = { themeColor: '#f6f5f1', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+export const viewport: Viewport = { themeColor: '#08090a', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 // Start the first data a page waits on while its JavaScript is still downloading, and let lib/data.ts pick up the same
 // requests (window.__alphaPre) instead of fetching again. Today: the summary and the Barometer. A company page: its live slice
@@ -32,7 +32,7 @@ const prefetchScript = `try{var L=location.pathname,u=[];if(L==='/')u=['/api/sum
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-IN" data-theme="light" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
+    <html lang="en-IN" data-theme="dark" data-accent="lime" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PREFS_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: prefetchScript }} />
