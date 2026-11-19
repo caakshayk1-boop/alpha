@@ -83,8 +83,8 @@ for (const route of ['/#/today', '/#/help', '/#/methodology']) { const { ctx, pg
     const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', bypassCSP: true });
     await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch { /* none */ } }, fresh);
     await mockApi(ctx); const pg = await ctx.newPage(); await pg.goto(base + r);
-    await pg.waitForFunction(() => document.querySelector('#root')?.children.length > 0 && !document.querySelector('.routewait'), null, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(1200);
-    ok(await pg.locator('.welcome').count() === 0 && await pg.locator('#root *').count() > 5, `a first-time visitor who follows a link to ${r.slice(2)} sees that page, not the welcome screen`); await ctx.close();
+    await pg.waitForFunction(() => document.querySelector('#root') && !document.querySelector('#root .boot') && !document.querySelector('.routewait'), null, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(1200);
+    ok(await pg.locator('#root .boot').count() === 0 && await pg.locator('.welcome').count() === 0 && await pg.locator('#root *').count() > 5, `a first-time visitor who follows a link to ${r.slice(2)} sees that page, not the welcome screen`); await ctx.close();
   }
   const { ctx, pg } = await open('/#/today', { state: fresh }); await pg.waitForSelector('.welcome'); ok(await pg.locator('.welcome a[href="#/privacy"]').count() === 1 && await pg.locator('.welcome a[href="#/terms"]').count() === 1, 'the first-use screen links to Privacy and Terms'); await ctx.close(); }
 
