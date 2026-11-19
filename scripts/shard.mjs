@@ -90,6 +90,7 @@ function identity(snap) {
     section('engines', '/engines.json', 'public/engines.json'),
     section('rotation', '/rotation.json', 'public/rotation.json'),
     section('brief', '/signal_brief.json', 'public/signal_brief.json'),
+    section('market', '/v1/market/{tick,pulse,macro,chart}', null, { note: 'live quotes, index and macro pulse, full daily history; delayed, unofficial' }),
     section('build', '/build.json', null),
   ] };
   mkdirSync('public/v1', { recursive: true });
