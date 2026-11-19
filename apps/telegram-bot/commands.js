@@ -22,6 +22,7 @@ export const HELP = [
   '/tripwire  Tripwire paper ledger, last day',
   '/rulebook  lockedfree screens and book',
   '/stock SYMBOL  company snapshot, e.g. /stock TCS',
+  '/news  top 10 new stories now (no repeats)',
   '/digest  pulse + signals + tripwire + rulebook',
   '/note TEXT  save a note',
   '/notes  list notes',
