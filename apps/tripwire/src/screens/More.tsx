@@ -23,18 +23,17 @@ const GROUPS: { head: string; rows: Row[] }[] = [
   ] },
   { head: 'Public record', rows: [
     {id:'glass',href:'#/glass',icon:'chart',title:'Honest scoreboard',note:'Results, position timelines and traceable numbers'},
-    {id:'sitout',href:'#/sitout',icon:'note',title:'Sit-out log',note:'Passed, picked, skipped and voided observations'},
     {id:'edition',href:'#/edition',icon:'note',title:'Daily edition',note:'One ledger night as a dated page, never edited'},
+    {id:'sitout',href:'#/sitout',icon:'note',title:'Sit-out log',note:'Passed, picked, skipped and voided observations'},
     {id:'gate',href:'#/gate',icon:'check',title:'Gate & backtest',note:'Market checks, every gate day and holdout evidence'},
+  ] },
+  /* 20 Nov 2026: "About and data" already holds the Data and Methodology pages in full (it embeds both), so the separate Data and coverage and Methodology rows opened the same content a second time. Their addresses (#/data, #/methodology) still work; only the rows are gone. */
+  { head: 'About and help', rows: [
+    { id: 'info', href: '#/info', icon: 'info', title: 'About and data', note: 'Data status, how the numbers are made, definitions, the fine print' },
+    { id: 'help', href: '#/help', icon: 'info', title: 'Help', note: 'How to use Tripwire' },
     {id:'about',href:'#/about',icon:'info',title:'About the builder',note:'The story so far and report a wrong number'},
     {id:'changelog',href:'#/changelog',icon:'clock',title:'Public changelog',note:'Dated rule versions and why they changed'},
     {id:'api-guide',href:'#/api-guide',icon:'info',title:'Public data API',note:'JSON contracts, source dates and missing values'},
-  ] },
-  { head: 'About the data', rows: [
-    { id: 'info', href: '#/info', icon: 'info', title: 'About and data', note: 'Data status, how the numbers are made, definitions, the fine print' },
-    { id: 'data', href: '#/data', icon: 'clock', title: 'Data and coverage', note: 'How current each dataset is, and what it covers' },
-    { id: 'methodology', href: '#/methodology', icon: 'check', title: 'Methodology', note: 'How picks and trends are worked out, and what the tests found' },
-    { id: 'help', href: '#/help', icon: 'info', title: 'Help', note: 'How to use Tripwire' },
   ] },
   { head: 'Settings', rows: [
     { id: 'settings', href: '#/settings', title: 'Settings', icon: 'profile', note: 'Backup and restore, defaults, display, app lock' },
