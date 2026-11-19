@@ -1,5 +1,5 @@
 'use client';
-/** VisionBoard: the Vision features folded into Today. Everything is computed from feeds Alpha already publishes (the screen and
+/** VisionBoard: the Vision features, two cards on Today and four on Markets (VisionToday, VisionMarket below). Everything is computed from feeds Alpha already publishes (the screen and
  *  the Nifty's daily bars), so nothing here adds a feed. No chart library: plain SVG and CSS. Descriptions of the past, never calls. */
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -230,14 +230,22 @@ export function DayGrid() {
   );
 }
 
-/** The block placed on Today, lazy so it costs nothing until it nears the viewport. */
-export function VisionBoard() {
+/** 20 Nov 2026: the six Vision cards no longer sit together on Today (a 5,900 px page). The two that answer "what is unusual today" stay on Today; the four that describe the week and the year
+ *  (the Nifty's year, each day's change, the sectors this week, the week's movers) are on Markets, where the market's context belongs. Each is lazy, so it costs nothing until it nears the viewport. */
+export function VisionToday() {
   return (
-    <section className="wrap section2" aria-label="Market context from Vision">
-      <div className="grid-2" style={{ marginBottom: 'var(--sp-5, 24px)' }}>
+    <section className="wrap section2" aria-label="What is unusual today">
+      <div className="grid-2">
         <LazyMount minHeight={300}><UnusualToday /></LazyMount>
         <LazyMount minHeight={300}><RankMovers /></LazyMount>
       </div>
+    </section>
+  );
+}
+
+export function VisionMarket() {
+  return (
+    <section className="wrap section2" aria-label="The week and the year">
       <div className="grid-2" style={{ marginBottom: 'var(--sp-5, 24px)' }}>
         <LazyMount minHeight={320}><NiftyYear /></LazyMount>
         <LazyMount minHeight={320}><DayGrid /></LazyMount>
