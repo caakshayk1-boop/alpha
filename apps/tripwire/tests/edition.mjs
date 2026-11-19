@@ -40,6 +40,7 @@ for (const [name, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { 
     ok(/Test reason for a void/.test(t) && /Corrected, not deleted/.test(t), `${name}: a void is shown with its reason`);
     ok(await pg.locator('.ed-picks li', { hasText: 'BBB' }).locator('.chip').count() === 1 && await pg.locator('.ed-picks li', { hasText: 'AAA' }).locator('.chip').count() === 0, `${name}: only the name new to its engine is marked new`);
     ok(/The swing gate was off on this night/.test(t), `${name}: the gate for that night comes from the published history`);
+    { const f = await pg.locator('[data-funnel="MOM"]').innerText(); ok(/430 eligible → 27 passed → 5 picked|438 eligible → 30 passed → 5 picked/.test(f.replace(/\s+/g, ' ')), `${name}: the engine funnel shows the ledger's own eligible, passed and picked counts (${f.replace(/\s+/g, ' ').slice(0, 70)})`); }
     await pg.getByRole('link', { name: /13 Nov/ }).first().click(); await pg.waitForFunction(() => document.querySelector('[data-edition]')?.getAttribute('data-edition') === '2026-11-13');
     ok(/The published gate history has no entry for this night/.test(await pg.locator('[data-edition]').innerText()), `${name}: a night with no gate entry says missing, not off`);
     await pg.goto(base + '/#/edition?d=2026-01-01'); await pg.waitForSelector('text=no night recorded for 2026-01-01');
