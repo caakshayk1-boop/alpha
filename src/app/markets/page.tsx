@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { InstrumentSheet } from '@/components/InstrumentSheet';
 import type { Quote } from '@/lib/types';
 import { MarketStance } from '@/components/AiTools';
+import { VisionMarket } from '@/components/widgets/VisionBoard';
 import { DataStamp } from '@/components/DataStamp';
 import { Chg, Flash, PageHead, Skel, Spark } from '@/components/ui';
 import { useLiveQuotes } from '@/lib/data';
@@ -72,6 +73,7 @@ export default function Markets() {
         <div className="sp-sec"><MarketStance /></div>
         {q.data && <p className="sp-note mk-foot">Fetched {ago(q.data.fetched_at)} from Yahoo Finance{q.error ? ` (the last refresh failed: ${q.error}; these are the previous quotes)` : ''}. Each card shows its own last-trade time, because markets close at different hours.{missing > 0 ? ` ${missing} instrument${missing > 1 ? 's' : ''} did not answer and ${missing > 1 ? 'are' : 'is'} left out rather than shown as 0%.` : ''} Commodities are futures: they differ from spot prices, and the contract rolls to the next month before expiry, which can move the level without any trade at the old price.</p>}
       </section>
+      <VisionMarket />
     </div>
   );
 }
