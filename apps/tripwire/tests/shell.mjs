@@ -105,14 +105,14 @@ for (const [w, h, label] of [[390, 844, 'phone'], [1280, 800, 'desktop']]) {
   ok(/v=journal/.test(await pg.evaluate(() => location.hash)) && (await pg.getByRole('tab', { name: 'Journal' }).getAttribute('aria-selected')) === 'true' && (await current(pg)) === 'Menu', 'Menu: back in My Desk on the Journal segment');
   await tab(pg, 'Menu'); await pg.waitForTimeout(300); await tab(pg, 'Menu'); await pg.waitForSelector('[data-more]');
   ok(await pg.evaluate(() => location.hash) === '#/more', 'a second tap on the tab you are in, already at the top, returns to its first screen (the Menu)');
-  await pg.locator('[data-more-row=methodology]').click(); await pg.waitForFunction(() => location.hash === '#/methodology'); await settle(pg);
+  await pg.locator('[data-more-row=info]').click(); await pg.waitForFunction(() => location.hash === '#/info'); await settle(pg);
   const docH = await pg.evaluate(() => document.documentElement.scrollHeight); await pg.evaluate(() => window.scrollTo(0, 700)); await pg.waitForTimeout(400); const ym = await pg.evaluate(() => Math.round(scrollY));
-  ok(docH > 1600 && ym > 400, `set up: Methodology scrolled to ${ym} of ${docH}`);
+  ok(docH > 1600 && ym > 400, `set up: About and data (the long page the Menu row opens; the separate Methodology row is gone since 20 Nov 2026) scrolled to ${ym} of ${docH}`);
   await tab(pg, 'Research'); await ready(pg); await pg.waitForTimeout(500);
-  await tab(pg, 'Menu'); await pg.waitForFunction(() => location.hash === '#/methodology'); await settle(pg); await pg.waitForTimeout(300);
+  await tab(pg, 'Menu'); await pg.waitForFunction(() => location.hash === '#/info'); await settle(pg); await pg.waitForTimeout(300);
   const y2 = await pg.evaluate(() => Math.round(scrollY));
   ok((await current(pg)) === 'Menu' && Math.abs(y2 - ym) < 40, `Menu: back inside Methodology at the same place (${ym} then ${y2})`);
-  await tab(pg, 'Menu'); await pg.waitForTimeout(300); ok((await pg.evaluate(() => scrollY)) < 4 && (await pg.evaluate(() => location.hash)) === '#/methodology', 'a tap on the tab you are in scrolls to the top and stays on the page');
+  await tab(pg, 'Menu'); await pg.waitForTimeout(300); ok((await pg.evaluate(() => scrollY)) < 4 && (await pg.evaluate(() => location.hash)) === '#/info', 'a tap on the tab you are in scrolls to the top and stays on the page');
   await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]'); await pg.locator('a[href="#/markets"]').first().click(); await pg.waitForSelector('[data-sectorheat] .sh-cell'); await tab(pg, 'Today'); await pg.waitForSelector('[data-brief]');
   ok(await pg.evaluate(() => location.hash) === '#/today', 'the Today tab opens Today, not the Markets page that was opened from it');
   await ctx.close(); }
