@@ -1,6 +1,6 @@
 {
  "schema": "tripwire-fiidii/1",
- "updated": "2026-11-18T09:08:03.758Z",
+ "updated": "2026-11-18T19:53:20.025Z",
  "source": "NSE fiidiiTradeReact (provisional)",
  "rows": [
   {
@@ -92,6 +92,19 @@
     "buy": 14903.8,
     "sell": 14706.87,
     "net": 196.93
+   }
+  },
+  {
+   "date": "2026-11-18",
+   "fii": {
+    "buy": 17913.16,
+    "sell": 12046.38,
+    "net": 5866.78
+   },
+   "dii": {
+    "buy": 14602.25,
+    "sell": 17762.15,
+    "net": -3159.9
    }
   }
  ]
