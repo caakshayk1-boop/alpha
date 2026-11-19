@@ -19,7 +19,7 @@ export async function routeTransition(update,reduce){
  activeTransition?.skipTransition();
  const names=()=>document.querySelectorAll('[data-shared]').forEach(e=>{e.style.viewTransitionName='company-'+e.dataset.shared;e.dataset.flipId='company-'+e.dataset.shared;});
  if(reduce){update();return;}
- if(document.startViewTransition){activeTransition=document.startViewTransition(()=>{update();names();});await activeTransition.updateCallbackDone;activeTransition.finished.catch(()=>{});}
+ if(document.startViewTransition){activeTransition=document.startViewTransition(()=>{update();names();});activeTransition.ready.catch(()=>{});activeTransition.finished.catch(()=>{});await activeTransition.updateCallbackDone;}
  else {await engines();const state=Flip.getState('[data-flip-id]');update();names();Flip.from(state,{targets:'[data-flip-id]',duration:.42,ease:'power4.out',absolute:true});}
 }
 export function compareFlip(update,reduce){if(reduce||!gsap){update();return;}const state=Flip.getState('.compare-card');update();Flip.from(state,{targets:'.compare-card',duration:.32,ease:'power4.out',absolute:true,onEnter:els=>gsap.from(els,{opacity:0,y:8,duration:.2})});}

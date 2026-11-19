@@ -36,6 +36,7 @@ export function maxDrawdown(pts: readonly CT[]): MaxDrawdown | null {
 /** The wording of a window: "the last year", "the last 3 years", or, when the history is shorter than the range asked for or the range is Max, "the N months of history held". */
 export function windowWords(range: RangeId, covers: boolean, years: number): string {
   if (range === 'Max' || !covers) return `the ${spanWord(years)} of history held`;
+  if (range.endsWith('M')) return range === '1M' ? 'the last month' : `the last ${range.replace('M', '')} months`;
   return range === '1Y' ? 'the last year' : `the last ${range.replace('Y', '')} years`;
 }
 export interface PriceTakeaway { headline: string; lines: string[]; dataThrough: string; facts: { ret: number | null; bench: number | null; diff: number | null; drawdown: number | null } }

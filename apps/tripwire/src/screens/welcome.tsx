@@ -1,4 +1,6 @@
 import { HowVideo } from '../components/HowVideo';
+import { Films } from '../components/Films';
+import { LedgerLine } from './edition.tsx';
 import { QuestionOrb } from '../components/QuestionOrb.tsx';
 import { prefetchScreens } from '../prefetch.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +39,7 @@ export function sampleFacts(r: Row): { k: string; v: string; tone?: 'up' | 'down
 }
 
 export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
-  const scr = useScreen(); const [q, setQ] = useState(''); const root = useRef<HTMLElement | null>(null); useReveal(root);
+  const scr = useScreen(); const [q, setQ] = useState(''); const [act, setAct] = useState(-1); const root = useRef<HTMLElement | null>(null); useReveal(root);
   const t = q.trim().toLowerCase();
   const hits = useMemo(() => (t.length < 1 ? [] : (scr.data?.rows ?? []).filter((r) => r.sym.toLowerCase().startsWith(t) || r.name.toLowerCase().includes(t)).slice(0, 6)), [t, scr.data]);
   const sample = useMemo(() => { const rows = scr.data?.rows ?? []; for (const s of SAMPLE) { const r = rows.find((x) => x.sym === s && typeof x.price === 'number'); if (r && sampleFacts(r).length >= 3) return r; } return null; }, [scr.data]);
@@ -51,13 +53,14 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
         <div className="k lp-eyebrow"><span className="lp-mark" aria-hidden="true" />Tripwire · research for Indian stocks · by Akshay, CA</div>
         <h1 id="lp-h">Start with one company.</h1>
         <p className="lp-sub">Understand an Indian company. See the evidence for it, the risks against it, and build your own view.</p>
-        <form className="wl-find" role="search" onSubmit={(e) => { e.preventDefault(); if (hits[0]) choose(hits[0].sym); }}>
+        <LedgerLine />
+        <form className="wl-find" role="search" onSubmit={(e) => { e.preventDefault(); const h = hits[act] ?? hits[0]; if (h) choose(h.sym); }}>
           <label className="l" htmlFor="wl-q">Company name or symbol</label>
-          <div className="search"><Icon n="search" /><input id="wl-q" className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="For example TCS or Infosys" autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
+          <div className="search"><Icon n="search" /><input id="wl-q" className="field" role="combobox" aria-expanded={hits.length > 0} aria-controls="wl-hits" aria-autocomplete="list" aria-activedescendant={act >= 0 && hits[act] ? `wl-hit-${hits[act].sym}` : undefined} value={q} onChange={(e) => { setQ(e.target.value); setAct(-1); }} onKeyDown={(e) => { if (!hits.length) return; if (e.key === 'ArrowDown') { e.preventDefault(); setAct((i) => (i + 1) % hits.length); } else if (e.key === 'ArrowUp') { e.preventDefault(); setAct((i) => (i <= 0 ? hits.length - 1 : i - 1)); } else if (e.key === 'Home' && act >= 0) { e.preventDefault(); setAct(0); } else if (e.key === 'End' && act >= 0) { e.preventDefault(); setAct(hits.length - 1); } else if (e.key === 'Escape') { setQ(''); setAct(-1); } }} placeholder="For example TCS or Infosys" autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
           {scr.loading && <p className="small dim" style={{ margin: '8px 0 0' }}>Reading the company list…</p>}
           {scr.err && <p className="small down" role="alert" style={{ margin: '8px 0 0' }}>The company list could not be loaded ({scr.err}). You can still explore markets and search later.</p>}
           <p className="sr" role="status" aria-live="polite">{t && scr.data ? `${hits.length} ${hits.length === 1 ? 'company matches' : 'companies match'}` : ''}</p>
-          {hits.length > 0 && <div className="list wl-hits">{hits.map((r) => <button type="button" key={r.sym} className="li" style={{ textAlign: 'left' }} onClick={() => choose(r.sym)}><span className="avatar" aria-hidden="true">{r.sym.slice(0, 2)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="small dim trunc" style={{ display: 'block' }}>{r.name}</span></span><Icon n="chev" /></button>)}</div>}
+          {hits.length > 0 && <div className="list wl-hits" id="wl-hits" role="listbox" aria-label="Matching companies">{hits.map((r, i) => <button type="button" key={r.sym} id={`wl-hit-${r.sym}`} role="option" aria-selected={i === act} tabIndex={-1} className="li" style={{ textAlign: 'left' }} onClick={() => choose(r.sym)}><span className="avatar" aria-hidden="true">{r.sym.slice(0, 2)}</span><span className="grow"><span className="sym">{r.sym}</span><span className="small dim trunc" style={{ display: 'block' }}>{r.name}</span></span><Icon n="chev" /></button>)}</div>}
           {t && scr.data && hits.length === 0 && <p className="dim small" style={{ margin: '8px 0 0' }}>No company matches “{q.trim()}”. Try a name or symbol from the published company screen.</p>}
         </form>
         {!t && <div className="wl-examples" aria-label="Example companies">{['TCS', 'INFY', 'RELIANCE'].filter((sym) => scr.data?.rows.some((r) => r.sym === sym)).map((sym) => <button key={sym} className="chip" onClick={() => choose(sym)}>{sym}<Icon n="chev" /></button>)}</div>}
@@ -87,6 +90,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
     <section className="lp-sec lp-rv" aria-labelledby="lp-how">
       <h2 id="lp-how" className="lp-h2">How it works</h2>
       <HowVideo />
+      <Films />
       <ol className="lp-steps">
         <li><b>Find a company.</b><span>Search any of the {scr.data ? scr.data.count.toLocaleString('en-IN') : 'listed'} companies in the screen, or open a market view.</span></li>
         <li><b>Read the evidence.</b><span>Trend, quality, valuation and ownership, each stated with its rule and its date. Compare two companies side by side.</span></li>

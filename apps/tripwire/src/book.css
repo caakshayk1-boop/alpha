@@ -107,3 +107,9 @@ html.fx .tl-tick.fresh .pin{animation:tl-pin 400ms var(--ease) 200ms both}
 @keyframes tl-pin{from{opacity:0}to{opacity:1}}
 html.fx .pc-head:active{transform:scale(.995)}
 html.fx .pc-head{transition:transform var(--dur-1) var(--ease)}
+
+/* 18 Nov 2026 (6.0): the open-book table keeps its figures whole on a phone: numbers never break across lines, the engine name may wrap, and the Target 1 count shows from 520px up and steps aside below it so Open R stays on screen */
+.book-today .tbl td,.book-today .tbl thead th{white-space:nowrap}
+.book-today .tbl tbody th,.book-today .tbl tfoot th{white-space:normal;min-width:5rem}
+.book-today .tbl th,.book-today .tbl td{padding-inline:var(--sp-1)}
+@media(max-width:520px){.book-today .tbl .t1{display:none}}

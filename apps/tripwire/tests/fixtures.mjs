@@ -22,6 +22,7 @@ export async function mockApi(ctx) {
   await mockNews(ctx);   // the news endpoints: version, snapshot and live query (newsmock.mjs)
   await ctx.route('**/api/bars*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));
   await ctx.route('**/api/fiidii*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly FII/DII run has not happened yet"}' }));
+  await ctx.route('**/api/snapshots*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first book snapshot has not been written yet"}' }));
   await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly run has not happened yet"}' }));
   await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":false,"error":"the first nightly RSI run has not happened yet"}' }));
   await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }));

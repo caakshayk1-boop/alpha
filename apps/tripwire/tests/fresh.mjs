@@ -15,7 +15,8 @@ const open = async (route, { ledgerDay, rsiDay, factorsDay, breadthDay }) => {
   const L = (d) => ({ ok: true, ledger: { schema: 'tripwire-ledger/1', started: '2026-10-20', updated: `${d}T18:30:00Z`, cost: 0.25, days: [{ asOf: d, rules: 'elig-2', at: `${d}T18:30:00Z`, picks: 0 }], picks: [], outcomes: {} } });
   await ctx.route('**/api/ledger*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(L(ledgerDay)) }));
   await ctx.route('**/api/rsi*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-rsi/1', as_of: rsiDay, order: ['daily', 'weekly', 'monthly'], rows: { TCS: [55, 61, 66] } }) }));
-  await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: factorsDay, universe: 500, rows: {}, study: {} }) }));
+  await ctx.route('**/api/snapshots*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":false,"error":"the first book snapshot has not been written yet"}' }));
+await ctx.route('**/api/factors*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, schema: 'tripwire-factors/1', as_of: factorsDay, universe: 500, rows: {}, study: {} }) }));
   await ctx.route('**/api/breadth*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, t: Date.now(), as_of: breadthDay ?? DAY, n: 500, up: 200, mixed: 150, down: 150, sectors: [], repriced: 0, near: 0 }) }));   // pinned like the rest: the pill test must not depend on what the live worker serves
   const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160))); await pg.goto(base + route); return { ctx, pg, errs };
 };

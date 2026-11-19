@@ -25,7 +25,7 @@ concurrency:
 jobs:
   tripwire:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: read
     steps:
@@ -40,9 +40,22 @@ jobs:
         run: |
           python apps/tripwire/research/test_research.py
           python apps/tripwire/ledger/test_bars.py
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && ' webkit' || '' }}
       - run: npm run tripwire:types
       - run: npm run tripwire:test
+      - name: Wait for the nightly screen when this build is ahead of it (not on pull requests)
+        # 18 Nov 2026: the deploy kept failing with "screen is 1 session behind" whenever it ran in the minutes before the nightly screen published (a manual dispatch, a recovery slot, a dispatch that raced the commit).
+        # That is a timing problem, not bad data, so a build that is exactly one session behind waits for the publish (up to 4 tries, 8 minutes apart) and checks again. Anything else, a real data fault, falls through to the strict steps below and fails as before.
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          for i in 1 2 3 4; do
+            out=$( { node scripts/shard.mjs && npm run tripwire:build && npm run tripwire:verify-data -- --no-ledger; } 2>&1 ) && { echo "fresh on attempt $i"; exit 0; }
+            echo "$out" | tail -6
+            echo "$out" | grep -Eq 'sessions? behind' || { echo 'not a lag: the strict steps below will report it'; exit 0; }
+            [ "$i" = 4 ] && { echo 'still behind after 4 tries: the strict steps below will fail with the real line'; exit 0; }
+            echo "attempt $i: data is a session behind; waiting 8 minutes for the nightly publish" | tee -a "$GITHUB_STEP_SUMMARY"
+            sleep 480
+          done
       - name: Fetch the published company data (the same step the website's build runs)
         run: node scripts/shard.mjs
       - run: npm run tripwire:build
@@ -66,10 +79,14 @@ jobs:
       - name: Browser gate
         id: gate
         run: npm run tripwire:check
-        continue-on-error: ${{ github.event_name == 'schedule' }}
-      - name: Browser gate, second attempt (scheduled runs only)
-        if: ${{ github.event_name == 'schedule' && steps.gate.outcome == 'failure' }}
+        continue-on-error: ${{ github.event_name == 'schedule' || github.event_name == 'repository_dispatch' }}
+      - name: Browser gate, second attempt (scheduled and nightly-dispatch runs)
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch' && steps.gate.outcome == 'failure' }}
         run: npm run tripwire:check
+      # 17 Nov 2026: four suites were never in the gate (chart workbench, trust pages, self book, watch conditions). They run on pull requests and manual runs, in Chromium and WebKit; the nightly data deploy does not wait for them.
+      - name: Browser suites outside the nightly gate (pull requests and manual runs)
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        run: npm run tripwire:check:extra
       - name: Is this data day already on the site? (the retry slot only)
         id: already
         if: ${{ github.event_name == 'schedule' && github.event.schedule == '45 3 * * 2-6' }}

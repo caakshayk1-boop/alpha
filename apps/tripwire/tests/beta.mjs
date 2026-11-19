@@ -18,7 +18,7 @@ const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwir
   await pg.goto(base + '/'); await pg.waitForSelector('.welcome h1');
   const w = await text(pg);
   ok(!/Ten plain rules|Nifty 500 names/.test(w) && /evidence for it, the risks against it/.test(w), 'the welcome screen states what the product is, with no claim the data does not back');
-  await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('button', { name: /GCSL/ }).first().click(); await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
+  await pg.getByLabel('Company name or symbol').fill('GCSL'); await pg.getByRole('option', { name: /GCSL/ }).first().click();   /* 18 Nov 2026: the search results are the options of a combobox */ await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
   ok(!(await saved(pg)).follows.length, 'choosing a company during first use does not follow it');
   await pg.getByRole('button', { name: 'Not now' }).click(); await pg.waitForSelector('.decision', { timeout: 15000 });
   await pg.locator('.decision [data-dec-more]').click();   // 12 Nov 2026: the decision card is two lines and an expand now; the detail opens first

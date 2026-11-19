@@ -16,6 +16,7 @@ import { alertLine, alertsNow, inputFromOutcome } from '../src/alerts.ts';
 import { runSignalEngines } from '../src/signalengine.ts';
 import { DEFAULT_AGREEMENT } from '../src/agreement.ts';
 import { planAutoBook } from '../src/autobook.ts';
+import { appendSnapshot, snapshotOf, type SnapFile } from '../src/booksnap.ts';
 
 const here = (f: string) => new URL(f, import.meta.url);
 const mode = process.argv[2];
@@ -51,6 +52,10 @@ if (mode === 'record') {
   const faults = runChecks(ledger, got, Date.parse(now));
   if (faults.length) { for (const line of formatViolations(faults)) console.error(line); console.error(`FAIL: ${faults.length} ledger assertion${faults.length === 1 ? '' : 's'} failed (the ledger was written; the next run re-replays every unfinished pick)`); process.exit(1); }
   console.log(`ledger assertions: ok (picks and outcomes both reach ${lastFinishedSession(Date.parse(now))})`);
+  // 18 Nov 2026 (6.0): the daily book snapshot, written ONLY here, after the assertions passed, so a blind or half-marked night never enters the history. Write-once per day (src/booksnap.ts).
+  const snap = snapshotOf(ledger);
+  if (snap) { const prev: SnapFile | null = existsSync(here('./book-snapshots.json')) ? JSON.parse(readFileSync(here('./book-snapshots.json'), 'utf8')) : null; const r = appendSnapshot(prev, snap, now);
+    if (r.added) writeFileSync(here('./book-snapshots.json'), JSON.stringify(r.file)); console.log(r.added ? `book snapshot written for ${snap.day}: ${snap.open} open, ${snap.openR}R open, ${snap.closed} closed, ${snap.closedR}R closed` : `book snapshot for ${snap.day} already written; left as it was`); }
   // targets that filled in the last completed session, in the log (a list; nothing is sent anywhere)
   const hits = alertsNow(ledger.picks.filter((p) => !ledger.voided?.[p.id]).map((p) => inputFromOutcome(p, ledger.outcomes[p.id])), Date.parse(now));
   console.log(hits.length ? hits.map((a) => `TARGET HIT: ${alertLine(a)}`).join('\n') : 'no target filled in the last completed session');

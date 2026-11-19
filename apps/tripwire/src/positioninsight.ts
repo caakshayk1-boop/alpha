@@ -20,7 +20,7 @@ export function positionInsight(v: View, p: Pick<Paper, 'stop' | 'horizon'>): Po
   const parts: string[] = [];
   // A live mark can sit at or through the stop while the daily bars have not confirmed an exit; say so, and say that no exit is recorded, rather than call it a distance above.
   if (stopPct != null && stopPct <= 0) parts.push(`${stopPct === 0 ? 'At' : `${r1(-stopPct)}% below`} the stop (${inr(stop)}). No exit is recorded yet; the tracker confirms exits from the daily bars.`);
-  else if (stopPct != null && stopPct < 3) parts.push(`Close to the stop: ${r1(stopPct)}% above ${inr(stop)}.`);
+  else if (stopPct != null && stopPct < 3) parts.push(`${r != null && r > 0 ? 'Close to its profit-protecting stop' : 'Close to the stop'}: ${r1(stopPct)}% above ${inr(stop)}.`);
   else if (r != null && r < 0) parts.push(`Below entry (${r1(r)}R), ${stopPct != null ? `${r1(stopPct)}% above the stop` : 'stop not set'}.`);
   else if (r != null) parts.push(`Above entry (${r >= 0 ? '+' : ''}${r1(r)}R)${stopPct != null ? `, ${r1(stopPct)}% above the stop` : ''}.`);
   if (nextTarget) parts.push(nextTarget.pct > 0 ? `${r1(nextTarget.pct)}% to ${nextTarget.label} (${inr(nextTarget.px)}).` : `${nextTarget.label} (${inr(nextTarget.px)}) is below the price; its fill is not confirmed until the daily bars record it.`);

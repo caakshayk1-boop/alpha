@@ -79,8 +79,8 @@ for (const route of ['/#/today', '/#/methodology', '/#/help']) {
   const { ctx, pg } = await mk({ state: STATE, preDismissed: true }); await pg.goto(base + route); await pg.waitForSelector('[data-ident]'); await settle(pg);
   const t = await pg.locator('[data-ident]').innerText();
   ok(/paper-only research, not investment advice/.test(t) && /No SEBI registration is claimed/.test(t), `${route}: footer says research, not advice, and claims no SEBI registration`);
-  const href = await pg.locator('[data-ident] a[href^="mailto:"]').getAttribute('href'); ok(href === 'mailto:hello@askakshay.com', `${route}: footer carries the real contact (${href})`);
-  ok(!/margin notes/i.test(t) && (await pg.locator('[data-ident] a[href^="http"]').count()) === 0, `${route}: no Margin Notes link and no outside link`);
+  const href = await pg.locator('[data-ident] a[href^="mailto:"]').getAttribute('href'); ok(href === 'mailto:ca.akkothari@askakshay.com', `${route}: footer carries the real contact (${href})`);
+  ok(!/margin notes/i.test(t) && (await pg.locator('[data-ident] a[href^="http"]:not([href="https://askakshay.com"])').count()) === 0 && (await pg.locator('[data-ident] a[href="https://askakshay.com"]').count()) === 1, `${route}: no Margin Notes link, and the only outside link is askakshay.com (owner request, 19 Nov 2026)`);
   await ctx.close();
 }
 await b.close(); console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);

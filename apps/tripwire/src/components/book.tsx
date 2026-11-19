@@ -103,11 +103,11 @@ export function PositionCard(p: PositionCardProps) {
   /* a position the paper book never took has a result in R but no rupee figure: say so rather than print a rupee zero */
   const rOnly = p.pnl == null && p.r != null && !!p.closed; const upR = (p.r ?? 0) > 0 ? 'up' : (p.r ?? 0) < 0 ? 'down' : '';
   const rWord = p.r == null ? null : <TweenNumber value={p.r} format={(n) => `${sgn(Math.round(n * 100) / 100, rFmt)}R`} />;
-  return <article className={`pcard pc-row ${p.closed ? 'is-closed' : ''} ${p.near ? `near-${p.near.kind}` : ''}`} data-pos={p.id} data-status={p.status.label} data-near={p.near?.kind} aria-label={`${p.sym}${p.name ? `, ${p.name}` : ''}`}>
+  return <article className={`pcard pc-row ${p.closed ? 'is-closed' : ''} ${p.near ? `near-${p.near.kind}` : ''} ${p.near?.kind === 'stop' && up === 'up' ? 'near-locked' : ''}`} data-pos={p.id} data-status={p.status.label} data-near={p.near?.kind} aria-label={`${p.sym}${p.name ? `, ${p.name}` : ''}`}>
     <button type="button" className="tcard-head pc-head" aria-expanded={p.expanded} onClick={p.onToggle}>
       <span className="pr-id">
         <span className="pr-symline"><span className="pc-sym">{p.sym}</span>{p.chips && <span className="pr-chips">{p.chips}</span>}</span>
-        <span className="pr-sub"><span className={`pr-state ${p.status.tone}`}>{p.status.label}</span>{p.held && <><span aria-hidden="true"> · </span><span className="pr-held num">{p.held}</span></>}{p.near && <><span aria-hidden="true"> · </span><b className={`pr-near ${p.near.kind === 'stop' ? 'down' : 'up'}`}>{p.near.text}</b></>}</span>
+        <span className="pr-sub"><span className={`pr-state ${p.status.tone}`}>{p.status.label}</span>{p.held && <><span aria-hidden="true"> · </span><span className="pr-held num">{p.held}</span></>}{p.near && <><span aria-hidden="true"> · </span><b className={`pr-near ${p.near.kind === 'stop' ? (up === 'up' ? 'locked' : 'down') : 'up'}`}>{p.near.kind === 'stop' && up === 'up' ? p.near.text.replace('above its stop', 'above its protected stop') : p.near.text}</b></>}</span>
       </span>
       {rOnly ? <span className="pr-pnl"><b className={`num pc-big ${upR}`}>{rWord}</b><span className="pc-r num dim">R only · not in the paper book</span></span>
         : <span className="pr-pnl"><b className={`num amt pc-big ${up}`}>{p.pnl == null ? '—' : <TweenNumber value={p.pnl} format={(n) => sgn(Math.round(n), money)} />}</b>

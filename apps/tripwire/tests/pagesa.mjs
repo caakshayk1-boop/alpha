@@ -44,6 +44,8 @@ for (const w of [320, 360]) {
 /* ---- Markets: the sector heat map zooms into a sector, and lists its leaders and laggards ---- */
 for (const w of [320, 390, 1280]) {
   const { ctx, pg } = await plain(STATE, w, '/#/markets'); await pg.waitForSelector('[data-sectorheat] .sh-cell', { timeout: 15000 });
+  /* 18 Nov 2026: during real market hours the map opens on its live view (heatlive.mjs tests that, on a fixed clock); this check is about the published close, so it asks for it */
+  if (await pg.locator('[data-heat-mode]').count()) { await pg.getByRole('button', { name: 'Close', exact: true }).click(); }
   const cells = pg.locator('[data-sectorheat] .sh-cell'); const n = await cells.count(); const labels = await cells.evaluateAll((e) => e.map((x) => x.textContent));
   ok(n >= 6 && labels.every((l) => /percent of traded value/.test(l ?? '') && /over 1 day/.test(l ?? '')), `${w}: the heat map has ${n} sector cells, each named with its change, window and share of traded value`);
   ok((await pg.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${w}: the heat map causes no sideways scroll`);
@@ -202,6 +204,15 @@ for (const w of [320, 390, 1280]) {
   ok(await pg.locator('[data-record-attr] [data-contrib-total]').count() === 1, `${w}: the R attribution has a total row`);
   ok(await pg.locator('[data-curve] [data-drop]').count() === 1 && /closed trades only/.test(await pg.locator('[data-curve] [data-drop]').innerText() + ' closed trades only'), `${w}: the realised curve states its drop and basis`);
   await pg.locator('[data-curve] details summary').click(); ok(await pg.locator('[data-curve] table tbody tr').count() >= 1, `${w}: the curve has a table alternative`);
+  // 18 Nov 2026 (6.0): the open book beside the closed record. Rows add up to the totals row; counts and R only (no rate, no average); the daily line says when it began.
+  const bt = pg.locator('[data-book-today]'); ok(await bt.count() === 1, `${w}: the open book is shown beside the closed record`);
+  const cell = async (sel, i) => parseFloat((await bt.locator(`${sel} td`).nth(i).innerText()).replace('−', '-').replace('R', '').replace('—', '0'));
+  const eng = await bt.locator('tbody tr').count(); let sc = 0, so = 0, sor = 0, scr = 0;
+  for (let i = 0; i < eng; i++) { const t = `tbody tr:nth-child(${i + 1})`; sc += await cell(t, 0); scr += await cell(t, 1); so += await cell(t, 2); sor += await cell(t, 3); }
+  ok(eng >= 1 && sc === await cell('tfoot tr', 0) && so === await cell('tfoot tr', 2) && Math.abs(sor - await cell('tfoot tr', 3)) < 0.015 && Math.abs(scr - await cell('tfoot tr', 1)) < 0.015, `${w}: engine rows add up to the all-engines row`);
+  ok(!/win rate|expectancy|average|%/i.test(await bt.locator('table').innerText()), `${w}: the open-book table carries counts and R only, no rate`);
+  ok(/Marks are as of the close of/.test(await bt.locator('[data-book-note]').innerText()) && /say nothing about what comes next/.test(await bt.locator('[data-book-note]').innerText()), `${w}: the open book states its date and what it cannot say`);
+  ok(await bt.locator('svg.curve').count() === 1 && /since Mon 2 Nov/.test(await bt.locator('[data-book-curve]').innerText()), `${w}: two snapshot days draw a line that says when it began`);
   ok(await noOverflow(pg) && await pg.locator('h1').count() === 1, `${w}: Record: no sideways scroll, one h1`); await ctx.close();
 }
 await b.close(); console.log(bad ? `${bad} FAILED` : 'all passed'); process.exit(bad ? 1 : 0);

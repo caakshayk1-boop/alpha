@@ -33,8 +33,8 @@ main{counter-reset:sec}
 #sidebar{width:176px;padding:14px 10px;background:var(--sidebar);border-right:1px solid var(--line)}
 .workspace{margin-left:176px}
 #sidebar .brand{font-size:21px;min-height:36px}
-#sidebar .brand small{font:500 11px/1 var(--font-data);letter-spacing:.02em;margin-top:5px;color:var(--caption);white-space:nowrap;text-transform:uppercase}
-#sidebar .nav-label{font:500 11px var(--font-data);letter-spacing:.03em;text-transform:uppercase;margin:20px 8px 8px;color:var(--caption);white-space:nowrap}
+#sidebar .brand small{font:500 11px/1 var(--font-data);letter-spacing:.02em;margin-top:5px;color:var(--caption);white-space:normal;overflow-wrap:anywhere;line-height:1.25;text-transform:uppercase}
+#sidebar .nav-label{font:500 11px var(--font-data);letter-spacing:.03em;text-transform:uppercase;margin:20px 8px 8px;color:var(--caption);white-space:normal;line-height:1.5}
 #sidebar nav{gap:2px}
 #sidebar nav a{min-height:36px;padding:6px 10px;gap:10px;border-radius:var(--radius-s);font-size:13px;font-weight:500;position:relative}
 #sidebar nav a .icon{width:18px;height:18px}
@@ -47,7 +47,7 @@ main{counter-reset:sec}
 .research-note p{color:var(--muted);margin:6px 0;line-height:1.45}
 .sidebar-action{min-height:32px;padding:4px 8px;font-size:12px}
 .byline{padding-top:12px;margin-top:8px}
-.collapse-control{top:62px;right:6px;width:28px;height:28px}
+.collapse-control{top:14px;right:6px;width:28px;height:28px}[data-sidebar=collapsed] .collapse-control{top:62px}   /* 19 Nov 2026: on the open sidebar the button sat over the OBSERVE / INVESTIGATE / REVISIT label at 62px (a fixed element, so the overlap audit skipped it); it now sits in the wordmark row, clear of both lines */
 [data-sidebar=collapsed] #sidebar{width:56px;padding:14px 6px}[data-sidebar=collapsed] .workspace{margin-left:56px}
 #topbar{height:44px;padding:0 16px;position:sticky;top:0;z-index:25;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
 .breadcrumb{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption)}
@@ -139,9 +139,46 @@ tbody tr{transition:background-color var(--dur-1)}
  .matrix-head{font-size:11px}.matrix-name small{font-size:11px}.matrix-value{font-size:11px}.matrix-value small{font-size:11px}
  .lens-tabs button{font-size:11px}
  .canvas-topline h1{font-size:30px}
+ /* 18 Nov 2026: the company's section links wrapped to two rows and laid a tall dark block over the page under the topbar; one scrolling row, directly under the 52px topbar */
+ .company-chapters{top:52px;flex-wrap:nowrap;overflow-x:auto;gap:0 18px;scrollbar-width:none;overscroll-behavior-x:contain}
+ .company-chapters::-webkit-scrollbar{display:none}
+ .company-chapters a{flex:0 0 auto;white-space:nowrap}
+ footer span:last-child{margin-left:0}
 }
 
 /* ---- Floors: no text under 11px; coarse pointers get 44px for matrix sort and chapter links ---- */
 #sidebar .brand small,.matrix-value small,.candidate-head,.candidate-row small,.preview-price small,.range-widget>div:first-child,.range-widget>div:last-child,.preview-scores small,.review-items>a>small,.research-canvas .session-context>span,.research-canvas .session-context>span>small:last-child,.matrix-head,.matrix-name small,.matrix-value,.lens-tabs button{font-size:11px}
 @media(pointer:coarse){.matrix-head button,.company-chapters a{min-height:44px;min-width:48px}}
 .canvas-workbench .lens-tabs button small{font:11px var(--font-data)}
+/* 18 Nov 2026: rows per page (25, 50, 100), and a list that scrolls inside its own panel so 100 rows do not push the page down */
+.canvas-results{max-height:min(70vh,760px);overflow:auto;overscroll-behavior:contain}
+.canvas-pagination{position:sticky;bottom:0;background:var(--surface);display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:8px}
+.page-size{display:inline-flex;gap:2px;align-items:center;margin-left:auto}
+.page-size button{min-width:44px;min-height:44px}
+.page-size button[aria-pressed=true]{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.live-note{margin-top:8px}.live-note .text-button{min-height:44px;margin-left:6px}
+
+/* 19 Nov 2026: the askakshay.com pill primary action (shared with Tripwire); secondary buttons keep the square corner */
+.button:not(.secondary){border-radius:var(--radius-pill,999px)}
+/* 19 Nov 2026: layout-audit fixes. Inter is a little wider than Geist: at the 152px sidebar the wordmark ran under the collapse button, so both step down together; and the phone preset row (nowrap, scrolls sideways) let its chips shrink below their text so neighbours overlapped */
+@media(max-width:1100px){#sidebar .brand{font-size:18px}.collapse-control{width:24px;height:24px;right:4px;top:18px}}
+@media(max-width:760px){.preset-grid>.preset{flex:none;white-space:nowrap}}
+
+/* 19 Nov 2026: the sidebar's two captions wrap inside the sidebar instead of running 57px past it, and a selected sector row keeps readable text (the dark on-accent ink was left on a dark background) */
+#sidebar .brand small{max-width:calc(100% - 4px)}
+
+/* 19 Nov 2026: score spread. Four rows, one per published score, each a ten-band strip. Replaces the single full-height histogram and its picker. */
+.census-panel .instrument-title{align-items:flex-start}
+.census-rows{display:grid;gap:14px;margin-top:6px}
+
+.census-row{display:grid;grid-template-columns:128px minmax(0,1fr) 150px;gap:16px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.census-name{display:grid;gap:2px}.census-name b{font-size:14px}.census-name span{font:11px var(--font-data);color:var(--caption)}.census-name strong{color:var(--ink);font-weight:500}
+.census-strip{position:relative;display:flex;gap:3px;height:44px;align-items:stretch}
+.census-bin{flex:1;min-width:0;min-height:44px;padding:0;display:flex;flex-direction:row;gap:0;align-items:flex-end;background:transparent;border:0;border-bottom:1px solid var(--line-strong);border-radius:0}
+.census-bin i{display:block;width:100%;background:var(--caption);opacity:.55;border-radius:2px 2px 0 0}
+.census-bin.strong i{background:var(--accent);opacity:.8}
+.census-bin:hover i,.census-bin:focus-visible i{opacity:1;background:var(--ink)}
+.census-sector{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px solid var(--accent);pointer-events:none}
+.census-sector b{position:absolute;top:-17px;left:4px;font:500 10px var(--font-data);color:var(--accent);white-space:nowrap;background:var(--surface);padding:0 3px}
+.census-read{display:grid;gap:2px;font:11px var(--font-data);color:var(--caption)}.census-read b{color:var(--ink);font-weight:500}
+@media(max-width:760px){.census-row{grid-template-columns:1fr;gap:8px}.census-read{display:flex;gap:16px}.census-sector b{left:auto;right:0}}

@@ -16,7 +16,7 @@ test('the ledger and the deploy run after the screen is published, not before it
 test('the deploy retry skips when the live site already carries the data day, and a scheduled run gets one more browser-gate attempt', () => {
   const t = wf('tripwire.yml'); const retry = crons(t)[1];
   assert.ok(t.includes(`github.event.schedule == '${retry}'`), 'the skip is keyed to the retry slot only, so the first slot always builds and deploys');
-  assert.match(t, /steps\.already\.outputs\.same != 'true'/); assert.match(t, /continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}/); assert.match(t, /Browser gate, second attempt/);
+  assert.match(t, /steps\.already\.outputs\.same != 'true'/); assert.match(t, /continue-on-error: \$\{\{ github\.event_name == 'schedule' \|\| github\.event_name == 'repository_dispatch' \}\}/, 'the nightly dispatch gets the same second browser-gate attempt as a scheduled run (18 Nov 2026)'); assert.match(t, /Wait for the nightly screen/); assert.match(t, /sessions\? behind/, 'only a lag, never a real data fault, waits'); assert.match(t, /Browser gate, second attempt/);
   assert.match(t, /https:\/\/tripwire\.askakshay\.com\/data\/screen\.json/, 'the retry checks the site it deploys');
 });
 test('a failed research refresh is visible even when the ledger can publish other successful outputs', () => {

@@ -48,10 +48,12 @@ test('provenance: every statement-based research claim says its publication date
   assert.match(evidenceDate(c.row, 'roce'), /Accounts: FY26\. Snapshot close: 2026-11-06\. Filing publication date: unavailable\./);
 });
 
-test('no link to askakshay.com: the footer and the legal page link nowhere outside Tripwire', () => {
-  for (const f of ['../src/capture.ts', '../src/screens/capture.tsx', '../src/screens/legal.tsx', '../static/index.html']) {
+test('askakshay.com is linked from the footer only (owner request, 19 Nov 2026); the capture module, legal page and shell page carry no such link', () => {
+  for (const f of ['../src/capture.ts', '../src/screens/legal.tsx', '../static/index.html']) {
     const t = readFileSync(new URL(f, import.meta.url), 'utf8'); assert.ok(!/https?:\/\/(www\.)?askakshay\.com/.test(t), `${f} links askakshay.com`);
   }
+  const foot = readFileSync(new URL('../src/screens/capture.tsx', import.meta.url), 'utf8');
+  assert.ok(/href="https:\/\/askakshay\.com"/.test(foot), 'the footer links askakshay.com');
 });
 
 
