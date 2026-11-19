@@ -341,3 +341,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (evening): uptime probes for Tripwire, ApexPro and the hub
 
 **Added:** `.github/workflows/uptime.yml` (every 30 minutes, one matrix job per site, opens or comments on an issue when a probe fails) and `docs/operations/monitoring.md` (what watches what, no staging, rollback pointers, what is not covered). Rulebook already had `lockedfree_uptime.yml`. **Verified:** the YAML parses and the three probe scripts, extracted from the workflow and run under bash, pass against the live sites now. **Not verified:** the issue-opening step (it runs only on a failure).
+
+## 19 Nov 2026 (night): platform map brought up to date
+
+**Changed:** `docs/PLATFORM.md` now describes the shape as deployed: ApexPro reads only the hub (verified live), the hub serves /v1/market/*, Rulebook's feed goes through the hub, the shared look, the probes, and what is not done.
