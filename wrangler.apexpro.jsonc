@@ -2,7 +2,7 @@
   "name": "apexpro",
   "main": "apps/apexpro/worker.mjs",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./apps/apexpro/public", "binding": "ASSETS", "run_worker_first": true, "not_found_handling": "single-page-application" },
+  "assets": { "directory": "./apps/apexpro/public", "binding": "ASSETS", "run_worker_first": true, "not_found_handling": "404-page" },
   "routes": [{ "pattern": "apexpro.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
   "observability": { "enabled": true }
