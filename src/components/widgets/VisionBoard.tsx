@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Chg, LazyMount, Skel } from '@/components/ui';
 import { BASE, useFeedWhen } from '@/lib/data';
-import { dateLabel, num } from '@/lib/format';
+import { dateLabel, num, pct } from '@/lib/format';
+
+/** SVG path coordinates, one decimal place. Not display text, so it does not go through the number formatter. */
+const r1 = (v: number) => Math.round(v * 10) / 10;
 import { companyHref } from '@/lib/slug';
 import type { Row } from '@/lib/types';
 
@@ -162,8 +165,8 @@ export function NiftyYear() {
     const lo = Math.min(...c), top = Math.max(...c), W = 640, H = 150, D = 46;
     const X = (i: number) => (i / (c.length - 1)) * W;
     const Y = (x: number) => 4 + (1 - (x - lo) / (top - lo || 1)) * (H - 8);
-    const line = c.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(x).toFixed(1)}`).join('');
-    const area = `M0 0 ${dd.map((d, i) => `L${X(i).toFixed(1)} ${(-d / (-worst || 1) * D).toFixed(1)}`).join('')} L${W} 0Z`;
+    const line = c.map((x, i) => `${i ? 'L' : 'M'}${r1(X(i))} ${r1(Y(x))}`).join('');
+    const area = `M0 0 ${dd.map((d, i) => `L${r1(X(i))} ${r1(-d / (-worst || 1) * D)}`).join('')} L${W} 0Z`;
     const last = c[c.length - 1];
     return { line, area, W, H, D, last, first: c[0], top, lo, worst, below: dd[dd.length - 1], from: day(t[0]), to: day(t[t.length - 1]) };
   }, [bars]);
@@ -210,12 +213,12 @@ export function DayGrid() {
       <div className="card-h"><h2 id="dg-h">How did each trading day go?</h2></div>
       {!v ? (error ? <p className="dim" style={{ margin: 0 }}>The Nifty history could not be loaded.</p> : <Skel h={140} />) : (
         <>
-          <p className="dim" style={{ margin: "0 0 10px" }}>{v.up} up days and {v.down} down days of {v.n} sessions. Best {v.best.p!.toFixed(2)}% ({dateLabel(v.best.d)}); worst {v.worst.p!.toFixed(2)}% ({dateLabel(v.worst.d)}).</p>
+          <p className="dim" style={{ margin: "0 0 10px" }}>{v.up} up days and {v.down} down days of {v.n} sessions. Best {num(v.best.p!, 2)}% ({dateLabel(v.best.d)}); worst {num(v.worst.p!, 2)}% ({dateLabel(v.worst.d)}).</p>
           <svg viewBox={`0 0 ${v.weeks * 14} 70`} width="100%" role="img" aria-label={`Nifty 50 daily change, one square per session, ${dateLabel(v.from)} to ${dateLabel(v.to)}`} style={{ display: 'block', maxHeight: 150 }}>
             <defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--bg)" strokeWidth="1.2" opacity=".55" /></pattern></defs>
             {v.cells.map((c) => (
               <g key={c.d}>
-                <rect x={c.wk * 14} y={c.wd * 14} width="12" height="12" rx="2" fill={fill(c.p ?? 0)}><title>{`${dateLabel(c.d)}: ${(c.p ?? 0) >= 0 ? '+' : ''}${(c.p ?? 0).toFixed(2)}%`}</title></rect>
+                <rect x={c.wk * 14} y={c.wd * 14} width="12" height="12" rx="2" fill={fill(c.p ?? 0)}><title>{`${dateLabel(c.d)}: ${pct(c.p ?? 0, 2)}`}</title></rect>
                 {(c.p ?? 0) < 0 && <rect x={c.wk * 14} y={c.wd * 14} width="12" height="12" rx="2" fill="url(#hatch)" pointerEvents="none" />}
               </g>
             ))}
