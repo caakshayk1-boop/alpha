@@ -1,7 +1,10 @@
 // Telegram bot Worker: answers the owner's commands and sends three weekday briefs in Malaysia time (08:00 plan, 12:00 open check, 18:30 close scorecard).
 // Secrets (wrangler secret put): BOT_TOKEN, OWNER_CHAT_ID, WEBHOOK_SECRET. Nothing here places an order.
-import { handle, digest } from './commands.js';
+import { handle, digest, SOURCES, esc } from './commands.js';
 import { stockBrief } from './stock.js';
+import { handleExtra, dueReminders } from './extras.js';
+import { composeWeekly } from './weekly.js';
+import { isQuiet, isMarketHours, ledgerAlerts, gateAlerts, watchAlerts, alertMessage, MAX_ALERT_MSGS_PER_HOUR } from './alerts.js';
 import { NEWS_URL, rank, format } from './news.js';
 import { SLOTS, TZ, dueSlot, gather, digestFeeds, snapshot, pickCandidates, compose } from './briefs.js';
 
@@ -41,6 +44,8 @@ function storeApi(env) {
     mark: async (ids) => call('/sent/mark', { ids }),
     snapGet: async () => (await call('/snap/get', {})).snap,
     snapPut: async (snap) => call('/snap/put', { snap }),
+    kvGet: async (key) => (await call('/kv', { key })).value,
+    kvPut: async (key, value) => call('/kv', { key, value }),
   };
 }
 
@@ -64,29 +69,89 @@ export default {
     // Only the owner is ever answered. Everyone else gets silence.
     if (!msg || !msg.chat || String(msg.chat.id) !== String(env.OWNER_CHAT_ID) || typeof msg.text !== 'string') return new Response('ok');
     if (/^\/news(@\w+)?\s*$/i.test(msg.text.trim())) { await runNews(env, null); return new Response('ok'); }
-    const brief = /^\/(morning|open|close)(@\w+)?\s*$/i.exec(msg.text.trim());
+    const brief = /^\/(morning|open|close|weekly)(@\w+)?\s*$/i.exec(msg.text.trim());
     if (brief) { await runBrief(env, SLOTS.find((x) => x.id === brief[1].toLowerCase()), null); return new Response('ok'); }
+    const st = storeApi(env);
+    const extra = await handleExtra(msg.text, { getJSON, watch: { list: async () => (await st.kvGet('watch')) || [], set: (v) => st.kvPut('watch', v) }, remind: { list: async () => (await st.kvGet('remind')) || [], set: (v) => st.kvPut('remind', v) } });
+    if (extra !== null) { await send(env, msg.chat.id, extra); return new Response('ok'); }
     const reply = await handle(msg.text, { getJSON, notes: notesApi(env), stockBrief });
     if (reply) await send(env, msg.chat.id, reply);
     return new Response('ok');
   },
 
-  // Cron fires at :00 and :30. dueSlot() says whether this tick starts a brief (Mon-Fri 08:00, 12:00, 18:30 in NEWS_TZ, default Asia/Kuala_Lumpur).
+  // The cron fires every 5 minutes. Each tick: a brief if one is due, any reminders that have come due, then the alert checks.
   async scheduled(event, env, ctx) {
     if (!env.BOT_TOKEN || !env.OWNER_CHAT_ID) return;
-    const due = dueSlot(event.scheduledTime || Date.now(), env.NEWS_TZ || TZ);
-    if (!due) return;
-    ctx.waitUntil(runBrief(env, due.slot, due.key));
+    ctx.waitUntil(runTick(env, event.scheduledTime || Date.now()));
   },
 };
+
+/** One cron tick. Each part is isolated: a failure in one never stops the others. */
+export async function runTick(env, now) {
+  const due = dueSlot(now, env.NEWS_TZ || TZ);
+  if (due) await runBrief(env, due.slot, due.key).catch(() => 'failed');
+  await runReminders(env, now).catch(() => 'failed');
+  await runAlerts(env, now).catch(() => 'failed');
+}
+
+/** Send reminders whose time has come. A reminder stays queued if Telegram refuses it. */
+export async function runReminders(env, now) {
+  const store = storeApi(env);
+  const list = (await store.kvGet('remind')) || [];
+  const { due, rest } = dueReminders(list, now);
+  if (!due.length) return 'none';
+  const kept = [];
+  for (const r of due) if (!(await send(env, env.OWNER_CHAT_ID, `<b>Reminder</b>\n${esc(r.text)}`))) kept.push(r);
+  await store.kvPut('remind', [...kept, ...rest]);
+  return `sent ${due.length - kept.length}`;
+}
+
+/** Alerts between briefs: Tripwire ledger events, Alpha gate flips and the watchlist. Quiet 23:00-07:30 MYT; at most 6 alert messages an hour, one message per check.
+ *  The first run only records a baseline. Snapshots are saved only after the message went out, so a failed send is retried. */
+export async function runAlerts(env, now) {
+  if (isQuiet(now)) return 'quiet';
+  const store = storeApi(env);
+  const recent = ((await store.kvGet('alog')) || []).filter((t) => t > now - 36e5);
+  if (recent.length >= MAX_ALERT_MSGS_PER_HOUR) return 'rate limit';
+  const get = async (u) => { try { return await getJSON(u); } catch { return null; } };
+  const watch = (await store.kvGet('watch')) || [];
+  const market = isMarketHours(now);
+  const fetchNews = watch.length && new Date(now).getUTCMinutes() % 15 === 0;
+  const TW = 'https://tripwire.askakshay.com/api/';
+  const syms = watch.map((w) => encodeURIComponent(w.sym)).join(',');
+  const [ledger, signals, tick, rsi, news] = await Promise.all([
+    get(SOURCES.ledger), get(SOURCES.signals),
+    watch.length && market ? get(`${TW}tick?s=${syms}`) : null, watch.length && market ? get(`${TW}rsi`) : null, fetchNews ? get(NEWS_URL) : null,
+  ]);
+  const prevA = await store.kvGet('asnap');
+  const prevG = await store.kvGet('gsnap');
+  const L = ledgerAlerts(prevA, ledger);
+  const G = gateAlerts(prevG, signals);
+  const W = watch.length ? watchAlerts({ watch, tick, rsi, events: news && news.events, alerted: (await store.kvGet('alerted')) || {}, wrsi: (await store.kvGet('wrsi')) || {}, nowMs: now, market }) : null;
+  const lines = [...L.lines, ...G.lines, ...(W ? W.lines : [])];
+  if (lines.length) {
+    if (!(await send(env, env.OWNER_CHAT_ID, alertMessage(lines, now)))) return 'send failed';
+    await store.kvPut('alog', [...recent, now]);
+    if (W && W.newsIds.length) await store.mark(W.newsIds);
+  }
+  if (L.snap && (!prevA || L.lines.length)) await store.kvPut('asnap', L.snap);
+  if (G.snap && (!prevG || G.lines.length)) await store.kvPut('gsnap', G.snap);
+  if (W && (W.lines.length || market)) { await store.kvPut('alerted', W.alerted); await store.kvPut('wrsi', W.wrsi); }
+  return `alerts ${lines.length}`;
+}
 
 /** One brief. key = the scheduled slot (claimed so it sends once, and the snapshot is saved); key null = on demand (no claim, snapshot untouched, news still marked sent so it never repeats). */
 export async function runBrief(env, slot, key) {
   const store = storeApi(env);
   if (key && !(await store.claim(key))) return 'already sent';
   try {
-    const { feeds, events } = await gather({ getJSON, newsUrl: NEWS_URL });
+    const { feeds, events } = await gather({ getJSON, newsUrl: NEWS_URL }, slot.id);
     const now = Date.now();
+    if (slot.id === 'weekly') {
+      const w = composeWeekly(feeds, now);
+      if (!(await send(env, env.OWNER_CHAT_ID, w.text, w.buttons))) throw new Error('send failed');
+      return 'sent weekly';
+    }
     const st = digestFeeds(feeds, now);
     const ranked = pickCandidates(events, now, st);
     const ids = await store.pick(ranked.map((e) => e.eventClusterId), 5);
@@ -129,6 +194,12 @@ export class Notes {
     const list = (await this.state.storage.get('notes')) || [];
     if (path === '/list') return Response.json({ notes: list });
     const body = await request.json();
+    if (path === '/kv') {
+      const k = String(body.key);
+      if (!['watch', 'remind', 'asnap', 'gsnap', 'alog', 'alerted', 'wrsi'].includes(k)) return new Response('bad key', { status: 400 });
+      if ('value' in body) { await this.state.storage.put('kv:' + k, body.value); return Response.json({ ok: true }); }
+      return Response.json({ value: (await this.state.storage.get('kv:' + k)) ?? null });
+    }
     if (path === '/snap/get') return Response.json({ snap: (await this.state.storage.get('snap')) || null });
     if (path === '/snap/put') { await this.state.storage.put('snap', body.snap); return Response.json({ ok: true }); }
     if (path === '/sent/pick') {

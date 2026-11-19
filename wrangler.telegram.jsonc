@@ -7,8 +7,8 @@
   "workers_dev": true,
   "durable_objects": { "bindings": [{ "name": "NOTES", "class_name": "Notes" }] },
   "migrations": [{ "tag": "v1-notes", "new_sqlite_classes": ["Notes"] }],
-  // Ticks at :00 and :30 (UTC). The Worker sends a brief only Mon-Fri in the first half hour from 08:00, 12:00 and 18:30 Malaysia time (NEWS_TZ). One cron trigger, so it does not use up the account's cron allowance.
-  "triggers": { "crons": ["0,30 * * * *"] },
+  // Ticks every 5 minutes. Each tick: a brief if one is due (Mon-Fri 08:00, 12:00, 18:30; Saturday 09:00 weekly review, Malaysia time), due reminders, then alert checks (quiet 23:00-07:30). One cron trigger.
+  "triggers": { "crons": ["*/5 * * * *"] },
   "vars": { "NEWS_TZ": "Asia/Kuala_Lumpur" },
   "observability": { "enabled": true }
 }
