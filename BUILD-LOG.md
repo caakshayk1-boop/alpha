@@ -322,3 +322,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (afternoon): platform map
 
 **Added:** `docs/PLATFORM.md`: which site serves what, the hub sections, and the decisions (hub stays on alpha; the live price service stays in Tripwire's Worker because the hub's chart, quotes and pulse routes have different shapes, checked against the live responses; Tripwire's record pages stay; no feature removals from Desks that hold visitors' saved data; no database yet). **Changed elsewhere:** the Vision widgets and wider index strip join the hub on alpha, and the hub publishes `/v1/manifest.json` (PR #108). **Not done:** moving Tripwire's record to Rulebook and pruning duplicates; see the decisions for why.
+
+## 19 Nov 2026 (evening): CI browser download retry
+
+**Changed:** the Playwright browser install in `apexpro.yml`, `tripwire.yml`, `ci.yml` and `visual-baseline.yml` now tries three times with a five-minute limit each, instead of hanging until the job's own limit (a hung download cancelled three ApexPro runs at 40 minutes each today). **Verified:** the four files parse as YAML; the behaviour itself is only seen on the next runs.

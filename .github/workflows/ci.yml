@@ -32,7 +32,12 @@ jobs:
       - name: JavaScript budget per route (gzipped, at most 10% over baseline)
         run: npm run budget
       - name: Browser for the accessibility gate
-        run: npx playwright install --with-deps chromium
+        run: |
+            # a hung browser download used to hold a job for its whole 40-minute limit; try three times, five minutes each
+            for i in 1 2 3; do
+              if timeout 300 npx playwright install --with-deps chromium; then break; fi
+              echo "browser download attempt $i failed"; [ "$i" = 3 ] && exit 1; sleep 10
+            done
       - name: Accessibility and layout gate (axe serious/critical, overflow, broken text, palette keyboard; Worker-served)
         run: node scripts/a11y.mjs
       - name: Colour contrast (every text token on every surface, 12 theme and mode combinations, 4.5:1)

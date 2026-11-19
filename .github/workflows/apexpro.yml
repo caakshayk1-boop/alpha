@@ -27,7 +27,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
+      - run: |
+          # a hung browser download used to hold a job for its whole 40-minute limit; try three times, five minutes each
+          for i in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium webkit; then break; fi
+            echo "browser download attempt $i failed"; [ "$i" = 3 ] && exit 1; sleep 10
+          done
       - name: Build, then require the committed public/ to equal the build (what is deployed is what is reviewed)
         run: |
           node apps/apexpro/tools/build.mjs
