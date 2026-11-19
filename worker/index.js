@@ -7,6 +7,7 @@
 
 import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsForMarket, factsForSignal, parseClaims, validateClaims, validateQuestion } from './explain.js';
 import { Rum, validateBeacon } from './rum.js';
+import { marketRoute } from './market.js';
 import { Waitlist, waitlist } from './waitlist.js';
 import { PROMPTS, cleanThesis, factsForCompare, factsForFiling, factsForMove, factsForWatchlist, noIdentifiedCause, parseSuggestions, validateEntities, validateFiling, validateThesis } from './askalpha.js';
 
@@ -757,6 +758,9 @@ export default {
     if (/^(signal|vision|gems)\./.test(host)) {
       return Response.redirect('https://alpha.askakshay.com/', 301);
     }
+
+    // Market data for the product sites (19 Nov 2026): Tripwire's price routes, ported verbatim (worker/market.js).
+    if (url.pathname.startsWith('/v1/market/')) { const m = await marketRoute(request, url, ctx); if (m) return m; }
 
     // Old company address: /company/?s=INFY is permanently /company/INFY/ ("&" becomes "_", see src/lib/slug.ts).
     if (url.pathname === '/company/' && url.searchParams.get('s')) {

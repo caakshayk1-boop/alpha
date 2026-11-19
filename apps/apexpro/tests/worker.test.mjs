@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import worker,{upstream} from '../worker.mjs';
 const u=p=>new URL('https://apexpro.askakshay.com'+p);
 test('/api/quotes accepts 1 to 30 valid symbols and goes to the tick feed; anything else is refused',()=>{
-  assert.deepEqual(upstream(u('/api/quotes?s=TCS,INFY')),['https://tripwire.askakshay.com/api/tick?s=TCS,INFY',30]);
+  assert.deepEqual(upstream(u('/api/quotes?s=TCS,INFY')),['https://alpha.askakshay.com/v1/market/tick?s=TCS,INFY',30,'https://tripwire.askakshay.com/api/tick?s=TCS,INFY']);
   const thirty=Array.from({length:30},(_,i)=>'S'+i).join(',');assert.ok(upstream(u('/api/quotes?s='+thirty)));
   assert.equal(upstream(u('/api/quotes?s='+thirty+',EXTRA')),null,'31 names');assert.equal(upstream(u('/api/quotes')),null,'none');
   assert.equal(upstream(u('/api/quotes?s=TCS,../x')),null);assert.equal(upstream(u('/api/quotes?s=tcs')),null,'lower case');assert.equal(upstream(u('/api/quotes?s=TCS,,INFY')),null,'empty name');
 });
-test('the old routes are unchanged',()=>{assert.equal(upstream(u('/api/market'))[0],'https://tripwire.askakshay.com/api/pulse');assert.equal(upstream(u('/api/company?s=TCS'))[0],'https://alpha.askakshay.com/c/TCS.json');assert.equal(upstream(u('/api/nope')),null);});
+test('the routes read the hub, with Tripwire named as the market fallback',()=>{assert.equal(upstream(u('/api/market'))[0],'https://alpha.askakshay.com/v1/market/pulse');assert.equal(upstream(u('/api/market'))[2],'https://tripwire.askakshay.com/api/pulse');assert.equal(upstream(u('/api/macro'))[0],'https://alpha.askakshay.com/v1/market/macro');assert.equal(upstream(u('/api/company?s=TCS'))[0],'https://alpha.askakshay.com/c/TCS.json');assert.equal(upstream(u('/api/nope')),null);});
 test('font files are cached for a year; images a day; code and pages are revalidated; security headers stay',async()=>{
   const env={ASSETS:{fetch:async()=>new Response('x')}},ctx={waitUntil(){}};
   const get=async p=>(await worker.fetch(new Request('https://apexpro.askakshay.com'+p),env,ctx)).headers;
