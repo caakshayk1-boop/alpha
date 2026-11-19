@@ -1,0 +1,13 @@
+{
+  // Owner-only Telegram bot. Deploy by hand: npx wrangler deploy --config wrangler.telegram.jsonc (steps in apps/telegram-bot/README.md).
+  // Secrets, never in this file: BOT_TOKEN, OWNER_CHAT_ID, WEBHOOK_SECRET. No custom domain; the workers.dev address is the webhook.
+  "name": "askakshay-telegram",
+  "main": "apps/telegram-bot/worker.js",
+  "compatibility_date": "2026-05-01",
+  "workers_dev": true,
+  "durable_objects": { "bindings": [{ "name": "NOTES", "class_name": "Notes" }] },
+  "migrations": [{ "tag": "v1-notes", "new_sqlite_classes": ["Notes"] }],
+  // 03:45 UTC = 09:15 IST and 10:30 UTC = 16:00 IST, Monday to Friday.
+  "triggers": { "crons": ["45 3 * * 1-5", "30 10 * * 1-5"] },
+  "observability": { "enabled": true }
+}
