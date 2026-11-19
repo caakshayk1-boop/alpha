@@ -77,6 +77,6 @@ import { displaySettings } from '../src/terminal.js';
 test('display preferences validate stored values and do not accept arbitrary themes or density',()=>{
  assert.deepEqual(displaySettings({density:'giant',colorblind:'true',reduced:true,collapsed:true}),{density:'comfortable',colorblind:false,reduced:true,collapsed:true,timeMachine:true});
  assert.equal(displaySettings(null).density,'comfortable');
- assert.match(upstream(new URL('https://apex.test/api/spark?s=TCS'))[0],/^https:\/\/tripwire\.askakshay\.com\/api\/chart\?s=TCS$/);
+ assert.match(upstream(new URL('https://apex.test/api/spark?s=TCS'))[0],/^https:\/\/alpha\.askakshay\.com\/v1\/market\/chart\?s=TCS$/);
  assert.equal(upstream(new URL('https://apex.test/api/spark?s=..%2Fsecret')),null);
 });
