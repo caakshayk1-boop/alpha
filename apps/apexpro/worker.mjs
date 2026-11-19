@@ -11,22 +11,24 @@ function response(body, status = 200) { return new Response(JSON.stringify(body)
 const ALPHA = 'https://alpha.askakshay.com';
 // While the hub address is being moved, alpha (the host main deploys the hub to, complete data) is tried first and alphavision second. A host that redirects to a page, or does not resolve, is skipped; it is never served as data.
 const LEGACY_ALPHA = 'https://alphavision.askakshay.com';
+// 19 Nov 2026: every data route is read from the hub; the market routes (/v1/market/*) name Tripwire's identical routes as their fallback until the hub has them in production and has proved itself.
+const TW = 'https://tripwire.askakshay.com';
 export function upstream(url) {
   const symbol = url.searchParams.get('s') || '';
   const valid = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(symbol);
   const routes = {
     '/api/screen': [`${ALPHA}/data/screen.json`, 300],
-    '/api/market': ['https://tripwire.askakshay.com/api/pulse', 30],
-    '/api/macro': ['https://tripwire.askakshay.com/api/macro', 30],
+    '/api/market': [`${ALPHA}/v1/market/pulse`, 30, `${TW}/api/pulse`],
+    '/api/macro': [`${ALPHA}/v1/market/macro`, 30, `${TW}/api/macro`],
     '/api/signals': [`${ALPHA}/signals.json`, 300],
   };
   if (routes[url.pathname]) return routes[url.pathname];
   if (url.pathname === '/api/quotes') { // 18 Nov 2026: live quotes for the sector map's sample (up to 30 names a call); the same upstream the index strip uses, 30 s at the edge
     const list = symbol.split(',');
-    return list.length >= 1 && list.length <= 30 && list.every(x => /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(x)) ? [`https://tripwire.askakshay.com/api/tick?s=${list.map(encodeURIComponent).join(',')}`, 30] : null;
+    return list.length >= 1 && list.length <= 30 && list.every(x => /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(x)) ? [`${ALPHA}/v1/market/tick?s=${list.map(encodeURIComponent).join(',')}`, 30, `${TW}/api/tick?s=${list.map(encodeURIComponent).join(',')}`] : null;
   }
   if (url.pathname === '/api/company' && valid) return [`${ALPHA}/c/${encodeURIComponent(symbol)}.json`, 300];
-  if (['/api/chart','/api/spark'].includes(url.pathname) && valid) return [`https://tripwire.askakshay.com/api/chart?s=${encodeURIComponent(symbol)}`, 1800];
+  if (['/api/chart','/api/spark'].includes(url.pathname) && valid) return [`${ALPHA}/v1/market/chart?s=${encodeURIComponent(symbol)}`, 1800, `${TW}/api/chart?s=${encodeURIComponent(symbol)}`];
   return null;
 }
 export default {
@@ -42,7 +44,7 @@ export default {
       const hit = await cache.match(key);
       if (hit) return hit;
       try {
-        const candidates = route[0].startsWith(ALPHA) ? [route[0], route[0].replace(ALPHA, LEGACY_ALPHA)] : [route[0]];
+        const candidates = route[2] ? [route[0], route[2]] : route[0].startsWith(ALPHA) ? [route[0], route[0].replace(ALPHA, LEGACY_ALPHA)] : [route[0]];
         let r = null, used = route[0];
         for (const c of candidates) { try { const x = await fetch(c, { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } }); if (x.ok && x.headers.get('content-type')?.includes('json')) { r = x; used = c; break; } } catch { /* try the next host */ } }
         if (!r) return response({ error: 'The data source is temporarily unavailable. Please retry.' }, 502);

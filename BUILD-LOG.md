@@ -322,3 +322,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (afternoon): platform map
 
 **Added:** `docs/PLATFORM.md`: which site serves what, the hub sections, and the decisions (hub stays on alpha; the live price service stays in Tripwire's Worker because the hub's chart, quotes and pulse routes have different shapes, checked against the live responses; Tripwire's record pages stay; no feature removals from Desks that hold visitors' saved data; no database yet). **Changed elsewhere:** the Vision widgets and wider index strip join the hub on alpha, and the hub publishes `/v1/manifest.json` (PR #108). **Not done:** moving Tripwire's record to Rulebook and pruning duplicates; see the decisions for why.
+
+## 19 Nov 2026 (night): ApexPro reads every data route from the hub
+
+**Changed:** `apps/apexpro/worker.mjs`: /api/market, /api/macro, /api/quotes and /api/chart|spark now ask the hub's `/v1/market/*` first (PR #116) and Tripwire's identical routes second; the screen, company and signals routes keep alpha first and alphavision second. Tests updated (29 pass). **Verified:** locally, while the hub routes are not yet deployed, all four market routes fall through to Tripwire and answer 200 (`x-apex-source: tripwire.askakshay.com`); after the hub deploys the same call reports `alpha.askakshay.com`. Worker only: no static file changed, so the service worker version stays.
