@@ -37,7 +37,7 @@ test('the address shown is decoded, shortened, and plain text', () => {
 });
 test('KNOWN_HEADS and app.tsx agree in both directions', () => {
   const src = read('src/app.tsx');
-  const handled = new Set([...src.matchAll(/head === '([a-z]+)'/g)].map((m) => m[1]));
+  const handled = new Set([...src.matchAll(/head === '([a-z-]+)'/g)].map((m) => m[1]));
   for (const h of handled) assert.ok(KNOWN_HEADS.includes(h), `app.tsx routes '${h}' but KNOWN_HEADS does not list it: it would show Not found`);
   for (const h of KNOWN_HEADS) if (h && !['today', 'discover', 'desk'].includes(h)) assert.ok(handled.has(h), `KNOWN_HEADS lists '${h}' but app.tsx has no view for it`);
   assert.match(src, /route\.kind === 'notfound'\) view = <NotFound/, 'an unknown route renders the Not found view');

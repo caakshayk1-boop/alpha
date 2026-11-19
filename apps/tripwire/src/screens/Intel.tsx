@@ -25,6 +25,7 @@ export function Intel({ c, rows, only }: { c: Company; rows: readonly Row[]; onl
   const eq = earningsQuality(r, eligibilityOf(r, c.years)); const rm = riskMap(r); const fac = useFactors(); const fr = fac.data?.rows[c.sym];
   const mx = Math.max(1, ...(c.season?.m ?? []).map((x) => Math.abs(x?.[1] ?? 0)));
   return <>
+    {on('fp') && <p className="small mute">Factors as of {fac.data?.as_of || 'date unavailable'} · company snapshot {r.last_date || 'date unavailable'}. Each source retains its own date.</p>}
     {on('own') && own.length > 0 && <Sec title="Who owns it" head={c.inst?.signal_label ?? 'Shareholding'} open>
       {tree && tree.nodes.map((h) => <OwnRow key={h.key} h={h} depth={0} />)}
       {tree && <p className="small mute" style={{ margin: '8px 0 0' }}>{tree.basis}</p>}

@@ -38,6 +38,8 @@ for (const f of files) {
   const r = d.row ?? {}; const o = {};
   for (const k of KEEP) if (r[k] !== undefined) o[k] = r[k];
   if (!o.sector && SECTOR_FIX[d.sym]) { o.sector = SECTOR_FIX[d.sym]; }
+  // Source omissions remain explicit; never infer an industry from a company name.
+  if (!o.sector) o.sector = 'Unclassified';
   // a row whose last close is more than one session older than the file's data day is marked, so every surface can say so (checked by tools/check-data.mjs)
   if (o.last_date && uni0.as_of && sessionsBetween(o.last_date, uni0.as_of) > 1) o.stale = true;
   const flag = (r.risk?.flags ?? []).find((x) => x.s === 'high') ?? (r.risk?.flags ?? [])[0];
@@ -124,3 +126,7 @@ const shared = await writeShareCards(DIST, process.env.TRIPWIRE_LEDGER_FILE); co
 const size = (p) => statSync(p).size;
 console.log(`tripwire: ${rows.length} companies, data through ${uni.as_of}, js ${(size(join(DIST, `app.${stamp}.js`)) / 1024).toFixed(0)} kB, css ${(size(join(DIST, `app.${stamp}.css`)) / 1024).toFixed(0)} kB`);
 writeFileSync(join(DIST, 'build.json'), JSON.stringify({ stamp, built: new Date().toISOString(), data_built_on: built, data_as_of: uni.as_of, data_built_at: uni.built_at ?? null, companies: rows.length }));
+
+// Public, crawlable summaries use the same build inputs as this release.
+import {publicPages} from './tools/public-pages.mjs';
+publicPages(DIST, process.env.TRIPWIRE_LEDGER_FILE);

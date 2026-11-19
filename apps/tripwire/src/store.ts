@@ -1,3 +1,5 @@
+import {validWatchRules,type WatchRule} from './watchrules.ts';
+import { checkSelfBook, mergeSelfBooks, type SelfBook } from './selfbook.ts';
 /** Local-first state for Tripwire. Everything is stored on this device until an identity provider is configured (docs/tripwire/BUILD_STATUS.md).
  *  All transitions are pure functions so the journal's history rules, review dates and snapshots can be tested without a browser. */
 import type { Filters } from './screen.ts';
@@ -23,6 +25,9 @@ export const UPDOWN_MODES: readonly UpDownMode[] = ['default', 'cb'];
 export const updownOf = (p: { updown?: unknown } | undefined | null): UpDownMode => (p && UPDOWN_MODES.includes(p.updown as UpDownMode) ? (p.updown as UpDownMode) : 'default');
 export interface Prefs { motion: 'auto' | 'off'; /** Off, Calm (default) or Lively. Additive, 12 Nov 2026. */ effects?: EffectsMode; /** Up and down colours: 'default' (green and red) or 'cb' (blue and orange). Additive, 13 Nov 2026. */ updown?: UpDownMode; /** Version 2 retains existing motion choices. New devices use restrained motion and respect reduced motion. */ motionV?: number; haptics: boolean; hideAmounts?: boolean; theme?: string; horizon: string; experience: string; interests: string[]; equity: number; cash: number; riskPct: number; maxPositionPct: number; /** the chart range and benchmark view this person last chose; absent until they choose (additive, 1 Nov 2026) */ chart?: { range?: string; vs?: boolean } }
 export interface State {
+  watchRules?: WatchRule[];
+  publicSeen?: {at:string;picks:string[];voids:string[];refusals?:string[];gateDay?:string;gatePassed?:number};
+  selfBook?: SelfBook;
   /** Entry-candidate settings on this device. Never change existing positions or the shared auto book's published settings. */
   signalAgreement?: AgreementSettings;
   v: number; follows: string[]; entries: Entry[]; plans: Plan[]; compares: string[][]; screens: { name: string; f: Filters }[];
@@ -209,6 +214,9 @@ export function checkBackup(text: string): BackupCheck {
   if (!(d.follows as unknown[]).every(isStr)) return { ok: false, reason: 'The followed names are damaged.' };
   const entries: Entry[] = []; for (const [i, e] of (d.entries as unknown[]).entries()) { const c = checkEntry(e); if (!c) return { ok: false, reason: `Journal entry ${i + 1} is damaged (it has no symbol, id or readable versions).` }; entries.push(c); }
   const plans: Plan[] = []; for (const [i, p] of (d.plans as unknown[]).entries()) { const c = checkPlan(p); if (!c) return { ok: false, reason: `Plan ${i + 1} is damaged (it has no symbol, id or readable prices).` }; plans.push(c); }
+  if(d.publicSeen!==undefined){const x=d.publicSeen as Record<string,unknown>;if(!x||typeof x.at!=='string'||!Array.isArray(x.picks)||!x.picks.every(isStr)||!Array.isArray(x.voids)||!x.voids.every(isStr)||x.refusals!==undefined&&(!Array.isArray(x.refusals)||!x.refusals.every(isStr))||x.gateDay!==undefined&&typeof x.gateDay!=='string'||x.gatePassed!==undefined&&typeof x.gatePassed!=='number')return {ok:false,reason:'The public-record visit baseline is damaged.'};}
+  if(d.watchRules!==undefined&&!validWatchRules(d.watchRules))return {ok:false,reason:'The watch conditions are damaged.'};
+  if(d.selfBook!==undefined&&!checkSelfBook(d.selfBook))return {ok:false,reason:'The personal Pro book is damaged. Nothing was imported.'};
   const paperIn = d.paper === undefined ? [] : d.paper; if (!Array.isArray(paperIn)) return { ok: false, reason: 'The paper trades section is damaged.' };
   const paper: Paper[] = []; for (const [i, p] of paperIn.entries()) { const c = checkPaper(p); if (!c) return { ok: false, reason: `Paper trade ${i + 1} is damaged (it has no symbol, id or readable prices).` }; paper.push(c); }
   paper.splice(0, paper.length, ...normalizeLifecycles(paper));   // 12 Nov 2026: an old backup gets derived lifecycle ids, a duplicate is re-keyed, nothing is dropped
@@ -220,13 +228,17 @@ export function checkBackup(text: string): BackupCheck {
   const inbox = Array.isArray(d.inbox) ? (d.inbox as unknown[]).filter((c): c is SeenChange => isObj(c) && isStr(c.id) && isStr(c.sym) && isStr(c.curAt)) : [];
   const dismissed: Record<string, string> = {}; if (isObj(d.dismissed)) for (const [k, v] of Object.entries(d.dismissed)) if (isStr(v)) dismissed[k] = v;
   // only the fields the app owns: the export's own wrapper (app, exported) must not leak into the saved state, and nothing unknown is carried along
-  return { ok: true, state: { v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs), ...(d.signalAgreement ? { signalAgreement: agreementSettings(d.signalAgreement) } : {}), ...(d.storageNote ? { storageNote: true } : {}) } };
+  return { ok: true, state: { ...(d.publicSeen?{publicSeen:d.publicSeen as State['publicSeen']}:{}), ...(d.watchRules?{watchRules:d.watchRules as WatchRule[]}:{}), ...(d.selfBook ? {selfBook:d.selfBook as SelfBook}:{}), v: VERSION, follows: d.follows as string[], entries, plans, compares, screens, snaps, onboarded: !!d.onboarded, reviews, paper, seen, inbox, dismissed, prefs: checkPrefs(d.prefs), ...(d.signalAgreement ? { signalAgreement: agreementSettings(d.signalAgreement) } : {}), ...(d.storageNote ? { storageNote: true } : {}) } };
 }
 export function parseState(text: string): State | null { const c = checkBackup(text); return c.ok ? c.state : null; }
 /** Merge a guest/device state into another (account migration): union by id, the longer version history wins, so nothing is lost. */
 export function mergeStates(a: State, b: State): State {
   const byId = <T extends { id: string }>(x: T[], y: T[], pick: (p: T, q: T) => T) => { const m = new Map(x.map((i) => [i.id, i])); for (const i of y) m.set(i.id, m.has(i.id) ? pick(m.get(i.id)!, i) : i); return [...m.values()]; };
-  return { ...a, ...((a.signalAgreement ?? b.signalAgreement) ? { signalAgreement: a.signalAgreement ?? b.signalAgreement } : {}), follows: [...new Set([...a.follows, ...b.follows])],
+  const selfBook=mergeSelfBooks(a.selfBook,b.selfBook);
+  const watchRules=a.watchRules||b.watchRules?byId(a.watchRules??[],b.watchRules??[],(p,q)=>(q.day??'')>(p.day??'')?q:p):undefined;
+  if(watchRules&&watchRules.length>100)throw new Error('Combined backups exceed the 100 watch-condition limit.');
+  const publicSeen=!a.publicSeen?b.publicSeen:!b.publicSeen?a.publicSeen:a.publicSeen.at>=b.publicSeen.at?a.publicSeen:b.publicSeen;
+  return { ...a, ...(publicSeen?{publicSeen}:{}), ...(watchRules?{watchRules}:{}), ...(selfBook?{selfBook}:{}), ...((a.signalAgreement ?? b.signalAgreement) ? { signalAgreement: a.signalAgreement ?? b.signalAgreement } : {}), follows: [...new Set([...a.follows, ...b.follows])],
     entries: byId(a.entries, b.entries, (p, q) => (q.versions.length > p.versions.length ? q : p)),
     plans: byId(a.plans, b.plans, (p, q) => (q.rev > p.rev ? q : p)),
     compares: [...a.compares, ...b.compares.filter((c) => !a.compares.some((d) => d.join() === c.join()))],

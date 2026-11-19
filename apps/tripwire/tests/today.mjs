@@ -33,7 +33,9 @@ const expand = async (pg, sym = 'TCS') => { const r = pg.locator(`[data-board-ro
   // 13 Nov 2026 (v6 home): the "Data status" accordion moved to Info; the strip's one basis line carries the prices' time (IST) and the data day
   await pg.waitForSelector('.mkt-data:not([data-fresh="loading"])', { timeout: 15000 }).catch(() => {});
   ok(/Market now/i.test(t) && /Data through (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+ \w+/.test(await pg.locator('.mkt-data').innerText()) && /IST/.test(await pg.locator('[data-brief]').innerText()) && !(await pg.locator('.t-status, details.tfoot').count()), 'Today states its data day and its times in IST, once, in the Market now basis line (no Data status accordion)');
-  ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(t.replace(/\n/g, ' ')), 'no zero-count panel, no path card, no empty section');
+  // 17 Nov 2026: the record strip's one-line explanation of how the record is built ("... ledger → paper book") is intended copy, not a Paper book panel; it is excluded here and checked for as a strip.
+  const tBody = await pg.evaluate(() => { const hid = [...document.querySelectorAll('.trust-strip')]; hid.forEach((e) => { e.style.display = 'none'; }); const out = document.body.innerText; hid.forEach((e) => { e.style.display = ''; }); return out; });
+  ok(!/Following\s*0|Since your last visit|Due for review|Paper book|Picks from the close|Your path|\b0 of 4\b/i.test(tBody.replace(/\s+/g, ' ')), 'no zero-count panel, no path card, no empty section');
   ok(!(await pg.locator('.guest, .journey').count()), 'the old guest card and path card are gone');
   await pg.getByRole('button', { name: 'Find a company' }).click(); await pg.waitForSelector('[role=dialog] input'); ok(true, 'Find a company opens the search sheet'); await pg.keyboard.press('Escape');
   ok(!(await pg.locator('.trendmap').count()) && !(await pg.locator('.strip .tile').count()), 'the trend map and the commodity grid are not on Today');

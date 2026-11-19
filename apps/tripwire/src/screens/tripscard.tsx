@@ -13,7 +13,7 @@ export function TripsCard({ rows, day, follows }: { rows: readonly Row[]; day: s
   const trips = useMemo(() => tripsOf(follows, rows, day, l, plan), [follows, rows, day, l, plan]);
   if (!trips.length) return null;
   return <section className="tsec card trips" aria-labelledby="trips-h" data-trips>
-    <h2 id="trips-h" className="sec">Your watchlist, tripwire by tripwire</h2>
+    <h2 id="trips-h" className="sec">Your watchlist, tripwire by tripwire</h2><a className="btn sm" href="#/desk">Set price & RSI conditions</a>
     <ul className="trip-list">{trips.map((t) => <li key={t.sym} data-trip-state={t.state}>
       <a className="trip-sym" href={`#/c/${encodeURIComponent(t.sym)}`}>{t.sym}</a>
       <span className="trip-state" title={t.why}>{t.state}</span>

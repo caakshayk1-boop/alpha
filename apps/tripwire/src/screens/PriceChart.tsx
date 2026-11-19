@@ -35,8 +35,9 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const win = useMemo(() => sliceRange(all, range), [all, range]);
   // candles and volume need whole bars: a bar that was thinned out would show a volume or a range that is not the day's. When the window holds too many days for that,
   // the bars are weekly (or monthly), and the page says so beside the chart.
+  const [wpx, setWpx] = useState(340);
   const bars = !vs && ((kind === 'candle' && hasOhlc) || (vol && hasVol));
-  const eff: Frame = useMemo(() => { if (!bars) return view; const n = (fr: Frame) => aggregate(win.pts, fr).length; if (view === 'daily') return win.pts.length <= 260 ? 'daily' : n('weekly') <= 260 ? 'weekly' : 'monthly'; if (view === 'weekly') return n('weekly') <= 260 ? 'weekly' : 'monthly'; return 'monthly'; }, [bars, view, win]);
+  const eff: Frame = useMemo(() => { if (!bars) return view; const n = (fr: Frame) => aggregate(win.pts, fr).length; const cap = Math.max(60, Math.floor(wpx / 5)); if (view === 'daily') return win.pts.length <= cap ? 'daily' : n('weekly') <= cap ? 'weekly' : 'monthly'; if (view === 'weekly') return n('weekly') <= cap ? 'weekly' : 'monthly'; return 'monthly'; }, [bars, view, win, wpx]);
   const shown = useMemo(() => {
     if (bars) return aggregate(win.pts, eff);
     return view === 'daily' ? downsample(win.pts, 700) : (win.pts.length ? [win.pts[0], ...aggregate(win.pts, view).filter((p) => p.t > win.pts[0].t)] : []);
@@ -47,14 +48,17 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const logOn = log && canLog;
   const candles = kind === 'candle' && hasOhlc && !cmp;
   const barsMode = !cmp && (candles || (vol && hasVol));
-  const [wpx, setWpx] = useState(340); const ready = !feed.loading && !!feed.data && all.length >= 30;
+  const ready = !feed.loading && !!feed.data && all.length >= 30;
   useLayoutEffect(() => { const el = box.current; if (!el) return; const set = () => { const w = el.clientWidth; if (w > 0) setWpx((x) => (Math.abs(x - w) < 1 ? x : w)); }; set(); const ro = new ResizeObserver(set); ro.observe(el); return () => ro.disconnect(); }, [ready]);
   // 10 Nov 2026: the price axis, the last-price tag and the end labels sit in a gutter OUTSIDE the plot (.pc-plot), so the line runs to the right edge instead of stopping short of an empty band.
   const gutU = 0; const pairGut = 0;
   const geo = useMemo(() => (cmp ? null : geometry(shown, logOn, 1000, 300, 12, candles, { bars: barsMode, gutter: gutU })), [cmp, shown, logOn, candles, barsMode, gutU]);
   const [revealed, setRevealed] = useState(false); useEffect(() => { if (!ready || revealed) return; const t = window.setTimeout(() => setRevealed(true), 1400); return () => window.clearTimeout(t); }, [ready, revealed]);
   const pair = useMemo(() => (cmp ? geometryPair(cmp.a, cmp.b, logOn, 1000, 300, 12, pairGut) : null), [cmp, logOn, pairGut]);
-  const st = useMemo(() => stats(win.pts), [win]);
+  // The window's return is always measured from the window's own first close to its last, whatever the chart draws. Aggregated candles or volume bars start at the close of the FIRST BAR
+  // (a week or a month after the window opens), so they must not move the start; the takeaway and the summary figures read this anchored series and therefore agree in every view.
+  const summary = useMemo(() => (bars && win.pts.length ? [win.pts[0], ...shown.filter((p) => p.t > win.pts[0].t)] : shown), [bars, win, shown]);
+  const st = useMemo(() => stats(summary), [summary]);
   const smaMap = useMemo(() => { if (!ma || !all.length) return null; const a50 = smaSeries(all, 50), a200 = smaSeries(all, 200); const m = new Map<number, { a: number | null; b: number | null }>(); all.forEach((q, k) => m.set(q.t, { a: a50[k], b: a200[k] })); return m; }, [ma, all]);
   const rsiFull = useMemo(() => { if (!rsi) return null; const m = new Map<number, number | null>(); const a = aggregate(all, eff); rsiSeries(a.map((q) => q.c), rsiPeriod).forEach((v, k) => m.set(a[k].t, v)); return m; }, [rsi, all, eff, rsiPeriod]);
   const rsiNow = useMemo(() => (['daily', 'weekly', 'monthly'] as Frame[]).map((fr) => { const a = aggregate(all, fr); const r = rsiSeries(a.map((q) => q.c), rsiPeriod); return { fr, v: r.length ? r[r.length - 1] : null }; }), [all, rsiPeriod]);
@@ -87,7 +91,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   const yrs = st ? spanWord(st.years) : '';
   const cmpYears = cmp ? (cmp.a[cmp.a.length - 1].t - cmp.a[0].t) / (365.25 * 86400) : 0;
   const words = cmp?.trimmed ? `the ${spanWord(cmpYears)} since ${dateLabel(cmp.from.t)}` : windowWords(range, win.covers, st?.years ?? 0);
-  const take = priceTakeaway({ sym, pts: cmp ? cmp.a : shown, bench: cmp ? cmp.b : null, words, monthly: view === 'monthly' });
+  const take = priceTakeaway({ sym, pts: cmp ? cmp.a : summary, bench: cmp ? cmp.b : null, words, monthly: view === 'monthly' });
   const legend = <SeriesLegend items={cmp ? [{ style: S }, { style: B }] : [{ style: S }]} />;   // the values are in the header figures and at the line ends; the legend is the key
   // the table is built from the arrays the chart draws
   const table = (() => {
@@ -112,7 +116,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
   })();
   const chart = <>
     <div ref={box} className={`chart-plot pc-plot${cmp ? ' pair' : ''}`} tabIndex={0} role="slider" aria-label={`${sym} price, ${range}, ${eff}. Use the arrow keys to move along the line.`} aria-describedby={undefined} aria-valuemin={0} aria-valuemax={Math.max(0, plot.length - 1)} aria-valuenow={i ?? plot.length - 1} aria-valuetext={text || (shown.length ? `Latest close ${f(shown[shown.length - 1].c)}, ${dateLabel(shown[shown.length - 1].t, view === 'monthly')}` : 'Latest close')}
-      onPointerMove={at} onPointerDown={at} onPointerLeave={(e) => { if (e.pointerType === 'mouse' && !inspect) setCur(null); }} onKeyDown={key} onBlur={() => { if (!inspect) setCur(null); }} style={{ touchAction: 'pan-y' }}>
+      onPointerMove={(e) => { if (e.pointerType === 'mouse' || e.buttons) at(e); }} onPointerDown={at} onPointerCancel={() => { if (!inspect) setCur(null); }} onPointerUp={(e) => { if (e.pointerType !== 'mouse' && !inspect) setCur(null); }} onPointerLeave={(e) => { if (e.pointerType === 'mouse' && !inspect) setCur(null); }} onKeyDown={key} onBlur={() => { if (!inspect) setCur(null); }} style={{ touchAction: 'pan-y' }}>
       {(geo || pair) && (() => {
         const W = (geo ?? pair)!.W, H = (geo ?? pair)!.H;
         const lo = geo ? geo.min : Math.min(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c)), hi = geo ? geo.max : Math.max(...cmp!.a.map((q) => q.c), ...cmp!.b.map((q) => q.c));
@@ -146,7 +150,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         const yPct = (c: number) => ((12 + (1 - (g(c) - g(mn)) / ((g(mx) - g(mn)) || 1)) * (H - 24)) / H) * 100;
         const ys = geo ? yTicks(mn, mx, logOn, 5) : []; const lastY = geo ? yPct(geo.max === geo.min ? geo.min : shown[shown.length - 1].c) : 0;
         return geo ? <>
-          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 7 || y < 2 || y > 98 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{f(v)}</span>; })}
+          {ys.map((v) => { const y = yPct(v); return Math.abs(y - lastY) < 7 || y < 2 || y > 98 ? null : <span key={v} className="c-ylab" style={{ top: `${y}%` }}>{instrument ? f(v) : v.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>; })}
           <span className="c-now" aria-hidden="true" style={{ top: `${lastY}%`, left: `${(geo.xs[geo.xs.length - 1] / geo.W) * 100}%`, color }} />
           <span className="c-last" style={{ top: `${lastY}%`, background: color }}>{f(shown[shown.length - 1].c)}</span>
           {lvOn && (() => { const vis = levels.filter((lv) => lv.v >= mn && lv.v <= mx); const at = spreadLabels(vis.map((lv) => yPct(lv.v) / 100), .075, .06, .97);   // 12 Nov 2026: labels are kept 7.5% of the plot apart, so entry, stop and targets never stack
@@ -172,7 +176,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
     {/* The two figures sit BELOW the plot (docs/tripwire/beta/charts2): on a phone the plot is the first thing under the takeaway, and a hover or key press changes only this row, never the plot's position. */}
     <div className={`chart-head cf-chips${cmp ? '' : ' tall'}`} aria-live="off" data-figures>
       {p && cmp ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')} · {sym}</span><b className="num">{arrowOf(cmpA)} {pct(cmpA)}</b></div><div className="cf-chip"><span className="cf-cl">Nifty 50 over the same days</span><b className="num">{arrowOf(cmpB)} {pct(cmpB)}</b></div></>
-        : p ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')}</span><b className="num">{f(p.c)}</b></div><div className="cf-chip"><span className="cf-cl">since the start of this window</span><b className="num">{arrowOf(fromStart)} {pct(fromStart)}</b></div>{(p.o != null || p.v != null) && <div className="cf-ohlc small num dim">{[p.o != null && p.h != null && p.l != null ? `O ${f(p.o)} · H ${f(p.h)} · L ${f(p.l)}` : '', p.v != null ? `volume ${compact(p.v)}` : ''].filter(Boolean).join(' · ')}</div>}</>
+        : p ? <><div className="cf-chip"><span className="cf-cl">{dateLabel(p.t, view === 'monthly')}</span><b className="num">{f(p.c)}</b></div><div className="cf-chip"><span className="cf-cl">From window start</span><b className="num">{arrowOf(fromStart)} {pct(fromStart)}</b></div>{(p.o != null || p.v != null) && <div className="cf-ohlc small num dim">{[p.o != null && p.h != null && p.l != null ? `O ${f(p.o)} · H ${f(p.h)} · L ${f(p.l)}` : '', p.v != null ? `volume ${compact(p.v)}` : ''].filter(Boolean).join(' · ')}</div>}</>
         : cmp ? <><div className="cf-chip"><span className="cf-cl">Absolute change</span><b className={`num ${tone(cmp.stock)}`}>{arrowOf(cmp.stock)} {pct(cmp.stock)}</b></div><div className="cf-chip"><span className="cf-cl">Relative to the Nifty 50</span><b className={`num ${tone(cmp.diff)}`}>{arrowOf(cmp.diff)} {signedPts(cmp.diff)} pts</b></div></>
         : st ? <><div className="cf-chip"><span className="cf-cl">{range === 'Max' || !win.covers ? 'Since listing in this data' : `Last ${range === '1Y' ? 'year' : range.replace('Y', ' years')}`}</span><b className={`num ${tone(st.ret)}`}>{arrowOf(st.ret)} {pct(st.ret, 1)}</b></div>{st.cagr != null && <div className="cf-chip"><span className="cf-cl">{yrs}, compounded</span><b className="num">{pct(st.cagr, 1)} a year</b></div>}</> : null}
     </div>
@@ -193,7 +197,7 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
         <svg viewBox={`0 0 ${geo.W} ${H2}`} preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2={geo.W} y1={y(0)} y2={y(0)} stroke="var(--line2)" strokeWidth="1" vectorEffect="non-scaling-stroke" /><path d={`${d}L${geo.xs[geo.xs.length - 1].toFixed(1)} ${y(0)}L${geo.xs[0].toFixed(1)} ${y(0)}Z`} fill="var(--down)" fillOpacity=".12" /><path d={d} fill="none" stroke="var(--down)" strokeWidth="1.25" strokeDasharray="6 2" vectorEffect="non-scaling-stroke" /></svg></div></div>; })()}
   </>;
 
-  return <ChartFrame leadAfter label="Price history" printTableClosed={!!report}
+  return <ChartFrame className="price-workspace" leadAfter label="Price history" printTableClosed={!!report}
     title={cmp ? `${sym} against the Nifty 50` : `${name ?? sym} price`} meta={<>{metaBits.join(' · ')}{barNote?.text && <span className={`cf-bar ${barNote.status}`} data-bar-status={barNote.status} title={barNote.detail ?? undefined}>{barNote.text}</span>}</>} takeaway={take} legend={legend} table={<ChartTable data={table} caption={`${cmp ? 'Indexed comparison' : 'Closing prices'} for ${sym}, ${range}`} unitWord={unitWord} />}
     basis={cmp ? 'Daily closes, indexed to 100, split-adjusted, dividends not included' : instrument ? `Daily closes in ${name ?? sym}'s own units` : 'Daily closes, ₹, split-adjusted, dividends not included'}
    
@@ -246,17 +250,17 @@ export function PriceChart({ sym, fmt, name, levels = [], events = [], report }:
           <button type="button" className="btn sm c-optbtn" aria-haspopup="dialog" aria-label={`Chart options${optCount > 0 ? `, ${optCount} changed` : ''}`} onClick={() => setOptsOpen(true)}><span className="c-opt-long" aria-hidden="true">Chart options</span><span className="c-opt-short" aria-hidden="true">Options</span>{optCount > 0 && <span className="c-badge" aria-hidden="true">{optCount}</span>}</button>
         </div>
       </div>}
-    {chart}
     {!report && <div className="c-workbench" aria-label="Research chart tools">
       <div className="c-workbench-main">
-        <Radios label="Chart interval" value={view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'D' }, { id: 'weekly', label: 'W' }, { id: 'monthly', label: 'M' }] as { id: Frame; label: string }[]} />
+        <Radios label="Chart interval" value={bars ? eff : view} onChange={(v) => { setView(v); setCur(null); }} items={[{ id: 'daily', label: 'D' }, { id: 'weekly', label: 'W' }, { id: 'monthly', label: 'M' }] as { id: Frame; label: string }[]} />
         {hasOhlc && <button className="btn sm" aria-pressed={kind === 'candle'} onClick={() => solo(() => setKind(kind === 'line' ? 'candle' : 'line'))}>Candles</button>}
         <button className="btn sm" aria-pressed={rsi} onClick={() => solo(() => { setRsi(!rsi); if (rsi) setDivOn(false); })}>RSI</button>
         <button className="btn sm" aria-pressed={inspect} onClick={() => { setInspect(!inspect); if (inspect) setCur(null); }}>History lens</button>
       </div>
-      {bars && eff !== view && <p className="small mute c-auto-frame">Auto {eff} bars: this range has too many daily bars to draw intact.</p>}
+      {bars && eff !== view && <p className="small mute c-auto-frame">Showing {eff} candles to keep each bar readable at this width.</p>}
       {rsi && <div className="c-indicator-tools"><label>RSI period <select aria-label="RSI period" value={rsiPeriod} onChange={e => setRsiPeriod(Number(e.target.value))}>{[7, 14, 21].map(n => <option key={n} value={n}>{n}</option>)}</select></label><button className="btn sm" aria-pressed={divOn} onClick={() => solo(() => setDivOn(!divOn))}>Divergences</button><span className="small mute">{FRAME_WORD[eff]} closes · Wilder smoothing</span></div>}
     </div>}
+    {chart}
     {!report && divOn && !cmp && <div className="c-divergence-notes" aria-label="Confirmed RSI divergences"><strong>Price / momentum divergence</strong>{visibleDiv.length ? <ul>{visibleDiv.slice(-3).reverse().map(d => <li key={d.kind + d.to}><span className={d.kind === 'bullish' ? 'up' : 'down'}>{d.kind === 'bullish' ? 'Bullish' : 'Bearish'}</span> · pivot {dateLabel(d.to)} · confirmed {dateLabel(d.confirmed)}</li>)}</ul> : <p>No confirmed divergence in this window as of {dateLabel(asOf)}.</p>}<p className="small mute">Close pivots require three bars on either side. The latest bar is excluded to avoid unfinished-period confirmation. Lines connect price pivots and their RSI values; confirmation comes later. Up to three recent patterns listed. Patterns are observations, not price forecasts.</p></div>}
     {!report && inspect && historical && <section className="c-history-lens" aria-label="Historical evidence inspector">
       <header><div><h3>Read this moment</h3><p>{dateLabel(historical.at)} · {historical.trend}</p></div><strong className="num">{f(historical.close)}</strong></header>

@@ -1,3 +1,4 @@
+import {RecordStrip,PublicChanges} from './trust.tsx';
 import { HitCard } from '../components/index.ts';
 import { WeatherLine } from './weatherline.tsx';
 import { TripsCard } from './tripscard.tsx';
@@ -84,6 +85,8 @@ export function Today() {
     <PageBar title="Today" />
     <div className="today t2 t3">
       <HeroLine />
+      <RecordStrip /><PublicChanges />
+      <CaptureModule source="tripwire-today" />
       {/* targets hit in the last completed session: only when there are some */}
       {auto.hits.length > 0 && <HitCard hits={auto.hits} id="t-hits" />}
 
@@ -125,7 +128,7 @@ export function Today() {
         </section>}
         {scr.data && allPicks.length === 0 && <section className="tsec tpicks" aria-labelledby="t-nopicks" data-sec="picks-empty">
           <div className="row between sechead"><h2 id="t-nopicks" className="sec">Fired at the last close</h2><a className="seclink" href="#/signals">Open Book <span aria-hidden="true">→</span></a></div>
-          <p className="small dim card t-quiet">No rules fired at the last close. The gate is doing its job.</p>
+          <p className="small dim card t-quiet">No factor engines selected a name at the last close. Open Book to see each engine’s eligibility and selection counts.</p>
         </section>}
       </div>}
 
@@ -148,7 +151,7 @@ export function Today() {
         <div className="tsec tnews" data-sec="news"><div className="newsslot">{late ? <MarketNews b={nb} market={news.market} lists={lists} /> : <div className="sk ns-sk" aria-hidden="true" />}</div></div>
       </div>}
 
-      <div className="t-capture"><CaptureModule source="tripwire-today" /></div>
+
       <p className="small mute t-about tfoot"><a href="#/info">About these numbers</a> · {scr.data ? `${scr.data.count} companies in the screen · ` : ''}paper only, not advice</p>
       <IdentityFooter />
     </div>
