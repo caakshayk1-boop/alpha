@@ -1610,3 +1610,20 @@ html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view
 .mode-tag { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-bottom: 8px; }
 .mode-tag.ai { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); }
 .ask-disclose { font-size: 12.5px; margin: 8px 0 0; }
+
+/* 19 Nov 2026: the shared look. Graphite ground, one lime brand colour, the same gain, loss and caution colours as Rulebook, Tripwire and ApexPro
+   (apps/lockedfree/DESIGN.md is the reference). It is the default (dark + lime); the other accents and the light theme stay as choices. */
+:root[data-theme='dark'][data-accent='lime'] {
+  --bg: #08090a; --bg-2: #0b0c0e; --panel: #101113; --panel-2: #151618; --panel-3: #1c1d20;
+  --line: rgba(255, 255, 255, 0.08); --line-2: rgba(255, 255, 255, 0.16);
+  --text: #f0f0f0; --muted: #9ea3ab; --dim: #8e939b; --control-line: #6b7078;
+  --accent: #b8ef43; --accent-2: #ccf56f; --accent-ink: #0a0c05; --accent-soft: rgba(184, 239, 67, 0.14);
+  --neon: #b8ef43; --neon-ink: #ccf56f;
+  --sel-bg: #f0f0f0; --sel-fg: #08090a;
+  --ink: #101113; --ink-2: #17181c; --ink-text: #f0f0f0; --ink-dim: #b0b6bf;
+  --lime: #b8ef43;
+  --t-lav: #17181c; --t-mint: #12261f; --t-lime: #1e2a0c; --t-peach: #2b1f17;
+  --up: #3ddc97; --down: #ff6b6b; --warn: #ffd166;
+  --down-soft: rgba(255, 107, 107, 0.14);
+  --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+}
