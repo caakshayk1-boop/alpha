@@ -9,14 +9,17 @@ const probe = () => {
   const leaves = [...document.querySelectorAll('body *')].filter((el) => {
     if (!vis(el)) return false; if (el.closest('svg, canvas, [aria-hidden="true"], [hidden]')) return false;
     if (el.closest('details:not([open])') && !el.closest('summary')) return false;   // closed disclosures keep a layout box but draw nothing
-    for (let p = el; p && p !== document.body; p = p.parentElement) { const ps = getComputedStyle(p).position; if (ps === 'fixed' || ps === 'sticky') return false; }   // status bars and sticky headers sit over scrolled content by design
     const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
-    return own || /^(BUTTON|INPUT|SELECT|A|TEXTAREA)$/.test(el.tagName) && !el.querySelector('*:not(svg):not(path)');
+    return own || /^(BUTTON|INPUT|SELECT|A|TEXTAREA)$/.test(el.tagName) && !el.querySelector('*:not(svg):not(path):not(use):not(g)');
   });
-  const rect = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height }; };
+  // fixed and sticky bars sit over scrolled content by design, so a fixed element is only compared with the other elements of the same fixed container (the sidebar's own button against the sidebar's own label: 19 Nov 2026)
+  const fixedRoot = (el) => { for (let p = el; p && p !== document.body; p = p.parentElement) { const ps = getComputedStyle(p).position; if (ps === 'fixed' || ps === 'sticky') return p; } return null; };
+  // a clipped (ellipsis) line is drawn only inside its own box; an element that draws its own text is measured by that text's rectangles (a wide block with short text is not a collision with whatever sits beside the text)
+  const rect = (el) => { let r = el.getBoundingClientRect(); const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim().length > 1); if (own.length) { const rs = own.flatMap((n) => { const g = document.createRange(); g.selectNodeContents(n); return [...g.getClientRects()]; }).filter((q) => q.width > 0 && q.height > 0); if (rs.length) { const l = Math.min(...rs.map((q) => q.left)), t = Math.min(...rs.map((q) => q.top)), rt = Math.max(...rs.map((q) => q.right)), bt = Math.max(...rs.map((q) => q.bottom)); const box = el.getBoundingClientRect(), ox = getComputedStyle(el).overflowX !== 'visible'; r = { left: ox ? Math.max(l, box.left) : l, top: t, width: (ox ? Math.min(rt, box.right) : rt) - (ox ? Math.max(l, box.left) : l), height: bt - t }; } } return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height }; };
   const hits = [], seen = new Set();
   for (let i = 0; i < leaves.length; i++) for (let j = i + 1; j < leaves.length; j++) {
     const a = leaves[i], b = leaves[j]; if (a.contains(b) || b.contains(a)) continue;
+    if (fixedRoot(a) !== fixedRoot(b)) continue;
     const ra = rect(a), rb = rect(b); const w = Math.min(ra.x + ra.w, rb.x + rb.w) - Math.max(ra.x, rb.x), h = Math.min(ra.y + ra.h, rb.y + rb.h) - Math.max(ra.y, rb.y);
     if (w > 4 && h > 4 && w * h > 0.2 * Math.min(ra.w * ra.h, rb.w * rb.h)) {
       // clipped or scroll containers legitimately stack; ignore pairs where either is clipped away by an overflow ancestor
