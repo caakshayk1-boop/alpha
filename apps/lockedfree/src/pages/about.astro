@@ -1,6 +1,6 @@
 ---
-import Base from '../layouts/Base.astro'; import { COMMON } from '../lib/methodology.ts'; import { RATES, CHARGES_VERSION } from '../lib/charges.ts';  import { ledger } from '../lib/data.ts'; import { dmy } from '../lib/view.ts';
-const L = ledger();
+import Base from '../layouts/Base.astro'; import { COMMON } from '../lib/methodology.ts'; import { RATES, CHARGES_VERSION } from '../lib/charges.ts';  import { ledger } from '../lib/data.ts'; import { dmy } from '../lib/view.ts'; import { GLOSSARY, KINDS, changeLog } from '../lib/glossary.ts'; import { readFileSync } from 'node:fs'; import { join } from 'node:path';
+const L = ledger(); const log = changeLog(readFileSync(join(process.cwd(), 'DECISIONS.md'), 'utf8'));
 ---
 <Base title="About" description="What Rulebook is, what it is not, who runs it, and exactly how every figure is made.">
 <div class="wrap hero prose"><span class="label eyebrow">About</span><h1>A plain account of what this is.</h1></div>
@@ -17,4 +17,8 @@ const L = ledger();
 <details class="table-alt"><summary>Sample size</summary><p>Every statistic shows the number of closed trades behind it. Under 30, it carries the label "too few to conclude anything". The record is new and takes months to reach that size.</p></details>
 <h2 data-u="mt6">Your data</h2><p>Your Gate trades, plan, watchlist and widget choices stay in your own browser. They are not sent to us. Clearing browser data removes them, so use the download buttons. The email list stores your address, the date and the consent text you agreed to; reply to any note to be removed. No tracking pixels.</p>
 <h2 data-u="mt6">Limits of the lock</h2><p>The Gate's lock and strict mode are self-commitment tools that live in your browser. Clearing site data or using another device bypasses them. They slow you down; they cannot stop a determined you.</p>
-<h2 data-u="mt6">Data</h2><p>{COMMON.sources}</p></div></Base>
+<h2 data-u="mt6">Data</h2><p>{COMMON.sources}</p>
+<h2 data-u="mt6" id="numbers">Every number, defined once</h2><p>Each figure on the site is one of three kinds. <strong>Fact</strong> is {KINDS.Fact}. <strong>Model</strong> is {KINDS.Model}. <strong>Result</strong> is {KINDS.Result}. Rulebook publishes no opinions. If a figure on a page disagrees with this list, this list is the one to trust, and please tell us.</p>
+<div class="gloss">{GLOSSARY.map((g) => <details class="table-alt"><summary><span class="kind" data-kind={g.kind}>{g.kind}</span> {g.term}</summary><p>{g.what}</p><p><strong>How it is computed.</strong> {g.how}</p><p><strong>Wrong if.</strong> {g.wrongIf}</p></details>)}</div>
+<h2 data-u="mt6" id="changes">What changed, and why</h2><p>Every rule change is written down here with its reason. The newest is first. The full text of each decision is kept in the project's decision log.</p>
+<ol class="changelog">{log.map((c) => <li><strong>{c.id}</strong> {c.title}{c.note ? <span class="src"> · {c.note}</span> : null}</li>)}</ol></div></Base>
