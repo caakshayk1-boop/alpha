@@ -345,3 +345,6 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (night): platform map brought up to date
 
 **Changed:** `docs/PLATFORM.md` now describes the shape as deployed: ApexPro reads only the hub (verified live), the hub serves /v1/market/*, Rulebook's feed goes through the hub, the shared look, the probes, and what is not done.
+## 19 Nov 2026 (night): hub tab bar between 861 and 1080 px
+
+**Found on the live hub:** at 1024 px the bottom tab bar wrapped, with Desk on a second row and an empty slot first. The bar is shown up to 1080 px (`premium.css`) but the sliding pill was only taken out of the grid up to 860 px (`globals.css`), so in between it counted as a fifth item in a four-column grid. **Changed:** the pill is absolutely positioned (and slides with `--ti`) in the same media block that shows the bar. **Not caused by the shared look:** the layout does not depend on the theme. **Verified:** design lint; the page is checked in the browser after deploy.
