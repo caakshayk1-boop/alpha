@@ -40,6 +40,8 @@ jobs:
         run: |
           python apps/tripwire/research/test_research.py
           python apps/tripwire/ledger/test_bars.py
+      - name: Retry flaky package downloads
+        run: echo 'Acquire::Retries "5"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-retries
       - name: Browsers (attempt 1)
         id: pw1
         continue-on-error: true
