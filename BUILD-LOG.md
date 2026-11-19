@@ -322,3 +322,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (afternoon): platform map
 
 **Added:** `docs/PLATFORM.md`: which site serves what, the hub sections, and the decisions (hub stays on alpha; the live price service stays in Tripwire's Worker because the hub's chart, quotes and pulse routes have different shapes, checked against the live responses; Tripwire's record pages stay; no feature removals from Desks that hold visitors' saved data; no database yet). **Changed elsewhere:** the Vision widgets and wider index strip join the hub on alpha, and the hub publishes `/v1/manifest.json` (PR #108). **Not done:** moving Tripwire's record to Rulebook and pruning duplicates; see the decisions for why.
+
+## 19 Nov 2026 (evening): Rulebook reads its feed through the hub
+
+**Changed:** `apps/lockedfree/tools/fetch-feed.mjs` takes the eight feed files from `alpha.askakshay.com/data/<name>.json` first and from the source repository second (FEED_BASE still overrides). **Verified:** all eight files are byte-identical through the hub (hash compared with the source); a real run printed "feed ok: 999 stocks, price_date 2026-11-18, built 2026-11-19" through the hub. `docs/PLATFORM.md` corrected: Rulebook and the hub both used to read the source repository directly; Tripwire still builds from repository files.
