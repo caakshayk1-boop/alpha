@@ -255,7 +255,7 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
   }
   .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0; border-radius: 14px; font-size: 12px; font-weight: 600; color: var(--dim); min-height: 52px; justify-content: center; position: relative; z-index: 1; }
   .tabbar [aria-current='page'] { color: var(--text); background: transparent; box-shadow: none; }
-  .tabbar .tab-pill { width: calc((100% - 12px) / 4); background: var(--panel-3); opacity: var(--to, 1); border-radius: 14px; }
+  .tabbar .tab-pill { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 4); background: var(--panel-3); opacity: var(--to, 1); border-radius: 14px; transform: translateX(calc(var(--ti, 0) * 100%)); transition: transform var(--dur-slow) var(--ease); pointer-events: none; }   /* 19 Nov 2026: absolute from 1080px down, not only from 860px: between the two the pill was a fifth grid item and pushed Desk onto a second row */
   main { padding-bottom: 120px; }
 }
 @media (min-width: 1081px) { .tabbar { display: none !important; } }

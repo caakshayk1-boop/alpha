@@ -341,3 +341,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (evening): uptime probes for Tripwire, ApexPro and the hub
 
 **Added:** `.github/workflows/uptime.yml` (every 30 minutes, one matrix job per site, opens or comments on an issue when a probe fails) and `docs/operations/monitoring.md` (what watches what, no staging, rollback pointers, what is not covered). Rulebook already had `lockedfree_uptime.yml`. **Verified:** the YAML parses and the three probe scripts, extracted from the workflow and run under bash, pass against the live sites now. **Not verified:** the issue-opening step (it runs only on a failure).
+
+## 19 Nov 2026 (night): hub tab bar between 861 and 1080 px
+
+**Found on the live hub:** at 1024 px the bottom tab bar wrapped, with Desk on a second row and an empty slot first. The bar is shown up to 1080 px (`premium.css`) but the sliding pill was only taken out of the grid up to 860 px (`globals.css`), so in between it counted as a fifth item in a four-column grid. **Changed:** the pill is absolutely positioned (and slides with `--ti`) in the same media block that shows the bar. **Not caused by the shared look:** the layout does not depend on the theme. **Verified:** design lint; the page is checked in the browser after deploy.
