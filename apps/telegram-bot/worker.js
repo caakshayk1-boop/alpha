@@ -1,6 +1,7 @@
 // Telegram bot Worker: answers the owner's commands and sends three weekday briefs in Malaysia time (08:00 plan, 12:00 open check, 18:30 close scorecard).
 // Secrets (wrangler secret put): BOT_TOKEN, OWNER_CHAT_ID, WEBHOOK_SECRET. Nothing here places an order.
 import { handle, digest } from './commands.js';
+import { stockBrief } from './stock.js';
 import { NEWS_URL, rank, format } from './news.js';
 import { SLOTS, TZ, dueSlot, gather, digestFeeds, snapshot, pickCandidates, compose } from './briefs.js';
 
@@ -65,7 +66,7 @@ export default {
     if (/^\/news(@\w+)?\s*$/i.test(msg.text.trim())) { await runNews(env, null); return new Response('ok'); }
     const brief = /^\/(morning|open|close)(@\w+)?\s*$/i.exec(msg.text.trim());
     if (brief) { await runBrief(env, SLOTS.find((x) => x.id === brief[1].toLowerCase()), null); return new Response('ok'); }
-    const reply = await handle(msg.text, { getJSON, notes: notesApi(env) });
+    const reply = await handle(msg.text, { getJSON, notes: notesApi(env), stockBrief });
     if (reply) await send(env, msg.chat.id, reply);
     return new Response('ok');
   },

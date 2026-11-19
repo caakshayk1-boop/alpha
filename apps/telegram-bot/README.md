@@ -35,7 +35,7 @@ Each brief starts with a one-line verdict (for example `Gate OFF Â· no signals Â
 | `/signals` | Alpha `signals.json` |
 | `/tripwire` | Tripwire `api/ledger` |
 | `/rulebook` | lockedfree `ledger.json` from `main` on GitHub |
-| `/stock SYMBOL` | Alpha `c/SYMBOL.json` |
+| `/stock SYMBOL` | full brief from Tripwire (`api/tick`, `api/bars`, `api/rsi`, `api/ledger`, `api/news`): price, 127-session range and trend, RSI, the stock's paper-ledger picks, last 7 days of news, plus one fundamentals line from the Alpha hub. NSE ticker only (`/stock INFY`) |
 | `/digest` | pulse + signals + tripwire + rulebook |
 | `/note TEXT`, `/notes`, `/del N` | your notes |
 
