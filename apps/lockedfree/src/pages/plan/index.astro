@@ -1,0 +1,7 @@
+---
+import Base from '../../layouts/Base.astro'; import { latestLists, benchmarkLast } from '../../lib/data.ts';
+---
+<Base title="The Plan" description="A written one-page investment plan, goal buckets, and a systematic paper deployment rhythm with pre-committed auto-escalation.">
+<div class="wrap hero"><span class="label eyebrow">The Plan · paper-only</span><h1>Decide once. Then follow the system.</h1><p class="lede">Five answers become a dated, one-page plan. A paper monthly deployment follows a screen's list in its own proportions, and rebalancing happens on a date, not on a feeling.</p></div>
+<div class="wrap"><script type="application/json" id="plan-data" set:html={JSON.stringify(latestLists())}></script><script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
+<div id="plan-root"><noscript><p class="card">The Plan needs JavaScript to run, because it is kept in your browser.</p></noscript></div></div><script src="../../app/plan.tsx"></script></Base>

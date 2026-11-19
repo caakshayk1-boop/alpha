@@ -1,0 +1,7 @@
+---
+// Direction never rides on colour alone: sign + arrow icon + colour.
+import Icon from './Icon.astro'; import { signed } from '../lib/view.ts';
+const { value, decimals = 2, suffix = '', missing = '—' } = Astro.props;
+const none = value == null || Number.isNaN(value); const dir = none ? '' : value > 0 ? 'up' : value < 0 ? 'down' : '';
+---
+{none ? <span class="missing" title="missing">{missing}<span class="sr" hidden> missing</span></span> : <span class={`delta ${dir}`}>{dir === 'up' && <Icon name="arrow-up-right" size={14} />}{dir === 'down' && <Icon name="arrow-down-right" size={14} />}{signed(value, decimals, suffix)}</span>}

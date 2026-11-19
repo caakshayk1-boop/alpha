@@ -1,0 +1,78 @@
+name: lockedfree
+# Build, test and (from main only) deploy Rulebook to lockedfree.askakshay.com. The ledger is baked in at build time, so a deploy follows every ledger commit.
+on:
+  pull_request:
+    paths: ['apps/lockedfree/**', 'wrangler.lockedfree.jsonc', '.github/workflows/lockedfree*.yml']
+  push:
+    branches: [main]
+    paths: ['apps/lockedfree/**', 'wrangler.lockedfree.jsonc', '.github/workflows/lockedfree.yml']
+  workflow_run:
+    workflows: [lockedfree-ledger, lockedfree-screens]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # the owner's daily feed lands about 05:45 IST; rebuild after it, with a retry. Mon-Sat covers each trading day's data.
+    - cron: '30 1 * * 1-6'      # 07:00 IST
+    - cron: '30 3 * * 1-6'      # 09:00 IST, retry
+concurrency:
+  group: lockedfree-deploy
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: apps/lockedfree
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - name: Download and validate the daily feed (fails the run, and so blocks the deploy, if it is stale or incomplete)
+        run: node tools/fetch-feed.mjs
+      - run: npm test
+      - run: npx astro build
+      - run: node tools/assert-no-demo.mjs dist
+      - run: node tools/copy-audit.mjs dist
+      - run: node tools/assert-launch.mjs dist
+      - name: Deploy
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' || github.event_name == 'workflow_run'
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config wrangler.lockedfree.jsonc
+      - name: Live check
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' || github.event_name == 'workflow_run'
+        run: |
+          sleep 15
+          curl -fsS https://lockedfree.askakshay.com/ | grep -q "Rulebook"
+          curl -fsSI https://lockedfree.askakshay.com/ | grep -qi "content-security-policy"
+          curl -fsS https://lockedfree.askakshay.com/api/health | grep -q '"ok":true'
+          curl -fsS https://lockedfree.askakshay.com/ | grep -q 'href="/terminal/"'
+          curl -fsS https://lockedfree.askakshay.com/terminal/ | grep -q "Terminal"
+          curl -fsS https://lockedfree.askakshay.com/stock/TCS/ | grep -q "Tata Consultancy"
+          curl -fsS https://lockedfree.askakshay.com/data/universe.json | grep -q '"cols"'
+
+  alert:
+    # A failed job must not be silent (audit: no failure alerts): open one issue per problem; repository watchers and the owner are notified by GitHub.
+    needs: [build]
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Rulebook: lockedfree deploy failed"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (event: $GITHUB_EVENT_NAME). The site keeps serving the last good build and ledger. See apps/lockedfree/RUNBOOK.md."
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi

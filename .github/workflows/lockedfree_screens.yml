@@ -1,0 +1,55 @@
+name: lockedfree-screens
+# Weekly: download the owner's feed, run the four screens, apply the book (30 calls, 4 per sector), fetch bars for the new calls, rebuild the ledger, commit.
+# Saturday 07:30 IST: the feed (built about 05:45 IST) then holds Friday's close, so the run date is Friday and the list is published on Saturday.
+# Any gate failing (too few usable statements, a screen mostly not scorable, stale benchmark, history rewrite) writes nothing and goes red. A blind week is never published as a sit-out.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 6'
+concurrency:
+  group: lockedfree-ledger
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  screens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test apps/lockedfree/tests/*.test.ts
+      - name: Download and validate the daily feed
+        run: node apps/lockedfree/tools/fetch-feed.mjs
+        working-directory: apps/lockedfree
+      - name: Run the four screens on the feed (writes this week's run files)
+        run: node --experimental-strip-types --disable-warning=ExperimentalWarning tools/run-screens-feed.ts
+        working-directory: apps/lockedfree
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install yfinance pandas
+      - run: python apps/lockedfree/tools/fetch_bars.py
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning apps/lockedfree/tools/build-ledger.ts
+      - name: Commit the week
+        run: |
+          git config user.name "rulebook-ledger" && git config user.email "actions@users.noreply.github.com"
+          git add apps/lockedfree/ledger
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "ledger: rulebook weekly run $(date -u +%F) [skip ci]" && git push
+
+  alert:
+    # A failed job must not be silent (audit: no failure alerts): open one issue per problem; repository watchers and the owner are notified by GitHub.
+    needs: [screens]
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Rulebook: weekly screens failed"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (event: $GITHUB_EVENT_NAME). The site keeps serving the last good build and ledger. See apps/lockedfree/RUNBOOK.md."
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi

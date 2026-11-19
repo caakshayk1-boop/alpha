@@ -1,0 +1,14 @@
+{
+  // Rulebook (lockedfree.askakshay.com): a static Astro site plus a tiny Worker for the email list. No prices are served live; the ledger is baked in at build time.
+  // Deploy by .github/workflows/lockedfree.yml only (needs the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets).
+  "name": "lockedfree",
+  "main": "apps/lockedfree/worker.js",
+  "compatibility_date": "2026-05-01",
+  "assets": { "directory": "./apps/lockedfree/dist", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": ["/api/*"] },
+  "routes": [{ "pattern": "lockedfree.askakshay.com", "custom_domain": true }],
+  "workers_dev": true,
+  "durable_objects": { "bindings": [{ "name": "SUBSCRIBERS", "class_name": "Subscribers" }] },
+  "migrations": [{ "tag": "v1-subscribers", "new_sqlite_classes": ["Subscribers"] }],
+  "ratelimits": [{ "name": "SUBSCRIBE_LIMIT", "namespace_id": "1101", "simple": { "limit": 3, "period": 60 } }, { "name": "QUOTE_LIMIT", "namespace_id": "1102", "simple": { "limit": 60, "period": 60 } }],
+  "observability": { "enabled": true }
+}
