@@ -19,7 +19,7 @@ import urllib.request
 import pandas as pd
 import yfinance as yf
 
-ALPHA = os.environ.get("ALPHA_BASE", "https://alphavision.askakshay.com")
+ALPHA = os.environ.get("ALPHA_BASE", "https://alpha.askakshay.com")
 COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 

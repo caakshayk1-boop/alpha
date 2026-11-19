@@ -1,8 +1,8 @@
 // headers.mjs — the production header and redirect check (Pro §16 rows "Security headers", "Cache behaviour", "Legacy
 // domains"). Run from a GitHub runner by smoke.yml: this repository's build containers cannot reach the site. Read-only
 // HEAD/GET requests, no credentials. Prints one line per check and fails on any miss.
-// Usage: node scripts/headers.mjs https://alphavision.askakshay.com
-const base = (process.argv[2] || 'https://alphavision.askakshay.com').replace(/\/$/, '');
+// Usage: node scripts/headers.mjs https://alpha.askakshay.com
+const base = (process.argv[2] || 'https://alpha.askakshay.com').replace(/\/$/, '');
 const SEC = {
   'content-security-policy': (v) => /frame-ancestors 'none'/.test(v) && (/default-src 'none'/.test(v) || (/default-src 'self'/.test(v) && /object-src 'none'/.test(v))),
   'strict-transport-security': (v) => /max-age=\d{8,}/.test(v),

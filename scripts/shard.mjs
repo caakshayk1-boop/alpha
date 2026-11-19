@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIG = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
-const LIVE = 'https://alphavision.askakshay.com/universe.json';
+const LIVE = 'https://alpha.askakshay.com/universe.json';
 const SYM = /^[A-Za-z0-9&-]{1,20}$/;
 const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error(`${u} answered ${r.status}`); const t = await r.text(); return JSON.parse(t.replace(/\bNaN\b/g, 'null')); };
 const strict = process.env.CI === 'true' && process.env.SHARD_OPTIONAL !== '1';
