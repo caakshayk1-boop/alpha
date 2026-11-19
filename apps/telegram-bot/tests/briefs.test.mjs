@@ -56,7 +56,7 @@ test('digestFeeds reduces raw feeds to a small state and never invents a number'
   assert.equal(st.apex.lead.name, 'IT');
   assert.equal(st.apex.lag.name, 'Banks');
   const none = digestFeeds({ pulse: null, signals: null, ledger: null, rulebook: null, hubPulse: null }, NOW);
-  assert.deepEqual(none, { market: null, hub: null, tw: null, lf: null, apex: null });
+  assert.deepEqual(none, { market: null, hub: null, tw: null, lf: null, apex: null, flows: null });
 });
 
 test('changes name exactly what moved since the last brief', () => {

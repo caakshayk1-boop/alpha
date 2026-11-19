@@ -9,6 +9,7 @@ export const SLOTS = [
   { id: 'morning', hour: 8, minute: 0, title: 'Morning plan' },
   { id: 'open', hour: 12, minute: 0, title: 'Open check' },
   { id: 'close', hour: 18, minute: 30, title: 'Close scorecard' },
+  { id: 'weekly', hour: 9, minute: 0, title: 'Weekly review', days: 'sat' },
 ];
 export const LINKS = [
   ['Tripwire', 'https://tripwire.askakshay.com'],
@@ -20,14 +21,15 @@ const IST = 'Asia/Kolkata';
 const MAX_NEWS = 5;
 
 const WINDOW_MIN = 60;
-/** The cron fires at :00 and :30. A slot is due on Mon-Fri for 60 minutes from its start, so a failed first send gets one retry on the next tick.
+/** The cron fires every 5 minutes. A slot is due (Mon-Fri, or Saturday for the weekly review) for 60 minutes from its start, so a failed first send is retried on the next ticks.
  *  The key is claimed before sending, so a repeat tick after a successful send does nothing. */
 export function dueSlot(nowMs, tz = TZ, slots = SLOTS) {
   const f = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const p = Object.fromEntries(f.formatToParts(new Date(nowMs)).map((x) => [x.type, x.value]));
-  if (p.weekday === 'Sat' || p.weekday === 'Sun') return null;
+  if (p.weekday === 'Sun') return null;
+  const sat = p.weekday === 'Sat';
   const mins = Number(p.hour) * 60 + Number(p.minute);
-  const slot = slots.find((s) => mins >= s.hour * 60 + s.minute && mins < s.hour * 60 + s.minute + WINDOW_MIN);
+  const slot = slots.find((s) => (s.days === 'sat') === sat && mins >= s.hour * 60 + s.minute && mins < s.hour * 60 + s.minute + WINDOW_MIN);
   return slot ? { slot, key: `${p.year}-${p.month}-${p.day}:${slot.id}` } : null;
 }
 
@@ -38,7 +40,7 @@ const sgn = (p) => (p === null ? 'n/a' : `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`)
 
 /** Raw feeds in, small comparable state out. Any feed may be null (source down); its part stays null. */
 export function digestFeeds(f, nowMs = Date.now()) {
-  const st = { market: null, hub: null, tw: null, lf: null, apex: null };
+  const st = { market: null, hub: null, tw: null, lf: null, apex: null, flows: null };
   const q = f.pulse && f.pulse.quotes;
   if (q) {
     const one = (k) => (q[k] ? { px: q[k].px, prev: q[k].prev, pct: pctOf(q[k].px, q[k].prev) } : null);
@@ -94,6 +96,18 @@ export function digestFeeds(f, nowMs = Date.now()) {
       up: isNum(b.up) ? b.up : null, down: isNum(b.down) ? b.down : null, counted: isNum(b.counted) ? b.counted : null,
     };
   }
+  const fl = {};
+  const rows = f.fiidii && Array.isArray(f.fiidii.rows) ? f.fiidii.rows : [];
+  const last = rows[rows.length - 1];
+  if (last && last.fii && last.dii) fl.fii = { date: last.date, fii: last.fii.net, dii: last.dii.net };
+  const b = f.breadth;
+  if (b && isNum(b.up) && isNum(b.down)) fl.breadth = { asOf: b.as_of, up: b.up, down: b.down, mixed: b.mixed, n: b.n };
+  const mq = f.macro && f.macro.quotes;
+  if (mq) {
+    const labels = [['BRENT', 'Brent', 2], ['GOLD', 'Gold', 1], ['BTC', 'BTC', 0], ['USDMYR', 'USD/MYR', 3]];
+    fl.macro = labels.filter(([k]) => mq[k] && isNum(mq[k].px)).map(([k, label, d]) => ({ label, px: mq[k].px, d, pct: pctOf(mq[k].px, mq[k].prev), live: mq[k].live === true }));
+  }
+  if (fl.fii || fl.breadth || (fl.macro && fl.macro.length)) st.flows = fl;
   return st;
 }
 
@@ -193,6 +207,10 @@ function slotBlock(slotId, st) {
     if (!h.alertable && h.why) lines.push(`<i>Hub alerts are off. ${esc(h.why.replace(/^Alerts off:\s*/i, '').replace(/^./, (c) => c.toUpperCase()))}</i>`);
   }
   if (slotId === 'close') {
+    const fl = st.flows;
+    if (fl && fl.fii) lines.push(`FII net ${fmt(fl.fii.fii, 0)} · DII net ${fmt(fl.fii.dii, 0)} (NSE provisional, ${esc(fl.fii.date || 'date n/a')}; as published, unit not stated)`);
+    if (fl && fl.breadth) lines.push(`Breadth (${esc(fl.breadth.asOf || 'date n/a')}): ${fmt(fl.breadth.up, 0)} up, ${fmt(fl.breadth.down, 0)} down, ${fmt(fl.breadth.mixed, 0)} mixed of ${fmt(fl.breadth.n, 0)}`);
+    if (fl && fl.macro && fl.macro.length) lines.push(fl.macro.map((x) => `${x.label} ${fmt(x.px, x.d)} (${sgn(x.pct)}${x.live ? '' : ', not live'})`).join(' · '));
     if (st.tw) lines.push(`Tripwire paper picks: ${st.tw.open} open, average move since entry ${sgn(st.tw.avgPct)} (ledger day ${esc(st.tw.lastDay || 'n/a')}).`);
     if (st.lf) lines.push(`Rulebook paper book: ${st.lf.open} open, ${st.lf.closed} closed, equity ${fmt(st.lf.equity, 0)}, unrealised ${fmt(st.lf.unreal, 0)} (as of ${esc(st.lf.asOf || 'n/a')}).`);
     if (h) lines.push(`Alpha record: ${fmt(h.record.closed, 0)} closed, ${fmt(h.record.wins, 0)} wins, ${fmt(h.record.total_r)} R total.`);
@@ -246,10 +264,13 @@ function build(slot, st, prev, news, nowMs) {
 }
 
 /** Fetch every feed the brief needs. A failed feed is null, never a throw: one dead site must not cancel the brief. */
-export async function gather(deps) {
+export async function gather(deps, slotId) {
   const get = async (u) => { try { return await deps.getJSON(u); } catch { return null; } };
-  const [pulse, signals, ledger, rulebook, hubPulse, news] = await Promise.all([
-    get(SOURCES.pulse), get(SOURCES.signals), get(SOURCES.ledger), get(SOURCES.rulebook), get(SOURCES.hubPulse), get(deps.newsUrl),
+  const close = slotId === 'close';
+  const TW = 'https://tripwire.askakshay.com/api/';
+  const [pulse, signals, ledger, rulebook, hubPulse, news, fiidii, breadth, macro] = await Promise.all([
+    get(SOURCES.pulse), get(SOURCES.signals), get(SOURCES.ledger), get(SOURCES.rulebook), get(SOURCES.hubPulse), slotId === 'weekly' ? null : get(deps.newsUrl),
+    close ? get(TW + 'fiidii') : null, close ? get(TW + 'breadth') : null, close ? get(TW + 'macro') : null,
   ]);
-  return { feeds: { pulse, signals, ledger, rulebook, hubPulse }, events: news && Array.isArray(news.events) ? news.events : [] };
+  return { feeds: { pulse, signals, ledger, rulebook, hubPulse, fiidii, breadth, macro }, events: news && Array.isArray(news.events) ? news.events : [] };
 }
