@@ -59,7 +59,7 @@ export function confirmationMail(origin, token) {
     'If you did not ask for this, ignore this mail and nothing is kept beyond a pending entry, or remove it now:',
     `Unsubscribe and delete: ${unsub}`,
     '',
-    'Alpha · alpha.askakshay.com · information and education only, not investment advice.',
+    'Alpha · alphavision.askakshay.com · information and education only, not investment advice.',
   ].join('\n');
   return { subject: 'Confirm your place on the Alpha Pro waitlist', text, unsub };
 }

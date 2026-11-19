@@ -63,7 +63,7 @@ async function main() {
   console.log(`shard: universe.json with ${uni.length} symbols`);
   // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.
   const slug = (sym) => sym.replace(/&/g, '_');
-  const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alpha.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);
+  const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alphavision.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);
   writeFileSync('public/sitemap-companies.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
   console.log(`shard: sitemap-companies.xml with ${urls.length} pages`);
   return { built_on: screen.built_on, count: n };

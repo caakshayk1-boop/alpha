@@ -7,11 +7,11 @@ import { useLiveQuotes } from '@/lib/data';
 import { num, quoteState } from '@/lib/format';
 import type { Quote } from '@/lib/types';
 
-/** The seven numbers people check first, in a fixed order. Each states its own last-trade time: markets keep different hours
+/** The numbers people check first, in a fixed order. Each states its own last-trade time: markets keep different hours
  *  (gold and Brent trade while NSE is shut), so no group label claims "live". Nothing scrolls by itself; on a phone the strip
  *  scrolls sideways inside its own box and the page never does. */
-export const STRIP_IDS = ['nifty', 'sensex', 'banknifty', 'vix', 'usdinr', 'gold', 'brent'] as const;
-const NAMES: Record<(typeof STRIP_IDS)[number], string> = { nifty: 'Nifty 50', sensex: 'Sensex', banknifty: 'Nifty Bank', vix: 'India VIX', usdinr: 'USD/INR', gold: 'Gold', brent: 'Brent' };
+export const STRIP_IDS = ['nifty', 'sensex', 'banknifty', 'vix', 'spx', 'ndx', 'n225', 'usdinr', 'gold', 'brent', 'btc'] as const;
+const NAMES: Record<(typeof STRIP_IDS)[number], string> = { nifty: 'Nifty 50', sensex: 'Sensex', banknifty: 'Nifty Bank', vix: 'India VIX', spx: 'S&P 500', ndx: 'Nasdaq', n225: 'Nikkei', usdinr: 'USD/INR', gold: 'Gold', brent: 'Brent', btc: 'Bitcoin' };
 
 export function IndexStrip() {
   const q = useLiveQuotes();

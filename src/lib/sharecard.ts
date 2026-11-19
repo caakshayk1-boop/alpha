@@ -23,7 +23,7 @@ export function cardLines({ r, bull, bear, asOf }: CardData) {
     scores: [score('q', 'Quality'), score('g', 'Growth'), score('v', 'Valuation'), score('tech', 'Technical')].join('   ·   '),
     forPts: bull.slice(0, 2).map((p) => p.text),
     againstPts: bear.slice(0, 2).map((p) => p.text),
-    foot: `Close of ${asOf}. Research, not advice.   alpha.askakshay.com`,
+    foot: `Close of ${asOf}. Research, not advice.   alphavision.askakshay.com`,
   };
 }
 
