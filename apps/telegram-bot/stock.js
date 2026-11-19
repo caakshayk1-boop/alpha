@@ -28,6 +28,21 @@ export function trend(bars) {
   };
 }
 
+/** A plain verdict from four yes/no checks on the daily bars: price vs the 20-day average, vs the 50-day average, 20-day vs 50-day, and the 1-month change.
+ *  3 of 3 or 3+ of 4 positive is an uptrend, 1 or fewer of 4 (0 of 3) a downtrend, anything else mixed. Needs at least 3 checks, else it says so. */
+export function trendVerdict(t) {
+  if (!t) return null;
+  const c = [];
+  if (isNum(t.sma20)) c.push(t.last >= t.sma20 ? [1, 'price above its 20-day average'] : [0, 'price below its 20-day average']);
+  if (isNum(t.sma50)) c.push(t.last >= t.sma50 ? [1, 'above its 50-day average'] : [0, 'below its 50-day average']);
+  if (isNum(t.sma20) && isNum(t.sma50)) c.push(t.sma20 >= t.sma50 ? [1, '20-day above 50-day'] : [0, '20-day below 50-day']);
+  if (isNum(t.m1)) c.push(t.m1 >= 0 ? [1, `up ${t.m1.toFixed(1)}% in 1 month`] : [0, `down ${Math.abs(t.m1).toFixed(1)}% in 1 month`]);
+  if (c.length < 3) return { label: 'Not enough history', detail: `only ${c.length} of 4 checks possible` };
+  const pos = c.reduce((a, x) => a + x[0], 0);
+  const share = pos / c.length;
+  return { label: share >= 0.75 ? 'Uptrend' : share <= 0.25 ? 'Downtrend' : 'Mixed', detail: `${pos} of ${c.length} positive: ${c.map((x) => x[1]).join(', ')}` };
+}
+
 const when = (pt) => { if (!isNum(pt)) return 'n/a'; const p = localParts(pt * 1000, 'Asia/Kolkata'); return `${p.date} ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')} IST`; };
 
 function ledgerLines(ledger, sym) {
@@ -63,6 +78,9 @@ export function composeStock(sym, f, nowMs = Date.now()) {
   if (q) out.push(`Price ${n(q.px)} (${sgn(chg(q.px, q.prev))} vs ${n(q.prev)}) · ${q.live ? 'live' : 'not live'} · last tick ${esc(when(q.pt))}`);
   else out.push('Price n/a (Tripwire price feed has no quote for this symbol)');
   const t = trend(bars);
+  const v = trendVerdict(t);
+  if (v) out.push(`Trend: <b>${v.label}</b> (${v.detail}; daily bars)`);
+  else out.push('Trend: n/a (no daily bars from Tripwire)');
   if (t) {
     out.push(`Last ${t.sessions} sessions: low ${n(t.lo)} · high ${n(t.hi)} · now ${sgn(t.fromHigh)} from the high`);
     out.push(`1 week ${sgn(t.w1)} · 1 month ${sgn(t.m1)} · 20-day avg ${n(t.sma20)} (${t.sma20 === null ? 'n/a' : t.last >= t.sma20 ? 'above' : 'below'}) · 50-day avg ${n(t.sma50)} (${t.sma50 === null ? 'n/a' : t.last >= t.sma50 ? 'above' : 'below'})`);
