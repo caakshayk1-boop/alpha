@@ -7,21 +7,23 @@ const HEADERS = {
   'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
 };
 function response(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } }); }
+// 19 Nov 2026: alpha.askakshay.com now answers 301 to alphavision.askakshay.com, which serves the same /data/screen.json, /c/<SYM>.json and /signals.json. The old host returned an HTML page, so every screen and company request failed with 502.
+const ALPHA = 'https://alphavision.askakshay.com';
 export function upstream(url) {
   const symbol = url.searchParams.get('s') || '';
   const valid = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(symbol);
   const routes = {
-    '/api/screen': ['https://alpha.askakshay.com/data/screen.json', 300],
+    '/api/screen': [`${ALPHA}/data/screen.json`, 300],
     '/api/market': ['https://tripwire.askakshay.com/api/pulse', 30],
     '/api/macro': ['https://tripwire.askakshay.com/api/macro', 30],
-    '/api/signals': ['https://alpha.askakshay.com/signals.json', 300],
+    '/api/signals': [`${ALPHA}/signals.json`, 300],
   };
   if (routes[url.pathname]) return routes[url.pathname];
   if (url.pathname === '/api/quotes') { // 18 Nov 2026: live quotes for the sector map's sample (up to 30 names a call); the same upstream the index strip uses, 30 s at the edge
     const list = symbol.split(',');
     return list.length >= 1 && list.length <= 30 && list.every(x => /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(x)) ? [`https://tripwire.askakshay.com/api/tick?s=${list.map(encodeURIComponent).join(',')}`, 30] : null;
   }
-  if (url.pathname === '/api/company' && valid) return [`https://alpha.askakshay.com/c/${encodeURIComponent(symbol)}.json`, 300];
+  if (url.pathname === '/api/company' && valid) return [`${ALPHA}/c/${encodeURIComponent(symbol)}.json`, 300];
   if (['/api/chart','/api/spark'].includes(url.pathname) && valid) return [`https://tripwire.askakshay.com/api/chart?s=${encodeURIComponent(symbol)}`, 1800];
   return null;
 }

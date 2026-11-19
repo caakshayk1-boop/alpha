@@ -8,7 +8,7 @@ test('/api/quotes accepts 1 to 30 valid symbols and goes to the tick feed; anyth
   assert.equal(upstream(u('/api/quotes?s='+thirty+',EXTRA')),null,'31 names');assert.equal(upstream(u('/api/quotes')),null,'none');
   assert.equal(upstream(u('/api/quotes?s=TCS,../x')),null);assert.equal(upstream(u('/api/quotes?s=tcs')),null,'lower case');assert.equal(upstream(u('/api/quotes?s=TCS,,INFY')),null,'empty name');
 });
-test('the old routes are unchanged',()=>{assert.equal(upstream(u('/api/market'))[0],'https://tripwire.askakshay.com/api/pulse');assert.equal(upstream(u('/api/company?s=TCS'))[0],'https://alpha.askakshay.com/c/TCS.json');assert.equal(upstream(u('/api/nope')),null);});
+test('the old routes are unchanged',()=>{assert.equal(upstream(u('/api/market'))[0],'https://tripwire.askakshay.com/api/pulse');assert.equal(upstream(u('/api/company?s=TCS'))[0],'https://alphavision.askakshay.com/c/TCS.json');assert.equal(upstream(u('/api/nope')),null);});
 test('font files are cached for a year; images a day; code and pages are revalidated; security headers stay',async()=>{
   const env={ASSETS:{fetch:async()=>new Response('x')}},ctx={waitUntil(){}};
   const get=async p=>(await worker.fetch(new Request('https://apexpro.askakshay.com'+p),env,ctx)).headers;

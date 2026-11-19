@@ -298,3 +298,7 @@ Reviewed both sites (rendered pages, the news site's data-health.json and the pu
 Verified: 103 unit tests (new: glossary, change log, book risk, closed statistics, context files missing/stale); the new context proof against the real feed files and ledger.
 NOT verified: the new widgets with the real data on the live domain; whether the source files keep their shape (a changed shape hides the widget rather than breaking the build). Corporate actions not built (data not available). The data repository must be kept: the daily feed comes from it.
 Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
+
+## 19 Nov 2026: ApexPro upstream moved to alphavision.askakshay.com
+
+**Found:** alpha.askakshay.com answers 301 to alphavision.askakshay.com/, so ApexPro's /api/screen, /api/company and /api/signals returned 502 in production (market and chart come from Tripwire and were fine). **Changed:** `apps/apexpro/worker.mjs` reads those three from alphavision.askakshay.com (same paths, same JSON; checked). **Verified:** locally, /api/screen, /api/company?s=INFY, /api/signals 200; canvas suite passes; 25 node tests. **Not changed, still pointing at the old host:** `.github/workflows/deploy.yml`, `smoke.yml`, `tripwire_news.yml` (NEWS_UNIVERSE_URL), `engines/data.py` (ALPHA_BASE default).
