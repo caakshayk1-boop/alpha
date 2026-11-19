@@ -1,8 +1,9 @@
 // Downloads the owner's daily feed into feed/ (gitignored) and refuses a bad one. Runs before every build.
 // Source: trading-dashboard/docs/{screen,screen-detail,swot,seasonality}.json. The files contain bare NaN, which is not JSON; it becomes absence (a missing value), never zero.
 import { writeFileSync, mkdirSync } from 'node:fs'; import { join } from 'node:path';
-const BASE = process.env.FEED_BASE || 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs'; const dir = join(process.cwd(), 'feed'); mkdirSync(dir, { recursive: true });
-const get = async (f) => { for (let i = 0; i < 3; i++) { try { const r = await fetch(`${BASE}/${f}.json`, { signal: AbortSignal.timeout(90000) }); if (!r.ok) throw new Error(r.status); return JSON.parse((await r.text()).replace(/\bNaN\b/g, 'null').replace(/-?\bInfinity\b/g, 'null')); } catch (e) { if (i === 2) throw new Error(`${f}: ${e.message}`); await new Promise((x) => setTimeout(x, 2000 * (i + 1))); } } };
+// 19 Nov 2026: the feed is read from the hub (alpha.askakshay.com/data/<name>.json), which passes the owner's files through byte for byte (checked for all eight names below), and falls back to the source repository if the hub does not answer. FEED_BASE overrides both.
+const BASES = process.env.FEED_BASE ? [process.env.FEED_BASE] : ['https://alpha.askakshay.com/data', 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs']; const dir = join(process.cwd(), 'feed'); mkdirSync(dir, { recursive: true });
+const get = async (f) => { let last; for (let i = 0; i < 3; i++) { for (const B of BASES) { try { const r = await fetch(`${B}/${f}.json`, { signal: AbortSignal.timeout(90000) }); if (!r.ok) throw new Error(r.status); return JSON.parse((await r.text()).replace(/\bNaN\b/g, 'null').replace(/-?\bInfinity\b/g, 'null')); } catch (e) { last = e; } } if (i === 2) throw new Error(`${f}: ${last.message}`); await new Promise((x) => setTimeout(x, 2000 * (i + 1))); } };
 const [screen, detail, swot, seasonality] = await Promise.all(['screen', 'screen-detail', 'swot', 'seasonality'].map(get));
 const bad = []; const rows = screen.rows || [];
 if (rows.length < 900) bad.push(`only ${rows.length} rows`); if (new Set(rows.map((r) => r.sym)).size !== rows.length) bad.push('duplicate symbols'); if (!screen.price_date) bad.push('no price_date');
