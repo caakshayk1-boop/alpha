@@ -28,14 +28,8 @@ jobs:
       - run: npm run build
       - name: Retry flaky package downloads
         run: echo 'Acquire::Retries "5"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-retries
-      - name: Browsers (attempt 1)
-        id: pw1
-        continue-on-error: true
-        timeout-minutes: 6
-        run: npx playwright install --with-deps chromium
-      - name: Browsers (attempt 2, only if the first failed or hung)
-        if: steps.pw1.outcome == 'failure'
-        timeout-minutes: 6
+      - name: Browsers
+        timeout-minutes: 15
         run: npx playwright install --with-deps chromium
       - name: Render and approve the baselines
         run: node scripts/visual.mjs --update

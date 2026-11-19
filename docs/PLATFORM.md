@@ -9,7 +9,7 @@ One hub, three product sites. Each product site does one job and reads shared da
 | Hub (alpha, includes Vision) | alpha.askakshay.com | Publishes the shared dataset and the daily research desk (Today, Signals, Screen, company pages, Vision widgets) | Upstream feeds (two other repos), its own nightly build |
 | Rulebook | lockedfree.askakshay.com | The public record: rules, nightly calls, its own ledger. Launching. | The hub's /data feeds at build (source repository as fallback); its own live quotes from Yahoo through its Worker |
 | Tripwire | tripwire.askakshay.com | Personal cockpit: Desk, Book, watch conditions, live prices. Its public pages are the crawlable proof of its own ledger. | The repository's data files (the same ones the hub publishes) at build; its own live price service |
-| ApexPro | apexpro.askakshay.com | Research lab: Time Machine, score spread and explorer, RSI divergence, sector heat, compare, level ladder | Hub (screen, company, signals), Tripwire's price service |
+| ApexPro | apexpro.askakshay.com | Research lab: Time Machine, score spread and explorer, RSI divergence, sector heat, compare, level ladder | Everything from the hub: screen, company, signals and the live market routes (/v1/market/*); Tripwire's identical routes are the fallback |
 
 vision.askakshay.com, signal. and gems. redirect to alpha. There is no separate Vision host: the Vision widgets live on the hub's Today page.
 
@@ -20,7 +20,7 @@ universe, screen, company/{SYM}, signals, engines, rotation, brief, build. Each 
 ## Decisions and why
 
 1. **Hub host stays alpha.askakshay.com.** alphavision.askakshay.com does not resolve; main deploys the hub to alpha. The alphavision-merge branch is not merged. ApexPro's Worker tries alpha first and alphavision second.
-2. **The live price service stays in Tripwire's Worker for now.** The hub's own /api/chart, /api/quotes and /data/pulse.json are different things, not drop-in replacements: Tripwire's /api/chart returns the full daily history (about 7,700 bars for INFY) and the hub's returns a range of about 250; Tripwire's /api/tick returns {quotes: {SYM: {px, prev, pt, live}}} and the hub's /api/quotes returns a list; Tripwire's /api/pulse and /api/macro have no hub equivalent. Moving ApexPro onto the hub would need new compatible routes in the hub Worker. Until then these four routes are the shared market-data API and their response shapes must not change without a version.
+2. **The live market data is served by the hub as /v1/market/tick, /pulse, /macro and /chart (19 Nov 2026, late), a verbatim port of Tripwire's price code with identical response shapes, guarded by tests/market-parity.test.mjs.** It was first left in Tripwire's Worker, for this reason: The hub's own /api/chart, /api/quotes and /data/pulse.json are different things, not drop-in replacements: Tripwire's /api/chart returns the full daily history (about 7,700 bars for INFY) and the hub's returns a range of about 250; Tripwire's /api/tick returns {quotes: {SYM: {px, prev, pt, live}}} and the hub's /api/quotes returns a list; Tripwire's /api/pulse and /api/macro have no hub equivalent. Moving ApexPro onto the hub would need new compatible routes in the hub Worker. Until then these four routes are the shared market-data API and their response shapes must not change without a version.
 3. **Tripwire's record pages stay on Tripwire.** Tripwire and Rulebook keep different ledgers with different rules (Tripwire's nightly engines; Rulebook's own screen rules and calls). Publishing Tripwire's record under Rulebook's name would put one product's numbers under another's claim, and make Rulebook depend on Tripwire's data. Each site publishes its own record.
 4. **No feature removals from ApexPro or Tripwire.** ApexPro's Desk (watchlist, notes, trail) and Tripwire's Desk and Book hold visitors' saved data in their browsers under existing keys; removing them would strand that data. Duplicates are reduced by linking, not deleting.
 5. **No database yet.** The shared dataset is versioned files with a manifest. Add D1 or R2 behind the hub only when a feature needs queries the files cannot answer; accounts only after a security review.
@@ -34,3 +34,12 @@ universe, screen, company/{SYM}, signals, engines, rotation, brief, build. Each 
 
 - Rulebook now reads its daily feed from the hub (`/data/screen.json`, `screen-detail`, `swot`, `seasonality`, `pulse`, `regime`, `barometer`, `data-health`) and falls back to the source repository if the hub does not answer. The hub passes these through byte for byte (checked: identical hashes for all eight), so nothing in Rulebook's numbers changes. Before this, Rulebook and the hub both read the source repository directly.
 - Tripwire still builds from the repository's data files rather than through the hub; that is the remaining direct read.
+
+## Update, 19 Nov 2026 (night): the final shape
+
+- **ApexPro reads only the hub** (checked live: `x-apex-source: alpha.askakshay.com` for screen, company, signals, market, macro, quotes and chart). Tripwire's routes are its fallback, used only if the hub does not answer.
+- **Rulebook** reads its daily feed through the hub; its own Worker still fetches live quotes from Yahoo (its response shape has day high and low, which the hub's does not).
+- **Tripwire** builds from the repository's data files and runs its own price routes, which the hub's port mirrors. Tripwire can later delegate to the hub with no change to its pages, because the shapes are identical.
+- **Shared look:** the hub now defaults to graphite and lime like the other three; a visitor's saved choice is respected.
+- **Watching:** `uptime.yml` probes Tripwire, ApexPro and the hub every 30 minutes; Rulebook has its own probe. See `docs/operations/monitoring.md`.
+- **Not done:** Tripwire and Rulebook still call Yahoo themselves for live prices; Tripwire's data files are read from the repository, not through the hub; no database; typefaces differ between the sites.
