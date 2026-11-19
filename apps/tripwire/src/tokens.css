@@ -3,19 +3,19 @@
    The old variable names (--bg, --s1, --tx, --dim, --mute, --lime, ...) are ALIASES of these, kept so every existing rule still resolves; new work reads the new names. */
 :root{
   /* colour: surfaces */
-  --bg:#0A0A0B;--bg-2:#101012;--surface:#151517;--surface-2:#1C1C1F;--surface-3:#1E1E21;
-  --line:rgba(244,246,250,.08);--line-2:rgba(244,246,250,.14);
+  --bg:#08090A;--bg-2:#0B0C0E;--surface:#121316;--surface-2:#17181C;--surface-3:#1D1F24;
+  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.15);
   /* colour: ink. Contrast on --surface-3 (the lightest surface): ink 14.5, ink-2 8.1, ink-3 4.6 (labels and timestamps only, never body copy) */
-  --ink:#F4F6FA;--ink-2:#A7AFBC;--ink-3:#9AA0AB;
+  --ink:#F0F0F0;--ink-2:#B0B6BF;--ink-3:#8F959E;
   /* colour: meaning. Accent is for actions and highlights only; up/down are data semantics; amber is staleness and warnings */
-  --accent:#CCFF43;--accent-press:#A8E02E;--accent-tint:rgba(204,255,67,.12);--on-accent:#131503;
+  --accent:#B8EF43;--accent-press:#9CD12E;--accent-tint:rgba(184,239,67,.12);--on-accent:#0B1200;
   --up:#3DDC97;--down:#FF6A4D;--amber:#FFC24B;
-  --neon:#CCFF43;--neon-cyan:#4DE1FF;   /* shared with ApexPro (same up, down, caution; ApexPro's brand accent is amber, Tripwire's is this lime) */
+  --neon:#B8EF43;--neon-cyan:#00C8FF;   /* shared with ApexPro (same up, down, caution; ApexPro's brand accent is amber, Tripwire's is this lime) */
   /* colour: chart series identity. Company slots 1 to 3; the benchmark is --ink-3, dashed. Not red, green or lime: those mean direction and emphasis. Each slot also has its own marker shape */
   --series-1:#C9CED8;--series-2:#B98A00;--series-3:#D2508F;   /* 12 Nov 2026: moved into the validated dark band (OKLCH L .48 to .67; dataviz validate_palette: CVD worst adjacent dE 14.8 deutan, normal 22.7, contrast on surface >= 3:1) */
   /* chart look (12 Nov 2026): one hairline grid, a plot surface, thin round-capped lines, a soft area under them, a current-value dot with a ring */
   --chart-grid:rgba(244,246,250,.07);--chart-plot:linear-gradient(180deg,rgba(244,246,250,.035),rgba(244,246,250,0));--chart-line-w:1.75px;--chart-area-top:.3;
-  --chart-ring:rgba(204,255,67,.28);--chart-dot-edge:var(--surface);--bar-r:4px;
+  --chart-ring:rgba(184,239,67,.28);--chart-dot-edge:var(--surface);--bar-r:4px;
   /* effects (12 Nov 2026): the price halo is ONE low-opacity tint, 10px, gone in 600 ms; the fade and rise lengths are per preset (effects3.css) */
   --halo-up:rgba(61,220,151,.26);--halo-down:rgba(255,106,77,.26);--halo-neutral:rgba(244,246,250,.16);--halo-blur:10px;--halo-dur:600ms;--fade-dur:160ms;--fade-dur-2:200ms;--rise-dur:280ms;
   --down-tint:rgba(255,106,77,.12);--up-tint:rgba(61,220,151,.12);--amber-tint:rgba(255,194,75,.12);

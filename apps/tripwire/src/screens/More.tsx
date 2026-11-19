@@ -24,6 +24,7 @@ const GROUPS: { head: string; rows: Row[] }[] = [
   { head: 'Public record', rows: [
     {id:'glass',href:'#/glass',icon:'chart',title:'Honest scoreboard',note:'Results, position timelines and traceable numbers'},
     {id:'sitout',href:'#/sitout',icon:'note',title:'Sit-out log',note:'Passed, picked, skipped and voided observations'},
+    {id:'edition',href:'#/edition',icon:'note',title:'Daily edition',note:'One ledger night as a dated page, never edited'},
     {id:'gate',href:'#/gate',icon:'check',title:'Gate & backtest',note:'Market checks, every gate day and holdout evidence'},
     {id:'about',href:'#/about',icon:'info',title:'About the builder',note:'The story so far and report a wrong number'},
     {id:'changelog',href:'#/changelog',icon:'clock',title:'Public changelog',note:'Dated rule versions and why they changed'},

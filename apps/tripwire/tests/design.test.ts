@@ -41,7 +41,7 @@ test('text tokens keep their contrast on every surface (floors: ink 14, ink-2 7.
   assert.ok(ratio(tok('on-accent'), tok('accent')) >= 8, 'dark text on the accent button');
 });
 test('the palette is the one the owner specified', () => {
-  for (const [n, v] of [['bg', '#0A0A0B'], ['surface', '#151517'], ['surface-2', '#1C1C1F'], ['ink', '#F4F6FA'], ['ink-2', '#A7AFBC'], ['ink-3', '#9AA0AB'], ['accent', '#CCFF43'], ['up', '#3DDC97'], ['down', '#FF6A4D'], ['amber', '#FFC24B']]   /* 15 Nov 2026 (Tripwire 3.0 Phase A): the warm near-black and the brand lime replace the 11 Nov blue-black and periwinkle. ink-3 is #9AA0AB, not the spec's #6E7684 (3.7:1 on surface-2) or #8A909C (4.07:1 on an amber-tinted chip): the 4.5 label floor wins */) assert.equal(tok(n).toUpperCase(), v, n);
+  for (const [n, v] of [['bg', '#08090A'], ['surface', '#121316'], ['surface-2', '#17181C'], ['ink', '#F0F0F0'], ['ink-2', '#B0B6BF'], ['ink-3', '#8F959E'], ['accent', '#B8EF43'], ['up', '#3DDC97'], ['down', '#FF6A4D'], ['amber', '#FFC24B']]   /* 19 Nov 2026: the askakshay.com palette (graphite #08090A, lime #B8EF43), shared with ApexPro; 15 Nov 2026 (Tripwire 3.0 Phase A): the warm near-black and the brand lime replace the 11 Nov blue-black and periwinkle. ink-3 is #9AA0AB, not the spec's #6E7684 (3.7:1 on surface-2) or #8A909C (4.07:1 on an amber-tinted chip): the 4.5 label floor wins */) assert.equal(tok(n).toUpperCase(), v, n);
 });
 test('every legacy variable is an alias of a token, never a second colour', () => {
   const t = strip(css('tokens.css')); const legacy = t.slice(t.indexOf('legacy aliases') > -1 ? 0 : 0);

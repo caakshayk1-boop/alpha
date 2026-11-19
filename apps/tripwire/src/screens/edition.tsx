@@ -62,6 +62,10 @@ export function EditionPage({ day }: { day?: string | null }) {
 
     <section aria-labelledby="ed-eng"><h2 id="ed-eng">Passed is not picked</h2>
       <p className="small dim">Counted per engine, so one company that passes two engines is counted twice.</p>
+      <ul className="ed-funnel" aria-label="Eligible, passed and picked, per engine">{e.engines.map((x) => { const pct = (n: number) => `${x.eligible > 0 ? Math.min(100, (n / x.eligible) * 100) : 0}%`; return <li key={x.engine} data-funnel={x.engine}>
+        <div className="fn-head"><b>{x.engine}</b><span>Eligible → passed → picked</span></div>
+        <div className="fn-rail" aria-hidden="true"><i className="p" style={{ width: pct(x.passed) }} /><i className="k2" style={{ width: pct(x.picked) }} /></div>
+        <p className="fn-nums num"><b>{x.eligible}</b> eligible → <b>{x.passed}</b> passed → <b>{x.picked}</b> picked</p></li>; })}</ul>
       <div className="scroll-x" tabIndex={0} role="region" aria-label="Engines for this night, scrolls sideways"><table className="tbl"><thead><tr><th scope="col">Engine</th><th scope="col">Eligible</th><th scope="col">Passed</th><th scope="col">Picked</th><th scope="col">Wide stop, skipped</th></tr></thead>
         <tbody>{e.engines.map((x) => <tr key={x.engine}><th scope="row">{x.engine}</th><td className="num">{x.eligible}</td><td className="num">{x.passed}</td><td className="num">{x.picked}</td><td className="num">{x.skippedWideStop}</td></tr>)}</tbody></table></div>
       <p className="small dim">{wide} {wide === 1 ? 'name was' : 'names were'} skipped for a stop too wide for the book. The publisher stores counts for those, not names.</p>

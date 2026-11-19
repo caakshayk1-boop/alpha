@@ -28,6 +28,7 @@ export function IdentityFooter() {
     <span>No SEBI registration is claimed.</span>{' '}
     <span>{c.href ? <>Contact: <a href={c.href}>{c.email}</a></> : c.line}</span>{' '}
     <span><a href="#/privacy">Privacy</a></span>{' '}
-    <span><a href="#/terms">Terms</a></span>
+    <span><a href="#/terms">Terms</a></span>{' '}
+    <span>By <a href="https://askakshay.com" rel="noopener">askakshay.com</a></span>
   </p>;
 }
