@@ -72,7 +72,7 @@ jobs:
       - name: Never roll production back
         if: ${{ !inputs.allow_rollback }}
         run: |
-          live=$(curl -fsS --max-time 20 https://alphavision.askakshay.com/build.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" || true)
+          live=$(curl -fsS --max-time 20 https://alpha.askakshay.com/build.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" || true)
           echo "live build: ${live:-unknown}"
           if [ -n "$live" ] && git cat-file -e "$live^{commit}" 2>/dev/null && [ "$live" != "$(git rev-parse HEAD)" ] && git merge-base --is-ancestor HEAD "$live"; then
             echo "::error::Production already runs $live, which is newer than this commit. Use workflow_dispatch with allow_rollback for a deliberate rollback."; exit 1
@@ -96,4 +96,4 @@ jobs:
       - name: Smoke test production
         run: |
           sleep 15
-          node scripts/smoke.mjs https://alphavision.askakshay.com
+          node scripts/smoke.mjs https://alpha.askakshay.com
