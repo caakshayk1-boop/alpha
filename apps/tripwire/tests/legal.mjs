@@ -78,8 +78,14 @@ for (const route of ['/#/today', '/#/help', '/#/methodology']) { const { ctx, pg
 /* a first-time visitor (nothing saved, not onboarded) can read both pages from a link, and the first-use screen links to them */
 { const fresh = { ...STATE, onboarded: false, follows: [], entries: [], paper: [] };
   for (const [r, id] of [['/#/privacy', 'privacy'], ['/#/terms', 'terms']]) { const { ctx, pg } = await open(r, { state: fresh }); ok(await pg.locator(`[data-legal="${id}"]`).count() === 1, `a first-time visitor can open #${r.slice(2)} without choosing anything`); await ctx.close(); }
-  /* 19 Nov 2026: a shared link to a public page opens that page for a first-time visitor, never the welcome screen */
-  for (const r of ['/#/edition', '/#/glass', '/#/gate', '/#/methodology', '/#/c/INFY']) { const { ctx, pg } = await open(r, { state: fresh }); await pg.waitForFunction(() => !document.querySelector('.welcome') && document.querySelector('h1'), null, { timeout: 15000 }).catch(() => {}); ok(await pg.locator('.welcome').count() === 0 && await pg.locator('h1').count() > 0, `a first-time visitor who follows a link to ${r.slice(2)} sees that page, not the welcome screen`); await ctx.close(); }
+  /* 19 Nov 2026: a shared link to a public page opens that page for a first-time visitor, never the welcome screen. Some of these pages have no h1 under the mocked API, so this looks at the first-use screen itself rather than waiting for a heading. */
+  for (const r of ['/#/edition', '/#/glass', '/#/gate', '/#/methodology', '/#/c/INFY']) {
+    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', bypassCSP: true });
+    await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch { /* none */ } }, fresh);
+    await mockApi(ctx); const pg = await ctx.newPage(); await pg.goto(base + r);
+    await pg.waitForFunction(() => document.querySelector('#root')?.children.length > 0 && !document.querySelector('.routewait'), null, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(1200);
+    ok(await pg.locator('.welcome').count() === 0 && await pg.locator('#root *').count() > 5, `a first-time visitor who follows a link to ${r.slice(2)} sees that page, not the welcome screen`); await ctx.close();
+  }
   const { ctx, pg } = await open('/#/today', { state: fresh }); await pg.waitForSelector('.welcome'); ok(await pg.locator('.welcome a[href="#/privacy"]').count() === 1 && await pg.locator('.welcome a[href="#/terms"]').count() === 1, 'the first-use screen links to Privacy and Terms'); await ctx.close(); }
 
 /* ---- Not found: an unknown route ---- */
