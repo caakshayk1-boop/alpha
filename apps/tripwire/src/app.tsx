@@ -189,7 +189,8 @@ export function App(): ReactNode {
   };
 
   if (locked && lockId()) return <UiProvider haptics={s.prefs.haptics}><LockScreen onOpen={() => setLocked(false)} /></UiProvider>;
-  const legalHead = vl.path[0] === 'privacy' || vl.path[0] === 'terms';   // a first-time visitor can read both pages from a link before choosing anything
+  // a first-time visitor can read Privacy, Terms and the public pages from a link before choosing anything (19 Nov 2026: a shared link to a company, the daily edition, the Glass Book, the gate, the methodology or About used to open the welcome screen instead of the page that was shared)
+  const legalHead = ['privacy', 'terms', 'c', 'edition', 'glass', 'gate', 'methodology', 'about'].includes(vl.path[0]);
   if (!s.onboarded && !legalHead) return <UiProvider haptics={s.prefs.haptics}><Suspense fallback={null}><Welcome unreadable={health.unreadable} /></Suspense></UiProvider>;
   const vtab = tabOf(vl.path);
   const head = vl.path[0], f = screen.data ? freshness(screen.data.as_of) : null;
