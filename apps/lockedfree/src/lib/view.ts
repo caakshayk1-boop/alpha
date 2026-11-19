@@ -29,6 +29,13 @@ export function tradeRows(L: Ledger, mark: (s: string) => number | null): TradeR
     const lastPx = open ? m : base.exit_px; const gross = f0 && lastPx != null ? Math.round(f0.qty * (lastPx - f0.price) * 100) / 100 : null; return { ...base, last: lastPx, gross, gross_pct: f0 && lastPx != null ? Math.round((lastPx / f0.price - 1) * 1e4) / 100 : null, pct: inv ? Math.round((res.total / inv) * 1e4) / 100 : null, reason: open ? 'Open' : REASON[p.exit_reason ?? ''] ?? 'Closed', pnl: res.total, r: res.r }; });
 }
 
+export const holdDays = (a: string | null, b: string | null) => (a && b ? Math.round((Date.parse(b) - Date.parse(a)) / 864e5) : null);
+export interface ClosedStats { n: number; wins: number; losses: number; profitFactor: number | null; avgWin: number | null; avgLoss: number | null; avgHold: number | null; best: number | null; worst: number | null }
+/** Closed-call statistics after charges (the ledger's own net figure). Null where there is nothing to divide by; the caller prints n beside them and the small-sample label. */
+export function closedStats(rows: TradeRow[]): ClosedStats {
+  const c = rows.filter((t) => t.status === 'closed' && t.pnl != null); const w = c.filter((t) => (t.pnl as number) > 0), l = c.filter((t) => (t.pnl as number) <= 0); const sum = (a: TradeRow[]) => a.reduce((x, t) => x + (t.pnl as number), 0); const holds = c.map((t) => holdDays(t.entry, t.exit)).filter((x): x is number => x != null);
+  return { n: c.length, wins: w.length, losses: l.length, profitFactor: l.length && sum(l) !== 0 ? Math.round((sum(w) / Math.abs(sum(l))) * 100) / 100 : null, avgWin: w.length ? Math.round(sum(w) / w.length) : null, avgLoss: l.length ? Math.round(sum(l) / l.length) : null, avgHold: holds.length ? Math.round((holds.reduce((a, b) => a + b, 0) / holds.length) * 10) / 10 : null, best: c.length ? Math.max(...c.map((t) => t.pnl as number)) : null, worst: c.length ? Math.min(...c.map((t) => t.pnl as number)) : null };
+}
 export interface BookState { capital: number; ticket: number; maxOpen: number; sectorCap: number; open: number; deployed: number; cash: number; equity: number; charges: number }
 /** The account in rupees from the ledger's own fills: cost of open positions, cash left after costs and booked results, and equity. Uses the shared accounting, nothing else. */
 export function bookState(L: Ledger, mark: (s: string) => number | null): BookState | null {

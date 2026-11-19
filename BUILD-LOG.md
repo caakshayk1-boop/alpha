@@ -287,3 +287,9 @@ Changed: P&L on Calls, Terminal and home is the price change before charges (zer
 Verified: 98 unit tests; board proof 12/12 (new: a failed batch does not blank the sectors; zero shown for unchanged prices); launch proof 9/9 (new: unchanged calls show exactly zero P&L and 0.00%, with charges only in After charges).
 NOT verified: that batching fixes the live site (cause inferred; sandbox cannot reach the domain or Yahoo); behaviour while NSE is open, 09:15 to 15:30 IST.
 Untouched: Tripwire, Alpha, ApexPro.
+
+## 2026-11-19 — Onboarding from news.askakshay.com and terminal.askakshay.com/apex (owner: "you decide")
+Reviewed both sites (rendered pages, the news site's data-health.json and the public files in the data repository). Built what was verifiable and low-risk (ADR-022): Terminal gains Market regime (with the barometer), Volume leaders, Book risk and a fuller Data health; Calls gains book-risk tiles, the six-step pipeline, closed-call statistics with n and a Held-days column; About gains "Every number, defined once" and the rule-change log. fetch-feed.mjs now also fetches pulse, regime, barometer and data-health best effort.
+Verified: 103 unit tests (new: glossary, change log, book risk, closed statistics, context files missing/stale); the new context proof against the real feed files and ledger.
+NOT verified: the new widgets with the real data on the live domain; whether the source files keep their shape (a changed shape hides the widget rather than breaking the build). Corporate actions not built (data not available). The data repository must be kept: the daily feed comes from it.
+Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
