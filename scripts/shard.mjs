@@ -79,6 +79,21 @@ function identity(snap) {
   try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() || null; } catch { commit = process.env.GITHUB_SHA || null; }
   const id = { commit, built_at: new Date().toISOString(), run: process.env.GITHUB_RUN_ID ?? null, screen_built_on: snap?.built_on ?? null, companies: snap?.count ?? 0, data: { universe: hash('public/universe.json'), signals: hash('public/signals.json'), engines: hash('public/engines.json'), rotation: hash('public/rotation.json') } };
   writeFileSync('public/build.json', JSON.stringify(id, null, 1));
+  // The hub contract (19 Nov 2026): one URL that lists every section the product sites may read, each with a stable address, a content
+  // version and when it was built, so a site can tell last night's data from stale data without guessing. Sections only ever gain fields.
+  const section = (name, url, path, extra = {}) => ({ name, url, version: path ? hash(path) : null, ...extra });
+  const manifest = { schema: 'askakshay-hub/1', built_at: id.built_at, commit: id.commit, sections: [
+    section('universe', '/universe.json', 'public/universe.json'),
+    section('screen', '/data/screen.json', null, { built_on: snap?.built_on ?? null }),
+    section('company', '/c/{SYM}.json', null, { built_on: snap?.built_on ?? null, count: snap?.count ?? 0 }),
+    section('signals', '/signals.json', 'public/signals.json'),
+    section('engines', '/engines.json', 'public/engines.json'),
+    section('rotation', '/rotation.json', 'public/rotation.json'),
+    section('brief', '/signal_brief.json', 'public/signal_brief.json'),
+    section('build', '/build.json', null),
+  ] };
+  mkdirSync('public/v1', { recursive: true });
+  writeFileSync('public/v1/manifest.json', JSON.stringify(manifest, null, 1));
   console.log(`identity: ${id.commit?.slice(0, 7) ?? 'unknown commit'}, ${id.companies} companies`);
 }
 
