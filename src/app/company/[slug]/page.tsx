@@ -38,11 +38,11 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
  *  reviews or financial-product claims (brief Part III §4). */
 function jsonLd(sym: string, sh: Shard | null) {
   const r = sh?.row;
-  const url = `https://alpha.askakshay.com/company/${symToSlug(sym)}/`;
+  const url = `https://alphavision.askakshay.com/company/${symToSlug(sym)}/`;
   const data = {
     '@context': 'https://schema.org', '@type': 'WebPage', url, name: `${r?.name ?? sym} (${sym}) share analysis`,
     ...(sh?.built_on ? { dateModified: sh.built_on } : {}),
-    isPartOf: { '@type': 'WebSite', name: 'alpha', url: 'https://alpha.askakshay.com/' },
+    isPartOf: { '@type': 'WebSite', name: 'alpha', url: 'https://alphavision.askakshay.com/' },
     about: { '@type': 'Corporation', name: r?.name ?? sym, tickerSymbol: `NSE:${sym}`, ...(r?.isin ? { identifier: r.isin } : {}) },
   };
   return JSON.stringify(data).replace(/</g, '\\u003c');

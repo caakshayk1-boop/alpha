@@ -69,7 +69,7 @@ export function CaseBlock({ r, sigs, years }: { r: Row; sigs: Sig[]; years?: num
  *  browser has it, otherwise the link is copied. The preview is the exact text that will be shared. */
 export function ShareButton({ r }: { r: Row }) {
   const [msg, setMsg] = useState<string | null>(null);
-  const url = `https://alpha.askakshay.com${companyHref(r.sym)}`;
+  const url = `https://alphavision.askakshay.com${companyHref(r.sym)}`;
   const text = `${r.name} (${r.sym}): the case and the countercase from the figures, data as of ${r.last_date ? dateLabel(r.last_date) : 'the last close'}.`;
   const share = async () => {
     const nav = navigator as Navigator & { share?: (d: { title: string; text: string; url: string }) => Promise<void> };
