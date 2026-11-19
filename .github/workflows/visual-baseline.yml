@@ -26,12 +26,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: |
-          # a hung browser download used to hold a job for its whole 40-minute limit; try three times, five minutes each
-          for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium; then break; fi
-            echo "browser download attempt $i failed"; [ "$i" = 3 ] && exit 1; sleep 10
-          done
+      - name: Browsers (attempt 1)
+        id: pw1
+        continue-on-error: true
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium
+      - name: Browsers (attempt 2, only if the first failed or hung)
+        if: steps.pw1.outcome == 'failure'
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium
       - name: Render and approve the baselines
         run: node scripts/visual.mjs --update
       - name: Commit the baselines if they changed

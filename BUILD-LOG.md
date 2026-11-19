@@ -332,3 +332,5 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (evening): uptime probes for Tripwire, ApexPro and the hub
 
 **Added:** `.github/workflows/uptime.yml` (every 30 minutes, one matrix job per site, opens or comments on an issue when a probe fails) and `docs/operations/monitoring.md` (what watches what, no staging, rollback pointers, what is not covered). Rulebook already had `lockedfree_uptime.yml`. **Verified:** the YAML parses and the three probe scripts, extracted from the workflow and run under bash, pass against the live sites now. **Not verified:** the issue-opening step (it runs only on a failure).
+
+**Correction (19 Nov, night):** the first version wrapped the install in `timeout 300` inside a shell loop; every job in that pull request then failed with an apt error (exit 100) while jobs elsewhere passed, so the wrapper was dropped. It is now two steps: attempt 1 with `timeout-minutes: 6` and `continue-on-error`, attempt 2 only if the first failed or hung.

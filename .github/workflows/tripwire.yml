@@ -40,12 +40,15 @@ jobs:
         run: |
           python apps/tripwire/research/test_research.py
           python apps/tripwire/ledger/test_bars.py
-      - run: |
-          # a hung browser download used to hold a job for its whole time limit; try three times, five minutes each
-          for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && ' webkit' || '' }}; then break; fi
-            echo "browser download attempt $i failed"; [ "$i" = 3 ] && exit 1; sleep 10
-          done
+      - name: Browsers (attempt 1)
+        id: pw1
+        continue-on-error: true
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && ' webkit' || '' }}
+      - name: Browsers (attempt 2, only if the first failed or hung)
+        if: steps.pw1.outcome == 'failure'
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && ' webkit' || '' }}
       - run: npm run tripwire:types
       - run: npm run tripwire:test
       - name: Wait for the nightly screen when this build is ahead of it (not on pull requests)
