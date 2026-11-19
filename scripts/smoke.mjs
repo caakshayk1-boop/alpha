@@ -1,7 +1,7 @@
 // Smoke test against a deployed alpha. Usage: node scripts/smoke.mjs [base-url]
 // Fails (exit 1) on the first thing a reader would notice: a dead page, a feed that is
 // really an HTML error page, or a quotes endpoint with nothing live in it.
-const base = (process.argv[2] ?? 'https://alpha.askakshay.com').replace(/\/$/, '');
+const base = (process.argv[2] ?? 'https://alphavision.askakshay.com').replace(/\/$/, '');
 const failures = [];
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);

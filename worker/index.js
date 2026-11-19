@@ -1,4 +1,4 @@
-// alpha.askakshay.com — one Worker:
+// alphavision.askakshay.com — one Worker:
 //   /data/<feed>.json  cached read-through to the same feeds the old Signal, Vision and Gems read
 //   /api/quotes        live prices from Yahoo, cached 5 minutes
 //   /api/intraday      five-minute closes of the latest session for up to 40 stocks (the Trades page's day curve)
@@ -180,7 +180,7 @@ async function niftySessions() {
 
 async function summary(ctx) {
   const cache = caches.default;
-  const key = new Request('https://alpha.askakshay.com/__summary_v4');
+  const key = new Request('https://alphavision.askakshay.com/__summary_v4');
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   try {
@@ -205,11 +205,11 @@ async function live(url, env, ctx) {
   const part = Number(url.searchParams.get('part'));
   if (!Number.isInteger(part) || part < 0 || part >= LIVE_PARTS) return json({ ok: false, error: 'part must be 0 or 1' }, 400);
   const cache = caches.default;
-  const key = new Request(`https://alpha.askakshay.com/__live_v1/${part}`);
+  const key = new Request(`https://alphavision.askakshay.com/__live_v1/${part}`);
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   try {
-    const u = await env.ASSETS.fetch(new Request('https://alpha.askakshay.com/universe.json'));
+    const u = await env.ASSETS.fetch(new Request('https://alphavision.askakshay.com/universe.json'));
     if (!u.ok) return json({ ok: false, error: `universe ${u.status}` }, 502);
     const all = (await u.json()).rows.map((r) => r[0]);
     const half = Math.ceil(all.length / LIVE_PARTS);
@@ -335,7 +335,7 @@ async function instrument(url, ctx) {
   const inst = INSTRUMENTS.find((x) => x[0] === id);
   if (!inst) return json({ ok: false, error: 'unknown instrument' }, 404);
   const cache = caches.default;
-  const key = new Request(`https://alpha.askakshay.com/__inst_v1/${id}`);
+  const key = new Request(`https://alphavision.askakshay.com/__inst_v1/${id}`);
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const bars = await yahooBars(inst[3], '1y', '1d').catch(() => null);
@@ -354,7 +354,7 @@ async function instrument(url, ctx) {
 
 async function quotes(ctx) {
   const cache = caches.default;
-  const key = new Request('https://alpha.askakshay.com/__quotes_v4');
+  const key = new Request('https://alphavision.askakshay.com/__quotes_v4');
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const list = await Promise.all(INSTRUMENTS.map(quote));
@@ -430,7 +430,7 @@ async function px(url, ctx) {
   const syms = Array.from(new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter((x) => /^[A-Z0-9&-]{1,20}$/.test(x)))).slice(0, 40).sort();
   if (!syms.length) return json({ ok: false, error: 'no valid symbols', quotes: {} }, 400);
   const cache = caches.default;
-  const key = new Request(`https://alpha.askakshay.com/__px_v1/${syms.join(',')}`);
+  const key = new Request(`https://alphavision.askakshay.com/__px_v1/${syms.join(',')}`);
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const quotes = {};
@@ -459,7 +459,7 @@ async function intraday(url, ctx) {
   const syms = Array.from(new Set((url.searchParams.get('s') || '').toUpperCase().split(',').map((x) => x.trim()).filter((x) => /^[A-Z0-9&-]{1,20}$/.test(x)))).slice(0, 40).sort();
   if (!syms.length) return json({ ok: false, error: 'no valid symbols', quotes: {} }, 400);
   const cache = caches.default;
-  const key = new Request(`https://alpha.askakshay.com/__intraday_v1/${syms.join(',')}`);
+  const key = new Request(`https://alphavision.askakshay.com/__intraday_v1/${syms.join(',')}`);
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const quotes = {};
@@ -499,7 +499,7 @@ async function chart(url, ctx) {
   const [range, interval] = RANGES[url.searchParams.get('r') || '1y'] || RANGES['1y'];
   if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) return json({ ok: false, error: 'bad symbol' }, 400);
   const cache = caches.default;
-  const key = new Request(`https://alpha.askakshay.com/__chart_v1/${sym}/${range}`);
+  const key = new Request(`https://alphavision.askakshay.com/__chart_v1/${sym}/${range}`);
   const hit = await cache.match(key);
   if (hit) return withHeaders(hit);
   const [stock, nifty] = await Promise.all([yahooBars(`${sym}.NS`, range, interval).catch(() => null), yahooBars('^NSEI', range, interval).catch(() => null)]);
@@ -576,7 +576,7 @@ export class Quota {
  *  Cached for 10 minutes per location. */
 async function modelReady(env) {
   const model = env.EXPLAIN_MODEL || EXPLAIN_MODEL;
-  const key = new Request(`https://alpha.askakshay.com/__model_v1/${encodeURIComponent(model)}`);
+  const key = new Request(`https://alphavision.askakshay.com/__model_v1/${encodeURIComponent(model)}`);
   const hit = await caches.default.match(key);
   if (hit) return (await hit.json()).ready === true;
   let ready = false;
@@ -645,7 +645,7 @@ async function explain(request, env, url) {
   const key = limitKey(request.headers.get('cf-connecting-ip'));
   if (env.EXPLAIN_LIMIT ? !(await env.EXPLAIN_LIMIT.limit({ key })).success : tooMany(key)) return json({ ok: false, error: 'too many requests, try again in a minute' }, 429);
   let facts = [], asOf = null;
-  const signalsFeed = async () => { try { const a = await env.ASSETS.fetch(new Request('https://alpha.askakshay.com/signals.json')); return a.ok ? await a.json() : null; } catch { return null; } };
+  const signalsFeed = async () => { try { const a = await env.ASSETS.fetch(new Request('https://alphavision.askakshay.com/signals.json')); return a.ok ? await a.json() : null; } catch { return null; } };
   if (subject === 'company') {
     const res = await shard(sym, env);
     const data = res ? await res.json().catch(() => null) : null;
@@ -727,7 +727,7 @@ async function rum(request, env, url, ctx) {
   if (!env.RUM) return json({ ok: false, error: 'speed measurements are not configured' }, 503);
   const stub = env.RUM.get(env.RUM.idFromName('rum'));
   if (request.method === 'GET') {
-    const key = new Request('https://alpha.askakshay.com/__rum_v1');
+    const key = new Request('https://alphavision.askakshay.com/__rum_v1');
     const hit = await caches.default.match(key);
     if (hit) return withHeaders(hit);
     const body = await (await stub.fetch('https://rum/report')).text();
@@ -755,7 +755,7 @@ export default {
 
     // The three old sites are one site now.
     if (/^(signal|vision|gems)\./.test(host)) {
-      return Response.redirect('https://alpha.askakshay.com/', 301);
+      return Response.redirect('https://alphavision.askakshay.com/', 301);
     }
 
     // Old company address: /company/?s=INFY is permanently /company/INFY/ ("&" becomes "_", see src/lib/slug.ts).
@@ -770,7 +770,7 @@ export default {
     if (cm) {
       const sym = decodeURIComponent(cm[1]).toUpperCase();
       const cache = caches.default;
-      const key = new Request(`https://alpha.askakshay.com/__shard_v1/${encodeURIComponent(sym)}`);
+      const key = new Request(`https://alphavision.askakshay.com/__shard_v1/${encodeURIComponent(sym)}`);
       const hit = await cache.match(key);
       if (hit) return withHeaders(hit);
       const live = await shard(sym, env);

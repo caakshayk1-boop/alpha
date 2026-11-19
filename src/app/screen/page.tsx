@@ -183,7 +183,7 @@ export default function Screen() {
     // the displayed values, plus where they came from: live price and move carry their time, everything else the screen's date
     const stamp = tv.live ? `price and today: ${tv.asOf}; other columns: close ${asOf ?? 'unknown'}` : `close ${asOf ?? 'unknown'}`;
     const head = ['symbol', 'name', 'sector', ...cols.map((c) => (FIELD.get(c)?.label ?? c) + (liveCol(c) ? ` (${tv.tag} IST)` : '')), 'as_of'];
-    const lines = [...csvProvenance('alpha.askakshay.com screen (company filings via Yahoo Finance; prices from NSE via Yahoo)', stamp), csvRow(head), ...rows.map((r) => csvRow([r.sym, r.name, r.sector, ...cols.map((c) => { const v = FIELD.get(c)?.get(r); return has(v) ? v : null; }), stamp]))];
+    const lines = [...csvProvenance('alphavision.askakshay.com screen (company filings via Yahoo Finance; prices from NSE via Yahoo)', stamp), csvRow(head), ...rows.map((r) => csvRow([r.sym, r.name, r.sector, ...cols.map((c) => { const v = FIELD.get(c)?.get(r); return has(v) ? v : null; }), stamp]))];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'alpha-screen.csv'; a.click();
   };
   const [cardMsg, setCardMsg] = useState('');

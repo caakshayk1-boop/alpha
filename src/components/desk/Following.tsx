@@ -30,7 +30,7 @@ export function Following(p: {
   const { watch, bySym } = p;
   const known = watch.map((s) => bySym.get(s)).filter((r): r is Row => !!r);
   const csv = () => {
-    const lines = [...csvProvenance('alpha.askakshay.com companies you follow (screen close prices and figures)', sessionLabel(p.closeOn)), csvRow(['symbol', 'name', 'close_date', 'close_price', '1d_pct', '1m_pct', '1y_pct', 'composite', 'next_results_unconfirmed']), ...known.map((r) => csvRow([r.sym, r.name, r.last_date, r.price, r.r1d, r.r1m, r.r1y, r.comp, r.next_earnings]))];
+    const lines = [...csvProvenance('alphavision.askakshay.com companies you follow (screen close prices and figures)', sessionLabel(p.closeOn)), csvRow(['symbol', 'name', 'close_date', 'close_price', '1d_pct', '1m_pct', '1y_pct', 'composite', 'next_results_unconfirmed']), ...known.map((r) => csvRow([r.sym, r.name, r.last_date, r.price, r.r1d, r.r1m, r.r1y, r.comp, r.next_earnings]))];
     downloadText('alpha-following.csv', lines.join('\n'), 'text/csv');
   };
   const changed = watch.filter((s) => { const r = bySym.get(s), sn = p.snaps[s]; return r && sn && diffSnapshot(sn, r).length > 0; });

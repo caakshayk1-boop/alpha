@@ -1,0 +1,21 @@
+name: Belivune release checks
+on:
+  pull_request:
+    paths: ['apps/belivune/**', 'wrangler.belivune.jsonc', '.github/workflows/belivune.yml', 'package*.json']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chrome
+      - run: npm run belivune:test
+      - run: npm run belivune:check

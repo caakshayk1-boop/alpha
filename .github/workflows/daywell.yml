@@ -1,0 +1,22 @@
+name: Daywell release checks
+on:
+  pull_request:
+    paths: ['apps/daywell/**', 'wrangler.daywell.jsonc', '.github/workflows/daywell.yml', 'package*.json']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix apps/daywell ci
+      - run: npx playwright install --with-deps chrome
+      - run: npm --prefix apps/daywell test
+      - run: npm --prefix apps/daywell run check

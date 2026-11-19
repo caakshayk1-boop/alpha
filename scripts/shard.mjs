@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 
 const RAW = 'https://raw.githubusercontent.com/caakshayk1-boop/trading-dashboard/main/docs';
 const SIG = 'https://raw.githubusercontent.com/caakshayk1-boop/signal/main/public';
-const LIVE = 'https://alpha.askakshay.com/universe.json';
+const LIVE = 'https://alphavision.askakshay.com/universe.json';
 const SYM = /^[A-Za-z0-9&-]{1,20}$/;
 const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error(`${u} answered ${r.status}`); const t = await r.text(); return JSON.parse(t.replace(/\bNaN\b/g, 'null')); };
 const strict = process.env.CI === 'true' && process.env.SHARD_OPTIONAL !== '1';
@@ -63,7 +63,7 @@ async function main() {
   console.log(`shard: universe.json with ${uni.length} symbols`);
   // One URL per company page (app/company/[slug]), dated with the screen build those pages were rendered from.
   const slug = (sym) => sym.replace(/&/g, '_');
-  const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alpha.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);
+  const urls = readdirSync('public/c').filter((f) => f.endsWith('.json')).map((f) => `<url><loc>https://alphavision.askakshay.com/company/${slug(f.slice(0, -5))}/</loc><lastmod>${screen.built_on}</lastmod></url>`);
   writeFileSync('public/sitemap-companies.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
   console.log(`shard: sitemap-companies.xml with ${urls.length} pages`);
   return { built_on: screen.built_on, count: n };
