@@ -53,3 +53,6 @@
 @media (max-width: 719px) { .room { min-height: 0; } .hero-h { max-width: 12ch; } }
 .mock-split b[data-w="0"]{flex:0 0 0%}.mock-split b[data-w="5"]{flex:0 0 5%}.mock-split b[data-w="10"]{flex:0 0 10%}.mock-split b[data-w="15"]{flex:0 0 15%}.mock-split b[data-w="20"]{flex:0 0 20%}.mock-split b[data-w="25"]{flex:0 0 25%}.mock-split b[data-w="30"]{flex:0 0 30%}.mock-split b[data-w="35"]{flex:0 0 35%}.mock-split b[data-w="40"]{flex:0 0 40%}.mock-split b[data-w="45"]{flex:0 0 45%}.mock-split b[data-w="50"]{flex:0 0 50%}.mock-split b[data-w="55"]{flex:0 0 55%}.mock-split b[data-w="60"]{flex:0 0 60%}.mock-split b[data-w="65"]{flex:0 0 65%}.mock-split b[data-w="70"]{flex:0 0 70%}.mock-split b[data-w="75"]{flex:0 0 75%}.mock-split b[data-w="80"]{flex:0 0 80%}.mock-split b[data-w="85"]{flex:0 0 85%}.mock-split b[data-w="90"]{flex:0 0 90%}.mock-split b[data-w="95"]{flex:0 0 95%}.mock-split b[data-w="100"]{flex:0 0 100%}
 .sr{position:absolute;left:-9999px}
+
+/* 20 Nov 2026: the live board ends with one card that points to Today, where the brief and breadth now live */
+.wd-more { display: flex; flex-direction: column; justify-content: space-between; gap: var(--s4); text-decoration: none; color: inherit; } .wd-more .go { color: var(--brand); display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }

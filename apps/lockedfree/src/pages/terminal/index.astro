@@ -10,9 +10,9 @@ const X = loadContext(); const risk = bookRisk(L, (sym) => sectorOf(F.bySym.get(
 const W = [['pulse', 'Market pulse'], ['book', 'The book'], ['brief', 'Daily brief'], ['leaders', 'Score leaders'], ['movers', 'Score movers'], ['watch', 'Watchlist'], ['pnl', 'Live paper P&L'], ['calc', 'Position-size calculator'], ['regime', 'Market regime'], ['volume', 'Volume leaders'], ['risk', 'Book risk'], ['health', 'Data health']];
 import Disclaimer from '../../components/Disclaimer.astro';
 ---
-<Terminal title="Terminal" description="Widgets: market pulse, the paper book, the daily brief, score leaders and movers, your watchlist, live paper P&L and a position-size calculator. Educational; not advice.">
-<Fragment slot="tools"><button class="tchip" type="button" data-customize aria-haspopup="dialog" aria-expanded="false"><Icon name="filter" size={14} />Widgets</button><div class="wmenu" data-wmenu hidden role="dialog" aria-label="Choose widgets"><div class="label">Show on this device</div>{W.map(([id, label]) => <label class="wopt"><input type="checkbox" data-wtoggle={id} checked><span>{label}</span></label>)}<button class="tchip" type="button" data-wreset>Show all</button></div></Fragment>
-<div class="t-title"><h1>Terminal</h1><span class="stamp">daily data as of {dmy(F.asOf)} · built {dmy(F.builtOn)} · <span data-q-age>waiting for first quote…</span></span></div>
+<Terminal title="Today" description="Widgets: market pulse, the paper book, the daily brief, score leaders and movers, your watchlist, live paper P&L and a position-size calculator. Educational; not advice.">
+<Fragment slot="tools"><button class="tchip" type="button" data-customize aria-haspopup="dialog" aria-expanded="false"><Icon name="filter" size={14} />Widgets</button><div class="wmenu" data-wmenu hidden role="dialog" aria-label="Choose widgets"><div class="label">Show on this device</div>{W.map(([id, label]) => <label class="wopt"><input type="checkbox" data-wtoggle={id} checked><span>{label}</span></label>)}<button class="tchip" type="button" data-wsimple>Simple view</button><button class="tchip" type="button" data-wreset>Show all</button></div></Fragment>
+<div class="t-title"><h1>Today</h1><span class="stamp">daily data as of {dmy(F.asOf)} · built {dmy(F.builtOn)} · <span data-q-age>waiting for first quote…</span></span></div>
 <Disclaimer />
 <div class="tape" aria-label="Index quotes, delayed">{idx.map(([k, n]) => <div class="q" data-q={k}><span class="s">{n}</span><span class="p" data-q-px>—</span><span class="c" data-q-chg>—</span></div>)}</div>
 <div class="panes">

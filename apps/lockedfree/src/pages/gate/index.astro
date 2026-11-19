@@ -3,6 +3,6 @@ import Base from '../../layouts/Base.astro'; import { latestLists } from '../../
 const names = [...new Set(Object.values(latestLists()).flatMap((l) => l.symbols))].sort();
 ---
 <Base title="The Gate" description="A paper-trading terminal where a trade cannot be entered until a checklist, a computed position size and a stop exist. Journal and account rules included.">
-<div class="wrap hero"><span class="label eyebrow">The Gate · paper-only</span><h1>A trade cannot start until the rules exist.</h1><p class="lede">Five checklist items, a computed size and an attached stop. Hit your own daily limit and the terminal locks until the next session. Trade, Journal and Rules are tabs on this page.</p></div>
+<div class="wrap hero"><span class="label eyebrow">The Gate · paper-only</span><h1>A trade cannot start until the rules exist.</h1><p class="lede">Five checklist items, a computed size and an attached stop. Hit your own daily limit and the terminal locks until the next session. Trade, Journal and Rules are tabs on this page.</p><nav class="seg" aria-label="Practice"><a href="/gate/" aria-current="page">The Gate</a><a href="/plan/">The Plan</a></nav></div>
 <div class="wrap"><script type="application/json" id="shortlist-data" set:html={JSON.stringify(names)}></script><div id="gate-root"><noscript><p class="card">The Gate needs JavaScript to run, because your paper book is kept in your browser.</p></noscript></div></div>
 <script src="../../app/gate.tsx"></script></Base>

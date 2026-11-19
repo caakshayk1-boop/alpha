@@ -3,8 +3,10 @@
 import Icon from './Icon.astro';
 const { path = '/' } = Astro.props;
 const terminal = ['/terminal/', '/stock/'];
-const nav = [['/terminal/', 'Terminal', 'dash'], ['/calls/', 'Calls', 'ledger'], ['/screener/', 'Screener', 'table'], ['/gate/', 'The Gate', 'gate'], ['/plan/', 'The Plan', 'plan'], ['/about/', 'About', 'info']];
-const on = (h: string) => (h === '/terminal/' ? terminal.some((t) => path.startsWith(t)) : path.startsWith(h));
+// 20 Nov 2026: five tabs, the same on a phone (a bottom bar) and on a desktop (the top bar). The Gate and The Plan are one tab, Practice.
+const nav = [['/terminal/', 'Today', 'dash'], ['/calls/', 'Calls', 'ledger'], ['/screener/', 'Stocks', 'table'], ['/gate/', 'Practice', 'gate'], ['/about/', 'About', 'info']];
+const practice = ['/gate/', '/plan/'];
+const on = (h: string) => (h === '/terminal/' ? terminal.some((t) => path.startsWith(t)) : h === '/gate/' ? practice.some((t) => path.startsWith(t)) : path.startsWith(h));
 ---
 <header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook<span class="paperpill">Paper only</span></a>
 <nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? 'page' : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>

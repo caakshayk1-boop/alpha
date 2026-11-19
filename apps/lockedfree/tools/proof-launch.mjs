@@ -3,7 +3,7 @@ import { chromium } from 'playwright'; import { readFileSync } from 'node:fs'; i
 const BASE = process.argv[2] || 'http://localhost:8811'; const root = new URL('..', import.meta.url).pathname; const L = JSON.parse(readFileSync(join(root, 'ledger/ledger.json'), 'utf8'));
 const out = []; const rec = (n, ok, ev) => { out.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}  ${ev}`); };
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-const pages = ['/', '/terminal/', '/calls/', '/screener/', '/gate/', '/plan/', '/about/', '/privacy/', '/terms/', '/stock/INFY/'];
+const pages = ['/', '/terminal/', '/calls/', '/screener/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/', '/stock/INFY/'];
 { const bad = []; for (const w of [360, 390, 430, 768, 1440]) { const c = await browser.newContext({ viewport: { width: w, height: 900 } }); const p = await c.newPage(); for (const u of pages) { await p.goto(BASE + u, { waitUntil: 'networkidle' }); await p.waitForTimeout(250);
     const r = await p.evaluate(() => { const bars = [...document.querySelectorAll('.top, .t-sub, .tabbar')].filter((e) => getComputedStyle(e).position === 'sticky').map((e) => { const m = getComputedStyle(e).backgroundColor.match(/[\d.]+/g); return { cls: e.className.split(' ')[0], a: m.length > 3 ? +m[3] : 1, bf: getComputedStyle(e).backdropFilter }; }); return { over: document.documentElement.scrollWidth - innerWidth, bars }; });
     if (r.over > 1) bad.push(`${w}px ${u} overflows by ${r.over}px`); for (const b of r.bars) if (b.a < 1) bad.push(`${w}px ${u} ${b.cls} is translucent (${b.a})`); } await c.close(); }
