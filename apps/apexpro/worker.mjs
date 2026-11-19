@@ -9,6 +9,8 @@ const HEADERS = {
 function response(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } }); }
 // 19 Nov 2026: alpha.askakshay.com now answers 301 to alphavision.askakshay.com, which serves the same /data/screen.json, /c/<SYM>.json and /signals.json. The old host returned an HTML page, so every screen and company request failed with 502.
 const ALPHA = 'https://alphavision.askakshay.com';
+// While the hub address is being moved, the old host is tried second. A host that redirects to a page, or does not resolve, is skipped; it is never served as data.
+const LEGACY_ALPHA = 'https://alpha.askakshay.com';
 export function upstream(url) {
   const symbol = url.searchParams.get('s') || '';
   const valid = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(symbol);
@@ -40,12 +42,14 @@ export default {
       const hit = await cache.match(key);
       if (hit) return hit;
       try {
-        const r = await fetch(route[0], { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } });
-        if (!r.ok || !r.headers.get('content-type')?.includes('json')) return response({ error: 'The data source is temporarily unavailable. Please retry.' }, 502);
+        const candidates = route[0].startsWith(ALPHA) ? [route[0], route[0].replace(ALPHA, LEGACY_ALPHA)] : [route[0]];
+        let r = null, used = route[0];
+        for (const c of candidates) { try { const x = await fetch(c, { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } }); if (x.ok && x.headers.get('content-type')?.includes('json')) { r = x; used = c; break; } } catch { /* try the next host */ } }
+        if (!r) return response({ error: 'The data source is temporarily unavailable. Please retry.' }, 502);
         let data = await r.json();
         if (data.ok === false) return response({ error: 'The data source has no response yet. Please retry.' }, 502);
         if (url.pathname === '/api/spark') data = { ok: true, sym: data.sym, t: (data.t || []).slice(-60), c: (data.c || []).slice(-60) };
-        const result = new Response(JSON.stringify(data), { headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': `public, max-age=${route[1]}`, 'x-apex-source': route[0].split('/')[2] } });
+        const result = new Response(JSON.stringify(data), { headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': `public, max-age=${route[1]}`, 'x-apex-source': used.split('/')[2] } });
         ctx.waitUntil(cache.put(key, result.clone()));
         return result;
       } catch { return response({ error: 'The data source timed out. Please retry.' }, 502); }

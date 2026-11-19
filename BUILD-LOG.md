@@ -305,3 +305,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026: ApexPro upstream moved to alphavision.askakshay.com
 
 **Found:** alpha.askakshay.com answers 301 to alphavision.askakshay.com/, so ApexPro's /api/screen, /api/company and /api/signals returned 502 in production (market and chart come from Tripwire and were fine). **Changed:** `apps/apexpro/worker.mjs` reads those three from alphavision.askakshay.com (same paths, same JSON; checked). **Verified:** locally, /api/screen, /api/company?s=INFY, /api/signals 200; canvas suite passes; 25 node tests. **Not changed, still pointing at the old host:** `.github/workflows/deploy.yml`, `smoke.yml`, `tripwire_news.yml` (NEWS_UNIVERSE_URL), `engines/data.py` (ALPHA_BASE default).
+
+## 19 Nov 2026 (night): ApexPro resilience (v20)
+
+**Changed:** `apps/apexpro/worker.mjs` tries alphavision first and the old alpha host second, skipping a host that does not resolve or answers with a page; `public/vendor/motion.js` one-token patch in auto-animate (`ae.get(n)||jr(n)`): the library read the position of a parent it had not recorded and threw "undefined is not an object (evaluating 'a.top')" in WebKit during a re-render, which failed the `ultimatum` suite on main twice. SW `apexpro-v20-resilience`. **Verified:** 25 node tests; locally /api/screen, /api/company, /api/signals answer 200 from the second host while alphavision has no DNS. **Not verified locally:** the WebKit fix (the Playwright browser download failed on this machine); CI runs it.
