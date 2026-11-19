@@ -139,3 +139,5 @@ input[type=email], input[type=text].pill-in { border-radius: var(--r-full); padd
 .paperpill { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--brand); } @media (max-width: 420px) { .paperpill { display: none; } }
 @media (max-width: 719px) { .nav a { flex: 0 0 auto; white-space: nowrap; } }
 .foot .small p a { display: inline-block; min-height: 24px; padding: 3px 0; }
+
+.kind { display: inline-block; min-width: 3.9em; margin-right: 8px; padding: 1px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 .6875rem var(--font-mono); letter-spacing: .06em; text-transform: uppercase; text-align: center; color: var(--ink-muted); } .kind[data-kind="Model"] { color: var(--brand); border-color: rgba(184, 239, 67, .4); } .kind[data-kind="Result"] { color: var(--ink); } .gloss { display: grid; gap: 6px; } .changelog { padding-left: 1.2em; display: grid; gap: 6px; }
