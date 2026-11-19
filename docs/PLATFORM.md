@@ -7,8 +7,8 @@ One hub, three product sites. Each product site does one job and reads shared da
 | Site | Address | Job | Reads |
 |---|---|---|---|
 | Hub (alpha, includes Vision) | alpha.askakshay.com | Publishes the shared dataset and the daily research desk (Today, Signals, Screen, company pages, Vision widgets) | Upstream feeds (two other repos), its own nightly build |
-| Rulebook | lockedfree.askakshay.com | The public record: rules, nightly calls, its own ledger. Launching. | Hub files at build time |
-| Tripwire | tripwire.askakshay.com | Personal cockpit: Desk, Book, watch conditions, live prices. Its public pages are the crawlable proof of its own ledger. | Hub files at build time; its own live price service |
+| Rulebook | lockedfree.askakshay.com | The public record: rules, nightly calls, its own ledger. Launching. | The hub's /data feeds at build (source repository as fallback); its own live quotes from Yahoo through its Worker |
+| Tripwire | tripwire.askakshay.com | Personal cockpit: Desk, Book, watch conditions, live prices. Its public pages are the crawlable proof of its own ledger. | The repository's data files (the same ones the hub publishes) at build; its own live price service |
 | ApexPro | apexpro.askakshay.com | Research lab: Time Machine, score spread and explorer, RSI divergence, sector heat, compare, level ladder | Hub (screen, company, signals), Tripwire's price service |
 
 vision.askakshay.com, signal. and gems. redirect to alpha. There is no separate Vision host: the Vision widgets live on the hub's Today page.
@@ -29,3 +29,8 @@ universe, screen, company/{SYM}, signals, engines, rotation, brief, build. Each 
 
 - A hub route that matches Tripwire's four price routes (same shapes, or a versioned new shape) makes ApexPro's dependency on Tripwire removable.
 - A written owner decision to publish Tripwire's record on Rulebook, with a plan for its ledger and redirects.
+
+## Update, 19 Nov 2026 (evening)
+
+- Rulebook now reads its daily feed from the hub (`/data/screen.json`, `screen-detail`, `swot`, `seasonality`, `pulse`, `regime`, `barometer`, `data-health`) and falls back to the source repository if the hub does not answer. The hub passes these through byte for byte (checked: identical hashes for all eight), so nothing in Rulebook's numbers changes. Before this, Rulebook and the hub both read the source repository directly.
+- Tripwire still builds from the repository's data files rather than through the hub; that is the remaining direct read.
