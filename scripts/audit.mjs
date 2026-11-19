@@ -30,7 +30,9 @@ for (const f of pages) {
   }
   // 2. nothing in a page may name a retired site or a staging host
   for (const bad of ['signal.askakshay', 'vision.askakshay', 'gems.askakshay', 'terminal.askakshay', 'news.askakshay', 'workers.dev', 'localhost']) {
-    if (html.includes(bad)) problems.push(`${f}: mentions ${bad}`);
+    // 'vision.askakshay' must not match the hub's own name, alphavision.askakshay (19 Nov 2026)
+    const hit = bad === 'vision.askakshay' ? /(?<![a-z])vision\.askakshay/.test(html) : html.includes(bad);
+    if (hit) problems.push(`${f}: mentions ${bad}`);
   }
 }
 
