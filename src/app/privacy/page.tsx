@@ -38,7 +38,7 @@ export default function Privacy() {
 
         <h2>What is sent, and to whom</h2>
         <ul>
-          <li><b>Pages and data.</b> Your browser loads pages and data files from alpha.askakshay.com, served by Cloudflare. Like any web server, Cloudflare sees your IP address and the address requested.</li>
+          <li><b>Pages and data.</b> Your browser loads pages and data files from alphavision.askakshay.com, served by Cloudflare. Like any web server, Cloudflare sees your IP address and the address requested.</li>
           <li><b>Live prices.</b> When a page shows live prices, alpha&rsquo;s server asks Yahoo Finance for the ticker symbols on that page. Yahoo receives the symbols from alpha&rsquo;s server, not your browser, and nothing about you.</li>
           <li><b>Ask (AI), when it is switched on.</b> The question you type and the facts alpha built for it are sent to Anthropic&rsquo;s API to write an answer. alpha does not store or log the question. Requests are rate-limited per address; the address is used for that count only.</li>
           <li><b>Search box.</b> What you type in search (<kbd className="kbd">/</kbd> or <kbd className="kbd">⌘K</kbd>) never leaves your browser.</li>

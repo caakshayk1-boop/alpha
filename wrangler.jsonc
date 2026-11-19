@@ -9,7 +9,9 @@
     "run_worker_first": ["/data/*", "/api/*", "/c/*", "/company/"],
     "not_found_handling": "404-page"
   },
-  "routes": [{ "pattern": "alpha.askakshay.com", "custom_domain": true }],
+  // 19 Nov 2026: alpha. and vision. are merged into alphavision. Only alphavision is attached here; alpha. and vision. are
+  // moved onto the `legacy-redirect` Worker (301 to alphavision) by hostname, so a deploy of this file never takes them back.
+  "routes": [{ "pattern": "alphavision.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
   // Per-address limit for /api/explain, enforced by Cloudflare (the in-memory limiter in the Worker is only the fallback).
   // Keyed in worker/index.js by IPv4 address or IPv6 /64. Counts are per Cloudflare location and approximate, so the real

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://alpha.askakshay.com/sitemap.xml
-Sitemap: https://alpha.askakshay.com/sitemap-companies.xml
+Sitemap: https://alphavision.askakshay.com/sitemap.xml
+Sitemap: https://alphavision.askakshay.com/sitemap-companies.xml

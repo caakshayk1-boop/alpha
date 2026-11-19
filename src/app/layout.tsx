@@ -10,10 +10,10 @@ const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['n
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://alpha.askakshay.com'),
+  metadataBase: new URL('https://alphavision.askakshay.com'),
   title: { default: 'alpha — Indian equity research desk', template: '%s · alpha' },
   description: 'One screen for Indian markets: a live board, nearly 1,000 companies screened on quality, growth and value, weekly company studies, IPOs, funds and the news that touches them.',
-  openGraph: { title: 'alpha — Indian equity research desk', description: 'Live board, a screen of nearly 1,000 companies, weekly studies, IPOs and funds. Working shown.', url: 'https://alpha.askakshay.com', type: 'website', siteName: 'alpha', images: [{ url: '/og/alpha.png', width: 1200, height: 630, alt: 'alpha: Indian equity research, with the working shown' }] },
+  openGraph: { title: 'alpha — Indian equity research desk', description: 'Live board, a screen of nearly 1,000 companies, weekly studies, IPOs and funds. Working shown.', url: 'https://alphavision.askakshay.com', type: 'website', siteName: 'alpha', images: [{ url: '/og/alpha.png', width: 1200, height: 630, alt: 'alpha: Indian equity research, with the working shown' }] },
   twitter: { card: 'summary_large_image', images: ['/og/alpha.png'] },
   alternates: { canonical: './' },
   manifest: '/manifest.webmanifest',

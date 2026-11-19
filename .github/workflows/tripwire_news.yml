@@ -43,7 +43,7 @@ jobs:
         id: run
         continue-on-error: true
         env:
-          NEWS_UNIVERSE_URL: https://alpha.askakshay.com/universe.json
+          NEWS_UNIVERSE_URL: https://alphavision.askakshay.com/universe.json
         run: node --experimental-strip-types --no-warnings apps/tripwire/news/run.mjs --out news-out --prev prev ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
       - name: Publish (force-push the orphan branch; no history on main)
         id: pub

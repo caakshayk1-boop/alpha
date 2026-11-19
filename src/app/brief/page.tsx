@@ -115,7 +115,7 @@ export default function Brief() {
       dsecs.length ? `Sectors (median move, ${dayTag}): ↑ ${dsecs.slice(0, 3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')} · ↓ ${dsecs.slice(-3).map((s) => `${s.name} ${pct(s.median)}`).join(', ')}` : '',
       dayMoves && dayMoves.up.length ? `Biggest rises (${dayTag}): ${dayMoves.up.slice(0, 3).map((m) => `${m.sym} ${pct(m.v, 2)}`).join(', ')}` : '',
       dayMoves && dayMoves.down.length ? `Biggest falls (${dayTag}): ${dayMoves.down.slice(0, 3).map((m) => `${m.sym} ${pct(m.v, 2)}`).join(', ')}` : '',
-      'https://alpha.askakshay.com/brief/'];
+      'https://alphavision.askakshay.com/brief/'];
     try { await navigator.clipboard.writeText(lines.filter(Boolean).join('\n')); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { /* clipboard blocked: nothing to do */ }
   };
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { TodayProvider } from '@/components/widgets/DayContext';
 import { Rv } from '@/components/ui';
+import { VisionBoard } from '@/components/widgets/VisionBoard';
 import { TodayProgress } from '@/components/today/Progress';
 import { ComingUp, EvidenceOnNames, Masthead, MarketRead, MarketStrip, Previews, WorthInvestigating, YourNames } from '@/components/today/Today';
 
@@ -21,6 +22,7 @@ export default function Home() {
       </section>
       <div className="section2"><MarketStrip /></div>
       <WorthInvestigating />
+      <VisionBoard />
       <section className="wrap section2" aria-label="Signals and rotation"><Previews /></section>
       
       <section className="wrap section2" aria-label="Alpha Pro">
