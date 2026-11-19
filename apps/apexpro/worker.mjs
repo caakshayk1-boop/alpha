@@ -8,9 +8,9 @@ const HEADERS = {
 };
 function response(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } }); }
 // 19 Nov 2026: alpha.askakshay.com now answers 301 to alphavision.askakshay.com, which serves the same /data/screen.json, /c/<SYM>.json and /signals.json. The old host returned an HTML page, so every screen and company request failed with 502.
-const ALPHA = 'https://alphavision.askakshay.com';
-// While the hub address is being moved, the old host is tried second. A host that redirects to a page, or does not resolve, is skipped; it is never served as data.
-const LEGACY_ALPHA = 'https://alpha.askakshay.com';
+const ALPHA = 'https://alpha.askakshay.com';
+// While the hub address is being moved, alpha (the host main deploys the hub to, complete data) is tried first and alphavision second. A host that redirects to a page, or does not resolve, is skipped; it is never served as data.
+const LEGACY_ALPHA = 'https://alphavision.askakshay.com';
 export function upstream(url) {
   const symbol = url.searchParams.get('s') || '';
   const valid = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/.test(symbol);

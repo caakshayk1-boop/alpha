@@ -28,7 +28,7 @@ async function open(at,age=20){
   const {ctx,p,errs,asked}=await open(OPEN);
   assert.equal(await p.locator('[data-heat-live-note]').count(),1,'session on: the live note is present');
   assert.match(await p.locator('[data-heat-live-note]').innerText(),/1D is live · 11:00 IST|1D is live · 10:59 IST/);assert.match(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/1D live/);
-  assert.deepEqual([...new Set(asked.flat())].sort(),[...SAMPLE].sort(),'it asked for exactly the top 6 names of each sector');assert.ok(asked.every(l=>l.length<=30),'never more than 30 names a call');
+  {const got=new Set(asked.flat());assert.deepEqual([...SAMPLE].filter(x=>!got.has(x)),[],'it asked for the top 6 names of each sector');}   /* 19 Nov 2026: names shown on the page (live prices) may be asked for too, so the sample must be included, not equal */assert.ok(asked.every(l=>l.length<=30),'never more than 30 names a call');
   const cells=await p.locator('.matrix-row').evaluateAll(r=>r.map(x=>[x.querySelector('.matrix-name').childNodes[0].textContent,x.querySelectorAll('.matrix-value')[0].textContent,x.querySelectorAll('.matrix-value')[0].querySelector('small').textContent]));
   assert.equal(cells.length,3);for(const [name,txt,cov] of cells){const v=parseFloat(txt.replace('−','-').replace('+',''));assert.ok(Math.abs(v-expectLive[name])<.06,`${name}: ${v} vs ${expectLive[name]}`);assert.equal(cov,'6/10',`${name} coverage reads measured/total`);}
   await p.locator('[data-action="canvas-live"]').click();assert.equal(await p.locator('[data-heat-live-note]').innerText().then(t=>/published close/.test(t)),true);assert.doesNotMatch(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/live/);
@@ -42,7 +42,7 @@ async function open(at,age=20){
   const {ctx,p,asked}=await open(SHUT);
   assert.equal(await p.locator('[data-heat-live-note]').count(),1);assert.match(await p.locator('[data-heat-live-note]').innerText(),/1D is today's session, market closed · last prints \d\d:\d\d IST/);
   assert.match(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/1D today/);assert.doesNotMatch(await p.locator('[data-heat-live-note]').innerText(),/is live/);
-  assert.deepEqual([...new Set(asked.flat())].sort(),[...SAMPLE].sort());
+  {const got=new Set(asked.flat());assert.deepEqual([...SAMPLE].filter(x=>!got.has(x)),[],'the sample was asked for');}
   const cells=await p.locator('.matrix-row').evaluateAll(r=>r.map(x=>[x.querySelector('.matrix-name').childNodes[0].textContent,x.querySelectorAll('.matrix-value')[0].textContent]));
   for(const [name,txt] of cells){const v=parseFloat(txt.replace('−','-').replace('+',''));assert.ok(Math.abs(v-expectLive[name])<.06,`${name}: ${v} vs ${expectLive[name]}`);}
   await p.locator('[data-action="canvas-live"]').click();assert.match(await p.locator('[data-heat-live-note]').innerText(),/published close/);assert.doesNotMatch(await p.locator('[data-action="canvas-sort"][data-key="r1d"]').innerText(),/today|live/);await ctx.close();

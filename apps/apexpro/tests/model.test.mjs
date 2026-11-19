@@ -39,7 +39,7 @@ test('proxy only permits fixed upstreams and valid symbols',()=>{
  assert.equal(upstream(new URL('https://apex.test/api/company?s=../../private')),null);
  assert.equal(upstream(new URL('https://apex.test/api/chart?s=https://evil.test')),null);
  assert.equal(upstream(new URL('https://apex.test/api/proxy?url=https://evil.test')),null);
- assert.equal(upstream(new URL('https://apex.test/api/company?s=M%26M'))[0],'https://alphavision.askakshay.com/c/M%26M.json');
+ assert.equal(upstream(new URL('https://apex.test/api/company?s=M%26M'))[0],'https://alpha.askakshay.com/c/M%26M.json');
 });
 
 import { chartSeries, chartStats, movingAverage, healthChecks, snapshot, changesSince } from '../src/research.js';
