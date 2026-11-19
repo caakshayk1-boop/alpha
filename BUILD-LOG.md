@@ -322,3 +322,7 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (afternoon): platform map
 
 **Added:** `docs/PLATFORM.md`: which site serves what, the hub sections, and the decisions (hub stays on alpha; the live price service stays in Tripwire's Worker because the hub's chart, quotes and pulse routes have different shapes, checked against the live responses; Tripwire's record pages stay; no feature removals from Desks that hold visitors' saved data; no database yet). **Changed elsewhere:** the Vision widgets and wider index strip join the hub on alpha, and the hub publishes `/v1/manifest.json` (PR #108). **Not done:** moving Tripwire's record to Rulebook and pruning duplicates; see the decisions for why.
+
+## 19 Nov 2026 (evening): shared links open the page for first-time visitors (Tripwire)
+
+**Changed:** a first-time visitor who follows a link to a company, the daily edition, the Glass Book, the gate, the methodology or About now sees that page; before, only Privacy and Terms were exempt and everything else opened the welcome screen. `app.tsx`; test added to `tests/legal.mjs` (five routes, nothing saved). **Verified:** types; the browser test runs in CI (this machine has no browser). **Not changed:** the links are still hash addresses (`/#/c/INFY`), so a messenger shows the app's general preview, not one specific to the company; the crawlable pages (`/edition/…`, `/methodology/`, `/record/`, `/about/`) carry their own previews.
