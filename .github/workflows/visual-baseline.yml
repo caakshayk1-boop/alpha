@@ -26,7 +26,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - name: Retry flaky package downloads
+        run: echo 'Acquire::Retries "5"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-retries
+      - name: Browsers
+        timeout-minutes: 15
+        run: npx playwright install --with-deps chromium
       - name: Render and approve the baselines
         run: node scripts/visual.mjs --update
       - name: Commit the baselines if they changed
