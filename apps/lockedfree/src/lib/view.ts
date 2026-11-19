@@ -15,18 +15,18 @@ export const agg = (L: Ledger, id: string): Aggregate | undefined => L.aggregate
 export const lastDay = (L: Ledger, id = 'all'): BookDay | undefined => L.book_days.filter((b) => b.screen_id === id).sort((a, b) => a.date.localeCompare(b.date)).pop();
 export const recordStarted = (L: Ledger) => L.book_days.length > 0;
 export interface TradeRow { id: string; symbol: string; screen_id: string; status: Pick['status']; entry: string | null; entry_px: number | null; exit: string | null; exit_px: number | null; reason: string; pnl: number | null; r: number | null;
-  /** shares, rupees put in, the price it is marked on (latest close, or the exit), result as % of the rupees put in, the stop and target prices, and the last day it may be held */
-  qty: number | null; invested: number | null; last: number | null; pct: number | null; stop: number | null; target: number | null; exit_by: string | null; rule: string }
+  /** `pnl` and `pct` are AFTER charges (the ledger's own figure); `gross` and `gross_pct` are the price change alone. Shares, rupees put in, the price it is marked on (latest close, or the exit), result as % of the rupees put in, the stop and target prices, and the last day it may be held */
+  qty: number | null; invested: number | null; last: number | null; pct: number | null; /** price change only, before any charges: 0 when entry and last price are equal */ gross: number | null; gross_pct: number | null; stop: number | null; target: number | null; exit_by: string | null; rule: string }
 export const REASON: Record<string, string> = { dropped: 'Left the list', stop: 'Stop hit', 'gap-stop': 'Gapped through the stop', target: 'Target reached', 'gap-target': 'Gapped above the target', time: 'One month is up' };
 export function tradeRows(L: Ledger, mark: (s: string) => number | null): TradeRow[] {
   return L.picks.map((p) => { const f0 = p.fills[0], inv = f0 ? Math.round(f0.qty * f0.price * 100) / 100 : null, tgt = f0 && p.rule ? Math.round(f0.price * (1 + p.rule.target_pct / 100) * 100) / 100 : null;
     const ext = { qty: f0?.qty ?? null, invested: inv, stop: p.stop, target: tgt, exit_by: f0 ? timeLimit(f0.date) : null, rule: ruleText(p.screen_id) };
-    const base = { ...ext, last: null as number | null, pct: null as number | null, id: p.id, symbol: p.symbol, screen_id: p.screen_id, status: p.status, entry: p.fills[0]?.date ?? null, entry_px: p.fills[0]?.price ?? null, exit: p.fills.find((f) => f.side === 'sell')?.date ?? null, exit_px: p.fills.find((f) => f.side === 'sell')?.price ?? null };
+    const base = { ...ext, last: null as number | null, pct: null as number | null, gross: null as number | null, gross_pct: null as number | null, id: p.id, symbol: p.symbol, screen_id: p.screen_id, status: p.status, entry: p.fills[0]?.date ?? null, entry_px: p.fills[0]?.price ?? null, exit: p.fills.find((f) => f.side === 'sell')?.date ?? null, exit_px: p.fills.find((f) => f.side === 'sell')?.price ?? null };
     if (p.status === 'pending') return { ...base, reason: 'Waiting for the next session open', pnl: null, r: null };
     if (p.status === 'voided') return { ...base, reason: p.voided?.reason ?? 'voided', pnl: null, r: null };
     const open = p.status === 'open', m = open ? mark(p.symbol) : null; if (open && m == null) return { ...base, reason: 'No price for this name — shown as missing', pnl: null, r: null };
     const res = tradeResult({ id: p.id, symbol: p.symbol, setup: '', trigger: '', stop: p.stop!, target: 0, riskPct: 0, qty: p.fills[0].qty, qtyOverrideReason: null, entry: { date: p.fills[0].date, price: p.fills[0].price }, exit: p.fills[1] ? { date: p.fills[1].date, price: p.fills[1].price } : null, ruleBreak: false, review: null, reviewSkipped: false }, m);
-    return { ...base, last: open ? m : base.exit_px, pct: inv ? Math.round((res.total / inv) * 1e4) / 100 : null, reason: open ? 'Open' : REASON[p.exit_reason ?? ''] ?? 'Closed', pnl: res.total, r: res.r }; });
+    const lastPx = open ? m : base.exit_px; const gross = f0 && lastPx != null ? Math.round(f0.qty * (lastPx - f0.price) * 100) / 100 : null; return { ...base, last: lastPx, gross, gross_pct: f0 && lastPx != null ? Math.round((lastPx / f0.price - 1) * 1e4) / 100 : null, pct: inv ? Math.round((res.total / inv) * 1e4) / 100 : null, reason: open ? 'Open' : REASON[p.exit_reason ?? ''] ?? 'Closed', pnl: res.total, r: res.r }; });
 }
 
 export interface BookState { capital: number; ticket: number; maxOpen: number; sectorCap: number; open: number; deployed: number; cash: number; equity: number; charges: number }
