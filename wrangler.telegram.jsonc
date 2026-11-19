@@ -7,8 +7,8 @@
   "workers_dev": true,
   "durable_objects": { "bindings": [{ "name": "NOTES", "class_name": "Notes" }] },
   "migrations": [{ "tag": "v1-notes", "new_sqlite_classes": ["Notes"] }],
-  // Ticks at :00 and :30 UTC. The Worker sends only in the first half hour of 08, 12, 16, 20 and 00 local time (NEWS_TZ), so it works for half-hour zones too.
+  // Ticks at :00 and :30 (UTC). The Worker sends a brief only Mon-Fri in the first half hour from 08:00, 12:00 and 18:30 Malaysia time (NEWS_TZ). One cron trigger, so it does not use up the account's cron allowance.
   "triggers": { "crons": ["0,30 * * * *"] },
-  "vars": { "NEWS_TZ": "Asia/Kolkata" },
+  "vars": { "NEWS_TZ": "Asia/Kuala_Lumpur" },
   "observability": { "enabled": true }
 }
