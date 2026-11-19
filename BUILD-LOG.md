@@ -323,6 +323,9 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 
 **Added:** `docs/PLATFORM.md`: which site serves what, the hub sections, and the decisions (hub stays on alpha; the live price service stays in Tripwire's Worker because the hub's chart, quotes and pulse routes have different shapes, checked against the live responses; Tripwire's record pages stay; no feature removals from Desks that hold visitors' saved data; no database yet). **Changed elsewhere:** the Vision widgets and wider index strip join the hub on alpha, and the hub publishes `/v1/manifest.json` (PR #108). **Not done:** moving Tripwire's record to Rulebook and pruning duplicates; see the decisions for why.
 
+## 19 Nov 2026 (evening): Rulebook reads its feed through the hub
+
+**Changed:** `apps/lockedfree/tools/fetch-feed.mjs` takes the eight feed files from `alpha.askakshay.com/data/<name>.json` first and from the source repository second (FEED_BASE still overrides). **Verified:** all eight files are byte-identical through the hub (hash compared with the source); a real run printed "feed ok: 999 stocks, price_date 2026-11-18, built 2026-11-19" through the hub. `docs/PLATFORM.md` corrected: Rulebook and the hub both used to read the source repository directly; Tripwire still builds from repository files.
 ## 19 Nov 2026 (evening): uptime probes for Tripwire, ApexPro and the hub
 
 **Added:** `.github/workflows/uptime.yml` (every 30 minutes, one matrix job per site, opens or comments on an issue when a probe fails) and `docs/operations/monitoring.md` (what watches what, no staging, rollback pointers, what is not covered). Rulebook already had `lockedfree_uptime.yml`. **Verified:** the YAML parses and the three probe scripts, extracted from the workflow and run under bash, pass against the live sites now. **Not verified:** the issue-opening step (it runs only on a failure).
