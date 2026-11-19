@@ -17,3 +17,5 @@ export function livePrice(sym,now=Date.now()){
 }
 export const liveLabel=l=>(l.basis==='today'?'Last price today · ':'Live price · ')+istTime(l.pt);
 export const clearQuotes=()=>{for(const k of Object.keys(store))delete store[k];};
+/** The pill on a list of companies when some prices on it are live: says so, and says the rest (scores, returns beyond the day, fundamentals) is still the published close. */
+export const liveListLabel=ls=>{const t=Math.max(...ls.map(l=>l.pt));return `Prices ${ls.every(l=>l.basis==='today')?'last traded today':'live'} · ${istTime(t)} · scores and fundamentals: published close`;};

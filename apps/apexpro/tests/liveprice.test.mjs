@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {setQuotes,livePrice,liveLabel,clearQuotes} from '../src/liveprice.js';
+import {setQuotes,livePrice,liveLabel,liveListLabel,clearQuotes} from '../src/liveprice.js';
 
 // Thursday 19 Nov 2026. 12:00 IST is 06:30 UTC, inside the 09:15-15:30 session; 16:30 IST is 11:00 UTC, after it.
 const open=Date.parse('2026-11-19T06:30:00Z'),after=Date.parse('2026-11-19T11:00:00Z'),sat=Date.parse('2026-11-21T06:30:00Z');
@@ -22,3 +22,10 @@ test('after the close only a print dated today counts, and it is labelled as the
   assert.equal(livePrice('Y',after),null);
 });
 test('on a weekend the published close is kept',()=>{clearQuotes();setQuotes({W:q({pt:sec(sat-60000)})});assert.equal(livePrice('W',sat),null);});
+
+test('the list pill says prices are live and the rest is the published close',()=>{
+  clearQuotes();setQuotes({A:q(),B:q({pt:sec(open-120000)})});
+  const ls=['A','B'].map(x=>livePrice(x,open));assert.match(liveListLabel(ls),/^Prices live · \d\d:\d\d IST · scores and fundamentals: published close$/);
+  clearQuotes();setQuotes({T:q({pt:sec(Date.parse('2026-11-19T10:00:00Z')),live:false})});
+  assert.match(liveListLabel([livePrice('T',after)]),/^Prices last traded today · /);
+});
