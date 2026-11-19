@@ -101,3 +101,11 @@ Owner: "build the opening page with motion effects and live board." The home pag
 - Motion: CSS only (aurora drift, card float, tilt, sweep line on each refresh, tile and chip reveal, bar growth, tick flash); every effect is off under reduced motion and the board stays fully readable. No new library: the home page still loads no chart or animation library.
 - The static "book" mock-up was removed: the live board replaces it, so no figure is shown twice.
 Consequences: the home page requests 30 quote symbols per poll (limit 40; the Worker's 60 requests a minute per visitor allows it). Lighthouse (local, simulated mobile): performance 95, accessibility 100.
+
+## ADR-020 — Clean stock price chart, hand-drawn (owner decision, 2026-11-19)
+Owner: charts still poor; wants a clean version, no volume, beautiful to read, modelled on the ApexPro chart. Replaced the lightweight-charts candles-with-volume view with a hand-drawn SVG (src/scripts/pricechart.ts, pure helpers in src/lib/pricechart.ts), taking ApexPro's approach (one soft area line, a few dotted gridlines, a big readout above the chart, minimal labels) and refining it.
+- Default: soft line over full history. Range 1M, 3M, 6M, 1Y, 5Y, Max; Daily, Weekly, Monthly; Line or Candles. Candles show at most the latest 120 bars (a decade of daily candles is unreadable); the note says so.
+- Round-number price axis, about five date labels that never overlap, a last-price tag, 52-week high and low tags on views of a year or less, a crosshair with a date tag, and a readout (price, change over the shown range or since the previous bar, date, open/high/low/close) that follows the pointer, a touch drag or the arrow keys. Vertical page scrolling still works on touch.
+- Removed: volume, moving-average lines and their controls, and the lightweight-charts library from stock pages (it remains for the equity curve on Calls, so its footer credit stays). The trend is still stated in words from the closes.
+- Wide histories are drawn with a min and max per pixel column so every peak survives and drawing stays fast.
+Consequences: stock-page JavaScript is smaller; the chart is ours to maintain. Real Yahoo history (size, gaps, split adjustment) is still unverified.
