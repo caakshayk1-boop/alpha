@@ -326,3 +326,9 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 ## 19 Nov 2026 (night): ApexPro reads every data route from the hub
 
 **Changed:** `apps/apexpro/worker.mjs`: /api/market, /api/macro, /api/quotes and /api/chart|spark now ask the hub's `/v1/market/*` first (PR #116) and Tripwire's identical routes second; the screen, company and signals routes keep alpha first and alphavision second. Tests updated (29 pass). **Verified:** locally, while the hub routes are not yet deployed, all four market routes fall through to Tripwire and answer 200 (`x-apex-source: tripwire.askakshay.com`); after the hub deploys the same call reports `alpha.askakshay.com`. Worker only: no static file changed, so the service worker version stays.
+## 19 Nov 2026 (evening): Rulebook reads its feed through the hub
+
+**Changed:** `apps/lockedfree/tools/fetch-feed.mjs` takes the eight feed files from `alpha.askakshay.com/data/<name>.json` first and from the source repository second (FEED_BASE still overrides). **Verified:** all eight files are byte-identical through the hub (hash compared with the source); a real run printed "feed ok: 999 stocks, price_date 2026-11-18, built 2026-11-19" through the hub. `docs/PLATFORM.md` corrected: Rulebook and the hub both used to read the source repository directly; Tripwire still builds from repository files.
+## 19 Nov 2026 (evening): uptime probes for Tripwire, ApexPro and the hub
+
+**Added:** `.github/workflows/uptime.yml` (every 30 minutes, one matrix job per site, opens or comments on an issue when a probe fails) and `docs/operations/monitoring.md` (what watches what, no staging, rollback pointers, what is not covered). Rulebook already had `lockedfree_uptime.yml`. **Verified:** the YAML parses and the three probe scripts, extracted from the workflow and run under bash, pass against the live sites now. **Not verified:** the issue-opening step (it runs only on a failure).

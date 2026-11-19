@@ -1,0 +1,37 @@
+name: uptime
+# Every 30 minutes: Tripwire, ApexPro and the hub must answer and serve data. Rulebook has its own probe (lockedfree-uptime).
+# One issue per failing site is opened, and a later failure comments on the same issue. GitHub emails the repository owner for new issues.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15,45 * * * *'
+permissions:
+  issues: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        site: [tripwire, apexpro, hub]
+    steps:
+      - name: Probe ${{ matrix.site }}
+        run: |
+          set -e
+          ok() { curl -fsS --max-time 20 "$1" -o /tmp/body && grep -q "$2" /tmp/body; }
+          case "${{ matrix.site }}" in
+            tripwire) B=https://tripwire.askakshay.com; ok "$B/" "Tripwire"; ok "$B/data/screen.json" '"as_of"'; ok "$B/api/pulse" '"ok":true' ;;
+            apexpro)  B=https://apexpro.askakshay.com;  ok "$B/" "ApexPro"; ok "$B/api/screen" '"built_on"'; ok "$B/api/company?s=INFY" '"sym"'; ok "$B/api/market" '"ok":true' ;;
+            hub)      B=https://alpha.askakshay.com;    ok "$B/" "alpha"; ok "$B/build.json" '"commit"'; ok "$B/v1/manifest.json" 'askakshay-hub/1'; ok "$B/data/screen.json" '"built_on"' ;;
+          esac
+          curl -fsSI --max-time 20 "$B/" | grep -qi "strict-transport-security"
+      - name: Open an issue if it failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Live check failed: ${{ matrix.site }}"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="The live probe for ${{ matrix.site }} failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID . Rollback steps: docs/operations/rollback-runbook.md."
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi
