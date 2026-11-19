@@ -15,7 +15,7 @@ export const SOURCES = {
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const num = (v, d = 2) => (typeof v === 'number' && Number.isFinite(v) ? v.toLocaleString('en-IN', { maximumFractionDigits: d }) : 'n/a');
 const pct = (px, prev) => (typeof px === 'number' && typeof prev === 'number' && prev !== 0 ? `${px >= prev ? '+' : ''}${(((px - prev) / prev) * 100).toFixed(2)}%` : 'n/a');
-const SYMBOL = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/;
+export const SYMBOL = /^[A-Z0-9][A-Z0-9&.\-]{0,24}$/;
 
 export const HELP = [
   '<b>Commands</b>',
@@ -23,7 +23,7 @@ export const HELP = [
   '/signals  Alphavision gate and open signals',
   '/tripwire  Tripwire paper ledger, last day',
   '/rulebook  lockedfree screens and book',
-  '/stock SYMBOL  company snapshot, e.g. /stock TCS',
+  '/stock SYMBOL  full brief: price, trend, RSI, Tripwire picks, news, e.g. /stock INFY',
   '/news  top 10 new stories now (no repeats)',
   '/morning  /open  /close  the three briefs, on demand',
   '/digest  pulse + signals + tripwire + rulebook',
@@ -123,7 +123,7 @@ export async function handle(text, deps) {
       case 'signals': return await signals(deps);
       case 'tripwire': return await tripwire(deps);
       case 'rulebook': case 'lockedfree': return await rulebook(deps);
-      case 'stock': return await stock(deps, arg);
+      case 'stock': return deps.stockBrief ? await deps.stockBrief(deps, arg) : await stock(deps, arg);
       case 'digest': return await digest(deps);
       case 'note': case 'notes': case 'del': return await notes(deps, cmd, arg);
       default: return 'Unknown command. Send /help.';
