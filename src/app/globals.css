@@ -1617,7 +1617,7 @@ html[data-motion='off']::view-transition-group(*), html[data-motion='off']::view
   --bg: #08090a; --bg-2: #0b0c0e; --panel: #101113; --panel-2: #151618; --panel-3: #1c1d20;
   --line: rgba(255, 255, 255, 0.08); --line-2: rgba(255, 255, 255, 0.16);
   --text: #f0f0f0; --muted: #9ea3ab; --dim: #8e939b; --control-line: #6b7078;
-  --accent: #b8ef43; --accent-2: #ccf56f; --accent-ink: #0a0c05; --accent-soft: rgba(184, 239, 67, 0.14);
+  --accent: #b8ef43; --accent-2: #ccf56f; --accent-ink: #0a0c05; --accent-soft: #1e2a0c;
   --neon: #b8ef43; --neon-ink: #ccf56f;
   --sel-bg: #f0f0f0; --sel-fg: #08090a;
   --ink: #101113; --ink-2: #17181c; --ink-text: #f0f0f0; --ink-dim: #b0b6bf;
