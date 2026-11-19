@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stockBrief, trend, storiesFor } from '../stock.js';
+import { stockBrief, trend, trendVerdict, storiesFor } from '../stock.js';
 import { handle } from '../commands.js';
 
 const NOW = Date.parse('2026-11-19T10:00:00Z');
@@ -80,4 +80,30 @@ test('/stock through the command handler uses the brief when it is wired in', as
 test('storiesFor: last 7 days, this stock only, newest first, max 3', () => {
   const ev = Array.from({ length: 5 }, (_, i) => ({ headline: 'H' + i, publishedAt: new Date(NOW - i * 3600e3).toISOString(), entities: [{ sym: 'INFY' }] }));
   assert.deepEqual(storiesFor(ev, 'INFY', NOW).map((e) => e.headline), ['H0', 'H1', 'H2']);
+});
+
+test('trend verdict: uptrend, downtrend, mixed and not-enough-history from the four checks', () => {
+  const up = trendVerdict(trend({ c: closes }));
+  assert.equal(up.label, 'Uptrend');
+  assert.match(up.detail, /^4 of 4 positive: price above its 20-day average, above its 50-day average, 20-day above 50-day, up 15\.2% in 1 month$/);
+  const down = trendVerdict(trend({ c: [...closes].reverse() }));
+  assert.equal(down.label, 'Downtrend');
+  assert.match(down.detail, /^0 of 4 positive: price below its 20-day average/);
+  // rising for 50 sessions, then 10 falling: below the 20-day and down on the month, but still above the 50-day with the 20-day above it
+  const mixed = trendVerdict(trend({ c: [...Array.from({ length: 50 }, (_, i) => 100 + 2 * i), ...Array.from({ length: 10 }, (_, i) => 198 - i * 3)] }));
+  assert.equal(mixed.label, 'Mixed');
+  assert.match(mixed.detail, /^2 of 4 positive: price below its 20-day average, above its 50-day average, 20-day above 50-day, down 2\.8% in 1 month$/);
+  const short = trendVerdict(trend({ c: closes.slice(-30) }));
+  assert.equal(short.label, 'Not enough history', 'without a 50-day average only 2 checks are possible');
+  assert.equal(short.detail, 'only 2 of 4 checks possible');
+  assert.equal(trendVerdict(trend({ c: closes.slice(-10) })).label, 'Not enough history');
+  assert.equal(trendVerdict(null), null);
+});
+test('the /stock brief shows the verdict right after the price, and n/a when there are no bars', async () => {
+  const t = await stockBrief(deps(), 'INFY', NOW);
+  const lines = t.split('\n');
+  assert.match(lines[1], /^Price /);
+  assert.match(lines[2], /^Trend: <b>Uptrend<\/b> \(4 of 4 positive/);
+  const none = await stockBrief(deps({}, ['https://tripwire.askakshay.com/api/bars?s=INFY']), 'INFY', NOW);
+  assert.match(none, /Trend: n\/a \(no daily bars from Tripwire\)/);
 });
