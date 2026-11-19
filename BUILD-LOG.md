@@ -280,3 +280,10 @@ Untouched: Tripwire, Alpha, ApexPro.
 **Changed:** favicon.ico, apple-touch-icon.png (180px) and og.png (1200x630) added; OG and Twitter card tags; `/privacy/` and `/terms/` static pages (facts checked against the code: no cookies, no third-party scripts, Desk data in localStorage under apexpro:* keys); a real 404 (`404.html`, `not_found_handling: "404-page"` in wrangler.apexpro.jsonc); sitemap lists the three pages; footer links Privacy, Terms, Contact (ca.akkothari@askakshay.com) and askakshay.com; service worker VERSION `apexpro-v17-launch-fixes`.
 **Verified:** local wrangler: `/`, `/privacy/`, `/terms/` 200, `/nope` 404, new assets served with right types; 14 model tests; 10 browser suites pass; overlap audit clean on 7 routes x 3 widths.
 **Untouched:** API endpoints, scores, ladder, vet rules, all localStorage keys. Not deployed.
+
+## 2026-11-19 — Home board: price-only P&L, batched live quotes
+Owner feedback (screenshot): where entry and last price are the same there should be no loss; the board should be live on both sides across the day. The screenshot showed sectors live but the calls side stuck at last-close with "last refresh failed".
+Changed: P&L on Calls, Terminal and home is the price change before charges (zero when unchanged); Calls gains an After charges column; quote requests go in batches of 12 that fail independently (ADR-021); the home P&L counts calls without a live price at their last close; status says "n of m groups refreshed"; Terminal best/weakest says "No call has moved" instead of ranking charges.
+Verified: 98 unit tests; board proof 12/12 (new: a failed batch does not blank the sectors; zero shown for unchanged prices); launch proof 9/9 (new: unchanged calls show exactly zero P&L and 0.00%, with charges only in After charges).
+NOT verified: that batching fixes the live site (cause inferred; sandbox cannot reach the domain or Yahoo); behaviour while NSE is open, 09:15 to 15:30 IST.
+Untouched: Tripwire, Alpha, ApexPro.

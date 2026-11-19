@@ -109,3 +109,10 @@ Owner: charts still poor; wants a clean version, no volume, beautiful to read, m
 - Removed: volume, moving-average lines and their controls, and the lightweight-charts library from stock pages (it remains for the equity curve on Calls, so its footer credit stays). The trend is still stated in words from the closes.
 - Wide histories are drawn with a min and max per pixel column so every peak survives and drawing stays fast.
 Consequences: stock-page JavaScript is smaller; the chart is ours to maintain. Real Yahoo history (size, gaps, split adjustment) is still unverified.
+
+## ADR-021 — Price-only P&L headline, batched live quotes (owner feedback, 2026-11-19)
+Owner: a call whose entry and last price are the same should not show a loss; and the live board should update on both sides (sectors and calls) across the day.
+- Every call P&L figure on Calls, Terminal and the home board is now the price change since entry, before charges, so an unchanged price shows zero. Charges are not hidden: Calls has an After charges column (the ledger's own net figure, which also drives R, win rate and the book totals, unchanged).
+- Live quotes are requested in batches of 12 symbols that succeed or fail independently. The Worker spends about three sub-requests per symbol (cache read, Yahoo, cache write) and an invocation has a sub-request limit, so one request for 31 symbols was the likely reason the calls side of the home board never went live while the 14-symbol first request (sectors) did. This diagnosis is inferred from the symptom and the code, not observed: the live site cannot be reached from the build sandbox.
+- The home board counts every call: at its live price when it has one, at its last close when it does not, so a partly failed refresh cannot understate the total. The status line says "n of m groups refreshed" when only some batches arrive.
+Consequences: three small requests per poll instead of one (well inside the 60 a minute limit). At the time of the owner's screenshot it was about 07:56 IST, before NSE opens at 09:15, so the figures shown were last closes by design.
