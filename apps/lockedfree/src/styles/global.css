@@ -141,3 +141,18 @@ input[type=email], input[type=text].pill-in { border-radius: var(--r-full); padd
 .foot .small p a { display: inline-block; min-height: 24px; padding: 3px 0; }
 
 .kind { display: inline-block; min-width: 3.9em; margin-right: 8px; padding: 1px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 .6875rem var(--font-mono); letter-spacing: .06em; text-transform: uppercase; text-align: center; color: var(--ink-muted); } .kind[data-kind="Model"] { color: var(--brand); border-color: rgba(184, 239, 67, .4); } .kind[data-kind="Result"] { color: var(--ink); } .gloss { display: grid; gap: 6px; } .changelog { padding-left: 1.2em; display: grid; gap: 6px; }
+
+/* 20 Nov 2026: app shell. On a phone the five tabs are a bar at the bottom of the screen (the thumb reaches it, the page keeps its full height); from 720px up they stay in the top bar as before. */
+.book-line { margin: 0 0 var(--s4); line-height: 1.7; } .book-line b { font-weight: 600; color: var(--ink); }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--hairline); border-radius: var(--r-full); background: var(--card); margin-top: var(--s4); }
+.seg a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--s4); border-radius: var(--r-full); color: var(--ink-muted); text-decoration: none; font-weight: 500; }
+.seg a[aria-current="page"] { background: var(--brand); color: var(--brand-ink); }
+@media (max-width: 719px) {
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .top .wrap { flex-wrap: nowrap; min-height: 52px; }
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; width: auto; margin: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; overflow: visible; flex-wrap: nowrap; -webkit-mask-image: none; mask-image: none; background: var(--paper); border-top: 1px solid var(--hairline); }
+  .nav a { flex-direction: column; justify-content: center; gap: 3px; min-height: 52px; padding: 0 2px; font-size: 11px; line-height: 1.1; border-radius: 12px; white-space: nowrap; }
+  .nav a svg { display: block; }
+  .nav a[aria-current="page"] { box-shadow: none; background: #17191B; color: var(--brand); }
+  .foot { margin-bottom: 0; }
+}
