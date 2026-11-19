@@ -94,7 +94,7 @@ const preload = staticClosure(DIST, `app.${stamp}.js`).filter((f) => f !== `app.
 html = html.replace('</head>', `${preload}\n</head>`);
 writeFileSync(join(DIST, 'index.html'), html);
 writeFileSync(join(DIST, '404.html'), html);
-for (const f of ['manifest.webmanifest', 'icon.svg', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
+for (const f of ['manifest.webmanifest', 'icon.svg', 'favicon.ico', '_headers']) cpSync(join(HERE, 'static', f), join(DIST, f));
 for (const f of readdirSync(join(HERE, 'static')).filter((x) => x.endsWith('.png'))) cpSync(join(HERE, 'static', f), join(DIST, f));
 // The link-preview image is copied by the .png loop above; the build refuses to ship without it, or with one over the 120 KB the share previews allow (tools/make-og.mjs draws it).
 if (!existsSync(join(DIST, 'og.png'))) throw new Error('static/og.png is missing: run node apps/tripwire/tools/make-og.mjs');
@@ -109,11 +109,16 @@ if (contact.email) {
 // The discovery manifest for AI agents (Agentic Resource Discovery) and the one skill it lists. They are served as real files: without it the SPA fallback answers /.well-known/ard.json with the app's HTML, which is not a manifest.
 mkdirSync(join(DIST, '.well-known'), { recursive: true }); cpSync(join(HERE, 'static', 'ard.json'), join(DIST, '.well-known', 'ard.json')); cpSync(join(HERE, 'static', 'agent-skills'), join(DIST, '.well-known', 'agent-skills'), { recursive: true });
 cpSync(join(HERE, 'static', 'icons'), join(DIST, 'icons'), { recursive: true });
+cpSync(join(HERE, 'static', 'screenshots'), join(DIST, 'screenshots'), { recursive: true });   // install-prompt screenshots named in the manifest (18 Nov 2026)
 cpSync(join(HERE, 'static', 'fonts'), join(DIST, 'fonts'), { recursive: true });
 // The explainer video is served as a plain file and is NOT in the service worker's precache (it is fetched only when a visitor plays it). Size guards keep it from growing unnoticed.
 mkdirSync(join(DIST, 'media'), { recursive: true }); cpSync(join(HERE, 'static', 'media'), join(DIST, 'media'), { recursive: true });
 if (statSync(join(DIST, 'media', 'how-it-works.mp4')).size >= 1024 * 1024) throw new Error('static/media/how-it-works.mp4 is 1 MB or more');
 if (statSync(join(DIST, 'media', 'how-it-works-poster.jpg')).size >= 120 * 1024) throw new Error('static/media/how-it-works-poster.jpg is 120 KB or more');
+for (const id of ['dark-keynote', 'blueprint']) { // the two portrait films beside it (17 Nov 2026): small files, or they would be the heaviest thing on the welcome screen
+  if (statSync(join(DIST, 'media', `${id}.mp4`)).size >= 600 * 1024) throw new Error(`static/media/${id}.mp4 is 600 KB or more`);
+  if (statSync(join(DIST, 'media', `${id}-poster.jpg`)).size >= 80 * 1024) throw new Error(`static/media/${id}-poster.jpg is 80 KB or more`);
+}
 // every hashed script and style (the lazy screens are separate chunks) and the fonts go into the worker's precache list, so the shell opens offline
 const precache = [...readdirSync(DIST).filter((f) => /^app\..+\.(js|css)$/.test(f)).map((f) => `/${f}`), ...readdirSync(join(DIST, 'fonts')).filter((f) => f.endsWith('.woff2')).map((f) => `/fonts/${f}`)].sort();
 const sw = readFileSync(join(HERE, 'static/sw.js'), 'utf8').replaceAll('__STAMP__', stamp).replace('__ASSETS__', JSON.stringify(precache));

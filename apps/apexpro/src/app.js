@@ -1,8 +1,9 @@
-import {researchCanvas,reviewQueue,lensRows,researchCSV,lenses} from './canvas.js';
+import {researchCanvas,reviewQueue,lensRows,researchCSV,lenses,pageSizes} from './canvas.js';
 import {scoreKeys,anatomy,evidenceField,bindField,censusPanel,gapsPanel,cohortRows,companyContext,trailView,sectorLadder} from './edition.js';
 import {normalizeTrail,appendTrail,observationEvents,mergeTrail} from './trail.js';
 import {sectorWeather,observatoryDial,sessionPulse,scoreStack,vetPanel,ladderPanel,timeMachine,bindTimeMachine,compareDuel,printBrief,briefData} from './observatory.js';
 import {mountMotion,routeTransition,prepareShared,compareFlip,retainList} from './motion.js';
+import { liveSample, chunk, liveChanges, liveUsable, nseRegular, afterClose } from './heatlive.js';
 import { marketHero, marketBrief, indexStrip, macroPanel, createQuotePoller, indexNames } from './session.js';
 import { divergenceContext, divergenceBadge } from './technical.js';
 import { scanner, scanModes, conditionForm, conditionQueue, effectsSettings, bindStudio } from './studio.js';
@@ -14,8 +15,9 @@ import { finite, number as num, percent as pct, money, escape as esc, trend, evi
 const $ = s => document.querySelector(s);
 const icon = (name, cls = '') => `<svg class="icon ${cls}" width="20" height="20" aria-hidden="true"><use href="/icons.svg#${name}"/></svg>`;
 const state = { rows: [], screen: null, market: null, error: '', loading: true, filter: { preset: 'all', sector: '', query: '', sort: 'comp', direction: -1 }, page: 1, range: 126, chartType: 'line', chartInterval:'daily', chartRSI:true, rsiPeriod:14, chartDivergence:true, averages: false, chartVolume: true, benchmark: false, index: 'NIFTY', compare: [], chartCache: {}, companies: {}, stale: false };
-const canvasView={sector:'',lens:'all',symbol:'',page:1,order:'r1m',direction:1};
-let editionAxis='g',censusKey='q',gapKind='held',sectorView='ladder',activeCohort=null,researchTrail=[];
+const canvasView={sector:'',lens:'all',symbol:'',page:1,order:'r1m',direction:1,live:true,size:25};
+let heatLive=null,heatBusy=false;
+let editionAxis='g',gapKind='held',sectorView='ladder',activeCohort=null,researchTrail=[];
 try{researchTrail=normalizeTrail(JSON.parse(localStorage.getItem('apexpro:trail')||'[]'));}catch{}
 function saveTrail(){try{localStorage.setItem('apexpro:trail',JSON.stringify(researchTrail));}catch{toast('Research trail could not be saved on this device.');}}
 function recordTrail(kind,symbol,label,detail=''){const r=state.rows.find(r=>r.sym===symbol);researchTrail=appendTrail(researchTrail,{kind,symbol,label,detail,at:new Date().toISOString(),date:r?.last_date||'',price:r?.price});saveTrail();}
@@ -97,7 +99,7 @@ function marketPanel() {
  return `<section class="panel market-panel"><div class="panel-heading"><div><span class="eyebrow">MARKET PULSE</span><h2>${names[state.index]} <span class="muted">/ Latest session</span></h2></div><span class="pill"><span class="status-dot"></span> ${active ? time(active.pt) : 'Unavailable'}</span></div><div class="chart-figure"><strong>${num(active?.px, 2)}</strong>${badge(active?.prev > 0 ? (active.px / active.prev - 1) * 100 : null)}<span>vs previous close</span></div>${active?.c ? spark(active.c, { large: true, timestamps: active.t, label: `${names[state.index]} latest session`, id: 'overview-chart' }) : empty('Market feed unavailable', 'Company research is still available. Retry the market feed below.', '<button class="button secondary" data-action="refresh">Retry data</button>')}<div class="panel-foot">Yahoo Finance via Tripwire · Quote time shown; delays may apply.</div></section>`;
 }
 function overview(){
- return `<div class="research-canvas">${researchCanvas(state.rows,desk,canvasView)}<div id="session-pulse">${sessionPulse(state.screen,state.market,quoteMeta())}</div>${reviewQueue(state.rows,desk)}<details class="canvas-advanced" id="advanced-research"><summary>${icon('filter')} Advanced research <span>Market breadth, score distributions and evidence exploration</span></summary><div class="edition-observe observatory-hero">${anatomy(state.rows,state.screen)}${censusPanel(state.rows,censusKey)}</div><div class="research-tools"><details class="evidence-explorer" id="evidence-explorer"><summary>Explore score relationships</summary>${evidenceField(state.rows,desk.watch,editionAxis)}</details><details class="evidence-explorer" id="evidence-gaps"><summary>Review evidence gaps</summary>${gapsPanel(state.rows,gapKind)}</details></div></details></div>`;
+ return `<div class="research-canvas">${researchCanvas(state.rows,desk,canvasView,heatLive)}<div id="session-pulse">${sessionPulse(state.screen,state.market,quoteMeta())}</div>${reviewQueue(state.rows,desk)}<details class="canvas-advanced" id="advanced-research"><summary>${icon('filter')} Advanced research <span>Market breadth, score distributions and evidence exploration</span></summary><div class="edition-observe observatory-hero">${anatomy(state.rows,state.screen)}${censusPanel(state.rows,canvasView.sector)}</div><div class="research-tools"><details class="evidence-explorer" id="evidence-explorer"><summary>Explore score relationships</summary>${evidenceField(state.rows,desk.watch,editionAxis)}</details><details class="evidence-explorer" id="evidence-gaps"><summary>Review evidence gaps</summary>${gapsPanel(state.rows,gapKind)}</details></div></details></div>`;
 }
 function discover() {
   const f = state.filter, all = filterRows(cohortRows(state.rows,activeCohort), f), pageSize = 30, pages = Math.max(1, Math.ceil(all.length / pageSize)); state.page = Math.min(state.page, pages);
@@ -149,7 +151,7 @@ async function load() {
   if (market.status === 'fulfilled' && market.value?.quotes) { previousMarket=state.market;state.market = market.value;quoteError=false;state.stale ||= !!market.value._offline; } else {quoteError=true;}
   if(macro.status==='fulfilled'&&macro.value?.quotes){macroData=macro.value;macroError=false;}else macroError=true;
   quoteChecked=Date.now();
-  state.loading = false; if(!state.error&&!state.stale&&navigator.onLine){researchTrail=observationEvents(state.rows,desk,researchTrail);saveTrail();}saveVisit(); render(); await loadCompany();
+  state.loading = false; if(!state.error&&!state.stale&&navigator.onLine){researchTrail=observationEvents(state.rows,desk,researchTrail);saveTrail();}saveVisit(); render(); void refreshHeat(); await loadCompany();
 }
 async function loadCompany() {
   const [page, sym] = route(); if (page !== 'company' || !sym) return;
@@ -193,9 +195,11 @@ document.addEventListener('click', async event => {
     if(a==='canvas-sector'){canvasView.sector=b.dataset.sector===canvasView.sector?'':b.dataset.sector;canvasView.page=1;canvasView.symbol='';}
     if(a==='canvas-lens'&&Object.hasOwn(lenses,b.dataset.value)){canvasView.lens=b.dataset.value;canvasView.page=1;canvasView.symbol='';}
     if(a==='canvas-sort'&&['r1d','r1m','r3m','r1y'].includes(b.dataset.key)){canvasView.direction=canvasView.order===b.dataset.key?-canvasView.direction:1;canvasView.order=b.dataset.key;}
+    if(a==='canvas-live')canvasView.live=canvasView.live===false;
+    if(a==='canvas-size'&&pageSizes.includes(Number(b.dataset.value))){canvasView.size=Number(b.dataset.value);canvasView.page=1;canvasView.symbol='';}
     if(a==='canvas-pick')canvasView.symbol=s;
     if(a==='canvas-page'){canvasView.page=Math.max(1,Number(b.dataset.page)||1);canvasView.symbol='';}
-    const focus=a==='canvas-sort'?'[data-action="canvas-sort"][data-key="'+canvasView.order+'"]':a==='canvas-sector'?'[data-action="canvas-sector"][data-sector="'+CSS.escape(b.dataset.sector)+'"]':a==='canvas-lens'?'[data-action="canvas-lens"][data-value="'+canvasView.lens+'"]':a==='canvas-pick'?'[data-action="canvas-pick"][data-symbol="'+CSS.escape(s)+'"]':'.canvas-pagination button:not(:disabled)';
+    const focus=a==='canvas-sort'?'[data-action="canvas-sort"][data-key="'+canvasView.order+'"]':a==='canvas-sector'?'[data-action="canvas-sector"][data-sector="'+CSS.escape(b.dataset.sector)+'"]':a==='canvas-lens'?'[data-action="canvas-lens"][data-value="'+canvasView.lens+'"]':a==='canvas-pick'?'[data-action="canvas-pick"][data-symbol="'+CSS.escape(s)+'"]':a==='canvas-size'?'[data-action="canvas-size"][data-value="'+canvasView.size+'"]':a==='canvas-live'?'[data-action="canvas-live"]':'.canvas-pagination button:not(:disabled)';
     render();document.querySelector(focus)?.focus({preventScroll:true});if(matchMedia('(max-width:760px)').matches&&['canvas-sector','canvas-pick'].includes(a))document.querySelector(a==='canvas-sector'?'.canvas-workbench':'.canvas-preview')?.scrollIntoView({behavior:noMotion(display)?'instant':'smooth',block:'start'});
   }
   else if(a==='command-recent'){$('#global-search').value=b.dataset.query;searchResults(b.dataset.query);$('#global-search').focus();}
@@ -260,7 +264,6 @@ document.addEventListener('input', event => {
 });
 document.addEventListener('change', async event => {
   if(event.target.id==='field-axis'){editionAxis=event.target.value;render();$('#advanced-research').open=true;$('#evidence-explorer').open=true;$('#field-axis')?.focus({preventScroll:true});}
-  if(event.target.id==='census-score'){censusKey=event.target.value;render();$('#advanced-research').open=true;$('#census-score')?.focus({preventScroll:true});}
   if(event.target.id==='market-cadence'){const n=Number(event.target.value);if([60,120,180].includes(n)){quoteCadence=n;try{localStorage.setItem('apexpro:quote-cadence',String(n));}catch{}quotePoller.restart();}}
   if(event.target.id==='rsi-period'){state.rsiPeriod=Number(event.target.value);render();$('#rsi-period')?.focus();}
   if(event.target.dataset.homeVisible) { const layout=home.layouts[home.profile],k=event.target.dataset.homeVisible;layout.hidden=event.target.checked?layout.hidden.filter(x=>x!==k):[...new Set([...layout.hidden,k])];saveHome();renderHomeEditor();$('.home-editor [data-home-visible="'+k+'"]')?.focus(); }
@@ -297,6 +300,19 @@ function paintQuoteRegions(){
  const macro=$('.cockpit-widget[data-widget="breadth"]');if(macro)macro.innerHTML=macroPanel(macroData,macroError);
  const status=$('#refresh-state');if(status)status.textContent=!navigator.onLine?'Paused · offline':document.hidden?'Paused · tab hidden':quoteBusy?'Checking…':'Automatic checks while this page is visible';
 }
+/* 18 Nov 2026: live quotes for the sector map's sample while the session is on (3 calls of up to 30 names, 30 s at the edge). Off the session, or on any failure, the map stays on the published close. */
+async function refreshHeat(){
+ if(heatBusy||!state.rows.length)return;
+ if(!nseRegular()&&!afterClose()){if(heatLive){heatLive=null;paintHeat();}return;}
+ if(!nseRegular()&&heatLive?.basis==='today')return;   // the session is over: today's last prints do not change
+ heatBusy=true;
+ try{
+  const sample=liveSample(state.rows),parts=await Promise.allSettled(chunk(sample,30).map(c=>api('quotes?s='+c.map(encodeURIComponent).join(','))));
+  const quotes={};for(const p of parts)if(p.status==='fulfilled'&&p.value?.quotes)Object.assign(quotes,p.value.quotes);
+  const h=liveChanges(sample,quotes);heatLive=liveUsable(h)?h:null;
+ }catch{heatLive=null;}finally{heatBusy=false;paintHeat();}
+}
+function paintHeat(){if(route()[0]!=='')return;const m=document.querySelector('.canvas-sector');if(!m)return;const keep=document.activeElement?.closest?.('.canvas-sector')?document.activeElement.dataset.action:null;const t=document.createElement('div');t.innerHTML=researchCanvas(state.rows,desk,canvasView,heatLive);const next=t.querySelector('.canvas-sector');if(next){m.replaceWith(next);if(keep)document.querySelector('.canvas-sector [data-action="'+keep+'"]')?.focus({preventScroll:true});}}
 async function refreshQuotes(){
  if(quoteBusy||state.loading)return;quoteBusy=true;const status=$('#refresh-state');if(status)status.textContent='Checking…';
  try{
@@ -304,7 +320,7 @@ async function refreshQuotes(){
  if(market.status==='fulfilled'&&market.value?.quotes){previousMarket=state.market;state.market=market.value;quoteError=false;}else quoteError=true;
  if(macro.status==='fulfilled'&&macro.value?.quotes){macroData=macro.value;macroError=false;}else macroError=true;
  quoteChecked=Date.now();
- }finally{quoteBusy=false;paintQuoteRegions();}
+ }finally{quoteBusy=false;paintQuoteRegions();void refreshHeat();}
 }
 const quotePoller=createQuotePoller({refresh:refreshQuotes,enabled:()=>route()[0]===''&&!document.hidden&&navigator.onLine&&!state.loading,delay:()=>quoteCadence*1000});
 quotePoller.restart();

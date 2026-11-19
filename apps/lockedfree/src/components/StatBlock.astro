@@ -1,0 +1,7 @@
+---
+// A statistic always carries: its sample size n, its as-of date, the small-n honesty label, and "Simulated — not real returns" when it is a performance figure.
+import { honesty, dmy } from '../lib/view.ts'; 
+const { label, value, n = null, asOf = null, perf = true, tone = '' } = Astro.props;
+const h = n == null ? null : n < 30 ? `n = ${n} — too few to conclude anything` : null;
+---
+<div class="stat"><span class="label">{label}</span><span class={`v ${tone}`}>{value ?? '—'}</span>{n != null && <span class="n">n = {n}</span>}{h && <span class="honest">{h}</span>}<span class="stamp">{asOf ? `as of ${dmy(asOf)}` : 'as of: no run yet'}</span>{perf && <span class="sim">Simulated — not real returns</span>}</div>

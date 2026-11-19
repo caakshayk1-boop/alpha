@@ -1,0 +1,18 @@
+---
+import '../styles/global.css'; import '../styles/home.css'; import '../styles/terminal.css'; import Icon from '../components/Icon.astro'; import SiteHeader from '../components/SiteHeader.astro'; import Footer from '../components/Footer.astro'; import HeadCommon from '../components/HeadCommon.astro'; import { loadFeed, feedAvailable } from '../lib/feed.ts'; import { dmy } from '../lib/view.ts'; import { DEMO } from '../lib/data.ts';
+import f4 from '@fontsource/fira-sans/files/fira-sans-latin-400-normal.woff2?url'; import f7 from '@fontsource/fira-sans/files/fira-sans-latin-700-normal.woff2?url';
+const { title, description = 'Rulebook terminal: market dashboard, screener, snapshot, daily brief, paper P&L and a one-page profile of every tracked stock. Educational; not advice.', path = Astro.url.pathname, charts = false, live = true } = Astro.props;
+const F = feedAvailable() ? loadFeed() : null; const full = `${title} · Rulebook Terminal`; const canonical = new URL(path, Astro.site).href;
+---
+<!doctype html><html lang="en-IN" data-surface="terminal"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{full}</title><meta name="description" content={description}>
+<link rel="canonical" href={canonical}><meta name="theme-color" content="#08090A"><meta name="color-scheme" content="dark"><meta property="og:title" content={full}><meta property="og:description" content={description}><meta property="og:type" content="website"><meta property="og:url" content={canonical}><meta property="og:image" content={new URL('/og/default.png', Astro.site).href}><HeadCommon title={full} description={description} image={new URL('/og/default.png', Astro.site).href} />
+{[f4, f7].map((u) => <link rel="preload" as="font" type="font/woff2" href={u} crossorigin="anonymous" />)}<link rel="stylesheet" href="/vt.css"><link rel="stylesheet" href="/vt-stocks.css"><script type="speculationrules" is:inline set:html={JSON.stringify({ prerender: [{ where: { and: [{ href_matches: "/*" }, { not: { href_matches: ["/api/*", "/data/*", "/*.css", "/pnl/"] } }] }, eagerness: "moderate" }] })}></script><meta name="robots" content={DEMO ? 'noindex' : 'index,follow'}></head>
+<body><a class="skip" href="#main">Skip to content</a><div class="progress" aria-hidden="true"></div>
+<SiteHeader path={path} />
+<div class="t-sub"><slot name="tools" /><span class="grow" data-u="grow"></span>
+<span class="t-status" data-market data-state="closed"><i></i><span data-market-text>Market</span></span><span data-clock class="hide-s">IST --:--:--</span><span class="hide-s" title="Prices in the daily feed are last-close prices">Data as of {F ? dmy(F.asOf) : 'not loaded'}</span>
+<button class="t-cmd" type="button" data-cmdk-open aria-label="Search stocks and commands"><Icon name="search" size={14} /><span class="hide-s">Search 999 stocks</span><span class="kbd">⌘K</span></button></div>
+<main id="main" class="t-body"><slot /></main>
+<Footer />
+<div class="cmdk" data-cmdk role="dialog" aria-modal="true" aria-label="Search"><div class="box"><input type="text" data-cmdk-input placeholder="Type a symbol, a company, or a command…" autocomplete="off" aria-label="Search"><ul data-cmdk-list role="listbox"></ul></div></div>
+<script src="../scripts/terminal.ts"></script><script src="../scripts/site.ts"></script><script src="../scripts/tables.ts"></script>{live && <script src="../scripts/live.ts"></script>}{charts && <script src="../scripts/charts.ts"></script>}</body></html>

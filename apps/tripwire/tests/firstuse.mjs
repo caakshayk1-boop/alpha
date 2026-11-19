@@ -28,6 +28,15 @@ const text = async (pg) => { await pg.waitForFunction(() => !document.querySelec
   await pg.getByLabel('Company name or symbol').fill('zzzqq'); ok(/No company matches/.test(await text(pg)), 'a search with no match says so');
   await pg.getByLabel('Company name or symbol').fill('tata consultancy'); await pg.waitForSelector('.wl-hits .li');
   const hit = await pg.locator('.wl-hits .li').first().innerText(); ok(/TCS/.test(hit) && /Tata Consultancy/i.test(hit), `search by name finds a real company from the screen (${hit.replace(/\n/g, ' ')})`);
+  // 18 Nov 2026: the landing search is a WAI-ARIA combobox: the input names its listbox, arrows move the highlighted option (announced through aria-activedescendant), Escape clears.
+  { const cb = pg.getByRole('combobox', { name: 'Company name or symbol' }); await cb.fill('t'); await pg.waitForSelector('#wl-hits [role=option]');
+    const n = await pg.locator('#wl-hits [role=option]').count();
+    ok(n >= 2 && await cb.getAttribute('aria-expanded') === 'true' && await cb.getAttribute('aria-controls') === 'wl-hits' && await cb.getAttribute('aria-activedescendant') === null, `the landing search is a combobox with a listbox of ${n} options and nothing highlighted yet`);
+    await cb.press('ArrowDown'); const a1 = await cb.getAttribute('aria-activedescendant'); const sel = await pg.locator('#wl-hits [aria-selected=true]').evaluateAll((e) => e.map((x) => x.id));
+    ok(!!a1 && sel.length === 1 && sel[0] === a1, 'ArrowDown highlights the first option and names it in aria-activedescendant');
+    await cb.press('ArrowDown'); ok((await cb.getAttribute('aria-activedescendant')) !== a1, 'a second ArrowDown moves to the next option');
+    await cb.press('ArrowUp'); await cb.press('ArrowUp'); ok((await cb.getAttribute('aria-activedescendant')) === `wl-hit-${(await pg.locator('#wl-hits [role=option]').last().getAttribute('id')).slice(7)}`, 'ArrowUp from the first option wraps to the last');
+    await cb.press('Escape'); ok((await cb.inputValue()) === '' && await pg.locator('#wl-hits').count() === 0 && await cb.getAttribute('aria-expanded') === 'false', 'Escape clears the search and closes the list'); }
   await pg.getByLabel('Company name or symbol').fill('TCS'); await pg.locator('.wl-hits .li', { hasText: 'TCS' }).first().click();
   await pg.waitForSelector('[data-first="thought"]', { timeout: 15000 });
   ok(/#\/c\/TCS\?first=1/.test(pg.url()), 'the chosen company opens on its own page');

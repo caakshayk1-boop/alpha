@@ -15,7 +15,11 @@ for (const p of ['/data/c/ZZZZNOTREAL.json', '/data/nothing.json', '/data/resear
   ok(r.status === 404 && /application\/json/.test(r.headers.get('content-type') ?? '') && j?.ok === false, `${p} is a real 404 with a JSON body`);
 }
 for (const p of ['/data/screen.json', '/data/c/TCS.json', '/data/freshness.json']) { const r = await fetch(base + p); ok(r.status === 200 && /json/.test(r.headers.get('content-type') ?? '') && !!(await r.json()), `${p} still serves`); }
-const spa = await fetch(base + '/some/spa/route'); ok(spa.status === 200 && /text\/html/.test(spa.headers.get('content-type') ?? ''), 'an app route outside /data/ still gets the shell');
+// 18 Nov 2026 (audit): an unknown path is a real 404 (not a soft-404 that search engines index as the home page); the body is still the app shell, so a person lands in the app. The app's own routes are hashes (#/c/TCS), so none is a path.
+const spa = await fetch(base + '/some/spa/route'); ok(spa.status === 404 && /text\/html/.test(spa.headers.get('content-type') ?? '') && /<div id="root">/.test(await spa.text()), 'an unknown path outside /data/ is a 404 that still carries the app shell');
+const home = await fetch(base + '/'); ok(home.status === 200, 'the home page is a 200');
+const priv = await fetch(base + '/privacy/'); ok(priv.status === 200 && /url=\/#\/privacy/.test(await priv.text()), '/privacy/ opens the privacy page (a refresh stub to #/privacy)');
+const fav = await fetch(base + '/favicon.ico'); ok(fav.status === 200 && /image/.test(fav.headers.get('content-type') ?? ''), '/favicon.ico is an image');
 const sm = await fetch(base + '/sitemap.xml'); const smt = await sm.text(); ok(sm.status === 200 && /xml/.test(sm.headers.get('content-type') ?? '') && smt.includes('<loc>https://tripwire.askakshay.com/</loc>') && !smt.includes('__LASTMOD__'), '/sitemap.xml is XML with the canonical root');
 const rb = await (await fetch(base + '/robots.txt')).text(); ok(/Sitemap: https:\/\/tripwire\.askakshay\.com\/sitemap\.xml/.test(rb) && /Disallow: \/data\//.test(rb), 'robots.txt names the sitemap and keeps /data/ out');
 process.exit(fails ? 1 : 0);

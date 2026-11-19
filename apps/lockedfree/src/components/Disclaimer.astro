@@ -1,0 +1,6 @@
+---
+// Shown where a decision could be made: Calls, Terminal, Screener and every stock page (audit item 1: not only in the footer). `compact` is the one-line form for the dense stock page.
+const { compact = false } = Astro.props;
+---
+{compact ? <aside class="disc" role="note"><span aria-hidden="true">⚠</span><div><strong>Educational, simulated, not advice.</strong> Not a SEBI-registered recommendation; paper results are not real returns.</div></aside>
+: <aside class="disc" role="note"><span aria-hidden="true">⚠</span><div><strong>Educational and simulated. Not investment advice.</strong> Nothing here is a recommendation to buy, sell or hold. Paper results are not real returns, and real trading can lose money. Not SEBI-registered advice: speak to a SEBI-registered adviser before acting.</div></aside>}

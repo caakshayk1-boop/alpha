@@ -63,3 +63,11 @@ html.fx .lp-rv:not(.in){opacity:0;transform:translateY(18px)}
 .how-video-el{width:100%;height:auto;aspect-ratio:16/9;display:block;border-radius:12px;background:var(--surface-2,var(--surface));border:1px solid var(--line)}
 .how-video-tx summary{display:inline;cursor:pointer;text-decoration:underline}
 .how-video-tx p{margin:6px 0 0;max-width:62ch}
+.films{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),280px));gap:20px;justify-content:center;margin-top:20px}
+.film-tx summary{display:inline;cursor:pointer;text-decoration:underline}
+.film-tx p{margin:6px 0 0;max-width:62ch}
+.film{margin:0;display:grid;gap:8px;align-content:start}
+.film-el{width:100%;height:auto;aspect-ratio:9/16;display:block;border-radius:12px;background:var(--surface-2,var(--surface));border:1px solid var(--line)}
+/* 18 Nov 2026 (vision phase 1): the live ledger sentence under the headline. Two lines are reserved so its figures arriving never move the page. */
+.lp-ledger{min-height:3.2em;margin:0;max-width:44rem;color:var(--ink-2);line-height:1.6}
+.lp-ledger a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;display:inline-block;min-height:44px;line-height:44px}

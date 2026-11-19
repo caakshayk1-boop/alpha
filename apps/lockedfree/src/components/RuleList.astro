@@ -1,0 +1,5 @@
+---
+import Icon from './Icon.astro';
+const { rules } = Astro.props as { rules: { id: string; label: string; pass: boolean | null; value: string; threshold: string }[] };
+---
+<ul class="rules">{rules.map((r) => <li class="rule"><span class={r.pass ? 'up' : r.pass === false ? 'down' : 'missing'}><Icon name={r.pass ? 'check' : r.pass === false ? 'x' : 'help'} size={20} label={r.pass ? 'Passes' : r.pass === false ? 'Fails' : 'Missing input'} /></span><div><strong>{r.label}</strong><div class="small muted">Rule: {r.threshold}</div></div><span class="val">{r.value}</span></li>)}</ul>

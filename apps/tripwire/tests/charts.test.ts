@@ -177,3 +177,14 @@ test('marker paths are closed shapes; labels are spread apart without crossing a
   for (let i = 1; i < sorted.length; i++) assert.ok(sorted[i] - sorted[i - 1] >= 0.0899); assert.ok(sorted[0] >= 0.04 - 1e-9 && sorted[sorted.length - 1] <= 0.96 + 1e-9);
   assert.ok(s[0] < s[2] && s[2] < s[1], 'order is kept');
 });
+
+test('short ranges (1M, 3M, 6M) slice the last months, are offered only where the history fills them, and read in months', async () => {
+  const { sliceRange, rangeAvailability, RANGES } = await import('../src/chart.ts');
+  const { windowWords } = await import('../src/charts/takeaway.ts');
+  const day = 86400, pts = Array.from({ length: 400 }, (_, i) => ({ t: 1_700_000_000 + i * day, c: 100 + i }));
+  assert.deepEqual(RANGES.map((r) => r.id), ['1Y', '3Y', '5Y', '10Y', 'Max'], 'the primary row and the comparison keep the five long ranges');
+  const m3 = sliceRange(pts, '3M'); assert.equal(m3.covers, true); assert.ok(m3.pts.length >= 90 && m3.pts.length <= 93, `3M holds about 91 days, got ${m3.pts.length}`);
+  assert.ok(sliceRange(pts, '1M').pts.length <= 32 && sliceRange(pts, '6M').pts.length <= 184);
+  assert.equal(sliceRange(pts.slice(-40), '3M').covers, false, 'forty days cannot fill 3M'); assert.equal(rangeAvailability(pts).some((r) => r.id === '3M'), false, 'the primary row does not list the short windows');
+  assert.equal(windowWords('3M', true, 0.25), 'the last 3 months'); assert.equal(windowWords('1M', true, 0.08), 'the last month');
+});

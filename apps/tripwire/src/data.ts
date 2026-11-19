@@ -53,6 +53,11 @@ export function useScreen(): Loaded<ScreenFeed> {
 export const useSignals = () => useJson<SignalsFeed>('/data/signals.json');
 export const useCompany = (sym: string) => useJson<Company>(`/data/c/${encodeURIComponent(sym)}.json`);
 
+/** The most symbols one /api/bars call may carry (worker.js allows 30). */
+export const BARS_MAX = 30;
+export const chunk = <T,>(a: T[], n: number): T[][] => { const o: T[][] = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
+/** Several /api/bars answers as one. The oldest fetch time is kept, so the page never claims to be fresher than its stalest part. */
+export const joinBars = (fs: BarsFeed[]): BarsFeed => ({ ok: true, fetched_at: fs.map((f) => f.fetched_at).sort()[0] ?? '', bars: Object.assign({}, ...fs.map((f) => f.bars)), missing: fs.flatMap((f) => f.missing) });
 export interface BarsFeed { ok: boolean; fetched_at: string; bars: Record<string, { t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; forming: boolean; live: { px: number; t: number } | null }>; missing: string[] }
 /** Daily bars and a delayed live price for the symbols with a paper trade. Refreshes every 60 seconds while the page is visible. */
 export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; err: string | null; at: number | null; loading: boolean } {
@@ -65,9 +70,12 @@ export function useBars(syms: string[], on: boolean): { data: BarsFeed | null; e
       if (document.visibilityState === 'hidden') { timer = window.setTimeout(load, 60000); return; }
       set((s) => ({ ...s, loading: true }));
       try {
-        const r = await fetch(`/api/bars?s=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20000) });
-        const d = (await r.json().catch(() => null)) as BarsFeed | null; if (r.status === 429) wait = retryAfterOf(r, d as never);
-        if (!live) return; if (!r.ok || !d?.ok) throw new Error(r.status === 404 ? 'the price service is not available here' : r.status === 429 ? SLOW_DOWN : 'no bars returned');
+        // the Worker answers at most BARS_MAX symbols per call (19 Nov 2026: the Book asked for 32 and was refused), so the list goes out in parts and the answers are joined; one failed part fails the whole load, never half a book shown as whole
+        const parts = chunk(key.split(','), BARS_MAX);
+        const rs = await Promise.all(parts.map(async (p) => { const r = await fetch(`/api/bars?s=${encodeURIComponent(p.join(','))}`, { signal: AbortSignal.timeout(20000) }); return { r, d: (await r.json().catch(() => null)) as BarsFeed | null }; }));
+        const bad = rs.find((x) => !x.r.ok || !x.d?.ok); const rate = rs.find((x) => x.r.status === 429); if (rate) wait = retryAfterOf(rate.r, rate.d as never);
+        if (!live) return; if (bad) throw new Error(bad.r.status === 404 ? 'the price service is not available here' : bad.r.status === 429 ? SLOW_DOWN : 'no bars returned');
+        const d: BarsFeed = joinBars(rs.map((x) => x.d as BarsFeed));
         set({ data: d, err: null, at: Date.now(), loading: false }); got = true;
       } catch (e) { if (live) set((s) => ({ data: s.data, err: (e as Error).message || 'unreachable', at: s.at, loading: false })); }
       if (live) timer = window.setTimeout(wake, Math.max(60000, (wait ?? 0) * 1000)); wait = null;
@@ -108,6 +116,8 @@ export const useFactors = () => useJson<FactorSheet>('/api/factors');
 /** The nightly FII/DII figures (NSE, provisional). Absent until the first nightly run; the card that shows it hides itself then. */
 export interface FlowFeed { ok: boolean; schema: string; updated: string; source: string; rows: import('./fiidii.ts').FlowDay[] }
 export const useFiiDii = () => useJson<FlowFeed>('/api/fiidii');
+/** The daily book snapshots (booksnap.ts). Absent until the first nightly snapshot; the line that reads it says so then. */
+export const useSnapshots = () => useJson<import('./booksnap.ts').SnapFile & { ok: boolean }>('/api/snapshots');
 
 /** A polled feed: loads now, then every `every` ms while the page is visible, keeps the last good answer, and says when it was fetched. */
 export function usePoll<T extends { ok: boolean }>(url: string | null, every: number, nseOnly = false): { data: T | null; err: string | null; at: number | null; loading: boolean; tick: number } {

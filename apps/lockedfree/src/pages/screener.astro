@@ -1,0 +1,12 @@
+---
+import Terminal from '../layouts/Terminal.astro'; import { loadFeed } from '../lib/feed.ts'; import { dmy } from '../lib/view.ts'; const F = loadFeed();
+import Disclaimer from '../components/Disclaimer.astro';
+---
+<Terminal title="Screener" description="Filter and sort all 999 tracked NSE stocks by returns, valuation, quality, growth and trend. Missing data is left out, never guessed. Educational; not advice." live={false}>
+<div class="t-title"><h1>Screener</h1><span class="stamp">{F.rows.length} stocks · daily data as of {dmy(F.asOf)} · closes, not live</span></div>
+<Disclaimer />
+<section class="pane"><div class="pane-h"><span><span class="idx">01</span>Rules</span><span data-count-shown>…</span></div><div class="pane-b"><div class="chipbar" data-presets aria-label="Preset rules"></div><p class="src mt3" data-why data-u="mt3"></p>
+<div class="row mt3" data-u="mt3"><label class="src">Sector <select data-f-sector aria-label="Sector"><option value="">All sectors</option></select></label><label class="src">Find <input type="search" data-f-text placeholder="symbol or name" aria-label="Find a stock"></label><span class="src">Columns</span><span class="chipbar" data-groups></span><button class="tchip" type="button" data-csv>Download CSV</button></div></div></section>
+<section class="pane"><div class="pane-b flush"><div class="scroll tall"><table class="t-table"><thead><tr data-head></tr></thead><tbody data-body></tbody></table></div></div><div class="pane-b src" data-more></div></section>
+<p class="src">Presets are plain rules, shown in full when selected. A stock missing any input a rule needs is left out of that result rather than guessed. Educational information, not a recommendation. Press 1–5 to switch rooms, / to search.</p>
+<script src="../scripts/screener.ts"></script><script src="../scripts/watch.ts"></script></Terminal>

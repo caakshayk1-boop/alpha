@@ -1,7 +1,7 @@
 /** The one place a support address would live. It was EMPTY on purpose until 12 Nov 2026: the owner supplies it (a plain address such as help@example.com), rebuilds, and the Privacy and Terms pages
  *  then show it as a mailto link. Until then they say "Contact: not set up yet" and nothing is invented. static/.well-known/security.txt is published only once this is set (see build.mjs). */
-/* 12 Nov 2026 (Tripwire 2.0): the owner's master prompt says "Set a real contact (hello@askakshay.com)", so it is set. THIS PUBLISHES THE ADDRESS on Privacy, Terms and /.well-known/security.txt (build.mjs). */
-export const SUPPORT_EMAIL = 'hello@askakshay.com';
+/* 12 Nov 2026 (Tripwire 2.0): the owner's master prompt says "Set a real contact (ca.akkothari@askakshay.com)", so it is set. THIS PUBLISHES THE ADDRESS on Privacy, Terms and /.well-known/security.txt (build.mjs). */
+export const SUPPORT_EMAIL = 'ca.akkothari@askakshay.com';
 
 export interface ContactView {
   /** the sentence the page prints */

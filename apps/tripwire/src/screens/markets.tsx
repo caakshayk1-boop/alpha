@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useEngines } from '../useEngines.ts';
 import { FlowCard } from './FlowCard.tsx';
 import { DayChart } from '../components/DayChart.tsx';
@@ -16,6 +16,8 @@ import { useNewsBoard } from '../news.ts';
 import { usePaperSyms } from './NewsPage.tsx';
 import { BreadthCard, CuesList, FxStrip, IndexTile, Movers } from './mk.tsx';
 import { SectorHeat } from './SectorHeat.tsx';
+import { liveHeat, liveSample, liveUsable } from '../heatlive.ts';
+import { useLiveSymbols } from '../quotes.ts';
 import { SectorBars } from './SectorBars.tsx';
 
 /** Markets (v6, 13 Nov 2026): a summary row of index tiles, the session chart with the trend map and sectors beside the movers and the global cues, then the commodities strip and the flows.
@@ -25,6 +27,10 @@ export function Markets() {
   const pulse = usePulse(true); const anyLive = pulse.data ? Object.values(pulse.data.quotes).some((q) => isLiveQuote(q)) : null; const sess = sessionNow(Date.now(), anyLive); const pw = quoteWord(pulse.obs, Date.now(), { loading: pulse.loading && !pulse.err });
   const [dayIx, setDayIx] = useState<'NIFTY' | 'BANKNIFTY' | 'VIX'>('NIFTY');
   const t = useTrendSummary(rows, day, true); const live = sess.phase === 'open' && !!anyLive;
+  // 18 Nov 2026: the sector heat map's live view. The sample (top names per sector) is asked for only while the session is on; the shared live feed carries the request.
+  const shut = sess.phase === 'closed';   // after the close the day's last prints are used (dated today only); before the open nothing is asked
+  const sample = useMemo(() => (live || shut ? liveSample(rows) : []), [rows, live, shut]); const hf = useLiveSymbols(sample, sample.length > 0);
+  const heatLive = useMemo(() => { const h = liveHeat(rows, sample, hf.data?.quotes ?? null, Date.now(), !live); return liveUsable(h) ? h : null; }, [rows, sample, hf.data, hf.tick, live]);
   const chOf = (k: string) => { const q = pulse.data?.quotes[k]; return q ? (q.px / q.prev - 1) * 100 : null; };
   const take = marketTakeaway({ niftyCh: chOf('NIFTY'), vixCh: chOf('VIX'), upPct: t.upPct, downPct: t.downPct, nTrend: t.map.n, live, behind: day ? freshness(day).behind : null, shares: true });
   const lead = bankLead(indexFacts(pulse.data?.quotes.BANKNIFTY)?.ch ?? null, indexFacts(pulse.data?.quotes.NIFTY)?.ch ?? null);
@@ -52,7 +58,7 @@ export function Markets() {
         </section> : pulse.err || (!pulse.loading && !q) ? null : <section className="card mk-card dc-card" aria-busy="true" data-day-chart-wait><div className="mk-head"><h2 className="mk-h">Today's session</h2></div><div className="sk" style={{ height: 240 }} aria-label="Reading the session" /></section>}
         {!settled && <div className="sk mk-wait" aria-busy="true" aria-label="Reading the market" />}
         {settled && scr.data && <BreadthCard rows={rows} map={t.map} day={day} live={!!t.liveMap} liveAt={t.breadth.at} open={sess.phase === 'open'} />}
-        {settled && scr.data && <SectorHeat rows={rows} day={day} compact />}
+        {settled && scr.data && <SectorHeat rows={rows} day={day} compact live={heatLive} />}
         {settled && scr.data && <details className="market-depth mk-depth"><summary>Compare longer-term sector trends</summary><SectorBars sectors={t.map.sectors} rows={rows} day={day} /></details>}
       </div>
       <aside className="mk-side" aria-label="Movers and global cues">

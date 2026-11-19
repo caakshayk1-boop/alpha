@@ -147,4 +147,10 @@ const hashQ = (pg) => pg.evaluate(() => location.hash);
 /* ---- 11. the stack above the first result ---- */
 { const { ctx, pg } = await mk(1280, 900); await open(pg, '?trend=up'); const y = await pg.evaluate(() => Math.round(document.querySelector('.list .li').getBoundingClientRect().top + scrollY)); ok(y < 440, `desktop: the first result starts ${y} px down (it was about 540 px; limit 440 since the shell gained a status bar with a reserved freshness slot)`); await ctx.close(); }
 
+// 18 Nov 2026: "Copy link to this view" puts the address (which already carries every filter) on the clipboard
+{ const { ctx, pg } = await mk(1280, 900); await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base }); await open(pg, '?trend=up&view=table');
+  await pg.locator('details.adv > summary').click();
+  await pg.locator('[data-copy-view]').click(); await pg.waitForTimeout(400);
+  const [clip, href] = [await pg.evaluate(() => navigator.clipboard.readText()), await pg.evaluate(() => location.href)];
+  ok(clip === href && /trend=up/.test(clip) && /view=table/.test(clip), `the copied link is the page address with its filters (${clip.slice(0, 80)})`); await ctx.close(); }
 await b.close(); console.log(fails ? `\ndiscover: ${fails} failed` : '\ndiscover: all passed'); process.exit(fails ? 1 : 0);

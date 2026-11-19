@@ -1,0 +1,15 @@
+/* The only place tokens are defined. Values mirror DESIGN.md front matter; tests/design.test.ts fails if they drift. */
+:root {
+  /* askakshay.com theme (owner request, ADR-011): near-black, lime accent, Fira Sans, JetBrains Mono, pill controls. Direction still never rides on colour alone. */
+  color-scheme: dark;
+  --paper: #08090A; --card: #101113; --ink: #F0F0F0; --ink-muted: #9EA3AB; --hairline: #26282B;
+  --brand: #B8EF43; --brand-ink: #0A0C05; --up: #3DDC97; --down: #FF6B6B; --down-ink: #FF8F8F; --warn: #FFD166; --warn-ink: #FFD166; --halo: #B8EF43;
+  --font-display: "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono Variable fallback", ui-monospace, monospace;
+  --r-card: 12px; --r-control: 6px; --r-full: 999px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
+  --d1: 120ms; --d2: 200ms; --d3: 320ms; --d4: 420ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --icon-stroke: 1.5; --panel-2: #15171A; --glow: rgba(184, 239, 67, 0.12);
+}
