@@ -288,6 +288,11 @@ Verified: 98 unit tests; board proof 12/12 (new: a failed batch does not blank t
 NOT verified: that batching fixes the live site (cause inferred; sandbox cannot reach the domain or Yahoo); behaviour while NSE is open, 09:15 to 15:30 IST.
 Untouched: Tripwire, Alpha, ApexPro.
 
+## 19 Nov 2026 (evening): ApexPro canvas fixes (v19)
+
+**Changed:** selected sector row no longer goes dark-on-dark (hover and selected share one readable state); the sidebar's "Research workspace" and "Observe / Investigate / Revisit" captions wrap inside the sidebar (they ran 3px and 57px past it); the full-height blue Score distribution histogram and its picker are replaced by "How scores are spread": four rows (Quality, Growth, Value, Technical), each a ten-band strip with the median, the share scoring 70+ and under 30, and a marker for the selected sector's median. Bands still open their companies. The layout audit now also flags text escaping its fixed or sticky panel and audits the canvas with a sector selected and the advanced panels open; run against the previous live build it reports the 57px and 3px escapes. SW `apexpro-v19-score-spread`.
+**Verified:** audit clean on 7 routes x 3 widths; 25 node tests; 13 browser suites (research-edition updated for the four-row panel); committed public/ equals a fresh build.
+**Untouched:** scores, ladder, vet rules, API endpoints, localStorage keys. The Score explorer scatter is unchanged.
 ## 2026-11-19 — Onboarding from news.askakshay.com and terminal.askakshay.com/apex (owner: "you decide")
 Reviewed both sites (rendered pages, the news site's data-health.json and the public files in the data repository). Built what was verifiable and low-risk (ADR-022): Terminal gains Market regime (with the barometer), Volume leaders, Book risk and a fuller Data health; Calls gains book-risk tiles, the six-step pipeline, closed-call statistics with n and a Held-days column; About gains "Every number, defined once" and the rule-change log. fetch-feed.mjs now also fetches pulse, regime, barometer and data-health best effort.
 Verified: 103 unit tests (new: glossary, change log, book risk, closed statistics, context files missing/stale); the new context proof against the real feed files and ledger.
