@@ -29,6 +29,8 @@ const probe = () => {
       const key = tag(a) + '|' + tag(b); if (seen.has(key)) continue; seen.add(key); hits.push(`${tag(a)}  x  ${tag(b)}  (${Math.round(w)}x${Math.round(h)})`);
     }
   }
+  // text that runs out of its own fixed or sticky panel (the sidebar's captions ran 57px into the workspace: 19 Nov 2026) is a collision even when nothing else sits there
+  for (const el of leaves) { const root = fixedRoot(el); if (!root || /(auto|scroll)/.test(getComputedStyle(root).overflowX)) continue; const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim().length > 1); if (!own.length) continue; const rr = root.getBoundingClientRect(); const g = document.createRange(); g.selectNodeContents(el); const q = g.getBoundingClientRect(); if (q.right > rr.right + 1 || q.left < rr.left - 1) { const key = 'escape|' + el.textContent.trim().slice(0, 28); if (!seen.has(key)) { seen.add(key); hits.push(`${el.tagName.toLowerCase()} "${el.textContent.trim().slice(0, 28)}"  escapes its ${root.tagName.toLowerCase()}${root.id ? '#' + root.id : ''} by ${Math.round(Math.max(q.right - rr.right, rr.left - q.left))}px`); } } }
   const over = document.documentElement.scrollWidth - document.documentElement.clientWidth;
   const small = leaves.filter((el) => parseFloat(getComputedStyle(el).fontSize) < 11).length;
   return { overflowX: over, overlaps: hits.slice(0, 12), nOverlaps: hits.length, subFloorText: small };
@@ -38,6 +40,8 @@ for (const [w, h] of widths) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } }); const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   for (const r of routes) {
     await pg.goto(`${base}/#/${r}`); await pg.waitForTimeout(1800);
+    // the canvas is audited with a sector selected and its advanced panels open, the states a visitor actually reaches
+    if (r === '') { await pg.locator('.matrix-row').first().click().catch(() => {}); await pg.locator('.canvas-advanced > summary').click().catch(() => {}); await pg.waitForTimeout(500); }
     const res = await pg.evaluate(probe); const flag = res.overflowX > 1 || res.nOverlaps > 0 || errs.length;
     if (flag) bad++; console.log(`${flag ? 'FLAG' : 'ok  '} ${w}px /${r}  overflowX=${res.overflowX} overlaps=${res.nOverlaps} subFloor=${res.subFloorText}${errs.length ? ' errors=' + errs.join(';') : ''}`);
     for (const o of res.overlaps) console.log('       ' + o);
