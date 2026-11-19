@@ -36,7 +36,7 @@ jobs:
             exit 1
           fi
       - name: Model tests (scores, ladder, vet rules are read-only here; these pin them)
-        run: node --test apps/apexpro/tests/model.test.mjs apps/apexpro/tests/heatlive.test.mjs apps/apexpro/tests/worker.test.mjs
+        run: node --test apps/apexpro/tests/model.test.mjs apps/apexpro/tests/heatlive.test.mjs apps/apexpro/tests/worker.test.mjs apps/apexpro/tests/liveprice.test.mjs
       - name: Browser suites (Chromium and WebKit, against wrangler dev on 8810)
         # production.mjs is not run here (it targets the live site). Retired suites were deleted on 17 Nov 2026; see docs/apexpro/TESTS.md.
         run: |
