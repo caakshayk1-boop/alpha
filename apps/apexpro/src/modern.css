@@ -47,7 +47,7 @@ main{counter-reset:sec}
 .research-note p{color:var(--muted);margin:6px 0;line-height:1.45}
 .sidebar-action{min-height:32px;padding:4px 8px;font-size:12px}
 .byline{padding-top:12px;margin-top:8px}
-.collapse-control{top:62px;right:6px;width:28px;height:28px}
+.collapse-control{top:14px;right:6px;width:28px;height:28px}[data-sidebar=collapsed] .collapse-control{top:62px}   /* 19 Nov 2026: on the open sidebar the button sat over the OBSERVE / INVESTIGATE / REVISIT label at 62px (a fixed element, so the overlap audit skipped it); it now sits in the wordmark row, clear of both lines */
 [data-sidebar=collapsed] #sidebar{width:56px;padding:14px 6px}[data-sidebar=collapsed] .workspace{margin-left:56px}
 #topbar{height:44px;padding:0 16px;position:sticky;top:0;z-index:25;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
 .breadcrumb{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--caption)}
@@ -150,3 +150,8 @@ tbody tr{transition:background-color var(--dur-1)}
 #sidebar .brand small,.matrix-value small,.candidate-head,.candidate-row small,.preview-price small,.range-widget>div:first-child,.range-widget>div:last-child,.preview-scores small,.review-items>a>small,.research-canvas .session-context>span,.research-canvas .session-context>span>small:last-child,.matrix-head,.matrix-name small,.matrix-value,.lens-tabs button{font-size:11px}
 @media(pointer:coarse){.matrix-head button,.company-chapters a{min-height:44px;min-width:48px}}
 .canvas-workbench .lens-tabs button small{font:11px var(--font-data)}
+/* 19 Nov 2026: the askakshay.com pill primary action (shared with Tripwire); secondary buttons keep the square corner */
+.button:not(.secondary){border-radius:var(--radius-pill,999px)}
+/* 19 Nov 2026: layout-audit fixes. Inter is a little wider than Geist: at the 152px sidebar the wordmark ran under the collapse button, so both step down together; and the phone preset row (nowrap, scrolls sideways) let its chips shrink below their text so neighbours overlapped */
+@media(max-width:1100px){#sidebar .brand{font-size:18px}.collapse-control{width:24px;height:24px;right:4px;top:18px}}
+@media(max-width:760px){.preset-grid>.preset{flex:none;white-space:nowrap}}
