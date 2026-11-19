@@ -287,3 +287,9 @@ Changed: P&L on Calls, Terminal and home is the price change before charges (zer
 Verified: 98 unit tests; board proof 12/12 (new: a failed batch does not blank the sectors; zero shown for unchanged prices); launch proof 9/9 (new: unchanged calls show exactly zero P&L and 0.00%, with charges only in After charges).
 NOT verified: that batching fixes the live site (cause inferred; sandbox cannot reach the domain or Yahoo); behaviour while NSE is open, 09:15 to 15:30 IST.
 Untouched: Tripwire, Alpha, ApexPro.
+
+## 19 Nov 2026 (evening): ApexPro canvas fixes (v19)
+
+**Changed:** selected sector row no longer goes dark-on-dark (hover and selected share one readable state); the sidebar's "Research workspace" and "Observe / Investigate / Revisit" captions wrap inside the sidebar (they ran 3px and 57px past it); the full-height blue Score distribution histogram and its picker are replaced by "How scores are spread": four rows (Quality, Growth, Value, Technical), each a ten-band strip with the median, the share scoring 70+ and under 30, and a marker for the selected sector's median. Bands still open their companies. The layout audit now also flags text escaping its fixed or sticky panel and audits the canvas with a sector selected and the advanced panels open; run against the previous live build it reports the 57px and 3px escapes. SW `apexpro-v19-score-spread`.
+**Verified:** audit clean on 7 routes x 3 widths; 25 node tests; 13 browser suites (research-edition updated for the four-row panel); committed public/ equals a fresh build.
+**Untouched:** scores, ladder, vet rules, API endpoints, localStorage keys. The Score explorer scatter is unchanged.
