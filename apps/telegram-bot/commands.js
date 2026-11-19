@@ -5,8 +5,10 @@
 export const SOURCES = {
   pulse: 'https://tripwire.askakshay.com/api/pulse',
   ledger: 'https://tripwire.askakshay.com/api/ledger',
-  signals: 'https://alphavision.askakshay.com/signals.json',
-  company: (sym) => `https://alphavision.askakshay.com/c/${encodeURIComponent(sym)}.json`,
+  // The hub host is alpha.askakshay.com. alphavision.askakshay.com does not resolve (docs/PLATFORM.md, 19 Nov 2026).
+  signals: 'https://alpha.askakshay.com/signals.json',
+  hubPulse: 'https://alpha.askakshay.com/data/pulse.json',
+  company: (sym) => `https://alpha.askakshay.com/c/${encodeURIComponent(sym)}.json`,
   rulebook: 'https://raw.githubusercontent.com/caakshayk1-boop/alpha/main/apps/lockedfree/ledger/ledger.json',
 };
 
@@ -23,6 +25,7 @@ export const HELP = [
   '/rulebook  lockedfree screens and book',
   '/stock SYMBOL  company snapshot, e.g. /stock TCS',
   '/news  top 10 new stories now (no repeats)',
+  '/morning  /open  /close  the three briefs, on demand',
   '/digest  pulse + signals + tripwire + rulebook',
   '/note TEXT  save a note',
   '/notes  list notes',
