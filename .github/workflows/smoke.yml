@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node scripts/smoke.mjs https://alpha.askakshay.com
+      - run: node scripts/smoke.mjs https://alphavision.askakshay.com
       - name: Production headers, caching and redirects (Pro §16)
         if: always()
-        run: node scripts/headers.mjs https://alpha.askakshay.com
+        run: node scripts/headers.mjs https://alphavision.askakshay.com
