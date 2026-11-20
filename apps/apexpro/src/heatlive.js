@@ -10,6 +10,21 @@ export function nseRegular(now=Date.now()){const d=new Date(now+19800000),m=d.ge
  * earlier day (a weekend, a holiday, the morning before the open) is never used: the published close stays. */
 export function afterClose(now=Date.now()){const d=new Date(now+19800000),m=d.getUTCHours()*60+d.getUTCMinutes();return d.getUTCDay()>0&&d.getUTCDay()<6&&m>=930;}
 const istDate=ms=>new Date(ms+19800000).toISOString().slice(0,10);
+/* 20 Nov 2026: "today's basis" is the newest session that has CLOSED. Before the open (08:45 IST on a Friday) and over a weekend that is the previous weekday, so a print dated that day is the
+ * latest close, not yesterday's news; the screen is built overnight and can sit one session behind it. Holidays are not modelled: on one the newest print is older than this date and is not used. */
+export function lastSession(now=Date.now()){const d=new Date(now+19800000),m=d.getUTCHours()*60+d.getUTCMinutes();let t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());const wd=()=>new Date(t).getUTCDay();if(!(wd()>0&&wd()<6&&m>=930))t-=864e5;while(wd()===0||wd()===6)t-=864e5;return new Date(t).toISOString().slice(0,10);}
+/* Weekday sessions between the screen's price date and the newest closed session; 0 when the screen is current or the date is unknown. */
+export function sessionsBehind(priceDate,now=Date.now()){const a=Date.parse(priceDate+'T00:00:00Z'),b=Date.parse(lastSession(now)+'T00:00:00Z');if(!Number.isFinite(a)||a>=b)return 0;let n=0;for(let t=a+864e5;t<=b;t+=864e5){const w=new Date(t).getUTCDay();if(w!==0&&w!==6)n++;}return n;}
+/* How a print may be used right now: 'live' (session on, flagged live, under five minutes old), 'today' (after the close, dated today), 'close' (session shut for the day or the weekend, dated the newest closed session) or null. */
+export function printBasis(q,now=Date.now()){
+  if(!q||!finite(q.px)||!finite(q.prev)||q.px<=0||q.prev<=0||!finite(q.pt))return null;
+  const age=now-q.pt*1000;if(age<0)return null;
+  if(nseRegular(now))return q.live===true&&age<=MAX_AGE_MS?'live':null;
+  if(afterClose(now))return istDate(q.pt*1000)===istDate(now)?'today':null;
+  return istDate(q.pt*1000)===lastSession(now)?'close':null;
+}
+/* Is a quote check worth making? During the session and after the close always; otherwise only while the screen is behind the newest close. */
+export const liveWindow=(priceDate,now=Date.now())=>nseRegular(now)||afterClose(now)||sessionsBehind(priceDate,now)>0;
 export function liveSample(rows,per=PER_SECTOR){
   const by=new Map();for(const r of rows)if(eligible(r))(by.get(r.sector)||by.set(r.sector,[]).get(r.sector)).push(r);
   return [...by.values()].flatMap(g=>g.sort((a,b)=>b.turnover_cr-a.turnover_cr||a.sym.localeCompare(b.sym)).slice(0,per).map(r=>r.sym));
@@ -17,11 +32,9 @@ export function liveSample(rows,per=PER_SECTOR){
 export const chunk=(list,n)=>Array.from({length:Math.ceil(list.length/n)},(_,i)=>list.slice(i*n,(i+1)*n));
 /* quotes: { SYM: {px,prev,pt,live} }. Returns the changes that count, how many were asked, and the newest print used. */
 export function liveChanges(sample,quotes,now=Date.now()){
-  const changes={};let obs=null;const regular=nseRegular(now),today=!regular&&afterClose(now),basis=today?'today':'live';
-  if(regular||today)for(const sym of sample){const q=quotes?.[sym];if(!q||!finite(q.px)||!finite(q.prev)||q.px<=0||q.prev<=0||!finite(q.pt)||now-q.pt*1000<0)continue;
-    if(regular?(q.live!==true||now-q.pt*1000>MAX_AGE_MS):istDate(q.pt*1000)!==istDate(now))continue;
-    changes[sym]=(q.px/q.prev-1)*100;if(obs===null||q.pt>obs)obs=q.pt;}
-  return {changes,asked:sample.length,measured:Object.keys(changes).length,obs,basis};
+  const changes={};let obs=null,basis=null;
+  for(const sym of sample){const q=quotes?.[sym],b=printBasis(q,now);if(!b)continue;basis??=b;changes[sym]=(q.px/q.prev-1)*100;if(obs===null||q.pt>obs)obs=q.pt;}
+  return {changes,asked:sample.length,measured:Object.keys(changes).length,obs,basis:basis||(nseRegular(now)?'live':afterClose(now)?'today':'close')};
 }
 /* Offered only when most of the sample answered, so a few late prints do not redraw the map. */
 export const liveUsable=h=>!!h&&h.asked>0&&h.measured>=Math.max(12,Math.ceil(h.asked*.6));

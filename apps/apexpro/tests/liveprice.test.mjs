@@ -29,3 +29,10 @@ test('the list pill says prices are live and the rest is the published close',()
   clearQuotes();setQuotes({T:q({pt:sec(Date.parse('2026-11-19T10:00:00Z')),live:false})});
   assert.match(liveListLabel([livePrice('T',after)]),/^Prices last traded today · /);
 });
+
+test('before the open the print dated the newest close is offered, labelled with its date; a print from the day before is not',()=>{
+  const fri=Date.parse('2026-11-20T03:15:00Z');clearQuotes();setQuotes({C:q({pt:sec(Date.parse('2026-11-19T10:00:00Z')),live:false}),D:q({pt:sec(Date.parse('2026-11-18T10:00:00Z')),live:false})});
+  const l=livePrice('C',fri);assert.equal(l.basis,'close');assert.match(liveLabel(l),/^Last close · 19 Nov · 15:30 IST$/);assert.equal(livePrice('D',fri),null);
+  assert.match(liveListLabel([l]),/^Prices at the last close · 15:30 IST · scores and fundamentals: published close$/);
+  const sun=Date.parse('2026-11-22T06:00:00Z');setQuotes({F:q({pt:sec(Date.parse('2026-11-20T10:00:00Z')),live:false})});assert.equal(livePrice('F',sun).basis,'close','a Friday print on Sunday is the latest close');
+});
