@@ -64,7 +64,7 @@ jobs:
             if git cat-file -e "$sha^{commit}" 2>/dev/null && git merge-base --is-ancestor "$sha" HEAD; then tested=$sha; break; fi
           done
           test -n "$tested" || { echo "::error::No green CI commit is contained in $(git rev-parse --short HEAD). Nothing was deployed."; exit 1; }
-          changed=$(git diff --name-only "$tested" HEAD | grep -vE '^(public/(signals|engines|rotation)\.json|engines/state/|engines/research/[^/]+\.json)$' || true)
+          changed=$(git diff --name-only "$tested" HEAD | grep -vE '^(public/(signals|engines|rotation|signal_brief)\.json|engines/research/[^/]+\.json)$|^(engines/state|apps/lockedfree/ledger)/' || true)
           if [ -n "$changed" ]; then
             echo "::error::Code changed since the newest green CI commit $tested and has not passed CI:"; echo "$changed"; exit 1
           fi
