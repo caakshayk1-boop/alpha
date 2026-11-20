@@ -99,5 +99,5 @@ tr > [data-q-time] { display: table-cell; }
 .call-columns { display: none; }
 @media (max-width: 600px) {
   .call-columns { display: block; padding: 10px; }
-  .call-columns:not(:has(input:checked)) + .call-scroll :is(th, td):not(:nth-child(1), :nth-child(7), :nth-child(9), :nth-child(14)) { display: none; }
+  .call-columns:not(:has(input:checked)) ~ .call-scroll :is(th, td):not(:nth-child(1), :nth-child(7), :nth-child(9), :nth-child(14)) { display: none; }
 }

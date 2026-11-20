@@ -35,3 +35,5 @@ The daily feed download refuses stale or partial data and fails the build, so th
 
 ## Exit rules
 Per-engine stops, targets and the one-month cap are in `src/lib/exitrules.ts` (ADR-017). Changing them changes how future calls leave; it does not rewrite past fills.
+
+The origin robots.txt allows public pages, excludes /api/ and names the canonical sitemap. Cloudflare also adds a managed wildcard group and named crawler restrictions at the zone edge. Keep its search and model-training content signals and named-agent restrictions when reviewing the zone policy. Editing the origin file alone cannot consolidate the edge groups.

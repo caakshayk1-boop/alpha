@@ -37,3 +37,18 @@ for item in root:
     assert parser.urls == [url], (url, parser.urls)
 assert seen == expected
 print(f"Validated {len(seen)} sitemap URLs and canonical pages")
+
+# Reconcile the public summary with the same dated source rows available to the build.
+snapshot = json.loads(Path("dist/data/snapshot.json").read_text())
+feed = json.loads(Path("feed/screen.json").read_text())
+changes = [r["r1d"] for r in feed["rows"] if isinstance(r.get("r1d"), (int, float))]
+averages = [r for r in feed["rows"] if isinstance(r.get("price"), (int, float)) and (r.get("sma200") or 0) > 0]
+breadth = snapshot["breadth"]
+assert snapshot["close"] == feed["price_date"] and snapshot["tracked"] == len(feed["rows"])
+assert breadth["counted"] == len(changes)
+assert breadth["advancing"] == sum(x > 0 for x in changes)
+assert breadth["declining"] == sum(x < 0 for x in changes)
+assert breadth["unchanged"] == changes.count(0)
+above = sum(r["price"] > r["sma200"] for r in averages)
+assert breadth["above200_count"] == above and breadth["above200_eligible"] == len(averages)
+assert breadth["above200_percent"] == (100 * above / len(averages) if averages else None)
