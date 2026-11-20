@@ -18,7 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - name: Check the dates
+      - name: Check the dates and that the producing workflows are enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node --experimental-strip-types scripts/freshness.mjs 2>&1 | tee /tmp/freshness.txt; exit "${PIPESTATUS[0]}"
       - name: Open an issue if it is stale
         if: failure()
