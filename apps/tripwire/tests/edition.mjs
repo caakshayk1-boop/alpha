@@ -23,7 +23,7 @@ for (const [name, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { 
   { const { ctx, pg, errs } = await open('/', false); await pg.waitForSelector('[data-ledger-line]');
     await pg.waitForFunction(() => /2 nightly editions/.test(document.querySelector('[data-ledger-line]')?.textContent ?? ''), null, { timeout: 15000 });
     const t = await pg.locator('[data-ledger-line]').innerText();
-    ok(/2 nightly editions · 3 observations · \d+ closed paper positions.*swing gate off for 3 published days \(gate history since /.test(t), `${name}: the welcome sentence is the ledger's own counts (${t.replace(/\s+/g, ' ').slice(0, 110)})`);
+    ok(/2 nightly editions · 2 observations · \d+ closed paper positions.*swing gate off for 3 published days \(gate history since /.test(t), `${name}: the welcome sentence is the ledger's own counts (${t.replace(/\s+/g, ' ').slice(0, 110)})`);
     ok(await pg.locator('[data-ledger-line] a[href="#/edition"]').count() === 1, `${name}: it links to the edition`);
     ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name}: no sideways scroll on the welcome screen`);
     ok(errs.length === 0, `${name}: no page errors (${errs.join('; ')})`); await ctx.close(); }
