@@ -5,7 +5,7 @@ import { feedAvailable, loadFeed } from '../lib/feed.ts';
 export function GET() {
   const paths = ['/', '/terminal/', '/calls/', '/screener/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/'];
   if (feedAvailable()) {
-    for (const row of loadFeed().rows) paths.push(`/stock/${row.sym}/`);
+    for (const row of loadFeed().rows) paths.push(`/stock/${encodeURIComponent(row.sym)}/`);
   }
   const root = create({ version: '1.0', encoding: 'UTF-8' }).ele('urlset', { xmlns: 'http://www.sitemaps.org/schemas/sitemap/0.9' });
   if (!DEMO) {

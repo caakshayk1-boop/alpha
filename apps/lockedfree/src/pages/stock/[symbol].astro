@@ -14,7 +14,7 @@ const L = ledger(); const call = L.picks.find((p) => p.symbol === sym && (p.stat
 const results = runsFor(F).map((run) => { const d = run.detail[sym]; const verdict = !d ? 'Outside the screens\' universe' : d.passes ? (run.listed?.includes(sym) ? 'Passes and is listed' : 'Passes, but is outside the screen\'s best five') : !d.scorable ? 'Not scorable: an input is missing' : d.failed.length === 1 ? `One rule away: ${d.failed[0].label}` : `Fails ${d.failed.length} rules`; return { id: run.screen_id, name: sname(run.screen_id), d, verdict, open: !!d && (d.passes || d.failed.length === 1) }; });
 import '../../styles/pricechart.css';
 ---
-<Terminal title={`${sym} · ${r.name}`} description={desc} charts live>
+<Terminal path={`/stock/${encodeURIComponent(sym)}/`} title={`${sym} · ${r.name}`} description={desc} charts live>
 <div class="pane reveal-pane" data-q={sym} data-close-date={m.head.lastDate ?? F.asOf}><div class="pane-b stk-head" data-vt={`stock-${sym}`}>
   <div class="t-title"><div><div class="crumbs"><a href="/screener/">← Screener</a><span>/</span>{r.sector ? <a href={`/screener/?sector=${encodeURIComponent(r.sector)}`}>{sectorOf(r)}</a> : <span>Unclassified</span>}{ind && ind !== sectorOf(r) ? <span>/ {ind}</span> : null}{tier ? <span>/ {tier}-cap</span> : null}</div>
 <h1>{r.name}</h1><span class="stamp">NSE: {sym}{r.isin ? ` · ${r.isin}` : ''}</span></div>

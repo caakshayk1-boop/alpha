@@ -1,7 +1,7 @@
 """Validate each indexable URL against the built page and its canonical URL."""
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlsplit, unquote
+from urllib.parse import urlsplit, unquote, quote
 import json
 import xml.etree.ElementTree as ET
 
@@ -31,6 +31,7 @@ for item in root:
     assert address.scheme == "https" and address.netloc == "lockedfree.askakshay.com"
     path = unquote(address.path)
     assert path in expected and path not in seen and not address.query and not address.fragment, url
+    assert address.path == quote(path, safe="/-._~"), url
     seen.add(path)
     parser = Canonical()
     parser.feed((Path("dist") / path.strip("/") / "index.html").read_text())
