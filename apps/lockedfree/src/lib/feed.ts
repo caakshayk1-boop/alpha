@@ -6,10 +6,24 @@ export interface Feed { rows: Row[]; bySym: Map<string, Row>; detail: Record<str
 const DIR = process.env.RULEBOOK_FEED_DIR || join(process.cwd(), 'feed');
 let cache: Feed | null = null;
 export const feedAvailable = () => existsSync(join(DIR, 'screen.json'));
+/** L-01 (20 Nov 2026): 14 companies carry no market cap in the source row, which put names such as TCS outside every screen's 2,000 crore gate. Where the row has a close and the newest financial year has a positive net profit and EPS,
+ *  market cap = close × net profit ÷ EPS (net profit ÷ EPS is the share count; ₹ crore throughout). The row is marked `mcap_src: 'derived'` so every page can say so; a source value is never replaced; with any input missing the cap stays missing. */
+export function deriveMcap(rows: Row[], detail: Record<string, any>): number {
+  let n = 0;
+  for (const r of rows) {
+    if (num(r, 'mcap_cr') != null) continue;
+    const px = num(r, 'price'), y = Array.isArray(detail?.[r.sym]?.years) ? detail[r.sym].years[0] : null, pat = y?.pat_cr, eps = y?.eps;
+    if (px == null || px <= 0 || typeof pat !== 'number' || typeof eps !== 'number' || !(pat > 0) || !(eps > 0)) continue;
+    const cap = (px * pat) / eps; if (!Number.isFinite(cap) || cap <= 0) continue;
+    r.mcap_cr = cap; r.mcap_src = 'derived'; n++;
+  }
+  return n;
+}
 export function loadFeed(): Feed {
   if (cache) return cache; const rd = (f: string) => JSON.parse(readFileSync(join(DIR, f), 'utf8')); const s = rd('screen.json');
   const rows: Row[] = s.rows.slice().sort((a: Row, b: Row) => a.sym.localeCompare(b.sym));
-  cache = { rows, bySym: new Map(rows.map((r) => [r.sym, r])), detail: rd('detail.json').detail, swot: rd('swot.json').swot, season: rd('seasonality.json'), meta: s, asOf: s.price_date, builtOn: s.built_on }; return cache;
+  const detail = rd('detail.json').detail; deriveMcap(rows, detail);
+  cache = { rows, bySym: new Map(rows.map((r) => [r.sym, r])), detail, swot: rd('swot.json').swot, season: rd('seasonality.json'), meta: s, asOf: s.price_date, builtOn: s.built_on }; return cache;
 }
 export const num = (r: Row | undefined, k: string): number | null => { const v = r?.[k]; return typeof v === 'number' && Number.isFinite(v) ? v : null; };
 /** The source's own size tier. 304 rows omit it; it is NOT guessed from market cap (the source's cut-offs are its own, and a guess disagreed with them). */

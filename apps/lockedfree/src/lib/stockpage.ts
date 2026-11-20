@@ -7,7 +7,7 @@ export interface Model { glance: Stat[]; read: { facts: Fact[]; caution: { t: st
 export function stockModel(F: Feed, co: Cohorts, r: Row): Model {
   const d = F.detail[r.sym] ?? {}; const fs = facts(r, co); const w = writeup(r, F.rows, co, fs); const owners = new Map<string, string>(); const own = (sec: string, st: Stat[]) => { for (const s of st) { if (owners.has(s.key)) throw new Error(`${r.sym}: metric ${s.key} owned by both ${owners.get(s.key)} and ${sec}`); owners.set(s.key, sec); } };
   const head = { price: S(r, 'price', 'Close', rs), r1d: S(r, 'r1d', 'Day', (x) => spct(x, 2), true), low: num(r, 'low52'), high: num(r, 'high52'), fromHigh: S(r, 'from_high', 'From 52-week high', (x) => spct(x, 1), true), lastDate: r.last_date ?? null }; own('head', [head.price, head.r1d, head.fromHigh]);
-  const glance = [S(r, 'pe', 'P/E', mult), S(r, 'roce', 'ROCE', pct), S(r, 'rev_cagr', 'Revenue growth, 3y', pct), S(r, 'de', 'Debt to equity', f2), S(r, 'div_yield', 'Dividend yield', (x) => pct(x, 2)), S(r, 'rs1y', 'vs Nifty, 1 year', spct, true)]; own('glance', glance);
+  const glance = [S(r, 'pe', 'P/E', mult), S(r, 'roce', 'ROCE', pct), S(r, 'rev_cagr', 'Revenue growth, 3y', pct), S(r, 'de', 'Debt to equity', f2), S(r, 'div_yield', 'Dividend yield', (x) => pct(x, 2)), S(r, 'rs1y', 'Relative to Nifty, 1 year', spct, true)]; own('glance', glance);
   const sections: Section[] = [
     { id: 'valuation', title: 'Valuation', stats: [S(r, 'pb', 'P/B', mult)] },
     { id: 'profitability', title: 'Profitability', stats: [S(r, 'roe', 'ROE', pct), S(r, 'ebit_margin', 'Operating margin', pct), S(r, 'net_margin', 'Net margin', pct)] },
