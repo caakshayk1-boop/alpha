@@ -12,7 +12,7 @@ const symbols = () => [...new Set([...document.querySelectorAll<HTMLElement>('[d
 function paint(m: Map<string, Quote>) {
   paintCalls(m);
   for (const el of document.querySelectorAll<HTMLElement>('[data-q]')) { const q = m.get(el.dataset.q!); const px = el.querySelector<HTMLElement>('[data-q-px]'), ch = el.querySelector<HTMLElement>('[data-q-chg]'); if (el.closest('tr[data-call]') || !usableQuote(q, el.dataset.closeDate)) continue;
-    let stamp = el.querySelector<HTMLElement>('[data-q-time]'); if (!stamp) { stamp = document.createElement(el.tagName === 'TR' ? 'td' : 'small'); stamp.dataset.qTime = ''; stamp.className = 'src'; el.append(stamp); } stamp.textContent = quoteStamp(q!.t);
+    if (el.dataset.qStamp !== 'off') { let stamp = el.querySelector<HTMLElement>('[data-q-time]'); if (!stamp) { stamp = document.createElement(el.tagName === 'TR' ? 'td' : 'small'); stamp.dataset.qTime = ''; stamp.className = 'src'; el.append(stamp); } stamp.textContent = quoteStamp(q!.t); }
     if (px) { const before = px.dataset.v ? parseFloat(px.dataset.v) : null; px.textContent = inr(q.px); px.dataset.v = String(q.px); if (before != null && before !== q.px && !reduce) { px.classList.remove('flash-up', 'flash-dn'); void px.offsetWidth; px.classList.add(q.px > before ? 'flash-up' : 'flash-dn'); } }
     if (ch && q!.prev) { const c = ((q.px - q.prev) / q.prev) * 100; ch.className = c > 0 ? 'up' : c < 0 ? 'down' : ''; ch.dataset.chg = c.toFixed(4); ch.replaceChildren(...(c === 0 ? [] : [svgArrow(c > 0)]), document.createTextNode(`${c > 0 ? '+' : c < 0 ? '−' : ''}${Math.abs(c).toFixed(2)}%`)); } else if (ch) { ch.textContent = '—'; ch.className = 'gap'; ch.dataset.chg = ''; ch.title = 'The quote source did not supply a previous close'; } }
 }

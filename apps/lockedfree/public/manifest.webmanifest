@@ -1,1 +1,58 @@
-{ "name": "Rulebook", "short_name": "Rulebook", "description": "Paper-only, educational investing rules for Indian stocks.", "start_url": "/terminal/", "display": "standalone", "background_color": "#08090A", "theme_color": "#08090A", "icons": [ { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }, { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }, { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" } ] }
+{
+ "name": "Rulebook",
+ "short_name": "Rulebook",
+ "description": "Paper-only, educational investing rules for Indian stocks.",
+ "start_url": "/terminal/",
+ "display": "standalone",
+ "background_color": "#08090A",
+ "theme_color": "#08090A",
+ "icons": [
+  {
+   "src": "/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "/icon.svg",
+   "sizes": "any",
+   "type": "image/svg+xml"
+  }
+ ],
+ "id": "/terminal/",
+ "scope": "/",
+ "display_override": [
+  "standalone",
+  "minimal-ui"
+ ],
+ "orientation": "any",
+ "categories": [
+  "finance",
+  "education"
+ ],
+ "lang": "en-IN",
+ "shortcuts": [
+  {
+   "name": "Today",
+   "short_name": "Today",
+   "url": "/terminal/",
+   "description": "Market, the paper book and the daily brief"
+  },
+  {
+   "name": "Calls",
+   "short_name": "Calls",
+   "url": "/calls/",
+   "description": "The open calls and the record"
+  },
+  {
+   "name": "Stocks",
+   "short_name": "Stocks",
+   "url": "/screener/",
+   "description": "Filter all 999 stocks"
+  }
+ ]
+}
