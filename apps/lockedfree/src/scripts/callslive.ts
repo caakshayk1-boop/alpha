@@ -1,15 +1,18 @@
-// Calls table, marked to delayed live prices (19 Nov 2026). live.ts fills each Last cell from /api/quotes and announces the quotes; this recomputes the three P&L cells of each open call from its own fill, through the same charges module the ledger uses. Nothing is written back: the ledger still marks at the close, and a name with no quote keeps its ledger figures.
-import { liveMark } from '../lib/livecalls.ts'; import type { Quote } from './live.ts';
-const rows = [...document.querySelectorAll<HTMLTableRowElement>('tr[data-call]')];
-if (rows.length) {
+// One synchronous paint owns Last, P&L and their source timestamp for each call.
+import { liveMark } from '../lib/livecalls.ts';
+import { quoteStamp, usableQuote } from '../lib/quotes.ts';
+import type { Quote } from './live.ts';
+export function paintCalls(quotes: Map<string, Quote>) {
   const fmt = (v: number, d: number, suf = '') => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })}${suf}`;
-  const set = (td: Element | null, v: number, d: number, suf = '') => { if (!td) return; (td as HTMLElement).dataset.v = String(v); const s = document.createElement('span'); s.className = `delta ${v > 0 ? 'up' : v < 0 ? 'down' : ''}`.trim(); s.textContent = fmt(v, d, suf); td.replaceChildren(s); };
-  addEventListener('rb-quotes', (e) => {
-    const q = (e as CustomEvent<Map<string, Quote>>).detail;
-    for (const tr of rows) {
-      const qq = q.get(tr.dataset.call!); if (!qq) continue;
-      const m = liveMark(Number(tr.dataset.qty), Number(tr.dataset.entryPx), qq.px); if (!m) continue;
-      set(tr.querySelector('[data-pl="gross"]'), m.gross, 0); set(tr.querySelector('[data-pl="gpct"]'), m.grossPct, 2, '%'); set(tr.querySelector('[data-pl="net"]'), m.net, 0);
+  for (const tr of document.querySelectorAll<HTMLTableRowElement>('tr[data-call]')) {
+    const q = quotes.get(tr.dataset.call!); if (!usableQuote(q, tr.dataset.closeDate)) continue;
+    const m = liveMark(Number(tr.dataset.qty), Number(tr.dataset.entryPx), q!.px); if (!m) continue;
+    const px = tr.querySelector<HTMLElement>('[data-q-px]'), stamp = tr.querySelector<HTMLElement>('[data-q-time]');
+    if (px) px.textContent = q!.px.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (stamp) stamp.textContent = quoteStamp(q!.t);
+    for (const [key, v, d, suffix] of [['gross', m.gross, 0, ''], ['gpct', m.grossPct, 2, '%'], ['net', m.net, 0, '']] as const) {
+      const td = tr.querySelector<HTMLElement>(`[data-pl="${key}"]`); if (!td) continue;
+      td.dataset.v = String(v); const span = document.createElement('span'); span.className = `delta ${v > 0 ? 'up' : v < 0 ? 'down' : ''}`.trim(); span.textContent = fmt(v, d, suffix); td.replaceChildren(span);
     }
-  });
+  }
 }

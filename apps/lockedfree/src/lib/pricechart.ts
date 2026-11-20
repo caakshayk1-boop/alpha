@@ -51,10 +51,27 @@ export function shortDate(t: string, mode: 'd' | 'm' | 'full'): string { const [
 /** Change over the bars shown, in percent, from the first close to the last. */
 export const changeOver = (bars: C[]): number | null => (bars.length > 1 && bars[0].c > 0 ? (bars[bars.length - 1].c / bars[0].c - 1) * 100 : null);
 export const signedPct = (x: number | null, d = 2) => (x == null ? '—' : `${x > 0 ? '▲ +' : x < 0 ? '▼ −' : ''}${Math.abs(x).toFixed(d)}%`);
-/** The trend in words, from the closes only: where the last close sits against its 50 and 200-day averages, plus the 1-year change. Averages are not drawn. */
+/** Infer observation spacing, never call monthly samples daily sessions. */
+export function historyInterval(d: C[]): Interval {
+  const gaps = d.slice(1).map((b, i) => (dayMs(b.t) - dayMs(d[i].t)) / 864e5).filter((n) => n > 0).sort((a, b) => a - b);
+  const median = gaps[Math.floor(gaps.length / 2)] ?? 1;
+  return median > 20 ? 'M' : median > 4 ? 'W' : 'D';
+}
+/** Calendar-year return uses a dated close near the anniversary, not 252 arbitrary observations. */
+export function yearChange(d: C[]): number | null {
+  if (d.length < 2) return null;
+  const last = d.at(-1)!, anniversary = new Date(dayMs(last.t)); anniversary.setUTCFullYear(anniversary.getUTCFullYear() - 1);
+  const at = anniversary.getTime(), base = d.filter((b) => dayMs(b.t) <= at).at(-1);
+  const tolerance = historyInterval(d) === 'D' ? 7 : historyInterval(d) === 'W' ? 10 : 35;
+  return base && base.c > 0 && at - dayMs(base.t) <= tolerance * 864e5 ? (last.c / base.c - 1) * 100 : null;
+}
 export function trendWords(d: C[]): string {
-  if (!d.length) return ''; const avg = (n: number) => (d.length >= n ? d.slice(-n).reduce((a, x) => a + x.c, 0) / n : null); const last = d[d.length - 1].c, a50 = avg(50), a200 = avg(200); const yr = d.length > 252 ? (last / d[d.length - 253].c - 1) * 100 : null;
-  let w = 'Trend unclear: not enough history';
-  if (a50 != null && a200 != null) w = last > a50 && last > a200 ? 'Uptrend: above its 50 and 200-day averages' : last < a50 && last < a200 ? 'Downtrend: below its 50 and 200-day averages' : 'Mixed: between its 50 and 200-day averages'; else if (a50 != null) w = last > a50 ? 'Above its 50-day average' : 'Below its 50-day average';
-  return w + (yr == null ? '' : ` · ${signedPct(yr, 1)} over 1 year`);
+  if (!d.length) return '';
+  const daily = historyInterval(d) === 'D';
+  const avg = (n: number) => (daily && d.length >= n ? d.slice(-n).reduce((a, x) => a + x.c, 0) / n : null);
+  const last = d.at(-1)!.c, a50 = avg(50), a200 = avg(200), yr = yearChange(d);
+  let w = daily ? 'Trend unclear: not enough history' : 'Daily trend unavailable: the source supplied weekly or monthly observations';
+  if (a50 != null && a200 != null) w = last > a50 && last > a200 ? 'Uptrend: above its 50 and 200-day averages' : last < a50 && last < a200 ? 'Downtrend: below its 50 and 200-day averages' : 'Mixed: between its 50 and 200-day averages';
+  else if (a50 != null) w = last > a50 ? 'Above its 50-day average' : 'Below its 50-day average';
+  return w + (yr == null ? '' : ` · ${signedPct(yr, 1)} over approximately 1 year`);
 }

@@ -13,7 +13,7 @@ for (const card of document.querySelectorAll<HTMLElement>('[data-equity]')) {
   dd.setData(pts.map((p) => ({ time: p.date as Time, value: p.dd })));
   const bench = chart.addSeries(LineSeries, { color: css('--ink-muted'), lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
   bench.setData(pts.filter((p) => p.bench != null).map((p) => ({ time: p.date as Time, value: p.bench as number })));
-  const ret = chart.addSeries(LineSeries, { color: css('--ink'), lineWidth: 2, priceLineVisible: false, lastValueVisible: true, priceFormat: { type: 'custom', formatter: (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%' } });
+  const ret = chart.addSeries(LineSeries, { color: css('--ink'), lineWidth: 2, pointMarkersVisible: true, pointMarkersRadius: 4, priceLineVisible: false, lastValueVisible: true, priceFormat: { type: 'custom', formatter: (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%' } });
   ret.setData(pts.filter((p) => p.ret != null).map((p) => ({ time: p.date as Time, value: p.ret as number })));
   chart.panes()[1]?.setStretchFactor(0.3);
   chart.timeScale().fitContent();

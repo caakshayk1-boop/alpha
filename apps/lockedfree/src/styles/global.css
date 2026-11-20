@@ -122,7 +122,7 @@ em, .display-xl em { font-style: italic; font-weight: 500; color: var(--brand); 
 .fig, .stamp, .num, .label, .pill, .kicker { font-family: var(--font-mono); } .label { letter-spacing: .08em; }
 .btn { border-radius: var(--r-full); color: var(--brand-ink); font-weight: 600; padding: 0 22px; border-color: var(--brand); }
 .btn:hover:not([disabled]) { filter: brightness(1.08); } .btn.ghost { background: transparent; color: var(--ink); border-color: #2D2E2F; transition: border-color var(--d2) var(--ease-out), color var(--d2) var(--ease-out), transform var(--d1) var(--ease-out); } .btn.ghost:hover { border-color: var(--brand); color: var(--brand); filter: none; }
-.pill, .chip { border-radius: var(--r-full); } .chip[aria-pressed="true"], .chip[aria-current="page"] { border-color: var(--brand); color: var(--brand); }
+.pill, .chip { border-radius: var(--r-full); } .chip[aria-checked="true"], .chip[aria-pressed="true"], .chip[aria-current="page"] { border-color: var(--brand); color: var(--brand); }
 input[type=email], input[type=text].pill-in { border-radius: var(--r-full); padding: 0 20px; background: #0B0C0E; border-color: #2D2E2F; }
 .card { background: var(--card); border-color: var(--hairline); transition: border-color var(--d2) var(--ease-out); } a.card:hover { border-color: #3A3D41; }
 .lock { background: var(--card); color: var(--ink); border: 1px solid var(--brand); } .lock a { color: var(--brand); } .quote-in { font-family: var(--font-display); }

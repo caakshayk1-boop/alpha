@@ -18,7 +18,8 @@ export function parseChart(j) {
   for (let i = 0; i < ts.length; i++) { const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close[i]; if (ok(o) && ok(h) && ok(l) && ok(c)) out.push({ t: new Date((ts[i] + 19800) * 1000).toISOString().slice(0, 10), o: rd(o), h: rd(h), l: rd(l), c: rd(c), v: ok(q.volume?.[i]) ? Math.round(q.volume[i]) : null }); } return out;
 }
 async function yahoo(ysym, range, interval, ttl) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?range=${range}&interval=${interval}&includePrePost=false`; const cache = caches.default, key = new Request(url);
+  const period = range === 'max' ? `period1=0&period2=${Math.floor(Date.now() / 86400000) * 86400 + 86400}` : `range=${range}`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?${period}&interval=${interval}&includePrePost=false`; const cache = caches.default, key = new Request(url);
   const hit = await cache.match(key); if (hit) return hit.json();
   // a hard deadline: the abort signal alone is not trusted to end a stalled connection, and an endpoint that hangs is worse than one that fails
   const res = await Promise.race([fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; rulebook-quotes/1.0)', accept: 'application/json' }, signal: AbortSignal.timeout(5000) }), new Promise((_, rej) => setTimeout(() => rej(new Error('upstream timeout')), 5500))]); if (!res.ok) throw new Error(`upstream ${res.status}`);

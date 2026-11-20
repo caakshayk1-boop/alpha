@@ -93,3 +93,6 @@ html { scroll-padding-top: 110px; }
 .part + .src { margin-top: 12px; }
 
 .pane-h.sub { border-top: 1px solid var(--hairline); }   /* 20 Nov 2026: Yours holds two short lists, the watchlist and the live paper P&L, under one header each */
+
+[data-q-time] { display: block; white-space: normal; }
+tr > [data-q-time] { display: table-cell; }

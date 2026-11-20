@@ -23,7 +23,7 @@ const PRESETS: Record<string, { l: string; f: Record<string, [number | null, num
 };
 interface U { cols: string[]; rows: any[][]; asOf: string }
 (async () => {
-  const u: U = await (await fetch('/data/universe.json')).json(); const ix = Object.fromEntries(u.cols.map((c, i) => [c, i])); const Q = new URLSearchParams(location.search);
+  const response = await fetch('/data/universe.json'); if (!response.ok) throw new Error('load failed'); const u: U = await response.json(); if (!Array.isArray(u.rows) || !Array.isArray(u.cols)) throw new Error('invalid stock list'); const ix = Object.fromEntries(u.cols.map((c, i) => [c, i])); const Q = new URLSearchParams(location.search);
   let sort = Q.get('sort') || 'comp', dir = Q.get('dir') === 'asc' ? 1 : -1, sector = Q.get('sector') || '', text = Q.get('q') || '', preset = Q.get('preset') || '', filters: Record<string, [number | null, number | null]> = {};
   if (PRESETS[preset]) filters = JSON.parse(JSON.stringify(PRESETS[preset].f)); for (const g of (Q.get('cols') || '').split(',')) if (GROUPS.includes(g)) { if (g === (Q.get('cols') || '').split(',')[0]) active = new Set(); active.add(g); } if (!active.has('core')) active.add('core');
   const sectors = [...new Set(u.rows.map((r) => r[ix.sector]).filter(Boolean))].sort() as string[];
@@ -39,6 +39,8 @@ interface U { cols: string[]; rows: any[][]; asOf: string }
     count.textContent = `${rows.length.toLocaleString('en-IN')} of ${u.rows.length.toLocaleString('en-IN')} stocks`; const shown = rows.slice(0, 300);
     head.replaceChildren(...cs.map((c) => { const th = document.createElement('th'); th.textContent = c.l; if (c.num) th.className = 'num'; th.tabIndex = 0; th.setAttribute('role', 'columnheader'); if (sort === c.k) th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending'); const go = () => { if (sort === c.k) dir = (dir * -1) as 1 | -1; else { sort = c.k; dir = c.num ? -1 : 1; } sync(); draw(true); }; th.addEventListener('click', go); th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); return th; }));
     const next = new Map<string, HTMLTableRowElement>(); const trs = shown.map((r) => { const tr = document.createElement('tr'); tr.dataset.flipId = r[0]; for (const c of cs) tr.append(cell(c, r)); next.set(r[0], tr); return tr; }); body.replaceChildren(...trs); rendered = next;
+    if (!trs.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = cs.length; td.className = 'pad'; td.append('No stocks match these filters. '); const clear = document.createElement('button'); clear.type = 'button'; clear.className = 'tchip'; clear.textContent = 'Clear search and filters'; clear.addEventListener('click', () => { text = ''; sector = ''; preset = ''; filters = {}; search.value = ''; sel.value = ''; why.textContent = ''; presetBar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', 'false')); sync(); draw(false); search.focus(); }); td.append(clear); tr.append(td); body.append(tr); }
+
     if (state) Flip.from(state, { duration: 0.32, ease: 'power2.inOut', absolute: false, onEnter: (e) => gsap.fromTo(e, { opacity: 0 }, { opacity: 1, duration: 0.2 }) });
     $('[data-more]').textContent = rows.length > 300 ? `Showing the first 300 of ${rows.length.toLocaleString('en-IN')}. Narrow the filters or change the sort to see others.` : '';
   }
@@ -48,4 +50,6 @@ interface U { cols: string[]; rows: any[][]; asOf: string }
   sel.addEventListener('change', () => { sector = sel.value; sync(); draw(true); }); let tm = 0; search.addEventListener('input', () => { clearTimeout(tm); tm = window.setTimeout(() => { text = search.value.trim(); sync(); draw(true); }, 120); });
   $('[data-csv]').addEventListener('click', () => { const cs = cols(); const rows = u.rows.filter(pass); const esc = (v: any) => { let s = v == null ? '' : String(v); if (/^[=+\-@]/.test(s)) s = "'" + s; return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }; const csv = [cs.map((c) => esc(c.l)).join(','), ...rows.map((r) => cs.map((c) => esc(r[ix[c.k]])).join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `rulebook-screener-${u.asOf}.csv`; a.click(); URL.revokeObjectURL(a.href); });
   draw(false);
-})();
+})().catch(() => {
+  const body = $('[data-body]'); body.replaceChildren(); const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 11; cell.className = 'pad'; cell.append('The stock list could not load. '); const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'tchip'; retry.textContent = 'Reload stocks'; retry.addEventListener('click', () => location.reload()); cell.append(retry); row.append(cell); body.append(row); $('[data-count-shown]').textContent = 'Stocks unavailable';
+});
