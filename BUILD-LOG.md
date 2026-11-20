@@ -410,3 +410,9 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 **Changed:** the welcome ledger sentence no longer calls recorded picks "paper picks" or says "nights". It now reads "N nightly editions · M observations · K closed paper positions (+x.xxR in total) , swing gate off for D published days (gate history since <date>). An observation is a recorded pick, not a distinct position." The counts come from `summarizeLedger` (voided and retired engines excluded), so the home page and the record page cannot disagree. `gateRun` also returns the first date of the gate history.
 **Verified:** 1,002 Tripwire unit tests, types and token lint. `tests/edition.mjs` (browser, CI) was updated to the new wording; not run here.
 **Not done:** the rest of T-01 to T-09 (server-rendered stub pages, RSS and email, engine registry, public evidence pages).
+
+## 20 Nov 2026: freshness check for the hub's data
+**Found:** the hub's feeds (screen, regime, barometer and others) are built by workflows in the trading-dashboard repository. 34 of its 36 workflows were set to disabled_manually on 19 Nov 2026 between 14:07 and 14:08 (+08:00); the last screen build was 05:16 IST on 19 Nov (price_date 18 Nov). Nothing warned, because the uptime probe only checks that a feed exists. The owner re-enabled the Stock Screen workflow and ran it by hand.
+**Added:** `scripts/freshness.mjs` (pure `evaluate`, calendar-aware via `apps/tripwire/src/calendar.ts`), `.github/workflows/freshness.yml` (09:30 IST daily, opens or comments on one "Hub data is stale" issue), `tests/freshness.test.mjs` (5 tests, in `npm test`), a section in `docs/operations/monitoring.md`.
+**Verified:** the 5 unit tests pass, the workflow YAML parses. **Not verified:** a live run (no network to the hub from here); the first scheduled run is the proof. The calendar covers 2026 only.
+**Untouched:** the trading-dashboard repository (nothing changed there; the owner enabled the workflow in GitHub).

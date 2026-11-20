@@ -1,0 +1,31 @@
+name: freshness
+# Every morning at 09:30 IST: the data the hub serves must be dated the newest finished NSE session (screen) or at most one session earlier (regime, barometer).
+# The uptime probe checks that a feed exists; this checks that it is current, using the exchange calendar so a market holiday is not a false alarm.
+# On failure one issue ("Hub data is stale") is opened, and later failures comment on it. GitHub emails the repository owner for new issues.
+# History: on 19 Nov 2026 the producing jobs in trading-dashboard were switched off and the hub served 18 Nov data for two days without any warning.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'
+permissions:
+  contents: read
+  issues: write
+jobs:
+  freshness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Check the dates
+        run: node --experimental-strip-types scripts/freshness.mjs 2>&1 | tee /tmp/freshness.txt; exit "${PIPESTATUS[0]}"
+      - name: Open an issue if it is stale
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="Hub data is stale"
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "$T in:title" --json number --jq '.[0].number')
+          B="$(printf 'The morning freshness check failed: %s/%s/actions/runs/%s\n\n```\n%s\n```\n\nThe feeds are produced by workflows in the trading-dashboard repository. Check that they are enabled and that their last run succeeded: Actions, the workflow named above, then Enable workflow / Run workflow.' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(cat /tmp/freshness.txt 2>/dev/null)")"
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$B"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$T" --body "$B"; fi
