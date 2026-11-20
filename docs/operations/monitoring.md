@@ -11,6 +11,10 @@
 
 GitHub emails the repository owner when an issue is opened. If you want a phone alert as well, use the GitHub mobile app's notification setting for this repository.
 
+## Data freshness (20 Nov 2026)
+
+`freshness.yml` runs every morning at 09:30 IST and fails when the hub's data is behind the newest finished NSE session: the screen must be on that session, regime and barometer may trail it by one (they are built from the previous session's bars). The date comparison uses the exchange calendar (`apps/tripwire/src/calendar.ts`), so a market holiday is not an alarm. A failure opens or comments on one issue, "Hub data is stale", naming the producing workflow. The feeds are built in the trading-dashboard repository; on 19 Nov 2026 its workflows were switched off and nothing warned for two days, which is why this exists. Not covered: the other feeds (news, IPO, funds, weekly reads, seasonality), which have slower cadences; the calendar covers 2026 only, so the check needs the holiday table extended for 2027.
+
 ## Staging
 
 There is none. Each site deploys from `main` after its checks pass (`apexpro.yml`, `tripwire.yml`, `deploy.yml` for the hub, `lockedfree.yml`). The safety net is the pull request run: the same build and browser suites run before merge. A staging environment is a separate decision, because it needs its own Cloudflare Workers and data copies.
