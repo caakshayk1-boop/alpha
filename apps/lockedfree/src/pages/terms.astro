@@ -1,8 +1,9 @@
 ---
+import PageIntro from '../components/PageIntro.astro';
 import Base from '../layouts/Base.astro'; import { CONTACT, LEGAL_DATE } from '../lib/site.ts';
 ---
 <Base title="Terms" description="The terms of using Rulebook: educational only, no advice, no promises, unofficial data.">
-<div class="wrap hero prose"><span class="label eyebrow">Terms · {LEGAL_DATE}</span><h1>Terms of use.</h1></div>
+<div class="wrap prose reader-intro"><PageIntro title="Terms of use" summary="The limits of the paper book, the price data and the educational tools.">Terms · {LEGAL_DATE}</PageIntro></div>
 <div class="wrap prose"><h2>Educational only</h2><p>Rulebook is an educational, paper-only site. It is not investment advice, a research report or a recommendation to buy, sell or hold any security, and it does not claim SEBI registration. A stock appearing in a screen or among the calls means only that it met fixed rules on a date. It is not a prediction.</p>
 <h2 data-u="mt6">Simulated results</h2><p>The public ledger records simulated entries at the signal-day close with estimated charges. Delayed quotes update displayed marks between ledger runs. Practice entries use the prices entered in this browser. Real orders could not be filled at those prices. Simulated results are not real returns, past results do not indicate future results, and real investing can lose money.</p>
 <h2 data-u="mt6">Data</h2><p>Prices, fundamentals and quotes come from unofficial public sources and can be wrong, late or missing. Missing data is shown as missing. Check anything that matters against the exchange or the company before relying on it.</p>

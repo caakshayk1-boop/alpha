@@ -173,3 +173,29 @@ input[type=email], input[type=text].pill-in { border-radius: var(--r-full); padd
 .top .livepill { margin-left: auto; }
 @media (min-width: 720px) { .top .livepill { order: 3; margin-left: var(--s3); } }
 
+
+/* Page roles shared by editorial, terminal and browser-local tools. */
+
+main .page-intro { display:grid; gap:.5rem; padding-block:1rem; min-width:0; }
+main .page-intro h1, main .stk-head .t-title h1 { margin:0; font:700 var(--fs-page-title)/1.12 var(--font-ui); letter-spacing:-.03em; overflow-wrap:anywhere; }
+main .page-intro p { margin:0; max-width:70ch; font:400 var(--fs-md)/1.55 var(--font-ui); color:var(--ink-muted); }
+main .page-context, main .stamp, main .src { font-size:var(--fs-sm); line-height:1.45; }
+.page-context { color:var(--ink-muted); font-family:var(--font-mono); }
+main .reader-intro { padding-top:1rem; }
+main .prose { max-width:74ch; }
+main .prose h2, main .t-h, main .practice-paths h2, main :is(#gate-root,#plan-root) h2 { font:600 var(--fs-section-title)/1.25 var(--font-ui); text-transform:none; letter-spacing:-.015em; }
+.practice-paths { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr)); gap:1rem; margin-block:1rem; }
+main .practice-paths a { display:block; padding:1.25rem; color:var(--ink); text-decoration:none; } .practice-paths a:hover h2 { text-decoration:underline; }
+.practice-paths p { margin:.5rem 0 0; color:var(--ink-muted); }
+.top .nav a[aria-current="location"] { background:var(--panel-2); color:var(--brand); }
+
+.panel-intro { margin-bottom:var(--s4); } .flush > .panel-intro { padding:var(--s4) var(--s4) 0; }
+main .panel-intro p, main .stock-intro { margin:.4em 0; max-width:70ch; font:400 var(--fs-md)/1.55 var(--font-ui); color:var(--ink-muted); }
+main .pane-h > span:first-child { font:600 var(--fs-md)/1.3 var(--font-ui); color:var(--ink); text-transform:none; letter-spacing:0; }
+main .t-h .src { display:block; margin:.35rem 0 0; }
+@media print {
+  body:has(.plan-sheet) :is(.t-sub,.progress,.page-intro,.seg,.panic,#plan-root > p) { display:none; }
+  #plan-root:has(.plan-sheet) { min-height:0; } #plan-root .grid:has(> .plan-sheet) > :not(.plan-sheet) { display:none; }
+  #plan-root .plan-sheet { background:white; color:black; border:none; box-shadow:none; }
+  #plan-root .plan-sheet :is(p,h2,.stamp) { color:black; }
+}

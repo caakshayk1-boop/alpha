@@ -37,3 +37,9 @@ The daily feed download refuses stale or partial data and fails the build, so th
 Per-engine stops, targets and the one-month cap are in `src/lib/exitrules.ts` (ADR-017). Changing them changes how future calls leave; it does not rewrite past fills.
 
 The origin robots.txt allows public pages, excludes /api/ and names the canonical sitemap. Cloudflare also adds a managed wildcard group and named crawler restrictions at the zone edge. Keep its search and model-training content signals and named-agent restrictions when reviewing the zone policy. Editing the origin file alone cannot consolidate the edge groups.
+
+### Interface and audit checks (21 November 2026)
+
+After the normal build, `node tools/check-routes.cjs` exercises the built pages offline, including unavailable quote responses, at four widths. Install Playwright Chromium first, or set `BROWSER_CHANNEL=chrome` to use installed Chrome. CI runs it before deploying. For subscriber lifecycle tests, start Wrangler with `dev --local --port 8884 --config wrangler.lockedfree.jsonc --persist-to <new temporary directory> --var ADMIN_TOKEN:local-test-only` at repository root. Run `node tools/check-subscriber-local.mjs` in this app. This test exclusively uses loopback and synthetic data.
+
+The deployed robots policy combines a Cloudflare-managed wildcard group (search permitted; AI training restricted) with the origin group that excludes `/api/`. Removing the origin group would lose the API exclusion; removing the managed group would lose the content signals and named crawler rules. No zone-wide change is needed to serve the site. The account's actual operational-log retention, deletion turnaround and newsletter delivery cadence have not been established. No subscriber address was retrieved from production. Physical handset and human screen-reader review remain separate from automated checks.

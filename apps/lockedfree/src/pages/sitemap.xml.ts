@@ -3,7 +3,7 @@ import { DEMO } from '../lib/data.ts';
 import { feedAvailable, loadFeed } from '../lib/feed.ts';
 
 export function GET() {
-  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/'];
+  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/practice/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/'];
   if (feedAvailable()) {
     for (const row of loadFeed().rows) paths.push(`/stock/${encodeURIComponent(row.sym)}/`);
   }

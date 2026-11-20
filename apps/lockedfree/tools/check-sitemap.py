@@ -21,7 +21,7 @@ root = ET.parse("dist/sitemap.xml").getroot()
 ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 assert root.tag == ns + "urlset"
 symbols = [row["sym"] for row in json.loads(Path("feed/screen.json").read_text())["rows"]]
-expected = {"/", "/terminal/", "/calls/", "/screener/", "/gate/", "/plan/", "/about/", "/method/", "/privacy/", "/terms/"}
+expected = {"/", "/terminal/", "/calls/", "/screener/", "/practice/", "/gate/", "/plan/", "/about/", "/method/", "/privacy/", "/terms/"}
 expected.update(f"/stock/{symbol}/" for symbol in symbols)
 seen = set()
 for item in root:

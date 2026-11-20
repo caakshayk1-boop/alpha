@@ -2,11 +2,11 @@
 // One header for the whole product: the editorial site and every terminal room share it.
 import Icon from './Icon.astro';
 const { path = '/' } = Astro.props;
-const terminal = ['/terminal/', '/stock/'];
+
 // 20 Nov 2026: five tabs, the same on a phone (a bottom bar) and on a desktop (the top bar). The Gate and The Plan are one tab, Practice.
-const nav = [['/terminal/', 'Today', 'dash'], ['/calls/', 'Calls', 'ledger'], ['/screener/', 'Stocks', 'table'], ['/gate/', 'Practice', 'gate'], ['/about/', 'About', 'info']];
-const practice = ['/gate/', '/plan/'];
-const on = (h: string) => (h === '/terminal/' ? terminal.some((t) => path.startsWith(t)) : h === '/gate/' ? practice.some((t) => path.startsWith(t)) : path.startsWith(h));
+const nav = [['/terminal/', 'Today', 'dash'], ['/calls/', 'Calls', 'ledger'], ['/screener/', 'Stocks', 'table'], ['/practice/', 'Practice', 'gate'], ['/about/', 'About', 'info']];
+const practice = ['/practice/', '/gate/', '/plan/'];
+const on = (h: string) => (h === '/screener/' ? path === h || path.startsWith('/stock/') : h === '/about/' ? ['/about/', '/method/', '/privacy/', '/terms/'].includes(path) : h === '/practice/' ? practice.some((t) => path.startsWith(t)) : path.startsWith(h));
 ---
 <header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook<span class="paperpill">Paper only</span></a>
-<span class="livepill" data-livepill data-state="closed" role="status" aria-live="off"><i aria-hidden="true"></i><span data-livepill-text>Market</span></span><nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? 'page' : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>
+<span class="livepill" data-livepill data-state="closed" role="status" aria-live="off"><i aria-hidden="true"></i><span data-livepill-text>Market</span></span><nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? (path === h ? 'page' : 'location') : undefined}><Icon name={i} size={18} />{t}</a>)}</nav></div></header>

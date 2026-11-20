@@ -1,8 +1,9 @@
 ---
+import PageIntro from '../components/PageIntro.astro';
 import Base from '../layouts/Base.astro'; import { CONTACT, LEGAL_DATE } from '../lib/site.ts';
 ---
 <Base title="Privacy" description="What Rulebook collects, what stays in your browser, who else touches your data, and how to have it removed.">
-<div class="wrap hero prose"><span class="label eyebrow">Privacy · {LEGAL_DATE}</span><h1>What we collect, in full.</h1></div>
+<div class="wrap prose reader-intro"><PageIntro title="Privacy" summary="See what is stored in your browser, what signup sends and how to request deletion.">Privacy · {LEGAL_DATE}</PageIntro></div>
 <div class="wrap prose"><h2>Collected and stored on our side</h2><p>Akshay Kothari operates Rulebook. For the email list, if you join the email list, we store your email address, the date and time you joined, and the version of the consent text you agreed to (<code>weekly-note-v1</code>). It lives in a database on Cloudflare, our host. The signup endpoint stores the subscription; it does not itself send email, and this application has no external mailing-service integration. Registration records interest in the weekly note. Delivery has no published schedule. We do not sell or share it.</p>
 <h2 data-u="mt6">Stays in your browser</h2><p>Your Gate trades and rules, your plan, your watchlist, your widget choices and a short cache of delayed quotes are saved in your browser's own storage on your device. They are not sent to us and we cannot see or recover them. Clearing site data removes them, so download the Gate book and Plan with its deployment history separately. Those downloads do not include watchlists, widget choices or cached quotes.</p>
 <h2 data-u="mt6">Not collected</h2><p>No accounts, no passwords, no payments, no cookies, no advertising or analytics trackers, no fingerprinting. Fonts, scripts and both charting libraries (Lightweight Charts and uPlot) are served from this site; the page makes no requests to third-party hosts.</p>

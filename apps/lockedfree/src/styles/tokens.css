@@ -15,3 +15,5 @@
   --fs-xs: 0.75rem; --fs-sm: 0.875rem; --fs-md: 1rem; --fs-lg: 1.125rem; --fs-xl: 1.25rem; --fs-2xl: 1.5rem; --fs-fig: 2rem; --fs-fig-xl: 2.5rem;
   --icon-stroke: 1.5; --panel-2: #15171A; --glow: rgba(184, 239, 67, 0.12);
 }
+
+:root { --fs-page-title: clamp(1.75rem, 1.42rem + 1.35vw, 2.625rem); --fs-section-title: clamp(1.25rem, 1.1rem + .6vw, 1.625rem); }
