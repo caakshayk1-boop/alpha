@@ -16,16 +16,18 @@ addEventListener('rb-quotes', (ev) => {
   const m = (ev as CustomEvent<Map<string, Q>>).detail;
   for (const t of $$('.st[data-q]')) { const ch = t.querySelector<HTMLElement>('[data-q-chg]'); const c = ch?.dataset.chg; if (c != null && c !== '') t.dataset.tone = tone(parseFloat(c)); }
   // every call is counted: at its live price if it has one, otherwise at its last close, so a partly failed refresh never understates the total
-  let sum = 0, live = 0, up = 0, down = 0;
+  let sum = 0, live = 0, up = 0, down = 0, priced = 0;
   for (const c of calls) {
     const raw = m.get(c.s); const q = usableQuote(raw, document.querySelector<HTMLElement>('[data-pl]')?.dataset.closeDate) ? raw : undefined; const px = q?.px ?? c.m; const a = document.querySelector<HTMLElement>(`[data-call="${c.s}"]`); if (px == null || !(c.e > 0)) continue;
-    const pct = (px / c.e - 1) * 100; sum += c.q * (px - c.e); if (q) live++; if (pct > 0) up++; else if (pct < 0) down++;
+    const pct = (px / c.e - 1) * 100; priced++; sum += c.q * (px - c.e); if (q) live++; if (pct > 0) up++; else if (pct < 0) down++;
     if (a) { a.dataset.tone = tone(pct * 2); const s = a.querySelector('[data-call-pct]'); if (s) s.textContent = `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(2)}%`; }
   }
   const pl = document.querySelector<HTMLElement>('[data-pl]'), pn = document.querySelector<HTMLElement>('[data-pl-n]');
-  if (pl && live) { pl.textContent = inr(sum); pl.className = 'big ' + (sum > 0 ? 'up' : sum < 0 ? 'down' : ''); pl.title = `${live} of ${calls.length} calls have a live price; the rest are at their last close`; }
+  if (pl && live) { pl.textContent = priced === calls.length ? inr(sum) : "—"; pl.className = 'big ' + (sum > 0 ? 'up' : sum < 0 ? 'down' : ''); pl.title = `${live} of ${calls.length} calls have a live price; the rest are at their last close`; }
+  const near = document.querySelector<HTMLElement>('[data-home-price-basis]');
+  if (near && live) near.textContent = `${live} delayed · ${calls.length-live} at ledger close ${pl?.dataset.closeDate}`;
   if (pn && live) pn.textContent = `${up} · ${down}${live < calls.length ? ` · ${calls.length - live} at last close` : ''}`;
-  const basis = document.querySelector<HTMLElement>('[data-pl-basis]'); const times = calls.map((c) => m.get(c.s)?.t).filter((t): t is number => t != null); if (basis && times.length) basis.textContent = `${live} of ${calls.length} calls have delayed quotes. Earliest print: ${quoteStamp(Math.min(...times))}. Latest print: ${quoteStamp(Math.max(...times))}.${live < calls.length ? ' Remaining calls use the dated ledger close; see Calls for each row’s basis.' : ' Entry dates and exit rules are on Calls.'}`;
+  const basis = document.querySelector<HTMLElement>('[data-pl-basis]'); const times = calls.filter(c => usableQuote(m.get(c.s), pl?.dataset.closeDate)).map((c) => m.get(c.s)?.t).filter((t): t is number => t != null); if (basis && times.length) basis.textContent = `${live} of ${calls.length} calls have delayed quotes. Earliest print: ${quoteStamp(Math.min(...times))}. Latest print: ${quoteStamp(Math.max(...times))}.${live < calls.length ? ' Remaining calls use the dated ledger close; see Calls for each row’s basis.' : ' Entry dates and exit rules are on Calls.'}`;
   const board = document.querySelector<HTMLElement>('[data-board]');
   if (board && !reduce) { board.classList.toggle('scan', false); void board.offsetWidth; board.classList.toggle('scan', true); }
 });

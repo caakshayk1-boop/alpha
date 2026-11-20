@@ -9,3 +9,31 @@
   Cache-Control: public, max-age=31536000, immutable
 /sw.js
   Cache-Control: no-cache
+/
+  Content-Type: text/html; charset=utf-8
+/terminal/
+  Content-Type: text/html; charset=utf-8
+/calls/
+  Content-Type: text/html; charset=utf-8
+/screener/
+  Content-Type: text/html; charset=utf-8
+/plan/
+  Content-Type: text/html; charset=utf-8
+/gate/
+  Content-Type: text/html; charset=utf-8
+/about/
+  Content-Type: text/html; charset=utf-8
+/method/
+  Content-Type: text/html; charset=utf-8
+/privacy/
+  Content-Type: text/html; charset=utf-8
+/terms/
+  Content-Type: text/html; charset=utf-8
+/stock/*
+  Content-Type: text/html; charset=utf-8
+/offline/
+  Content-Type: text/html; charset=utf-8
+/sw.js
+  Content-Type: application/javascript; charset=utf-8
+/sitemap.xml
+  Content-Type: application/xml; charset=utf-8

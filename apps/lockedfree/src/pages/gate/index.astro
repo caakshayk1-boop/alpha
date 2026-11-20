@@ -5,6 +5,6 @@ const names = [...new Set(Object.values(latestLists()).flatMap((l) => l.symbols)
 <Terminal live={false} title="The Gate" description="A paper-trading terminal where a trade cannot be entered until a checklist, a computed position size and a stop exist. Journal and account rules included.">
 <div class="wrap"><div class="t-title"><h1>Practice</h1><span class="stamp">paper only · kept in this browser</span></div>
 <nav class="seg" aria-label="Practice"><a href="/gate/" aria-current="page">The Gate</a><a href="/plan/">The Plan</a></nav>
-<p class="lede pr-lede"><strong>A trade cannot start until the rules exist.</strong> Five checklist items, a computed size and an attached stop. Hit your own daily limit and the terminal locks until the next session. Trade, Journal and Rules are tabs on this page.</p></div>
+<p class="lede pr-lede"><strong>A trade cannot start until the rules exist.</strong> Choose a setup, entry trigger, stop, target and risk percentage. The Gate calculates a paper position size. Hit your own daily limit and the terminal locks until the next session. Trade, Journal and Rules are tabs on this page.</p></div>
 <div class="wrap"><script type="application/json" id="shortlist-data" set:html={JSON.stringify(names)}></script><div id="gate-root"><noscript><p class="card">The Gate needs JavaScript to run, because your paper book is kept in your browser.</p></noscript></div></div>
 <script src="../../app/gate.tsx"></script></Terminal>

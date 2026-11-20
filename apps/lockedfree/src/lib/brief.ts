@@ -13,6 +13,6 @@ export function brief(F: Feed): Brief {
   const p3 = `${c((r) => !!r.brk52w)} stocks closed at a fresh 52-week high or breakout, ${spikes} liquid names traded on at least twice their usual volume, ${c((r) => (num(r, 'rsi') ?? 0) >= 70)} have a 14-day RSI of 70 or more and ${c((r) => (num(r, 'rsi') ?? 100) <= 30)} are at 30 or less.`;
   const med1d = median(vals(rows, 'r1d')); const p4 = med1d != null ? `The median stock moved ${spct(med1d, 2)} on the day.` : '';
   return { asOf: F.asOf, builtOn: F.builtOn, headline: `${tone[0].toUpperCase()}${tone.slice(1)} session: ${adv ?? '—'} up, ${dec ?? '—'} down${lead ? `, ${lead.sector} ahead over the month` : ''}`,
-    paragraphs: [p1, p2, p3, p4].filter(Boolean), counts: [{ label: 'Advancing', value: adv ?? 0, of: tot }, { label: 'Above 200-day', value: Math.round(((b.above200 ?? 0) / 100) * rows.length), of: rows.length }, { label: 'Volume spikes (liquid)', value: spikes, of: liquid.length }],
+    paragraphs: [p1, p2, p3, p4].filter(Boolean), counts: [{ label: 'Advancing', value: adv ?? 0, of: tot }, { label: 'Above 200-day', value: b.above200_count, of: b.above200_eligible }, { label: 'Volume spikes (liquid)', value: spikes, of: liquid.length }],
     unusual: { up: mv.slice(0, 5), down: mv.slice(-5).reverse() }, scoreRise: rise.slice(0, 5), scoreFall: fall.slice(0, 5), compared: F.meta.changes?.compared_with ?? null };
 }

@@ -23,6 +23,12 @@ export function loadFeed(): Feed {
   if (cache) return cache; const rd = (f: string) => JSON.parse(readFileSync(join(DIR, f), 'utf8')); const s = rd('screen.json');
   const rows: Row[] = s.rows.slice().sort((a: Row, b: Row) => a.sym.localeCompare(b.sym));
   const detail = rd('detail.json').detail; deriveMcap(rows, detail);
+  const changes = rows.map(r => num(r, 'r1d')).filter((v): v is number => v !== null);
+  const averages = rows.filter(r => num(r, 'price') !== null && num(r, 'sma200') !== null && r.sma200 > 0);
+  const above = averages.filter(r => r.price > r.sma200).length;
+  s.breadth = { ...s.breadth, version: 'screen-rows/1', as_of: s.price_date, counted: changes.length,
+    advancing: changes.filter(v => v > 0).length, declining: changes.filter(v => v < 0).length,
+    above200_count: above, above200_eligible: averages.length, above200: averages.length ? 100 * above / averages.length : null };
   cache = { rows, bySym: new Map(rows.map((r) => [r.sym, r])), detail, swot: rd('swot.json').swot, season: rd('seasonality.json'), meta: s, asOf: s.price_date, builtOn: s.built_on }; return cache;
 }
 export const num = (r: Row | undefined, k: string): number | null => { const v = r?.[k]; return typeof v === 'number' && Number.isFinite(v) ? v : null; };

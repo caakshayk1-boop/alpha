@@ -101,8 +101,16 @@ const fromHash = () => { const h = location.hash.slice(1); return h === 'journal
 function App() {
   const [book, set] = useBook(); const [view, setView] = useState(fromHash()); useEffect(() => { const f = () => setView(fromHash()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   const go = (v: string) => { setView(v); history.replaceState(null, '', v === 'entry' ? location.pathname : '#' + v); };
-  return (<div className="grid">{SEBI}<div className="tabbar" role="tablist" aria-label="The Gate">{VIEWS.map(([id, label]) => <button key={id} role="tab" aria-selected={view === id} onClick={() => go(id)} onKeyDown={(e) => { const i = VIEWS.findIndex(([x]) => x === view); if (e.key === 'ArrowRight') go(VIEWS[(i + 1) % 3][0]); if (e.key === 'ArrowLeft') go(VIEWS[(i + 2) % 3][0]); }}>{label}</button>)}</div>
-    {view === 'entry' && <><Entry book={book} set={set} /><Positions book={book} set={set} /></>}{view === 'journal' && <Journal book={book} />}{view === 'rules' && <RulesView book={book} set={set} />}<Backup book={book} set={set} /></div>);
+  return (<div className="grid">{SEBI}<div className="tabbar" role="tablist" aria-label="The Gate">{VIEWS.map(([id, label]) => <button key={id} role="tab" id={`gate-tab-${id}`} aria-controls={`gate-panel-${id}`} tabIndex={view === id ? 0 : -1} aria-selected={view === id} onClick={() => go(id)} onKeyDown={(e) => {
+        const i = VIEWS.findIndex(([key]) => key === id);
+        const next = { ArrowLeft: (i+2)%3, ArrowRight: (i+1)%3, Home: 0, End: 2 }[e.key];
+        if (next === undefined) return;
+        e.preventDefault();
+        const key = VIEWS[next][0];
+        go(key);
+        document.getElementById(`gate-tab-${key}`)?.focus();
+      }}>{label}</button>)}</div>
+    {VIEWS.map(([id]) => <section key={id} role="tabpanel" id={`gate-panel-${id}`} aria-labelledby={`gate-tab-${id}`} hidden={view !== id}>{view === id && <>{id === 'entry' && <><Entry book={book} set={set} /><Positions book={book} set={set} /></>}{id === 'journal' && <Journal book={book} />}{id === 'rules' && <RulesView book={book} set={set} />}</>}</section>)}<Backup book={book} set={set} /></div>);
 }
 const el = document.getElementById('gate-root'); if (el) createRoot(el).render(<App />);
 export { emptyBook };

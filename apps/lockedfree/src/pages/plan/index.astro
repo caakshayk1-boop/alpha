@@ -1,9 +1,9 @@
 ---
-import Terminal from '../../layouts/Terminal.astro'; import { latestLists, benchmarkLast } from '../../lib/data.ts';
+import Terminal from '../../layouts/Terminal.astro'; import { latestLists, benchmarkLast, ledger } from '../../lib/data.ts';
 ---
 <Terminal live={false} title="The Plan" description="A written one-page investment plan, goal buckets, and a systematic paper deployment rhythm with pre-committed auto-escalation.">
 <div class="wrap"><div class="t-title"><h1>Practice</h1><span class="stamp">paper only · kept in this browser</span></div>
 <nav class="seg" aria-label="Practice"><a href="/gate/">The Gate</a><a href="/plan/" aria-current="page">The Plan</a></nav>
-<p class="lede pr-lede"><strong>Decide once. Then follow the system.</strong> Five answers become a dated, one-page plan. A paper monthly deployment follows a screen's list in its own proportions, and rebalancing happens on a date, not on a feeling.</p></div>
+<p class="lede pr-lede"><strong>Decide once. Then follow the system.</strong> Build a dated plan in six steps. The monthly paper amount is divided equally among stocks on the selected screen list.</p></div>
 <div class="wrap"><script type="application/json" id="plan-data" set:html={JSON.stringify(latestLists())}></script><script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
-<div id="plan-root"><noscript><p class="card">The Plan needs JavaScript to run, because it is kept in your browser.</p></noscript></div></div><script src="../../app/plan.tsx"></script></Terminal>
+<div id="plan-root" data-ledger-date={ledger().as_of}><noscript><p class="card">The Plan needs JavaScript to run, because it is kept in your browser.</p></noscript></div></div><script src="../../app/plan.tsx"></script></Terminal>
