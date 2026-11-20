@@ -387,3 +387,9 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 **Found on the live site (two screenshots from the owner):** (1) On a wide screen Today left large empty areas: the seven default widgets did not add up to full rows (6+4, then 4+4 of 12 columns), and the Watchlist and Live paper P&L widgets, nearly empty when nothing is saved, were stretched to the height of their neighbours. (2) The Gate (and Plan) opened in a different frame from the other app screens: no market status bar or search, and a marketing-style hero with a huge headline, so Practice did not feel like the same app as Today.
 **Changed:** (1) Watchlist and Live paper P&L are one widget, Yours (two short lists under one card); the market regime and the barometer are two widgets; the spans are now 4+4+4, 8+4, 6+6, so every default row is full and no widget stretches (measured at 1,440 px: 461, 935, 698 px wide cards in three full rows, no gaps). The Widgets menu lists the new ids; a saved hidden list still works. (2) The Gate and the Plan use the same Terminal frame as Today, Calls and Stocks (status bar, search, data date), with the title Practice, the Gate and Plan switch and one lede line. The strict CSP test caught two inline style attributes I had added; they are a class now. Footer columns are 2fr and 1fr since the room list left.
 **Verified locally:** 107 unit tests, the static build (1,010 pages), the launch gate and the copy audit; Today and the Gate looked at in a browser at 1,440 px. **Not yet:** the live site.
+
+## 20 Nov 2026: hub data redeploys unblocked; Rulebook rebuild earlier
+
+- Changed: hub deploy gate now treats apps/lockedfree/ledger/ commits as data (three redeploys since 20:52 UTC failed on them); lockedfree gets a 06:00 IST rebuild.
+- Verified: gate regex tested against the failing file list; live Rulebook checked (indices live, daily feed is the newest published, 18 Nov).
+- Untouched: all code, tests, feeds.
