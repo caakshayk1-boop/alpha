@@ -42,7 +42,8 @@ for (const f of pages) { const t = visible(readFileSync(f, 'utf8')); for (const 
 {
   const smap = readFileSync(join(OUT, 'sitemap.xml'), 'utf8'), home = existsSync(join(OUT, 'index.html')) ? readFileSync(join(OUT, 'index.html'), 'utf8') : '';
   const nav = [...(home.match(/<nav[\s\S]*?<\/nav>/gi) ?? []).join(' ').matchAll(/href="(\/[a-z0-9-]+\/)"/g)].map((m) => m[1]);
-  for (const p of new Set(['/pro/', ...nav])) if (!smap.includes(`https://alpha.askakshay.com${p}`)) problems.push(`sitemap.xml does not list ${p}`);
+  const noindex = (p) => existsSync(join(OUT, p, 'index.html')) && /<meta[^>]+name="robots"[^>]+noindex/i.test(readFileSync(join(OUT, p, 'index.html'), 'utf8'));   // personal pages such as /desk/ are kept out of the sitemap on purpose
+  for (const p of new Set(['/pro/', ...nav])) if (!noindex(p) && !smap.includes(`https://alpha.askakshay.com${p}`)) problems.push(`sitemap.xml does not list ${p}`);
 }
 
 // 3. every /data/<feed>.json and /api/ call in the source must be one the Worker serves
