@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { summarizeLedger } from '../ledger.ts';
 import { useJson, useLedger } from '../data.ts';
 import { edition, editionDays, failingChecks, gateRun } from '../edition.ts';
 import { lastGateOn, type SwingFeed } from '../trust.ts';
@@ -11,10 +12,10 @@ import { PageBar, Loading } from './common.tsx';
 /** The live sentence under the welcome headline. Its box is reserved so the figures arriving do not move the page. */
 export function LedgerLine() {
   const f = useLedger(), g = useJson<SwingFeed>('/data/signals.json'); const l = f.data?.ledger, s = g.data;
-  const run = gateRun(s?.gate_history);
+  const run = gateRun(s?.gate_history), sum = l ? summarizeLedger(l).all : null;
   return <p className="lp-ledger small" data-ledger-line aria-live="polite">
-    {!l ? (f.loading ? 'Reading the public ledger…' : <>The public ledger could not be read just now. <a href="#/edition">Open the daily edition</a>.</>)
-      : <>The public record: <b className="num">{l.days.length}</b> nights recorded, <b className="num">{l.picks.length}</b> paper picks{s ? <>, swing gate <b>{s.gate.on ? 'on' : 'off'}</b>{run && !s.gate.on && run.offStreak > 0 ? <> for <b className="num">{run.offStreak}</b> published days</> : null}</> : null}. <a href="#/edition">Read tonight’s edition</a></>}
+    {!l || !sum ? (f.loading ? 'Reading the public ledger…' : <>The public ledger could not be read just now. <a href="#/edition">Open the daily edition</a>.</>)
+      : <>The public record: <b className="num">{l.days.length}</b> nightly editions · <b className="num">{sum.picks}</b> observations · <b className="num">{sum.closed}</b> closed paper positions{sum.closed > 0 ? <> ({sum.totalR > 0 ? '+' : sum.totalR < 0 ? '−' : ''}{Math.abs(sum.totalR).toFixed(2)}R in total)</> : null}{s ? <>, swing gate <b>{s.gate.on ? 'on' : 'off'}</b>{run && !s.gate.on && run.offStreak > 0 ? <> for <b className="num">{run.offStreak}</b> published days (gate history since {dayWord(run.first)})</> : null}</> : null}. An observation is a recorded pick, not a distinct position. <a href="#/edition">Read tonight’s edition</a></>}
   </p>;
 }
 
