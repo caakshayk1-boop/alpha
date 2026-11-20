@@ -27,7 +27,7 @@ The ledger is append-only in git (`apps/lockedfree/ledger/`, dated snapshots in 
 Needs the `ADMIN_TOKEN` secret on the Worker (`npx wrangler secret put ADMIN_TOKEN --config wrangler.lockedfree.jsonc`). Keep the exported file private: it holds personal data, so never commit it.
 - Backup: `curl -H "Authorization: Bearer $TOKEN" https://lockedfree.askakshay.com/api/subscribers > subscribers-backup.json`
 - Restore (adds missing rows, never overwrites): `curl -X PUT -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" --data @subscribers-backup.json https://lockedfree.askakshay.com/api/subscribers`
-- Delete one person: `curl -X DELETE -H "Authorization: Bearer $TOKEN" "https://lockedfree.askakshay.com/api/subscribers?email=person@example.com"`
+- Delete one person: `curl -X DELETE -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data '{"email":"person@example.com"}' https://lockedfree.askakshay.com/api/subscribers`
 Test order after any change to this code: backup, restore into the same list (no change expected), delete a test address, confirm it is gone. Take a backup monthly; there is no automatic backup because the file contains personal data.
 
 ## If the data source fails
@@ -43,3 +43,5 @@ The origin robots.txt allows public pages, excludes /api/ and names the canonica
 After the normal build, `node tools/check-routes.cjs` exercises the built pages offline, including unavailable quote responses, at four widths. Install Playwright Chromium first, or set `BROWSER_CHANNEL=chrome` to use installed Chrome. CI runs it before deploying. For subscriber lifecycle tests, start Wrangler with `dev --local --port 8884 --config wrangler.lockedfree.jsonc --persist-to <new temporary directory> --var ADMIN_TOKEN:local-test-only` at repository root. Run `node tools/check-subscriber-local.mjs` in this app. This test exclusively uses loopback and synthetic data.
 
 The deployed robots policy combines a Cloudflare-managed wildcard group (search permitted; AI training restricted) with the origin group that excludes `/api/`. Removing the origin group would lose the API exclusion; removing the managed group would lose the content signals and named crawler rules. No zone-wide change is needed to serve the site. The account's actual operational-log retention, deletion turnaround and newsletter delivery cadence have not been established. No subscriber address was retrieved from production. Physical handset and human screen-reader review remain separate from automated checks.
+
+Direct inspection confirmed persisted Worker invocation logs are enabled. The billing subscription and account Logpush listing returned permission denied, so an account-wide retention or export claim cannot be made. The Worker redacts logged query strings; deletion accepts an address in the authenticated JSON body.

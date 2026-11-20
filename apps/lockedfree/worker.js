@@ -52,7 +52,7 @@ export default {
     }
     if (url.pathname === '/api/subscribers' && env.ADMIN_TOKEN) {                           // owner export and deletion on request; off unless the secret is set
       const given = req.headers.get('authorization') || ''; if (given.length !== env.ADMIN_TOKEN.length + 7 || given !== 'Bearer ' + env.ADMIN_TOKEN) return json({ error: 'No.' }, 401);
-      const stub = env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main')); if (req.method === 'DELETE') { await stub.remove(url.searchParams.get('email') || ''); return json({ ok: true }); }
+      const stub = env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main')); if (req.method === 'DELETE') { let data; try { data = await req.json(); } catch { return json({ error: 'Send the email in the request body.' }, 400); } const address = String(data?.email || '').trim().toLowerCase(); if (!EMAIL.test(address) || address.length > 254) return json({ error: 'Invalid email.' }, 400); await stub.remove(address); return json({ ok: true }); }
       if (req.method === 'PUT') { let b; try { b = await req.json(); } catch { return json({ error: 'Bad JSON.' }, 400); } const rows = Array.isArray(b?.rows) ? b.rows : []; if (rows.length > 20000 || !rows.every((r) => typeof r?.email === 'string' && EMAIL.test(r.email) && r.email.length <= 254 && r.consent === CONSENT && typeof r.at === 'string')) return json({ error: 'Rows rejected: every row needs a valid email, the current consent text and a time.' }, 400); return json({ ok: true, restored: await stub.restore(rows) }); }
       return json({ rows: await stub.all() });
     }
