@@ -28,7 +28,7 @@ export default function Home() {
       <section className="wrap section2" aria-label="Alpha Pro">
         <div className="card tight pro-strip">
           <p><b>Alpha Pro is coming.</b> <span className="muted">Same-session data, change alerts, exports and research memos. Better tools, never buy or sell calls.</span></p>
-          <Link className="act" href="/pro/">Join the waitlist</Link>
+          <Link className="act" href="/pro/">See what Pro includes</Link>
         </div>
       </section>
     </TodayProvider>
