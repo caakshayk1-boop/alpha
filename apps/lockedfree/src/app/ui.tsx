@@ -13,7 +13,13 @@ export const SEBI = (<p className="disclaimer small"><strong>93% of individual F
 export function Choice({ id, label, hint, options, value, onChange, inputMode, otherLabel = 'Other', placeholder }: { id: string; label: string; hint?: ReactNode; options: [string, string][]; value: string; onChange: (v: string) => void; inputMode?: 'decimal' | 'numeric' | 'text'; otherLabel?: string; placeholder?: string }) {
   const isPreset = options.some(([v]) => v === value); const [other, setOther] = useState(value !== '' && !isPreset); const showOther = other || (value !== '' && !isPreset);
   return (<div className="field" role="radiogroup" aria-labelledby={id + '-l'}><span className="lbl" id={id + '-l'}>{label}</span>{hint && <span className="hint">{hint}</span>}
-    <div className="chips">{options.map(([v, text]) => <button key={v} type="button" role="radio" aria-checked={!showOther && value === v} className="chip" aria-pressed={!showOther && value === v} onClick={() => { setOther(false); onChange(v); }}>{text}</button>)}
-      <button type="button" role="radio" aria-checked={showOther} className="chip" aria-pressed={showOther} onClick={() => { setOther(true); if (isPreset) onChange(''); }}>{otherLabel}</button></div>
+    <div className="chips" onKeyDown={(e) => {
+      const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End']; if (!keys.includes(e.key)) return;
+      const radios = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+      const at = radios.indexOf(e.target as HTMLButtonElement); if (at < 0) return;
+      e.preventDefault(); const i = e.key === 'Home' ? 0 : e.key === 'End' ? radios.length - 1 : (at + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1) + radios.length) % radios.length;
+      radios[i].click(); radios[i].focus();
+    }}>{options.map(([v, text], i) => <button key={v} type="button" role="radio" tabIndex={!showOther && (value === v || (!isPreset && i === 0)) ? 0 : -1} aria-checked={!showOther && value === v} className="chip" onClick={() => { setOther(false); onChange(v); }}>{text}</button>)}
+      <button type="button" role="radio" tabIndex={showOther ? 0 : -1} aria-checked={showOther} className="chip" onClick={() => { setOther(true); if (isPreset) onChange(''); }}>{otherLabel}</button></div>
     {showOther && <TextField id={id} label={otherLabel + ': type your own'} inputMode={inputMode} placeholder={placeholder} value={isPreset ? '' : value} onChange={onChange} />}</div>);
 }

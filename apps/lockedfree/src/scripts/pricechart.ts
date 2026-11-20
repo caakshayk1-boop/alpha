@@ -1,6 +1,6 @@
 // The stock price chart (ADR-020): a clean, hand-drawn SVG, no library. A soft area line by default, candles on request, range and Daily/Weekly/Monthly buttons,
 // round-number price axis, a last-price tag, 52-week high/low labels, and a crosshair that drives the big readout above it. Delayed, unofficial data; says so when it cannot load.
-import { byInterval, inRange, niceTicks, priceLabel, money, decimate, dateTicks, shortDate, changeOver, signedPct, trendWords, MAX_CANDLES, type C, type Interval, type Range } from '../lib/pricechart.ts';
+import { historyInterval, byInterval, inRange, niceTicks, priceLabel, money, decimate, dateTicks, shortDate, changeOver, signedPct, trendWords, MAX_CANDLES, type C, type Interval, type Range } from '../lib/pricechart.ts';
 const host = document.querySelector<HTMLElement>('[data-price-chart]');
 if (host) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; const SVGNS = 'http://www.w3.org/2000/svg';
@@ -47,7 +47,7 @@ if (host) {
     host!.onpointermove = (e) => show(idxAt(e.clientX)); host!.onpointerleave = reset; host!.onpointercancel = reset; host!.onpointerdown = (e) => show(idxAt(e.clientX));
     host!.onkeydown = (e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1); } else if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1); } else if (e.key === 'Home') { e.preventDefault(); show(0); } else if (e.key === 'End') { e.preventDefault(); show(n - 1); } else if (e.key === 'Escape') reset(); };
     host!.setAttribute('aria-label', `Price chart, ${candles ? 'candles' : 'line'}, ${st.ivl === 'D' ? 'daily' : st.ivl === 'W' ? 'weekly' : 'monthly'}, ${n} points from ${bars[0].t} to ${last.t}. Left and right arrow keys move along it.`);
-    if (note) note.textContent = `${daily.length.toLocaleString('en-IN')} daily closes to ${daily[daily.length - 1].t} · delayed, unofficial${st.ivl !== 'D' ? ' · built from the daily data' : ''}${candles && inRange(byInterval(daily, st.ivl), st.range).length > MAX_CANDLES ? ` · latest ${MAX_CANDLES} candles shown` : ''}`;
+    if (note) note.textContent = `${daily.length.toLocaleString('en-IN')} ${({ D: 'daily', W: 'weekly', M: 'monthly' })[historyInterval(daily)]} observations to ${daily[daily.length - 1].t} · delayed, unofficial${st.ivl !== 'D' ? ' · aggregated from source observations' : ''}${candles && inRange(byInterval(daily, st.ivl), st.range).length > MAX_CANDLES ? ` · latest ${MAX_CANDLES} candles shown` : ''}`;
   }
   const press = (sel: string, v: string) => document.querySelectorAll<HTMLElement>(sel).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[sel.includes('range') ? 'range' : sel.includes('ivl') ? 'ivl' : 'style'] === v)));
   document.querySelectorAll<HTMLElement>('[data-range]').forEach((b) => b.addEventListener('click', () => { st.range = b.dataset.range as Range; press('[data-range]', st.range); render(); }));
@@ -55,8 +55,8 @@ if (host) {
   document.querySelectorAll<HTMLElement>('[data-style]').forEach((b) => b.addEventListener('click', () => { st.style = b.dataset.style as 'line' | 'candles'; press('[data-style]', st.style); render(); }));
   async function load() {
     host!.classList.add('loading');
-    try { const r = await fetch(`/api/chart?s=${encodeURIComponent(host!.dataset.priceChart!)}`); const j = await r.json().catch(() => ({})) as { points?: C[] }; if (!r.ok || !j.points?.length) throw new Error('empty'); daily = j.points; if (trendEl) trendEl.textContent = trendWords(daily); render(); new ResizeObserver(() => render()).observe(host!); }
+    try { const r = await fetch(`/api/chart?s=${encodeURIComponent(host!.dataset.priceChart!)}`); const j = await r.json().catch(() => ({})) as { points?: C[] }; if (!r.ok || !j.points?.length) throw new Error('empty'); daily = j.points; const sourceInterval = historyInterval(daily); if (sourceInterval !== 'D') { st.ivl = sourceInterval; document.querySelectorAll<HTMLButtonElement>('[data-ivl]').forEach((b) => { b.disabled = b.dataset.ivl === 'D' || (sourceInterval === 'M' && b.dataset.ivl === 'W'); }); press('[data-ivl]', sourceInterval); } if (trendEl) trendEl.textContent = trendWords(daily); render(); new ResizeObserver(() => render()).observe(host!); }
     catch { host!.className = 'chart-empty'; host!.textContent = 'The price history could not be loaded just now. Nothing is shown in its place.'; if (note) note.textContent = 'unavailable'; }
   }
-  if ('requestIdleCallback' in window) requestIdleCallback(() => load(), { timeout: 1500 }); else setTimeout(load, 300);
+  load();
 }

@@ -97,14 +97,14 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
   return L;
 }
 
-export function aggregate(L: Ledger, sid: string, inp: Pick<Inputs, 'bars' | 'as_of'>): Aggregate {
+export function aggregate(L: Ledger, sid: string, inp: { bars: Bars; as_of: string }): Aggregate {
   const ps = L.picks.filter((p) => sid === 'all' || p.screen_id === sid), closed = ps.filter((p) => p.status === 'closed');
   const res = closed.map((p) => ({ p, r: evaluate(p.fills, p.stop!, null), exit: p.fills[p.fills.length - 1].date })).sort((a, b) => a.exit.localeCompare(b.exit));
   const wins = res.filter((x) => x.r.total > 0), losses = res.filter((x) => x.r.total <= 0), n = res.length;
   const mean = (a: number[]) => (a.length ? r2(a.reduce((x, y) => x + y, 0) / a.length) : null);
   let streak = 0, longest = 0; for (const x of res) { if (x.r.total <= 0) { streak++; longest = Math.max(longest, streak); } else streak = 0; }
   const curve = L.book_days.filter((b) => b.screen_id === sid).sort((a, b) => a.date.localeCompare(b.date)).map((b) => b.equity);
-  let peak = -Infinity, dd = 0; for (const e of curve) { peak = Math.max(peak, e); dd = Math.min(dd, e - peak); }
+  let peak = 0, dd = 0; for (const e of curve) { peak = Math.max(peak, e); dd = Math.min(dd, e - peak); }
   return { screen_id: sid, as_of: inp.as_of, n_picks: ps.length, n_open: ps.filter((p) => p.status === 'open' || p.status === 'pending').length, n_closed: n, n_void: ps.filter((p) => p.status === 'voided').length,
     win_rate: n ? r2(wins.length / n) : null, expectancy_r: mean(res.map((x) => x.r.r ?? 0)), avg_win: mean(wins.map((x) => x.r.total)), avg_loss: mean(losses.map((x) => x.r.total)),
     max_drawdown: r2(dd), longest_losing_streak: longest, honesty: honesty(n) };
@@ -119,6 +119,7 @@ export function validate(L: Ledger): string[] {
     if (p.status === 'voided' && !(p.voided && p.voided.reason)) bad.push(`${p.id} voided without a reason`);
     if ((p.status === 'open' || p.status === 'closed') && (p.stop == null || p.fills.length === 0)) bad.push(`${p.id} ${p.status} without fills or stop`);
     if (p.status === 'closed' && p.fills.filter((f) => f.side === 'sell').length === 0) bad.push(`${p.id} closed without an exit`);
+    if (p.rule && p.fills.length && p.stop != null && Math.abs(p.stop - r2(p.fills[0].price * (1 - p.rule.stop_pct / 100))) > 0.011) bad.push(`${p.id} initial stop does not match its recorded exit rule`);
     for (const f of p.fills) if (!(f.qty > 0 && f.price > 0)) bad.push(`${p.id} has a bad fill`);
   }
   for (const v of L.voids) if (!v.reason) bad.push(`void ${v.pick_id} has no reason`);

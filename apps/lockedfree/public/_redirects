@@ -19,3 +19,8 @@
 /gate/journal/ /gate/ 301
 /gate/rules /gate/ 301
 /gate/rules/ /gate/ 301
+
+/rulebook / 301
+/rulebook/ / 301
+/scoreboard /calls/#record 301
+/scoreboard/ /calls/#record 301

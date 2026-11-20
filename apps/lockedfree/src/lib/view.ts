@@ -1,5 +1,6 @@
 /** Selectors over the ledger. Pages call these and format; nothing else derives a performance number (check 2). */
 import type { Ledger, Aggregate, Pick, BookDay } from './ledger.ts';
+import { evaluate, r2 } from './accounting.ts';
 import { tradeResult } from './gate.ts'; import { timeLimit, ruleText } from './exitrules.ts';
 export const inr = (x: number | null | undefined, d = 0) => (x == null ? '—' : (x < 0 ? '−' : '') + '₹' + Math.abs(x).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }));
 export const signed = (x: number | null | undefined, d = 0, suffix = '') => (x == null ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }) + suffix);
@@ -7,8 +8,8 @@ export const dmy = (iso: string | null | undefined) => { if (!iso) return 'not y
 export interface HeroPoint { date: string; ret: number | null; bench: number | null; dd: number }
 /** Return on notional committed (%), benchmark change since the first book day (%), and drawdown in percentage points from the running peak. Gaps stay gaps. */
 export function heroSeries(L: Ledger, screen = 'all'): HeroPoint[] {
-  const days = L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date)); const b0 = days.find((d) => d.benchmark_close)?.benchmark_close ?? null;
-  const base = (d: BookDay) => (L.config.capital && screen === 'all' ? L.config.capital : d.committed); let peak = -Infinity; return days.map((d) => { const ret = base(d) > 0 ? (d.equity / base(d)) * 100 : null; if (ret != null) peak = Math.max(peak, ret);
+  const days = L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date)); const b0 = days[0]?.benchmark_close ?? null;
+  const base = (d: BookDay) => (L.config.capital && screen === 'all' ? L.config.capital : d.committed); let peak = 0; return days.map((d) => { const ret = base(d) > 0 ? (d.equity / base(d)) * 100 : null; if (ret != null) peak = Math.max(peak, ret);
     return { date: d.date, ret: ret == null ? null : Math.round(ret * 100) / 100, bench: b0 && d.benchmark_close ? Math.round((d.benchmark_close / b0 - 1) * 1e4) / 100 : null, dd: ret != null && peak > -Infinity ? Math.round((ret - peak) * 100) / 100 : 0 }; });
 }
 export const agg = (L: Ledger, id: string): Aggregate | undefined => L.aggregates.find((a) => a.screen_id === id);
@@ -39,8 +40,22 @@ export function closedStats(rows: TradeRow[]): ClosedStats {
 export interface BookState { capital: number; ticket: number; maxOpen: number; sectorCap: number; open: number; deployed: number; cash: number; equity: number; charges: number }
 /** The account in rupees from the ledger's own fills: cost of open positions, cash left after costs and booked results, and equity. Uses the shared accounting, nothing else. */
 export function bookState(L: Ledger, mark: (s: string) => number | null): BookState | null {
-  const capital = L.config.capital; if (!capital) return null; let deployed = 0, openN = 0, realised = 0, charges = 0, unreal = 0;
-  for (const p of L.picks) { if (p.status === 'voided' || p.status === 'pending' || !p.fills.length) continue; const r = tradeResult({ id: p.id, symbol: p.symbol, setup: '', trigger: '', stop: p.stop!, target: 0, riskPct: 0, qty: p.fills[0].qty, qtyOverrideReason: null, entry: { date: p.fills[0].date, price: p.fills[0].price }, exit: p.fills[1] ? { date: p.fills[1].date, price: p.fills[1].price } : null, ruleBreak: false, review: null, reviewSkipped: false }, mark(p.symbol) ?? p.fills[0].price);
-    charges += r.chargesTotal; realised += r.realised; unreal += r.unrealised; if (p.status === 'open') { deployed += r.qtyOpen * r.avgCost; openN++; } }
-  return { capital, ticket: L.config.ticket ?? 0, maxOpen: L.config.max_open ?? 0, sectorCap: L.config.sector_cap ?? 0, open: openN, deployed: Math.round(deployed), cash: Math.round(capital + realised - deployed - (charges - (realised ? 0 : 0))), equity: Math.round(capital + realised + unreal), charges: Math.round(charges) };
+  const capital = L.config.capital; if (!capital) return null;
+  let deployed = 0, openN = 0, cash = capital, charges = 0, marketValue = 0;
+  for (const p of L.picks) {
+    if (p.status === 'voided' || p.status === 'pending' || !p.fills.length) continue;
+    const result = evaluate(p.fills, p.stop!, p.status === 'open' ? mark(p.symbol) ?? p.fills[0].price : null);
+    for (const f of p.fills) {
+      const cost = (f.charges ?? []).reduce((n, c) => n + c.amount, 0);
+      charges += cost; cash += (f.side === 'buy' ? -1 : 1) * f.qty * f.price - cost;
+    }
+    if (result.qtyOpen > 0) { deployed += result.qtyOpen * result.avgCost; marketValue += result.qtyOpen * (mark(p.symbol) ?? result.avgCost); openN++; }
+  }
+  return { capital, ticket: L.config.ticket ?? 0, maxOpen: L.config.max_open ?? 0, sectorCap: L.config.sector_cap ?? 0, open: openN, deployed: r2(deployed), cash: r2(cash), equity: r2(cash + marketValue), charges: r2(charges) };
+}
+/** Rupee drawdown includes the starting account before the first entry charges. */
+export function maxDrawdown(L: Ledger, screen = 'all'): number {
+  let peak = 0, worst = 0;
+  for (const d of L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date))) { peak = Math.max(peak, d.equity); worst = Math.min(worst, d.equity - peak); }
+  return r2(worst);
 }
