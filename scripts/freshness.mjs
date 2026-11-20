@@ -23,6 +23,24 @@ export function evaluate(feeds, nowMs = Date.now()) {
 }
 export const describe = (r) => `${r.ok ? 'OK   ' : 'STALE'} ${r.name}: ${r.date ?? 'no readable date'}; newest finished session ${r.newest}${r.behind == null ? '' : `; ${r.behind} session${r.behind === 1 ? '' : 's'} behind (allowed ${r.allow})`}${r.ok ? '' : `. Produced by: ${r.job}`}`;
 
+/** The workflows that produce the hub's feeds must be ENABLED. On 19 Nov 2026 34 of the 36 workflows in trading-dashboard were disabled by hand; the data then aged two days before anyone saw it.
+ *  Reading the workflow state catches that the same morning. states: { file: 'active' | 'disabled_manually' | ... | null (could not be read) }. A state that could not be read is reported, never failed:
+ *  a rate limit or an outage must not open a false issue. */
+export const WORKFLOW_REPO = 'caakshayk1-boop/trading-dashboard';
+export const WORKFLOWS = [
+  { file: 'stock_screen.yml', makes: 'screen, screen-detail, swot' },
+  { file: 'regime.yml', makes: 'regime' },
+  { file: 'barometer.yml', makes: 'barometer, pulse' },
+  { file: 'newspaper.yml', makes: 'news, data-health, pulse' },
+];
+export function evaluateWorkflows(states) {
+  return WORKFLOWS.map((w) => {
+    const state = states[w.file] ?? null;
+    return { file: w.file, makes: w.makes, state, ok: state === null ? true : state === 'active', unknown: state === null };
+  });
+}
+export const describeWorkflow = (r) => r.unknown ? `UNKNOWN ${r.file}: state could not be read (not treated as a failure)` : `${r.ok ? 'OK   ' : 'OFF  '} ${r.file}: ${r.state}${r.ok ? '' : `. It makes: ${r.makes}. Enable it: GitHub, ${WORKFLOW_REPO}, Actions, the workflow, Enable workflow, then Run workflow.`}`;
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const base = (process.argv[2] ?? process.env.HUB ?? 'https://alpha.askakshay.com').replace(/\/$/, '');
   const feeds = {};
@@ -31,6 +49,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const rows = evaluate(feeds);
   console.log(rows.map(describe).join('\n'));
-  if (rows.some((r) => !r.ok)) { console.error('\nFAIL: the hub is serving data that is behind the newest finished session.'); process.exit(1); }
+  const states = {};
+  for (const w of WORKFLOWS) {
+    try { const r = await fetch(`https://api.github.com/repos/${WORKFLOW_REPO}/actions/workflows/${w.file}`, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'alpha-freshness', ...(process.env.GH_TOKEN ? { authorization: `Bearer ${process.env.GH_TOKEN}` } : {}) }, signal: AbortSignal.timeout(20000) }); states[w.file] = r.ok ? (await r.json()).state ?? null : null; } catch { states[w.file] = null; }
+  }
+  const wrows = evaluateWorkflows(states);
+  console.log(wrows.map(describeWorkflow).join('\n'));
+  if (rows.some((r) => !r.ok) || wrows.some((r) => !r.ok)) { console.error('\nFAIL: the hub is serving data that is behind the newest finished session, or a workflow that produces it is switched off.'); process.exit(1); }
   console.log('\nfreshness ok');
 }
