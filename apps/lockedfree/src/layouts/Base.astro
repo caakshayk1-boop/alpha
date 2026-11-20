@@ -4,7 +4,7 @@ const { title, description = 'A rules-based, paper-only investing site. Publishe
 import f4 from '@fontsource/fira-sans/files/fira-sans-latin-400-normal.woff2?url'; import f7 from '@fontsource/fira-sans/files/fira-sans-latin-700-normal.woff2?url';
 const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rulebook`; const canonical = new URL(path, Astro.site).href;
 ---
-<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{full}</title><meta name="description" content={description}>
+<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>{full}</title><meta name="description" content={description}>
 <link rel="canonical" href={canonical}><meta name="theme-color" content="#08090A"><meta name="color-scheme" content="dark">
 <meta property="og:title" content={full}><meta property="og:description" content={description}><meta property="og:type" content="website"><meta property="og:url" content={canonical}><meta property="og:image" content={new URL(og, Astro.site).href}><HeadCommon title={full} description={description} image={new URL(og, Astro.site).href} />
 {[f4, f7].map((u) => <link rel="preload" as="font" type="font/woff2" href={u} crossorigin="anonymous" />)}<script type="speculationrules" is:inline set:html={JSON.stringify({ prerender: [{ where: { and: [{ href_matches: "/*" }, { not: { href_matches: ["/api/*", "/data/*", "/*.css", "/stock/*"] } }] }, eagerness: "moderate" }] })}></script><link rel="stylesheet" href="/vt.css"><meta name="robots" content={DEMO || path === "/style/" ? "noindex" : "index,follow"}>
@@ -14,5 +14,5 @@ const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rul
 <SiteHeader path={path} />
 <main id="main"><slot /></main>
 <Footer />
-{charts && <script src="../scripts/charts.ts"></script>}{flip && <script src="../scripts/flip.ts"></script>}<script src="../scripts/halo.ts"></script><script src="../scripts/site.ts"></script>
+{charts && <script src="../scripts/charts.ts"></script>}{flip && <script src="../scripts/flip.ts"></script>}<script src="../scripts/halo.ts"></script><script src="../scripts/site.ts"></script><script src="../scripts/livepill.ts"></script>
 </body></html>

@@ -12,3 +12,6 @@ if (!reduce && matchMedia('(hover: hover)').matches) {
   $$('.btn.mag').forEach((b) => { b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${((e.clientX - r.left) / r.width - 0.5) * 8}px, ${((e.clientY - r.top) / r.height - 0.5) * 6}px)`; }); b.addEventListener('pointerleave', () => (b.style.transform = '')); });
   $$('.mock, .nowcard').forEach((m) => { m.addEventListener('pointermove', (e) => { const r = m.getBoundingClientRect(); m.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 5}deg`); m.style.setProperty('--rx', `${-((e.clientY - r.top) / r.height - 0.5) * 4}deg`); }); m.addEventListener('pointerleave', () => { m.style.setProperty('--rx', '0deg'); m.style.setProperty('--ry', '0deg'); }); });
 }
+// 20 Nov 2026: installable app. The worker only provides an offline page (public/sw.js). It is registered 8 s after the page has loaded, not at once: installing it at load took the page's first
+// screener-to-stock view transition away (the worker's install competed with that navigation), so it waits until the visitor has settled in.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', () => { setTimeout(() => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }, 8000); });

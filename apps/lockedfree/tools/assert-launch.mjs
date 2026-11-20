@@ -8,7 +8,8 @@ function check(p) { pages++; const h = readFileSync(p, 'utf8'); const rel = p.sl
   const title = (h.match(/<title>([^<]*)/) || [])[1]; must(rel, title, 'no title'); if (title) { if (titles.has(title)) bad.push(`${rel}: title duplicates ${titles.get(title)}`); titles.set(title, rel); }
   for (const t of ['name="description"', 'rel="canonical"', 'property="og:title"', 'property="og:image"', 'name="twitter:card"', 'name="twitter:image"', 'rel="manifest"', 'rel="apple-touch-icon"']) must(rel, h.includes(t), 'missing ' + t);
   must(rel, (h.match(/<h1/g) || []).length === 1, 'not exactly one h1');
-  if (/^\/(calls|terminal|screener|stock\/[^/]+)\/index\.html$/.test(rel)) must(rel, h.includes('class="disc"'), 'no disclaimer banner');
+  // 20 Nov 2026 (owner request): the notice is the last block of every page, inside the footer and after the main content, not a banner at the top
+  must(rel, h.includes('class="notice') && h.lastIndexOf('class="notice') > h.lastIndexOf('</main>'), 'the notice is not after the main content'); must(rel, !h.includes('class="disc"'), 'a top disclaimer banner is still present');
   must(rel, /SEBI/.test(h), 'no SEBI wording in the page (footer)');
   for (const m of h.matchAll(/href="(https?:\/\/[^"]+)"/g)) if (!/^https:\/\/askakshay\.com\/?$/.test(m[1]) && !/canonical/.test(m[0]) && !m[1].startsWith('https://lockedfree.askakshay.com')) bad.push(`${rel}: external link ${m[1]}`);
 }

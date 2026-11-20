@@ -139,22 +139,24 @@ Hairlines are 1px. Surfaces are never tinted with the semantic colours.
 
 ## 3. Typography
 
-| Role | Face | Size / line | Notes |
-|---|---|---|---|
-| display-xl | Fraunces | 56 / 1.04 | home hero only |
-| display-l | Fraunces | 36 / 1.1 | page titles |
-| display-m | Fraunces | 24 / 1.2 | section titles. **Display never goes below 24px.** |
-| body | Inter | 16 / 1.55 | `font-variant-numeric: tabular-nums` where numbers appear |
-| body-s | Inter | 14 / 1.5 | table cells, captions |
-| label | Inter | 12 / 1.3, +0.04em | small caps-style labels; never below 12px |
-| figure | IBM Plex Mono | 15 / 1.35 | every number, date, and stamp |
-| figure-xl | IBM Plex Mono | 32 / 1.1 | headline statistics |
-| stamp | IBM Plex Mono | 12 / 1.3 | "as of 18 Nov 2026" stamps |
+Two faces, self-hosted (Fontsource variable packages, `fontaine` size-adjusted fallbacks, no Google Fonts requests): **Fira Sans** for everything that is read, **JetBrains Mono** for everything that is counted (figures, dates, stamps, column labels). Long prose is never mono. (Realigned 20 Nov 2026: the earlier text of this section named Fraunces, Inter and IBM Plex Mono, which the owner replaced in ADR-011; the code and the front matter already used Fira Sans and JetBrains Mono.)
 
-- Fraunces variable with optical-size, SOFT and WONK axes. Defaults: `opsz` auto, `SOFT` 30, `WONK` 0. WONK stays 0 in running headlines (it changes letter shapes distractingly); allowed only on the hero word.
-- Mobile sizes: display-xl 38, display-l 28.
-- Self-hosted via Fontsource variable packages. `fontaine` generates size-adjusted fallbacks so the swap produces no layout shift. No Google Fonts requests, ever.
-- Measure: 68ch maximum for prose.
+One scale, in `tokens.css`, and nothing is set below 12px:
+
+| Token | Size | Role |
+|---|---|---|
+| `--fs-xs` | 12px | labels, stamps, column heads, captions (the floor) |
+| `--fs-sm` | 14px | table cells, secondary text, controls |
+| `--fs-md` | 16px | body and prose (68ch maximum) |
+| `--fs-lg` | 18px | lede, emphasised lines |
+| `--fs-xl` | 20px | card titles, large quotes |
+| `--fs-2xl` | 24px | section titles (display never below 24px) |
+| `--fs-fig` / `--fs-fig-xl` | 32px / 40px | headline figures, mono |
+| display clamps | 36 to 92px | page titles and the home hero (documented clamps in `global.css`) |
+
+- Figures are right-aligned in columns with `font-variant-numeric: tabular-nums`; a stamp always sits beside the figure it dates.
+- Weights: 400 body, 500 figures, 560 labels and display, 600 to 700 headings.
+- `tests/design.test.ts` fails if a size outside this scale, or any size under 12px, appears in the CSS.
 
 ## 4. Spacing, layout, shape
 

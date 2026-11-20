@@ -16,9 +16,10 @@ test('the method text quotes the same universe and liquidity numbers the screens
 test('the method text states the one-month cap and the engines\' own exits', () => {
   assert.match(COMMON.mechanics, /no call is held longer than a month/); for (const r of Object.values(RULES)) assert.equal(r.max_months, 1);
 });
-test('the disclaimer sits on every decision page, not only the footer', () => {
-  for (const f of ['src/pages/calls.astro', 'src/pages/terminal/index.astro', 'src/pages/screener.astro', 'src/pages/stock/[symbol].astro']) assert.match(src(f), /<Disclaimer( compact)? \/>/, f);
-  assert.match(src('src/components/Footer.astro'), /SEBI/); assert.match(src('src/components/Disclaimer.astro'), /SEBI/);
+test('the notice is the last block of every page: it lives in the footer, after the content, with the SEBI wording (owner request, 20 Nov 2026)', () => {
+  for (const f of ['src/pages/calls.astro', 'src/pages/terminal/index.astro', 'src/pages/screener.astro', 'src/pages/stock/[symbol].astro']) assert.doesNotMatch(src(f), /<Disclaimer/, `${f} must not carry a top banner`);
+  const foot = src('src/components/Footer.astro'); assert.match(foot, /SEBI/); assert.match(foot, /class="notice/);
+  assert.ok(foot.indexOf('class="notice') > foot.indexOf('askakshay.com'), 'the notice follows the links and contact in the footer');
 });
 test('contact details are published, and the charting credit is text without a link', () => {
   assert.match(src('src/lib/site.ts'), /ca\.akkothari@askakshay\.com/); assert.match(src('src/components/Footer.astro'), /askakshay\.com/);
