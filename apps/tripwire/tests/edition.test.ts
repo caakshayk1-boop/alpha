@@ -31,7 +31,7 @@ test('gate run counts published days only and the current off streak ends at the
   assert.equal(gateRun(undefined), null);
   assert.equal(gateRun([]), null);
   const r = gateRun([{ d: '2026-11-13', on: false }, { d: '2026-11-10', on: true }, { d: '2026-11-12', on: false }, { d: '2026-11-16', on: false }]);
-  assert.deepEqual(r, { off: 3, on: 1, total: 4, offStreak: 3 });
+  assert.deepEqual(r, { off: 3, on: 1, total: 4, offStreak: 3, first: '2026-11-10' });
 });
 
 test('an edition is one ledger night: its picks, its refusals, its voids, and its neighbours', () => {

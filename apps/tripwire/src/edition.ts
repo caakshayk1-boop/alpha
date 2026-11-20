@@ -24,11 +24,11 @@ export function failingChecks(g: Gate): GateGap[] {
 }
 
 /** Days the gate was off, out of the days published. "Sat out" means exactly this: the published gate said off. */
-export function gateRun(h: { d: string; on: boolean }[] | undefined): { off: number; total: number; on: number; offStreak: number } | null {
+export function gateRun(h: { d: string; on: boolean }[] | undefined): { off: number; total: number; on: number; offStreak: number; first: string } | null {
   if (!h || h.length === 0) return null;
   const sorted = h.slice().sort((a, b) => a.d.localeCompare(b.d)); let streak = 0;
   for (let i = sorted.length - 1; i >= 0 && !sorted[i].on; i--) streak++;
-  return { off: sorted.filter((x) => !x.on).length, on: sorted.filter((x) => x.on).length, total: sorted.length, offStreak: streak };
+  return { off: sorted.filter((x) => !x.on).length, on: sorted.filter((x) => x.on).length, total: sorted.length, offStreak: streak, first: sorted[0].d };
 }
 
 export interface EditionEngine { engine: string; eligible: number; passed: number; picked: number; skippedWideStop: number; /** passed the rules but not picked: passed minus picked, floored at 0 */ passedNotPicked: number }
