@@ -34,6 +34,18 @@ for (const f of pages) {
   }
 }
 
+// 2b. no template fragment may reach the reader (A-01: "1 dataset behind.\")" was once rendered next to the badge). Visible text only: scripts and styles legitimately contain these characters.
+const visible = (html) => html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"');
+export const LEAKS = [/\$\{/, /\[object Object\]/, /\bundefined\b/, /\bNaN\b/, /\."\)/];
+for (const f of pages) { const t = visible(readFileSync(f, 'utf8')); for (const re of LEAKS) { const m = re.exec(t); if (m) problems.push(`${f}: leaked template text near "${t.slice(Math.max(0, m.index - 30), m.index + 20).replace(/\s+/g, ' ')}"`); } }
+// 2c. the money page and every top-nav page are in the sitemap (A-04)
+{
+  const smap = readFileSync(join(OUT, 'sitemap.xml'), 'utf8'), home = existsSync(join(OUT, 'index.html')) ? readFileSync(join(OUT, 'index.html'), 'utf8') : '';
+  const nav = [...(home.match(/<nav[\s\S]*?<\/nav>/gi) ?? []).join(' ').matchAll(/href="(\/[a-z0-9-]+\/)"/g)].map((m) => m[1]);
+  const noindex = (p) => existsSync(join(OUT, p, 'index.html')) && /<meta[^>]+name="robots"[^>]+noindex/i.test(readFileSync(join(OUT, p, 'index.html'), 'utf8'));   // personal pages such as /desk/ are kept out of the sitemap on purpose
+  for (const p of new Set(['/pro/', ...nav])) if (!noindex(p) && !smap.includes(`https://alpha.askakshay.com${p}`)) problems.push(`sitemap.xml does not list ${p}`);
+}
+
 // 3. every /data/<feed>.json and /api/ call in the source must be one the Worker serves
 const src = walk('src').filter((f) => /\.(tsx?|ts)$/.test(f)).map((f) => [f, readFileSync(f, 'utf8')]);
 for (const [f, t] of src) {
