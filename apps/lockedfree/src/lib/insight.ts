@@ -60,7 +60,7 @@ export function writeup(r: Row, rows: Row[], co: Cohorts, fs: Fact[]): Writeup {
   const sym = r.sym, tier = tierOf(r), ind = industryOf(r), sec = sectorOf(r), mc = num(r, 'mcap_cr');
   const withCap = rows.filter((x) => num(x, 'mcap_cr') != null); const sizeRank = mc == null ? null : withCap.filter((x) => (num(x, 'mcap_cr') as number) > mc).length + 1;
   const kind = [tier ? TIER[tier] : '', ind && ind !== sec && r.sector ? `${ind} company in ${sec}` : r.sector ? `${sec} company` : ind ? `${ind} company` : 'company'].filter(Boolean).join(' ');
-  const size = mc != null ? `${pick(sym, 'p2', ['It has a market value of', 'The market values it at', 'Its market value is'])} ${cr(mc)}, number ${sizeRank} of the ${withCap.length} stocks here that have one.` : 'The source data carries no market value for it, so no size rank is given.';
+  const size = mc != null ? `${pick(sym, 'p2', ['It has a market value of', 'The market values it at', 'Its market value is'])} ${cr(mc)}${r.mcap_src === 'derived' ? ' (derived: close × net profit ÷ earnings per share, because the source row has none)' : ''}, number ${sizeRank} of the ${withCap.length} stocks here that have one.` : 'The source data carries no market value for it, so no size rank is given.';
   const position = `${r.name} is ${art(kind)} ${kind}. ${size}`;
   const good = fs.filter((f) => f.good === true), bad = fs.filter((f) => f.good === false);
   let profile: string;

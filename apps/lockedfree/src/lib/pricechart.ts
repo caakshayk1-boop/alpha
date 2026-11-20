@@ -73,5 +73,5 @@ export function trendWords(d: C[]): string {
   let w = daily ? 'Trend unclear: not enough history' : 'Daily trend unavailable: the source supplied weekly or monthly observations';
   if (a50 != null && a200 != null) w = last > a50 && last > a200 ? 'Uptrend: above its 50 and 200-day averages' : last < a50 && last < a200 ? 'Downtrend: below its 50 and 200-day averages' : 'Mixed: between its 50 and 200-day averages';
   else if (a50 != null) w = last > a50 ? 'Above its 50-day average' : 'Below its 50-day average';
-  return w + (yr == null ? '' : ` · ${signedPct(yr, 1)} over approximately 1 year`);
+  return w + (yr == null ? '' : ` · ${signedPct(yr, 1)} price change over the last calendar year (this chart's closes)`);
 }

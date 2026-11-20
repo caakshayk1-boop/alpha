@@ -11,9 +11,11 @@ if (host) {
   const hi = parseFloat(host.dataset.hi || ''), lo = parseFloat(host.dataset.lo || '');
   const setReadout = (b: C, prev: C | undefined, over: string | null) => {
     if (rPx) rPx.textContent = '₹' + money(b.c);
-    if (rChg) { const c = prev ? (b.c / prev.c - 1) * 100 : null; const rc = over != null ? changeOver(current()) : c; rChg.textContent = signedPct(rc); rChg.className = rc == null ? '' : rc > 0 ? 'up' : rc < 0 ? 'down' : ''; }
+    if (rChg) { const c = prev ? (b.c / prev.c - 1) * 100 : null; const rc = over != null ? changeOver(current()) : c; rChg.textContent = signedPct(rc) + (rc == null ? '' : over != null ? ` ${windowWords()}` : ' vs prior bar'); rChg.className = rc == null ? '' : rc > 0 ? 'up' : rc < 0 ? 'down' : ''; }
     if (rSub) rSub.textContent = `${shortDate(b.t, 'full')} · O ${money(b.o)} · H ${money(b.h)} · L ${money(b.l)} · C ${money(b.c)}${over ? ` · ${over}` : ''}`;
   };
+  /** L-02: the move shown beside the price is the move over the chosen window, never read as today's change. */
+  const windowWords = () => { const b = current(); return st.range === 'MAX' && b.length ? `since ${new Date(b[0].t).getUTCFullYear()}` : `over ${st.range}`; };
   const current = (): C[] => { let b = inRange(byInterval(daily, st.ivl), st.range); if (st.style === 'candles' && b.length > MAX_CANDLES) b = b.slice(-MAX_CANDLES); return b; };
   function render() {
     const bars = current(); const W = Math.max(280, Math.floor(host!.clientWidth)); if (!bars.length) return;
