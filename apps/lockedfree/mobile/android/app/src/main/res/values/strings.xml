@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rulebook</string>
+    <string name="title_activity_main">Rulebook</string>
+    <string name="package_name">com.askakshay.lockedfree</string>
+    <string name="custom_url_scheme">com.askakshay.lockedfree</string>
+</resources>

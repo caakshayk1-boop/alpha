@@ -209,3 +209,10 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
 .about-steps { padding-inline-start:1.6em; } .about-steps li { padding:.4em 0 .4em .3em; }
 .about-story summary { cursor:pointer; padding:.7em 0; font-weight:600; }
 .chart:not(.chart-empty) { touch-action:pinch-zoom; overscroll-behavior:contain; }
+.read-position { flex:none; order:4; color:var(--ink-muted); font:500 var(--fs-xs)/1.2 var(--font-mono); font-variant-numeric:tabular-nums; min-width:8ch; text-align:right; }
+.signup-receipt { display:none; } .signup-receipt:target { display:block; scroll-margin-top:6rem; }
+@media (max-width:719px) { .top .wrap { gap:var(--s2); } .read-position { order:2; } }
+.delivery-choice { display:flex; align-items:flex-start; gap:.6rem; max-width:60ch; color:var(--ink-muted); }
+.delivery-choice input { flex:none; margin-top:.25rem; } .read-position { white-space:nowrap; }
+
+@media(max-width:420px){ .top .read-position { font-size:var(--fs-xs); } .top:has(.read-position:not([hidden])) .livepill { display:none; } }

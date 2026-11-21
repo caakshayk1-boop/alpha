@@ -4,8 +4,14 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; const $$ 
 // Financial figures stay at their server-rendered values, including the first frame.
 const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io!.unobserve(e.target); } }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' }) : null;
 $$('[data-r]').forEach((e) => (io && !reduce ? io.observe(e) : e.classList.add('in')));
-const top = document.querySelector<HTMLElement>('.top'); const bar = document.querySelector<HTMLElement>('.progress'); let tick = false;
-addEventListener('scroll', () => { if (tick) return; tick = true; requestAnimationFrame(() => { tick = false; top?.classList.toggle('scrolled', scrollY > 8); if (bar && !reduce) { const h = document.documentElement.scrollHeight - innerHeight; bar.style.setProperty('--p', String(h > 0 ? Math.min(1, scrollY / h) : 0)); } }); }, { passive: true });
+const top=document.querySelector('.top'),bar=document.querySelector<HTMLElement>('.progress'),counter=document.querySelector<HTMLElement>('[data-read-position]');
+let tick=false;
+function measure(){tick=false;const max=document.documentElement.scrollHeight-innerHeight, y=Math.max(0,scrollY);
+  const pct=max<=1||max-y<=1?100:Math.min(99,Math.floor(100*y/max));
+  top?.classList.toggle('scrolled',y>8);bar?.style.setProperty('--p',String(pct/100));
+  if(counter){counter.hidden=false;counter.textContent=pct+'% read · '+(100-pct)+'% left';counter.setAttribute('aria-valuenow',String(pct));counter.setAttribute('aria-valuetext',pct+'% read, '+(100-pct)+'% remaining');counter.title=(100-pct)+'% remaining';}}
+function schedule(){if(!tick){tick=true;requestAnimationFrame(measure)}}
+addEventListener('scroll',schedule,{passive:true});addEventListener('resize',schedule);addEventListener('pageshow',schedule);new ResizeObserver(schedule).observe(document.body);schedule();
 if (!reduce && matchMedia('(hover: hover)').matches) {
   const hero = document.querySelector<HTMLElement>('[data-glow]'); hero?.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--gx', `${((e.clientX - r.left) / r.width) * 100}%`); hero.style.setProperty('--gy', `${((e.clientY - r.top) / r.height) * 100}%`); });
   $$('.room').forEach((c) => c.addEventListener('pointermove', (e) => { const r = c.getBoundingClientRect(); c.style.setProperty('--mx', `${e.clientX - r.left}px`); c.style.setProperty('--my', `${e.clientY - r.top}px`); }));

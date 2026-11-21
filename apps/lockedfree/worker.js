@@ -43,12 +43,20 @@ export default {
       const origin = req.headers.get('origin'); if (origin && new URL(origin).host !== url.host) return json({ error: 'Not allowed.' }, 403);
       if (env.SUBSCRIBE_LIMIT) { const ip = req.headers.get('cf-connecting-ip') || 'x'; const { success } = await env.SUBSCRIBE_LIMIT.limit({ key: ip }); if (!success) return json({ error: 'Too many tries. Wait a minute.' }, 429); }
       let form; try { form = await req.formData(); } catch { return json({ error: 'That did not look like a form.' }, 400); }
-      const wantsHtml = (req.headers.get('accept') || '').includes('text/html'); const done = () => (wantsHtml ? new Response(null, { status: 303, headers: { location: '/?subscribed=1#join', ...SEC } }) : json({ ok: true }));
+      const wantsHtml = (req.headers.get('accept') || '').includes('text/html'); const done = (delivery = 'registered') => (wantsHtml ? new Response(null, { status: 303, headers: { location: delivery === 'confirmation' ? '/#signup-confirm' : '/#signup-saved', ...SEC } }) : json({ ok: true, delivery }));
       if (String(form.get('website') || '')) return done();                                  // honeypot: look successful, store nothing
       const email = String(form.get('email') || '').trim().toLowerCase();
       if (!EMAIL.test(email) || email.length > 254) return json({ error: 'That email address does not look right.' }, 400);
       if (form.get('consent') !== CONSENT) return json({ error: 'Consent is needed to join the list.' }, 400);
-      await env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main')).add(email, CONSENT, new Date().toISOString()); return done();
+      const opted=form.get('delivery')==='email-v1'; const stub=env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main'));
+      await stub.add(email, CONSENT, new Date().toISOString());
+      if(opted && env.BREVO_API_KEY && Number(env.BREVO_LIST_ID)>0 && Number(env.BREVO_DOI_TEMPLATE_ID)>0){
+        try { const r=await fetch('https://api.brevo.com/v3/contacts/doubleOptinConfirmation',{method:'POST',headers:{'api-key':env.BREVO_API_KEY,'content-type':'application/json'},body:JSON.stringify({email,includeListIds:[Number(env.BREVO_LIST_ID)],templateId:Number(env.BREVO_DOI_TEMPLATE_ID),redirectionUrl:'https://lockedfree.askakshay.com/#email-confirmed'}),signal:AbortSignal.timeout(8000)});
+          if(r.ok)return done('confirmation');
+        } catch {}
+        return wantsHtml?new Response(null,{status:303,headers:{location:'/#signup-retry',...SEC}}):json({error:'Your interest was recorded, but confirmation could not be requested. Please retry later.'},503);
+      }
+      return done();
     }
     if (url.pathname === '/api/subscribers' && env.ADMIN_TOKEN) {                           // owner export and deletion on request; off unless the secret is set
       const given = req.headers.get('authorization') || ''; if (given.length !== env.ADMIN_TOKEN.length + 7 || given !== 'Bearer ' + env.ADMIN_TOKEN) return json({ error: 'No.' }, 401);

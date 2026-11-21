@@ -40,6 +40,11 @@ await plot.focus();await pg.keyboard.press('Home');assert.match(await pg.locator
 await pg.keyboard.press('End');assert.match(await pg.locator('[data-r-sub]').textContent(),/15 Oct 2026/);
 await pg.getByRole('link',{name:'Back to top'}).click();await pg.waitForFunction(()=>scrollY===0);
 await pg.unroute('**/api/chart?*');
+await pg.goto('https://lockedfree.test/about/');const position=pg.locator('[data-read-position]');
+await pg.waitForFunction(()=>document.querySelector('[data-read-position]').getAttribute('aria-valuenow')==='0');
+await pg.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await pg.waitForFunction(()=>document.querySelector('[data-read-position]').getAttribute('aria-valuenow')==='100');
+assert.match(await position.textContent(),/100% read.*0% left/);
+await pg.goto('https://lockedfree.test/');await pg.route('**/api/subscribe',r=>r.fulfill({json:{ok:true,delivery:'registered'}}));await pg.locator('#em').fill('test@example.invalid');await pg.locator('[data-subscribe] button').click();await pg.locator('[data-subscribe-msg]').filter({hasText:'Interest recorded'}).waitFor();await pg.unroute('**/api/subscribe');
 const problems=[];
 for(const width of [320,375,768,1280]){
 await pg.setViewportSize({width,height:800});
