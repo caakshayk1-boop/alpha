@@ -101,3 +101,12 @@ tr > [data-q-time] { display: table-cell; }
   .call-columns { display: block; padding: 10px; }
   .call-columns:not(:has(input:checked)) ~ .call-scroll :is(th, td):not(:nth-child(1), :nth-child(7), :nth-child(9), :nth-child(14)) { display: none; }
 }
+
+.today-group { border-top:1px solid var(--hairline); }
+.today-group > summary,.exit-map summary { cursor:pointer; padding-block:var(--s4); font-weight:600; }
+.today-group > .panes { margin-bottom:var(--s4); }
+.exposure,.exit-map { margin:var(--s4); padding-bottom:var(--s4); border-bottom:1px solid var(--hairline); }
+.exposure figcaption span,.exposure small { display:block; color:var(--ink-muted); }
+.exposure > div { display:grid; grid-template-columns:minmax(9ch,1fr) minmax(4ch,1fr) 6ch; align-items:center; gap:var(--s3); margin-block:var(--s2); max-width:52rem; }
+.exposure svg { width:100%; height:6px; } .exposure b { text-align:right; }
+.exit-line { display:flex; flex-wrap:wrap; gap:var(--s3); align-items:center; padding:var(--s3) 0; border-top:1px solid var(--hairline); } .exit-line small { color:var(--ink-muted); } .exit-line svg { max-width:100%; }

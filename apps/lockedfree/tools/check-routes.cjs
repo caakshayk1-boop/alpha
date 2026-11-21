@@ -12,6 +12,22 @@ await c.route('https://lockedfree.test/**',async route=>{
  return route.fulfill({path:file});
 });
 const pg=await c.newPage();pg.setDefaultTimeout(6500);const errors=[];pg.on('pageerror',e=>errors.push(e.message));
+// Confirm the short first read and keyboard access to the underlying figures.
+await pg.goto('https://lockedfree.test/');
+assert.match(await pg.locator('h1').innerText(),/Practise investing on paper/i);
+assert.equal(await pg.locator('.hero-copy .cta-row a').first().getAttribute('href'),'/calls/');
+await pg.goto('https://lockedfree.test/terminal/');
+const signals=pg.locator('.today-group').first();
+assert.ok(!await signals.locator('[data-widget="leaders"]').isVisible());
+await signals.locator('summary').focus();await pg.keyboard.press('Enter');
+assert.ok(await signals.locator('[data-widget="leaders"]').isVisible());
+await pg.goto('https://lockedfree.test/calls/');
+const exitRows=pg.locator('.exit-line');
+if(await exitRows.count()>1){
+  assert.equal(await pg.locator('.exit-line:visible').count(),1);
+  await pg.locator('.exit-map summary').click();
+  assert.equal(await pg.locator('.exit-line:visible').count(),await exitRows.count());
+}
 const problems=[];
 for(const width of [320,375,768,1280]){
 await pg.setViewportSize({width,height:800});

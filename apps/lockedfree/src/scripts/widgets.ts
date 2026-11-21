@@ -1,17 +1,20 @@
 // Dashboard widgets: show or hide each one (remembered on this device only), and the position-size calculator.
 import { positionSize } from '../lib/accounting.ts';
 const KEY = 'rb-widgets-hidden';
-// 20 Nov 2026: a first visit sees the key widgets only. Who has chosen (any saved list, even an empty one) keeps their choice; "Show all" saves an empty list, "Simple view" forgets the choice.
+// Native disclosure groups keep the first visit brief. Saved widget choices still apply.
 const SIMPLE = ['movers', 'volume', 'calc', 'risk', 'health'];
-const read = (): string[] => { try { const v = localStorage.getItem(KEY); return v == null ? SIMPLE : JSON.parse(v); } catch { return SIMPLE; } }; const write = (a: string[]) => { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* blocked: choices last for this visit only */ } };
+let hidden: string[]=[];
+try { const saved=JSON.parse(localStorage.getItem(KEY) ?? '[]'); if(Array.isArray(saved)) hidden=saved.filter(x=>typeof x==='string'); } catch {}
+const read=()=>hidden;
+const write=(ids:string[])=>{hidden=ids;try{localStorage.setItem(KEY,JSON.stringify(ids));}catch{/* Keep the choice for this visit. */}};
 const btn = document.querySelector<HTMLButtonElement>('[data-customize]'), menu = document.querySelector<HTMLElement>('[data-wmenu]');
-function apply() { const hid = new Set(read()); document.querySelectorAll<HTMLElement>('[data-widget]').forEach((w) => { w.hidden = hid.has(w.dataset.widget!); }); document.querySelectorAll<HTMLInputElement>('[data-wtoggle]').forEach((c) => { c.checked = !hid.has(c.dataset.wtoggle!); }); }
+function apply() { const hid = new Set(read()); document.querySelectorAll<HTMLElement>('[data-widget]').forEach((w) => { w.hidden = hid.has(w.dataset.widget!); }); document.querySelectorAll<HTMLInputElement>('[data-wtoggle]').forEach((c) => { c.checked = !hid.has(c.dataset.wtoggle!); }); document.querySelectorAll<HTMLElement>('.today-group').forEach(g => g.hidden = !g.querySelector('[data-widget]:not([hidden])')); }
 apply();
 btn?.addEventListener('click', () => { const open = menu!.hidden; menu!.hidden = !open; btn.setAttribute('aria-expanded', String(open)); });
 document.addEventListener('click', (e) => { if (menu && !menu.hidden && !(e.target as HTMLElement).closest('[data-wmenu], [data-customize]')) { menu.hidden = true; btn?.setAttribute('aria-expanded', 'false'); } }); addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu && !menu.hidden) { menu.hidden = true; btn?.setAttribute('aria-expanded', 'false'); btn?.focus(); } });
 document.querySelectorAll<HTMLInputElement>('[data-wtoggle]').forEach((c) => c.addEventListener('change', () => { const hid = new Set(read()); c.checked ? hid.delete(c.dataset.wtoggle!) : hid.add(c.dataset.wtoggle!); write([...hid]); apply(); }));
 document.querySelector('[data-wreset]')?.addEventListener('click', () => { write([]); apply(); });
-document.querySelector('[data-wsimple]')?.addEventListener('click', () => { try { localStorage.removeItem(KEY); } catch { /* blocked */ } apply(); });
+document.querySelector('[data-wsimple]')?.addEventListener('click', () => { write(SIMPLE); apply(); });
 // calculator: account x risk % / (entry - stop), whole shares down, in integer paise (the same function the Gate uses)
 const f = document.querySelector<HTMLFormElement>('[data-calc]'), out = document.querySelector<HTMLElement>('[data-calc-out]');
 if (f && out) { try { const b = JSON.parse(localStorage.getItem('rulebook-book/1') || '{}'); if (b.rules?.accountSize) (f.elements.namedItem('acct') as HTMLInputElement).value = String(b.rules.accountSize); if (b.rules?.riskPct) (f.elements.namedItem('risk') as HTMLInputElement).value = String(b.rules.riskPct); } catch { /* defaults stay */ }

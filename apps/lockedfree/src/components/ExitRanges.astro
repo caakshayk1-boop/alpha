@@ -1,0 +1,26 @@
+---
+import { exitDistance, nextTrailingStop } from '../lib/exit-distance.ts';
+import { prices, ledger } from '../lib/data.ts';
+import { dmy, type TradeRow } from '../lib/view.ts';
+interface Props { calls: TradeRow[]; date: string }
+const { calls, date } = Astro.props;
+const rules = new Map(ledger().picks.map(p=>[p.id,p.rule]));
+const items = calls.filter(t => t.status === 'open').map(t => {
+  const history=(prices(t.symbol) ?? []).filter(b=>b.date<=date);
+  const last=history.at(-1), rule=rules.get(t.id);
+  const dated=last && last.c===t.last;
+  let stop=t.stop;
+  if(rule?.trailing) stop=t.entry && t.entry_px && t.stop && dated && history.some(b=>b.date===t.entry)
+    ? nextTrailingStop(t.entry_px,t.stop,rule.stop_pct,history.filter(b=>b.date>=t.entry!).map(b=>b.c)) : null;
+  return {t,stop,stamp:dated?last.date:null,trailing:rule?.trailing,d:dated ? exitDistance(t.last,stop,t.target) : null};
+})
+  .sort((a,b) => (a.d ? Math.abs(a.d.toStop) : Infinity) - (b.d ? Math.abs(b.d.toStop) : Infinity) || a.t.symbol.localeCompare(b.t.symbol));
+const price = (x: number) => '₹'+x.toLocaleString('en-IN',{maximumFractionDigits:2});
+const gap = (x: number) => Math.abs(x).toFixed(1)+'%';
+---
+{items.length > 0 && <section class="exit-map"><h3>How close are positions to their exits?</h3><p class="src">Ledger close · {dmy(date)}. Nearest stop first. The dot marks the close between the two paper exit prices.</p>
+{[items.slice(0,1),items.slice(1)].map((group,i) => group.length > 0 && (() => {
+  const Tag = i ? 'details' : 'div';
+  return <Tag>{i > 0 && <summary>Compare the other {group.length} positions</summary>}{group.map(({t,d,stop,stamp,trailing}) => <div class="exit-line"><strong><a href={`/stock/${t.symbol}/`}>{t.symbol}</a></strong>
+  {d ? <><svg viewBox="0 0 110 10" width="132" height="16" aria-hidden="true"><path d="M5 5H105" stroke="currentColor" stroke-width="2"/><path d="M5 1v8M105 1v8" stroke="currentColor"/><circle cx={5+100*d.position} cy="5" r="4" fill="var(--brand)"/></svg><span>Close {price(t.last!)} · {dmy(stamp!)}</span><small>{trailing ? 'Next trailing stop' : 'Stop'} {price(stop!)} · {d.toStop===0?'at stop':d.toStop<0?gap(d.toStop)+' fall to stop':'already below stop'}<br/>Target {price(t.target!)} · {d.toTarget===0?'at target':d.toTarget>0?gap(d.toTarget)+' rise to target':'already above target'}</small></> : <span>Range unavailable: missing or inconsistent price levels.</span>}</div>)}</Tag>;
+})())}</section>}

@@ -1,0 +1,8 @@
+---
+import type { BookRisk } from '../lib/risk.ts';
+import { dmy } from '../lib/view.ts';
+interface Props {risk:BookRisk; date:string}
+const { risk:r,date }=Astro.props;
+const metrics=[['Invested at entry cost',r.deployedPct],['Loss at initial stops',r.riskPct],...(r.topSector?[[r.topSector.name+' · largest sector',r.topSector.pct]]:[])] as [string,number][];
+---
+<figure class="exposure"><figcaption><strong>Where the paper capital is exposed</strong><span class="src">Ledger {dmy(date)} · each bar is a share of starting capital</span></figcaption>{metrics.map(([label,pct])=><div><span>{label}</span><svg viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="6" fill="var(--hairline)"/><rect width={Math.min(100,Math.max(0,pct))} height="6" fill="var(--brand)"/></svg><b>{pct.toFixed(1)}%</b></div>)}<small>Loss is measured from entry to the original stops and assumes fills at those prices, before fees. Actual exit prices can differ. These measures overlap.</small></figure>

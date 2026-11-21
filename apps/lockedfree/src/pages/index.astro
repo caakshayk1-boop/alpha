@@ -6,7 +6,6 @@ const top = F ? [...F.rows].filter((r) => num(r, 'comp') != null && r.liquid).so
 const tone = (v: number | null) => (v == null ? '' : v >= 2 ? 'u2' : v > 0 ? 'u1' : v <= -2 ? 'd2' : v < 0 ? 'd1' : '');
 const rooms = [['01','Market brief','What changed today?','Read the dated breadth, sectors and paper book side by side.','/terminal/','Today'],['02','Paper book','Which calls are open?','Trace each simulated position back to its rules and see every exit.','/calls/','Calls'],['03','Stock screener','Which stocks meet my filters?','Compare the daily close, financial measures and screen results.','/screener/','Stocks']];
 const marquee = [F ? `${F.rows.length} stocks tracked daily` : 'Stocks tracked daily', `${SCREENS.length} rules-based screens`, 'Every loss stays on the record', 'Cash is a position', 'Missing data stays missing', 'Paper-only, always', 'Delayed quotes, always labelled', 'Paper exits, not recommendations.'];
-const words = ['Discipline', 'you', 'can'];
 const BR = F ? brief(F) : null;
 const indices: [string, string][] = [['NIFTY', 'Nifty 50'], ['SENSEX', 'Sensex'], ['BANKNIFTY', 'Bank Nifty'], ['INDIAVIX', 'India VIX']];
 // live sector indices (Yahoo) paired with the daily feed's sector for the small "1M" line; a sector with no live quote shows a dash, never a guess
@@ -19,9 +18,9 @@ const rule = (id: string) => RULES[id];
 <script type="application/json" id="bench-data" set:html={JSON.stringify(benchmarkLast())}></script>
 <div class="hero-wrap" data-glow data-hero><div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div><div class="wrap hero-grid"><div class="hero-copy">
   <span class="kicker"><i></i>Rulebook · paper-only · every loss kept</span>
-  <h1 class="display-xl hero-h" aria-label="Discipline you can audit">{words.map((w) => <span class="w" aria-hidden="true">{w}&nbsp;</span>)}<span class="w" aria-hidden="true"><em>audit<span class="cur">_</span></em></span></h1>
-  <p class="lede">Rulebook is the paper investing workspace at LockedFree. A screen checks stocks against published rules. Each engine runs one set of rules. A paper call is a simulated position in the public record. Unallocated paper money stays in cash. Educational. Nothing here is advice, and none of it is real money.</p>
-  <p class="page-context">Daily feed: {F ? dmy(F.asOf) : "unavailable"} · Ledger: {dmy(L.as_of)} · Quotes delayed and unofficial</p><div class="cta-row"><a class="btn mag" href="/terminal/">Open Today <Icon name="arrow-up-right" size={18} /></a><a class="btn ghost" href="#rooms">Explore the sections →</a></div></div>
+  <h1 class="display-xl hero-h">Practise investing <em>on paper.</em></h1>
+  <p class="lede">Follow a stock from the day it’s chosen to the day it’s sold. See what the rules got right, what they missed, and try your own plan without putting money at risk.</p>
+  <p class="page-context">Daily feed: {F ? dmy(F.asOf) : "unavailable"} · Ledger: {dmy(L.as_of)} · Quotes delayed and unofficial</p><div class="cta-row"><a class="btn mag" href="/calls/">Explore the paper portfolio <Icon name="arrow-up-right" size={18} /></a><a class="btn ghost" href="#rooms">Explore the sections →</a></div></div>
   <aside class="nowcard" aria-label="Market now" data-tilt><div class="nc-h"><span class="mchip" data-market-chip data-short data-state="closed"><i></i><span data-market-text>NSE</span></span><span class="nc-t">Market now</span></div>
     <div class="nc-b">{indices.map(([k, n]) => <div class="q" data-q={k}><span class="s">{n}</span><span class="p" data-q-px>—</span><span class="c" data-q-chg>—</span></div>)}</div>
     <div class="nc-f"><span class="stamp" data-q-age>Delayed quotes unavailable until loaded</span></div></aside></div>
