@@ -27,7 +27,7 @@ test('date ticks: days for a month, month and year for a year, years for a decad
 });
 test('change over the shown bars and its signed text', () => { assert.ok(Math.abs(changeOver([bar('a', 1, 1, 1, 100), bar('b', 1, 1, 1, 110)])! - 10) < 1e-9); assert.equal(changeOver([bar('a', 1, 1, 1, 100)]), null); assert.equal(signedPct(10), '▲ +10.00%'); assert.equal(signedPct(-2.345), '▼ −2.35%'); assert.equal(signedPct(null), '—'); });
 test('trend in words from the closes only', () => {
-  assert.match(trendWords(days(400, '2025-01-01', (i) => 100 + i)), /^Uptrend: above its 50 and 200-day averages · ▲ \+/); assert.match(trendWords(days(300, '2025-01-01', (i) => 500 - i)), /^Downtrend/); assert.match(trendWords(days(30)), /^Trend unclear/);
+  assert.match(trendWords(days(400, '2025-01-01', (i) => 100 + i)), /^Uptrend · daily/); assert.match(trendWords(days(300, '2025-01-01', (i) => 500 - i)), /^Downtrend/); assert.match(trendWords(days(12)), /^Trend unclear/);
 });
 
 // L-03 / L-04 (20 Nov 2026)
@@ -42,3 +42,5 @@ test('L-04: the chart\'s one-year number names its basis (calendar year of this 
   const d = Array.from({ length: 400 }, (_, i) => ({ t: new Date(Date.UTC(2025, 0, 1) + i * 864e5).toISOString().slice(0, 10), o: 100, h: 100, l: 100, c: 100 + i, v: null }));
   assert.match(trendWords(d), /price change over the last calendar year \(this chart's closes\)/);
 });
+
+test('flat trading and conflicting indicators are distinct',()=>{assert.match(trendWords(days(40,'2025-01-01',()=>100)),/^Sideways/);assert.match(trendWords(days(40,'2025-01-01',i=>i<25?100+i*10:340-(i-24))),/^Mixed/);});

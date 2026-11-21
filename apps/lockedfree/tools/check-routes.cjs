@@ -28,6 +28,18 @@ if(await exitRows.count()>1){
   await pg.locator('.exit-map summary').click();
   assert.equal(await pg.locator('.exit-line:visible').count(),await exitRows.count());
 }
+// Exercise a real rendered chart with deterministic bars, independently of quote availability.
+const bars=Array.from({length:45},(_,i)=>({t:new Date(Date.UTC(2026,8,1+i)).toISOString().slice(0,10),o:100+i,h:103+i,l:99+i,c:101+i,v:1000+i}));
+await pg.route('**/api/chart?*',route=>route.fulfill({json:{points:bars}}));
+await pg.goto('https://lockedfree.test/stock/TCS/');
+const plot=pg.locator('[data-price-chart]');await plot.locator('svg').waitFor();await plot.scrollIntoViewIfNeeded();await plot.hover();
+const before=await pg.evaluate(()=>scrollY), prior=await pg.locator('[data-r-sub]').textContent();
+await pg.mouse.wheel(0,-100);await pg.waitForFunction(text=>document.querySelector('[data-r-sub]').textContent!==text,prior);
+assert.equal(await pg.evaluate(()=>scrollY),before);assert.equal(await plot.locator('.xh line').count(),2);
+await plot.focus();await pg.keyboard.press('Home');assert.match(await pg.locator('[data-r-sub]').textContent(),/1 Sep 2026/);
+await pg.keyboard.press('End');assert.match(await pg.locator('[data-r-sub]').textContent(),/15 Oct 2026/);
+await pg.getByRole('link',{name:'Back to top'}).click();await pg.waitForFunction(()=>scrollY===0);
+await pg.unroute('**/api/chart?*');
 const problems=[];
 for(const width of [320,375,768,1280]){
 await pg.setViewportSize({width,height:800});

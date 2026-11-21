@@ -8,7 +8,7 @@ const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rul
 <link rel="canonical" href={canonical}><meta name="theme-color" content="#08090A"><meta name="color-scheme" content="dark">
 <meta property="og:title" content={full}><meta property="og:description" content={description}><meta property="og:type" content="website"><meta property="og:url" content={canonical}><meta property="og:image" content={new URL(og, Astro.site).href}><HeadCommon title={full} description={description} image={new URL(og, Astro.site).href} />
 {[f4, f7].map((u) => <link rel="preload" as="font" type="font/woff2" href={u} crossorigin="anonymous" />)}<script type="speculationrules" is:inline set:html={JSON.stringify({ prerender: [{ where: { and: [{ href_matches: "/*" }, { not: { href_matches: ["/api/*", "/data/*", "/*.css", "/stock/*"] } }] }, eagerness: "moderate" }] })}></script><link rel="stylesheet" href="/vt.css"><meta name="robots" content={DEMO || path === "/style/" ? "noindex" : "index,follow"}>
-</head><body>
+</head><body id="page-top" tabindex="-1">
 {DEMO && <div class="demo-banner">DEMO DATA — synthetic, for layout checks only. Never deployed.</div>}
 <a class="skip" href="#main">Skip to content</a><div class="progress" aria-hidden="true"></div>
 <SiteHeader path={path} />

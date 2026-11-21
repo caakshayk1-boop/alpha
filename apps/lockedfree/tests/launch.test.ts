@@ -19,9 +19,9 @@ test('the method text states the one-month cap and the engines\' own exits', () 
 test('the notice is the last block of every page: it lives in the footer, after the content, with the SEBI wording (owner request, 20 Nov 2026)', () => {
   for (const f of ['src/pages/calls.astro', 'src/pages/terminal/index.astro', 'src/pages/screener.astro', 'src/pages/stock/[symbol].astro']) assert.doesNotMatch(src(f), /<Disclaimer/, `${f} must not carry a top banner`);
   const foot = src('src/components/Footer.astro'); assert.match(foot, /SEBI/); assert.match(foot, /class="notice/);
-  assert.ok(foot.indexOf('class="notice') > foot.indexOf('askakshay.com'), 'the notice follows the links and contact in the footer');
+  assert.ok(foot.indexOf('class="notice') > foot.indexOf('Back to top'), 'the notice follows the links and contact in the footer');
 });
 test('contact details are published, and the charting credit is text without a link', () => {
-  assert.match(src('src/lib/site.ts'), /ca\.akkothari@askakshay\.com/); assert.match(src('src/components/Footer.astro'), /askakshay\.com/);
+  assert.match(src('src/lib/site.ts'), /ca\.akkothari@askakshay\.com/); assert.match(src('src/components/Footer.astro'), /about\/#contact/); assert.match(src('src/pages/about.astro'), /TradingView Lightweight Charts/); assert.doesNotMatch(src('src/components/Footer.astro'), /TradingView/);
   assert.ok(!/href="https:\/\/www\.tradingview\.com/.test(src('src/components/Footer.astro')));
 });

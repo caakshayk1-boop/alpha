@@ -56,3 +56,5 @@
 
 /* 20 Nov 2026: the live board ends with one card that points to Today, where the brief and breadth now live */
 .wd-more { display: flex; flex-direction: column; justify-content: space-between; gap: var(--s4); text-decoration: none; color: inherit; } .wd-more .go { color: var(--brand); display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.home #join { padding-block:clamp(2rem,5vw,4rem); }
+body:has(.home) .foot { margin-top:0; }

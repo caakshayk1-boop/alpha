@@ -12,11 +12,19 @@ if (host) {
   const setReadout = (b: C, prev: C | undefined, over: string | null) => {
     if (rPx) rPx.textContent = '₹' + money(b.c);
     if (rChg) { const c = prev ? (b.c / prev.c - 1) * 100 : null; const rc = over != null ? changeOver(current()) : c; rChg.textContent = signedPct(rc) + (rc == null ? '' : over != null ? ` ${windowWords()}` : ' vs prior bar'); rChg.className = rc == null ? '' : rc > 0 ? 'up' : rc < 0 ? 'down' : ''; }
-    if (rSub) rSub.textContent = `${shortDate(b.t, 'full')} · O ${money(b.o)} · H ${money(b.h)} · L ${money(b.l)} · C ${money(b.c)}${over ? ` · ${over}` : ''}`;
+    if (rSub) rSub.textContent = `${shortDate(b.t, 'full')} · O ${money(b.o)} · H ${money(b.h)} · L ${money(b.l)} · C ${money(b.c)}${b.v == null ? '' : ' · Vol '+b.v.toLocaleString('en-IN')}`;
   };
   /** L-02: the move shown beside the price is the move over the chosen window, never read as today's change. */
   const windowWords = () => { const b = current(); return st.range === 'MAX' && b.length ? `since ${new Date(b[0].t).getUTCFullYear()}` : `over ${st.range}`; };
   const current = (): C[] => { let b = inRange(byInterval(daily, st.ivl), st.range); if (st.style === 'candles' && b.length > MAX_CANDLES) b = b.slice(-MAX_CANDLES); return b; };
+  let scrub: ((dir:number)=>void)|null=null, accumulated=0;
+  host.addEventListener('wheel', e=>{
+    if(e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    const raw=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+    accumulated+=raw*(e.deltaMode===1?16:e.deltaMode===2?100:1);
+    if(Math.abs(accumulated)>=24){scrub?.(Math.sign(accumulated));accumulated=0;}
+  },{passive:false});
   function render() {
     const bars = current(); const W = Math.max(280, Math.floor(host!.clientWidth)); if (!bars.length) return;
     const mobile = W < 520, H = mobile ? 300 : 360, L = 6, R = mobile ? 62 : 74, T = 14, B = 30, pw = W - L - R, ph = H - T - B; const n = bars.length;
@@ -38,15 +46,16 @@ if (host) {
     const tag = (cls: string, v: number, text: string) => { const py = Math.min(T + ph, Math.max(T, y(v))); const w = text.length * 6.6 + 12; svg.append(el('line', { class: cls + ' ref', x1: L, x2: W - R, y1: py, y2: py }), el('rect', { class: cls + ' pill', x: W - R + 2, y: py - 9, width: w, height: 18, rx: 4 })); const t = el('text', { class: 'pt', x: W - R + 8, y: py + 4 }); t.textContent = text; svg.append(t); };
     const last = bars[n - 1]; const apart = (v: number) => Math.abs(y(v) - y(last.c)) > 22; const short = st.range !== 'MAX' && st.range !== '5Y';    // 52-week lines only mean something on a view of a year or less
     if (short && hi && hi < max && hi > min && apart(hi)) tag('hi', hi, '52w high'); if (short && lo && lo < max && lo > min && apart(lo)) tag('lo', lo, '52w low'); tag('last', last.c, money(last.c).replace(/\.00$/, ''));
-    const xh = el('g', { class: 'xh', visibility: 'hidden' }); const vl = el('line', { y1: T, y2: T + ph }); const dot = el('circle', { r: 4.5, class: 'dot' }); const dp = el('rect', { class: 'dp', height: 18, rx: 4, y: H - 20 }); const dt = el('text', { class: 'dpt', y: H - 7, 'text-anchor': 'middle' }); xh.append(vl, dot, dp, dt); svg.append(xh);
+    const xh = el('g', { class: 'xh', visibility: 'hidden' }); const vl = el('line', { y1: T, y2: T + ph }); const hl = el('line', {x1:L,x2:W-R}); const dot = el('circle', { r: 4.5, class: 'dot' }); const dp = el('rect', { class: 'dp', height: 18, rx: 4, y: H - 20 }); const dt = el('text', { class: 'dpt', y: H - 7, 'text-anchor': 'middle' }); xh.append(vl, hl, dot, dp, dt); svg.append(xh);
     host!.replaceChildren(svg); host!.classList.remove('loading'); drawn = true;
     const prevOf = (i: number) => (i > 0 ? bars[i - 1] : undefined); const over = `${changeOver(bars) == null ? '' : 'over ' + (st.range === 'MAX' ? 'all history' : st.range)}`;
     setReadout(last, undefined, over || null); let at = n - 1;
-    const show = (i: number) => { at = Math.max(0, Math.min(n - 1, i)); const b = bars[at]; xh.setAttribute('visibility', 'visible'); const px = x(at); vl.setAttribute('x1', String(px)); vl.setAttribute('x2', String(px)); dot.setAttribute('cx', String(px)); dot.setAttribute('cy', String(y(candles ? b.c : b.c)));
+    const show = (i: number) => { at = Math.max(0, Math.min(n - 1, i)); const b = bars[at]; xh.setAttribute('visibility', 'visible'); const px = x(at); vl.setAttribute('x1', String(px)); vl.setAttribute('x2', String(px)); dot.setAttribute('cx', String(px)); dot.setAttribute('cy', String(y(b.c))); hl.setAttribute('y1',String(y(b.c))); hl.setAttribute('y2',String(y(b.c)));
       const label = shortDate(b.t, 'full'); const w = label.length * 6.6 + 14; const cx = Math.min(W - R - w / 2, Math.max(L + w / 2, px)); dp.setAttribute('x', String(cx - w / 2)); dp.setAttribute('width', String(w)); dt.setAttribute('x', String(cx)); dt.textContent = label; setReadout(b, prevOf(at), null); };
+    scrub=(dir)=>show(at+dir);
     const reset = () => { xh.setAttribute('visibility', 'hidden'); setReadout(last, undefined, over || null); };
     const idxAt = (cx: number) => { const r = svg.getBoundingClientRect(); const px = ((cx - r.left) / r.width) * W; return Math.round(((px - L) / pw) * (n - 1)); };
-    host!.onpointermove = (e) => show(idxAt(e.clientX)); host!.onpointerleave = reset; host!.onpointercancel = reset; host!.onpointerdown = (e) => show(idxAt(e.clientX));
+    host!.onpointermove = (e) => show(idxAt(e.clientX)); host!.onpointerleave = reset; host!.onblur=reset; host!.onpointercancel = reset; host!.onpointerdown = (e) => show(idxAt(e.clientX));
     host!.onkeydown = (e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1); } else if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1); } else if (e.key === 'Home') { e.preventDefault(); show(0); } else if (e.key === 'End') { e.preventDefault(); show(n - 1); } else if (e.key === 'Escape') reset(); };
     host!.setAttribute('aria-label', `Price chart, ${candles ? 'candles' : 'line'}, ${st.ivl === 'D' ? 'daily' : st.ivl === 'W' ? 'weekly' : 'monthly'}, ${n} points from ${bars[0].t} to ${last.t}. Left and right arrow keys move along it.`);
     if (note) note.textContent = `${daily.length.toLocaleString('en-IN')} ${({ D: 'daily', W: 'weekly', M: 'monthly' })[historyInterval(daily)]} observations to ${daily[daily.length - 1].t} · delayed, unofficial${st.ivl !== 'D' ? ' · aggregated from source observations' : ''}${candles && inRange(byInterval(daily, st.ivl), st.range).length > MAX_CANDLES ? ` · latest ${MAX_CANDLES} candles shown` : ''}`;
@@ -58,7 +67,7 @@ if (host) {
   async function load() {
     host!.classList.add('loading');
     try { const r = await fetch(`/api/chart?s=${encodeURIComponent(host!.dataset.priceChart!)}`); const j = await r.json().catch(() => ({})) as { points?: C[] }; if (!r.ok || !j.points?.length) throw new Error('empty'); daily = j.points; const sourceInterval = historyInterval(daily); if (sourceInterval !== 'D') { st.ivl = sourceInterval; document.querySelectorAll<HTMLButtonElement>('[data-ivl]').forEach((b) => { b.disabled = b.dataset.ivl === 'D' || (sourceInterval === 'M' && b.dataset.ivl === 'W'); }); press('[data-ivl]', sourceInterval); } if (trendEl) trendEl.textContent = trendWords(daily); render(); new ResizeObserver(() => render()).observe(host!); }
-    catch { host!.className = 'chart-empty'; host!.textContent = 'The price history could not be loaded just now. Nothing is shown in its place.'; if (note) note.textContent = 'unavailable'; }
+    catch { host!.className = 'chart-empty'; host!.textContent = 'The price history could not be loaded just now. Nothing is shown in its place.'; if (note) note.textContent = 'Price history unavailable.'; if(trendEl) trendEl.textContent='Direction unavailable without dated prices.'; document.querySelectorAll<HTMLButtonElement>('.chart-bar button').forEach(b=>b.disabled=true); }
   }
   load();
 }

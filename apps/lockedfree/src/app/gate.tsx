@@ -62,7 +62,7 @@ function Positions({ book, set }: { book: Book; set: (b: Book) => void }) {
 function Curve({ title, pts }: { title: string; pts: { date: string; v: number }[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!ref.current || pts.length < 2) return; const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-    const u = new uPlot({ width: ref.current.clientWidth || 300, height: 180, cursor: { show: false }, legend: { show: false }, scales: { x: { time: false } }, axes: [{ stroke: css('--ink-muted'), grid: { stroke: css('--hairline') } }, { stroke: css('--ink-muted'), grid: { stroke: css('--hairline') } }], series: [{}, { stroke: css('--ink'), width: 2 }] }, [pts.map((_, i) => i), pts.map((p) => p.v)], ref.current);
+    const u = new uPlot({ width: ref.current.clientWidth || 300, height: 180, cursor: { show: true, drag:{ x:false,y:false } }, legend: { show: false }, scales: { x: { time: false } }, axes: [{ stroke: css('--ink-muted'), grid: { stroke: css('--hairline') } }, { stroke: css('--ink-muted'), grid: { stroke: css('--hairline') } }], series: [{}, { stroke: css('--ink'), width: 2 }] }, [pts.map((_, i) => i), pts.map((p) => p.v)], ref.current);
     return () => u.destroy(); }, [pts]);
   const dd = maxDrawdown(pts);
   return (<div className="card"><div className="card-head"><h3>{title}</h3><span className="stamp">n = {pts.length} · as of {pts.at(-1)?.date ?? today}</span></div>{pts.length < 2 ? <div className="chart-empty"><p>{pts.length === 0 ? 'No trades in this group yet.' : 'One trade is not a curve yet.'}</p></div> : <div ref={ref} className="chart sm" role="img" aria-label={`${title}: cumulative paper P&L over ${pts.length} trades`} />}

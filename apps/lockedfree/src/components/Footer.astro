@@ -1,8 +1,6 @@
 ---
-// One footer for every page (ADR-018). 20 Nov 2026 (owner request): where to go, who runs it and the data stamps come first, and the full educational / SEBI notice is the LAST thing on every page (it used to be a banner at the top of the decision pages).
-import { ledger } from '../lib/data.ts'; import { dmy } from '../lib/view.ts'; import { CONTACT } from '../lib/site.ts';
-const L = ledger();
 ---
-<footer class="foot"><div class="wrap"><div class="cols"><div class="small"><div class="label">Data</div><p class="stamp">Ledger as of {dmy(L.as_of)} · built {L.built_on ? dmy(L.built_on.slice(0, 10)) : 'not yet'} · quotes delayed and unofficial</p><p class="stamp">Charts: TradingView Lightweight Charts™ and uPlot.</p></div>
-<div class="small"><div class="label">Read</div><p><a href="/about/">About</a><br><a href="/method/">Method and glossary</a><br><a href="/calls/#record">The record</a><br><a href="/privacy/">Privacy</a><br><a href="/terms/">Terms</a></p><div class="label mt3">Contact</div><p><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a><br><a href={CONTACT.site} rel="noopener">askakshay.com</a></p></div></div>
+<footer class="foot"><div class="wrap"><div class="footer-links">
+<nav aria-label="Rulebook resources"><a href="/about/">About Rulebook</a><a href="/method/">Method &amp; glossary</a><a href="/calls/#record">Public record</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/about/#contact">Contact</a></nav>
+<a class="to-top" href="#page-top">Back to top ↑</a></div>
 <aside class="notice small" role="note" aria-labelledby="notice-h"><h2 id="notice-h" class="label">Important notice</h2><p><strong>Educational and paper-only.</strong> Rulebook is not investment advice or a research report, and nothing here is a recommendation to buy, sell or hold any security. No return is promised. Every figure is simulated — not real returns — and real trading can lose money. Securities investments are subject to market risk; speak to a SEBI-registered adviser before acting. Rulebook does not claim SEBI registration.</p></aside></div></footer>

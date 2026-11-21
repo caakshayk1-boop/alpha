@@ -15,3 +15,8 @@ if (!reduce && matchMedia('(hover: hover)').matches) {
 // 20 Nov 2026: installable app. The worker only provides an offline page (public/sw.js). It is registered 8 s after the page has loaded, not at once: installing it at load took the page's first
 // screener-to-stock view transition away (the worker's install competed with that navigation), so it waits until the visitor has settled in.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) addEventListener('load', () => { setTimeout(() => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }, 8000); });
+
+// Inspect charts without moving the surrounding document. Keep pinch/browser zoom and outside scrolling.
+document.addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey && e.target instanceof Element && e.target.closest('.chart:not(.chart-empty)')) e.preventDefault();
+}, {passive:false});

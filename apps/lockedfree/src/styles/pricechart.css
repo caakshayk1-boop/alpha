@@ -12,3 +12,7 @@
 .chip-trend { margin: 10px 0 0; font: 500 var(--fs-sm) var(--font-mono); color: var(--ink); } .chart-empty { display: grid; place-items: center; min-height: 220px; padding: 24px; text-align: center; color: var(--ink-muted); }
 @media (max-width: 560px) { .chart-bar { gap: 6px; } .chart-bar .seg button { padding: 0 9px; } }
 @media (prefers-reduced-motion: no-preference) { .pc .line.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pcdraw 1100ms var(--ease-out) forwards; } .pc .area.fade { opacity: 0; animation: pcfade 900ms var(--ease-out) 300ms forwards; } @keyframes pcdraw { to { stroke-dashoffset: 0; } } @keyframes pcfade { to { opacity: 1; } } }
+.chart.pc-host { touch-action:pinch-zoom; }
+.px-readout { display:grid; grid-template-columns:auto 1fr; align-content:start; gap:4px 12px; min-height:6rem; }
+.px-readout small { grid-column:1/-1; line-height:1.45; }
+@media (max-width:560px) { .px-readout { grid-template-columns:1fr; min-height:8rem; } }

@@ -199,3 +199,13 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
   #plan-root .plan-sheet { background:white; color:black; border:none; box-shadow:none; }
   #plan-root .plan-sheet :is(p,h2,.stamp) { color:black; }
 }
+
+.footer-links,.footer-links nav { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem 1.1rem; }
+.footer-links { justify-content:space-between; gap:.6rem 2rem; }
+.footer-links a { display:inline-flex; align-items:center; min-height:44px; }
+.foot .notice { max-width:76ch; margin-top:var(--s3); }
+.about-story section { border-top:1px solid var(--hairline); padding-block:var(--s5); scroll-margin-top:5rem; }
+.about-story section p { margin:.65em 0; }
+.about-steps { padding-inline-start:1.6em; } .about-steps li { padding:.4em 0 .4em .3em; }
+.about-story summary { cursor:pointer; padding:.7em 0; font-weight:600; }
+.chart:not(.chart-empty) { touch-action:pinch-zoom; overscroll-behavior:contain; }

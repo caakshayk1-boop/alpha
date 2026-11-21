@@ -65,13 +65,21 @@ export function yearChange(d: C[]): number | null {
   const tolerance = historyInterval(d) === 'D' ? 7 : historyInterval(d) === 'W' ? 10 : 35;
   return base && base.c > 0 && at - dayMs(base.t) <= tolerance * 864e5 ? (last.c / base.c - 1) * 100 : null;
 }
-export function trendWords(d: C[]): string {
-  if (!d.length) return '';
-  const daily = historyInterval(d) === 'D';
-  const avg = (n: number) => (daily && d.length >= n ? d.slice(-n).reduce((a, x) => a + x.c, 0) / n : null);
-  const last = d.at(-1)!.c, a50 = avg(50), a200 = avg(200), yr = yearChange(d);
-  let w = daily ? 'Trend unclear: not enough history' : 'Daily trend unavailable: the source supplied weekly or monthly observations';
-  if (a50 != null && a200 != null) w = last > a50 && last > a200 ? 'Uptrend: above its 50 and 200-day averages' : last < a50 && last < a200 ? 'Downtrend: below its 50 and 200-day averages' : 'Mixed: between its 50 and 200-day averages';
-  else if (a50 != null) w = last > a50 ? 'Above its 50-day average' : 'Below its 50-day average';
-  return w + (yr == null ? '' : ` · ${signedPct(yr, 1)} price change over the last calendar year (this chart's closes)`);
+/** Directional efficiency = net close movement divided by total absolute movement. */
+export function trendEvidence(bars: C[]) {
+  const sample=bars.slice(-21);
+  if(sample.length!==21 || sample.some(b=>!(b.c>0) || !Number.isFinite(b.c))) return null;
+  const delta=sample.slice(1).map((b,i)=>b.c-sample[i].c);
+  const net=sample[20].c-sample[0].c, path=delta.reduce((s,d)=>s+Math.abs(d),0);
+  const efficiency=path ? net/path : 0;
+  const last14=delta.slice(-14), gain=last14.reduce((s,d)=>s+Math.max(0,d),0), loss=last14.reduce((s,d)=>s+Math.max(0,-d),0);
+  const rsi=gain+loss ? 100*gain/(gain+loss) : 50;
+  const direction=efficiency>=.3 && rsi>=55?'Uptrend':efficiency<=-.3 && rsi<=45?'Downtrend':Math.abs(efficiency)<.3 && rsi>=45 && rsi<=55?'Sideways':'Mixed';
+  return {direction,efficiency,rsi};
+}
+export function trendWords(d:C[]) {
+  const e=trendEvidence(d);
+  if(!e) return 'Trend unclear: 21 valid price bars are needed.';
+  const interval={D:'daily',W:'weekly',M:'monthly'}[historyInterval(d)], yr=yearChange(d);
+  return e.direction+' · '+interval+' bars through '+shortDate(d.at(-1)!.t,'full')+' · Directional efficiency '+(e.efficiency*100).toFixed(0)+'% · Simple RSI '+e.rsi.toFixed(1)+(yr==null?'':' · '+signedPct(yr,1)+" price change over the last calendar year (this chart's closes)");
 }
