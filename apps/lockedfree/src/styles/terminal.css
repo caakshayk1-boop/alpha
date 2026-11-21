@@ -110,3 +110,9 @@ tr > [data-q-time] { display: table-cell; }
 .exposure > div { display:grid; grid-template-columns:minmax(9ch,1fr) minmax(4ch,1fr) 6ch; align-items:center; gap:var(--s3); margin-block:var(--s2); max-width:52rem; }
 .exposure svg { width:100%; height:6px; } .exposure b { text-align:right; }
 .exit-line { display:flex; flex-wrap:wrap; gap:var(--s3); align-items:center; padding:var(--s3) 0; border-top:1px solid var(--hairline); } .exit-line small { color:var(--ink-muted); } .exit-line svg { max-width:100%; }
+
+@media(max-width:480px) {
+  .exit-line { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:.45rem .75rem; }
+  .exit-line strong { overflow-wrap:anywhere; }
+  .exit-line > :is(span,small) { grid-column:1/-1; }
+}

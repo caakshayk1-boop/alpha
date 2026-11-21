@@ -216,3 +216,11 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
 .delivery-choice input { flex:none; margin-top:.25rem; } .read-position { white-space:nowrap; }
 
 @media(max-width:420px){ .top .read-position { font-size:var(--fs-xs); } .top:has(.read-position:not([hidden])) .livepill { display:none; } }
+
+/* Reserve the system inset in edge-to-edge home-screen windows. */
+.top { padding-top:env(safe-area-inset-top,0px); }
+.top .brand { flex:none; white-space:nowrap; }
+@media(max-width:719px) {
+  html[data-surface="terminal"] .top { position:sticky; top:0; }
+  html[data-surface="terminal"] .t-sub { position:relative; top:auto; z-index:40; }
+}

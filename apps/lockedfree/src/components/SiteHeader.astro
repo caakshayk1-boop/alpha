@@ -8,5 +8,5 @@ const nav = [['/terminal/', 'Today', 'dash'], ['/calls/', 'Calls', 'ledger'], ['
 const practice = ['/practice/', '/gate/', '/plan/'];
 const on = (h: string) => (h === '/screener/' ? path === h || path.startsWith('/stock/') : h === '/about/' ? ['/about/', '/method/', '/privacy/', '/terms/'].includes(path) : h === '/practice/' ? practice.some((t) => path.startsWith(t)) : path.startsWith(h));
 ---
-<header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} />Rulebook<span class="paperpill">Paper only</span></a>
+<header class="top"><div class="wrap"><a class="brand" href="/"><Icon name="book" size={22} /><span class="brand-name">Rulebook</span><span class="paperpill">Paper only</span></a>
 <span class="livepill" data-livepill data-state="closed" role="status" aria-live="off"><i aria-hidden="true"></i><span data-livepill-text>Market</span></span><nav class="nav" aria-label="Main">{nav.map(([h, t, i]) => <a href={h} aria-current={on(h) ? (path === h ? 'page' : 'location') : undefined}><Icon name={i} size={18} />{t}</a>)}</nav><span class="read-position" hidden data-read-position role="progressbar" aria-label="Page read" aria-valuemin="0" aria-valuemax="100"></span></div></header>

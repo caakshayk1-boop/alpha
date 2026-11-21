@@ -48,6 +48,7 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node tools/check-routes.cjs
+          node tools/check-mobile-touch.cjs
       - name: Deploy
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' || github.event_name == 'workflow_run'
         working-directory: .
