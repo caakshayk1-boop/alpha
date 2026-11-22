@@ -1,3 +1,4 @@
+// STALE since 22 Nov 2026 (a manual proof; no workflow runs it): it was written for the 19 Nov data and for the per-row "Delayed" stamp on the Calls page. That stamp is gone (the basis is stated once above the table), and a live quote now moves the book only while the session is open (lib/quotes.ts bookQuote). The behaviour is covered by tests/review22.test.ts and tools/check-routes.cjs.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
