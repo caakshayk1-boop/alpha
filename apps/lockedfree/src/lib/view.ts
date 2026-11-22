@@ -8,9 +8,9 @@ export const dmy = (iso: string | null | undefined) => { if (!iso) return 'not y
 export interface HeroPoint { date: string; ret: number | null; bench: number | null; dd: number }
 /** Return on notional committed (%), benchmark change since the first book day (%), and drawdown in percentage points from the running peak. Gaps stay gaps. */
 export function heroSeries(L: Ledger, screen = 'all'): HeroPoint[] {
-  const days = L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date)); const b0 = days[0]?.benchmark_close ?? null;
+  const days = L.book_days.filter((b) => b.screen_id === screen).sort((a, b) => a.date.localeCompare(b.date)); const closeOf = (d: BookDay): number | null => d.benchmark_close ?? (L.benchmark_start && L.benchmark_start.date === d.date ? L.benchmark_start.close : null); const b0 = days[0] ? closeOf(days[0]) : null;
   const base = (d: BookDay) => (L.config.capital && screen === 'all' ? L.config.capital : d.committed); let peak = 0; return days.map((d) => { const ret = base(d) > 0 ? (d.equity / base(d)) * 100 : null; if (ret != null) peak = Math.max(peak, ret);
-    return { date: d.date, ret: ret == null ? null : Math.round(ret * 100) / 100, bench: b0 && d.benchmark_close ? Math.round((d.benchmark_close / b0 - 1) * 1e4) / 100 : null, dd: ret != null && peak > -Infinity ? Math.round((ret - peak) * 100) / 100 : 0 }; });
+    return { date: d.date, ret: ret == null ? null : Math.round(ret * 100) / 100, bench: b0 && closeOf(d) ? Math.round((closeOf(d)! / b0 - 1) * 1e4) / 100 : null, dd: ret != null && peak > -Infinity ? Math.round((ret - peak) * 100) / 100 : 0 }; });
 }
 export const agg = (L: Ledger, id: string): Aggregate | undefined => L.aggregates.find((a) => a.screen_id === id);
 export const lastDay = (L: Ledger, id = 'all'): BookDay | undefined => L.book_days.filter((b) => b.screen_id === id).sort((a, b) => a.date.localeCompare(b.date)).pop();

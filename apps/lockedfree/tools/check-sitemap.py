@@ -23,6 +23,10 @@ assert root.tag == ns + "urlset"
 symbols = [row["sym"] for row in json.loads(Path("feed/screen.json").read_text())["rows"]]
 expected = {"/", "/terminal/", "/calls/", "/screener/", "/practice/", "/gate/", "/plan/", "/about/", "/method/", "/privacy/", "/terms/"}
 expected.update(f"/stock/{symbol}/" for symbol in symbols)
+# one page per paper call (22 Nov 2026): the slug mirrors callSlug in src/lib/callpage.ts, SYMBOL-entry-date-screen (the listing date while a call is pending)
+for pick in json.loads(Path("ledger/ledger.json").read_text())["picks"]:
+    first = pick["fills"][0]["date"] if pick["fills"] else pick["first_listed_run"]
+    expected.add(f"/call/{pick['symbol'].replace('&', '_')}-{first}-{pick['screen_id']}/")
 seen = set()
 for item in root:
     assert item.tag == ns + "url" and len(item) == 1 and item[0].tag == ns + "loc"
