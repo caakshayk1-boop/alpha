@@ -7,7 +7,7 @@ on:
     branches: [main]
     paths: ['apps/lockedfree/**', 'wrangler.lockedfree.jsonc', '.github/workflows/lockedfree.yml']
   workflow_run:
-    workflows: [lockedfree-ledger, lockedfree-screens]
+    workflows: [lockedfree-ledger, lockedfree-screens, lockedfree-edition]
     types: [completed]
     branches: [main]
   workflow_dispatch:

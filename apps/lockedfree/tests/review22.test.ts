@@ -26,3 +26,48 @@ test('rule values group digits the Indian way: ₹31,260 vs ₹26,411 cr, never 
   assert.equal(rules.find((r) => r.id === 'q2')!.value, '₹31,260 vs ₹26,411 cr');
   assert.equal(rules.find((r) => r.id === 'q4')!.value, '₹1,25,000.5 vs ₹1,00,000');
 });
+
+// The Nifty 500 line needs the benchmark's close on the first book day, which the first night's build did not store.
+import { emptyLedger, assertAppendOnly, type Ledger } from '../src/lib/ledger.ts';
+import { heroSeries } from '../src/lib/view.ts';
+const withDays = (start?: Ledger['benchmark_start']): Ledger => {
+  const L = emptyLedger(); L.config.capital = 1e7;
+  const day = (date: string, equity: number, bench: number | null) => ({ date, screen_id: 'all', equity, committed: 330000, realised: 0, unrealised: equity, open_n: 3, benchmark_close: bench });
+  L.book_days = [day('2026-11-17', -1000, null), day('2026-11-18', -2000, 23630.25)]; if (start) L.benchmark_start = start; return L;
+};
+test('the chart has no benchmark line without the start close, and a correct one with it', () => {
+  const none = heroSeries(withDays(), 'all'); assert.equal(none[0].bench, null); assert.equal(none[1].bench, null);
+  const some = heroSeries(withDays({ date: '2026-11-17', close: 23500, source: 'test' }), 'all'); assert.equal(some[0].bench, 0); assert.equal(some[1].bench, 0.55);
+});
+test('a start close for another date is not used as the baseline', () => {
+  const wrong = heroSeries(withDays({ date: '2026-11-16', close: 23500, source: 'test' }), 'all'); assert.equal(wrong[0].bench, null);
+});
+test('benchmark_start may be added once, and never changed or removed after that', () => {
+  const s = { date: '2026-11-17', close: 23500, source: 'test' };
+  assert.deepEqual(assertAppendOnly(withDays(), withDays(s)), [], 'adding it is allowed');
+  assert.deepEqual(assertAppendOnly(withDays(s), withDays(s)), [], 'unchanged is fine');
+  assert.ok(assertAppendOnly(withDays(s), withDays({ ...s, close: 23600 })).some((p) => /benchmark_start was rewritten/.test(p)));
+  assert.ok(assertAppendOnly(withDays(s), withDays()).some((p) => /benchmark_start was rewritten/.test(p)), 'removing it counts as rewriting');
+});
+
+// One page per call: its address is stable, and its numbers are the Calls table's numbers.
+import { callSlug, callModels, headlineOf } from '../src/lib/callpage.ts';
+import { ledger, markFn, prices } from '../src/lib/data.ts';
+test('a call address is SYMBOL-entry-date-screen, with & made URL-safe', () => {
+  assert.equal(callSlug({ symbol: 'M&M', screen_id: 'piotroski', first_listed_run: '2026-11-17', fills: [{ date: '2026-11-18' }] } as any), 'M_M-2026-11-18-piotroski');
+  assert.equal(callSlug({ symbol: 'ABC', screen_id: 'magic-formula', first_listed_run: '2026-11-20', fills: [] } as any), 'ABC-2026-11-20-magic-formula', 'a pending call is addressed by the listing date');
+});
+test('every call in the ledger has its own address, and an open call page agrees with the Calls table to the paisa', () => {
+  const L = ledger(), mark = markFn(), models = callModels(L, mark, prices);
+  assert.equal(models.length, L.picks.length); assert.equal(new Set(models.map((m) => m.slug)).size, models.length, 'addresses are unique');
+  for (const m of models.filter((x) => x.pick.status === 'open' && x.marks.length > 0)) {
+    const last = m.marks.at(-1)!; assert.equal(m.marks[0].date, m.row.entry, `${m.slug}: the table starts on the entry day`);
+    assert.equal(last.close, mark(m.pick.symbol), `${m.slug}: the last close is the ledger's mark`); assert.equal(last.gross, m.row.gross, `${m.slug}: the last result is the table's result`);
+    assert.equal(last.pct, m.row.gross_pct, `${m.slug}: the last change is the table's change`);
+  }
+});
+test('the headline always says whether it is before or after charges, and that it is paper', () => {
+  const L = ledger(), m = callModels(L, markFn(), prices).find((x) => x.pick.status === 'open');
+  if (!m) return; assert.match(m.headline, /^Open since \d+ \w{3} 2026 · [+−]?[\d.,]+% before charges at \d+ \w{3} 2026$/); assert.ok(m.shareLine.length <= 44, 'fits the share image');
+  assert.match(headlineOf({ ...m.row, status: 'pending', entry: null } as any, { ...m.pick, status: 'pending' } as any, L.as_of), /waiting for the next open/);
+});

@@ -1,0 +1,34 @@
+name: lockedfree-edition
+# Writes the day's Rulebook edition (apps/lockedfree/ledger/editions/<date>.json) once the owner's daily feed has landed, then commits it [skip ci].
+# An edition is written once and never rewritten; a stale feed, a non-session date or a thin universe writes nothing and goes red (see src/lib/edition.ts checkEdition).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 3 * * 2-6'       # 09:15 IST Tue-Sat: the feed lands about 05:45 IST with the previous session's close
+concurrency:
+  group: lockedfree-edition
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  edition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/lockedfree
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: node tools/fetch-feed.mjs
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test tests/edition.test.ts
+      - run: node --experimental-strip-types --disable-warning=ExperimentalWarning tools/build-edition.ts
+      - name: Commit the edition
+        working-directory: .
+        run: |
+          git config user.name "rulebook-edition" && git config user.email "actions@users.noreply.github.com"
+          git add apps/lockedfree/ledger/editions
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "edition: rulebook $(date -u +%F) [skip ci]" && git push

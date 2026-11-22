@@ -1,0 +1,32 @@
+---
+// One page per paper call (22 Nov 2026). Every number comes from lib/callpage.ts, which reads the ledger through tradeRows: a call page cannot disagree with the Calls table.
+import Terminal from '../../layouts/Terminal.astro'; import PageIntro from '../../components/PageIntro.astro'; import Delta from '../../components/Delta.astro';
+import { ledger, markFn, prices } from '../../lib/data.ts'; import { callModels } from '../../lib/callpage.ts'; import { dmy, inr, signed, holdDays } from '../../lib/view.ts'; import { timeLimit } from '../../lib/exitrules.ts';
+export function getStaticPaths() { return callModels(ledger(), markFn(), prices).map((c) => ({ params: { slug: c.slug }, props: { c } })); }
+const { c } = Astro.props; const L = ledger(); const t = c.row, p = c.pick, rule = p.rule, f0 = p.fills[0], f1 = p.fills[1];
+const desc = `${p.symbol}: a paper call listed by the ${c.screenName} screen on ${dmy(c.firstListed)}. ${c.headline}. Simulated, not advice.`;
+---
+<Terminal title={`${p.symbol} paper call`} description={desc} image={`/og/call-${c.slug}.png`}>
+<PageIntro title={`${p.symbol}: paper call`} summary={c.headline + '.'}>{c.screenName} screen · listed {dmy(c.firstListed)} · ledger as of {dmy(L.as_of)}</PageIntro>
+<div class="panes">
+<section class="pane span-6"><div class="pane-h"><span>Why it is here</span></div><div class="pane-b">
+  <p>{c.screenName} listed {p.symbol} on <strong>{dmy(c.firstListed)}</strong>. The rule that applies to this call: {c.ruleText}</p>
+  <p class="src">Calls are simulated and paper-only. A listing is the screen's output, not a recommendation to anyone. <a href="/method/#screens">How the screens work</a>.</p>
+</div></section>
+<section class="pane span-6"><div class="pane-h"><span>Entry</span></div><div class="pane-b">
+  {f0 ? <dl class="kv"><dt>Entry date</dt><dd>{dmy(f0.date)}</dd><dt>Entry price</dt><dd>{inr(f0.price, 2)}</dd><dt>Shares</dt><dd>{f0.qty.toLocaleString('en-IN')}</dd><dt>Rupees put in</dt><dd>{inr(t.invested)}</dd><dt>Charges on entry</dt><dd>{inr(c.chargesTotal, 2)}</dd></dl>
+  <p class="src">Filled at the close of the day the screen listed it, a simplification you could not trade; see <a href="/method/#price-basis">the price basis</a>.</p> : <p class="gap">Not entered yet. The entry is recorded at the next session's price once the ledger runs.</p>}
+</div></section>
+{f0 && rule && <section class="pane span-6"><div class="pane-h"><span>Exit rules in force</span></div><div class="pane-b">
+  <dl class="kv"><dt>Stop</dt><dd>{inr(t.stop, 2)} ({rule.stop_pct}% below entry{rule.trailing ? ', trailing' : ''})</dd><dt>Target</dt><dd>{inr(t.target, 2)} (+{rule.target_pct}%)</dd><dt>Time exit by</dt><dd>{dmy(timeLimit(f0.date))}</dd><dt>Leaves if dropped from the list</dt><dd>{rule.exit_on_drop ? 'Yes' : 'No'}</dd></dl>
+  <p class="src">The first rule that is met ends the call. A stop is checked before a target when both are hit on one day.</p>
+</div></section>}
+<section class="pane span-6"><div class="pane-h"><span>{p.status === 'closed' ? 'Result' : 'So far'}</span></div><div class="pane-b">
+  {t.entry && t.last != null ? <dl class="kv"><dt>{p.status === 'closed' ? 'Exit price' : 'Latest close'}</dt><dd>{inr(t.last, 2)}</dd><dt>Price change</dt><dd><Delta value={t.gross_pct} decimals={2} suffix="%" /> <span class="src">before charges</span></dd><dt>Result after charges</dt><dd><Delta value={t.pnl} decimals={0} /> <span class="src">{signed(t.pct, 2, '%')} of rupees put in</span></dd>{p.status === 'closed' && t.r != null && <><dt>In R</dt><dd>{signed(t.r, 2, ' R')}</dd></>}{p.status === 'closed' && <><dt>Why it ended</dt><dd>{t.reason}</dd><dt>Held</dt><dd>{holdDays(t.entry, t.exit)} days</dd>{c.exitCharges.length > 0 && <><dt>Charges on exit</dt><dd>{inr(c.exitCharges.reduce((s, x) => s + x.amount, 0), 2)}</dd></>}</>}</dl> : <p class="gap">{p.status === 'voided' ? 'This call was struck from the record: ' + (p.voided?.reason ?? '') : 'No result yet.'}</p>}
+</div></section>
+</div>
+<section class="pane"><div class="pane-h"><span>Daily closes since entry</span><span class="src">price change before charges</span></div><div class="pane-b flush">
+  {c.marks.length > 0 ? <div class="scroll"><table class="t-table"><caption class="sr">Daily closes of {p.symbol} since entry</caption><thead><tr><th scope="col">Date</th><th scope="col" class="num">Close ₹</th><th scope="col" class="num">Change since entry</th><th scope="col" class="num">Result ₹</th></tr></thead><tbody>{c.marks.map((m) => <tr><td>{dmy(m.date)}</td><td class="num">{m.close.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td class="num"><Delta value={m.pct} decimals={2} suffix="%" /></td><td class="num"><Delta value={m.gross} decimals={0} /></td></tr>)}</tbody></table></div> : <p class="gap pad">No daily closes are stored for this call yet, so none are shown.</p>}
+</div></section>
+<p class="src pad"><a href={`/stock/${encodeURIComponent(p.symbol)}/`}>The {p.symbol} stock page</a> · <a href="/calls/">All calls</a> · Simulated and paper-only; not investment advice.</p>
+</Terminal>

@@ -1,0 +1,5 @@
+---
+// The blocks of an edition or weekly note (lib/edition.ts), the same structure the email text is made from.
+const { blocks } = Astro.props as { blocks: { h?: string; p?: string[]; li?: string[] }[] };
+---
+{blocks.map((b) => <section class="ed-block">{b.h && <h2 class="t-h">{b.h}</h2>}{(b.p ?? []).map((p) => <p>{p}</p>)}{b.li && b.li.length > 0 && <ul class="ed-list">{b.li.map((l) => <li>{l}</li>)}</ul>}</section>)}

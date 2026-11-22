@@ -1,0 +1,14 @@
+---
+// The archive of daily editions and weekly notes (22 Nov 2026): one frozen record per trading day, newest first.
+import Terminal from '../../layouts/Terminal.astro'; import PageIntro from '../../components/PageIntro.astro';
+import { editions } from '../../lib/data.ts'; import { weeksOf } from '../../lib/edition.ts'; import { dmy } from '../../lib/view.ts';
+const eds = editions().slice().reverse(); const weeks = weeksOf(editions()).slice().reverse();
+---
+<Terminal title="Daily editions" description="One edition after every trading day: breakout observations from published technical rules, what happened to earlier ones, the paper book and market breadth. Educational; not advice.">
+<PageIntro title="Daily editions" summary="Published after the close on every trading day, and a weekly note each Saturday. Every edition is written once and never edited.">Observations, not recommendations · paper-only</PageIntro>
+<section class="pane"><div class="pane-h"><span>Latest editions</span><a class="src" href="/editions/feed.xml">Feed (RSS)</a></div><div class="pane-b">
+  {eds.length === 0 ? <p class="gap">The first edition is written after the next trading day's data arrives.</p> : <ul class="ed-list">{eds.map((e) => <li><a href={`/editions/${e.date}/`}>{dmy(e.date)}</a> · {e.breakouts.listed.length} breakout observation{e.breakouts.listed.length === 1 ? '' : 's'}{e.breakouts.listed.length ? ': ' + e.breakouts.listed.map((x) => x.sym).join(', ') : ''}</li>)}</ul>}
+</div></section>
+{weeks.length > 0 && <section class="pane"><div class="pane-h"><span>Weekly notes</span></div><div class="pane-b"><ul class="ed-list">{weeks.map((w) => <li><a href={`/editions/week/${w[w.length - 1].date}/`}>Week to {dmy(w[w.length - 1].date)}</a> · {w.length} trading day{w.length === 1 ? '' : 's'}</li>)}</ul></div></section>}
+<section class="pane"><div class="pane-h"><span>How the breakout list is made</span></div><div class="pane-b"><p>A stock is listed when it closes above the highest close of the previous 50 sessions <em>and</em> passes seven more checks: volume at least 1.5× its 20-day average, close above the 50-day and 200-day averages with the 50-day above the 200-day, RSI between 55 and 80, a positive MACD histogram, ahead of the Nifty over three months, within three ATRs of its 20-day average, and an ATR of at most 6% of price. Only stocks of at least ₹2,000 crore that trade at least ₹10 crore a day are checked.</p><p class="src">The thresholds are the usual textbook values, fixed before any results were seen, and are not tuned. Listings are alphabetical, not ranked. The list sets no entry, stop or target and files no paper call. Every earlier listing is followed close to close, including the ones that fell.</p></div></section>
+</Terminal>

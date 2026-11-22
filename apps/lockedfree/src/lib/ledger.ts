@@ -20,7 +20,9 @@ export interface Ledger { schema: string; as_of: string | null; built_on: string
   config: { charges_version: string; stop_pct: number; notional: number; benchmark: string; entry_basis?: EntryBasis; capital?: number; ticket?: number; max_open?: number; sector_cap?: number };
   screens: { id: string; name: string; version: number; started_on: string }[]; runs: RunIn[]; picks: Pick[];
   voids: { pick_id: string; date: string; reason: string }[]; transitions: { screen_id: string; run_date: string; entered: string[]; exited: string[]; still_in: string[] }[];
-  refusals: { screen_id: string; symbol: string; refused_on: string; price_at_refusal: number | null }[]; book_days: BookDay[]; aggregates: Aggregate[] }
+  refusals: { screen_id: string; symbol: string; refused_on: string; price_at_refusal: number | null }[]; book_days: BookDay[]; aggregates: Aggregate[];
+  /** The benchmark's close on the record's first book day, written ONCE (22 Nov 2026). The first night's build did not store it, and book_days are append-only, so it lives beside them: the chart's Nifty 500 line starts from it. Never changed once set (assertAppendOnly). */
+  benchmark_start?: { date: string; close: number; source: string } }
 export interface Inputs { as_of: string; built_on: string; runs: RunIn[]; bars: Bars; benchmark_close: number | null; screens?: Ledger['screens'] }
 
 export const emptyLedger = (basis: EntryBasis = 'signal-close', ticket: number = TICKET): Ledger => ({ schema: SCHEMA, as_of: null, built_on: null, config: { charges_version: CHARGES_VERSION, stop_pct: STOP_PCT, notional: ticket, benchmark: '^CRSLDX (Nifty 500 price index, no dividends)', entry_basis: basis, capital: CAPITAL, ticket, max_open: MAX_OPEN, sector_cap: SECTOR_CAP },
@@ -134,6 +136,7 @@ export function assertAppendOnly(prev: Ledger, next: Ledger): string[] {
     if (next[k].length < prev[k].length) bad.push(`${k} shrank`);
     prev[k].forEach((row, i) => { if (!same(row, next[k][i])) bad.push(`${k}[${i}] was rewritten`); });
   }
+  if (prev.benchmark_start && !same(prev.benchmark_start, next.benchmark_start)) bad.push('benchmark_start was rewritten');
   for (const p of prev.picks) {
     const n = next.picks.find((x) => x.id === p.id); if (!n) { bad.push(`pick ${p.id} was deleted`); continue; }
     p.fills.forEach((f, i) => { if (!same(f, n.fills[i])) bad.push(`pick ${p.id} fill ${i} was rewritten`); });

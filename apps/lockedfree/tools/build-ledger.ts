@@ -22,6 +22,9 @@ const runs: RunIn[] = existsSync(runsDir) ? readdirSync(runsDir).filter((f) => f
 const asked = Object.keys(raw!.bars).length + raw!.missing.length;
 if (asked > 0) { const fresh = Object.values(raw!.bars).filter((b) => b[asOf]).length / asked; if (fresh < 0.85) fail(`only ${(fresh * 100).toFixed(0)}% of requested names have a bar for ${asOf} (need 85%)`); }
 const next = buildNext(prev, { as_of: asOf, built_on: new Date().toISOString(), runs, bars: raw!.bars, benchmark_close: raw!.benchmark[asOf] ?? null });
+// The benchmark's close on the record's first book day: stored once, beside (not inside) the append-only book days. The fetch step downloads a year of benchmark closes, so the first day's close is available whenever the first night's build missed it.
+const day0 = next.book_days[0]?.date, close0 = day0 ? raw!.benchmark[day0] : undefined;
+if (!next.benchmark_start && day0 && typeof close0 === 'number' && close0 > 0) next.benchmark_start = { date: day0, close: close0, source: `Yahoo ^CRSLDX daily close for ${day0}, recorded ${asOf}` };
 const problems = [...validate(next), ...assertAppendOnly(prev, next)];
 if (problems.length) fail(problems.join('; '));
 writeFileSync(join(dir, 'ledger.json'), JSON.stringify(next, null, 1) + '\n');

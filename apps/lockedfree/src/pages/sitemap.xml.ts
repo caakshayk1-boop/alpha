@@ -1,9 +1,13 @@
+import { editions } from '../lib/data.ts'; import { weeksOf } from '../lib/edition.ts';
 import { create } from 'xmlbuilder2';
-import { DEMO } from '../lib/data.ts';
+import { DEMO, ledger, markFn, prices } from '../lib/data.ts'; import { callModels } from '../lib/callpage.ts';
 import { feedAvailable, loadFeed } from '../lib/feed.ts';
 
 export function GET() {
-  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/practice/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/'];
+  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/practice/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/', '/editions/'];
+  for (const e of editions()) paths.push(`/editions/${e.date}/`);
+  for (const w of weeksOf(editions())) paths.push(`/editions/week/${w[w.length - 1].date}/`);
+  for (const c of callModels(ledger(), markFn(), prices)) paths.push(`/call/${c.slug}/`);
   if (feedAvailable()) {
     for (const row of loadFeed().rows) paths.push(`/stock/${encodeURIComponent(row.sym)}/`);
   }
