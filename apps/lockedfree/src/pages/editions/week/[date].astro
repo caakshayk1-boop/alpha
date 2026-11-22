@@ -1,0 +1,10 @@
+---
+import Terminal from '../../../layouts/Terminal.astro'; import PageIntro from '../../../components/PageIntro.astro'; import EditionBody from '../../../components/EditionBody.astro';
+import { editions } from '../../../lib/data.ts'; import { weeksOf, buildWeekly, weeklyBlocks } from '../../../lib/edition.ts'; import { dmy } from '../../../lib/view.ts';
+export function getStaticPaths() { return weeksOf(editions()).map((w) => ({ params: { date: w[w.length - 1].date }, props: { k: buildWeekly(w)! } })); }
+const { k } = Astro.props; const n = k.days.reduce((s, d) => s + d.listed.length, 0);
+---
+<Terminal title={`Weekly note, week to ${dmy(k.week_ending)}`} description={`The week to ${dmy(k.week_ending)}: ${n} breakout observations over ${k.sessions} trading days, how they did, the paper book and breadth. Educational; paper-only.`}>
+<PageIntro title={`Weekly note, week to ${dmy(k.week_ending)}`} summary={`${k.sessions} trading day${k.sessions === 1 ? '' : 's'}, ${n} breakout observation${n === 1 ? '' : 's'}. Computed from that week's editions.`}>Observations, not recommendations · paper-only</PageIntro>
+<div class="wrap prose"><EditionBody blocks={weeklyBlocks(k)} /><p class="src"><a href="/editions/">All editions</a></p></div>
+</Terminal>

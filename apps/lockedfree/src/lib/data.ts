@@ -3,6 +3,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { emptyLedger, validate, type Ledger } from './ledger.ts';
 import { SCREENS, type StockResult } from './screens.ts';
+import type { Edition } from './edition.ts';
 const DIR = process.env.RULEBOOK_DATA_DIR || join(process.cwd(), 'ledger');
 export const DEMO = process.env.RULEBOOK_DEMO === '1';
 const read = <T,>(f: string): T | null => { const p = join(DIR, f); return existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')) as T) : null; };
@@ -22,3 +23,5 @@ export function benchmarkLast(): { prev: number | null; last: number | null; asO
   const d = ledger().book_days.filter((b) => b.screen_id === 'all' && b.benchmark_close).sort((a, b) => a.date.localeCompare(b.date)); const l = d.at(-1), p = d.at(-2);
   return { prev: p?.benchmark_close ?? null, last: l?.benchmark_close ?? null, asOf: l?.date ?? null };
 }
+/** Every written edition, oldest first (ledger/editions/<date>.json). */
+export function editions(): Edition[] { const d = join(DIR, 'editions'); if (!existsSync(d)) return []; return readdirSync(d).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().map((f) => JSON.parse(readFileSync(join(d, f), 'utf8')) as Edition); }

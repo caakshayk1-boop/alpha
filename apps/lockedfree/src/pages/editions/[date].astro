@@ -1,0 +1,12 @@
+---
+import Terminal from '../../layouts/Terminal.astro'; import PageIntro from '../../components/PageIntro.astro'; import EditionBody from '../../components/EditionBody.astro';
+import { editions } from '../../lib/data.ts'; import { editionBlocks } from '../../lib/edition.ts'; import { dmy } from '../../lib/view.ts';
+export function getStaticPaths() { const eds = editions(); return eds.map((e, i) => ({ params: { date: e.date }, props: { e, prev: eds[i - 1]?.date ?? null, next: eds[i + 1]?.date ?? null } })); }
+const { e, prev, next } = Astro.props; const b = e.breakouts;
+---
+<Terminal title={`Edition, ${dmy(e.date)}`} description={`Breakout observations for ${dmy(e.date)}: ${b.listed.length ? b.listed.map((x) => x.sym).join(', ') : 'none passed'}. Observations from published rules, not recommendations. Educational; paper-only.`}>
+<PageIntro title={`Edition, ${dmy(e.date)}`} summary={`${b.listed.length} breakout observation${b.listed.length === 1 ? '' : 's'}. Written once on the day's data and never edited.`}>Feed {dmy(e.feed.price_date)} · observations, not recommendations</PageIntro>
+<div class="wrap prose"><EditionBody blocks={editionBlocks(e)} />
+{b.listed.length > 0 && <section class="ed-block"><h2 class="t-h">Each check, for each name</h2><div class="scroll"><table class="t-table"><caption class="sr">Breakout checks by stock</caption><thead><tr><th scope="col">Stock</th>{b.listed[0].rules.map((r) => <th scope="col" title={r.label}>{r.id.toUpperCase()}</th>)}</tr></thead><tbody>{b.listed.map((x) => <tr><td><a href={`/stock/${encodeURIComponent(x.sym)}/`}>{x.sym}</a></td>{x.rules.map((r) => <td class="src">{r.value}</td>)}</tr>)}</tbody></table></div><ul class="ed-list">{b.listed[0].rules.map((r) => <li><strong>{r.id.toUpperCase()}</strong> {r.label}: {r.threshold}</li>)}</ul></section>}
+<nav class="src" aria-label="Other editions">{prev && <a href={`/editions/${prev}/`}>← {dmy(prev)}</a>} {next && <a href={`/editions/${next}/`}>{dmy(next)} →</a>} · <a href="/editions/">All editions</a></nav></div>
+</Terminal>
