@@ -11,7 +11,8 @@ export interface ScreenRun { screen_id: string; passed: string[]; /** v2: the sc
 export interface ScreenDef { id: string; name: string; version: number; short: string; run(universe: Company[]): ScreenRun }
 
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
-const f = (x: number, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toString();
+/** A figure for the reader: Indian digit grouping (₹26,411 cr, never ₹26411), at most d decimals, none trailing. */
+const f = (x: number, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('en-IN', { maximumFractionDigits: d });
 const R = (id: string, label: string, threshold: string, pass: boolean | null, value: string): RuleResult => ({ id, label, pass, value: pass === null ? 'missing' : value, threshold });
 const cmp = (id: string, label: string, threshold: string, a: number | undefined, b: number | undefined, test: (a: number, b: number) => boolean, show: (a: number, b: number) => string) =>
   num(a) && num(b) ? R(id, label, threshold, test(a, b), show(a, b)) : R(id, label, threshold, null, '');

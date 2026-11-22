@@ -4,9 +4,9 @@
   color-scheme: dark;
   --paper: #08090A; --card: #101113; --ink: #F0F0F0; --ink-muted: #9EA3AB; --hairline: #26282B;
   --brand: #B8EF43; --brand-ink: #0A0C05; --up: #3DDC97; --down: #FF6B6B; --down-ink: #FF8F8F; --warn: #FFD166; --warn-ink: #FFD166; --halo: #B8EF43;
-  --font-display: "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-ui: "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "JetBrains Mono Variable", "JetBrains Mono Variable fallback", ui-monospace, monospace;
+  --font-display: "Rupee", "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: "Rupee", "Fira Sans", "Fira Sans fallback", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Rupee", "JetBrains Mono Variable", "JetBrains Mono Variable fallback", ui-monospace, monospace;
   --r-card: 12px; --r-control: 6px; --r-full: 999px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
   --d1: 120ms; --d2: 200ms; --d3: 320ms; --d4: 420ms;

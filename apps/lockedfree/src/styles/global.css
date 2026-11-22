@@ -3,6 +3,10 @@
 @import "@fontsource/fira-sans/latin-700.css";
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "./tokens.css";
+/* The rupee sign (U+20B9). Fira Sans's shipped "latin" subset has no ₹ and JetBrains Mono's subsets have none either, so every ₹ fell back to whatever the device had (an empty box where nothing has it).
+   These two files hold ONLY that glyph, cut from Fira Sans (SIL OFL; renamed "Rupee"), about 600 bytes each; unicode-range keeps the family from touching any other character. */
+@font-face { font-family: "Rupee"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/rupee-400.woff2") format("woff2"); unicode-range: U+20B9; }
+@font-face { font-family: "Rupee"; font-style: normal; font-weight: 700; font-display: swap; src: url("/fonts/rupee-700.woff2") format("woff2"); unicode-range: U+20B9; }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -209,13 +213,11 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
 .about-steps { padding-inline-start:1.6em; } .about-steps li { padding:.4em 0 .4em .3em; }
 .about-story summary { cursor:pointer; padding:.7em 0; font-weight:600; }
 .chart:not(.chart-empty) { touch-action:pinch-zoom; overscroll-behavior:contain; }
-.read-position { flex:none; order:4; color:var(--ink-muted); font:500 var(--fs-xs)/1.2 var(--font-mono); font-variant-numeric:tabular-nums; min-width:8ch; text-align:right; }
 .signup-receipt { display:none; } .signup-receipt:target { display:block; scroll-margin-top:6rem; }
-@media (max-width:719px) { .top .wrap { gap:var(--s2); } .read-position { order:2; } }
+@media (max-width:719px) { .top .wrap { gap:var(--s2); } }
 .delivery-choice { display:flex; align-items:flex-start; gap:.6rem; max-width:60ch; color:var(--ink-muted); }
-.delivery-choice input { flex:none; margin-top:.25rem; } .read-position { white-space:nowrap; }
+.delivery-choice input { flex:none; margin-top:.25rem; }
 
-@media(max-width:420px){ .top .read-position { font-size:var(--fs-xs); } .top:has(.read-position:not([hidden])) .livepill { display:none; } }
 
 /* Reserve the system inset in edge-to-edge home-screen windows. */
 .top { padding-top:env(safe-area-inset-top,0px); }
@@ -223,4 +225,12 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
 @media(max-width:719px) {
   html[data-surface="terminal"] .top { position:sticky; top:0; }
   html[data-surface="terminal"] .t-sub { position:relative; top:auto; z-index:40; }
+}
+
+/* visually hidden, still read by screen readers: used for table captions whose text is shown in a visible line above the table (a caption inside a scrolling table clips on a phone) */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Touch targets (22 Nov 2026 review: 36 of 99 links and buttons on Calls were under 32px tall). On a phone, links, buttons and summaries inside tables get a 32px hit area without changing their text size. */
+@media (pointer: coarse), (max-width: 720px) {
+  .t-table a, .t-table button, .t-table summary, .call-columns label, .scroll a { display: inline-flex; align-items: center; min-height: 32px; }
 }

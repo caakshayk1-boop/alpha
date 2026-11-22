@@ -38,6 +38,6 @@ test('type scale: every font size is a token, a display clamp or relative (em), 
     for (const m of s.matchAll(/font:\s*(?:italic\s+)?(?:\d{3}\s+)?([\d.]+(?:rem|px))[\s/]/g)) assert.fail(`${p}: font shorthand uses a raw size ${m[1]}`);
   }
 });
-test('the stylesheet names no font family outside the two tokens', () => {
-  for (const p of walk(join(root, 'src')).filter((f) => /\.(css|astro)$/.test(f))) for (const m of readFileSync(p, 'utf8').matchAll(/font-family:\s*([^;}]+)/g)) assert.match(m[1].trim(), /^var\(--font-(ui|display|mono)\)$|^[^]*var\(--font-/, `${p}: ${m[1]}`);
+test('the stylesheet names no font family outside the tokens (an @font-face block declares a face, it styles nothing: the rupee-only face is declared there)', () => {
+  for (const p of walk(join(root, 'src')).filter((f) => /\.(css|astro)$/.test(f))) for (const m of readFileSync(p, 'utf8').replace(/@font-face\s*\{[^}]*\}/g, '').matchAll(/font-family:\s*([^;}]+)/g)) assert.match(m[1].trim(), /^var\(--font-(ui|display|mono)\)$|^[^]*var\(--font-/, `${p}: ${m[1]}`);
 });
