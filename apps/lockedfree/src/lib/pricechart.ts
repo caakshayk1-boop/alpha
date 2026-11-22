@@ -50,7 +50,8 @@ export function dateTicks(bars: C[]): { i: number; label: string }[] {
 export function shortDate(t: string, mode: 'd' | 'm' | 'full'): string { const [y, m, d] = t.split('-').map(Number); return mode === 'd' ? `${d} ${MON[m - 1]}` : mode === 'm' ? `${MON[m - 1]} '${String(y).slice(2)}` : `${d} ${MON[m - 1]} ${y}`; }
 /** Change over the bars shown, in percent, from the first close to the last. */
 export const changeOver = (bars: C[]): number | null => (bars.length > 1 && bars[0].c > 0 ? (bars[bars.length - 1].c / bars[0].c - 1) * 100 : null);
-export const signedPct = (x: number | null, d = 2) => (x == null ? '—' : `${x > 0 ? '▲ +' : x < 0 ? '▼ −' : ''}${Math.abs(x).toFixed(d)}%`);
+/** A signed percentage with Indian digit grouping; a move of 1,000% or more drops the decimals (+1,37,150%, not +137150.00%). */
+export const signedPct = (x: number | null, d = 2) => { if (x == null) return '—'; const a = Math.abs(x), dd = a >= 1000 ? 0 : d; return `${x > 0 ? '▲ +' : x < 0 ? '▼ −' : ''}${a.toLocaleString('en-IN', { minimumFractionDigits: dd, maximumFractionDigits: dd })}%`; };
 /** Infer observation spacing, never call monthly samples daily sessions. */
 export function historyInterval(d: C[]): Interval {
   const gaps = d.slice(1).map((b, i) => (dayMs(b.t) - dayMs(d[i].t)) / 864e5).filter((n) => n > 0).sort((a, b) => a - b);
