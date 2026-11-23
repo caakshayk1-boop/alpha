@@ -234,3 +234,14 @@ main .t-h .src { display:block; margin:.35rem 0 0; }
 @media (pointer: coarse), (max-width: 720px) {
   .t-table a, .t-table button, .t-table summary, .call-columns label, .scroll a { display: inline-flex; align-items: center; min-height: 32px; }
 }
+
+/* Type roles (23 Nov 2026 polish pass). Mono is for figures and labels; sentences are set in the UI font, so captions, notes and page-context lines read as text and not as code.
+   Every figure keeps tabular numerals so columns and sentences line up. */
+main :is(.src, .stamp, .page-context, .hint) { font-family: var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.page-context { font-size: var(--fs-sm); line-height: 1.5; max-width: 80ch; }
+.t-table td, .t-table th, .big-n, .hero-n, .num, .fig { font-variant-numeric: tabular-nums; }
+.t-table th.num, .t-table td.num { text-align: right; }
+main .ed-list { margin: 0; padding-left: var(--s5, 1.25rem); display: grid; gap: var(--s2, .5rem); }
+main .ed-block { margin-block: var(--s5, 1.5rem); } main .ed-block p { max-width: 70ch; line-height: 1.6; }
+/* Contrast: captions used #71757b (4.14:1 on the card); --ink-muted is 7:1. Axe flagged 22 nodes on Stocks, Editions and call pages. */
+main .src { color: var(--ink-muted); }

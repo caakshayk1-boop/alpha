@@ -11,7 +11,7 @@ const F = feedAvailable() ? loadFeed() : null; const full = `${title} · Ruleboo
 <SiteHeader path={path} />
 <div class="t-sub"><slot name="tools" /><span class="grow" data-u="grow"></span>
 <span data-clock class="hide-s">IST --:--:--</span><span class="hide-s" title="Prices in the daily feed are last-close prices">Data as of {F ? dmy(F.asOf) : 'not loaded'}</span>
-<button class="t-cmd" type="button" data-cmdk-open aria-label="Search stocks and commands"><Icon name="search" size={14} /><span class="hide-s">Search {F?.rows.length ?? ""} stocks</span><span class="kbd">⌘K</span></button></div>
+<button class="t-cmd" type="button" data-cmdk-open aria-label={`Search ${F?.rows.length ?? ""} stocks ⌘K`.replace("  ", " ")}><Icon name="search" size={14} /><span class="hide-s">Search {F?.rows.length ?? ""} stocks</span><span class="kbd">⌘K</span></button></div>
 <main id="main" class="t-body"><slot /></main>
 <Footer />
 <div class="cmdk" data-cmdk role="dialog" aria-modal="true" aria-label="Search"><div class="box"><input type="text" data-cmdk-input placeholder="Type a symbol, a company, or a command…" autocomplete="off" aria-label="Search"><ul data-cmdk-list role="listbox"></ul></div></div>
