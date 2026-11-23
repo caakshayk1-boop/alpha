@@ -14,7 +14,7 @@ await c.route('https://lockedfree.test/**',async route=>{
 const pg=await c.newPage();pg.setDefaultTimeout(6500);const errors=[];pg.on('pageerror',e=>errors.push(e.message));
 // Confirm the short first read and keyboard access to the underlying figures.
 await pg.goto('https://lockedfree.test/');
-assert.match(await pg.locator('h1').innerText(),/Practise investing on paper/i);
+assert.match(await pg.locator('h1').innerText(),/Practise investing without real money/i);
 assert.equal(await pg.locator('.hero-copy .cta-row a').first().getAttribute('href'),'/calls/');
 await pg.goto('https://lockedfree.test/terminal/');
 const signals=pg.locator('.today-group').first();

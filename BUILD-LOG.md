@@ -454,3 +454,9 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 - Search button accessible name matches its visible text. Axe: 0 critical/serious on 11 routes.
 - The four audit data bugs were already fixed on main (CHENNPETRO target ₹1,620.24; labelled price bases; "3 of 999 have no sector"; "cash after charges" and "charges paid ₹6,626.57").
 - Not done: a full copy rewrite with a linter, Lighthouse scores, a new type scale or spacing tokens.
+
+## 2026-11-23 · Blueprint pass (copy, honesty, verification)
+- Restored `apps/lockedfree/DESIGN.md`: the polish commit had overwritten the token front matter that `tests/design.test.ts` reads. The polish rules are now an appended section.
+- Home copy: price-refresh line, exit-rule bullet, hero, practice-data note and signup note rewritten in plain words. Meaning kept: some screens also close a call when the stock leaves the screen, and the hero says the RULES choose the stocks.
+- Lighthouse (mobile, Home): Performance 94, Accessibility 100, Best Practices 96.
+- Not adopted from the blueprint: a "future number" or forecast (this site publishes no projection), About replaced by Plan in the tab bar (About is the what-this-is-and-is-not page; ADR-016 sets the nav), Style Dictionary/Vale/workbox tooling, one-question-per-screen restructure.
