@@ -20,3 +20,16 @@ test('a too-long query is refused, except for /api/quotes which carries a name l
   const env={ASSETS:{fetch:async()=>new Response('x')}},ctx={waitUntil(){}};
   const r=await worker.fetch(new Request('https://apexpro.askakshay.com/api/market?x='+'a'.repeat(120)),env,ctx);assert.equal(r.status,400);
 });
+
+test('uncached /api calls are limited per client; cached answers never count; no binding means no limit',async()=>{
+  const store=new Map();globalThis.caches={default:{match:async k=>store.get(k.url)?.clone(),put:async(k,v)=>{store.set(k.url,v)}}};
+  const realFetch=globalThis.fetch;let upstreamCalls=0;globalThis.fetch=async()=>{upstreamCalls++;return new Response(JSON.stringify({ok:true,sym:'X'}),{headers:{'content-type':'application/json'}})};
+  try{
+    const ctx={waitUntil(p){}};let allowed=2;const seen=[];const env={ASSETS:{fetch:async()=>new Response('x')},API_LIMIT:{limit:async o=>{seen.push(o.key);return{success:allowed-->0}}}};
+    const get=(p,ip='9.9.9.9')=>worker.fetch(new Request('https://apexpro.askakshay.com'+p,{headers:{'cf-connecting-ip':ip}}),env,ctx);
+    assert.equal((await get('/api/company?s=AAA1')).status,200);assert.equal((await get('/api/company?s=AAA2')).status,200);
+    const third=await get('/api/company?s=AAA3');assert.equal(third.status,429);assert.equal(upstreamCalls,2,'the refused call never reached the hub');assert.deepEqual(seen,['9.9.9.9','9.9.9.9','9.9.9.9']);
+    allowed=0;assert.equal((await get('/api/company?s=AAA1')).status,200,'a cached answer is served even when the client is over its limit');assert.equal(seen.length,3,'and is not counted');
+    const open={ASSETS:env.ASSETS};assert.equal((await worker.fetch(new Request('https://apexpro.askakshay.com/api/company?s=BBB1'),open,ctx)).status,200,'no binding, no limit');
+  }finally{globalThis.fetch=realFetch;delete globalThis.caches}
+});

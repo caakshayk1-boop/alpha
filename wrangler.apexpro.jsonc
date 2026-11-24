@@ -5,5 +5,7 @@
   "assets": { "directory": "./apps/apexpro/public", "binding": "ASSETS", "run_worker_first": true, "not_found_handling": "404-page" },
   "routes": [{ "pattern": "apexpro.askakshay.com", "custom_domain": true }],
   "workers_dev": true,
+  // 24 Nov 2026: per-address limit on uncached /api calls (namespace ids 1001, 1002, 1101, 1102 are used by the hub and Rulebook)
+  "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1201", "simple": { "limit": 60, "period": 60 } }],
   "observability": { "enabled": true }
 }
