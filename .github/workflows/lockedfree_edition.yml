@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '45 3 * * 2-6'       # 09:15 IST Tue-Sat: the feed lands about 05:45 IST with the previous session's close
+    - cron: '45 5 * * 2-6'       # 24 Nov 2026: two later slots. GitHub drops or delays scheduled runs (the 03:45 slot did not fire on 24 Nov). An edition is written once, so a repeat run changes nothing.
+    - cron: '45 8 * * 2-6'
 concurrency:
   group: lockedfree-edition
   cancel-in-progress: false
@@ -26,9 +28,29 @@ jobs:
       - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test tests/edition.test.ts
       - run: node --experimental-strip-types --disable-warning=ExperimentalWarning tools/build-edition.ts
       - name: Commit the edition
+        id: commit
         working-directory: .
         run: |
           git config user.name "rulebook-edition" && git config user.email "actions@users.noreply.github.com"
           git add apps/lockedfree/ledger/editions
           git diff --cached --quiet && { echo "no change"; exit 0; }
           git commit -m "edition: rulebook $(date -u +%F) [skip ci]" && git push
+      # 24 Nov 2026: email. DRY RUN unless EDITION_SEND=1 (a repository variable) AND the four Brevo values (secrets) are all set; with none set it only prints what it would do.
+      # A sent edition is recorded in ledger/sent.json, which the next step commits, so a retry slot never sends the same one twice. Untested against Brevo: try a one-address list first.
+      - name: Email the edition and, on Saturdays, the weekly note (dry run unless switched on)
+        env:
+          EDITION_SEND: ${{ vars.EDITION_SEND }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_LIST_ID: ${{ secrets.BREVO_LIST_ID }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+        run: |
+          node --experimental-strip-types --disable-warning=ExperimentalWarning tools/send-edition.mjs
+          [ "$(date -u +%u)" = "6" ] && node --experimental-strip-types --disable-warning=ExperimentalWarning tools/send-edition.mjs --weekly || true
+      - name: Record what was sent
+        working-directory: .
+        run: |
+          git config user.name "rulebook-edition" && git config user.email "actions@users.noreply.github.com"
+          git add apps/lockedfree/ledger/sent.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "nothing sent"; exit 0; }
+          git commit -m "edition: sent record $(date -u +%F) [skip ci]" && git pull --rebase -q && git push
