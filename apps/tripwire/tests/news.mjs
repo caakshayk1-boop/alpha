@@ -74,6 +74,9 @@ const closeFilters = async (pg) => { if (await pg.locator('[role=dialog]').count
 {
   const { ctx, pg } = await open(STATE, { seen: nowS() - 3 * 3600 });
   await pg.goto(base + '/#/news'); await pg.waitForSelector('[data-news-group]', { timeout: 20000 }); await pg.waitForSelector('.nw-row', { timeout: 20000 });
+  // 24 Nov 2026: wait for the row this check is about. The first row to render is not always the followed company's, and on a loaded CI runner the page was read before
+  // TCS Q2 was in it ("only ... is New: Brent crude climbs ..."), which failed both nightly attempts and held the data deploy. Reproduced by running this suite under CPU load.
+  await pg.waitForSelector('[data-news-group="yours"] .nw-row', { timeout: 20000 });
   const news = await pg.locator('.nw-row', { has: pg.locator('.nw-tag', { hasText: /^New$/ }) }).locator('.nw-head').allInnerTexts();
   ok(news.length === 1 && /TCS Q2/.test(news[0]), `only the story published and first seen since the last visit is New: ${news.join(' | ')}`);
   await ctx.close();

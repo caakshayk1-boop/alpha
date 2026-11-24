@@ -52,7 +52,7 @@
 .mk-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);margin:0}
 .mk-nums dt{font-size:var(--fs-label);color:var(--ink-3)}
 .mk-nums dt.up{color:var(--up)}.mk-nums dt.down{color:var(--down)}
-.mk-nums dd{margin:0;font:600 var(--fs-num-s)/1.2 var(--font);display:flex;align-items:baseline;gap:var(--sp-2)}
+.mk-nums dd{margin:0;font:600 var(--fs-num-s)/1.2 var(--font);display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--sp-2)}   /* 24 Nov 2026: wraps. The count beside each share reached three digits (184 of 999) and, at 200% text size, pushed the page 6px sideways */
 .mk-nums dd small{font:400 var(--fs-label)/1 var(--font);color:var(--ink-3)}
 .mk-line{margin:var(--sp-3) 0 0}
 .mk-go{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
