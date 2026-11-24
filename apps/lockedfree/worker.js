@@ -29,11 +29,14 @@ const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/, CONSENT = 'weekly-note
 const SEC = { 'x-content-type-options': 'nosniff', 'strict-transport-security': 'max-age=31536000; includeSubDomains', 'cross-origin-opener-policy': 'same-origin', 'cache-control': 'no-store' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...SEC } });
 export class Subscribers extends DurableObject {
-  constructor(ctx, env) { super(ctx, env); ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS subs (email TEXT PRIMARY KEY, consent TEXT NOT NULL, at TEXT NOT NULL)'); }
+  constructor(ctx, env) { super(ctx, env); ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS subs (email TEXT PRIMARY KEY, consent TEXT NOT NULL, at TEXT NOT NULL)'); ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS doi (email TEXT PRIMARY KEY, at TEXT NOT NULL)'); }
+  // 24 Nov 2026: at most one confirmation email per address per day. Without this, anyone could submit a victim's address again and again and flood their inbox (and burn the sender's reputation).
+  mayConfirm(email, now) { const r = this.ctx.storage.sql.exec('SELECT at FROM doi WHERE email = ?', email).toArray()[0]; return !r || Date.parse(now) - Date.parse(r.at) >= 864e5; }
+  confirmed(email, now) { this.ctx.storage.sql.exec('INSERT OR REPLACE INTO doi (email, at) VALUES (?, ?)', email, now); return true; }
   add(email, consent, at) { this.ctx.storage.sql.exec('INSERT OR IGNORE INTO subs (email, consent, at) VALUES (?, ?, ?)', email, consent, at); return true; }
   all() { return this.ctx.storage.sql.exec('SELECT email, consent, at FROM subs ORDER BY at').toArray(); }
   restore(rows) { let n = 0; for (const r of rows) { this.ctx.storage.sql.exec('INSERT OR IGNORE INTO subs (email, consent, at) VALUES (?, ?, ?)', r.email, r.consent, r.at); n++; } return n; }
-  remove(email) { this.ctx.storage.sql.exec('DELETE FROM subs WHERE email = ?', email); return true; }
+  remove(email) { this.ctx.storage.sql.exec('DELETE FROM subs WHERE email = ?', email); this.ctx.storage.sql.exec('DELETE FROM doi WHERE email = ?', email); return true; }
 }
 export default {
   async fetch(req, env) {
@@ -49,10 +52,11 @@ export default {
       if (!EMAIL.test(email) || email.length > 254) return json({ error: 'That email address does not look right.' }, 400);
       if (form.get('consent') !== CONSENT) return json({ error: 'Consent is needed to join the list.' }, 400);
       const opted=form.get('delivery')==='email-v1'; const stub=env.SUBSCRIBERS.get(env.SUBSCRIBERS.idFromName('main'));
-      await stub.add(email, CONSENT, new Date().toISOString());
+      const now = new Date().toISOString(); await stub.add(email, CONSENT, now);
       if(opted && env.BREVO_API_KEY && Number(env.BREVO_LIST_ID)>0 && Number(env.BREVO_DOI_TEMPLATE_ID)>0){
+        if(!(await stub.mayConfirm(email, now))) return done('confirmation');   // asked for within the last day: same reply, no second email
         try { const r=await fetch('https://api.brevo.com/v3/contacts/doubleOptinConfirmation',{method:'POST',headers:{'api-key':env.BREVO_API_KEY,'content-type':'application/json'},body:JSON.stringify({email,includeListIds:[Number(env.BREVO_LIST_ID)],templateId:Number(env.BREVO_DOI_TEMPLATE_ID),redirectionUrl:'https://lockedfree.askakshay.com/#email-confirmed'}),signal:AbortSignal.timeout(8000)});
-          if(r.ok)return done('confirmation');
+          if(r.ok){ await stub.confirmed(email, now); return done('confirmation'); }
         } catch {}
         return wantsHtml?new Response(null,{status:303,headers:{location:'/#signup-retry',...SEC}}):json({error:'Your interest was recorded, but confirmation could not be requested. Please retry later.'},503);
       }

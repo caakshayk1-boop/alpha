@@ -43,6 +43,9 @@ export default {
       const cache = caches.default;
       const hit = await cache.match(key);
       if (hit) return hit;
+      // 24 Nov 2026: a per-client limit on cache MISSES only. A cached answer costs nothing and never counts; a made-up but valid-looking symbol is a miss that reaches the hub (and, for charts, Yahoo)
+      // every time, so a script could otherwise spend the shared upstream allowance. 60 misses a minute per address is far above any real screen. No binding (local runs, tests): no limit.
+      if (env.API_LIMIT) { const ip = request.headers.get('cf-connecting-ip') || 'x'; if (!(await env.API_LIMIT.limit({ key: ip })).success) return response({ error: 'Too many requests. Wait a minute.' }, 429); }
       try {
         const candidates = route[2] ? [route[0], route[2]] : route[0].startsWith(ALPHA) ? [route[0], route[0].replace(ALPHA, LEGACY_ALPHA)] : [route[0]];
         let r = null, used = route[0];

@@ -460,3 +460,11 @@ Untouched: Tripwire, Alpha, ApexPro, and the two sites reviewed (read only).
 - Home copy: price-refresh line, exit-rule bullet, hero, practice-data note and signup note rewritten in plain words. Meaning kept: some screens also close a call when the stock leaves the screen, and the hero says the RULES choose the stocks.
 - Lighthouse (mobile, Home): Performance 94, Accessibility 100, Best Practices 96.
 - Not adopted from the blueprint: a "future number" or forecast (this site publishes no projection), About replaced by Plan in the tab bar (About is the what-this-is-and-is-not page; ADR-016 sets the nav), Style Dictionary/Vale/workbox tooling, one-question-per-screen restructure.
+
+## 2026-11-24 · Security pass (what was real, what was not)
+- Audited against the "app security playbook": it targets closed native apps; these are web apps with public source, so obfuscation, anti-tamper, SSL pinning and request signing add nothing. Full-history scan of alpha (685 commits) and trading-dashboard (2,588): no key, token or private-key patterns; no source maps; two `config.py` files exist in history (not opened; no key patterns in any version).
+- Rulebook signup: a confirmation email went out on every opted-in signup, so a victim's address could be flooded. Now at most one per address per day, recorded only after Brevo accepts; the reply is identical either way. Erasure also clears the record.
+- ApexPro worker: per-client limit on uncached /api calls (60 a minute), cache hits never counted, none without the binding.
+- `LICENSE` (all rights reserved) in alpha and trading-dashboard; `"license": "UNLICENSED"` in package.json.
+- Already sound, unchanged: the hub's AI endpoint (kill switch, per-IP limit, origin check, daily ceiling of 800), Tripwire's per-client limits, CSP and security headers.
+- Legal and IP documents (trademark checklist, takedown templates, public-versus-private inventory) were delivered privately, NOT committed: they contain candid notes unsuitable for a public repository.
