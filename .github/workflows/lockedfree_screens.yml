@@ -21,7 +21,7 @@ jobs:
         with: { node-version: 22 }
       - run: node --experimental-strip-types --disable-warning=ExperimentalWarning --test apps/lockedfree/tests/*.test.ts
       - name: Download and validate the daily feed
-        run: node apps/lockedfree/tools/fetch-feed.mjs
+        run: node tools/fetch-feed.mjs
         working-directory: apps/lockedfree
       - name: Run the four screens on the feed (writes this week's run files)
         run: node --experimental-strip-types --disable-warning=ExperimentalWarning tools/run-screens-feed.ts
