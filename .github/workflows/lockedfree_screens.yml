@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 6'
+    - cron: '0 8 * * 6'          # 24 Nov 2026: a retry slot, because GitHub drops or delays scheduled runs. A screen run for a feed date is written once and never rewritten, so a repeat changes nothing.
 concurrency:
   group: lockedfree-ledger
   cancel-in-progress: false
@@ -16,6 +17,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
+      # 24 Nov 2026: a run started while the NSE session is open (09:15 to 15:40 IST) reads half-settled bars; on 24 Nov the ledger gate refused it with "only 60% of requested names
+      # have a bar". Fail at once with the real reason instead. The Saturday slots are never inside a session; only a manual run can be.
+      - name: Refuse to run while the NSE session is open
+        run: |
+          ist=$(TZ=Asia/Kolkata date +%u:%H%M)
+          dow=${ist%%:*}; hm=${ist##*:}
+          if [ "$dow" -le 5 ] && [ "$hm" -ge 0915 ] && [ "$hm" -lt 1540 ]; then echo "The NSE session is open (it is $hm IST). Yahoo's bars for the latest day are not settled. Re-run after 15:40 IST."; exit 1; fi
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }

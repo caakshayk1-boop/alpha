@@ -20,7 +20,8 @@ if (prev.as_of && asOf < prev.as_of) fail(`as_of ${asOf} is older than the ledge
 const runsDir = join(dir, 'runs'); const seen = new Set(prev.runs.map((r) => `${r.screen_id}|${r.run_date}`));
 const runs: RunIn[] = existsSync(runsDir) ? readdirSync(runsDir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(join(runsDir, f), 'utf8')) as RunIn).filter((r) => !seen.has(`${r.screen_id}|${r.run_date}`)) : [];
 const asked = Object.keys(raw!.bars).length + raw!.missing.length;
-if (asked > 0) { const fresh = Object.values(raw!.bars).filter((b) => b[asOf]).length / asked; if (fresh < 0.85) fail(`only ${(fresh * 100).toFixed(0)}% of requested names have a bar for ${asOf} (need 85%)`); }
+if (asked > 0) { const fresh = Object.values(raw!.bars).filter((b) => b[asOf]).length / asked; if (fresh < 0.85) { const by: Record<string, number> = {}; for (const b of Object.values(raw!.bars)) for (const d of Object.keys(b)) if (d >= asOf.slice(0, 8) + '01') by[d] = (by[d] ?? 0) + 1;   // 24 Nov 2026: say WHICH days the names do have, so a half-settled day reads as one
+    const shown = Object.entries(by).sort().slice(-4).map(([d, n]) => `${d}: ${n}`).join(', '); fail(`only ${(fresh * 100).toFixed(0)}% of requested names have a bar for ${asOf} (need 85%). Names with a bar, latest days: ${shown}; fetched ${raw!.fetched_at}`); } }
 const next = buildNext(prev, { as_of: asOf, built_on: new Date().toISOString(), runs, bars: raw!.bars, benchmark_close: raw!.benchmark[asOf] ?? null });
 // The benchmark's close on the record's first book day: stored once, beside (not inside) the append-only book days. The fetch step downloads a year of benchmark closes, so the first day's close is available whenever the first night's build missed it.
 const day0 = next.book_days[0]?.date, close0 = day0 ? raw!.benchmark[day0] : undefined;
