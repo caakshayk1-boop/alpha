@@ -1,7 +1,7 @@
 {
  "schema": "rulebook-ledger/1",
  "as_of": "2026-11-23",
- "built_on": "2026-11-24T21:27:56.316Z",
+ "built_on": "2026-11-25T20:37:16.410Z",
  "config": {
   "charges_version": "in-delivery-1",
   "stop_pct": 20,
