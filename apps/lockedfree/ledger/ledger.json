@@ -1,7 +1,7 @@
 {
  "schema": "rulebook-ledger/1",
- "as_of": "2026-11-23",
- "built_on": "2026-11-25T20:37:16.410Z",
+ "as_of": "2026-11-25",
+ "built_on": "2026-11-26T20:28:24.740Z",
  "config": {
   "charges_version": "in-delivery-1",
   "stop_pct": 20,
@@ -4016,12 +4016,62 @@
    "unrealised": -79903.98,
    "open_n": 21,
    "benchmark_close": 23748.15
+  },
+  {
+   "date": "2026-11-25",
+   "screen_id": "conservative-quality",
+   "equity": -3500.95,
+   "committed": 1973005.55,
+   "realised": 86.1,
+   "unrealised": -3587.05,
+   "open_n": 5,
+   "benchmark_close": 24025.4
+  },
+  {
+   "date": "2026-11-25",
+   "screen_id": "magic-formula",
+   "equity": -51004.99,
+   "committed": 1319212.9,
+   "realised": 0,
+   "unrealised": -51004.99,
+   "open_n": 4,
+   "benchmark_close": 24025.4
+  },
+  {
+   "date": "2026-11-25",
+   "screen_id": "piotroski",
+   "equity": -21045.1,
+   "committed": 1971128.25,
+   "realised": 0,
+   "unrealised": -21045.1,
+   "open_n": 6,
+   "benchmark_close": 24025.4
+  },
+  {
+   "date": "2026-11-25",
+   "screen_id": "quality-momentum",
+   "equity": -49915.42,
+   "committed": 2298395.5,
+   "realised": -18731.01,
+   "unrealised": -31184.41,
+   "open_n": 6,
+   "benchmark_close": 24025.4
+  },
+  {
+   "date": "2026-11-25",
+   "screen_id": "all",
+   "equity": -125466.46,
+   "committed": 7561742.2,
+   "realised": -18644.91,
+   "unrealised": -106821.55,
+   "open_n": 21,
+   "benchmark_close": 24025.4
   }
  ],
  "aggregates": [
   {
    "screen_id": "conservative-quality",
-   "as_of": "2026-11-23",
+   "as_of": "2026-11-25",
    "n_picks": 6,
    "n_open": 5,
    "n_closed": 1,
@@ -4036,7 +4086,7 @@
   },
   {
    "screen_id": "magic-formula",
-   "as_of": "2026-11-23",
+   "as_of": "2026-11-25",
    "n_picks": 4,
    "n_open": 4,
    "n_closed": 0,
@@ -4045,13 +4095,13 @@
    "expectancy_r": null,
    "avg_win": null,
    "avg_loss": null,
-   "max_drawdown": -32079.59,
+   "max_drawdown": -51004.99,
    "longest_losing_streak": 0,
    "honesty": "n = 0 — too few to conclude anything"
   },
   {
    "screen_id": "piotroski",
-   "as_of": "2026-11-23",
+   "as_of": "2026-11-25",
    "n_picks": 6,
    "n_open": 6,
    "n_closed": 0,
@@ -4060,13 +4110,13 @@
    "expectancy_r": null,
    "avg_win": null,
    "avg_loss": null,
-   "max_drawdown": -11284.09,
+   "max_drawdown": -26714.99,
    "longest_losing_streak": 0,
    "honesty": "n = 0 — too few to conclude anything"
   },
   {
    "screen_id": "quality-momentum",
-   "as_of": "2026-11-23",
+   "as_of": "2026-11-25",
    "n_picks": 7,
    "n_open": 6,
    "n_closed": 1,
@@ -4081,7 +4131,7 @@
   },
   {
    "screen_id": "all",
-   "as_of": "2026-11-23",
+   "as_of": "2026-11-25",
    "n_picks": 23,
    "n_open": 21,
    "n_closed": 2,
@@ -4090,7 +4140,7 @@
    "expectancy_r": -0.11,
    "avg_win": 86.1,
    "avg_loss": -18731.01,
-   "max_drawdown": -98548.89,
+   "max_drawdown": -125466.46,
    "longest_losing_streak": 1,
    "honesty": "n = 2 — too few to conclude anything"
   }
