@@ -29,7 +29,7 @@
 .lp-grid3{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 .lp-tile{display:grid;gap:8px;align-content:start;padding:22px;border:1px solid var(--line);border-radius:20px;background:var(--s1)}
 .lp-tile h3{margin:0;font-size:1.08rem;letter-spacing:-.015em}.lp-tile p{margin:0;color:var(--ink-2);line-height:1.5}
-.lp-ic{font:700 .8rem/1 var(--mono,ui-monospace,monospace);letter-spacing:.08em;color:var(--lime)}
+.lp-ic{font:700 .8rem/1 var(--mono,ui-monospace,monospace);color:var(--lime)}
 .lp-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:lp}
 .lp-steps li{counter-increment:lp;display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:2px;align-items:start;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:var(--s1)}
 .lp-steps li::before{content:counter(lp);grid-row:1 / span 2;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:750}
@@ -69,5 +69,5 @@ html.fx .lp-rv:not(.in){opacity:0;transform:translateY(18px)}
 .film{margin:0;display:grid;gap:8px;align-content:start}
 .film-el{width:100%;height:auto;aspect-ratio:9/16;display:block;border-radius:12px;background:var(--surface-2,var(--surface));border:1px solid var(--line)}
 /* 18 Nov 2026 (vision phase 1): the live ledger sentence under the headline. Two lines are reserved so its figures arriving never move the page. */
-.lp-ledger{min-height:3.2em;margin:0;max-width:44rem;color:var(--ink-2);line-height:1.6}
+.lp-ledger{min-height:3.2em;margin:0;max-width:44rem;padding-top:12px;border-top:1px solid var(--line);font-size:.8125rem;color:var(--ink-2);line-height:1.6}.lp-ledger b{color:var(--ink);font-weight:500}
 .lp-ledger a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;display:inline-block;min-height:44px;line-height:44px}

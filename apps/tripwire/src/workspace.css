@@ -1,6 +1,6 @@
 /* Shared workspace redesign: distinct page, summary, chart and detail surfaces.
    Existing routes, storage, source labels and financial calculations are unchanged. */
-.workspace-kicker{display:block;font:500 .6875rem/1.5 var(--font);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.workspace-kicker{display:block;font:500 .6875rem/1.5 var(--font);color:var(--ink-3)}
 .rail-brand,.rail-note{display:none}
 .bar{position:relative;top:auto;padding-block:26px 24px;margin-bottom:8px;gap:14px;align-items:center;border-bottom:0;background:transparent}
 .bar h1{font:500 clamp(2rem,4vw,3.25rem)/1.12 var(--font);letter-spacing:-.05em;margin:7px 0 0}
@@ -96,7 +96,7 @@ h2.sec,.ds-sh h2{font-weight:500;letter-spacing:-.03em}
 }
 @media(max-width:699px){
  :root{--gutter:18px;--card-pad:18px}
- .bar{padding-block:20px;margin-bottom:2px;gap:10px}.bar h1{font-size:2rem}.bar .sub{font-size:.6875rem;margin-top:8px}.bar .workspace-kicker{font-size:.625rem;letter-spacing:.1em}
+ .bar{padding-block:20px;margin-bottom:2px;gap:10px}.bar h1{font-size:2rem}.bar .sub{font-size:.6875rem;margin-top:8px}.bar .workspace-kicker{font-size:.625rem;}
  .bar.has-actions{flex-wrap:wrap;gap:8px;padding-block:10px}.bar.has-actions>.grow{order:-1;flex:1 1 100%}.bar.has-actions h1{display:block;white-space:normal;overflow:visible;font-size:1.6rem;overflow-wrap:anywhere;margin-top:0}.bar.has-actions>.icon-btn:last-child{margin-left:auto}
  .today .brief{padding:20px 16px}.today .brief>.brief-top .sec{font-size:1rem}
  .today .brief .t-take{font-size:1.2rem;min-height:6lh;margin-bottom:20px}

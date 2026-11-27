@@ -124,7 +124,7 @@ html.anim .desk-panel { animation: deskIn 180ms var(--ease-enter); }
 .jrow-why { margin: 0; font-size: var(--fs-md); line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
 .jrow-fig { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); justify-content: start; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
 .jrow-fig > span { display: grid; gap: 2px; min-width: 0; }
-.jrow-fig small { font-size: var(--fs-xs); color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.jrow-fig small { font-size: var(--fs-xs); color: var(--dim); font-weight: 500; }
 @media (max-width: 560px) { .jrow-fig { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .jrow-note { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--sp-2); font-size: var(--fs-sm); }
 .jrow-acts { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; margin-left: -10px; }

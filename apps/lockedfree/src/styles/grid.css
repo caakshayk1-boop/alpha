@@ -1,0 +1,14 @@
+/* Ledger grid. Cards become ruled cells: a hairline above, dashed dividers between neighbours, no floating boxes. */
+.card { background: transparent; border: 0; border-top: 1px solid var(--hairline); border-radius: 0; padding: var(--s5) 0 var(--s6); }
+a.card:hover { background: var(--panel-2); border-color: var(--hairline); }
+:has(> .card + .card) { gap: 0; }
+.card + .card { border-left: 1px dashed var(--hairline); padding-left: var(--s5); }
+.card:has(+ .card) { padding-right: var(--s5); }
+@media (max-width: 720px) { .card + .card { border-left: 0; padding-left: 0; } .card:has(+ .card) { padding-right: 0; } }
+.room, .wd, .xr, .pane.pane, .screen-c, .howto { background: transparent; border: 0; border-top: 1px solid var(--hairline); border-radius: 0; box-shadow: none; }
+.tape, .glance { background: transparent; border-radius: 0; border-inline: 0; }
+.w { background: transparent; border-radius: 0; border: 0; border-left: 1px dashed var(--hairline); }
+.room:hover { background: var(--panel-2); }
+:has(> .room + .room) { gap: 0; }
+@media (min-width: 900px) { .rooms { grid-template-columns: repeat(3, minmax(0, 1fr)); } .room + .room { border-left: 1px dashed var(--hairline); } }
+@media (max-width: 899px) { .rooms { grid-template-columns: minmax(0, 1fr); } }

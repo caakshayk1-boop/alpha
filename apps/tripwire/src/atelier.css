@@ -19,10 +19,10 @@
 .pc-tags .pill{background:transparent}
 .pc-head .pc-big{font-weight:500;letter-spacing:-.04em}
 .question-orb-control{display:flex;align-items:center;justify-content:center;gap:16px;min-height:80px;padding:8px;background:transparent;border:0;text-align:left;color:var(--ink);flex:none}
-.question-orb{display:block;position:relative;width:64px;height:64px;flex:none;isolation:isolate;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 32% 23%,var(--orb-light),var(--orb-mid) 30%,var(--orb-dark) 64%,var(--bg) 85%);box-shadow:inset 0 0 8px var(--orb-mid),0 8px 24px color-mix(in srgb,var(--orb-mid) 12%,transparent)}
-.question-orb i{position:absolute;inset:4%;border-radius:43% 57% 58% 42%;border:1px solid color-mix(in srgb,var(--orb-light) 70%,transparent);box-shadow:inset 5px 2px 8px color-mix(in srgb,var(--orb-light) 45%,transparent);transform:rotate(-30deg)}
-.question-orb i:nth-child(2){inset:15% -8%;transform:rotate(50deg);opacity:.6}
-.question-orb i:nth-child(3){inset:-8% 22%;transform:rotate(-20deg);opacity:.5}
+.question-orb{display:grid;place-items:center;position:relative;width:40px;height:40px;flex:none;border-radius:50%;background:var(--surface,transparent);border:1px solid var(--line);color:var(--ink);transition:border-color var(--dur-1,150ms) var(--ease-out,ease-out)}
+.question-orb::before{content:"?";font:500 1.05rem/1 var(--sans,inherit)}.question-orb i{display:none}.question-orb-control:hover .question-orb{border-color:var(--ink)}
+
+
 .question-orb-label{display:grid;gap:5px;font-size:.85rem;font-weight:500}
 .question-orb-label small{font-size:.7rem;font-weight:400;color:var(--mute)}
 .question-orb-control:focus-visible{outline:2px solid var(--ink);outline-offset:4px;border-radius:16px}
@@ -41,7 +41,7 @@
 .lp-tile{background:transparent;border-width:1px 0 0;border-radius:0}
 .lp-hero{gap:48px;padding-block:32px}
 .lp-ask{display:flex;align-items:center;justify-content:center;gap:20px;border-top:1px solid var(--line);margin-top:24px;padding-top:18px}
-.lp-ask .question-orb{width:80px;height:80px}
+.lp-ask .question-orb{width:48px;height:48px}
 .live-overview{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(0,1.6fr);gap:18px;margin-top:18px}
 .live-value,.live-performance{min-width:0;padding:28px;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-grad)}
 .live-value h2{font:400 1.6rem var(--editorial);margin:20px 0 12px}
@@ -62,15 +62,14 @@
  .research-lines summary .grow{grid-template-columns:4.5rem minmax(0,1fr);gap:4px 8px}.research-lines summary b{grid-column:2}.research-lines summary .small{grid-column:1/-1}
  .research-lines details.ev>summary{min-height:64px;padding:8px 20px 8px 8px}
  .research-read .question-orb-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
- .research-read .question-orb-control{min-height:44px}.research-read .question-orb{width:44px;height:44px}
+ .research-read .question-orb-control{min-height:44px}.research-read .question-orb{width:40px;height:40px}
  .research-read>.row,.paper-snapshot>.row{flex-wrap:wrap;gap:12px}
- .question-orb-label{font-size:.75rem}.question-orb-label small{display:none}.question-orb{width:52px;height:52px}.question-orb-control{min-height:64px;gap:10px;padding:0}
+ .question-orb-label{font-size:.75rem}.question-orb-label small{display:none}.question-orb{width:40px;height:40px}.question-orb-control{min-height:64px;gap:10px;padding:0}
  .lp-hero{gap:24px;padding-block:12px}.lp-ask{justify-content:flex-start}
  .live-overview{grid-template-columns:1fr}.live-value,.live-performance{padding:20px}.live-performance .chart-plot{height:210px}
  .position-time{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 }
-@media(prefers-reduced-motion:no-preference){html.fx .question-orb i{animation:orb-turn 14s linear infinite}html.fx .question-orb i:nth-child(2){animation-direction:reverse;animation-duration:19s}html.fx .question-orb i:nth-child(3){animation-duration:23s}}
-@keyframes orb-turn{to{transform:rotate(330deg)}}
+
 
 .lp-price>span{display:block;letter-spacing:0;margin-top:8px}
 .today .brief{background:var(--surface-grad)}

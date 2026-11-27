@@ -33,7 +33,7 @@
   .disc .stbl tbody th.sticky .symlink{display:flex;align-items:center;min-height:var(--hit)}
   .disc .stbl tbody td.acts{grid-column:2;grid-row:1;display:flex;justify-content:flex-end;min-width:0;padding:0;border:0}
   .disc .stbl tbody td.num{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-2);min-width:0;padding:var(--sp-2) 0;border:0;border-top:1px solid var(--line);font-size:var(--fs-body);text-align:right}
-  .disc .stbl tbody td.num::before{content:attr(data-label);color:var(--ink-3);font-size:var(--fs-label);letter-spacing:.04em}
+  .disc .stbl tbody td.num::before{content:attr(data-label);color:var(--ink-3);font-size:var(--fs-label);}
   .disc .stbl tbody td.num:nth-of-type(odd){grid-column:1}
   .disc .stbl tbody td.num:nth-of-type(even){grid-column:2}
   .disc .stbl tbody td.num:first-of-type{border-top:1px solid var(--line);margin-top:var(--sp-3)}

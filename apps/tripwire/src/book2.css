@@ -17,10 +17,10 @@
 .bk-gauge circle.on{fill:var(--accent)}
 .bk-gauge circle.off{fill:var(--surface-3)}
 .bk-gauge .g-num{fill:var(--ink);font:800 50px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.bk-gauge .g-cap{fill:var(--ink-3);font:600 13px/1 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.bk-gauge .g-cap{fill:var(--ink-3);font:600 13px/1 var(--font);}
 .bk-pnl{grid-area:p}.bk-open{grid-area:o}.bk-closed{grid-area:c}
 .bk-fig{display:grid;gap:2px;min-width:0;align-content:start}
-.bk-fig .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.bk-fig .k{font-size:var(--fs-label);color:var(--ink-3);font-weight:600}
 .bk-fig b{font:800 clamp(1.5rem,7vw,2.25rem)/1.05 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums lining-nums;color:var(--ink);overflow-wrap:anywhere}
 .bk-fig b.up{color:var(--up)}.bk-fig b.down{color:var(--down)}
 .bk-fig b small{font-size:.5em;font-weight:600;color:var(--ink-3);letter-spacing:0}
@@ -59,7 +59,7 @@
 .pc-row .pc-sym{font:800 1.25rem/1.2 var(--font);letter-spacing:var(--track-tight)}
 .pr-chips{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1)}
 .pr-chips .ds-pill,.pr-chips .pill{font-size:var(--fs-label)}
-.own-chip{display:inline-flex;align-items:center;height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--ink-2)}
+.own-chip{display:inline-flex;align-items:center;height:22px;padding:0 var(--sp-2);border-radius:var(--radius-pill);font-size:var(--fs-label);font-weight:700;border:1px solid var(--line-2);color:var(--ink-2)}
 .own-chip.you{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
 .pr-sub{font-size:var(--fs-data);color:var(--ink-3);overflow-wrap:anywhere}
 .pr-state{color:var(--ink-2);font-weight:600}

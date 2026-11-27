@@ -1,7 +1,7 @@
 /* The Glass Book (4.0, 15 Nov 2026). Tokens only: no colour literal, no new type scale. Numbers stay tabular; colour is never the only carrier (sign and glyph travel with it). */
 .gb-page{display:grid;gap:var(--section-gap)}
 .gb-head h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:var(--track-tight);margin:var(--sp-1) 0 var(--sp-2)}
-.gb-page .eyebrow{font-size:var(--fs-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0}
+.gb-page .eyebrow{font-size:var(--fs-label);color:var(--ink-3);margin:0}
 .gb-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:var(--sp-3);margin:var(--sp-4) 0}
 .gb-stats div{border-top:1px solid var(--line);padding-top:var(--sp-2)}
 .gb-stats dt{font-size:var(--fs-label);color:var(--ink-3)}
@@ -20,7 +20,7 @@
 @media (max-width:480px){.gb-events li{grid-template-columns:1fr}.gb-hist{gap:var(--sp-1)}}
 /* F5 Regime Weather: one quiet sentence; the stale state is carried by the word "stale" in the text, and colour only repeats it */
 .weather{padding:var(--sp-3) 0}
-.weather .eyebrow{font-size:var(--fs-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0 0 var(--sp-1)}
+.weather .eyebrow{font-size:var(--fs-label);color:var(--ink-3);margin:0 0 var(--sp-1)}
 .weather-line{margin:0;font-size:var(--fs-body);line-height:var(--lh-body);color:var(--ink-2)}
 .weather[data-stale] .weather-line{color:var(--amber)}
 /* F4 "Why this stock?": plain sentences, hairline rhythm, nothing decorative */
@@ -33,7 +33,7 @@
 .trip-list li{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-1) var(--sp-3);align-items:baseline;border-top:1px solid var(--line);padding-top:var(--sp-3)}
 .trip-list li:first-child{border-top:0;padding-top:0}
 .trip-sym{font-weight:600;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;min-height:var(--hit)}
-.trip-state{font-size:var(--fs-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.trip-state{font-size:var(--fs-label);color:var(--ink-2)}
 .trip-list li[data-trip-state="tripped entry"] .trip-state,.trip-list li[data-trip-state="at T1"] .trip-state{color:var(--up)}
 .trip-list li[data-trip-state="stopped"] .trip-state{color:var(--down)}
 .trip-why{overflow-wrap:anywhere}

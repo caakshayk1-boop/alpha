@@ -21,7 +21,7 @@ h4 { font: 600 var(--fs-md)/1.3 var(--font-ui); margin: 0; }
 p { margin: 0 0 var(--s4); max-width: 68ch; } a { color: var(--brand); text-underline-offset: 3px; }
 .fig, .stamp, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .stamp { font-size: var(--fs-xs); line-height: 1.3; letter-spacing: 0.02em; color: var(--ink-muted); }
-.label { font: 560 var(--fs-xs)/1.3 var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.label { font: 560 var(--fs-xs)/1.3 var(--font-ui); color: var(--ink-muted); }
 .muted { color: var(--ink-muted); } .small { font-size: var(--fs-sm); line-height: 1.5; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--s4); } .prose { max-width: 680px; }
 @media (min-width: 720px) { .wrap { padding: 0 var(--s6); } }
@@ -53,7 +53,7 @@ section.block { padding: var(--s7) 0; border-top: 1px solid var(--hairline); } s
 .missing { color: var(--ink-muted); } .stale { color: var(--warn-ink); }
 .pill { display: inline-flex; align-items: center; gap: 4px; font: 500 var(--fs-xs)/1 var(--font-mono); padding: 4px 8px; border: 1px solid var(--hairline); border-radius: var(--r-control); background: var(--paper); }
 .pill.warn { color: var(--warn-ink); border-color: var(--warn); } .pill.pass { color: var(--up); } .pill.fail { color: var(--down-ink); }
-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); } th { text-align: left; font: 560 var(--fs-xs)/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-muted); }
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); } th { text-align: left; font: 560 var(--fs-xs)/1.3 var(--font-ui); color: var(--ink-muted); }
 th, td { padding: var(--s3) var(--s2); border-bottom: 1px solid var(--hairline); vertical-align: top; } td.num, th.num { text-align: right; font-family: var(--font-mono); } tfoot td { border-top: 3px double var(--ink); border-bottom: 0; }
 @media (max-width: 719px) { table.cards, table.cards tbody, table.cards tr, table.cards td { display: block; } table.cards thead { position: absolute; left: -9999px; }
   table.cards tr { background: var(--card); border: 1px solid var(--hairline); border-radius: var(--r-card); margin-bottom: var(--s3); padding: var(--s2) var(--s3); }
@@ -123,7 +123,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing:
 h1 { font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.75rem); line-height: 1.04; } h2 { font-size: clamp(1.75rem, 1.2rem + 2vw, 2.75rem); line-height: 1.08; } h3 { font-size: var(--fs-xl); line-height: 1.2; font-weight: 600; }
 .display-xl { font-weight: 700; letter-spacing: -.045em; line-height: 1; font-size: clamp(2.75rem, 1rem + 7.4vw, 5.75rem); }
 em, .display-xl em { font-style: italic; font-weight: 500; color: var(--brand); font-variation-settings: normal; }
-.fig, .stamp, .num, .label, .pill, .kicker { font-family: var(--font-mono); } .label { letter-spacing: .08em; }
+.fig, .stamp, .num, .label, .pill, .kicker { font-family: var(--font-mono); } .label { }
 .btn { border-radius: var(--r-full); color: var(--brand-ink); font-weight: 600; padding: 0 22px; border-color: var(--brand); }
 .btn:hover:not([disabled]) { filter: brightness(1.08); } .btn.ghost { background: transparent; color: var(--ink); border-color: #2D2E2F; transition: border-color var(--d2) var(--ease-out), color var(--d2) var(--ease-out), transform var(--d1) var(--ease-out); } .btn.ghost:hover { border-color: var(--brand); color: var(--brand); filter: none; }
 .pill, .chip { border-radius: var(--r-full); } .chip[aria-checked="true"], .chip[aria-pressed="true"], .chip[aria-current="page"] { border-color: var(--brand); color: var(--brand); }
@@ -140,11 +140,11 @@ input[type=email], input[type=text].pill-in { border-radius: var(--r-full); padd
 .chip[data-state="skipped"] { color: var(--ink-muted); border-style: dashed; } .chip[data-state="call"] { border-color: rgba(184, 239, 67, .45); }
 .tabbar button { flex: 0 0 auto; min-height: 38px; padding: 0 16px; border: 0; border-radius: var(--r-full); background: transparent; color: var(--ink-muted); font: 500 var(--fs-sm) var(--font-ui); cursor: pointer; } .tabbar button[aria-selected="true"] { background: #17191B; color: var(--brand); } .tabbar { display: flex; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--hairline); margin-bottom: 12px; overflow-x: auto; } .tabbar[hidden] { display: none; }
 
-.paperpill { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 var(--fs-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--brand); } @media (max-width: 420px) { .paperpill { display: none; } }
+.paperpill { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 var(--fs-xs) var(--font-mono); color: var(--brand); } @media (max-width: 420px) { .paperpill { display: none; } }
 @media (max-width: 719px) { .nav a { flex: 0 0 auto; white-space: nowrap; } }
 .foot .small p a { display: inline-block; min-height: 24px; padding: 3px 0; }
 
-.kind { display: inline-block; min-width: 3.9em; margin-right: 8px; padding: 1px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 var(--fs-xs) var(--font-mono); letter-spacing: .06em; text-transform: uppercase; text-align: center; color: var(--ink-muted); } .kind[data-kind="Model"] { color: var(--brand); border-color: rgba(184, 239, 67, .4); } .kind[data-kind="Result"] { color: var(--ink); } .gloss { display: grid; gap: 6px; } .changelog { padding-left: 1.2em; display: grid; gap: 6px; }
+.kind { display: inline-block; min-width: 3.9em; margin-right: 8px; padding: 1px 8px; border: 1px solid var(--hairline); border-radius: var(--r-full); font: 600 var(--fs-xs) var(--font-mono); text-align: center; color: var(--ink-muted); } .kind[data-kind="Model"] { color: var(--brand); border-color: rgba(184, 239, 67, .4); } .kind[data-kind="Result"] { color: var(--ink); } .gloss { display: grid; gap: 6px; } .changelog { padding-left: 1.2em; display: grid; gap: 6px; }
 
 /* 20 Nov 2026: app shell. On a phone the five tabs are a bar at the bottom of the screen (the thumb reaches it, the page keeps its full height); from 720px up they stay in the top bar as before. */
 .book-line { margin: 0 0 var(--s4); line-height: 1.7; } .book-line b { font-weight: 600; color: var(--ink); }

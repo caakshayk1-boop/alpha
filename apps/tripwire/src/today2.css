@@ -20,7 +20,7 @@ html .today.t2 .seclink:hover{text-decoration:underline}
 /* ---- the market card ---- */
 html .today.t2 .brief{padding:var(--card-pad)}
 html .today.t2 .brief>.brief-top{margin-bottom:0;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
-html .today.t2 .brief>.brief-top .sec{font:600 var(--fs-label)/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+html .today.t2 .brief>.brief-top .sec{font:600 var(--fs-label)/1.2 var(--font);color:var(--ink-3)}
 html .today.t2 .t-sess-row{gap:var(--sp-2);flex-wrap:wrap}
 html .today.t2 .t-sess{color:var(--ink-2)}
 html .today.t2 .t-sess.open{color:var(--up)}
@@ -29,7 +29,7 @@ html .today.t2 .t-sess.open{color:var(--up)}
 @media (max-width:699px){html .today.t2 .t-sess-row{display:contents}html .today.t2 .brief>.brief-top .livebadge{order:2;margin-left:auto}html .today.t2 .t-sess{order:3;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.5em}}   /* the top bar says the session from this width; on a phone this chip is the one place it is said */
 html .today.t2 .pulse{margin:var(--sp-3) 0 var(--sp-4)}
 @media (min-width:700px){html .today.t2 .pulse{grid-template-columns:220px minmax(0,1fr);gap:var(--sp-6)}html .today.t2 .gauge svg{width:100%}}
-html .today.t2 .br-k{margin:0;font-size:var(--fs-label);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+html .today.t2 .br-k{margin:0;font-size:var(--fs-label);font-weight:600;color:var(--ink-3)}
 html .today.t2 .brief .t-take{font-size:clamp(1.375rem,4.4vw,2rem);line-height:1.2;font-weight:700;letter-spacing:var(--track-tight);margin:0;min-height:2.4em;text-wrap:balance}
 @media (max-width:699px){html .today.t2 .brief .t-take{text-align:center;min-height:2.4em}}
 /* the index tape: three cells in one strip, name over price over change, no sparkline */
@@ -98,7 +98,7 @@ html .today.t2 .tnw .nw-foot .btn{min-height:var(--hit)}
 html .today.t2 .bookcard{padding:var(--card-pad);display:grid;gap:var(--sp-4)}
 html .today.t2 .bk-stats{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:var(--sp-3);margin:0}
 html .today.t2 .bk-stats>div{display:grid;gap:2px;min-width:0}
-html .today.t2 .bk-stats dt{font-size:var(--fs-label);color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+html .today.t2 .bk-stats dt{font-size:var(--fs-label);color:var(--ink-3);font-weight:600}
 html .today.t2 .bk-stats dd{margin:0;font:700 var(--fs-num-s)/1.15 var(--font);letter-spacing:var(--track-tight);font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
 html .today.t2 .bk-stats dd.bigpnl{font-size:var(--fs-num-l);min-width:0}
 html .today.t2 .bk-stats dd.up{color:var(--up)}html .today.t2 .bk-stats dd.down{color:var(--down)}
