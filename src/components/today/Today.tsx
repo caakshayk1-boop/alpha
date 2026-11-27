@@ -189,7 +189,7 @@ export function WorthInvestigating() {
   return (
     <section className="wrap section2" aria-labelledby="ideas-h">
       <div className="card-h">
-        <div><h2 id="ideas-h" className="sec-title">Worth investigating</h2><p className="sec-sub">Where several of Alpha&apos;s nine checks agree. A place to start reading, not a recommendation.</p></div>
+        <div><h2 id="ideas-h" className="sec-title">Worth investigating</h2><p className="sec-sub">Where several of Alpha&apos;s nine research checks agree. A place to start reading, not a recommendation.</p></div>
         <Link className="more" href="/tools/#confluence">The full board →</Link>
       </div>
       <LazyMount minHeight={260}><IdeasBody /></LazyMount>
@@ -249,9 +249,9 @@ export function Previews() {
   return (
     <>
       <section className="card" aria-labelledby="rt-h" style={{ marginBottom: 'var(--sp-5, 24px)' }}>
-        <div className="card-h"><h2 id="rt-h">Signals by rule</h2><Link className="more" href="/engines/">All ten rules →</Link></div>
+        <div className="card-h"><h2 id="rt-h">Signals by rule</h2><Link className="more" href="/engines/">All ten price and volume rules →</Link></div>
         <RulesToday />
-        <p className="card-foot">Counts of liquid stocks meeting each fixed rule at the last close. Observations, not recommendations.</p>
+        <p className="card-foot">How many liquid stocks matched each fixed price or volume rule at the last close. These are different from the nine research checks on company pages. Observations, not recommendations.</p>
       </section>
       <div className="grid-2 previews">
         <SignalsStatus />

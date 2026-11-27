@@ -17,3 +17,20 @@ test('deeper arrives from the right, back reverses, another tab or a sibling is 
   assert.equal(routeDirection(['c', 'TCS'], ['signals'], tabOf), 'tab');
   assert.equal(routeDirection(['c', 'TCS'], ['c', 'INFY'], tabOf), 'tab', 'same depth: no direction is implied');
 });
+
+/* 27 Nov 2026: a skipped transition rejects ready and updateCallbackDone; none of that may reach the page as an uncaught error. */
+import { swallowSkip } from '../src/routevt.ts';
+test('a skipped transition raises no unhandled rejection, and the cleanup still runs once', async () => {
+  const seen: unknown[] = []; const onRej = (e: unknown) => seen.push(e); process.on('unhandledRejection', onRej);
+  try {
+    const abort = () => Object.assign(new Error('Transition was skipped. skipTransition() called'), { name: 'AbortError' });
+    let cleaned = 0;
+    swallowSkip({ ready: Promise.reject(abort()), updateCallbackDone: Promise.reject(abort()), finished: Promise.reject(abort()) }, () => { cleaned++; });
+    await new Promise((r) => setTimeout(r, 30));
+    assert.deepEqual(seen, [], 'no unhandled rejection');
+    assert.equal(cleaned, 1, 'cleanup ran exactly once, through the finished promise');
+  } finally { process.off('unhandledRejection', onRej); }
+});
+test('a transition that finishes normally also runs its cleanup once, and a browser without ready is fine', async () => {
+  let cleaned = 0; swallowSkip({ finished: Promise.resolve() }, () => { cleaned++; }); await new Promise((r) => setTimeout(r, 10)); assert.equal(cleaned, 1);
+});

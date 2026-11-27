@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Async, PageHead, Rv } from '@/components/ui';
 import { DataStatusTable } from '@/components/DataStamp';
 import MetricGlossary from '@/components/MetricGlossary';
@@ -9,7 +10,7 @@ import { useSignals, useFeed } from '@/lib/data';
 import { ago, dateLabel } from '@/lib/format';
 
 const SOURCES: [string, string, string][] = [
-  ['Prices, fundamentals, scores', 'Yahoo Finance prices and company statements, scored by the screen', 'Nearly 1,000 companies, rebuilt each evening'],
+  ['Prices, fundamentals, scores', 'Yahoo Finance prices and company statements, scored by the screen', 'Every screened company, rebuilt each evening'],
   ['Live board', 'Yahoo Finance', 'Cached up to 5 minutes; futures for commodities'],
   ['Shareholding', 'NSE shareholding patterns (SEBI SHP XBRL)', 'Quarterly'],
   ['IPOs', 'NSE and public issue data', 'Daily'],
@@ -119,7 +120,7 @@ export default function About() {
       </section>
       <section className="wrap section">
         <Rv className="panel tight">
-          <div className="eyebrow" id="data-dates">Data dates: which session each dataset describes</div>
+          <div className="eyebrow" id="data-dates">Data dates: which session each dataset describes <Link className="link" href="/status/" style={{ marginLeft: 8 }}>(open on its own page)</Link></div>
           <p className="muted" style={{ fontSize: 14, margin: '6px 0 10px' }}>&ldquo;Describes&rdquo; is the session or week the values are about; &ldquo;last refreshed&rdquo; is when the source last updated. A daily dataset is judged against the last NSE trading session before today in India, with a few hours of grace. Weekends and the exchange&apos;s published 2026 holidays (NSE circular NSE/CMTR/71775) never count as late; a weekday the market&apos;s own record shows it did not trade is skipped too.</p>
           <DataStatusTable />
         </Rv>

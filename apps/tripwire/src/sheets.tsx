@@ -3,7 +3,7 @@ import { go, setState, useAppState, useSheets } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
 import { useScreen, useSignals, useJson, useLedger, type Company } from './data.ts';
 import { sizePlan } from './planner.ts';
-import { planCaveats, planFigures } from './planview.ts';
+import { planCaveats, planFigures, stalePriceNote } from './planview.ts';
 import { useEngines } from './useEngines.ts';
 import { DEFAULT_COST, SLIPPAGE_PCT } from './tracker.ts';
 import { addEntry, current, editEntry, savePlan, istDay, preserveReviewDefaults } from './store.ts';
@@ -38,6 +38,7 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
     <div className="row"><div className="grow"><label className="l" htmlFor="pl-e">Entry, ₹ (the price you assume you pay)</label><input id="pl-e" className="field num" inputMode="decimal" value={entry} onChange={(e) => { setTouched(true); setEntry(e.target.value); }} /></div>
       <div className="grow"><label className="l" htmlFor="pl-x">Stop, ₹ (invalidation)</label><input id="pl-x" className="field num" inputMode="decimal" value={stop} onChange={(e) => setStop(e.target.value)} /></div></div>
     <p className="small dim" style={{ margin: '6px 0 0' }}>It starts at the last close{row?.price ? ` (${inr(row.price)}, ${dayWord(row.last_date)})` : ''}. Nobody buys at a past close: the paper tracker fills at the NEXT open plus {SLIPPAGE_PCT}% slippage, and skips the trade if that open is more than 2% above the signal close. Type the price you expect to pay if it differs.</p>
+    {row && !touched && stalePriceNote(row.last_date, Date.now()) && <div className="note" style={{ marginTop: 8 }} role="alert" data-stale-price>{stalePriceNote(row.last_date, Date.now())}</div>}
     {row && isNum(row.sma50) && <button className="chip" style={{ marginTop: 8 }} onClick={() => setStop(String(Math.round(row.sma50! * 100) / 100))}>Use the 50-day average ({inr(row.sma50)}) as my stop</button>}
     <div className="row"><div className="grow"><label className="l" htmlFor="pl-r">Risk, % of equity</label><input id="pl-r" className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} /></div>
       <div className="grow"><label className="l" htmlFor="pl-m">Largest position, %</label><input id="pl-m" className="field num" inputMode="decimal" value={maxp} onChange={(e) => setMaxp(e.target.value)} /></div></div>

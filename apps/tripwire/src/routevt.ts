@@ -16,8 +16,15 @@ export function routeDirection(from: string[], to: string[], tabOf: (p: string[]
   const a = routeDepth(from), b = routeDepth(to); return b > a ? 'fwd' : b < a ? 'back' : 'tab';
 }
 export const samePath = (a: { path: string[] }, b: { path: string[] }) => a.path.join('/') === b.path.join('/');
-type VT = { finished: Promise<void>; skipTransition: () => void };
+type VT = { finished: Promise<void>; ready?: Promise<void>; updateCallbackDone?: Promise<void>; skipTransition: () => void };
 type Doc = Document & { startViewTransition?: (cb: () => Promise<void> | void) => VT };
+/** 27 Nov 2026: skipping a transition (a new route change while one is still running, which this app does on purpose) makes the browser REJECT the old transition's `ready` and `updateCallbackDone`
+ *  promises with an AbortError. Only `finished` was handled, so the others surfaced as uncaught page errors ("AbortError: Transition was skipped") on a quick second navigation, harmless to the reader but
+ *  enough to fail the browser gate under load. Every promise a transition exposes is now handled; a skip is an expected outcome here, not an error. */
+export function swallowSkip(vt: Partial<Pick<VT, 'finished' | 'ready' | 'updateCallbackDone'>>, then?: () => void): void {
+  for (const k of ['ready', 'updateCallbackDone'] as const) vt[k]?.catch(() => {});
+  vt.finished?.then(then ?? (() => {}), then ?? (() => {}));
+}
 /** True when this moment can use a view transition: motion is on (html.fx is the app's own gate, which already folds in the device setting) and the API exists. */
 export function canViewTransition(doc: Document = document): boolean {
   try { return typeof (doc as Doc).startViewTransition === 'function' && doc.documentElement.classList.contains('fx') && !matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
@@ -47,7 +54,7 @@ export function useRouteView<L extends { path: string[]; raw: string }>(loc: L, 
     try { root.dataset.vt = dir; vt = (document as Doc).startViewTransition!(swap); } catch { delete root.dataset.vt; startTransition(() => setVs(latest.current)); return; }
     active.current = vt; const mine = vt;
     const clear = () => { if (active.current === mine) { active.current = null; delete root.dataset.vt; } };
-    mine.finished.then(clear, clear);
+    swallowSkip(mine, clear);
   }, [loc.raw]); // eslint-disable-line react-hooks/exhaustive-deps
   return view;
 }
