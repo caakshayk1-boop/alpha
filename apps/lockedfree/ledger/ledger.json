@@ -1,7 +1,7 @@
 {
  "schema": "rulebook-ledger/1",
- "as_of": "2026-11-25",
- "built_on": "2026-11-26T20:28:24.740Z",
+ "as_of": "2026-11-26",
+ "built_on": "2026-11-27T20:12:34.338Z",
  "config": {
   "charges_version": "in-delivery-1",
   "stop_pct": 20,
@@ -4066,12 +4066,62 @@
    "unrealised": -106821.55,
    "open_n": 21,
    "benchmark_close": 24025.4
+  },
+  {
+   "date": "2026-11-26",
+   "screen_id": "conservative-quality",
+   "equity": 8008.09,
+   "committed": 1973005.55,
+   "realised": 86.1,
+   "unrealised": 7921.99,
+   "open_n": 5,
+   "benchmark_close": 24086.5
+  },
+  {
+   "date": "2026-11-26",
+   "screen_id": "magic-formula",
+   "equity": -23022.99,
+   "committed": 1319212.9,
+   "realised": 0,
+   "unrealised": -23022.99,
+   "open_n": 4,
+   "benchmark_close": 24086.5
+  },
+  {
+   "date": "2026-11-26",
+   "screen_id": "piotroski",
+   "equity": 14798.65,
+   "committed": 1971128.25,
+   "realised": 0,
+   "unrealised": 14798.65,
+   "open_n": 6,
+   "benchmark_close": 24086.5
+  },
+  {
+   "date": "2026-11-26",
+   "screen_id": "quality-momentum",
+   "equity": -22798.87,
+   "committed": 2298395.5,
+   "realised": -18731.01,
+   "unrealised": -4067.86,
+   "open_n": 6,
+   "benchmark_close": 24086.5
+  },
+  {
+   "date": "2026-11-26",
+   "screen_id": "all",
+   "equity": -23015.12,
+   "committed": 7561742.2,
+   "realised": -18644.91,
+   "unrealised": -4370.21,
+   "open_n": 21,
+   "benchmark_close": 24086.5
   }
  ],
  "aggregates": [
   {
    "screen_id": "conservative-quality",
-   "as_of": "2026-11-25",
+   "as_of": "2026-11-26",
    "n_picks": 6,
    "n_open": 5,
    "n_closed": 1,
@@ -4086,7 +4136,7 @@
   },
   {
    "screen_id": "magic-formula",
-   "as_of": "2026-11-25",
+   "as_of": "2026-11-26",
    "n_picks": 4,
    "n_open": 4,
    "n_closed": 0,
@@ -4101,7 +4151,7 @@
   },
   {
    "screen_id": "piotroski",
-   "as_of": "2026-11-25",
+   "as_of": "2026-11-26",
    "n_picks": 6,
    "n_open": 6,
    "n_closed": 0,
@@ -4116,7 +4166,7 @@
   },
   {
    "screen_id": "quality-momentum",
-   "as_of": "2026-11-25",
+   "as_of": "2026-11-26",
    "n_picks": 7,
    "n_open": 6,
    "n_closed": 1,
@@ -4131,7 +4181,7 @@
   },
   {
    "screen_id": "all",
-   "as_of": "2026-11-25",
+   "as_of": "2026-11-26",
    "n_picks": 23,
    "n_open": 21,
    "n_closed": 2,
