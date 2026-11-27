@@ -1,5 +1,6 @@
 /* Instrument grid. Cards become ruled cells: a hairline above, square corners, no floating boxes.
    The one object that keeps its frame is the live evidence card on the landing page. */
+@media screen {
 :root { --radius-card: 0px; }
 .card, .glass, .fold, .cue, .wf, .rec-hero, .rec-eng, .ds-card, .mn-list, .mp-links, .mk-depth, .pcard, .hitcard, .live-performance, .pro-position {
   background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none;
@@ -13,3 +14,4 @@
 .gh-checks { gap: 0; border-top: 1px solid var(--line); }
 .gh-checks li { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 .gh-near { background: transparent; border-left: 2px solid var(--accent); }
+}
