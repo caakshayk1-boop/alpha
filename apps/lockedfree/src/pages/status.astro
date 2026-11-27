@@ -1,0 +1,25 @@
+---
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { ledger, editions } from '../lib/data.ts'; import { feedAvailable, loadFeed } from '../lib/feed.ts'; import { dmy } from '../lib/view.ts';
+// 27 Nov 2026: every dataset behind these pages, the market day it describes, and whether that is the day it should be. The dates are written at build time; the comparison with today's session is made in the browser.
+const L = ledger(), F = feedAvailable() ? loadFeed() : null, eds = editions();
+const rows = [
+  { id: 'feed', name: 'Daily feed', asOf: F?.asOf ?? null, cadence: 'daily', what: 'The prices, scores and screen results every page reads. Built each evening.', note: F?.builtOn ? `Built ${dmy(F.builtOn)}` : '' },
+  { id: 'ledger', name: 'Paper ledger', asOf: L.as_of, cadence: 'daily', what: 'The calls, their prices and the book. A day is recorded once the Nifty 500 benchmark has it, which Yahoo sometimes posts late, so the ledger can trail the feed by a session. The next night records every session it missed.', note: '' },
+  { id: 'edition', name: 'Daily edition', asOf: eds.at(-1)?.date ?? null, cadence: 'daily', what: 'The breakout observations and the market breadth written after each trading day. Written once, never edited.', note: '' },
+  { id: 'screens', name: 'Weekly screens', asOf: L.runs.map((r) => r.run_date).sort().at(-1) ?? null, cadence: 'weekly', what: 'The four screens are run once a week and choose the calls.', note: '' },
+];
+---
+<Base title="Data status" description="Is the data current? Each dataset behind Rulebook, the market day it describes, and whether that is the day it should be.">
+<div class="wrap prose reader-intro"><PageIntro title="Data status" summary="Each dataset behind Rulebook, the market day it describes, and whether that is the day it should be.">Checked against today's session in your browser</PageIntro></div>
+<div class="wrap prose">
+<p>A daily dataset is <b>current</b> when it describes the last trading session whose data is due. Data for a session is due at 23:30 IST on that day. Weekends and exchange holidays are not sessions, so they are never counted as "behind". A weekly dataset is current for nine days.</p>
+<div class="scroll"><table class="t-table"><caption class="src">Datasets, the day each describes, and how far behind today's session</caption>
+<thead><tr><th scope="col">Dataset</th><th scope="col">Describes</th><th scope="col">State</th><th scope="col">What it is</th></tr></thead>
+<tbody>{rows.map((r) => <tr data-status-row data-asof={r.asOf ?? ''} data-cadence={r.cadence}><th scope="row">{r.name}</th><td>{r.asOf ? dmy(r.asOf) : 'not available'}{r.note && <div class="src">{r.note}</div>}</td><td data-state>Compared when this page loads</td><td>{r.what}</td></tr>)}</tbody></table></div>
+<p class="src" data-status-note>This comparison needs scripts. Without them the dates above are still correct as of the last build, but the "behind" count is not shown.</p>
+<p class="src">Where each figure comes from and how it is made: <a href="/method/">Method and glossary</a>. Nothing on this page is a recommendation.</p>
+</div>
+<script src="../scripts/status.ts"></script>
+</Base>

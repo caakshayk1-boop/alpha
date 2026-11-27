@@ -99,6 +99,32 @@ export function buildNext(prev: Ledger, inp: Inputs): Ledger {
   return L;
 }
 
+/** The sessions a night must record: every NSE session after the ledger's last day, up to and including `asOf`, that the benchmark traded; the last is always `asOf`.
+ *  27 Nov 2026: the ledger used to take only the benchmark's newest day, and Yahoo posts that bar late on some nights (timely on 25 Nov, late on 24 and 26 Nov), so a night that saw
+ *  a late benchmark recorded nothing new and the next night jumped over the missing session for good (book days 17, 18, 20, 23, 25 Nov, with 19, 24 and 26 missing).
+ *  A first-ever ledger (no last day) and a same-day rerun record just `asOf`. */
+export function sessionsToRecord(prevAsOf: string | null, asOf: string, benchmark: Record<string, number>, isSession: (d: string) => boolean): string[] {
+  if (!prevAsOf || asOf <= prevAsOf) return [asOf];
+  const days = Object.keys(benchmark).filter((d) => d > prevAsOf && d < asOf && isSession(d)).sort();
+  return [...days, asOf];
+}
+
+export interface CatchUpInputs { as_of: string; built_on: string; runs: RunIn[]; bars: Bars; benchmark: Record<string, number>; screens?: Ledger['screens'] }
+/** Records every missed session in order, exactly as an on-time night would have: each day advances the positions only as far as that day (so a stop hit on the 26th never touches the 25th's equity),
+ *  gets its own book day with that day's benchmark close, and the weekly runs dated on or before it are applied first. Runs dated after the last day still apply on the last, as before.
+ *  Returns every step, oldest first, so each day's file can be written; the last step is the new ledger. */
+export function buildCatchUp(prev: Ledger, inp: CatchUpInputs, isSession: (d: string) => boolean): { date: string; ledger: Ledger }[] {
+  const days = sessionsToRecord(prev.as_of, inp.as_of, inp.benchmark, isSession), steps: { date: string; ledger: Ledger }[] = [];
+  let L = prev; const pending = [...inp.runs];
+  days.forEach((d, i) => {
+    const last = i === days.length - 1, take = pending.filter((r) => last || r.run_date <= d);
+    for (const r of take) pending.splice(pending.indexOf(r), 1);
+    L = buildNext(L, { as_of: d, built_on: inp.built_on, runs: take, bars: inp.bars, benchmark_close: inp.benchmark[d] ?? null, screens: inp.screens });
+    steps.push({ date: d, ledger: L });
+  });
+  return steps;
+}
+
 export function aggregate(L: Ledger, sid: string, inp: { bars: Bars; as_of: string }): Aggregate {
   const ps = L.picks.filter((p) => sid === 'all' || p.screen_id === sid), closed = ps.filter((p) => p.status === 'closed');
   const res = closed.map((p) => ({ p, r: evaluate(p.fills, p.stop!, null), exit: p.fills[p.fills.length - 1].date })).sort((a, b) => a.exit.localeCompare(b.exit));

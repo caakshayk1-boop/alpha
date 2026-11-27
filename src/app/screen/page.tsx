@@ -264,7 +264,7 @@ export default function Screen() {
         {cardMsg && <p className="dsc-note" role="status">{cardMsg}</p>}
 
         {s.loading ? (
-          <div className="state dsc-state" role="status" aria-busy="true"><b>Loading the screen…</b><p>Nearly 1,000 companies with their figures; this can take a few seconds on a slow connection.</p></div>
+          <div className="state dsc-state" role="status" aria-busy="true"><b>Loading the screen…</b><p>Every screened company with its figures; this can take a few seconds on a slow connection.</p></div>
         ) : s.error ? (
           <div className="state dsc-state" role="alert"><b>The screen could not be loaded.</b><p>{s.error}. It is read live, so trying again usually fixes it. Nothing is shown in its place.</p><div className="acts"><button type="button" className="act primary" onClick={() => window.location.reload()}>Try again</button></div></div>
         ) : (

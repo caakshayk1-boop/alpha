@@ -1,6 +1,8 @@
 /** How a paper plan is DESCRIBED: the hypothetical allocation, the cash left, and the modelled loss at the assumed stop, with the caveats that go beside them.
  *  This file computes nothing new about sizing. The quantity, capital, risk and costs come from `planner.ts#sizePlan` (unchanged); here they are only restated against the hypothetical equity and cash the person typed
  *  (a product and a difference of figures already produced there). Every figure is hypothetical: it is read from no broker or account, and a plan is a calculation, not an order, a fill or a holding. */
+import { statusOf, throughWord } from './freshness.ts';
+
 export interface PlanFigures {
   /** quantity x entry: the rupees the plan would put to work if the whole position were bought at the entry assumed */
   capital: number;
@@ -34,4 +36,14 @@ export function planCaveats(costRoundTripPct: number, slippagePct?: number): str
     `Costs are assumed at ${costRoundTripPct}% of capital over a round trip${slippagePct != null ? `, and a fill is assumed at the next open plus ${slippagePct}% slippage` : ''}. Real brokerage, taxes and fills differ.`,
     'Cash left assumes the whole position is bought at the entry price shown, using the hypothetical cash set in Settings.',
   ];
+}
+
+/** 27 Nov 2026: when the entry a plan starts from is a stored close, say how old that close is. A plan sized from a price several sessions old is still a valid calculation, but the reader must
+ *  not mistake it for today's. Returns the sentence to show, or null when the price is current (or still inside the build window for the session that just closed). Pure; the caller decides when it applies
+ *  (only while the entry is the stored close, never when the reader typed their own). */
+export function stalePriceNote(lastDate: string | null | undefined, nowMs: number): string | null {
+  const { status, behind } = statusOf(lastDate, nowMs);
+  if (status === 'current' || status === 'pending') return null;
+  if (status === 'stale' && behind !== null) return `This close is from ${throughWord(lastDate)}, ${behind} ${behind === 1 ? 'session' : 'sessions'} behind. The plan below is sized from it. Check the entry price before you rely on the quantity.`;
+  return 'The date of this price could not be read, so the plan cannot say how old it is. Check the entry price before you rely on the quantity.';
 }

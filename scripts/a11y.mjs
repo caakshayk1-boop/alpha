@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 const require = createRequire(import.meta.url);
 const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const PORT = 8790;
-const ROUTES = ['/', '/research/', '/desk/', '/brief/', '/markets/', '/screen/', '/map/', '/rotation/', '/engines/', '/trades/', '/reads/', '/ipo/', '/funds/', '/news/', '/compare/?s=TCS,INFY', '/tools/', '/watchlist/', '/journal/', '/calendar/', '/about/', '/privacy/', '/company/TCS/', '/nope/'];
+const ROUTES = ['/', '/status/', '/research/', '/desk/', '/brief/', '/markets/', '/screen/', '/map/', '/rotation/', '/engines/', '/trades/', '/reads/', '/ipo/', '/funds/', '/news/', '/compare/?s=TCS,INFY', '/tools/', '/watchlist/', '/journal/', '/calendar/', '/about/', '/privacy/', '/company/TCS/', '/nope/'];
 const exe = process.env.CHROMIUM_PATH || undefined;
 
 // stdio never 'pipe' unread: wrangler blocks once its request log fills the pipe buffer, and every page then stalls

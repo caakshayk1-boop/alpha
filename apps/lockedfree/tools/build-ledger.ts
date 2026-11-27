@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildNext, emptyLedger, validate, assertAppendOnly, type Ledger, type RunIn } from '../src/lib/ledger.ts';
+import { buildCatchUp, emptyLedger, validate, assertAppendOnly, type Ledger, type RunIn } from '../src/lib/ledger.ts';
 import { isSession, covered } from '../src/lib/calendar.ts';
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ledger');
 const read = <T,>(f: string): T | null => (existsSync(join(dir, f)) ? JSON.parse(readFileSync(join(dir, f), 'utf8')) : null);
@@ -22,15 +22,19 @@ const runs: RunIn[] = existsSync(runsDir) ? readdirSync(runsDir).filter((f) => f
 const asked = Object.keys(raw!.bars).length + raw!.missing.length;
 if (asked > 0) { const fresh = Object.values(raw!.bars).filter((b) => b[asOf]).length / asked; if (fresh < 0.85) { const by: Record<string, number> = {}; for (const b of Object.values(raw!.bars)) for (const d of Object.keys(b)) if (d >= asOf.slice(0, 8) + '01') by[d] = (by[d] ?? 0) + 1;   // 24 Nov 2026: say WHICH days the names do have, so a half-settled day reads as one
     const shown = Object.entries(by).sort().slice(-4).map(([d, n]) => `${d}: ${n}`).join(', '); fail(`only ${(fresh * 100).toFixed(0)}% of requested names have a bar for ${asOf} (need 85%). Names with a bar, latest days: ${shown}; fetched ${raw!.fetched_at}`); } }
-const next = buildNext(prev, { as_of: asOf, built_on: new Date().toISOString(), runs, bars: raw!.bars, benchmark_close: raw!.benchmark[asOf] ?? null });
+// 27 Nov 2026: record every session this night finds unrecorded, oldest first (see sessionsToRecord). A normal night records one; a night after a late benchmark records two or more.
+const steps = buildCatchUp(prev, { as_of: asOf, built_on: new Date().toISOString(), runs, bars: raw!.bars, benchmark: raw!.benchmark }, isSession);
+const next = steps[steps.length - 1].ledger;
+if (steps.length > 1) console.log(`catching up ${steps.length} sessions: ${steps.map((s) => s.date).join(', ')}`);
 // The benchmark's close on the record's first book day: stored once, beside (not inside) the append-only book days. The fetch step downloads a year of benchmark closes, so the first day's close is available whenever the first night's build missed it.
 const day0 = next.book_days[0]?.date, close0 = day0 ? raw!.benchmark[day0] : undefined;
 if (!next.benchmark_start && day0 && typeof close0 === 'number' && close0 > 0) next.benchmark_start = { date: day0, close: close0, source: `Yahoo ^CRSLDX daily close for ${day0}, recorded ${asOf}` };
-const problems = [...validate(next), ...assertAppendOnly(prev, next)];
+// every step must be valid and append-only on its own, so a bad middle day cannot hide behind a good last one
+const problems: string[] = []; { let before = prev; for (const s of steps) { problems.push(...validate(s.ledger).map((m) => `${s.date}: ${m}`), ...assertAppendOnly(before, s.ledger).map((m) => `${s.date}: ${m}`)); before = s.ledger; } }
 if (problems.length) fail(problems.join('; '));
 writeFileSync(join(dir, 'ledger.json'), JSON.stringify(next, null, 1) + '\n');
 mkdirSync(join(dir, 'snapshots'), { recursive: true });
-writeFileSync(join(dir, 'snapshots', `${asOf}.json`), JSON.stringify(next) + '\n');
+for (const s of steps) writeFileSync(join(dir, 'snapshots', `${s.date}.json`), JSON.stringify(s.ledger) + '\n');   // one file per recorded day
 // marks for open/pending picks and one-year closes for names on the pages (stock charts); a missing name simply has no file
 const marks: Record<string, number> = {}; mkdirSync(join(dir, 'prices'), { recursive: true });
 for (const [sym, b] of Object.entries(raw!.bars)) { const ds = Object.keys(b).filter((x) => x <= asOf).sort(); if (!ds.length) continue; marks[sym] = b[ds.at(-1)!].c; writeFileSync(join(dir, 'prices', `${sym}.json`), JSON.stringify(ds.map((x) => ({ date: x, c: b[x].c })))); }

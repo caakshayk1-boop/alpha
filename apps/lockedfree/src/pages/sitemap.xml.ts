@@ -4,7 +4,7 @@ import { DEMO, ledger, markFn, prices } from '../lib/data.ts'; import { callMode
 import { feedAvailable, loadFeed } from '../lib/feed.ts';
 
 export function GET() {
-  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/practice/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/', '/editions/'];
+  const paths = ['/', '/terminal/', '/calls/', '/screener/', '/practice/', '/gate/', '/plan/', '/about/', '/method/', '/privacy/', '/terms/', '/editions/', '/status/'];
   for (const e of editions()) paths.push(`/editions/${e.date}/`);
   for (const w of weeksOf(editions())) paths.push(`/editions/week/${w[w.length - 1].date}/`);
   for (const c of callModels(ledger(), markFn(), prices)) paths.push(`/call/${c.slug}/`);

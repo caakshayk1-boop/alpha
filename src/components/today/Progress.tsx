@@ -17,7 +17,8 @@ const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/
 export function TodayProgress() {
   const [watch] = useStoredList('alpha-watchlist');
   const [snaps, setSnaps] = useState<Record<string, Snapshot>>({});
-  const [due, setDue] = useState<number | null>(null);
+  // 'loading' until the browser has been asked (so the server-rendered page and the first paint never claim the Journal is unavailable); 'blocked' only when storage really throws
+  const [due, setDue] = useState<number | 'loading' | 'blocked'>('loading');
   const play = useFirstPlay('alpha-played-progress');
   const day = istToday();
   useEffect(() => {
@@ -27,7 +28,7 @@ export function TodayProgress() {
     return () => window.removeEventListener('alpha-reviewed', read);
   }, []);
   useEffect(() => {
-    const read = () => { try { setDue(reviewsDue(parseJournal(localStorage.getItem('alpha-journal')), day)); } catch { setDue(null); } };
+    const read = () => { try { setDue(reviewsDue(parseJournal(localStorage.getItem('alpha-journal')), day)); } catch { setDue('blocked'); } };
     read();
     window.addEventListener('storage', read);
     return () => window.removeEventListener('storage', read);
@@ -51,7 +52,7 @@ export function TodayProgress() {
         )}
         <div className="pg-c">
           <span className="pg-l">Journal</span>
-          {due === null ? <span className="pg-s">Not available in this browser</span> : <>
+          {due === 'loading' ? <span className="pg-s" aria-busy="true">Checking this browser…</span> : due === 'blocked' ? <span className="pg-s">This browser is blocking storage (private mode or a privacy setting), so the Journal cannot save here. Allow site data for alpha.askakshay.com, or use another browser.</span> : <>
             <b className="num">{due === 0 ? 'None due' : `${num(due)} to look at again`}</b>
             <span className="pg-s">{due === 0 ? 'Entries with a review date show here when it arrives.' : <Link className="link" href="/journal/">Write what happened</Link>}</span>
           </>}

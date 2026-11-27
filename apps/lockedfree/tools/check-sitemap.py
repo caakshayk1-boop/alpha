@@ -21,7 +21,7 @@ root = ET.parse("dist/sitemap.xml").getroot()
 ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 assert root.tag == ns + "urlset"
 symbols = [row["sym"] for row in json.loads(Path("feed/screen.json").read_text())["rows"]]
-expected = {"/", "/terminal/", "/calls/", "/screener/", "/practice/", "/gate/", "/plan/", "/about/", "/method/", "/privacy/", "/terms/", "/editions/"}
+expected = {"/", "/terminal/", "/calls/", "/screener/", "/practice/", "/gate/", "/plan/", "/about/", "/method/", "/privacy/", "/terms/", "/editions/", "/status/"}
 expected.update(f"/stock/{symbol}/" for symbol in symbols)
 # one page per paper call (22 Nov 2026): the slug mirrors callSlug in src/lib/callpage.ts, SYMBOL-entry-date-screen (the listing date while a call is pending)
 for pick in json.loads(Path("ledger/ledger.json").read_text())["picks"]:

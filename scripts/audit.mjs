@@ -73,5 +73,13 @@ if (existsSync(join(OUT, 'c'))) {
 }
 
 console.log(`${pages.length} pages, ${checked} internal links, ${feeds.size} feeds known to the Worker`);
+// 2c. (27 Nov 2026) A pre-rendered page must not state something only the browser can know. "Not available in this browser" sat in the home page's HTML for every visitor (and every crawler)
+// because the Journal card started in "unknown" and only the browser could ever replace it. A count is a computed figure, not "nearly 1,000". And the first words of the home page say what Alpha is.
+const FALSE_STATES = [/Not available in this browser/i, /nearly 1,000/i];
+for (const f of pages) { const t = visible(readFileSync(f, 'utf8')); for (const re of FALSE_STATES) { if (re.test(t)) problems.push(`${f}: pre-rendered text says "${re.exec(t)[0]}"`); } }
+const home = join(OUT, 'index.html');
+if (existsSync(home) && !/Alpha is a research desk for Indian stocks/.test(visible(readFileSync(home, 'utf8')))) problems.push('the home page does not say what Alpha is');
+if (!existsSync(join(OUT, 'status', 'index.html'))) problems.push('/status/ was not built');
+
 if (problems.length) { console.error(problems.map((p) => `FAIL  ${p}`).join('\n')); process.exit(1); }
 console.log('audit passed');
