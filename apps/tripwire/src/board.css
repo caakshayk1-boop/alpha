@@ -18,7 +18,7 @@ html .pulse .t-take{font-size:clamp(1.35rem,4.6vw,1.9rem);line-height:1.22;font-
 .gauge svg{width:min(240px,72%);height:auto;display:block}
 .gauge .g-up{fill:var(--up)}.gauge .g-down{fill:var(--down)}.gauge .g-mid{fill:var(--ink-3);opacity:.35}.gauge .g-off{fill:var(--ink-3);opacity:.2}
 .gauge .g-num{fill:var(--ink);font:800 44px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.gauge .g-cap{fill:var(--ink-3);font:600 11px/1 var(--font);letter-spacing:.08em;text-transform:uppercase}
+.gauge .g-cap{fill:var(--ink-3);font:600 11px/1 var(--font);}
 .gauge figcaption{font-size:var(--fs-data);color:var(--ink-2);text-align:center}
 html .pulse .t-take{min-height:0}
 html .gauge figcaption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* the sentence beside the gauge already says the three shares; the caption stays for assistive tech only */

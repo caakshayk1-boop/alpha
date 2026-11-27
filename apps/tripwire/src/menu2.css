@@ -30,7 +30,7 @@
 .mn-dot{flex:none;width:8px;height:8px;border-radius:var(--radius-pill);background:var(--up)}
 .mn-state.behind .mn-dot{background:var(--amber)}
 .mn-g{margin-top:var(--sp-6)}
-.mn-h{margin:0 0 var(--sp-2);padding:0 var(--sp-1);font:600 var(--fs-label)/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.mn-h{margin:0 0 var(--sp-2);padding:0 var(--sp-1);font:600 var(--fs-label)/1.4 var(--font);color:var(--ink-3)}
 .mn-list{border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);overflow:hidden}
 .mn-row{display:flex;align-items:center;gap:var(--sp-3);min-height:68px;padding:var(--sp-3) var(--sp-4);color:var(--ink);text-decoration:none}
 .mn-row+.mn-row{border-top:1px solid var(--line)}

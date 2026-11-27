@@ -8,7 +8,7 @@
 /* row 1: scope and trust */
 .l4-scope{display:grid;gap:var(--sp-2)}
 .l4-who{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
-.l4-scope-name{font-size:var(--fs-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.l4-scope-name{font-size:var(--fs-label);color:var(--ink)}
 .l4-tag{font-size:var(--fs-label);color:var(--ink-3);border:1px solid var(--line);border-radius:var(--radius-pill);padding:2px var(--sp-3)}
 .l4-seg{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1);padding:var(--sp-1);border:1px solid var(--line);border-radius:var(--radius-pill)}
 .l4-seg button{min-height:var(--hit);padding:0 var(--sp-4);border:0;border-radius:var(--radius-pill);background:transparent;color:var(--ink-2);font:inherit;font-weight:600;cursor:pointer}
@@ -20,14 +20,14 @@
 
 /* row 2: the answer */
 .l4-hero{display:grid;gap:var(--sp-2);padding-top:var(--sp-3);border-top:1px solid var(--line);container-type:inline-size;min-width:0}
-.l4-hero .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.l4-hero .k{font-size:var(--fs-label);color:var(--ink-3);font-weight:600}
 .l4-big{display:block;max-width:100%;white-space:nowrap;overflow-wrap:normal;word-break:keep-all;font-weight:800;line-height:1.05;letter-spacing:-.03em;font-variant-numeric:tabular-nums lining-nums;
   /* 0.62em is the widest a tabular figure runs in this face; the size is the container's width over the number of characters, capped at 3rem and never below 1rem */
   font-size:clamp(1rem,calc(100cqi / (var(--ch,10) * .66)),3rem)}
 .l4-big.up{color:var(--up)}.l4-big.down{color:var(--down)}
 .l4-parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr));gap:var(--sp-3);margin:0}
 .l4-parts>div{min-width:0}
-.l4-parts dt{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.l4-parts dt{font-size:var(--fs-label);color:var(--ink-3);}
 .l4-parts dd{margin:0;white-space:nowrap;font-weight:700;font-size:clamp(.9375rem,calc(100cqi / 14),1.25rem);font-variant-numeric:tabular-nums lining-nums}
 .l4-parts dd.up{color:var(--up)}.l4-parts dd.down{color:var(--down)}
 .l4-note{margin:0}
@@ -35,7 +35,7 @@
 /* row 3: what moved */
 .l4-moved{list-style:none;margin:0;padding:var(--sp-3) 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr));gap:var(--sp-3)}
 .l4-moved li{display:grid;gap:2px;min-width:0;font-size:var(--fs-data)}
-.l4-moved .k{font-size:var(--fs-label);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.l4-moved .k{font-size:var(--fs-label);color:var(--ink-3);}
 .l4-link{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1);align-items:baseline;min-height:var(--hit);align-content:center;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
 
 /* supporting figures: slots, open, closed book positions. Smaller than the answer by design. */

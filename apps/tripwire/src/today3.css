@@ -23,7 +23,7 @@ html .today.t3 .hl-x{margin:0}
 /* ---- Market now ---- */
 html .today.t3 .mkt{padding:var(--sp-3) var(--sp-4)}
 html .today.t3 .mkt-head{margin:0 0 var(--sp-2);gap:var(--sp-2);flex-wrap:nowrap;min-height:24px;align-items:center}
-html .today.t3 .mkt-head .sec{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--fs-label)/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+html .today.t3 .mkt-head .sec{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--fs-label)/1.2 var(--font);color:var(--ink-3)}
 html .today.t3 .mkt-head .livebadge{flex:none;min-width:15ch;justify-content:flex-end;margin-left:auto}
 html .today.t3 .mkt-sess{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
 @media (min-width:700px){html .today.t3 .mkt-sess{display:none}}

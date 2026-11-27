@@ -39,4 +39,5 @@
 @import "./pro.css";
 
 @import "./chart-clean.css";
-@import "./terminal.css";   /* 19 Nov 2026: shared terminal / askakshay.com language, funnel rails */
+@import "./terminal.css";
+@import "./grid.css";   /* 27 Nov 2026: exposed grid, last so it wins */   /* 19 Nov 2026: shared terminal / askakshay.com language, funnel rails */

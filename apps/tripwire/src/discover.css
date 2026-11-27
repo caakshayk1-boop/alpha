@@ -6,7 +6,7 @@
 .disc .dsort{display:flex;gap:6px;align-items:center;flex:1 1 9rem;min-width:0}
 .disc .dsort .field{min-height:44px;padding:4px 8px;width:auto;max-width:100%;min-width:0;flex:1 1 4rem}
 .disc .dseg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r2,8px);overflow:hidden;background:var(--s1)}
-.disc .dseg button{min-height:44px;min-width:60px;padding:0 14px;font:600 .75rem var(--mono);letter-spacing:.04em;color:var(--mute);background:transparent;border:0;border-right:1px solid var(--line)}
+.disc .dseg button{min-height:44px;min-width:60px;padding:0 14px;font:600 .75rem var(--mono);color:var(--mute);background:transparent;border:0;border-right:1px solid var(--line)}
 .disc .dseg button:last-child{border-right:0}
 .disc .dseg button[aria-checked=true]{background:var(--s3);color:var(--lime);box-shadow:inset 0 -2px 0 var(--lime)}
 .disc .dseg button:hover{color:var(--tx)}

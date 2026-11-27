@@ -1,10 +1,10 @@
 /* 19 Nov 2026: the terminal.askakshay.com/apex and askakshay.com language, shared with ApexPro: mono tracked labels, hairline cards with an accent edge, pill primary action, rail bars.
    Tokens only (tools/lint-tokens.mjs). Scoped to page-level labels so no row, chip or table cell in the app changes width. */
 .btn.pri{border-radius:var(--radius-pill)}
-.trust-page .k,.gate-hero .k,.ed-head .k{font-family:var(--code);font-size:var(--fs-label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.trust-page .k,.gate-hero .k,.ed-head .k{font-family:var(--code);font-size:var(--fs-label);font-weight:600;color:var(--accent)}
 .ed-funnel{list-style:none;padding:0;margin:var(--sp-3) 0;display:grid;gap:var(--sp-3)}
 .ed-funnel li{display:grid;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}
-.fn-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-1) var(--sp-3);font-family:var(--code);font-size:var(--fs-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.fn-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-1) var(--sp-3);font-family:var(--code);font-size:var(--fs-label);color:var(--ink-2)}
 .fn-head b{color:var(--ink)}
 .fn-rail{position:relative;height:8px;border-radius:var(--radius-pill);background:var(--line-2);overflow:hidden}
 .fn-rail i{position:absolute;inset:0 auto 0 0;display:block;border-radius:inherit}

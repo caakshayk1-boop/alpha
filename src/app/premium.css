@@ -484,3 +484,37 @@ html.anim [data-play] .rb-grid li { animation: tileIn 360ms cubic-bezier(0, 0, 0
 html.anim [data-play] .rb-bar i { animation: barIn 600ms cubic-bezier(0.2, 0, 0, 1) calc(var(--n, 0) * 50ms + 200ms) both; }
 @media (prefers-reduced-motion: reduce) { .rb-grid li, .rb-bar i { animation: none !important; } .rb-tile { transition: none; } }
 .rb { margin: var(--sp-5, 24px) 0; }
+
+/* Exposed grid. The structure is the ornament: two rails, hairline rules, ruled cells.
+   No floating boxes. Cards become cells; a row of cells shares one rule and dashed dividers. */
+:root { --r-card: 0px; --r-ctl: 4px; }
+body {
+  background-image: linear-gradient(var(--line), var(--line)), linear-gradient(var(--line), var(--line));
+  background-repeat: no-repeat; background-size: 1px 100%, 1px 100%;
+  background-position: calc(50% - var(--maxw) / 2 - 12px) 0, calc(50% + var(--maxw) / 2 + 12px) 0;
+}
+.card, .idea { background: transparent; border: 0; border-top: 1px solid var(--line-2, var(--line)); border-radius: 0; padding: var(--sp-5) 0 var(--sp-6); }
+.card.tight { padding: var(--sp-4) 0 var(--sp-5); }
+.grid-lead, .grid-2, .grid-3 { gap: 0; }
+.grid-lead > *, .grid-2 > *, .grid-3 > * { padding-inline: var(--sp-5); }
+.grid-lead > :first-child, .grid-2 > :first-child, .grid-3 > :first-child { padding-left: 0; }
+.grid-lead > :last-child, .grid-2 > :last-child, .grid-3 > :last-child { padding-right: 0; }
+.grid-lead > * + *, .grid-2 > * + *, .grid-3 > * + * { border-left: 1px dashed var(--line-2, var(--line)); }
+.today-side { gap: 0; margin-top: 0; }
+.today-side > * { padding-inline: 0; }
+.state { background: transparent; }
+@media (max-width: 960px) {
+  .grid-lead > *, .grid-2 > *, .grid-3 > * { padding-inline: 0; border-left: 0; }
+}
+.ideas { gap: 0; }
+.ideas > .idea { padding-inline: var(--sp-5); }
+.ideas > .idea:first-child { padding-left: 0; }
+.ideas > .idea:last-child { padding-right: 0; }
+.ideas > .idea + .idea { border-left: 1px dashed var(--line-2); }
+.strip { background: transparent; border: 0; border-block: 1px solid var(--line-2); border-radius: 0; }
+.strip > * { border-right: 1px dashed var(--line-2); }
+.rt-grid { gap: 0; }
+.rt-tile { background: transparent; border: 0; border-radius: 0; border-left: 1px dashed var(--line-2); padding: var(--sp-3) var(--sp-4); }
+.rt-tile:first-child { border-left: 0; padding-left: 0; }
+.rt-tile:hover { background: var(--panel-2); }
+@media (max-width: 960px) { .ideas > .idea { padding-inline: 0; border-left: 0; } .ideas > .idea + .idea { border-top: 1px solid var(--line-2); } }

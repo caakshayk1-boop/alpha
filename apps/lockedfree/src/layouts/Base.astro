@@ -1,5 +1,5 @@
 ---
-import '../styles/global.css'; import '../styles/home.css'; import SiteHeader from '../components/SiteHeader.astro'; import Footer from '../components/Footer.astro'; import HeadCommon from '../components/HeadCommon.astro'; import { DEMO } from '../lib/data.ts'; import { ledger } from '../lib/data.ts'; import { dmy } from '../lib/view.ts';
+import '../styles/global.css'; import '../styles/home.css'; import '../styles/grid.css'; import SiteHeader from '../components/SiteHeader.astro'; import Footer from '../components/Footer.astro'; import HeadCommon from '../components/HeadCommon.astro'; import { DEMO } from '../lib/data.ts'; import { ledger } from '../lib/data.ts'; import { dmy } from '../lib/view.ts';
 const { title, description = 'A rules-based, paper-only investing site. Published screens, a disciplined paper terminal, a written plan, and a public record that keeps every loss.', reading = false, path = Astro.url.pathname, og = '/og/default.png', charts = false, flip = false } = Astro.props;
 import f4 from '@fontsource/fira-sans/files/fira-sans-latin-400-normal.woff2?url'; import f7 from '@fontsource/fira-sans/files/fira-sans-latin-700-normal.woff2?url';
 const L = ledger(); const full = title === 'Rulebook' ? title : `${title} · Rulebook`; const canonical = new URL(path, Astro.site).href;
