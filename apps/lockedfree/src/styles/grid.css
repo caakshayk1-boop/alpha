@@ -10,5 +10,5 @@ a.card:hover { background: var(--panel-2); border-color: var(--hairline); }
 .w { background: transparent; border-radius: 0; border: 0; border-left: 1px dashed var(--hairline); }
 .room:hover { background: var(--panel-2); }
 :has(> .room + .room) { gap: 0; }
-.room + .room { border-left: 1px dashed var(--hairline); }
-@media (max-width: 720px) { .room + .room { border-left: 0; } }
+@media (min-width: 900px) { .rooms { grid-template-columns: repeat(3, minmax(0, 1fr)); } .room + .room { border-left: 1px dashed var(--hairline); } }
+@media (max-width: 899px) { .rooms { grid-template-columns: minmax(0, 1fr); } }
