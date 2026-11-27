@@ -23,9 +23,6 @@
 .xr-t { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: 12px; } .xr-t i { display: block; height: 100%; transform: scaleX(var(--k, 0)); } .xr-t .stop { background: var(--down); border-radius: 6px 0 0 6px; transform-origin: right; } .xr-t .tgt { background: var(--up); border-radius: 0 6px 6px 0; transform-origin: left; } .xr-t .ax { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
 @media (max-width: 719px) { .xr-row { grid-template-columns: 1fr; gap: 6px; } .pl .big { font-size: var(--fs-2xl); } .pulse .v { font-size: var(--fs-2xl); } .nc-b .q .p { font-size: var(--fs-lg); } }
 @media (prefers-reduced-motion: no-preference) {
-  .aurora i:nth-child(1) { animation: drift1 16s ease-in-out infinite alternate; } .aurora i:nth-child(2) { animation: drift2 19s ease-in-out infinite alternate; } .aurora i:nth-child(3) { animation: drift1 23s ease-in-out infinite alternate-reverse; }
-  @keyframes drift1 { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(8vw, 6vh, 0) scale(1.15); } } @keyframes drift2 { from { transform: translate3d(0, 0, 0) scale(1.1); } to { transform: translate3d(-9vw, 8vh, 0) scale(.9); } }
-  .nowcard { animation: bob 6s ease-in-out infinite; } @keyframes bob { 50% { translate: 0 -8px; } }
   .mchip[data-state="open"] i { animation: ping 2s var(--ease-out) infinite; }
   .board.scan::after { animation: sweep 1.2s var(--ease-out); } @keyframes sweep { 0% { top: 0; opacity: .9; } 100% { top: 100%; opacity: 0; } }
 }

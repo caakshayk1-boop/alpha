@@ -80,7 +80,7 @@ html.anim .live-dot, html.anim .mclock.on i, html.anim .lw-stamp.on::before { an
 
 /* ── type ─────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 body { font-size: var(--fs-base); line-height: 1.5; }
-.eyebrow { font: 600 var(--fs-xs)/1.35 var(--f-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dim); }
+.eyebrow { font: 500 var(--fs-xs)/1.35 var(--f-ui); color: var(--dim); }
 .eyebrow.plain { text-transform: none; letter-spacing: 0.01em; font-size: var(--fs-sm); }
 /* utility pages: a compact functional header in the UI face (28–36 px desktop, 26–30 px phone) */
 .page-head.compact { padding: var(--sp-6) 0 var(--sp-4); }
@@ -170,7 +170,7 @@ a.row:hover .row-t, a.row:focus-visible .row-t { color: var(--accent-2); }
 .idea-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
 .idea-sym { font: 600 var(--fs-lg)/1.2 var(--f-ui); letter-spacing: -0.01em; }
 .idea-name { color: var(--dim); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.idea-k { font: 600 var(--fs-xs)/1.3 var(--f-ui); text-transform: uppercase; letter-spacing: 0.04em; color: var(--dim); margin-bottom: 2px; }
+.idea-k { font: 500 var(--fs-xs)/1.3 var(--f-ui); color: var(--dim); margin-bottom: 2px; }
 .idea p { margin: 0; font-size: var(--fs-md); line-height: 1.45; }
 .idea .lim { color: var(--muted); }
 .idea-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--dim); }
@@ -412,7 +412,7 @@ html.anim main.page-in { animation: routeIn 160ms var(--ease-enter); }
 .pg-cap b { font: 600 16px/1.3 var(--f-ui); color: var(--text); }
 .pg-cap span { color: var(--muted); font: 400 14px/1.45 var(--f-ui); }
 .pg-c { display: grid; gap: 6px; align-content: start; padding: var(--sp-3, 12px); border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); flex: 0 1 220px; min-width: 180px; }
-.pg-l { font: 600 12px/1.2 var(--f-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dim); }
+.pg-l { font: 500 12px/1.2 var(--f-ui); color: var(--dim); }
 .pg-c b { font: 600 16px/1.3 var(--f-ui); color: var(--text); }
 .pg-s { font: 400 13px/1.4 var(--f-ui); color: var(--muted); }
 
@@ -451,7 +451,7 @@ html.anim [data-play] .mh-chip, html.anim [data-play] .dg-c { animation: riseIn 
 .rb-tile { width: 100%; height: 100%; text-align: left; display: grid; gap: 8px; align-content: start; padding: 16px 16px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); cursor: pointer; transition: border-color 140ms var(--ease, ease), transform 140ms var(--ease, ease); }
 .rb-tile:hover { border-color: var(--line-2); transform: translateY(-1px); }
 .rb-tile.wide { background: var(--panel-2); }
-.rb-theme { font: 600 11px/1.2 var(--f-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+.rb-theme { font: 500 11px/1.2 var(--f-ui); color: var(--dim); }
 .rb-title { font: 600 16px/1.3 var(--f-ui); }
 .rb-count { display: flex; align-items: baseline; gap: 6px; }
 .rb-count b { font: 600 34px/1 var(--f-ui); letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; }
@@ -476,7 +476,7 @@ html.anim [data-play] .mh-chip, html.anim [data-play] .dg-c { animation: riseIn 
 .rt-tile { display: grid; gap: 6px; align-content: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); text-decoration: none; position: relative; }
 .rt-tile:hover { border-color: var(--line-2); }
 .rt-t { font: 600 14px/1.3 var(--f-ui); }
-.rt-w { position: absolute; top: 10px; right: 12px; font: 600 11px/1 var(--f-ui); letter-spacing: 0.05em; text-transform: uppercase; color: var(--dim); }
+.rt-w { position: absolute; top: 10px; right: 12px; font: 500 11px/1 var(--f-ui); color: var(--dim); }
 .sg-why { margin-top: var(--sp-4, 16px); }
 .sg-gate-grid { margin-top: var(--sp-4, 16px); }
 @keyframes tileIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
