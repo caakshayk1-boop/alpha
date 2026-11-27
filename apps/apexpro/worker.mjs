@@ -7,10 +7,8 @@ const HEADERS = {
   'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
 };
 function response(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } }); }
-// 19 Nov 2026: alpha.askakshay.com now answers 301 to alphavision.askakshay.com, which serves the same /data/screen.json, /c/<SYM>.json and /signals.json. The old host returned an HTML page, so every screen and company request failed with 502.
+// The hub is alpha.askakshay.com. alphavision.askakshay.com was abandoned and no longer resolves, so it is not a fallback.
 const ALPHA = 'https://alpha.askakshay.com';
-// While the hub address is being moved, alpha (the host main deploys the hub to, complete data) is tried first and alphavision second. A host that redirects to a page, or does not resolve, is skipped; it is never served as data.
-const LEGACY_ALPHA = 'https://alphavision.askakshay.com';
 // 19 Nov 2026: every data route is read from the hub; the market routes (/v1/market/*) name Tripwire's identical routes as their fallback until the hub has them in production and has proved itself.
 const TW = 'https://tripwire.askakshay.com';
 export function upstream(url) {
@@ -47,7 +45,7 @@ export default {
       // every time, so a script could otherwise spend the shared upstream allowance. 60 misses a minute per address is far above any real screen. No binding (local runs, tests): no limit.
       if (env.API_LIMIT) { const ip = request.headers.get('cf-connecting-ip') || 'x'; if (!(await env.API_LIMIT.limit({ key: ip })).success) return response({ error: 'Too many requests. Wait a minute.' }, 429); }
       try {
-        const candidates = route[2] ? [route[0], route[2]] : route[0].startsWith(ALPHA) ? [route[0], route[0].replace(ALPHA, LEGACY_ALPHA)] : [route[0]];
+        const candidates = route[2] ? [route[0], route[2]] : [route[0]];
         let r = null, used = route[0];
         for (const c of candidates) { try { const x = await fetch(c, { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } }); if (x.ok && x.headers.get('content-type')?.includes('json')) { r = x; used = c; break; } } catch { /* try the next host */ } }
         if (!r) return response({ error: 'The data source is temporarily unavailable. Please retry.' }, 502);

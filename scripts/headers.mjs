@@ -41,14 +41,7 @@ const page = await (await get(`${base}/`)).text();
 const asset = page.match(/\/_next\/static\/[^"']+\.js/)?.[0];
 if (asset) { const a = await get(`${base}${asset}`); check('Hashed asset: immutable for a year', /max-age=31536000/.test(a.headers.get('cache-control') || '') && /immutable/.test(a.headers.get('cache-control') || ''), a.headers.get('cache-control')); }
 else check('Hashed asset found on /', false, 'no /_next/static script in the page');
-for (const sub of /localhost|127\.0\.0\.1/.test(base) ? [] : ['signal', 'gems', 'vision']) {
-  const host = base.replace('://alpha.', `://${sub}.`);
-  // vision.askakshay.com is not routed to this Worker (21 Oct 2026 it answered 200 from elsewhere). Whether it should
-  // redirect is the owner's decision, so it is reported, not failed, until that is settled.
-  const warnOnly = sub === 'vision';
-  try { const r = await get(`${host}/`); const ok = r.status === 301 && /alpha\.askakshay\.com/.test(r.headers.get('location') || ''); check(`${sub}. redirects to alpha${warnOnly && !ok ? ' (WARN only)' : ''}`, ok || warnOnly, `${r.status} ${r.headers.get('location') || ''}`); }
-  catch (e) { check(`${sub}. redirects to alpha`, warnOnly, e.message); }
-}
+// signal., gems., vision. and alphavision. were abandoned (Nov 2026); their redirects are no longer checked.
 for (const r of rows) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}  (${r.detail ?? ''})`);
 const failed = rows.filter((r) => !r.ok).length;
 console.log(`\nheaders: ${rows.length - failed} of ${rows.length} passed`);
