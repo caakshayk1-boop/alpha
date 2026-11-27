@@ -28,3 +28,12 @@ test('a weekly dataset is current for nine days', () => {
 test('an unreadable, missing or future date is never current', () => {
   for (const d of [null, undefined, '', 'yesterday', '2026-12-30']) { const v = verdictOf(d as string, at(27, 10)); assert.equal(v.state, 'unknown'); assert.equal(verdictWord(v), 'Date could not be read'); }
 });
+
+test('outside the years the calendar covers, a daily verdict is unknown, not a guess (the calendar ends 31 Dec 2026)', () => {
+  const jan = Date.UTC(2027, 0, 5, 4, 30);                         // 5 Jan 2027, 10:00 IST
+  assert.equal(verdictOf('2026-12-31', jan).state, 'unknown', 'today is beyond the calendar');
+  assert.equal(verdictWord(verdictOf('2027-01-04', jan)), 'Date could not be read');
+  assert.equal(verdictOf('2025-12-30', at(27, 10)).state, 'unknown', 'a date before the calendar starts');
+  assert.equal(verdictOf('2026-11-26', at(27, 10)).state, 'current', 'inside the calendar nothing changes');
+  assert.equal(verdictOf('2026-12-29', Date.UTC(2027, 0, 5, 4, 30), 'weekly').state, 'current', 'a weekly dataset counts calendar days and needs no holiday list');
+});

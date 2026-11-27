@@ -1,8 +1,9 @@
 /** Is this data current? One rule, used by the Data status page (27 Nov 2026). A daily dataset is current when it describes the last NSE session whose data is DUE, and the number of sessions behind is
  *  counted on the exchange calendar (weekends and holidays are not sessions). Data for a session is due at 23:30 IST on that session's day: the owner's feed is built in the evening, and Yahoo, the source of
- *  the ledger's benchmark, can post the benchmark's latest bar late. A weekly dataset is current when it is no more than nine days old. Pure functions; the page compares against the browser's own clock,
+ *  the ledger's benchmark, can post the benchmark's latest bar late. A weekly dataset is current when it is no more than nine days old. Outside the years the exchange calendar covers (src/lib/calendar.ts) a daily
+ *  verdict is UNKNOWN, never a guess: without the holiday list every weekday would count as a session and data could be called current when it is not. Pure functions; the page compares against the browser's own clock,
  *  so the verdict is never frozen at build time. */
-import { isSession, prevSession, nextSession } from './calendar.ts';
+import { isSession, prevSession, nextSession, covered } from './calendar.ts';
 
 export const CLOSE_MIN = 15 * 60 + 30, DUE_MIN = 23 * 60 + 30;
 export type State = 'current' | 'behind' | 'unknown';
@@ -23,6 +24,7 @@ export function verdictOf(asOf: string | null | undefined, nowMs: number, cadenc
   const today = ist(nowMs).day;
   if (asOf > today) return { state: 'unknown', behind: null, unit: null, expected: null };       // a date in the future is unreadable, never "current"
   if (cadence === 'weekly') { const age = daysBetween(asOf, today); return { state: age <= 9 ? 'current' : 'behind', behind: age <= 9 ? 0 : age, unit: 'day', expected: null }; }
+  if (!covered(today) || !covered(asOf)) return { state: 'unknown', behind: null, unit: null, expected: null };   // the calendar cannot say which days were sessions
   const expected = lastSessionPast(nowMs, DUE_MIN);
   if (asOf >= expected) return { state: 'current', behind: 0, unit: 'session', expected };
   return { state: 'behind', behind: sessionsBetween(asOf, expected), unit: 'session', expected };
