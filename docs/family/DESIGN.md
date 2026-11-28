@@ -22,8 +22,9 @@ and data-state meaning, so any fifth hue would either collide with a meaning or 
 ## Rules
 
 1. **One canvas, one lime.** Lime marks brand, focus and the primary action only. It never encodes gain, rank or quality.
-2. **Structure is the ornament** (exposed grid, 27 Nov): hairline rules and ruled cells, square corners, dashed dividers between
-   neighbours. No floating cards, glows or gradients behind data.
+2. **Structure is the ornament.** Rulebook, Tripwire and ApexPro keep the 27 Nov exposed grid (hairline rules, ruled cells,
+   dashed dividers). The hub uses tiles instead (see "The hub's own look" below). On every site: no glows, no gradients
+   behind data, borders before shadows.
 3. **No motion by default on the hub.** Since 28 Nov 2026 Alpha's Motion setting defaults to Off (`lib/prefs.ts`, set on `<html>`
    before first paint): nothing loops, animates in or counts up. A reader can choose Reduced or As the device in Settings.
    The family bar never moves on any site. Per-product motion rules (ApexPro Part D) stay with each product.
@@ -53,7 +54,8 @@ is `src/app/revamp.css`, the last stylesheet, using existing tokens only.
 
 - Product list and the freshness line: `src/lib/family.ts` (one list for the Today block and the footer).
 - Live data dates: `/api/family` (`worker/family.js`), read from each product's own published status, cached five minutes.
-- Styles: the `.fam-*` and `.footer-family` rules at the end of `src/app/premium.css`, tokens only.
+- Styles: `.fam-*` and `.footer-family` at the end of `src/app/premium.css`, then `src/app/revamp.css` (tiles, the family bar,
+  the phone layout of the family tiles), tokens only.
 
 ## Stale documents this supersedes on the shared base
 
