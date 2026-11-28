@@ -46,7 +46,7 @@ test('double opt-in: join sends one confirmation; confirming marks it; a second 
   assert.equal(mails.length, 1);
   const link = /confirm\?t=([0-9a-f-]{36})/.exec(mails[0].textbody)[1];
   assert.match(mails[0].mime_headers['List-Unsubscribe'], /unsubscribe\?t=/);
-  const c = await call(new Request(`${origin}/api/waitlist/confirm?t=${link}`), env);
+  const c = await call(new Request(`${origin}/api/waitlist/confirm?t=${link}&via=page`, { method: 'POST' }), env);
   assert.equal(c.status, 303); assert.match(c.headers.get('location'), /waitlist=confirmed/);
   const r2 = await call(post({ email: 'a@example.com' }), env);
   assert.deepEqual(await r2.json(), await (await call(post({ email: 'b@example.com' }), env)).json(), 'the same answer for a known and an unknown address');
@@ -86,4 +86,47 @@ test('helpers: constant-time compare, CSV quoting, the mail names what it is', (
   assert.equal(toCsv([{ email: 'a,b@x.com', status: 'pending' }]).split('\r\n')[1].startsWith('"a,b@x.com"'), true);
   const m = confirmationMail(origin, '00000000-0000-0000-0000-000000000000');
   assert.match(m.text, /not investment advice/); assert.match(m.subject, /waitlist/);
+});
+
+test('opening a link changes nothing (mail scanners open every link); the page button does', async () => {
+  mails = [];
+  const { env } = fakeEnv();
+  await call(post({ email: 's@example.com' }), env);
+  const t = /unsubscribe\?t=([0-9a-f-]{36})/.exec(mails[0].textbody)[1];
+  const count = async () => (await (await call(new Request(`${origin}/api/waitlist/count`, { headers: { authorization: 'Bearer owner-secret-123' } }), env)).json());
+  for (const which of ['confirm', 'unsubscribe']) {
+    const g = await call(new Request(`${origin}/api/waitlist/${which}?t=${t}`), env);
+    assert.equal(g.status, 200); assert.match(g.headers.get('content-type'), /text\/html/);
+    const html = await g.text();
+    assert.match(html, /<form method="post" action="\/api\/waitlist\/\w+\?t=[0-9a-f-]{36}&via=page">/);
+    assert.doesNotMatch(html, /<script/);
+  }
+  const c = await count();
+  assert.equal(c.total, 1); assert.equal(c.pending, 1, 'two GETs neither confirmed nor deleted the address');
+  const u = await call(new Request(`${origin}/api/waitlist/unsubscribe?t=${t}&via=page`, { method: 'POST' }), env);
+  assert.equal(u.status, 303); assert.match(u.headers.get('location'), /waitlist=unsubscribed/);
+  assert.equal((await count()).total, 0);
+});
+
+test('a pending address gets at most one confirmation mail a day, with the same answer every time', async () => {
+  mails = [];
+  const { env } = fakeEnv();
+  const answers = [];
+  for (let i = 0; i < 5; i++) answers.push(await (await call(post({ email: 'v@example.com' }), env)).json());
+  assert.equal(mails.length, 1, 'five joins, one mail');
+  assert.ok(answers.every((a) => JSON.stringify(a) === JSON.stringify(answers[0])));
+  const first = /confirm\?t=([0-9a-f-]{36})/.exec(mails[0].textbody)[1];
+  const c = await call(new Request(`${origin}/api/waitlist/confirm?t=${first}&via=page`, { method: 'POST' }), env);
+  assert.match(c.headers.get('location'), /waitlist=confirmed/, 'the first link still works: the token was not rotated');
+});
+
+test('a mail the provider refused is not counted, so the next join can send', async () => {
+  mails = [];
+  const { env } = fakeEnv();
+  const keep = globalThis.fetch;
+  globalThis.fetch = async (u, init) => (String(u).includes('zeptomail') ? new Response('{}', { status: 500 }) : keep(u, init));
+  assert.equal((await call(post({ email: 'w@example.com' }), env)).status, 502);
+  globalThis.fetch = keep;
+  assert.equal((await call(post({ email: 'w@example.com' }), env)).status, 200);
+  assert.equal(mails.length, 1);
 });

@@ -154,8 +154,9 @@ export default function StockChart({ sym, plans = [] }: { sym: string; plans?: P
 
     let yOff = top + ph + 24;
     if (on.vol && !rel) {
-      const vh = 34, vmax = Math.max(...bars.v, 1);
-      for (let i = 0; i < n; i++) { g.fillStyle = bars.c[i] >= bars.o[i] ? `${up}77` : `${down}77`; const h = (bars.v[i] / vmax) * vh; g.fillRect(X(i) - Math.max(0.5, step * 0.3), yOff + vh - h, Math.max(1, step * 0.6), h); }
+      const vh = 34, vmax = Math.max(...bars.v.map((x) => x ?? 0), 1);
+      for (let i = 0; i < n; i++) { if (bars.v[i] == null) continue;      // no volume on file: no bar, never a zero bar
+        g.fillStyle = bars.c[i] >= bars.o[i] ? `${up}77` : `${down}77`; const h = (bars.v[i]! / vmax) * vh; g.fillRect(X(i) - Math.max(0.5, step * 0.3), yOff + vh - h, Math.max(1, step * 0.6), h); }
       yOff += vh + 18;
     }
     if (on.rsi) {

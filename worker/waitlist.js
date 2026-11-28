@@ -13,6 +13,7 @@
 const MAX_EMAIL = 254;
 const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 const SOURCES = new Set(['pro', 'home', 'footer']);
+export const MAIL_GAP_MS = 24 * 3600 * 1000;
 
 /** A normalised address, or null: trimmed, lower-cased, a plausible mailbox, at most 254 characters. */
 export function normaliseEmail(v) {
@@ -87,6 +88,8 @@ export class Waitlist {
     this.sql = state.storage.sql;
     this.sql.exec(`CREATE TABLE IF NOT EXISTS entries (email TEXT PRIMARY KEY, status TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL, confirmed_at TEXT, unsubscribed_at TEXT, source TEXT, referrer TEXT)`);
+    // 28 Nov 2026: when the last confirmation mail was accepted by the provider, so one address gets at most one a day
+    try { this.sql.exec('ALTER TABLE entries ADD COLUMN last_sent_at TEXT'); } catch { /* the column already exists */ }
   }
   async fetch(request) {
     const u = new URL(request.url);
@@ -94,8 +97,10 @@ export class Waitlist {
     const one = (q, ...a) => [...this.sql.exec(q, ...a)][0] ?? null;
     if (u.pathname === '/join') {
       const { email, source, referrer } = await request.json();
-      const was = one('SELECT status, token FROM entries WHERE email = ?', email);
+      const was = one('SELECT status, token, last_sent_at FROM entries WHERE email = ?', email);
       if (was && was.status === 'confirmed') return Response.json({ status: 'confirmed', token: was.token, send: false });
+      // a pending address already mailed in the last 24 hours keeps its link and gets no second mail (no inbox flooding)
+      if (was && was.status === 'pending' && was.last_sent_at && Date.now() - Date.parse(was.last_sent_at) < MAIL_GAP_MS) return Response.json({ status: 'pending', token: was.token, send: false });
       if (was) {
         // pending or unsubscribed: a fresh request re-opens it as pending with a fresh token; the old link stops working
         const token = crypto.randomUUID();
@@ -106,6 +111,7 @@ export class Waitlist {
       this.sql.exec('INSERT INTO entries (email, status, token, created_at, source, referrer) VALUES (?, ?, ?, ?, ?, ?)', email, 'pending', token, now, source, referrer);
       return Response.json({ status: 'pending', token, send: true });
     }
+    if (u.pathname === '/sent') { this.sql.exec('UPDATE entries SET last_sent_at = ? WHERE token = ?', now, u.searchParams.get('t') || ''); return Response.json({ ok: true }); }
     if (u.pathname === '/confirm' || u.pathname === '/unsubscribe') {
       const t = u.searchParams.get('t') || '';
       const row = one('SELECT email, status FROM entries WHERE token = ?', t);
@@ -119,6 +125,15 @@ export class Waitlist {
     if (u.pathname === '/delete') { const e = u.searchParams.get('email') || ''; this.sql.exec('DELETE FROM entries WHERE email = ?', e); return Response.json({ ok: true }); }
     return new Response('not found', { status: 404 });
   }
+}
+
+/** The page a confirm or unsubscribe link opens: one sentence and one button that POSTs. No script, no outside resource. */
+export function actionPage(which, action) {
+  const [title, button] = which === 'confirm' ? ['Confirm your place on the Alpha Pro waitlist', 'Confirm my place'] : ['Remove your address from the Alpha Pro waitlist', 'Unsubscribe and delete'];
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0c0e;color:#f2f2f0;font:16px/1.5 system-ui,sans-serif}main{max-width:28rem;padding:24px}button{font:inherit;font-weight:600;min-height:44px;padding:0 20px;border:0;border-radius:6px;background:#f2f2f0;color:#0b0c0e;cursor:pointer}button:focus-visible{outline:2px solid #9ad0ff;outline-offset:3px}p{color:#b8b8b4}</style>
+<main><h1 style="font-size:1.25rem">${title}</h1><p>Nothing changes until you press the button.</p><form method="post" action="${action}"><button type="submit">${button}</button></form></main></html>`;
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" } });
 }
 
 /** /api/waitlist and its sub-paths. `json` and `limitKey` come from the main Worker so headers and rate keys stay one rule. */
@@ -142,6 +157,7 @@ export async function waitlist(request, env, url, { json, limitKey }) {
     if (r.send) {
       const sent = await sendMail(env, email, confirmationMail(url.origin, r.token));
       if (!sent) return json({ ok: false, error: 'The confirmation mail could not be sent. Try again later.' }, 502);
+      await stub.fetch(`https://waitlist/sent?t=${r.token}`);      // recorded only once the provider accepted the mail
     }
     // the same answer whether or not the address was already on the list, so the form cannot be used to test addresses
     return json({ ok: true, message: 'Check your inbox for a confirmation link. Your place is held once you confirm.' });
@@ -150,9 +166,12 @@ export async function waitlist(request, env, url, { json, limitKey }) {
     const t = url.searchParams.get('t') || '';
     if (!/^[0-9a-f-]{36}$/.test(t)) return Response.redirect(`${url.origin}/pro/?waitlist=invalid`, 303);
     const which = path.endsWith('confirm') ? 'confirm' : 'unsubscribe';
-    if (which === 'unsubscribe' && request.method !== 'GET' && request.method !== 'POST') return json({ ok: false }, 405);
+    // A GET changes nothing: mail security scanners open every link in a mail, and would confirm or delete the address on
+    // the owner's behalf. The link shows one button; the button POSTs. Mail clients' RFC 8058 one-click POST still works.
+    if (request.method === 'GET' || request.method === 'HEAD') return actionPage(which, `${url.pathname}?t=${t}&via=page`);
+    if (request.method !== 'POST') return json({ ok: false }, 405);
     const r = await stub.fetch(`https://waitlist/${which}?t=${t}`);
-    if (request.method === 'POST') return new Response(null, { status: r.ok ? 200 : 404 });      // RFC 8058 one-click
+    if (url.searchParams.get('via') !== 'page') return new Response(null, { status: r.ok ? 200 : 404 });      // RFC 8058 one-click
     return Response.redirect(`${url.origin}/pro/?waitlist=${r.ok ? (which === 'confirm' ? 'confirmed' : 'unsubscribed') : 'invalid'}`, 303);
   }
   if ((path === '/api/waitlist/export' || path === '/api/waitlist/delete' || path === '/api/waitlist/count') && stub) {
