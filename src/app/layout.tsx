@@ -4,7 +4,8 @@ import Shell from '@/components/Shell';
 import { PREFS_SCRIPT } from '@/lib/prefs';
 import './globals.css';
 import './tokens-oklch.css';      // the same tokens authored in OKLCH (scripts/oklch.mjs), where supported
-import './premium.css';           // design system v4: the last layer, so its tokens and type win by order
+import './premium.css';           // design system v4: tokens and type
+import './revamp.css';            // 28 Nov 2026 Bento revamp: the last layer (tiles, the statement, the family frame)
 
 const display = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const ui = Inter_Tight({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
@@ -34,7 +35,7 @@ const prefetchScript = `try{var L=location.pathname,u=[];if(L==='/')u=['/api/sum
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-IN" data-theme="dark" data-accent="lime" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
+    <html lang="en-IN" data-theme="dark" data-accent="lime" data-motion="off" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PREFS_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: prefetchScript }} />

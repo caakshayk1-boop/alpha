@@ -1,0 +1,10 @@
+/* The askakshay family bar and footer links (28 Nov 2026). The same shape on all four sites; tokens only, nothing moves. */
+.famibar{display:flex;align-items:center;flex-wrap:wrap;gap:0 12px;min-height:36px;margin:0 0 8px;border-bottom:1px solid var(--line);font-size:13px;font-weight:500}
+.famibar-k{font-weight:700;color:var(--ink)}
+.famibar ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap}
+.famibar a{display:inline-flex;align-items:center;min-height:36px;padding:0 10px;color:var(--ink-2);text-decoration:none}
+.famibar a:hover{color:var(--ink)}
+.famibar a[aria-current]{color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
+.famibar a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+@media (max-width:420px){.famibar-k{display:none}.famibar a{padding:0 8px}}
+@media print{.famibar{display:none!important}}

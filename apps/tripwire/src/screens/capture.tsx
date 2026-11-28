@@ -29,6 +29,7 @@ export function IdentityFooter() {
     <span>{c.href ? <>Contact: <a href={c.href}>{c.email}</a></> : c.line}</span>{' '}
     <span><a href="#/privacy">Privacy</a></span>{' '}
     <span><a href="#/terms">Terms</a></span>{' '}
-    <span>By <a href="https://askakshay.com" rel="noopener">askakshay.com</a></span>
+    <span>By <a href="https://askakshay.com" rel="noopener">askakshay.com</a></span>{' '}
+    <span>The askakshay family: <a href="https://alpha.askakshay.com/">Alpha</a> · <a href="https://lockedfree.askakshay.com/">Rulebook</a> · Tripwire · <a href="https://apexpro.askakshay.com/">ApexPro</a></span>
   </p>;
 }

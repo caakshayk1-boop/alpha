@@ -973,6 +973,9 @@ test('C07: a held data gate names its reason in words, apart from the research c
   const c = eligibility({ sym: 'X', name: 'X', fy_count: 4, vet: { s: 'held', p: 7, n: 9, f: ['cash', 'cover'], w: 'CFO/PAT 0.31x median' } } as never)!;
   assert.equal(c.label, 'Profit not turning into cash · CFO/PAT 0.31x median');
   assert.match(c.detail, /thin interest cover/);
+  // the feed's wording that only repeats the gate name is not printed twice (TCS on 28 Nov 2026)
+  const t = eligibility({ sym: 'TCS', name: 'Tata Consultancy Services Ltd.', fy_count: 10, vet: { s: 'held', p: 8, n: 9, f: ['mcap'], w: 'market cap not published' } } as never)!;
+  assert.equal(t.label, 'Market cap not published');
 });
 test('A03: the nine checks give one count for one row, whether or not the caller has the statements', () => {
   const r = { sym: 'LCL', name: 'Lohia Corp', fy_count: 2, roce: 41, de: 0.34, cfo_pat: 1.44, rev_cagr: 25, pe_pctile: 62, price: 570, sma50: 560, sma200: 540, rs3m: 40, turnover_cr: 17, risk: { level: 'LOW', flags: [] }, tech: 22, g: 95 } as never;

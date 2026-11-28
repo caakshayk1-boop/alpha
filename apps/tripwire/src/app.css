@@ -41,3 +41,4 @@
 @import "./chart-clean.css";
 @import "./terminal.css";
 @import "./grid.css";   /* 27 Nov 2026: exposed grid, last so it wins */   /* 19 Nov 2026: shared terminal / askakshay.com language, funnel rails */
+@import "./family.css";   /* 28 Nov 2026: the askakshay family bar, shared shape across the four sites */

@@ -17,7 +17,10 @@ export function eligibility(r: Row): Eligibility | null {
   const thin = f.includes('stmts') || (years !== null && years < 4);
   if (v.s === 'cleared') return { ok: true, label: `Data checks ${v.p}/${v.n}`, detail: `The screen's ${v.n} data checks: ${v.p} pass.`, thin };
   const first = f[0];
-  const label = first === 'stmts' && years !== null ? `Limited history: ${years} fiscal year${years === 1 ? '' : 's'} available` : `${GATE[first] ?? 'Data check held'}${v.w && first !== 'stmts' ? ` · ${v.w}` : ''}`;
+  // the feed's own wording is added only when it says something the gate name does not (TCS read "Market cap not published · market cap not published", 28 Nov 2026)
+  const head = GATE[first] ?? 'Data check held';
+  const adds = !!v.w && first !== 'stmts' && v.w.trim().toLowerCase() !== head.toLowerCase();
+  const label = first === 'stmts' && years !== null ? `Limited history: ${years} fiscal year${years === 1 ? '' : 's'} available` : `${head}${adds ? ` · ${v.w}` : ''}`;
   const more = f.slice(1).map((k) => GATE[k] ?? k).join(', ');
   return { ok: false, label, thin, detail: `A gate on the data, not a view on the company: ${v.p} of ${v.n} data checks pass.${more ? ` Also: ${more.toLowerCase()}.` : ''}` };
 }
