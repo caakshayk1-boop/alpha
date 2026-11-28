@@ -237,7 +237,6 @@ export function App(): ReactNode {
     <div className="app">
       <div className="rail-head" data-noprint><Brand className="rail-brand" /><small>Research workspace</small></div>
       <main className="main" id="main" tabIndex={-1}>
-        <FamilyBar />
         <StatusBar asOf={screen.data?.as_of} />
         {staleBanner}   {/* v6: the one slot, under the top bar, on every page (Today no longer draws its own) */}
         {!health.persisted && <div className="banner" role="alert">Tripwire could not save: {SAVE_FAILURE_WORDS[health.why ?? 'other']}. What you have written is still here, but notes, plans and paper trades will be lost when this tab closes. <button className="btn sm" onClick={() => downloadBackup(s)}>Download a backup now</button></div>}
@@ -246,6 +245,7 @@ export function App(): ReactNode {
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
+        <FamilyBar />   {/* 28 Nov 2026: last in the page on phones (the first screen keeps its price budget, tests/ui.mjs); in the rail from 1100px (family.css) */}
         <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" data-none={tiRaw < 0 ? '' : undefined} style={{ '--tc': TABS[ti].c, '--i': ti, '--n': TABS.length } as React.CSSProperties}>
