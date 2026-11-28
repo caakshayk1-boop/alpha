@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { FAMILY } from '@/lib/familyList';
 import { createPortal } from 'react-dom';
 import { FreshnessPill } from '@/components/DataStamp';
 import { MarketClock } from '@/components/MarketClock';
@@ -399,6 +400,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
       <footer className="footer">
         <div className="wrap">
+          <nav className="footer-family" aria-label="The askakshay family"><span>The askakshay family</span>{FAMILY.map((m) => (m.id === 'alpha' ? <Link key={m.id} href="/" aria-current="true">{m.name}</Link> : <a key={m.id} href={m.href}>{m.name}</a>))}</nav>
           <div className="footer-grid">
             <div>
               <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark" aria-hidden><i /></span><span>alpha</span></div>

@@ -1,5 +1,7 @@
 # Alpha — DESIGN.md (canonical design tokens and component rules)
 
+> **28 Nov 2026:** the shared base (canvas, text, lime brand, state colours) is now set by [`docs/family/DESIGN.md`](../family/DESIGN.md), measured on the live sites. The sand-and-violet primitives in §2 below are a superseded proposal; the component rules still apply.
+
 > Machine- and human-readable source of truth for Alpha's visual system. Components consume **semantic** tokens only. Values below are a **starting proposal**: calibrate primitives against Alpha's current palette (warm off-white canvas, violet accent, dark theme) before rollout, then lock them here. See `ALPHA_PRO_HANDOFF.md` §23–§26 for rationale.
 
 ## 1. Character

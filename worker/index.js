@@ -9,6 +9,7 @@ import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsF
 import { Rum, validateBeacon } from './rum.js';
 import { marketRoute } from './market.js';
 import { Waitlist, waitlist } from './waitlist.js';
+import { readFamily } from './family.js';
 import { PROMPTS, cleanThesis, factsForCompare, factsForFiling, factsForMove, factsForWatchlist, noIdentifiedCause, parseSuggestions, validateEntities, validateFiling, validateThesis } from './askalpha.js';
 
 export { Rum, Waitlist };
@@ -726,6 +727,18 @@ async function explain(request, env, url) {
   }
 }
 
+// /api/family: the four products and the market day each one's own data describes (worker/family.js). Cached 5 minutes.
+async function family(ctx) {
+  const key = new Request('https://alpha.askakshay.com/__family_v1');
+  const hit = await caches.default.match(key);
+  if (hit) return withHeaders(hit);
+  const text = await feedText('screen').catch(() => null);
+  const body = await readFamily(text ? summarise(text).as_of : null);
+  const res = new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=120, s-maxage=300' } });
+  ctx.waitUntil(caches.default.put(key, res.clone()));
+  return withHeaders(res);
+}
+
 // /api/rum: POST one sampled speed beacon (see rum.js; no identifiers), GET the 7-day 75th percentiles per route.
 async function rum(request, env, url, ctx) {
   if (!env.RUM) return json({ ok: false, error: 'speed measurements are not configured' }, 503);
@@ -809,6 +822,9 @@ export default {
     }
     if (url.pathname === '/api/instrument' || url.pathname === '/api/instrument/') {
       return instrument(url, ctx);
+    }
+    if (url.pathname === '/api/family' || url.pathname === '/api/family/') {
+      return family(ctx);
     }
     if (url.pathname === '/api/rum' || url.pathname === '/api/rum/') {
       return rum(request, env, url, ctx);
