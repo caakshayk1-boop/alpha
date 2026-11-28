@@ -1,7 +1,7 @@
 {
  "schema": "rulebook-ledger/1",
- "as_of": "2026-11-26",
- "built_on": "2026-11-27T20:12:34.338Z",
+ "as_of": "2026-11-27",
+ "built_on": "2026-11-28T09:47:19.493Z",
  "config": {
   "charges_version": "in-delivery-1",
   "stop_pct": 20,
@@ -1433,6 +1433,668 @@
    ],
    "universe_n": 933,
    "not_scorable_n": 221
+  },
+  {
+   "screen_id": "conservative-quality",
+   "run_date": "2026-11-27",
+   "passed": [
+    "CAMS",
+    "CASTROLIND",
+    "COLPAL",
+    "HCLTECH",
+    "HYUNDAI",
+    "INFY",
+    "TENNIND"
+   ],
+   "listed": [
+    "CAMS",
+    "INFY",
+    "HCLTECH",
+    "TENNIND",
+    "COLPAL"
+   ],
+   "taken": [
+    "HCLTECH"
+   ],
+   "skipped": [
+    {
+     "symbol": "CASTROLIND",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "INFY",
+     "why": "The same name is already held."
+    }
+   ],
+   "near_miss": [
+    {
+     "symbol": "3MINDIA",
+     "failed_rule": "Liquid: trades at least ₹10 crore a day",
+     "gap": "₹2.3 cr vs feed flag and ≥ ₹10 cr"
+    },
+    {
+     "symbol": "ABBOTINDIA",
+     "failed_rule": "Cash flow covers profit in full",
+     "gap": "0.90× vs CFO ÷ profit ≥ 1.0×"
+    },
+    {
+     "symbol": "ACE",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "29% · 36% · 37% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "AFFLE",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "15% · 16% · 13% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "AHLUCONT",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "19% · 17% · 33% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "AJANTPHARM",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "29% · 32% · 31% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "AKUMS",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "14% · 12% · 0% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "ANTELOPUS",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "18% · 17% · 12% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "APLAPOLLO",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "29% · 22% · 23% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "ARE&M",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "15% · 17% · 19% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "ASTRAL",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "18% · 19% · 23% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "ATLANTAELE",
+     "failed_rule": "Cash flow covers profit in full",
+     "gap": "0.81× vs CFO ÷ profit ≥ 1.0×"
+    },
+    {
+     "symbol": "BALAMINES",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "11% · 12% · 18% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "BDL",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "13% · 19% · 23% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "BEL",
+     "failed_rule": "Cash flow covers profit in full",
+     "gap": "0.33× vs CFO ÷ profit ≥ 1.0×"
+    },
+    {
+     "symbol": "BERGEPAINT",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "22% · 26% · 29% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "BLUEJET",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "25% · 36% · 26% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "BRITANNIA",
+     "failed_rule": "Debt to equity is at most 0.1",
+     "gap": "0.27 vs ≤ 0.1"
+    },
+    {
+     "symbol": "BSOFT",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "20% · 21% · 28% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "CARBORUNIV",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "7% · 13% · 21% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "CARTRADE",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "12% · 8% · 5% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "CCAVENUE",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "7% · 8% · 6% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "CIPLA",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "15% · 22% · 21% vs 3 of 3 years ≥ 30%"
+    },
+    {
+     "symbol": "CMPDI",
+     "failed_rule": "Liquid: trades at least ₹10 crore a day",
+     "gap": "₹6.2 cr vs feed flag and ≥ ₹10 cr"
+    },
+    {
+     "symbol": "COFORGE",
+     "failed_rule": "Return on capital employed was 30%+ in each of the last 3 years",
+     "gap": "21% · 20% · 29% vs 3 of 3 years ≥ 30%"
+    }
+   ],
+   "refused": [
+    "3MINDIA",
+    "ABBOTINDIA",
+    "ACE",
+    "AFFLE",
+    "AHLUCONT",
+    "AJANTPHARM",
+    "AKUMS",
+    "ANTELOPUS",
+    "APLAPOLLO",
+    "ARE&M",
+    "ASTRAL",
+    "ATLANTAELE",
+    "BALAMINES",
+    "BDL",
+    "BEL",
+    "BERGEPAINT",
+    "BLUEJET",
+    "BRITANNIA",
+    "BSOFT",
+    "CARBORUNIV",
+    "CARTRADE",
+    "CCAVENUE",
+    "CIPLA",
+    "CMPDI",
+    "COFORGE"
+   ],
+   "universe_n": 931,
+   "not_scorable_n": 158
+  },
+  {
+   "screen_id": "magic-formula",
+   "run_date": "2026-11-27",
+   "passed": [
+    "BPCL",
+    "CHENNPETRO",
+    "COALINDIA",
+    "EMMVEE",
+    "HINDZINC",
+    "INFY",
+    "LALITHAA",
+    "NATIONALUM",
+    "VEDL",
+    "WAAREERTL"
+   ],
+   "listed": [
+    "CHENNPETRO",
+    "COALINDIA",
+    "NATIONALUM",
+    "INFY",
+    "WAAREERTL"
+   ],
+   "taken": [
+    "WAAREERTL"
+   ],
+   "skipped": [
+    {
+     "symbol": "BPCL",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "EMMVEE",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "HINDZINC",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "LALITHAA",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "VEDL",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    }
+   ],
+   "near_miss": [
+    {
+     "symbol": "CASTROLIND",
+     "failed_rule": "Among the best 10 by the source's combined rank, after the rules above",
+     "gap": "position 11 of 417 (feed rank 24) vs position ≤ 10"
+    },
+    {
+     "symbol": "INDUSTOWER",
+     "failed_rule": "Among the best 10 by the source's combined rank, after the rules above",
+     "gap": "position 13 of 417 (feed rank 26) vs position ≤ 10"
+    },
+    {
+     "symbol": "ITC",
+     "failed_rule": "Among the best 10 by the source's combined rank, after the rules above",
+     "gap": "position 15 of 417 (feed rank 29) vs position ≤ 10"
+    },
+    {
+     "symbol": "NMDC",
+     "failed_rule": "Among the best 10 by the source's combined rank, after the rules above",
+     "gap": "position 12 of 417 (feed rank 25) vs position ≤ 10"
+    },
+    {
+     "symbol": "TRANSRAILL",
+     "failed_rule": "Among the best 10 by the source's combined rank, after the rules above",
+     "gap": "position 14 of 417 (feed rank 28) vs position ≤ 10"
+    }
+   ],
+   "refused": [
+    "CASTROLIND",
+    "INDUSTOWER",
+    "ITC",
+    "NMDC",
+    "TRANSRAILL"
+   ],
+   "universe_n": 931,
+   "not_scorable_n": 0
+  },
+  {
+   "screen_id": "piotroski",
+   "run_date": "2026-11-27",
+   "passed": [
+    "ASTRAMICRO",
+    "GLAND",
+    "IPCALAB",
+    "KRBL",
+    "LEMONTREE",
+    "PRIVISCL",
+    "PVRINOX",
+    "SHAILY"
+   ],
+   "listed": [
+    "SHAILY",
+    "GLAND",
+    "PRIVISCL",
+    "IPCALAB",
+    "KRBL"
+   ],
+   "taken": [],
+   "skipped": [
+    {
+     "symbol": "LEMONTREE",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "PRIVISCL",
+     "why": "4 positions are already running in Basic Materials; the book holds no more than that in one sector."
+    }
+   ],
+   "near_miss": [
+    {
+     "symbol": "APOLLOTYRE",
+     "failed_rule": "Current ratio improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "BANCOINDIA",
+     "failed_rule": "Cash flow above net income",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "BHARTIHEXA",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹1,555.2 vs ₹1,561.2 vs close > 200-day"
+    },
+    {
+     "symbol": "BHEL",
+     "failed_rule": "Gross margin improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "CASTROLIND",
+     "failed_rule": "Current ratio improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "CONFIPET",
+     "failed_rule": "Gross margin improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "DATAPATTNS",
+     "failed_rule": "Cash flow above net income",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "ENRIN",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹3,102.0 vs ₹3,160.4 vs close > 200-day"
+    },
+    {
+     "symbol": "FORCEMOT",
+     "failed_rule": "Asset turnover improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "GLENMARK",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "GMRAIRPORT",
+     "failed_rule": "Long-term debt ratio did not rise",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "HBLENGINE",
+     "failed_rule": "Cash flow above net income",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "HINDCOPPER",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹418.8 vs ₹510.4 vs close > 200-day"
+    },
+    {
+     "symbol": "HINDPETRO",
+     "failed_rule": "Asset turnover improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "IOC",
+     "failed_rule": "Asset turnover improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "JKCEMENT",
+     "failed_rule": "Current ratio improved",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "JSLL",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹325.0 vs ₹554.8 vs close > 200-day"
+    },
+    {
+     "symbol": "LAURUSLABS",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "MRF",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹1,28,000.0 vs ₹1,30,582.4 vs close > 200-day"
+    },
+    {
+     "symbol": "NAVINFLUOR",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "NAZARA",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "ORIENTHOT",
+     "failed_rule": "Liquid: trades at least ₹10 crore a day",
+     "gap": "₹3.0 cr vs feed flag and ≥ ₹10 cr"
+    },
+    {
+     "symbol": "PARAGMILK",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "PIDILITIND",
+     "failed_rule": "No new shares issued",
+     "gap": "failed vs test passed (the feed gives each test's result, not its inputs)"
+    },
+    {
+     "symbol": "PINELABS",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹164.1 vs ₹168.4 vs close > 200-day"
+    }
+   ],
+   "refused": [
+    "APOLLOTYRE",
+    "BANCOINDIA",
+    "BHARTIHEXA",
+    "BHEL",
+    "CASTROLIND",
+    "CONFIPET",
+    "DATAPATTNS",
+    "ENRIN",
+    "FORCEMOT",
+    "GLENMARK",
+    "GMRAIRPORT",
+    "HBLENGINE",
+    "HINDCOPPER",
+    "HINDPETRO",
+    "IOC",
+    "JKCEMENT",
+    "JSLL",
+    "LAURUSLABS",
+    "MRF",
+    "NAVINFLUOR",
+    "NAZARA",
+    "ORIENTHOT",
+    "PARAGMILK",
+    "PIDILITIND",
+    "PINELABS"
+   ],
+   "universe_n": 931,
+   "not_scorable_n": 59
+  },
+  {
+   "screen_id": "quality-momentum",
+   "run_date": "2026-11-27",
+   "passed": [
+    "ACUTAAS",
+    "CPPLUS",
+    "CUPID",
+    "INOXINDIA",
+    "KRISHANA",
+    "QPOWER",
+    "RPEL",
+    "SKYGOLD",
+    "SMLMAH",
+    "TDPOWERSYS",
+    "WELCORP"
+   ],
+   "listed": [
+    "CUPID",
+    "CPPLUS",
+    "QPOWER",
+    "WELCORP",
+    "ACUTAAS"
+   ],
+   "taken": [
+    "WELCORP"
+   ],
+   "skipped": [
+    {
+     "symbol": "INOXINDIA",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "KRISHANA",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "RPEL",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    },
+    {
+     "symbol": "SKYGOLD",
+     "why": "Passed the rules but is outside this screen's 5 best by score, so it is not listed."
+    }
+   ],
+   "near_miss": [
+    {
+     "symbol": "ABB",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "30.7% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "ABBOTINDIA",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-11.7% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "ACE",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "8.1% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "AEROFLEX",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "16.7% vs ≥ 20%"
+    },
+    {
+     "symbol": "AETHER",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "10.6% vs ≥ 20%"
+    },
+    {
+     "symbol": "AJANTPHARM",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "34.8% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "ANTELOPUS",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "18.3% vs ≥ 20%"
+    },
+    {
+     "symbol": "ANTHEM",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "32.1% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "APARINDS",
+     "failed_rule": "Profit is at least 25% above two years ago (base positive)",
+     "gap": "₹977 vs ₹825 cr vs profit ≥ 1.25× two years ago"
+    },
+    {
+     "symbol": "ATLANTAELE",
+     "failed_rule": "Price is above its 200-day average",
+     "gap": "₹1,474.9 vs ₹1,541.2 vs close > 200-day"
+    },
+    {
+     "symbol": "AVALON",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "18.7% vs ≥ 20%"
+    },
+    {
+     "symbol": "BAJAJ-AUTO",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "18.5% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "BANCOINDIA",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-15.2% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "BHARTIARTL",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-7.4% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "BLUEJET",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-10.5% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "CAMS",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-13.0% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "CEMPRO",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "55.1% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "CENTUM",
+     "failed_rule": "Profit is at least 25% above two years ago (base positive)",
+     "gap": "₹-47 vs ₹2 cr vs profit ≥ 1.25× two years ago"
+    },
+    {
+     "symbol": "COFORGE",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "11.7% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "CRAFTSMAN",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "12.5% vs ≥ 20%"
+    },
+    {
+     "symbol": "DATAPATTNS",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "36.3% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "DIACABS",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "10.3% vs ≥ 20%"
+    },
+    {
+     "symbol": "DIVISLAB",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "49.8% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "DIXON",
+     "failed_rule": "12-1 month price momentum is in the top tenth of the universe",
+     "gap": "-24.9% vs ≥ 61.9%"
+    },
+    {
+     "symbol": "EBGNG",
+     "failed_rule": "Return on capital employed is at least 20%",
+     "gap": "16.0% vs ≥ 20%"
+    }
+   ],
+   "refused": [
+    "ABB",
+    "ABBOTINDIA",
+    "ACE",
+    "AEROFLEX",
+    "AETHER",
+    "AJANTPHARM",
+    "ANTELOPUS",
+    "ANTHEM",
+    "APARINDS",
+    "ATLANTAELE",
+    "AVALON",
+    "BAJAJ-AUTO",
+    "BANCOINDIA",
+    "BHARTIARTL",
+    "BLUEJET",
+    "CAMS",
+    "CEMPRO",
+    "CENTUM",
+    "COFORGE",
+    "CRAFTSMAN",
+    "DATAPATTNS",
+    "DIACABS",
+    "DIVISLAB",
+    "DIXON",
+    "EBGNG"
+   ],
+   "universe_n": 931,
+   "not_scorable_n": 217
   }
  ],
  "picks": [
@@ -2389,7 +3051,7 @@
    "screen_id": "conservative-quality",
    "symbol": "CMPDI",
    "first_listed_run": "2026-11-23",
-   "status": "open",
+   "status": "closed",
    "fills": [
     {
      "date": "2026-11-23",
@@ -2422,11 +3084,43 @@
        "amount": 49.4734
       }
      ]
+    },
+    {
+     "date": "2026-11-27",
+     "side": "sell",
+     "qty": 1793,
+     "price": 183.84,
+     "charges": [
+      {
+       "kind": "brokerage",
+       "amount": 0
+      },
+      {
+       "kind": "stt",
+       "amount": 329.6251
+      },
+      {
+       "kind": "exchange",
+       "amount": 9.7899
+      },
+      {
+       "kind": "sebi",
+       "amount": 0.3296
+      },
+      {
+       "kind": "gst",
+       "amount": 1.8215
+      },
+      {
+       "kind": "dp",
+       "amount": 15.34
+      }
+     ]
     }
    ],
    "stop": 150.84,
-   "exit_after": null,
-   "exit_reason": null,
+   "exit_after": "2026-11-27",
+   "exit_reason": "dropped",
    "voided": null,
    "rule": {
     "stop_pct": 18,
@@ -2695,6 +3389,162 @@
     "exit_on_drop": true,
     "max_months": 1
    }
+  },
+  {
+   "id": "conservative-quality:HCLTECH:2026-11-27",
+   "screen_id": "conservative-quality",
+   "symbol": "HCLTECH",
+   "first_listed_run": "2026-11-27",
+   "status": "open",
+   "fills": [
+    {
+     "date": "2026-11-27",
+     "side": "buy",
+     "qty": 231,
+     "price": 1424.1,
+     "charges": [
+      {
+       "kind": "brokerage",
+       "amount": 0
+      },
+      {
+       "kind": "stt",
+       "amount": 328.9671
+      },
+      {
+       "kind": "exchange",
+       "amount": 9.7703
+      },
+      {
+       "kind": "sebi",
+       "amount": 0.329
+      },
+      {
+       "kind": "gst",
+       "amount": 1.8179
+      },
+      {
+       "kind": "stamp",
+       "amount": 49.3451
+      }
+     ]
+    }
+   ],
+   "stop": 1167.76,
+   "exit_after": null,
+   "exit_reason": null,
+   "voided": null,
+   "rule": {
+    "stop_pct": 18,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
+  },
+  {
+   "id": "magic-formula:WAAREERTL:2026-11-27",
+   "screen_id": "magic-formula",
+   "symbol": "WAAREERTL",
+   "first_listed_run": "2026-11-27",
+   "status": "open",
+   "fills": [
+    {
+     "date": "2026-11-27",
+     "side": "buy",
+     "qty": 399,
+     "price": 825.7,
+     "charges": [
+      {
+       "kind": "brokerage",
+       "amount": 0
+      },
+      {
+       "kind": "stt",
+       "amount": 329.4543
+      },
+      {
+       "kind": "exchange",
+       "amount": 9.7848
+      },
+      {
+       "kind": "sebi",
+       "amount": 0.3295
+      },
+      {
+       "kind": "gst",
+       "amount": 1.8206
+      },
+      {
+       "kind": "stamp",
+       "amount": 49.4181
+      }
+     ]
+    }
+   ],
+   "stop": 701.85,
+   "exit_after": null,
+   "exit_reason": null,
+   "voided": null,
+   "rule": {
+    "stop_pct": 15,
+    "trailing": false,
+    "target_pct": 15,
+    "exit_on_drop": false,
+    "max_months": 1
+   }
+  },
+  {
+   "id": "quality-momentum:WELCORP:2026-11-27",
+   "screen_id": "quality-momentum",
+   "symbol": "WELCORP",
+   "first_listed_run": "2026-11-27",
+   "status": "open",
+   "fills": [
+    {
+     "date": "2026-11-27",
+     "side": "buy",
+     "qty": 143,
+     "price": 2301.9,
+     "charges": [
+      {
+       "kind": "brokerage",
+       "amount": 0
+      },
+      {
+       "kind": "stt",
+       "amount": 329.1717
+      },
+      {
+       "kind": "exchange",
+       "amount": 9.7764
+      },
+      {
+       "kind": "sebi",
+       "amount": 0.3292
+      },
+      {
+       "kind": "gst",
+       "amount": 1.819
+      },
+      {
+       "kind": "stamp",
+       "amount": 49.3758
+      }
+     ]
+    }
+   ],
+   "stop": 1726.43,
+   "exit_after": null,
+   "exit_reason": null,
+   "voided": null,
+   "rule": {
+    "stop_pct": 25,
+    "trailing": true,
+    "target_pct": 30,
+    "exit_on_drop": true,
+    "max_months": 1
+   }
   }
  ],
  "voids": [],
@@ -2847,6 +3697,84 @@
     "CPPLUS",
     "CUPID",
     "KRISHANA",
+    "SKYGOLD",
+    "SMLMAH",
+    "TDPOWERSYS",
+    "WELCORP"
+   ]
+  },
+  {
+   "screen_id": "conservative-quality",
+   "run_date": "2026-11-27",
+   "entered": [],
+   "exited": [
+    "CMPDI"
+   ],
+   "still_in": [
+    "CAMS",
+    "CASTROLIND",
+    "COLPAL",
+    "HCLTECH",
+    "HYUNDAI",
+    "INFY",
+    "TENNIND"
+   ]
+  },
+  {
+   "screen_id": "magic-formula",
+   "run_date": "2026-11-27",
+   "entered": [
+    "WAAREERTL"
+   ],
+   "exited": [
+    "SHARDACROP"
+   ],
+   "still_in": [
+    "BPCL",
+    "CHENNPETRO",
+    "COALINDIA",
+    "EMMVEE",
+    "HINDZINC",
+    "INFY",
+    "LALITHAA",
+    "NATIONALUM",
+    "VEDL"
+   ]
+  },
+  {
+   "screen_id": "piotroski",
+   "run_date": "2026-11-27",
+   "entered": [],
+   "exited": [
+    "BHARTIHEXA"
+   ],
+   "still_in": [
+    "ASTRAMICRO",
+    "GLAND",
+    "IPCALAB",
+    "KRBL",
+    "LEMONTREE",
+    "PRIVISCL",
+    "PVRINOX",
+    "SHAILY"
+   ]
+  },
+  {
+   "screen_id": "quality-momentum",
+   "run_date": "2026-11-27",
+   "entered": [
+    "INOXINDIA",
+    "RPEL"
+   ],
+   "exited": [
+    "MACPOWER"
+   ],
+   "still_in": [
+    "ACUTAAS",
+    "CPPLUS",
+    "CUPID",
+    "KRISHANA",
+    "QPOWER",
     "SKYGOLD",
     "SMLMAH",
     "TDPOWERSYS",
@@ -3814,6 +4742,486 @@
    "symbol": "FILATEX",
    "refused_on": "2026-11-23",
    "price_at_refusal": 108.01
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "3MINDIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 28105
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ABBOTINDIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 27145
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ACE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1325.7
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "AFFLE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1644.2
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "AHLUCONT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 535.05
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "AJANTPHARM",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 3360.6
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "AKUMS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 756.75
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ANTELOPUS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 825.35
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "APLAPOLLO",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1509.5
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ARE&M",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 728.8
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ASTRAL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1262.5
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "ATLANTAELE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1474.9
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BALAMINES",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1792.4
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BDL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1077.5
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BEL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 411.45
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BERGEPAINT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 466.85
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BLUEJET",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 516.8
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BRITANNIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 5065
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "BSOFT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 299.15
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "CARBORUNIV",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1001.2
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "CARTRADE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2583.5
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "CCAVENUE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 119.09
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "CIPLA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1439.9
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "CMPDI",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 183.84
+  },
+  {
+   "screen_id": "conservative-quality",
+   "symbol": "COFORGE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2071
+  },
+  {
+   "screen_id": "magic-formula",
+   "symbol": "CASTROLIND",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 189.65
+  },
+  {
+   "screen_id": "magic-formula",
+   "symbol": "INDUSTOWER",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 377.65
+  },
+  {
+   "screen_id": "magic-formula",
+   "symbol": "ITC",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 304.7
+  },
+  {
+   "screen_id": "magic-formula",
+   "symbol": "NMDC",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 67.96
+  },
+  {
+   "screen_id": "magic-formula",
+   "symbol": "TRANSRAILL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 435.95
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "APOLLOTYRE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 426.05
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "BANCOINDIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 687.55
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "BHARTIHEXA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1555.2
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "BHEL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 421.95
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "CASTROLIND",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 189.65
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "CONFIPET",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 69.33
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "DATAPATTNS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 4336.9
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "ENRIN",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 3102
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "FORCEMOT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 20179
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "GLENMARK",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2834.9
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "GMRAIRPORT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 99.26
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "HBLENGINE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 757.95
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "HINDCOPPER",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 418.5
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "HINDPETRO",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 386
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "IOC",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 144.21
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "JKCEMENT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 5470.3
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "JSLL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 326.6
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "LAURUSLABS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2504.4
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "MRF",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 128000
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "NAVINFLUOR",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 10456.5
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "NAZARA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 377.1
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "ORIENTHOT",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 174.88
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "PARAGMILK",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 321.63
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "PIDILITIND",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1594.8
+  },
+  {
+   "screen_id": "piotroski",
+   "symbol": "PINELABS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 164.06
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ABB",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 7060
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ABBOTINDIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 27145
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ACE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1325.7
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "AEROFLEX",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 484.65
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "AETHER",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1761.4
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "AJANTPHARM",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 3360.6
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ANTELOPUS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 825.35
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ANTHEM",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 984.15
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "APARINDS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 14160
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "ATLANTAELE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1474.9
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "AVALON",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1838
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "BAJAJ-AUTO",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 10485
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "BANCOINDIA",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 687.55
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "BHARTIARTL",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2067.9
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "BLUEJET",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 516.8
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "CAMS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 740
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "CEMPRO",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 1405.6
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "CENTUM",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 3991.5
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "COFORGE",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 2071
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "CRAFTSMAN",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 12005
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "DATAPATTNS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 4336.9
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "DIACABS",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 362.95
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "DIVISLAB",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 11560
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "DIXON",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 13138
+  },
+  {
+   "screen_id": "quality-momentum",
+   "symbol": "EBGNG",
+   "refused_on": "2026-11-27",
+   "price_at_refusal": 521.35
   }
  ],
  "book_days": [
@@ -4116,29 +5524,79 @@
    "unrealised": -4370.21,
    "open_n": 21,
    "benchmark_close": 24086.5
+  },
+  {
+   "date": "2026-11-27",
+   "screen_id": "conservative-quality",
+   "equity": -13347.95,
+   "committed": 2301972.65,
+   "realised": -859.28,
+   "unrealised": -12488.67,
+   "open_n": 5,
+   "benchmark_close": 23949.35
+  },
+  {
+   "date": "2026-11-27",
+   "screen_id": "magic-formula",
+   "equity": -28014.9,
+   "committed": 1648667.2,
+   "realised": 0,
+   "unrealised": -28014.9,
+   "open_n": 5,
+   "benchmark_close": 23949.35
+  },
+  {
+   "date": "2026-11-27",
+   "screen_id": "piotroski",
+   "equity": 22759.85,
+   "committed": 1971128.25,
+   "realised": 0,
+   "unrealised": 22759.85,
+   "open_n": 6,
+   "benchmark_close": 23949.35
+  },
+  {
+   "date": "2026-11-27",
+   "screen_id": "quality-momentum",
+   "equity": 15419.31,
+   "committed": 2627567.2,
+   "realised": -18731.01,
+   "unrealised": 34150.32,
+   "open_n": 7,
+   "benchmark_close": 23949.35
+  },
+  {
+   "date": "2026-11-27",
+   "screen_id": "all",
+   "equity": -3183.69,
+   "committed": 8549335.3,
+   "realised": -19590.29,
+   "unrealised": 16406.6,
+   "open_n": 23,
+   "benchmark_close": 23949.35
   }
  ],
  "aggregates": [
   {
    "screen_id": "conservative-quality",
-   "as_of": "2026-11-26",
-   "n_picks": 6,
+   "as_of": "2026-11-27",
+   "n_picks": 7,
    "n_open": 5,
-   "n_closed": 1,
+   "n_closed": 2,
    "n_void": 0,
-   "win_rate": 1,
-   "expectancy_r": 0,
+   "win_rate": 0.5,
+   "expectancy_r": -0.01,
    "avg_win": 86.1,
-   "avg_loss": null,
-   "max_drawdown": -21192.71,
-   "longest_losing_streak": 0,
-   "honesty": "n = 1 — too few to conclude anything"
+   "avg_loss": -945.38,
+   "max_drawdown": -27694.03,
+   "longest_losing_streak": 1,
+   "honesty": "n = 2 — too few to conclude anything"
   },
   {
    "screen_id": "magic-formula",
-   "as_of": "2026-11-26",
-   "n_picks": 4,
-   "n_open": 4,
+   "as_of": "2026-11-27",
+   "n_picks": 5,
+   "n_open": 5,
    "n_closed": 0,
    "n_void": 0,
    "win_rate": null,
@@ -4151,7 +5609,7 @@
   },
   {
    "screen_id": "piotroski",
-   "as_of": "2026-11-26",
+   "as_of": "2026-11-27",
    "n_picks": 6,
    "n_open": 6,
    "n_closed": 0,
@@ -4166,9 +5624,9 @@
   },
   {
    "screen_id": "quality-momentum",
-   "as_of": "2026-11-26",
-   "n_picks": 7,
-   "n_open": 6,
+   "as_of": "2026-11-27",
+   "n_picks": 8,
+   "n_open": 7,
    "n_closed": 1,
    "n_void": 0,
    "win_rate": 0,
@@ -4181,18 +5639,18 @@
   },
   {
    "screen_id": "all",
-   "as_of": "2026-11-26",
-   "n_picks": 23,
-   "n_open": 21,
-   "n_closed": 2,
+   "as_of": "2026-11-27",
+   "n_picks": 26,
+   "n_open": 23,
+   "n_closed": 3,
    "n_void": 0,
-   "win_rate": 0.5,
-   "expectancy_r": -0.11,
+   "win_rate": 0.33,
+   "expectancy_r": -0.08,
    "avg_win": 86.1,
-   "avg_loss": -18731.01,
+   "avg_loss": -9838.19,
    "max_drawdown": -125466.46,
-   "longest_losing_streak": 1,
-   "honesty": "n = 2 — too few to conclude anything"
+   "longest_losing_streak": 2,
+   "honesty": "n = 3 — too few to conclude anything"
   }
  ],
  "benchmark_start": {
