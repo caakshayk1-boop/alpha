@@ -271,14 +271,14 @@ ok(/Paper fill \(you recorded it\)/.test(await text()), 'a paper fill exists onl
 // thesis → journal → export
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row');
 await pg.getByRole('button', { name: /^Thesis$/ }).click();
-await pg.getByLabel(/^Thesis: why/).fill('Cash-rich compounder, results in focus');
-await pg.getByLabel(/^Wrong if/).fill('Closes below 2,300');
+await pg.getByLabel(/^What do I think\?/).fill('Cash-rich compounder, results in focus');
+await pg.getByLabel(/^What would prove me wrong\?/).fill('Closes below 2,300');
 await pg.getByRole('button', { name: 'Save thesis' }).click();
 ok(/Thesis saved on this device/.test(await text()), 'thesis save is confirmed and says where it lives');
 await pg.goto(base + '/#/desk?v=journal'); await pg.waitForSelector('.card');
 ok(/Cash-rich compounder/.test(await text()), 'journal lists the thesis');
 await pg.getByText('Cash-rich compounder').click();
-await pg.getByLabel(/^Thesis: why/).fill('Cash-rich compounder, results in focus. Reduce if guidance slips.');
+await pg.getByLabel(/^What do I think\?/).fill('Cash-rich compounder, results in focus. Reduce if guidance slips.');
 await pg.getByRole('button', { name: 'Save as new version' }).click();
 await pg.getByText('Cash-rich compounder').first().click();
 await pg.getByRole('button', { name: 'History' }).click();
