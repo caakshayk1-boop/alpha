@@ -90,3 +90,7 @@ body { background-image: none; }
   .fam .fam-grid .fam-cell { padding: 14px 16px; gap: 4px; }
   .fam-go { min-height: 44px; }
 }
+
+/* a review that could not be saved says so where the button is (the success line is for screen readers; the button's own
+   label changes from the store) */
+.rev-err { flex-basis: 100%; margin: 4px 0 0; font-size: 13px; color: var(--down); }

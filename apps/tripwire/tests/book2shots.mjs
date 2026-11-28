@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8951'; const out = process.argv[3] ?? 'docs/tripwire/revamp-v2/book'; mkdirSync(out, { recursive: true });
 const ledger = readFileSync(new URL('../ledger/ledger.json', import.meta.url), 'utf8');
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const w of [390, 1280]) {
   const ctx = await b.newContext({ viewport: { width: w, height: w < 600 ? 844 : 900 }, serviceWorkers: 'block', deviceScaleFactor: w < 600 ? 2 : 1 });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);

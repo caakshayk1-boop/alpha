@@ -7,7 +7,7 @@ import { ohlcSeries } from './uimock.mjs';
 import { readFileSync } from 'node:fs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 /** A context whose saved state is seeded ONCE (only when empty), so a reload shows what the page itself saved. */
 async function ctxOf(width, state, extra = {}) {
   const ctx = await b.newContext({ viewport: { width, height: width >= 1000 ? 900 : 844 }, serviceWorkers: 'block', acceptDownloads: true, ...extra });

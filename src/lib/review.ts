@@ -37,3 +37,32 @@ export function readSnapshots(): Record<string, Snapshot> {
 export function saveSnapshot(sym: string, snap: Snapshot): boolean {
   try { const all = readSnapshots(); all[sym] = snap; localStorage.setItem(REVIEW_KEY, JSON.stringify(all)); window.dispatchEvent(new Event('alpha-reviewed')); return true; } catch { return false; }
 }
+
+/** What a return visit can honestly say about a reviewed company (28 Nov 2026, the build brief's return-visit states).
+ *    changed      at least one figure moved by more than the noise floor (diffSnapshot)
+ *    unchanged    newer data than the review, and nothing moved
+ *    no-new-data  the data the page reads is the same session the review saw: "no change" would claim a check that has not happened
+ *  `missing` names figures the review had that the current data no longer carries: never silently dropped, never read as zero.
+ *  Pure; the snapshot format is unchanged. */
+export type ReviewKind = 'changed' | 'unchanged' | 'no-new-data';
+export interface ReviewRead { kind: ReviewKind; changes: ReviewChange[]; missing: string[]; reviewedOn: string; dataThen: string | null; dataNow: string | null }
+const NAMES: [keyof Snapshot, string][] = [['price', 'price'], ['q', 'quality rank'], ['g', 'growth rank'], ['val', 'value rank'], ['tech', 'technical rank']];
+export function reviewRead(s: Snapshot, r: Row): ReviewRead {
+  const now = snapshotOf(r, s.at);
+  const changes = diffSnapshot(s, r);
+  const missing = NAMES.filter(([k]) => s[k] !== null && s[k] !== undefined && now[k] === null).map(([, n]) => n);
+  const same = !!s.data && !!now.data && now.data <= s.data;
+  const kind: ReviewKind = changes.length ? 'changed' : same ? 'no-new-data' : 'unchanged';
+  return { kind, changes, missing, reviewedOn: s.at.slice(0, 10), dataThen: s.data, dataNow: now.data };
+}
+
+/** The one-line wording of a return visit. `day` formats a YYYY-MM-DD date. */
+export function reviewSentence(rd: ReviewRead, day: (iso: string) => string): string {
+  const when = day(rd.reviewedOn);
+  const head = rd.kind === 'changed'
+    ? `${rd.changes.length} change${rd.changes.length > 1 ? 's' : ''} since you reviewed on ${when}: ${rd.changes.slice(0, 2).map((c) => `${c.field.toLowerCase()} ${c.from} → ${c.to}`).join('; ')}`
+    : rd.kind === 'no-new-data'
+      ? `No newer data since you reviewed on ${when}${rd.dataNow ? `: the figures are still from ${day(rd.dataNow)}` : ''}`
+      : `No change in its figures since you reviewed on ${when}${rd.dataNow ? ` (data through ${day(rd.dataNow)})` : ''}`;
+  return rd.missing.length ? `${head}. Not available now: ${rd.missing.join(', ')}` : head;
+}

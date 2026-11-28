@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const GUEST = { ...STATE, follows: [], entries: [], paper: [], snaps: {} };
 const KEY = 'tripwire:hero-dismissed';
 const mk = async ({ state, width = 390, stale = false, denyHero = false, preDismissed = false }) => {

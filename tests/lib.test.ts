@@ -1022,6 +1022,27 @@ test('since your last review: only recorded snapshots are compared; small score 
   assert.deepEqual(diffSnapshot(s, was), [], 'unchanged figures: nothing listed');
 });
 
+import { reviewRead } from '../src/lib/review.ts';
+test('return visit: changed, no change, no newer data and a figure gone missing are four different answers', () => {
+  const was = { sym: 'X', name: 'X', price: 100, q: 80, g: 60, v: 40, tech: 50, risk: { level: 'LOW', flags: [] }, next_earnings: '2026-10-30', last_date: '2026-10-20', vet: { s: 'cleared', p: 9, n: 9, f: [], w: '' } } as never;
+  const s = snapshotOf(was, '2026-10-20T10:00:00Z');
+  // the same session the review saw: no claim that anything was checked again
+  assert.equal(reviewRead(s, was).kind, 'no-new-data');
+  // newer data, nothing moved past the noise floor
+  const later = { ...(was as object), last_date: '2026-10-27', q: 82 } as never;
+  const u = reviewRead(s, later);
+  assert.equal(u.kind, 'unchanged'); assert.deepEqual(u.changes, []); assert.equal(u.dataNow, '2026-10-27');
+  // a real move is a change, whatever the date
+  assert.equal(reviewRead(s, { ...(later as object), price: 110 } as never).kind, 'changed');
+  // a figure the review had and the data no longer carries is named, never read as zero or as "no change"
+  const gone = reviewRead(s, { ...(later as object), price: null, tech: null } as never);
+  assert.deepEqual(gone.missing, ['price', 'technical rank']);
+  assert.equal(gone.changes.some((c) => c.field === 'Price'), false);
+  // an older saved snapshot (no data date) still reads: it can never claim "no newer data"
+  const old = { ...s, data: null };
+  assert.equal(reviewRead(old, was).kind, 'unchanged');
+});
+
 import { readFileSync as readHolidays } from 'node:fs';
 import { NSE_HOLIDAYS } from '../src/lib/holidays.ts';
 test('T12: the site and the engines read the same NSE holiday calendar', () => {

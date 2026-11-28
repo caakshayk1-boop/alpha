@@ -8,7 +8,7 @@ const GUEST = { ...STATE, follows: [], entries: [], paper: [], snaps: {} };
 const old = new Date(Date.now() - 3 * 86400000).toISOString();
 const seenTCS = { at: old, day: '2026-10-20', px: 2380, rsi: 66, rs3m: 2, from_high: -20, atr_pct: 3, sma200: 2450, high52: 3350, low52: 1976.8, trend: 'mixed', rules: 2, next_earnings: null, risk: 'LOW', elig: 'full' };
 const FOLLOW = { ...STATE, seen: { TCS: [seenTCS] }, snaps: { TCS: [{ at: old, day: '2026-10-20', px: 2380, rsi: 28, rs3m: -2, from_high: -26 }], GCSL: [{ at: old, day: '2026-10-20', px: 640, rsi: 61, rs3m: 5, from_high: -18 }] } };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [w, h] of [[390, 844], [1280, 900]]) for (const [name, st, route] of [['guest', GUEST, '/#/today'], ['follows', FOLLOW, '/#/today'], ['desk', FOLLOW, '/#/desk']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { if (!localStorage.getItem('tripwire:v1')) localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, st);

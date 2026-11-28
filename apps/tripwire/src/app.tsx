@@ -63,6 +63,8 @@ function load(): State {
   if (r.blocked) { health.persisted = false; health.why = 'blocked'; } return r.state;
 }
 const subs = new Set<() => void>();
+/** Whether the last write reached this device's storage (28 Nov 2026): a save message must not say "saved" when it did not. */
+export const lastSaveOk = (): boolean => health.persisted;
 export function setState(fn: (s: State) => State) {
   mem = fn(mem ?? load());
   const r = saveState(store(), KEY, mem); health.persisted = r.ok; health.why = r.ok ? null : r.why;   // on failure the state stays in memory for this session, and the banner says so and offers a backup

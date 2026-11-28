@@ -13,7 +13,7 @@ const html = await (await fetch(base + '/')).text();
 ok(/<style data-critical>[^<]{500,}/.test(html), 'the first-viewport CSS is inlined'); ok((html.match(/<link rel="stylesheet"[^>]*>/g) ?? []).every((l) => /media="print"/.test(l) || false) || !/<head>[\s\S]*<link rel="stylesheet" href="[^"]+"(?! media)[\s\S]*<\/head>/.test(html.replace(/<noscript>[\s\S]*?<\/noscript>/g, '')), 'no render-blocking stylesheet in <head>');
 ok(/<link rel="modulepreload" href="\/app\.[a-z0-9]+\.chunk-/.test(html), 'the main chunk is modulepreloaded');
 const csp = (await fetch(base + '/')).headers.get('content-security-policy'); ok(/style-src 'self' 'unsafe-inline'/.test(csp) && /script-src 'self';/.test(csp), 'the CSP is the strict one: scripts from self only (inline CSS rides the existing style-src, nothing was added)');
-const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block' });
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const ctx = await b.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block' });
 await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, { ...STATE, follows: [], entries: [], paper: [] }); await mockApi(ctx);
 const pg = await ctx.newPage(); const errs = []; pg.on('pageerror', (e) => errs.push(String(e).slice(0, 140))); pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 140)); });
 await pg.addInitScript(() => { window.__lcp = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__lcp = e.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true }); });

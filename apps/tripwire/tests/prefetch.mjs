@@ -3,7 +3,7 @@
 import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801'; let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const chunks = (log) => log.filter((u) => /\/app\.[^/]+\.chunk-[^/]+\.js$/.test(u)).length;
 const mk = async (state) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }); if (state) await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), state); await mockApi(ctx); const pg = await ctx.newPage(); const log = []; pg.on('requestfinished', (r) => log.push(r.url())); return { ctx, pg, log }; };
 

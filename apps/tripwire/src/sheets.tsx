@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { go, setState, useAppState, useSheets } from './app.tsx';
+import { go, lastSaveOk, setState, useAppState, useSheets } from './app.tsx';
 import { Sheet, Icon, useUi } from './ui.tsx';
-import { useScreen, useSignals, useJson, useLedger, type Company } from './data.ts';
+import { useCompany, useScreen, useSignals, useJson, useLedger, type Company } from './data.ts';
+import { counterCoverage, curateCase, eligibilityOf } from './eligibility.ts';
 import { sizePlan } from './planner.ts';
 import { planCaveats, planFigures, stalePriceNote } from './planview.ts';
 import { useEngines } from './useEngines.ts';
@@ -68,6 +69,28 @@ export function PlannerSheet({ onClose, sym: s0, entry: e0, stop: sl0 }: { onClo
   </Sheet>;
 }
 
+/** What the screen has on file for and against, beside the thesis form (28 Nov 2026, build brief phase 2): the first line of the
+ *  company page's own case and countercase (curateCase, the same list the page shows), each with its basis and the screen close it
+ *  comes from. An empty side is labelled with the page's coverage wording, never filled to look balanced. "Add" copies the line
+ *  into the form; nothing is saved until the reader saves. */
+function OnFile({ sym, onAdd }: { sym: string; onAdd: (k: 'support' | 'counter', line: string) => void }) {
+  const c = useCompany(sym); const row = c.data?.row;
+  if (c.loading) return <p className="small mute" role="status">Reading what the screen has on file for {sym}…</p>;
+  if (!row) return <p className="small mute">The screen's case and countercase for {sym} could not be read just now. Write from your own sources.</p>;
+  const el = eligibilityOf(row, c.data?.years ?? []);
+  const cur = curateCase({ strengths: c.data?.swot?.s ?? [], flags: c.data?.risk?.flags ?? [], weaknesses: c.data?.swot?.w ?? [] }, el);
+  const cov = counterCoverage(row, el, cur.counters.length, !!c.data?.risk);
+  const when = row.last_date ? `screen close ${row.last_date}` : 'screen close date not stated';
+  const pro = cur.strengths[0]; const con = cur.counters[0];
+  const line = (x: { t: string; k: string }) => `${x.t} (${x.k}; ${when})`;
+  return <section className="th-onfile" aria-label={`On file for ${sym}`}>
+    <p className="k">On file · {when}</p>
+    <div className="th-fact"><span className="up" aria-hidden="true">●</span> <b>For:</b> {pro ? <>{pro.t} <span className="mute small">{pro.k}</span> <button type="button" className="btn sm" onClick={() => onAdd('support', line(pro))}>Add to evidence</button></> : <span className="dim">The screen found no strength clear enough to list. That is not a negative finding.</span>}</div>
+    <div className="th-fact"><span className={con ? 'down' : 'mute'} aria-hidden="true">●</span> <b>Against:</b> {con ? <>{con.t} <span className="mute small">{con.k}</span> <button type="button" className="btn sm" onClick={() => onAdd('counter', line(con))}>Add to counterview</button></> : <span className="dim">{cov.title} {cov.line}</span>}</div>
+    <p className="small mute">The first line of each side of the company page. Facts as the screen states them; interpretation is yours.</p>
+  </section>;
+}
+
 export function ThesisSheet({ onClose, sym, id, seed }: { onClose: () => void; sym: string; id?: string; seed?: { question: string; evidence: string } }) {
   const st = useAppState(); const { toast, tick } = useUi(); const scr = useScreen(); const row = scr.data?.rows.find((r) => r.sym === sym);
   const e = id ? st.entries.find((x) => x.id === id) : undefined; const c = e ? current(e) : undefined;
@@ -78,17 +101,25 @@ export function ThesisSheet({ onClose, sym, id, seed }: { onClose: () => void; s
   const save = () => {
     const v = preserveReviewDefaults({ ...f, reviewOn: f.reviewOn || null, reviewState, evidenceChange }, c); let changed = true;
     setState((x) => { if (!e) return addEntry(x, sym, v).s; const next = editEntry(x, e.id, v); changed = next.entries.find((entry) => entry.id === e.id)?.versions.length !== x.entries.find((entry) => entry.id === e.id)?.versions.length; return next; });
-    tick(); toast(!changed ? 'No changes to save. History is unchanged.' : e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose();
+    tick(); toast(!changed ? 'No changes to save. History is unchanged.' : !lastSaveOk() ? 'Not saved on this device. It stays in this tab until you close it: download a backup from the banner.' : e ? 'New version saved. The earlier one is kept.' : 'Thesis saved on this device'); onClose();
   };
   return <Sheet title={`${sym}: thesis`} onClose={onClose}>
+    {/* 28 Nov 2026 (build brief, phase 2): the three questions first, then what the screen has on file for and against, then the
+        rest of the existing form under More detail. Every field is the same field; nothing is renamed or dropped, so older notes load as before. */}
+    {F('thesis', 'What do I think? Your thesis, in one or two lines')}
+    {F('invalidation', 'What would prove me wrong? A price or an event', 1)}{!f.invalidation.trim() && <p className="small" style={{ margin: '4px 0 0', color: 'var(--a4)' }}>Without this you cannot tell a bad day from being wrong. It is the line that protects you.</p>}
+    <label className="l" htmlFor="t-date">When will I review it?</label><input id="t-date" className="field" type="date" value={f.reviewOn} onChange={(ev) => setF({ ...f, reviewOn: ev.target.value })} />
+    {row?.next_earnings && resultsDate(row.next_earnings, Date.now()).next && <button className="btn sm" onClick={() => { setReviewState('results'); setF({ ...f, reviewOn: row.next_earnings!, trigger: `After results expected ${row.next_earnings}; verify the company announcement` }); }}>After next results · {row.next_earnings}</button>}
+    <OnFile sym={sym} onAdd={(k, line) => setF((x) => ({ ...x, [k]: [x[k], line].filter(Boolean).join('\n') }))} />
+    {F('support', 'Evidence that supports it')}{F('counter', 'Strongest argument against it')}
+    <details className="th-more" open={!!(c && (c.question || c.decision || c.decisionReason || c.trigger))}><summary>More detail: research question, decision and review state</summary>
     {F('question', 'Research question')}
     <label className="l" htmlFor="t-review-state">Review state</label><select className="field" id="t-review-state" value={reviewState} onChange={(ev) => setReviewState(ev.target.value as ReviewState)}><option value="new">New</option><option value="waiting">Waiting for evidence</option><option value="results">After results</option><option value="reviewed">Reviewed</option></select>
     <label className="l" htmlFor="t-evidence-change">Your assessment of the evidence</label><select className="field" id="t-evidence-change" value={evidenceChange} onChange={(ev) => setEvidenceChange(ev.target.value as typeof evidenceChange)}>{['unassessed', 'strengthened', 'weakened', 'mixed'].map((x) => <option key={x}>{x}</option>)}</select>
     <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{['Watching', 'Skipped', 'Took it (paper)'].map((d) => <button key={d} className="chip" aria-pressed={f.decision === d} onClick={() => setF({ ...f, decision: d })}>{d}</button>)}</div>
     {F('decisionReason', 'Reason for the decision')}
-    {F('thesis', 'Thesis: why this, in one or two lines')}{F('support', 'Evidence that supports it')}{F('counter', 'Strongest argument against it')}{F('decision', 'Decision (watch, plan, pass…)', 1)}{F('invalidation', 'Wrong if… (a price or an event)', 1)}{!f.invalidation.trim() && <p className="small" style={{ margin: '4px 0 0', color: 'var(--a4)' }}>Without this you cannot tell a bad day from being wrong. It is the line that protects you.</p>}{F('trigger', 'Review trigger', 1)}
-    <label className="l" htmlFor="t-date">Review date</label><input id="t-date" className="field" type="date" value={f.reviewOn} onChange={(ev) => setF({ ...f, reviewOn: ev.target.value })} />
-    {row?.next_earnings && resultsDate(row.next_earnings, Date.now()).next && <button className="btn sm" onClick={() => { setReviewState('results'); setF({ ...f, reviewOn: row.next_earnings!, trigger: `After results expected ${row.next_earnings}; verify the company announcement` }); }}>After next results · {row.next_earnings}</button>}
+    {F('decision', 'Decision (watch, plan, pass…)', 1)}{F('trigger', 'Review trigger', 1)}
+    </details>
     <p className="small mute">Review states are your assessment. A price move does not automatically strengthen or weaken a business thesis. “Took it” records a paper decision, not an executed trade or real P&L.</p>
     <div className="row" style={{ marginTop: 14 }}><button className="btn pri grow" disabled={!f.thesis.trim()} onClick={save}>{e ? 'Save as new version' : 'Save thesis'}</button>{e && e.versions.length > 1 && <button className="btn" onClick={() => setHist(!hist)}>History</button>}</div>
     {hist && e && <div style={{ marginTop: 12 }}>{[...e.versions].reverse().map((v, i) => <div key={`${v.at}-${i}`} className="card"><div className="k">{i === 0 ? 'Current' : 'Earlier'} · version {e.versions.length - i} · {dayWord(v.at)}</div><p>{v.thesis}</p>{[['Question', v.question], ['Evidence', v.support], ['Counterview', v.counter], ['Decision', v.decision], ['Reason', v.decisionReason], ['Wrong if', v.invalidation], ['Review', `${v.reviewState ?? 'not set'} · ${v.reviewOn ?? 'no date'} · ${v.trigger}`], ['Evidence assessment', v.evidenceChange]].map(([label, value]) => value ? <p key={label} className="small dim" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><b>{label}:</b> {value}</p> : null)}</div>)}</div>}

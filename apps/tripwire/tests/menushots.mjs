@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801'; const out = process.argv[3] ?? 'docs/tripwire/revamp-v2/menu'; mkdirSync(out, { recursive: true });
 const PAGES = (process.argv[4] ?? 'more,desk,data,settings').split(',');
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [w, h, tag] of [[320, 700, '320'], [390, 844, '390'], [1280, 800, '1280']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block', deviceScaleFactor: 1 });
   await ctx.addInitScript((s) => { try { if (!localStorage.getItem('tripwire:v1')) localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, STATE); await mockApi(ctx);

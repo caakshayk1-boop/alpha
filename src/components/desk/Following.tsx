@@ -15,7 +15,8 @@ import { dateLabel, num } from '@/lib/format';
 import type { JournalEntry } from '@/lib/journal';
 import type { LiveSnap } from '@/lib/live';
 import { priceLabel, priceView, sessionLabel } from '@/lib/price';
-import { diffSnapshot, saveSnapshot, snapshotOf, type Snapshot } from '@/lib/review';
+import { diffSnapshot, reviewRead, type Snapshot } from '@/lib/review';
+import { ReviewButton } from '@/components/ReviewButton';
 import { SCREEN_DEFAULT, toQuery } from '@/lib/screenUrl';
 import type { SavedScreen } from '@/lib/backup';
 import { companyHref } from '@/lib/slug';
@@ -101,7 +102,7 @@ function FollowRow({ sym, r, loading, snap, quote, review, cards, entries, onRem
   const [confirm, setConfirm] = useState(false);
   const pv = r ? priceView(sym, r, snap, quote) : null;
   const pl = pv ? priceLabel(pv) : null;
-  const changes = useMemo(() => (r && review ? diffSnapshot(review, r) : []), [r, review]);
+  const read = useMemo(() => (r && review ? reviewRead(review, r) : null), [r, review]);
   return (
     <div className="frow">
       <div className="frow-top">
@@ -115,19 +116,24 @@ function FollowRow({ sym, r, loading, snap, quote, review, cards, entries, onRem
       </div>
       <div className="frow-since">
         {!r ? <span className="dim">{loading ? 'Reading the screen…' : 'No figures to compare: this symbol is not in the screen.'}</span>
-          : review ? (
-            changes.length ? (
-              <>
-                <span className="frow-k">Since your review on {dateLabel(review.at.slice(0, 10))}</span>
-                <ul className="frow-ch">{changes.map((c) => <li key={c.field}><span className="dim">{c.field}</span> {c.from} → <b>{c.to}</b></li>)}</ul>
-              </>
-            ) : <span><span className="frow-k">Since your review on {dateLabel(review.at.slice(0, 10))}</span> no change in its figures.</span>
+          : review && read ? (
+            <>
+              {read.kind === 'changed' ? (
+                <>
+                  <span className="frow-k">Since your review on {dateLabel(read.reviewedOn)}</span>
+                  <ul className="frow-ch">{read.changes.map((c) => <li key={c.field}><span className="dim">{c.field}</span> {c.from} → <b>{c.to}</b></li>)}</ul>
+                </>
+              ) : read.kind === 'no-new-data'
+                ? <span><span className="frow-k">Since your review on {dateLabel(read.reviewedOn)}</span> no newer data yet{read.dataNow ? `: the figures are still from ${dateLabel(read.dataNow)}` : ''}.</span>
+                : <span><span className="frow-k">Since your review on {dateLabel(read.reviewedOn)}</span> no change in its figures{read.dataNow ? ` (data through ${dateLabel(read.dataNow)})` : ''}.</span>}
+              {read.missing.length > 0 && <span className="dim"> Not available now: {read.missing.join(', ')}.</span>}
+            </>
           ) : <span><span className="frow-k">No review baseline yet.</span> Mark it reviewed to see what changes from here.</span>}
       </div>
       <div className="frow-meta">
         {r?.next_earnings ? <span className="pill warn nodot" title="The screen's estimate, not an exchange confirmation">Results on file {dateLabel(r.next_earnings)} · unconfirmed</span> : r ? <span className="dim">No results date on file</span> : null}
         <span className="frow-links">
-          {r && <button type="button" className="act quiet frow-btn" onClick={() => saveSnapshot(sym, snapshotOf(r, new Date().toISOString()))} aria-label={`Mark ${sym} reviewed now`}>{review ? 'Mark reviewed again' : 'Mark reviewed'}</button>}
+          {r && <ReviewButton sym={sym} r={r} reviewed={!!review} className="act quiet frow-btn" />}
           <button type="button" className="act quiet frow-btn" onClick={() => go('cards', sym)}>{plural(cards, 'card')}</button>
           <button type="button" className="act quiet frow-btn" onClick={() => go('journal', sym)}>{plural(entries, 'journal entry', 'journal entries')}</button>
           {confirm ? (

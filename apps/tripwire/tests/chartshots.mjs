@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { chromium, newCtx, ohlcSeries, staleBanner } from './uimock.mjs';
 const [base = 'http://localhost:8801', out = 'docs/tripwire/beta/charts', prefix = 'after'] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const w of [390, 1280]) {
   const ctx = await newCtx(b, w, ohlcSeries(1300, 'TCS', { nifty: true })); await staleBanner(ctx); const pg = await ctx.newPage();
   const go = async (route, sel) => { await pg.goto(base + '/'); await pg.goto(base + route); await pg.reload(); await pg.waitForSelector(sel, { timeout: 25000 }); await pg.waitForTimeout(900); };

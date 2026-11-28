@@ -5,7 +5,7 @@ import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801'; const out = process.argv[3] ?? '/tmp/shots'; mkdirSync(out, { recursive: true });
 const widths = (process.argv[4] ?? '390,1440').split(',').map(Number);
 const ROUTES = [['today', '/#/today'], ['discover', '/#/discover'], ['company-gcsl', '/#/c/GCSL'], ['picks', '/#/signals'], ['tracker', '/#/signals?v=tracker'], ['desk', '/#/desk'], ['profile', '/#/profile']];
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const w of widths) {
   const h = w >= 1000 ? 900 : w >= 700 ? 1024 : 844;
   const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, bypassCSP: true });

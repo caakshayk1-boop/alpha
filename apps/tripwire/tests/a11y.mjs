@@ -12,7 +12,7 @@ const base = process.argv[2] ?? 'http://localhost:8801';
 const ROUTES = ['/#/today', '/#/markets', '/#/news', '/#/discover', '/#/signals', '/#/signals?v=tracker', '/#/signals?v=auto', '/#/signals?v=record', '/#/m/GOLD', '/#/compare?s=TCS', '/#/desk', '/#/desk?v=journal', '/#/desk?v=plans', '/#/desk?v=saved', '/#/profile', '/#/more', '/#/c/TCS', '/#/c/HDFCBANK', '/#/compare?s=TCS,INFY,HDFCBANK', '/#/report/TCS', '/#/data', '/#/c/GCSL', '/#/methodology', '/#/help', '/#/ops', '/#/c/PETRONET'];
 const state = { v: 1, follows: ['TCS'], plans: [], compares: [], screens: [], snaps: {}, onboarded: true, reviews: [], paper: [{ id: 'pp1', sym: 'TCS', engine: 'MOM', asOf: '2026-10-23', ref: 2530, stop: 2400, horizon: 20, qty: 10, takenAt: 1761000000 }], prefs: { motion: 'off', haptics: false, horizon: '', experience: '', interests: [], equity: 1e6, cash: 1e6, riskPct: 0.5, maxPositionPct: 15 },
   entries: [{ id: 'x1', sym: 'TCS', created: '2026-10-01T00:00:00Z', archived: false, versions: [{ at: '2026-10-01T00:00:00Z', thesis: 'Seed', support: '', counter: '', decision: '', invalidation: '', trigger: '', reviewOn: '2026-10-10' }] }] };
-const problems = []; const b = await chromium.launch(); let n = 0;
+const problems = []; const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); let n = 0;
 for (const [w, h, tag] of [[390, 844, 'phone'], [360, 740, 'small'], [320, 640, 'tiny'], [430, 932, 'large'], [768, 1024, 'tablet'], [1440, 900, 'desktop']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, bypassCSP: true });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, state);

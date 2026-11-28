@@ -5,6 +5,8 @@ import { eligibility } from '@/lib/coverage';
 import { RangeBar } from '@/components/Peek';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { readSnapshots } from '@/lib/review';
+import { ReviewButton } from '@/components/ReviewButton';
 import { Async, Bar, Chg, Flash, LazyMount, Notice, Rv, Said, Scorecard, SectionHead, Skel } from '@/components/ui';
 import { STATE_TEXT, STATE_TONE, STOP_TEXT, mark, markSource, money, noSessionDays, priceFor } from '@/lib/plan';
 import { AskAI, AskCompany, MetricPanel } from '@/components/Explain';
@@ -222,6 +224,9 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
   const pick = (t: Tab) => { setTab(t); try { window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${t}`); } catch { /* history unavailable */ } };
   const mySignals = useMemo(() => (eng.data?.signals ?? []).filter((x) => x.sym.toUpperCase() === sym), [eng.data, sym]);
   const r = useMemo(() => sh.data?.row ?? full.data?.rows.find((x) => x.sym.toUpperCase() === sym), [sh.data, full.data, sym]);
+  // the saved review for this company, read from the store (and re-read when any page saves one), never assumed
+  const [reviewedAt, setReviewedAt] = useState<string | null>(null);
+  useEffect(() => { const read = () => setReviewedAt(sym ? readSnapshots()[sym]?.at ?? null : null); read(); window.addEventListener('alpha-reviewed', read); return () => window.removeEventListener('alpha-reviewed', read); }, [sym]);
   if (!sym) return <div className="wrap section"><Notice>Pick a company from the <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>screen</Link> or press ⌘K to search.</Notice></div>;
   if (s.loading) return <div className="wrap section"><Skel h={64} w="50%" /><div style={{ height: 14 }} /><Skel h={220} /></div>;
   if (s.error || !r) return <div className="wrap section"><Notice>{s.error ? `Could not load the screen (${s.error}).` : `No company with the symbol ${sym} is in the screen.`} <Link href="/screen/" style={{ color: 'var(--accent-2)' }}>Back to the screen</Link></Notice></div>;
@@ -266,6 +271,7 @@ export function CompanyView({ sym, initial }: { sym: string; initial?: Shard | n
             <svg width="15" height="15" viewBox="0 0 24 24" fill={watching ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>
             {watching ? 'Watching' : 'Watch'}
           </button>
+          {watching && <ReviewButton sym={r.sym} r={r} reviewed={!!reviewedAt} className="act" again={reviewedAt ? `Reviewed ${dateLabel(reviewedAt.slice(0, 10))}` : 'Mark reviewed again'} />}
           <Link className="act" href={`/compare/?s=${r.sym}`}>Compare</Link>
           <button type="button" className="act" onClick={() => { pick('notes'); window.setTimeout(() => document.getElementById('co-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); }}>Save a note</button>
           <button type="button" className="act" onClick={() => setAsk(true)}>Ask about this evidence</button>

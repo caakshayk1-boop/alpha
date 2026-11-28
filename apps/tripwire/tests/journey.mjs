@@ -12,7 +12,7 @@ const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env.JOURNEY_AT) });
 let now0 = Math.floor(Date.now() / 1000);

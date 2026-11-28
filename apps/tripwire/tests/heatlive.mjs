@@ -9,7 +9,7 @@ let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`
 const screen = JSON.parse(readFileSync(new URL('./fixtures/screen-2026-10-26.json', import.meta.url), 'utf8'));
 const OPEN = new Date('2026-10-26T09:02:00Z'), SHUT = new Date('2026-10-26T16:30:00Z');   // 14:32 IST and 22:00 IST on a trading Monday
 const changeOf = (sym) => ((([...sym].reduce((a, c) => a + c.charCodeAt(0), 0) % 9) - 4) / 2);   // -2.0 to +2.0 percent, a pure function of the symbol
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 async function open(at, w = 1280, age = 20) {
   const ctx = await b.newContext({ viewport: { width: w, height: 1000 }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch { /* none */ } }, STATE);

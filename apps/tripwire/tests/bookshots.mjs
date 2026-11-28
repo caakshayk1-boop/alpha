@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { openCtx } from './bookfixture.mjs';
 const [base, dir, prefix] = [process.argv[2], process.argv[3], process.argv[4] ?? 'shot']; mkdirSync(dir, { recursive: true });
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const width of [390, 1280]) {
   const ctx = await openCtx(b, width); const pg = await ctx.newPage();
   for (const [name, route, wait] of [['book', '#/signals?v=auto', '.pcard, .card'], ['record', '#/signals?v=record', '[data-record], .card']]) {

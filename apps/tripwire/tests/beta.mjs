@@ -7,7 +7,7 @@ import { STATE, mockApi, quoteOf } from './fixtures.mjs';
 import { mockTick } from './tickmock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const mk = async (o = {}) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true, ...o }); const T = await mockApi(ctx); return { ctx, T, pg: await ctx.newPage() }; };
 const text = async (pg) => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); return pg.locator('body').innerText(); };
 const saved = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('tripwire:v1') ?? 'null'));

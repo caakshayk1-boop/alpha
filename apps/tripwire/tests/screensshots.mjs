@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8861'; const out = process.argv[3] ?? 'docs/tripwire/design/screens'; const pre = process.argv[4] ?? 'before'; mkdirSync(out, { recursive: true });
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [w, h] of [[390, 844], [1280, 900]]) for (const [name, route] of [['today', '/#/today'], ['discover', '/#/discover'], ['discover-table', '/#/discover?view=table'], ['company', '/#/c/GCSL'], ['methodology', '/#/methodology'], ['help', '/#/help'], ['data', '/#/data']]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { if (!localStorage.getItem('tripwire:v1')) localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);

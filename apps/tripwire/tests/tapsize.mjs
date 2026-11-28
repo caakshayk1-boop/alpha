@@ -7,7 +7,7 @@ import { chromium, devices } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const MIN = 44, SLACK = 0.5;   // sub-pixel rounding only
 const GUEST = { ...STATE, follows: [], entries: [], paper: [], snaps: {} };
 

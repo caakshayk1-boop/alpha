@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const mk = async (prefs, o = {}) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', bypassCSP: true, ...o }); const st = { ...STATE, prefs: { ...STATE.prefs, ...prefs } };
   await ctx.addInitScript((s) => { try { if (!localStorage.getItem('tripwire:v1')) localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, st); const T = await mockApi(ctx); return { ctx, T }; };
 const cls = (pg) => pg.evaluate(() => ({ fx: document.documentElement.classList.contains('fx'), calm: document.documentElement.classList.contains('fx-calm'), lively: document.documentElement.classList.contains('fx-lively'), mode: document.documentElement.dataset.effects }));

@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8811'; const tag = process.argv[3] ?? 'before'; const out = process.argv[4] ?? 'docs/tripwire/revamp/news'; mkdirSync(out, { recursive: true });
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [w, h] of [[390, 844], [1280, 900]]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, bypassCSP: true, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);

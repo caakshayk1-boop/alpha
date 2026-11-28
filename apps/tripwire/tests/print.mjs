@@ -10,7 +10,7 @@ import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
 const OUT = fileURLToPath(new URL('../../../docs/tripwire/beta/print/', import.meta.url)); mkdirSync(OUT, { recursive: true });
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 // A4 at 96 dpi is 794 px wide; the @page margin is 12 mm (about 45 px) each side, so the printable column is about 704 px.
 const PAGE_W = 704;
 
