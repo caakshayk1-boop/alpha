@@ -9,7 +9,7 @@ const last = lastFinishedSession(Date.now());
 const pick = { id: '2026-10-23|MOM|LAURUSLABS', engine: 'MOM', sym: 'LAURUSLABS', asOf: '2026-10-23', ref: 1970, stop: 1833.58, horizon: 20, score: 90, rank: 1, sector: null };
 const ledger = (o) => JSON.stringify({ ok: true, ledger: { schema: 'tripwire-ledger/1', started: '2026-10-23', updated: '2026-10-31T01:00:00Z', cost: 0.25, days: [{ asOf: '2026-10-23', recorded: '2026-10-23T12:00:00Z', engines: {} }], picks: [pick], outcomes: { [pick.id]: o } } });
 const OPEN = { status: 'open', final: false, entry: 1961.96, entryDay: '2026-10-26', sessions: 5, mark: 2200, r: 1.8, markDay: last };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [name, o, expect] of [['T1 filled in the last completed session', { ...OPEN, t1Hit: true, t1Day: last, t1Px: 2154.53 }, /T1 hit — half booked/], ['no target in the last session', { ...OPEN, t1Hit: true, t1Day: '2026-10-27', t1Px: 2154.53 }, null]]) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);

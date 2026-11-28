@@ -42,7 +42,7 @@ body{font-family:TWMono,monospace;color:${C.ink};position:relative}
 </body></html>`;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const pg = await b.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
   await pg.setContent(html()); await pg.evaluate(() => document.fonts.ready);
   await pg.screenshot({ path: OUT, type: 'png', clip: { x: 0, y: 0, width: 1200, height: 630 }, animations: 'disabled' });

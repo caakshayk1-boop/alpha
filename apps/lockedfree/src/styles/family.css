@@ -1,0 +1,15 @@
+/* The askakshay family bar and footer row (28 Nov 2026). The same shape on all four sites; tokens only, nothing moves. */
+.famibar { background: var(--card); border-bottom: 1px solid var(--hairline); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 500; line-height: 1; }
+.famibar .wrap { display: flex; align-items: center; gap: 0 14px; min-height: 36px; flex-wrap: wrap; }
+.famibar-k { font-weight: 700; color: var(--ink); }
+.famibar ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+.famibar a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; color: var(--ink-muted); text-decoration: none; }
+.famibar a:hover { color: var(--ink); }
+.famibar a[aria-current] { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--brand); }
+.famibar a:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+@media (max-width: 640px) { .famibar-k { display: none; } .famibar a { padding: 0 8px; } }
+.footer-family { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; padding-bottom: var(--s3); margin-bottom: var(--s4); border-bottom: 1px solid var(--hairline); font-size: var(--fs-sm); }
+.footer-family span { color: var(--ink-muted); }
+.footer-family a { color: var(--ink-muted); }
+.footer-family a[aria-current] { color: var(--ink); font-weight: 600; }
+@media (pointer: coarse) { .famibar a { min-height: 44px; } }

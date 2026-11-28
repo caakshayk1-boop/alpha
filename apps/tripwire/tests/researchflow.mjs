@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium, newCtx, STATE, ohlcSeries } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 try {
   // Exercise the long, valid labels and fallback fonts that the live company feed can produce.
   for (const width of [320, 360, 390]) {

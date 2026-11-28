@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801'; const out = process.argv[3] ?? 'docs/tripwire/launch/shell'; mkdirSync(out, { recursive: true });
 const IOS_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [w, h, tag] of [[390, 844, '390'], [1280, 800, '1280']]) {
   for (const ios of w === 390 ? [false, true] : [false]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block', deviceScaleFactor: 2, ...(ios ? { userAgent: IOS_UA } : {}) });

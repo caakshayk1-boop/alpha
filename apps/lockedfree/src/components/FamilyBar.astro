@@ -1,0 +1,10 @@
+---
+// The askakshay family bar (28 Nov 2026): the same four names on all four sites, the current one marked. Plain links, no script.
+const family = [
+  ['Alpha', 'https://alpha.askakshay.com/'],
+  ['Rulebook', '/'],
+  ['Tripwire', 'https://tripwire.askakshay.com/'],
+  ['ApexPro', 'https://apexpro.askakshay.com/'],
+];
+---
+<nav class="famibar" aria-label="askakshay products"><div class="wrap"><span class="famibar-k" aria-hidden="true">askakshay</span><ul>{family.map(([n, h]) => <li>{n === 'Rulebook' ? <a href={h} aria-current="true">{n}</a> : <a href={h}>{n}</a>}</li>)}</ul></div></nav>

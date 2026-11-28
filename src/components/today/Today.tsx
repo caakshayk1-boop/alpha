@@ -18,7 +18,8 @@ import { useFeedWhen, useRotation, useShard, useSignals, useSummary } from '@/li
 import { dateLabel, num } from '@/lib/format';
 import { rankIdeas, upcomingResults } from '@/lib/ideas';
 import { priceView } from '@/lib/price';
-import { diffSnapshot, readSnapshots, saveSnapshot, snapshotOf, type Snapshot } from '@/lib/review';
+import { readSnapshots, reviewRead, reviewSentence, type Snapshot } from '@/lib/review';
+import { ReviewButton } from '@/components/ReviewButton';
 import { rotationShift } from '@/lib/rotationShift';
 import { sessionHead } from '@/lib/session';
 import { companyHref } from '@/lib/slug';
@@ -159,11 +160,11 @@ function NameRow({ sym, snap }: { sym: string; snap: Snapshot | null }) {
   const today = useToday();
   const r = sh.data?.row ?? null;
   const pv = r ? priceView(sym, r, today?.live.snap ?? null) : null;
-  const changes = useMemo(() => (r && snap ? diffSnapshot(snap, r) : []), [r, snap]);
+  const read = useMemo(() => (r && snap ? reviewRead(snap, r) : null), [r, snap]);
   const now = istToday();
   const soon = r?.next_earnings && r.next_earnings >= now && Date.parse(r.next_earnings) - Date.parse(now) <= 14 * 864e5 ? r.next_earnings : null;
   const fact = !r ? null
-    : snap ? (changes.length ? `${changes.length} change${changes.length > 1 ? 's' : ''} since you reviewed on ${dateLabel(snap.at.slice(0, 10))}: ${changes.slice(0, 2).map((c) => `${c.field.toLowerCase()} ${c.from} → ${c.to}`).join('; ')}` : `No change in its figures since you reviewed on ${dateLabel(snap.at.slice(0, 10))}`)
+    : read ? reviewSentence(read, dateLabel)
       : soon ? `Results date on file: ${dateLabel(soon)} (not confirmed)` : 'No review baseline yet: mark it reviewed to track changes';
   return (
     <div className="row yrow">
@@ -173,7 +174,7 @@ function NameRow({ sym, snap }: { sym: string; snap: Snapshot | null }) {
       </Link>
       <div className="row-r">
         {pv?.price != null ? <><Chg v={pv.pct} /><small>₹{num(pv.price, 2)}{pv.source === 'close' ? ` · ${dateLabel(pv.session)} close` : ''}</small></> : sh.loading ? <Skel h={16} w={60} /> : <small>no price</small>}
-        {r && <button type="button" className="act quiet yrow-rev" onClick={() => saveSnapshot(sym, snapshotOf(r, new Date().toISOString()))} aria-label={`Mark ${sym} reviewed now`}>{snap ? 'Reviewed' : 'Mark reviewed'}</button>}
+        {r && <ReviewButton sym={sym} r={r} reviewed={!!snap} className="act quiet yrow-rev" again="Reviewed" />}
       </div>
     </div>
   );

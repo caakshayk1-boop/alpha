@@ -6,6 +6,7 @@ import { TodayProvider } from '@/components/widgets/DayContext';
 import { Rv } from '@/components/ui';
 import { VisionToday } from '@/components/widgets/VisionBoard';
 import { TodayProgress } from '@/components/today/Progress';
+import { Family } from '@/components/today/Family';
 import { ComingUp, EvidenceOnNames, Masthead, MarketRead, MarketStrip, Previews, WorthInvestigating, YourNames } from '@/components/today/Today';
 
 /** Today: what matters right now, in about a minute. The detail lives on the pages each block links to (brief §3: one
@@ -17,6 +18,7 @@ export default function Home() {
     <TodayProvider>
       <Masthead />
       <div className="wrap"><p className="muted today-what"><b>Alpha is a research desk for Indian stocks.</b> Find companies worth reading about, follow the ones you own or like, and see exactly what changed each day, with sources. Evidence, never buy or sell calls.</p></div>
+      <Family />
       <section className="wrap grid-lead today-lead">
         <div className="today-main"><MarketRead /><Rv><TodayProgress /></Rv></div>
         <div className="today-side"><Rv><YourNames /></Rv><Rv><EvidenceOnNames /></Rv><Rv><ComingUp /></Rv></div>

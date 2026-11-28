@@ -11,7 +11,7 @@ import { STATE, mockApi } from './fixtures.mjs';
 import { mockNews, makeEvents, makeSnapshot, statusOf } from './newsmock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch(); const tmp = mkdtempSync(join(tmpdir(), 'tw-rel-'));
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const tmp = mkdtempSync(join(tmpdir(), 'tw-rel-'));
 const KEY = 'tripwire:v1';
 const v = (at, o) => ({ at, thesis: 'Steady compounder', support: 'ROCE 60%', counter: 'Slow growth', decision: 'watch', invalidation: 'Close below 2,400', trigger: 'Results', reviewOn: '2026-11-30', ...o });
 const PREFS = { motion: 'auto', haptics: false, horizon: '', experience: '', interests: ['Energy'], equity: 2500000, cash: 900000, riskPct: 1, maxPositionPct: 15, hideAmounts: true };

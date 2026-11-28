@@ -8,7 +8,7 @@ import { mkdirSync } from 'node:fs';
 import { D, ledger, openCtx } from './bookfixture.mjs';
 const base = process.argv[2] ?? 'http://localhost:8971'; const shots = process.argv[3]; if (shots) mkdirSync(shots, { recursive: true });
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const noOverflow = (pg) => pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 const AMOUNTS = ['−₹12,34,56,789', '+₹1,23,45,67,890', '₹99,99,999', '−₹5', 'Unavailable'];
 

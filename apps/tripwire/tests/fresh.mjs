@@ -6,7 +6,7 @@ const base = process.argv[2] ?? 'http://localhost:8801';
 const scr = await (await fetch(base + '/data/screen.json')).json(); const DAY = SCREEN_DAY;   // the screen the app is served is the FROZEN fixture (mockApi), not whatever the server holds today
 const prevSession = (d) => { const t = new Date(d + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() - 1); while ([0, 6].includes(t.getUTCDay())); return t.toISOString().slice(0, 10); };
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const open = async (route, { ledgerDay, rsiDay, factorsDay, breadthDay }) => {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch {} }, STATE);

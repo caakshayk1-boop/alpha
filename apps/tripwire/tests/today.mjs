@@ -7,7 +7,7 @@ const base = process.argv[2] ?? 'http://localhost:8801';
 // SCREEN_DAY comes from the frozen fixture the mocks serve (fixtures.mjs)   // the served screen's own day, never a literal
 const DAYWORD = new Date(SCREEN_DAY + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', '');
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const prevAt = new Date(Date.now() - 3 * 86400000).toISOString();
 const GUEST = { ...STATE, follows: [], entries: [], paper: [], snaps: {} };
 const snap = (o) => ({ at: prevAt, day: '2026-10-20', px: 2380, rsi: 66, rs3m: 2, from_high: -20, atr_pct: 3, sma200: 2450, high52: 3350, low52: 1976.8, trend: 'mixed', rules: 2, next_earnings: null, risk: 'LOW', elig: 'full', ...o });

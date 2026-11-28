@@ -1,0 +1,8 @@
+/* The thesis form (28 Nov 2026): what the screen has on file beside the three questions, and the rest under More detail. */
+.th-onfile{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.th-onfile .k{margin:0 0 8px}
+.th-fact{margin:0 0 8px;line-height:1.5}
+.th-fact .btn{margin-left:6px;vertical-align:baseline}
+.th-onfile>.small{margin:4px 0 0}
+.th-more{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.th-more>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}

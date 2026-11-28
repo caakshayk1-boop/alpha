@@ -6,7 +6,7 @@ import { newCtx } from './uimock.mjs';
 import { ledger, openCtx } from './bookfixture.mjs';
 const base = process.argv[2] ?? 'http://localhost:8971';
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const SECTIONS = ['data', 'pnl', 'book', 'markets', 'picks', 'record', 'method', 'legal', 'build'];   // 15 Nov 2026: 'record' added (How to read the Record moved here from the Record screen)
 
 for (const width of [390, 1440]) {

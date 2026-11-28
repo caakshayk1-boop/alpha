@@ -8,7 +8,7 @@ const prevAt = new Date(Date.now() - 3 * 86400000).toISOString();
 const snap = { at: prevAt, day: '2026-10-20', px: 2380, rsi: 66, rs3m: 2, from_high: -20, atr_pct: 3, sma200: 2450, high52: 3350, low52: 1976.8, trend: 'mixed', rules: 2, next_earnings: null, risk: 'LOW', elig: 'full' };
 const WITH = { ...STATE, follows: ['TCS', 'GCSL', 'INFY', 'RELIANCE'], seen: { TCS: [snap] } };
 const GUEST = { ...STATE, follows: [], entries: [], paper: [], snaps: {} };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [name, st] of [['with', WITH], ['guest', GUEST]]) for (const w of [390, 1280]) {
   const ctx = await b.newContext({ viewport: { width: w, height: w > 1000 ? 900 : 844 }, deviceScaleFactor: 1, serviceWorkers: 'block', reducedMotion: 'reduce' });
   await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch { /* private mode */ } }, st); await mockApi(ctx);

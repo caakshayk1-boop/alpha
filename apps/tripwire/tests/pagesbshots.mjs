@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 const [base = 'http://localhost:8901', out = 'docs/tripwire/beta/pages-b', prefix = 'after'] = process.argv.slice(2); mkdirSync(out, { recursive: true });
 const EMPTY = { ...STATE, follows: [], paper: [], entries: [], plans: [], compares: [], screens: [] };
 const PAGES = [['news', '#/news', STATE], ['desk-empty', '#/desk', EMPTY], ['desk', '#/desk', STATE], ['data', '#/data', STATE], ['methodology', '#/methodology', STATE], ['help', '#/help', STATE], ['settings', '#/settings', STATE], ['operations', '#/ops', STATE]];
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const w of [390, 1280]) for (const [name, hash, state] of PAGES) {
   const ctx = await newCtx(b, w, null, { state }); const pg = await ctx.newPage();
   const route = hash === '#/settings' && prefix === 'before' ? '#/profile' : hash;

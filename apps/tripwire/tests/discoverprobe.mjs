@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8812';
-const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 await ctx.addInitScript((s) => localStorage.setItem('tripwire:v1', JSON.stringify(s)), STATE); await mockApi(ctx); const pg = await ctx.newPage();
 await pg.goto(base + '/#/discover?rsi=30-56'); await pg.waitForFunction(() => !document.querySelector('.routewait') && document.querySelector('.chip.on-x'));
 await pg.locator('.adv').evaluate(el => { el.open = true; }); await pg.getByRole('button', { name: '+ Condition' }).click(); await pg.waitForSelector('[role=dialog]');

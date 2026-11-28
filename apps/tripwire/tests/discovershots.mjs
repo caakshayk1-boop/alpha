@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8812'; const out = process.argv[3] ?? '/tmp/shots'; const pre = process.argv[4] ?? 'after'; mkdirSync(out, { recursive: true });
 const VIEWS = [['list-default', '/#/discover'], ['table-default', '/#/discover?view=table'], ['list-uptrend-rsi', '/#/discover?trend=up&rsi=30-56'], ['table-uptrend-rsi', '/#/discover?view=table&trend=up&rsi=30-56']];
-const b = await chromium.launch(); const heights = {};
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const heights = {};
 for (const [w, h] of [[390, 844], [1280, 900]]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' });
   await ctx.addInitScript((s) => { try { localStorage.setItem('tripwire:v1', JSON.stringify(s)); } catch {} }, STATE);

@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { A, B, C, D, outcomes, ledger, last, openCtx } from './bookfixture.mjs';
 const base = process.argv[2] ?? 'http://localhost:8851'; const shots = process.argv[3]; if (shots) mkdirSync(shots, { recursive: true });
 let bad = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) bad++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const open = (width, led = ledger) => openCtx(b, width, led);
 const noOverflow = (pg) => pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 

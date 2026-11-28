@@ -8,7 +8,7 @@ const axe = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.mi
 import { STATE, mockApi } from './fixtures.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const mk = async (state, o = {}) => {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', ...o });
   if (state) await ctx.addInitScript((s) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tripwire:v1', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } } catch { /* none */ } }, state);

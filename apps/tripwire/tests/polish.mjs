@@ -6,7 +6,7 @@
 import { chromium, newCtx, ohlcSeries } from './uimock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const series = ohlcSeries(900, 'TCS', { nifty: true });
 const open = async (pg, r, sel) => { await pg.goto(base + '/'); await pg.goto(base + r); await pg.reload(); if (sel) await pg.waitForSelector(sel, { timeout: 20000 }); await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(1500); };
 

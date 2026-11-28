@@ -7,7 +7,7 @@ import { STATE, mockApi } from './fixtures.mjs';
 import { mockNews, makeEvents, makeSnapshot, statusOf } from './newsmock.mjs';
 const base = process.argv[2] ?? 'http://localhost:8801';
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const open = async (state, { clock = false, seen = null, news = {} } = {}) => {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', bypassCSP: true });
   await ctx.addInitScript(([s, sn]) => { try { if (!sessionStorage.getItem('twinit')) { sessionStorage.setItem('twinit', '1'); localStorage.setItem('tripwire:v1', JSON.stringify(s)); if (sn != null) localStorage.setItem('tripwire:newsSeen', String(sn)); } } catch {} }, [state, seen]);

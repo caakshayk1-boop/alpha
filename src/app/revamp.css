@@ -1,0 +1,96 @@
+/* ═══ Alpha revamp: Bento (28 Nov 2026) ══════════════════════════════════════════════════════════════════════════════
+   The last stylesheet. The owner asked for a new design for the hub of the askakshay family. Direction (ui-ux-pro-max:
+   "Bento Box Grid" + "Exaggerated Minimalism" for the statement, dark OLED base):
+   - Every block is a TILE: a filled surface, a hairline border, 16px corners, 16px gutters. This replaces the 27 Nov exposed
+     grid (rails, ruled cells, dashed dividers), which read as one long undifferentiated column.
+   - One oversized statement per page (the market read on Today), everything else at a calm, smaller scale.
+   - The family is the frame: a bar above the header on every page, four product tiles on Today.
+   - The palette is NOT new: graphite and lime are what make the four sites one family, and every colour here is an existing
+     token that scripts/contrast.mjs already checks in all 12 modes. No new colour, no raw hex.
+   - Nothing moves. Motion defaults to off (lib/prefs.ts); this file adds no transition and no animation. */
+
+:root { --tile-r: 16px; --tile-gap: 16px; --tile-pad: 22px; }
+@media (max-width: 760px) { :root { --tile-gap: 12px; --tile-pad: 18px; } }
+
+/* ── the family bar ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+.famibar { background: var(--bg-2); border-bottom: 1px solid var(--line); font-size: 13px; position: relative; z-index: 51; }
+.famibar .wrap { display: flex; align-items: center; gap: 4px 18px; min-height: 36px; flex-wrap: wrap; }
+.famibar-k { font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.famibar ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0 2px; }
+.famibar a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; color: var(--muted); font-weight: 500; text-decoration: none; border-radius: 8px; }
+.famibar a:hover { color: var(--text); background: var(--panel-2); }
+.famibar a[aria-current] { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+.famibar a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.famibar-note { margin-left: auto; color: var(--dim); font-size: 12px; }
+@media (max-width: 760px) { .famibar-note { display: none; } .famibar-k { display: none; } .famibar .wrap { gap: 0; } .famibar a { padding: 0 8px; } }
+
+/* ── the header: a solid bar, no blur ───────────────────────────────────────────────────────────────────────────────── */
+.topbar { background: var(--bg); backdrop-filter: none; border-bottom: 1px solid var(--line); }
+
+/* ── the ground: no rails ───────────────────────────────────────────────────────────────────────────────────────────── */
+body { background-image: none; }
+
+/* ── tiles ──────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+.card, .idea { background: var(--panel); border: 1px solid var(--line); border-radius: var(--tile-r); padding: var(--tile-pad); }
+.card.tight { padding: calc(var(--tile-pad) - 4px) var(--tile-pad); }
+.card .card, .card .idea, .card .state { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; }
+.card-h h2, .card-h h3 { font-size: 19px; letter-spacing: -0.015em; }
+.sec-title { font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -0.02em; }
+
+/* grids become bento: real gutters, no dividers */
+.grid-lead, .grid-2, .grid-3, .ideas { gap: var(--tile-gap); }
+.grid-lead > *, .grid-2 > *, .grid-3 > * { padding-inline: 0; border-left: 0; }
+.grid-lead > * + *, .grid-2 > * + *, .grid-3 > * + * { border-left: 0; }
+.ideas > .idea, .ideas > .idea:first-child, .ideas > .idea:last-child { padding: var(--tile-pad); }
+.ideas > .idea + .idea { border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
+@media (max-width: 960px) { .ideas > .idea { padding: var(--tile-pad); } }
+.today-main, .today-side { display: grid; gap: var(--tile-gap); align-content: start; align-self: start; }
+.today-side > *, .today-main > * { margin: 0; }
+.strip { border: 1px solid var(--line); border-radius: var(--tile-r); background: var(--panel); }
+.strip > * { border-right: 1px solid var(--line); }
+.rt-grid { gap: var(--tile-gap); }
+.rt-tile, .rt-tile:first-child { background: var(--panel); border: 1px solid var(--line); border-radius: var(--tile-r); padding: 16px 18px; }
+.section2 { padding-block: var(--tile-gap) 0; }
+
+/* ── Today: the statement ───────────────────────────────────────────────────────────────────────────────────────────── */
+.mast { border-bottom: 0; padding: var(--sp-6) 0 var(--sp-2); }
+.today-what { font-size: clamp(16px, 1.35vw, 19px); line-height: 1.5; color: var(--muted); max-width: 60ch; margin: 0 0 var(--sp-5); }
+.lead-h { font-size: clamp(40px, 5.6vw, 80px); line-height: 0.98; letter-spacing: -0.03em; max-width: 16ch; margin: var(--sp-2) 0 var(--sp-5); }
+@media (max-width: 760px) { .lead-h { font-size: clamp(36px, 10vw, 48px); } }
+.today-lead { padding-top: var(--tile-gap); }
+
+/* ── Today: the family as four tiles ────────────────────────────────────────────────────────────────────────────────── */
+.fam { padding-block: 0 var(--sp-2); }
+.fam-h { font-size: clamp(20px, 1.8vw, 24px); letter-spacing: -0.02em; margin-bottom: var(--sp-4); }
+.fam .fam-grid { border: 0; gap: var(--tile-gap); }
+.fam .fam-grid .fam-cell { background: var(--panel); border: 1px solid var(--line); border-radius: var(--tile-r); padding: var(--tile-pad); box-shadow: none; }
+.fam .fam-grid .fam-cell.is-here { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
+.fam-name b { font-size: 22px; letter-spacing: -0.02em; }
+.fam-what { font-size: 14px; }
+.fam-foot { margin-top: var(--sp-3); }
+
+/* ── Pro: one quiet accent tile ─────────────────────────────────────────────────────────────────────────────────────── */
+.card.pro-strip { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+
+/* ── footer: one tile, five columns, the family row on top ──────────────────────────────────────────────────────────── */
+.footer { background: var(--bg-2); border-top: 1px solid var(--line); margin-top: var(--sp-7); padding: var(--sp-6) 0 var(--sp-7); }
+.footer-grid { grid-template-columns: minmax(0, 1.6fr) repeat(5, minmax(0, 1fr)); gap: var(--sp-5); }
+@media (max-width: 1100px) { .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .footer-grid > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.footer-family { border-bottom: 1px solid var(--line); }
+.footer .footer-family a { display: inline-block; padding: 4px 0; }
+.footer-legal { font-size: 13px; color: var(--dim); }
+/* paired tiles share a height, so a row reads as one row */
+.grid-2, .grid-3 { align-items: stretch; }
+.grid-2 > .card, .grid-3 > .card, .grid-2 > * > .card:only-child, .grid-3 > * > .card:only-child { height: 100%; }
+/* phones: the family tiles keep name, state and link; the address and the per-dataset detail wait for a wider screen */
+@media (max-width: 560px) {
+  .fam-host, .fam-detail { display: none; }
+  .fam-name b { font-size: 19px; }
+  .fam .fam-grid .fam-cell { padding: 14px 16px; gap: 4px; }
+  .fam-go { min-height: 44px; }
+}
+
+/* a review that could not be saved says so where the button is (the success line is for screen readers; the button's own
+   label changes from the store) */
+.rev-err { flex-basis: 100%; margin: 4px 0 0; font-size: 13px; color: var(--down); }

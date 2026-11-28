@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { FAMILY } from '@/lib/familyList';
 import { createPortal } from 'react-dom';
 import { FreshnessPill } from '@/components/DataStamp';
 import { MarketClock } from '@/components/MarketClock';
@@ -156,7 +157,7 @@ const SETTINGS: { name: PrefName; label: string; opts: [string, string][]; note?
   { name: 'theme', label: 'Theme', opts: [['light', 'Light'], ['dark', 'Dark']] },
   { name: 'accent', label: 'Accent', opts: ACCENTS.map(([k, l]) => [k, l]), note: 'Only the highlight changes.' },
   { name: 'market', label: 'Market colours', opts: [['standard', 'Green / red'], ['cb', 'Blue / orange']], note: 'Up and down always also carry a sign and an arrow.' },
-  { name: 'motion', label: 'Motion', opts: [['system', 'As the device'], ['reduced', 'Reduced'], ['off', 'Off']], note: 'Reduced keeps quick colour changes; Off removes every animation and transition.' },
+  { name: 'motion', label: 'Motion', opts: [['off', 'Off'], ['reduced', 'Reduced'], ['system', 'As the device']], note: 'Off (the default) removes every animation and transition. Reduced keeps quick colour changes; As the device follows your system setting.' },
   { name: 'density', label: 'Density', opts: [['comfortable', 'Comfortable'], ['compact', 'Compact']] },
   { name: 'contrast', label: 'Contrast', opts: [['system', 'As the device'], ['high', 'High']], note: 'Stronger text, lines and focus rings. No colour carries meaning alone.' },
 ];
@@ -337,6 +338,14 @@ export default function Shell({ children }: { children: ReactNode }) {
     <>
       <a href="#main" className="sr">Skip to content</a>
       <div className="progress" aria-hidden />
+      {/* The askakshay family bar (28 Nov 2026): the same four names on all four sites, the current one marked. */}
+      <nav className="famibar" aria-label="askakshay products">
+        <div className="wrap">
+          <span className="famibar-k" aria-hidden>askakshay</span>
+          <ul>{FAMILY.map((m) => <li key={m.id}>{m.id === 'alpha' ? <a href="/" aria-current="true">{m.name}</a> : <a href={m.href}>{m.name}</a>}</li>)}</ul>
+          <span className="famibar-note">Research and education. Not investment advice.</span>
+        </div>
+      </nav>
       <header className="topbar">
         <div className="wrap">
           <Link href="/" className="brand" title="alpha, home">
@@ -399,6 +408,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
       <footer className="footer">
         <div className="wrap">
+          <nav className="footer-family" aria-label="The askakshay family"><span>The askakshay family</span>{FAMILY.map((m) => (m.id === 'alpha' ? <Link key={m.id} href="/" aria-current="true">{m.name}</Link> : <a key={m.id} href={m.href}>{m.name}</a>))}</nav>
           <div className="footer-grid">
             <div>
               <div className="brand" style={{ marginBottom: 12 }}><span className="brand-mark" aria-hidden><i /></span><span>alpha</span></div>

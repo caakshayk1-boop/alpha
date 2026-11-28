@@ -3,7 +3,7 @@
 import { chromium, newCtx, ohlcSeries } from './uimock.mjs';
 import { mkdirSync } from 'node:fs';
 const [base = 'http://localhost:8813', out = 'docs/tripwire/revamp/ui', prefix = 'after'] = process.argv.slice(2); mkdirSync(out, { recursive: true });
-const b = await chromium.launch(); const series = ohlcSeries(1700, '360ONE');
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const series = ohlcSeries(1700, '360ONE');
 for (const w of [390, 1280]) {
   const ctx = await newCtx(b, w, series); const pg = await ctx.newPage();
   const wait = async () => { await pg.waitForFunction(() => !document.querySelector('.routewait'), null, { timeout: 15000 }).catch(() => {}); await pg.waitForTimeout(1500); };

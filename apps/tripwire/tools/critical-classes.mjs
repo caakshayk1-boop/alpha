@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { STATE, mockApi } from '../tests/fixtures.mjs';
 export const VIEWS = [[390, 844], [1280, 800]];
 export async function renderedClasses(base, view = '/#/today', sizes = VIEWS) {
-  const b = await chromium.launch(); const found = new Set();
+  const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const found = new Set();
   /* Two fixed clocks, so the list covers both states of the clock-dependent classes (a live badge is `on` only while the NSE session is on): Mon 26 Oct 2026 11:00 IST (open) and Sun 1 Nov 2026 11:00 IST (shut). 2 Nov 2026: capturing on a Sunday alone left `on` out and CI, running on a Monday morning, failed. */
   for (const at of ['2026-10-26T05:30:00Z', '2026-11-01T05:30:00Z']) for (const [w, h] of sizes) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' }); await ctx.clock.setFixedTime(new Date(at));
@@ -21,7 +21,7 @@ export async function renderedClasses(base, view = '/#/today', sizes = VIEWS) {
 }
 /** The classes the FIRST-VISIT screen (the landing) renders in its first viewport, with no saved state: the page a new visitor sees must paint styled before the full stylesheet arrives. */
 export async function firstVisitClasses(base, sizes = VIEWS) {
-  const b = await chromium.launch(); const found = new Set();
+  const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const found = new Set();
   for (const [w, h] of sizes) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, serviceWorkers: 'block' }); await mockApi(ctx);
     const pg = await ctx.newPage(); await pg.goto(base + '/'); await pg.waitForSelector('.lp-hero h1', { timeout: 20000 }); await pg.waitForSelector('.lp-card', { timeout: 15000 }).catch(() => {}); await pg.waitForTimeout(1200);

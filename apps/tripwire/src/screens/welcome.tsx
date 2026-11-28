@@ -1,4 +1,5 @@
 import { HowVideo } from '../components/HowVideo';
+import { FamilyBar } from '../components/FamilyBar.tsx';
 import { Films } from '../components/Films';
 import { LedgerLine } from './edition.tsx';
 import { QuestionOrb } from '../components/QuestionOrb.tsx';
@@ -47,6 +48,7 @@ export function Welcome({ unreadable = false }: { unreadable?: boolean }) {
   const choose = (sym: string) => { go(`/c/${encodeURIComponent(sym)}?first=1`); leave(); };
   const toSearch = () => { document.getElementById('wl-q')?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: document.documentElement.classList.contains('fx') ? 'smooth' : 'auto' }); };
   return <main className="welcome lp" id="main" ref={root} onPointerDownCapture={prefetchScreens} onFocusCapture={prefetchScreens}>
+    <FamilyBar />
     {unreadable && <div className="banner" role="alert" style={{ position: 'static', margin: 0 }}>Saved data on this device could not be read. A copy was kept and nothing was erased. Choose Explore markets, then import a backup from Settings to restore your notes.</div>}
     <section className="lp-hero" aria-labelledby="lp-h">
       <div className="lp-copy">

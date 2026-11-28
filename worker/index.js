@@ -9,6 +9,7 @@ import { SYSTEM_PROMPT, answerText, limitKey, buildUserMessage, factsFor, factsF
 import { Rum, validateBeacon } from './rum.js';
 import { marketRoute } from './market.js';
 import { Waitlist, waitlist } from './waitlist.js';
+import { readFamily } from './family.js';
 import { PROMPTS, cleanThesis, factsForCompare, factsForFiling, factsForMove, factsForWatchlist, noIdentifiedCause, parseSuggestions, validateEntities, validateFiling, validateThesis } from './askalpha.js';
 
 export { Rum, Waitlist };
@@ -60,7 +61,7 @@ function json(body, status = 200, cache = 'no-store') {
 }
 
 async function feed(name) {
-  const upstream = FEEDS[name];
+  const upstream = Object.hasOwn(FEEDS, name) ? FEEDS[name] : null;      // own keys only: /data/constructor.json is not a feed
   if (!upstream) return json({ ok: false, error: 'unknown feed' }, 404);
   try {
     const r = await fetch(upstream, { cf: { cacheTtl: 600, cacheEverything: true } });
@@ -277,7 +278,11 @@ const INSTRUMENTS = [
   ['eth', 'Ethereum', 'Crypto', 'ETH-USD', '$', 0],
 ];
 
-const dayKey = (t) => new Date(t * 1000).toISOString().slice(0, 10);
+/** Whether the newest daily bar is the session the last trade belongs to. Measured as elapsed time, never as UTC calendar
+ *  days: Yahoo stamps a daily bar at the exchange's local midnight or open, and FX bars stamped at London midnight fall on
+ *  the previous UTC day during British summer time, which made the forming bar look like yesterday's (a 0% tile). A daily
+ *  bar always starts less than 24 hours before any trade in its session, and the previous session's bar starts more. */
+export const isSessionBar = (barT, lastTradeT) => Number.isFinite(lastTradeT) && lastTradeT > 0 && lastTradeT >= barT && lastTradeT - barT < 86400;
 
 async function quote([id, name, group, symbol, prefix, dp]) {
   const base = { id, name, group, symbol, prefix, dp };
@@ -299,9 +304,8 @@ async function quote([id, name, group, symbol, prefix, dp]) {
     // Yesterday's close is the second-to-last bar while today's bar is still forming,
     // otherwise the last bar.
     const last = pts[pts.length - 1];
-    const today = meta?.regularMarketTime ? dayKey(meta.regularMarketTime) : null;
     let prev;
-    if (pts.length >= 2) prev = today && dayKey(last[0]) === today ? pts[pts.length - 2][1] : last[1];
+    if (pts.length >= 2) prev = isSessionBar(last[0], meta?.regularMarketTime) ? pts[pts.length - 2][1] : last[1];
     // Some sector indices come back with a single bar. With one bar in the window, the close
     // before that window IS the previous session, so chartPreviousClose is right here (and only here).
     else prev = Number(meta?.previousClose ?? meta?.chartPreviousClose);
@@ -511,7 +515,7 @@ async function chart(url, ctx) {
   const r2 = (x) => Math.round(x * 100) / 100;
   stock.t.forEach((t, i) => {
     if (!(stock.o[i] > 0 && stock.h[i] > 0 && stock.l[i] > 0 && stock.c[i] > 0)) return;
-    out.t.push(t); out.o.push(r2(stock.o[i])); out.h.push(r2(stock.h[i])); out.l.push(r2(stock.l[i])); out.c.push(r2(stock.c[i])); out.v.push(Math.round(stock.v[i] || 0));
+    out.t.push(t); out.o.push(r2(stock.o[i])); out.h.push(r2(stock.h[i])); out.l.push(r2(stock.l[i])); out.c.push(r2(stock.c[i])); out.v.push(Number.isFinite(stock.v?.[i]) && stock.v[i] >= 0 ? Math.round(stock.v[i]) : null);   // missing stays missing, never 0
     out.nifty.push(nmap.has(Math.floor(t / 86400)) ? r2(nmap.get(Math.floor(t / 86400))) : null);
   });
   if (out.t.length < 10) return json({ ok: false, error: 'too little history' }, 404);
@@ -723,6 +727,18 @@ async function explain(request, env, url) {
   }
 }
 
+// /api/family: the four products and the market day each one's own data describes (worker/family.js). Cached 5 minutes.
+async function family(ctx) {
+  const key = new Request('https://alpha.askakshay.com/__family_v1');
+  const hit = await caches.default.match(key);
+  if (hit) return withHeaders(hit);
+  const text = await feedText('screen').catch(() => null);
+  const body = await readFamily(text ? summarise(text).as_of : null);
+  const res = new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=120, s-maxage=300' } });
+  ctx.waitUntil(caches.default.put(key, res.clone()));
+  return withHeaders(res);
+}
+
 // /api/rum: POST one sampled speed beacon (see rum.js; no identifiers), GET the 7-day 75th percentiles per route.
 async function rum(request, env, url, ctx) {
   if (!env.RUM) return json({ ok: false, error: 'speed measurements are not configured' }, 503);
@@ -780,7 +796,8 @@ export default {
       const live = await shard(sym, env);
       if (live) { ctx.waitUntil(cache.put(key, live.clone())); return live; }
       const snap = await env.ASSETS.fetch(request);
-      return withHeaders(snap.status === 200 ? new Response(snap.body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60', 'x-shard': 'snapshot' } }) : snap);
+      // a company with neither a live slice nor a snapshot answers JSON, never the site's HTML 404 page under a .json name
+      return snap.status === 200 ? withHeaders(new Response(snap.body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60', 'x-shard': 'snapshot' } })) : json({ ok: false, error: 'unknown company' }, 404, 'public, max-age=60');
     }
     if (url.pathname === '/api/px' || url.pathname === '/api/px/') {
       return px(url, ctx);
@@ -805,6 +822,9 @@ export default {
     }
     if (url.pathname === '/api/instrument' || url.pathname === '/api/instrument/') {
       return instrument(url, ctx);
+    }
+    if (url.pathname === '/api/family' || url.pathname === '/api/family/') {
+      return family(ctx);
     }
     if (url.pathname === '/api/rum' || url.pathname === '/api/rum/') {
       return rum(request, env, url, ctx);

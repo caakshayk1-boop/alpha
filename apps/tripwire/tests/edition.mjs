@@ -11,7 +11,7 @@ const ledger = { ok: true, ledger: { schema: 'tripwire-ledger/1', started: '2026
 const signals = { schema: 'alpha-signals/2', version: 'x', generated: '2026-11-17T00:00:00Z', data_through: '2026-11-16', alertable: false, alert_why: 'Alerts off.', signals: [],
   gate: { date: '2026-11-16', on: false, passed: 2, checks: [{ rule: 'Nifty above its 50-day average', ok: true, value: 'Nifty 25,291 · 50-day 23,356' }, { rule: 'At least 50% of stocks above their own 50-day average', ok: false, value: '47% above' }, { rule: 'India VIX at or below 20', ok: true, value: 'VIX 15.7' }, { rule: 'Nifty above its 200-day average, and that average rising over 20 sessions', ok: false, value: 'Nifty 25,291 · 200-day 23,992' }] },
   gate_history: [{ d: '2026-11-12', on: false }, { d: '2026-11-14', on: false }, { d: '2026-11-16', on: false }] };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 for (const [name, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
   const open = async (path, seeded) => {
     const ctx = await b.newContext({ viewport: vp, serviceWorkers: 'block' }); await mockApi(ctx);

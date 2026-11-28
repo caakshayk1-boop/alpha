@@ -1,5 +1,5 @@
 /** Plain technical-analysis helpers for the chart. Every value at bar i uses bars <= i only. */
-export interface Bars { t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; v: number[]; nifty: (number | null)[] }
+export interface Bars { t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; v: (number | null)[]; nifty: (number | null)[] }
 
 export const sma = (x: number[], n: number): (number | null)[] => {
   const out: (number | null)[] = [];

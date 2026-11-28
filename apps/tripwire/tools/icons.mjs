@@ -17,7 +17,7 @@ const svg = (t, { round = true, scale = 1, mono = false } = {}) => {
 ${mono ? '' : `<rect width="512" height="512" ${round ? 'rx="112"' : ''} fill="${c.bar}"/>`}
 <g transform="${g}"><path d="M96 330 L200 330 L256 150 L312 330 L416 330" fill="none" stroke="${line}" stroke-width="30" stroke-linecap="square" stroke-linejoin="miter"/><rect x="232" y="126" width="48" height="48" fill="${dot}"/></g></svg>`;
 };
-const b = await chromium.launch(); const pg = await b.newPage();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}); const pg = await b.newPage();
 const png = async (markup, size, file, transparent = false) => {
   await pg.setViewportSize({ width: size, height: size });
   await pg.setContent(`<style>html,body{margin:0;background:${transparent ? 'transparent' : '#000'}}svg{display:block;width:${size}px;height:${size}px}</style>${markup}`);

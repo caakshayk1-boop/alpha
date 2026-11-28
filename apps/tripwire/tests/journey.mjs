@@ -12,7 +12,7 @@ const shots = process.argv[3];
 if (shots) mkdirSync(shots, { recursive: true });
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'}  ${m}`); if (!c) fails++; };
-const b = await chromium.launch();
+const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true, permissions: [] });
 if (process.env.JOURNEY_AT) await ctx.clock.install({ time: new Date(process.env.JOURNEY_AT) });
 let now0 = Math.floor(Date.now() / 1000);
@@ -271,14 +271,14 @@ ok(/Paper fill \(you recorded it\)/.test(await text()), 'a paper fill exists onl
 // thesis → journal → export
 await pg.goto(base + '/#/c/TCS'); await pg.waitForSelector('.fab-row');
 await pg.getByRole('button', { name: /^Thesis$/ }).click();
-await pg.getByLabel(/^Thesis: why/).fill('Cash-rich compounder, results in focus');
-await pg.getByLabel(/^Wrong if/).fill('Closes below 2,300');
+await pg.getByLabel(/^What do I think\?/).fill('Cash-rich compounder, results in focus');
+await pg.getByLabel(/^What would prove me wrong\?/).fill('Closes below 2,300');
 await pg.getByRole('button', { name: 'Save thesis' }).click();
 ok(/Thesis saved on this device/.test(await text()), 'thesis save is confirmed and says where it lives');
 await pg.goto(base + '/#/desk?v=journal'); await pg.waitForSelector('.card');
 ok(/Cash-rich compounder/.test(await text()), 'journal lists the thesis');
 await pg.getByText('Cash-rich compounder').click();
-await pg.getByLabel(/^Thesis: why/).fill('Cash-rich compounder, results in focus. Reduce if guidance slips.');
+await pg.getByLabel(/^What do I think\?/).fill('Cash-rich compounder, results in focus. Reduce if guidance slips.');
 await pg.getByRole('button', { name: 'Save as new version' }).click();
 await pg.getByText('Cash-rich compounder').first().click();
 await pg.getByRole('button', { name: 'History' }).click();

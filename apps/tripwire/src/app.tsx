@@ -46,6 +46,7 @@ import { lockId } from './lock.ts';
 import { lastDiscoverQuery } from './discoverstate.ts';
 import { ScrollTop } from './components/ScrollTop.tsx';
 import { Brand } from './components/Brand.tsx';
+import { FamilyBar } from './components/FamilyBar.tsx';
 import { LockScreen } from './screens/LockScreen.tsx';
 import { applyUpdate, usePwa } from './pwa.ts';
 import { pathOnly, resolveRoute } from './route.ts';
@@ -62,6 +63,8 @@ function load(): State {
   if (r.blocked) { health.persisted = false; health.why = 'blocked'; } return r.state;
 }
 const subs = new Set<() => void>();
+/** Whether the last write reached this device's storage (28 Nov 2026): a save message must not say "saved" when it did not. */
+export const lastSaveOk = (): boolean => health.persisted;
 export function setState(fn: (s: State) => State) {
   mem = fn(mem ?? load());
   const r = saveState(store(), KEY, mem); health.persisted = r.ok; health.why = r.ok ? null : r.why;   // on failure the state stays in memory for this session, and the banner says so and offers a backup
@@ -242,6 +245,7 @@ export function App(): ReactNode {
         {!online && <div className="banner" role="status">Offline: showing the last saved copy{screen.data ? `, data through ${screen.data.as_of}` : ''}. Notes you write are kept on this device.</div>}
         {/* The legacy Settings address is the same screen: its quiet URL rewrite must preserve an import result and other local state. */}
         <div className="view" key={head === 'profile' ? 'settings' : vl.path.slice(0, 2).join('/')}><Suspense fallback={<div className="routewait" role="status" aria-label="Loading the page" />}>{view}</Suspense></div>
+        <FamilyBar />   {/* 28 Nov 2026: last in the page on phones (the first screen keeps its price budget, tests/ui.mjs); in the rail from 1100px (family.css) */}
         <ScrollTop />
       </main>
       <nav className="tabs" aria-label="Primary" data-none={tiRaw < 0 ? '' : undefined} style={{ '--tc': TABS[ti].c, '--i': ti, '--n': TABS.length } as React.CSSProperties}>
