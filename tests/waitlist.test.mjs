@@ -130,3 +130,19 @@ test('a mail the provider refused is not counted, so the next join can send', as
   assert.equal((await call(post({ email: 'w@example.com' }), env)).status, 200);
   assert.equal(mails.length, 1);
 });
+
+test('a burst of simultaneous joins for one address sends one mail and keeps one working link', async () => {
+  mails = [];
+  const { env } = fakeEnv();
+  const keep = globalThis.fetch;
+  // the provider is slow, so every join is in flight before the first mail is accepted
+  globalThis.fetch = async (u, init) => { if (String(u).includes('zeptomail')) { await new Promise((r) => setTimeout(r, 30)); mails.push(JSON.parse(init.body)); return new Response('{}', { status: 201 }); } return keep(u, init); };
+  try {
+    const rs = await Promise.all(Array.from({ length: 6 }, () => call(post({ email: 'burst@example.com' }), env)));
+    assert.ok(rs.every((r) => r.status === 200));
+    assert.equal(mails.length, 1, 'six simultaneous joins, one mail');
+    const t = /confirm\?t=([0-9a-f-]{36})/.exec(mails[0].textbody)[1];
+    const c = await call(new Request(`${origin}/api/waitlist/confirm?t=${t}&via=page`, { method: 'POST' }), env);
+    assert.match(c.headers.get('location'), /waitlist=confirmed/, 'the one link sent still works');
+  } finally { globalThis.fetch = keep; }
+});

@@ -101,17 +101,20 @@ export class Waitlist {
       if (was && was.status === 'confirmed') return Response.json({ status: 'confirmed', token: was.token, send: false });
       // a pending address already mailed in the last 24 hours keeps its link and gets no second mail (no inbox flooding)
       if (was && was.status === 'pending' && was.last_sent_at && Date.now() - Date.parse(was.last_sent_at) < MAIL_GAP_MS) return Response.json({ status: 'pending', token: was.token, send: false });
+      // The mail slot is RESERVED here, in the same synchronous step that read the row (sql.exec does not yield), so a burst of
+      // joins for one address cannot all pass the check above while the first mail is still with the provider. If the provider
+      // refuses the mail, /unsent releases the slot so the next join can try again.
       if (was) {
         // pending or unsubscribed: a fresh request re-opens it as pending with a fresh token; the old link stops working
         const token = crypto.randomUUID();
-        this.sql.exec('UPDATE entries SET status = ?, token = ?, unsubscribed_at = NULL WHERE email = ?', 'pending', token, email);
+        this.sql.exec('UPDATE entries SET status = ?, token = ?, unsubscribed_at = NULL, last_sent_at = ? WHERE email = ?', 'pending', token, now, email);
         return Response.json({ status: 'pending', token, send: true });
       }
       const token = crypto.randomUUID();
-      this.sql.exec('INSERT INTO entries (email, status, token, created_at, source, referrer) VALUES (?, ?, ?, ?, ?, ?)', email, 'pending', token, now, source, referrer);
+      this.sql.exec('INSERT INTO entries (email, status, token, created_at, source, referrer, last_sent_at) VALUES (?, ?, ?, ?, ?, ?, ?)', email, 'pending', token, now, source, referrer, now);
       return Response.json({ status: 'pending', token, send: true });
     }
-    if (u.pathname === '/sent') { this.sql.exec('UPDATE entries SET last_sent_at = ? WHERE token = ?', now, u.searchParams.get('t') || ''); return Response.json({ ok: true }); }
+    if (u.pathname === '/unsent') { this.sql.exec('UPDATE entries SET last_sent_at = NULL WHERE token = ?', u.searchParams.get('t') || ''); return Response.json({ ok: true }); }
     if (u.pathname === '/confirm' || u.pathname === '/unsubscribe') {
       const t = u.searchParams.get('t') || '';
       const row = one('SELECT email, status FROM entries WHERE token = ?', t);
@@ -156,8 +159,10 @@ export async function waitlist(request, env, url, { json, limitKey }) {
     const r = await (await stub.fetch('https://waitlist/join', { method: 'POST', body: JSON.stringify({ email, source: normaliseSource(body.source), referrer: normaliseReferrer(body.referrer) }) })).json();
     if (r.send) {
       const sent = await sendMail(env, email, confirmationMail(url.origin, r.token));
-      if (!sent) return json({ ok: false, error: 'The confirmation mail could not be sent. Try again later.' }, 502);
-      await stub.fetch(`https://waitlist/sent?t=${r.token}`);      // recorded only once the provider accepted the mail
+      if (!sent) {
+        await stub.fetch(`https://waitlist/unsent?t=${r.token}`);      // the provider refused: release the reserved slot
+        return json({ ok: false, error: 'The confirmation mail could not be sent. Try again later.' }, 502);
+      }
     }
     // the same answer whether or not the address was already on the list, so the form cannot be used to test addresses
     return json({ ok: true, message: 'Check your inbox for a confirmation link. Your place is held once you confirm.' });
