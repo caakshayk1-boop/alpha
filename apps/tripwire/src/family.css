@@ -19,5 +19,7 @@
 }
 @media (min-width:1100px) and (max-height:620px){.main>.famibar{display:none}}
 
-/* Phones: inside the app the bar closes each page (the welcome screen keeps it at the top). */
-@media (max-width:1099px){.main>.famibar{margin:24px 0 0;border-bottom:0;border-top:1px solid var(--line)}}
+/* Phones, inside the app: no bar. Above the page it breaks the first-screen budgets (tests/ui.mjs, discover.mjs); after the page it
+   shifts as the page loads (tests/shell.mjs, CLS). The family links are in the footer line (IdentityFooter) and on top of the
+   welcome screen. */
+@media (max-width:1099px){.main>.famibar{display:none}}

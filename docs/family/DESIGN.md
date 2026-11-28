@@ -41,8 +41,9 @@ and data-state meaning, so any fifth hue would either collide with a meaning or 
    Same shape everywhere: 36px links (44px on touch screens), the site's own tokens, no script, hidden in print.
    Where it lives: Alpha `src/components/Shell.tsx`; Rulebook `src/components/FamilyBar.astro`; Tripwire
    `src/components/FamilyBar.tsx` (top of the welcome screen; inside the app it sits in the desktop rail from 1100px and
-   closes each page on phones, because Tripwire's first screen has fixed layout budgets: the price within 300px, Discover's first
-   result within 440px); ApexPro `public/index.html`.
+   is left out on phones, where Tripwire's budgets leave no room for it: above the page it breaks the first-screen limits (price
+   within 300px, Discover's first result within 440px), after the page it shifts during load; there the footer line carries the
+   four names); ApexPro `public/index.html`.
 
 ## The hub's own look (Bento, 28 Nov 2026)
 
